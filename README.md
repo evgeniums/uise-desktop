@@ -1,0 +1,1 @@
+uise-qt is a C++ library of UI components built on top of Qt library.
