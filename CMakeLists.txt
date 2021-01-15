@@ -10,15 +10,28 @@ SET(CMAKE_AUTOUIC ON)
 
 FIND_PACKAGE(Qt6 COMPONENTS Widgets REQUIRED)
 
+OPTION(UISE_DESKTOP_STATIC "Build static uise-desktop library" OFF)
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+SET (HEADERS
+    include/uise/desktop/uisedesktop.hpp
+    include/uise/desktop/version.hpp
+    include/uise/desktop/flyweightlistview.hpp
+)
+
+SET (SOURCES
+    src/flyweightlistview.cpp
+)
+
 IF (UISE_DESKTOP_STATIC)
-    ADD_LIBRARY(${PROJECT_NAME} STATIC)
-ELSE (UISE_DESKTOP_STATIC)    
-    ADD_LIBRARY(${PROJECT_NAME} SHARED)
+    MESSAGE(STATUS "Building static uise-desktop library")
+    ADD_LIBRARY(${PROJECT_NAME} STATIC ${HEADERS} ${SOURCES})
+    ADD_DEFINITIONS("-DUISE_DESKTOP_EXPORT=")
+ELSE (UISE_DESKTOP_STATIC)
+    MESSAGE(STATUS "Building shared uise-desktop library")
+    ADD_LIBRARY(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
+    ADD_DEFINITIONS("-DBUILD_UISE_DESKTOP")
 ENDIF(UISE_DESKTOP_STATIC)
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Widgets)
-
-SET (HEADERS
-    include/uise/desktop/version.hpp
-)
-
