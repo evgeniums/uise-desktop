@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/version.hpp
+/** \file uise/desktop/version.hpp
 *
 *  Defines macros for tracking the version of the library.
 *
@@ -20,35 +20,35 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-#ifndef UISE_VERSION_HPP
-#define UISE_VERSION_HPP
+#ifndef UISE_DESKTOP_VERSION_HPP
+#define UISE_DESKTOP_VERSION_HPP
 
 //! @internal
 //! Transforms a (version, revision, patchlevel) triple into a number of the
 //! form 0xVVRRPPPP to allow comparing versions in a normalized way.
 //!
 //! See http://sourceforge.net/p/predef/wiki/VersionNormalization.
-#define UISE_CONFIG_VERSION(version, revision, patch) \
+#define UISE_DESKTOP_CONFIG_VERSION(version, revision, patch) \
     (((version) << 24) + ((revision) << 16) + (patch))
 
 //! @ingroup group-config
 //! Macro expanding to the major version of the library, i.e. the `x` in `x.y.z`.
-#define UISE_MAJOR_VERSION 0
+#define UISE_DESKTOP_MAJOR_VERSION 0
 
 //! @ingroup group-config
 //! Macro expanding to the minor version of the library, i.e. the `y` in `x.y.z`.
-#define UISE_MINOR_VERSION 0
+#define UISE_DESKTOP_MINOR_VERSION 0
 
 //! @ingroup group-config
 //! Macro expanding to the patch level of the library, i.e. the `z` in `x.y.z`.
-#define UISE_PATCH_VERSION 1
+#define UISE_DESKTOP_PATCH_VERSION 1
 
 //! @ingroup group-config
 //! Macro expanding to the full version of the library, in hexadecimal
 //! representation.
-#define UISE_VERSION                                            \
-    UISE_CONFIG_VERSION(UISE_MAJOR_VERSION,                     \
-                        UISE_MINOR_VERSION,                     \
-                        UISE_PATCH_VERSION)                     \
+#define UISE_DESKTOP_VERSION                                            \
+    UISE_DESKTOP_CONFIG_VERSION(UISE_DESKTOP_MAJOR_VERSION,                     \
+                        UISE_DESKTOP_MINOR_VERSION,                     \
+                        UISE_DESKTOP_PATCH_VERSION)                     \
 
-#endif // UISE_VERSION_HPP
+#endif // UISE_DESKTOP_VERSION_HPP
