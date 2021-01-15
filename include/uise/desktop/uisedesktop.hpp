@@ -26,7 +26,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 // define export symbols for windows platform
 #ifndef UISE_DESKTOP_EXPORT
 #  if defined(WIN32)
-#        ifdef BUILD_UISE_DESKTOP
+#        ifdef UISE_DESKTOP_BUILD
 #            define UISE_DESKTOP_EXPORT __declspec(dllexport)
 #        else
 #            define UISE_DESKTOP_EXPORT __declspec(dllimport)
@@ -38,5 +38,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #define UISE_DESKTOP_NAMESPACE_BEGIN namespace uise { namespace desktop {
 #define UISE_DESKTOP_NAMESPACE_EMD }}
+
+#define UISE_DESKTOP_NAMESPACE uise::desktop
 
 #endif // UISE_DESKTOP_HPP
