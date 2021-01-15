@@ -1,1 +1,1 @@
-uise-qt is a C++ library of UI components built on top of Qt library.
+uise-desktop is a C++ library of UI components for desktop applications built on top of Qt library.
