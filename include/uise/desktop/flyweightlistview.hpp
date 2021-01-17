@@ -31,6 +31,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/flyweightlistframe.hpp>
+
+class QScrollArea;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -41,20 +44,6 @@ enum class Direction : uint8_t
     END=2,
     STAY_AT_HOME_EDGE=3,
     STAY_AT_END_EDGE=4
-};
-
-class FlyweightListFrame : public QFrame
-{
-    Q_OBJECT
-
-    public:
-
-        using QFrame::QFrame;
-
-    signals:
-
-        void homeRequested();
-        void endRequested();
 };
 
 namespace detail
@@ -91,13 +80,8 @@ class FlyweightListView : public FlyweightListFrame
         void setRequestItemsBeforeCb(RequestItemsCb cb) noexcept;
         void setRequestItemsAfterCb(RequestItemsCb cb) noexcept;
 
-        void scroll(int64_t delta);
         void scrollTo(const typename ItemT::IdType& id, size_t offset=0, Direction offsetDirection=Direction::END);
         void scrollToEdge(Direction offsetDirection);
-
-        void collapse(size_t animationDurationMs=0, Direction offsetDirection=Direction::HOME);
-        void expand(size_t animationDurationMs=0);
-        bool isCollapsed() const noexcept;
 
         void clear();
         void resort();
@@ -108,18 +92,11 @@ class FlyweightListView : public FlyweightListFrame
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation) noexcept;
 
-        void setSingleScrollStep(size_t step) noexcept;
-        size_t singleScrollStep() const noexcept;
-        void setPageScrollStep(size_t step) noexcept;
-        size_t pageScrollStep() const noexcept;
+        QScrollArea* scrollArea() noexcept;
 
     protected:
 
 //        bool eventFilter(QObject *watched, QEvent *event) override;
-//        void keyPressEvent(QKeyEvent *event) override;
-//        void keyReleaseEvent(QKeyEvent *event) override;
-//        void resizeEvent(QResizeEvent *event) override;
-//        void wheelEvent(QWheelEvent *event) override;
 
     private:
 

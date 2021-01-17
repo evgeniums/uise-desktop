@@ -33,8 +33,9 @@ FlyweightListView<ItemT>::FlyweightListView(
         QWidget* parent,
         size_t prefetchItemCount
     ) : FlyweightListFrame(parent),
-        pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(prefetchItemCount))
+        pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(this,prefetchItemCount))
 {
+    pimpl->setupUi();
 }
 
 //--------------------------------------------------------------------------
@@ -97,37 +98,9 @@ void FlyweightListView<ItemT>::setRequestItemsAfterCb(RequestItemsCb cb) noexcep
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setSingleScrollStep(size_t step) noexcept
-{
-    pimpl->m_singleScrollStep=step;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::singleScrollStep() const noexcept
-{
-    return pimpl->m_singleScrollStep;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setPageScrollStep(size_t step) noexcept
-{
-    pimpl->m_pageScrollStep=step;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::pageScrollStep() const noexcept
-{
-    return pimpl->m_pageScrollStep;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
-    //! @todo implement clear
+    pimpl->removeAllItems();
 }
 
 //--------------------------------------------------------------------------
@@ -153,6 +126,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation) noexcept
 {
     pimpl->m_orientation=orientation;
+    pimpl->setupLayout();
 }
 
 //--------------------------------------------------------------------------
@@ -193,13 +167,6 @@ void FlyweightListView<ItemT>::insertItem(ItemT item, Direction scrollTo)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::scroll(int64_t delta)
-{
-    //! @todo Implement scroll
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView<ItemT>::scrollTo(const typename ItemT::IdType &id, size_t offset, Direction offsetDirection)
 {
     //! @todo Implement scrollTo
@@ -210,27 +177,6 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
 {
     //! @todo Implement scrollToEdge
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::collapse(size_t animationDurationMs, Direction offsetDirection)
-{
-    //! @todo Implement collapse
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::expand(size_t animationDurationMs)
-{
-    //! @todo Implement expand
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::isCollapsed() const noexcept
-{
-    return pimpl->m_collapsed;
 }
 
 //--------------------------------------------------------------------------

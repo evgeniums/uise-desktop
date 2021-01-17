@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #define UISE_DESKTOP_FLYWEIGHTLISTITEM_HPP
 
 #include <string>
+#include <functional>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -60,6 +61,8 @@ class FlyweightListItem
         using WidgetType=typename TraitsT::WidgetType;
         using SortValueType=typename TraitsT::SortValueType;
         using IdType=typename TraitsT::IdType;
+
+        using ItemDeletionHandler=std::function<void ()>;
 
         /**
          * @brief Constructor.
@@ -124,6 +127,16 @@ class FlyweightListItem
             return m_item;
         }
 
+        void setItemDeletionHandler(ItemDeletionHandler handler) noexcept
+        {
+            m_deletionHandler=std::move(handler);
+        }
+
+        ItemDeletionHandler deletionHandler() const
+        {
+            return m_deletionHandler;
+        }
+
         /**
          * @brief operator < to compare items for sorting.
          * @param left Left item.
@@ -138,6 +151,7 @@ class FlyweightListItem
     private:
 
         ItemType m_item;
+        ItemDeletionHandler m_deletionHandler;
 };
 
 UISE_DESKTOP_NAMESPACE_EMD

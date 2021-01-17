@@ -18,8 +18,16 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 SET (HEADERS
     include/uise/desktop/uisedesktop.hpp
     include/uise/desktop/version.hpp
-    include/uise/desktop/flyweightlistview.hpp
+
+    include/uise/desktop/utils/layout.hpp
+    include/uise/desktop/utils/destroywidget.hpp
+
+    include/uise/desktop/linkedlistview.hpp
+    include/uise/desktop/linkedlistviewitem.hpp
+
     include/uise/desktop/flyweightlistitem.hpp
+    include/uise/desktop/flyweightlistframe.hpp
+    include/uise/desktop/flyweightlistview.hpp
     include/uise/desktop/flyweightlistview.ipp
 )
 
@@ -28,6 +36,9 @@ SET (HEADERS ${HEADERS}
 )
 
 SET (SOURCES
+    src/linkedlistviewitem.cpp
+    src/linkedlistview.cpp
+    src/flyweightlistframe.cpp
 )
 
 IF (UISE_DESKTOP_STATIC)
