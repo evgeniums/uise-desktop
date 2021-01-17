@@ -24,10 +24,17 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QMainWindow>
 
 #include <uise/desktop/flyweightlistview.hpp>
+#include <uise/desktop/flyweightlistview.ipp>
+
+#include <uise/desktop/flyweightlistitem.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
 //--------------------------------------------------------------------------
+
+struct ItemTraits : public FlyweightListItemTraits<QWidget*,QWidget*,QWidget*,std::string>
+{
+};
 
 int main(int argc, char *argv[])
 {
@@ -35,7 +42,7 @@ int main(int argc, char *argv[])
 
     {
         QMainWindow w;
-        auto v=new FlyweightListView();
+        auto v=new FlyweightListView<FlyweightListItem<ItemTraits>>();
         w.setCentralWidget(v);
         w.show();
         app.exec();

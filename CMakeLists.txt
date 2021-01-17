@@ -19,10 +19,15 @@ SET (HEADERS
     include/uise/desktop/uisedesktop.hpp
     include/uise/desktop/version.hpp
     include/uise/desktop/flyweightlistview.hpp
+    include/uise/desktop/flyweightlistitem.hpp
+    include/uise/desktop/flyweightlistview.ipp
+)
+
+SET (HEADERS ${HEADERS}
+    include/uise/desktop/detail/flyweightlistview_p.hpp
 )
 
 SET (SOURCES
-    src/flyweightlistview.cpp
 )
 
 IF (UISE_DESKTOP_STATIC)
