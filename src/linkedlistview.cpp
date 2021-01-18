@@ -42,7 +42,8 @@ class LinkedListView_p
             ) : view(view),
                 orientation(orientation),
                 layout(nullptr),
-                blockUpdate(false)
+                blockUpdate(false),
+                singleWidgetHelper({nullptr})
         {
         }
 
@@ -95,65 +96,80 @@ class LinkedListView_p
 
         void insertWidget(QWidget *newWidget, QWidget *existingWidget, bool after)
         {
+            singleWidgetHelper[0]=newWidget;
+            insertWidgets(singleWidgetHelper,existingWidget,after);
+        }
+
+        void insertWidgets(const std::vector<QWidget*>& newWidgets, QWidget *existingWidget, bool after)
+        {
+            // nothing to do on empty list
+            if (newWidgets.empty())
+            {
+                return;
+            }
+
+            // check constraints for existing widget
+            auto existingItem=LinkedListViewItem::getFromWidgetProperty(existingWidget);
             if (existingWidget)
             {
                 Q_ASSERT(existingWidget->parent()==view);
-            }
-
-            takeItem(LinkedListViewItem::getFromWidgetProperty(newWidget));
-
-            auto newItem=itemForWidget(newWidget);
-            auto existingItem=LinkedListViewItem::getFromWidgetProperty(existingWidget);
-
-            size_t pos=0;
-            if (!head.lock())
-            {
-                Q_ASSERT(!existingItem);
-
-                head=newItem;
-            }
-            else
-            {
                 Q_ASSERT(existingItem);
+                Q_ASSERT(head.lock());
+            }
 
+            // calculate position of the first new item
+            size_t pos=0;
+            if (existingItem)
+            {
+                pos=after?(existingItem->pos()+1):existingItem->pos();
+            }
+            bool firstItemHead=pos==0;
+
+            // construct item list from input widgets
+            std::shared_ptr<LinkedListViewItem> firstItem;
+            std::shared_ptr<LinkedListViewItem> lastItem;
+            for (auto&& newWidget : newWidgets)
+            {
+                takeItem(LinkedListViewItem::getFromWidgetProperty(newWidget));
+                auto newItem=itemForWidget(newWidget);
+                newItem->setPrevAuto(lastItem);
+
+                layout->insertWidget(pos,newWidget,0,Qt::AlignLeft|Qt::AlignTop);
+                newItem->setPos(pos++);
+
+                if (!firstItem)
+                {
+                    firstItem=newItem;
+                }
+                lastItem=std::move(newItem);
+            }
+            if (firstItemHead)
+            {
+                head=firstItem;
+            }
+
+            // insert constructed list into existing list
+            if (existingItem)
+            {
                 if (after)
                 {
-                    pos=existingItem->pos()+1;
-                    newItem->setPos(pos);
-                    newItem->setPrev(existingItem);
-
-                    auto nextItem=existingItem->next();
-                    newItem->setNext(nextItem);
-                    existingItem->setNext(newItem);
-
-                    while (nextItem)
-                    {
-                        nextItem->incPos();
-                        nextItem=nextItem->next();
-                    }
+                    lastItem->setNextAuto(existingItem->next());
+                    existingItem->setNextAuto(firstItem);
                 }
                 else
                 {
-                    pos=existingItem->pos();
-                    newItem->setPos(pos);
-                    newItem->setNext(existingItem);
-
-                    auto prevItem=existingItem->prev();
-                    if (prevItem)
-                    {
-                        prevItem->setNext(newItem);
-                    }
-                    newItem->setPrev(prevItem);
-
-                    while (auto nextItem=existingItem)
-                    {
-                        nextItem->incPos();
-                        nextItem=nextItem->next();
-                    }
+                    firstItem->setPrevAuto(existingItem->prev());
+                    lastItem->setNextAuto(existingItem);
                 }
             }
 
-            layout->insertWidget(pos,newWidget,0,Qt::AlignLeft|Qt::AlignTop);
+            // update positions of items after last inserted item
+            pos=lastItem->pos();
+            while (auto item=lastItem->next())
+            {
+                item->setPos(++pos);
+                item=item->next();
+            }
         }
 
     public:
@@ -164,6 +180,8 @@ class LinkedListView_p
         std::weak_ptr<LinkedListViewItem> head;
         QBoxLayout* layout;
         bool blockUpdate;
+
+        std::vector<QWidget*> singleWidgetHelper;
 };
 
 }
@@ -242,6 +260,18 @@ void LinkedListView::insertWidgetAfter(QWidget *newWidget, QWidget *existingWidg
 void LinkedListView::insertWidgetBefore(QWidget *newWidget, QWidget *existingWidget)
 {
     pimpl->insertWidget(newWidget,existingWidget,false);
+}
+
+//--------------------------------------------------------------------------
+void LinkedListView::insertWidgetsAfter(const std::vector<QWidget*>& newWidgets, QWidget *existingWidget)
+{
+    pimpl->insertWidgets(newWidgets,existingWidget,true);
+}
+
+//--------------------------------------------------------------------------
+void LinkedListView::insertWidgetsBefore(const std::vector<QWidget*>& newWidgets, QWidget *existingWidget)
+{
+    pimpl->insertWidgets(newWidgets,existingWidget,false);
 }
 
 //--------------------------------------------------------------------------

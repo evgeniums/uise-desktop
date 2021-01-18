@@ -25,6 +25,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QScrollArea>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/linkedlistview.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -45,10 +46,8 @@ class FlyweightListView_p
             ) : m_view(view),
                 m_prefetchItemCount(prefetchItemCount),
                 m_inserting(false),
-                m_orientation(Qt::Vertical),
-                m_canvas(nullptr),
                 m_scArea(nullptr),
-                m_canvasLayout(nullptr),
+                m_llist(nullptr),
                 m_blockUpdates(false)
         {
         }
@@ -56,13 +55,10 @@ class FlyweightListView_p
         //-------------------------------------
         void insertItem(ItemT item)
         {
-
-        }
-
-        void setupLayout()
-        {
-            Q_ASSERT_X(m_items.empty(),"setup layout of flyweight list","layout can be changed only for empty lists");
-            m_canvasLayout=Layout::box(m_canvas,m_orientation);
+            // remove item by ID
+            // insert by sort value
+            // get after/before neighbour from iterator
+            // insert to linked list view
         }
 
         void setupUi()
@@ -73,31 +69,27 @@ class FlyweightListView_p
             m_scArea->setObjectName("FlyweightListViewScArea");
             layout->addWidget(m_scArea,1);
 
-            m_canvas=new QFrame(m_scArea);
-            m_canvas->setObjectName("FlyweightListViewCanvas");
-            m_scArea->setWidget(m_canvas);
+            m_llist=new LinkedListView(m_scArea);
+            m_llist->setObjectName("FlyweightListViewLList");
+            m_scArea->setWidget(m_llist);
             m_scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             m_scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-            setupLayout();
         }
 
         void removeAllItems()
         {
             m_blockUpdates=true;
 
+            m_llist->blockSignals(true);
+            m_llist->clear();
+            m_llist->blockSignals(false);
+
             for (auto&& item : m_items)
             {
-                auto widget=item.widget();
-                if (widget)
+                auto deletionhandler=item.deletionHandler();
+                if (deletionhandler)
                 {
-                    widget->hide();
-                    widget->deleteLater();
-                    auto deletionhandler=item.deletionHandler();
-                    if (deletionhandler)
-                    {
-                        deletionhandler();
-                    }
+                    deletionhandler();
                 }
             }
             m_items.clear();
@@ -116,11 +108,8 @@ class FlyweightListView_p
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsBeforeCb;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsAfterCb;
 
-        Qt::Orientation m_orientation;
-
         QScrollArea* m_scArea;
-        QFrame* m_canvas;
-        QBoxLayout* m_canvasLayout;
+        LinkedListView* m_llist;
 
         bool m_blockUpdates;
 };

@@ -84,7 +84,6 @@ class FlyweightListView : public FlyweightListFrame
         void scrollToEdge(Direction offsetDirection);
 
         void clear();
-        void resort();
         void reload();
 
         size_t itemCount() const noexcept;

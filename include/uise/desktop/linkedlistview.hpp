@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #define UISE_DESKTOP_LINKEDLISTVIEW_HPP
 
 #include <memory>
+#include <vector>
 
 #include <QFrame>
 
@@ -52,6 +53,10 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
 
         void insertWidgetAfter(QWidget* newWidget, QWidget* existingWidget=nullptr);
         void insertWidgetBefore(QWidget* newWidget, QWidget* existingWidget=nullptr);
+
+        void insertWidgetsAfter(const std::vector<QWidget*>& newWidgets, QWidget* existingWidget=nullptr);
+        void insertWidgetsBefore(const std::vector<QWidget*>& newWidgets, QWidget* existingWidget=nullptr);
+
         void takeWidget(QObject* widget);
 
         void clear();

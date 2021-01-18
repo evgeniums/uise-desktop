@@ -116,24 +116,16 @@ void FlyweightListView<ItemT>::reload()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::resort()
-{
-    //! @todo implement resort
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation) noexcept
 {
-    pimpl->m_orientation=orientation;
-    pimpl->setupLayout();
+    pimpl->m_llist->setOrientation(orientation);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 Qt::Orientation FlyweightListView<ItemT>::orientation() const noexcept
 {
-    return pimpl->m_orientation;
+    return pimpl->m_llist->orientation();
 }
 
 //--------------------------------------------------------------------------

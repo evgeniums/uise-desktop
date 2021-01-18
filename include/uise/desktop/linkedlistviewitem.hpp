@@ -51,9 +51,9 @@ class UISE_DESKTOP_EXPORT LinkedListViewItem : public std::enable_shared_from_th
             return m_next.lock();
         }
 
-        void setNext(const std::shared_ptr<LinkedListViewItem>& item) noexcept
+        void setNext(std::shared_ptr<LinkedListViewItem> item) noexcept
         {
-            m_next=item;
+            m_next=std::move(item);
         }
 
         auto prev() const noexcept
@@ -61,9 +61,39 @@ class UISE_DESKTOP_EXPORT LinkedListViewItem : public std::enable_shared_from_th
             return m_prev.lock();
         }
 
-        void setPrev(const std::shared_ptr<LinkedListViewItem>& item) noexcept
+        void setPrev(std::shared_ptr<LinkedListViewItem> item) noexcept
         {
-            m_prev=item;
+            m_prev=std::move(item);
+        }
+
+        void setNextAuto(std::shared_ptr<LinkedListViewItem> item) noexcept
+        {
+            auto next=m_next.lock();
+            if (next)
+            {
+                next->setPrev(std::shared_ptr<LinkedListViewItem>());
+            }
+            m_next=std::move(item);
+            next=m_next.lock();
+            if (next)
+            {
+                next->setPrev(shared_from_this());
+            }
+        }
+
+        void setPrevAuto(std::shared_ptr<LinkedListViewItem> item) noexcept
+        {
+            auto prev=m_prev.lock();
+            if (prev)
+            {
+                prev->setNext(std::shared_ptr<LinkedListViewItem>());
+            }
+            m_prev=std::move(item);
+            prev=m_prev.lock();
+            if (prev)
+            {
+                prev->setNext(shared_from_this());
+            }
         }
 
         QWidget* widget() noexcept
