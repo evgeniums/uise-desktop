@@ -140,13 +140,11 @@ int main(int argc, char *argv[])
 //        }
 
         qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
 
-        QTimer::singleShot(0,v,[&v,&items]()
-            {
-                qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
-                items[10].widget()->deleteLater();
-            }
-        );
+//        items[10].widget()->deleteLater();
 
         size_t count=0;
         size_t currentPos=0;

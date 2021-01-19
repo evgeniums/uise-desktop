@@ -29,9 +29,11 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QDebug>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QPointer>
 
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/linkedlistview.hpp>
@@ -284,18 +286,26 @@ class FlyweightListView_p
                 return false;
             }
 
-            const auto* widget=it->widget();
-            auto pos=widget->pos();
-            if (isHorizontal())
-            {
-                offset+=pos.x();
-            }
-            else
-            {
-                offset+=pos.y();
-            }
+            m_scrollToItemTimer.shot(0,
+                [this,offset,widget{QPointer<QWidget>(it->widget())}]()
+                {
+                    if (widget && widget->parent()==m_llist)
+                    {
+                        auto offs=offset;
+                        auto pos=widget->pos();
+                        if (isHorizontal())
+                        {
+                            offs+=pos.x();
+                        }
+                        else
+                        {
+                            offs+=pos.y();
+                        }
 
-            bar()->setValue(offset);
+                        bar()->setValue(offs);
+                    }
+                }
+            );
 
             return true;
         }
@@ -362,6 +372,7 @@ class FlyweightListView_p
 
         bool m_blockUpdates;
         FlyweightListView_q m_qobjectHelper;
+        SingleShotTimer m_scrollToItemTimer;
 };
 
 } // namespace detail

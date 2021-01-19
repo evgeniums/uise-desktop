@@ -28,6 +28,7 @@ SET (HEADERS
     include/uise/desktop/utils/layout.hpp
     include/uise/desktop/utils/destroywidget.hpp
     include/uise/desktop/utils/pointerholder.hpp
+    include/uise/desktop/utils/singleshottimer.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -46,6 +47,7 @@ SET (SOURCES
     src/linkedlistviewitem.cpp
     src/linkedlistview.cpp
     src/flyweightlistframe.cpp
+    src/singleshottimer.cpp
 )
 
 IF (UISE_DESKTOP_STATIC)

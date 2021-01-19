@@ -192,7 +192,6 @@ void FlyweightListView<ItemT>::insertItem(ItemT&& item, Direction scrollTo)
 template <typename ItemT>
 bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
-    //! @todo Implement queued scrolling
     return pimpl->scrollToItem(id,offset);
 }
 
