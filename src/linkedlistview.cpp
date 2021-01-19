@@ -71,8 +71,8 @@ class LinkedListView_p
                 }
             }
 
-            QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),view,SLOT(itemDestroyed(Object*)));
-            QObject::connect(widget,SIGNAL(destroyed(QObject*)),view,SLOT(itemDestroyed(Object*)));
+            QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),view,SLOT(itemDestroyed(QObject*)));
+            QObject::connect(widget,SIGNAL(destroyed(QObject*)),view,SLOT(itemDestroyed(QObject*)));
 
             auto item=std::make_shared<LinkedListViewItem>(widget);
             item->keepInWidgetProperty();
@@ -86,9 +86,10 @@ class LinkedListView_p
                 LinkedListViewItem::clearWidgetProperty(item->widget());
                 if (!blockUpdate)
                 {
-                    while (auto nextItem=item->next())
+                    for (auto nextItem=item->next();nextItem;)
                     {
                         nextItem->decPos();
+                        nextItem=nextItem->next();
                     }
                 }
             }
@@ -108,13 +109,28 @@ class LinkedListView_p
                 return;
             }
 
-            // check constraints for existing widget
+            if (existingWidget)
+            {
+                // check constraints for existing widget
+                Q_ASSERT(existingWidget->parent()==view);
+                Q_ASSERT(head.lock());
+            }
+            else
+            {
+                // if existingWidget is not set then insert before head
+                auto headItem=head.lock();
+                if (headItem)
+                {
+                    existingWidget=headItem->widget();
+                    after=false;
+                }
+            }
+
+            // check item for existing widget
             auto existingItem=LinkedListViewItem::getFromWidgetProperty(existingWidget);
             if (existingWidget)
             {
-                Q_ASSERT(existingWidget->parent()==view);
                 Q_ASSERT(existingItem);
-                Q_ASSERT(head.lock());
             }
 
             // calculate position of the first new item
@@ -123,7 +139,7 @@ class LinkedListView_p
             {
                 pos=after?(existingItem->pos()+1):existingItem->pos();
             }
-            bool firstItemHead=pos==0;
+            bool firstItemIsHead=pos==0;
 
             // construct item list from input widgets
             std::shared_ptr<LinkedListViewItem> firstItem;
@@ -143,7 +159,7 @@ class LinkedListView_p
                 }
                 lastItem=std::move(newItem);
             }
-            if (firstItemHead)
+            if (firstItemIsHead)
             {
                 head=firstItem;
             }
@@ -165,7 +181,7 @@ class LinkedListView_p
 
             // update positions of items after last inserted item
             pos=lastItem->pos();
-            while (auto item=lastItem->next())
+            for (auto item=lastItem->next(); item;)
             {
                 item->setPos(++pos);
                 item=item->next();
@@ -205,7 +221,7 @@ void LinkedListView::clear()
 {
     blockSignals(true);
     pimpl->blockUpdate=true;
-    while (auto item=pimpl->head.lock())
+    for (auto item=pimpl->head.lock(); item;)
     {
         destroyWidget(item->widget());
         item=item->next();

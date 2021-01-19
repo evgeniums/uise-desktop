@@ -68,7 +68,7 @@ class FlyweightListItem
          * @brief Constructor.
          * @param item Item that will be copied into this object.
          */
-        explicit FlyweightListItem(
+        FlyweightListItem(
                 const ItemType& item
             ) : m_item(item)
         {}
@@ -77,7 +77,7 @@ class FlyweightListItem
          * @brief Constructor.
          * @param item Item that will be moved into this object.
          */
-        explicit FlyweightListItem(
+        FlyweightListItem(
                 ItemType&& item
             ) noexcept : m_item(std::move(item))
         {}
@@ -87,6 +87,16 @@ class FlyweightListItem
          * @return Item's widget.
          */
         WidgetType* widget() noexcept
+        {
+            auto self=const_cast<const FlyweightListItem*>(this);
+            return self->widget();
+        }
+
+        /**
+         * @brief Get item's widget.
+         * @return Item's widget.
+         */
+        WidgetType* widget() const noexcept
         {
             return TraitsT::widget(m_item);
         }
@@ -127,16 +137,6 @@ class FlyweightListItem
             return m_item;
         }
 
-        void setItemDeletionHandler(ItemDeletionHandler handler) noexcept
-        {
-            m_deletionHandler=std::move(handler);
-        }
-
-        ItemDeletionHandler deletionHandler() const
-        {
-            return m_deletionHandler;
-        }
-
         /**
          * @brief operator < to compare items for sorting.
          * @param left Left item.
@@ -151,7 +151,6 @@ class FlyweightListItem
     private:
 
         ItemType m_item;
-        ItemDeletionHandler m_deletionHandler;
 };
 
 UISE_DESKTOP_NAMESPACE_EMD

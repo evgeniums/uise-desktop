@@ -79,7 +79,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::endInserting()
 {
     pimpl->m_inserting=false;
-    //! @todo repaint
+    //! @todo Implement endInserting
 }
 
 //--------------------------------------------------------------------------
@@ -133,7 +133,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
     clear();
-    insertItems(items,scrollTo);
+    pimpl->insertContinuousItems(items);
 }
 
 //--------------------------------------------------------------------------
@@ -151,7 +151,25 @@ void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items, Dire
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::insertItem(ItemT item, Direction scrollTo)
+void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items, Direction scrollTo)
+{
+    beginInserting();
+    pimpl->insertContinuousItems(items);
+    endInserting();
+    scrollToEdge(scrollTo);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::insertItem(const ItemT& item, Direction scrollTo)
+{
+    pimpl->insertItem(ItemT(item));
+    scrollToEdge(scrollTo);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::insertItem(ItemT&& item, Direction scrollTo)
 {
     pimpl->insertItem(std::move(item));
     scrollToEdge(scrollTo);

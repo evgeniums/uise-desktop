@@ -20,7 +20,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-#include <set>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/mem_fun.hpp>
 
 #include <QScrollArea>
 
@@ -53,12 +55,51 @@ class FlyweightListView_p
         }
 
         //-------------------------------------
-        void insertItem(ItemT item)
+        void insertItem(ItemT&& item)
         {
-            // remove item by ID
-            // insert by sort value
-            // get after/before neighbour from iterator
-            // insert to linked list view
+            auto& idx=m_items.template get<1>();
+            auto& order=m_items.template get<0>();
+
+            auto widget=item.widget();
+            auto result=idx.insert(item);
+            if (!result.second)
+            {
+                Q_ASSERT(idx.replace(result.first,item));
+            }
+            QWidget* afterWidget=nullptr;
+            auto it=m_items.template project<0>(result.first);
+            if (it!=order.begin())
+            {
+                afterWidget=(--it)->widget();
+            }
+
+            m_llist->insertWidgetAfter(widget,afterWidget);
+        }
+
+        //-------------------------------------
+        void insertContinuousItems(const std::vector<ItemT>& items)
+        {
+            auto& idx=m_items.template get<1>();
+            auto& order=m_items.template get<0>();
+
+            std::vector<QWidget*> widgets;
+            QWidget* afterWidget=nullptr;
+            for (size_t i=0;i<items.size();i++)
+            {
+                const auto& item=items[i];
+                auto result=idx.insert(item);
+                if (i==0)
+                {
+                    auto it=m_items.template project<0>(result.first);
+                    if (it!=order.begin())
+                    {
+                        afterWidget=(--it)->widget();
+                    }
+                }
+                widgets.push_back(item.widget());
+            }
+
+            m_llist->insertWidgetsAfter(widgets,afterWidget);
         }
 
         void setupUi()
@@ -72,6 +113,7 @@ class FlyweightListView_p
             m_llist=new LinkedListView(m_scArea);
             m_llist->setObjectName("FlyweightListViewLList");
             m_scArea->setWidget(m_llist);
+            m_scArea->setWidgetResizable(true);
             m_scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             m_scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         }
@@ -99,10 +141,28 @@ class FlyweightListView_p
 
     public:
 
+        using ItemsContainer=boost::multi_index::multi_index_container
+            <
+                ItemT,
+                boost::multi_index::indexed_by<
+                    boost::multi_index::ordered_non_unique<boost::multi_index::const_mem_fun<
+                                        ItemT,
+                                        typename ItemT::SortValueType,
+                                        &ItemT::sortValue
+                                    >>
+                    ,
+                    boost::multi_index::ordered_unique<boost::multi_index::const_mem_fun<
+                                        ItemT,
+                                        typename ItemT::IdType,
+                                        &ItemT::id
+                                    >>
+                >
+            >;
+
         FlyweightListView<ItemT>* m_view;
         size_t m_prefetchItemCount;
 
-        std::multiset<ItemT> m_items;
+        ItemsContainer m_items;
 
         bool m_inserting;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsBeforeCb;

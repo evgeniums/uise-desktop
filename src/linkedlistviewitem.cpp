@@ -39,6 +39,10 @@ void LinkedListViewItem::keepInWidgetProperty()
 //--------------------------------------------------------------------------
 std::shared_ptr<LinkedListViewItem> LinkedListViewItem::getFromWidgetProperty(QObject *widget)
 {
+    if (!widget)
+    {
+        return std::shared_ptr<LinkedListViewItem>();
+    }
     return widget->property(Property).value<LinkedListViewItemSharedPtr>();
 }
 

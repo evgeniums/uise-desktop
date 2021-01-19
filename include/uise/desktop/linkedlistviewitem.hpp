@@ -101,6 +101,11 @@ class UISE_DESKTOP_EXPORT LinkedListViewItem : public std::enable_shared_from_th
             return m_widget;
         }
 
+        QWidget* widget() const noexcept
+        {
+            return m_widget;
+        }
+
         size_t pos() const noexcept
         {
             return m_pos;

@@ -69,7 +69,10 @@ class FlyweightListView : public FlyweightListFrame
 
         void loadItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
         void insertItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
-        void insertItem(ItemT item, Direction scrollTo=Direction::NONE);
+        void insertContinuousItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
+
+        void insertItem(const ItemT& item, Direction scrollTo=Direction::NONE);
+        void insertItem(ItemT&& item, Direction scrollTo=Direction::NONE);
 
         void beginInserting() noexcept;
         void endInserting();
@@ -92,10 +95,6 @@ class FlyweightListView : public FlyweightListFrame
         void setOrientation(Qt::Orientation orientation) noexcept;
 
         QScrollArea* scrollArea() noexcept;
-
-    protected:
-
-//        bool eventFilter(QObject *watched, QEvent *event) override;
 
     private:
 

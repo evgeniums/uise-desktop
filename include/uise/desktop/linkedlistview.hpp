@@ -72,9 +72,11 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
 
         void resizeEvent(QResizeEvent* event) override;
 
-    private:
+    private slots:
 
         void itemDestroyed(QObject* widget);
+
+    private:
 
         std::unique_ptr<detail::LinkedListView_p> pimpl;
 };
