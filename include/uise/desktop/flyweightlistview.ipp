@@ -148,53 +148,76 @@ void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items, Direct
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
+    auto wasAtEdge=isScrollAtEdge(scrollTo);
     beginInserting();
     for (auto&& item:items)
     {
         pimpl->insertItem(item);
     }
     endInserting();
-    scrollToEdge(scrollTo);
+    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
+    auto wasAtEdge=isScrollAtEdge(scrollTo);
     beginInserting();
     pimpl->insertContinuousItems(items);
     endInserting();
-    scrollToEdge(scrollTo);
+    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertItem(const ItemT& item, Direction scrollTo)
 {
+    auto wasAtEdge=isScrollAtEdge(scrollTo);
     pimpl->insertItem(ItemT(item));
-    scrollToEdge(scrollTo);
+    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertItem(ItemT&& item, Direction scrollTo)
 {
+    auto wasAtEdge=isScrollAtEdge(scrollTo);
     pimpl->insertItem(std::move(item));
-    scrollToEdge(scrollTo);
+    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::scrollTo(const typename ItemT::IdType &id, size_t offset, Direction offsetDirection)
+bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
-    //! @todo Implement scrollTo
+    return pimpl->scrollToItem(id,offset);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+bool FlyweightListView<ItemT>::hasItem(const typename ItemT::IdType &id) const noexcept
+{
+    return pimpl->hasItem(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOffset) const noexcept
+{
+    auto bar=pimpl->bar();
+    return (direction==Direction::END||direction==Direction::STAY_AT_END_EDGE)
+            ?
+                ((bar->maximum()-bar->sliderPosition())<maxOffset)
+            :
+                ((bar->sliderPosition()-bar->minimum())<maxOffset);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
 {
-    //! @todo Implement scrollToEdge
+    pimpl->scrollToEdge(offsetDirection,true);
 }
 
 //--------------------------------------------------------------------------
@@ -212,18 +235,16 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
     {
         if (event->type()==QEvent::KeyPress)
         {
-            QKeyEvent *e=dynamic_cast<QKeyEvent*>(event);
+            auto e=dynamic_cast<QKeyEvent*>(event);
             if (e)
             {
                 if (e->key()==Qt::Key_PageUp)
                 {
-                    auto bar=orientation()==Qt::Horizontal?pimpl->m_scArea->horizontalScrollBar():pimpl->m_scArea->verticalScrollBar();
-                    bar->triggerAction(QScrollBar::SliderPageStepSub);
+                    pimpl->bar()->triggerAction(QScrollBar::SliderPageStepSub);
                 }
                 else if (e->key()==Qt::Key_PageDown)
                 {
-                    auto bar=orientation()==Qt::Horizontal?pimpl->m_scArea->horizontalScrollBar():pimpl->m_scArea->verticalScrollBar();
-                    bar->triggerAction(QScrollBar::SliderPageStepAdd);
+                    pimpl->bar()->triggerAction(QScrollBar::SliderPageStepAdd);
                 }
                 else if (e->key()==Qt::Key_Home && (e->modifiers() & Qt::ControlModifier))
                 {

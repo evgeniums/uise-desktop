@@ -135,7 +135,7 @@ class FlyweightListView_p
             QObject::connect(m_scArea->verticalScrollBar(),&QScrollBar::valueChanged,
                              [this](int value)
                              {
-                                if (m_llist->orientation()==Qt::Horizontal)
+                                if (isHorizontal())
                                 {
                                     return;
                                 }
@@ -146,7 +146,7 @@ class FlyweightListView_p
             QObject::connect(m_scArea->horizontalScrollBar(),&QScrollBar::valueChanged,
                              [this](int value)
                              {
-                                if (m_llist->orientation()==Qt::Vertical)
+                                if (isVertical())
                                 {
                                     return;
                                 }
@@ -185,7 +185,7 @@ class FlyweightListView_p
 
             QSize s = m_scArea->viewport()->size();
             QPoint p2(p);
-            if (m_llist->orientation()==Qt::Horizontal)
+            if (isHorizontal())
             {
                 p2.setX(p2.x()+s.width());
                 p2.setY(0);
@@ -208,6 +208,77 @@ class FlyweightListView_p
             {
                 m_viewportChangedCb(itemAtBegin,itemAtEnd);
             }
+        }
+
+        QScrollBar* bar() const
+        {
+            return isHorizontal()?m_scArea->horizontalScrollBar():m_scArea->verticalScrollBar();
+        }
+
+        void scrollToEdge(Direction offsetDirection, bool wasAtEdge)
+        {
+            if (!wasAtEdge && (offsetDirection==Direction::STAY_AT_END_EDGE || offsetDirection==Direction::STAY_AT_HOME_EDGE))
+            {
+                return;
+            }
+
+            switch (offsetDirection)
+            {
+                case Direction::END:
+                case Direction::STAY_AT_END_EDGE:
+                    bar()->triggerAction(QScrollBar::SliderToMaximum);
+                    break;
+
+                case Direction::HOME:
+                case Direction::STAY_AT_HOME_EDGE:
+                    bar()->triggerAction(QScrollBar::SliderToMinimum);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        bool scrollToItem(const typename ItemT::IdType &id, size_t offset)
+        {
+            auto& idx=m_items.template get<1>();
+            auto it=idx.find(id);
+            if (it==idx.end())
+            {
+                return false;
+            }
+
+            const auto* widget=it->widget();
+            auto pos=widget->pos();
+            if (isHorizontal())
+            {
+                offset+=pos.x();
+            }
+            else
+            {
+                offset+=pos.y();
+            }
+
+            bar()->setValue(offset);
+
+            return true;
+        }
+
+        bool hasItem(const typename ItemT::IdType& id) const noexcept
+        {
+            const auto& idx=m_items.template get<1>();
+            auto it=idx.find(id);
+            return it!=idx.end();
+        }
+
+        bool isHorizontal() const noexcept
+        {
+            return m_llist->orientation()==Qt::Horizontal;
+        }
+
+        bool isVertical() const noexcept
+        {
+            return !isHorizontal();
         }
 
     public:

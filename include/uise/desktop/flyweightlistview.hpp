@@ -86,13 +86,15 @@ class FlyweightListView : public FlyweightListFrame
 
         void setViewportChangedCb(ViewportChangedCb cb) noexcept;
 
-        void scrollTo(const typename ItemT::IdType& id, size_t offset=0, Direction offsetDirection=Direction::END);
+        bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
         void scrollToEdge(Direction offsetDirection);
+        bool isScrollAtEdge(Direction direction, size_t maxOffset=5) const noexcept;
 
         void clear();
         void reload();
 
         size_t itemCount() const noexcept;
+        bool hasItem(const typename ItemT::IdType& id) const noexcept;
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation) noexcept;
