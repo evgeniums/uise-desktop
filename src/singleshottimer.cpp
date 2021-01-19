@@ -45,10 +45,12 @@ void SingleShotTimer::onTimeout()
 //--------------------------------------------------------------------------
 void SingleShotTimer::shot(size_t milliseconds, HandlerT handler)
 {
-    m_timer.stop();
     m_handler=std::move(handler);
-    m_timer.setInterval(milliseconds);
-    m_timer.start();
+    if (!m_timer.isActive() || m_timer.interval()>milliseconds)
+    {
+        m_timer.setInterval(milliseconds);
+        m_timer.start();
+    }
 }
 
 //--------------------------------------------------------------------------
