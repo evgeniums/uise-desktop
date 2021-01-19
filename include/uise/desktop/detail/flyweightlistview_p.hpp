@@ -24,11 +24,15 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
+#include <QDebug>
 #include <QScrollArea>
+#include <QScrollBar>
 
+#include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/linkedlistview.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
+#include <uise/desktop/flyweightlistitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -66,6 +70,8 @@ class FlyweightListView_p
             {
                 Q_ASSERT(idx.replace(result.first,item));
             }
+            PointerHolder::keepProperty(&(*result.first),widget,ItemT::Property);
+
             QWidget* afterWidget=nullptr;
             auto it=m_items.template project<0>(result.first);
             if (it!=order.begin())
@@ -88,6 +94,12 @@ class FlyweightListView_p
             {
                 const auto& item=items[i];
                 auto result=idx.insert(item);
+                if (!result.second)
+                {
+                    Q_ASSERT(idx.replace(result.first,item));
+                }
+                PointerHolder::keepProperty(&(*result.first),item.widget(),ItemT::Property);
+
                 if (i==0)
                 {
                     auto it=m_items.template project<0>(result.first);
@@ -102,6 +114,7 @@ class FlyweightListView_p
             m_llist->insertWidgetsAfter(widgets,afterWidget);
         }
 
+        //-------------------------------------
         void setupUi()
         {
             auto layout=Layout::vertical(m_view);
@@ -116,8 +129,34 @@ class FlyweightListView_p
             m_scArea->setWidgetResizable(true);
             m_scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             m_scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            m_scArea->installEventFilter(m_view);
+            m_scArea->viewport()->installEventFilter(m_view);
+
+            QObject::connect(m_scArea->verticalScrollBar(),&QScrollBar::valueChanged,
+                             [this](int value)
+                             {
+                                if (m_llist->orientation()==Qt::Horizontal)
+                                {
+                                    return;
+                                }
+
+//                                qDebug() << "Scrolled vertical " << value;
+                                scrolled(value);
+                            });
+            QObject::connect(m_scArea->horizontalScrollBar(),&QScrollBar::valueChanged,
+                             [this](int value)
+                             {
+                                if (m_llist->orientation()==Qt::Vertical)
+                                {
+                                    return;
+                                }
+
+//                                qDebug() << "Scrolled horizontal " << value;
+                                scrolled(value);
+                            });
         }
 
+        //-------------------------------------
         void removeAllItems()
         {
             m_blockUpdates=true;
@@ -126,17 +165,49 @@ class FlyweightListView_p
             m_llist->clear();
             m_llist->blockSignals(false);
 
-            for (auto&& item : m_items)
-            {
-                auto deletionhandler=item.deletionHandler();
-                if (deletionhandler)
-                {
-                    deletionhandler();
-                }
-            }
             m_items.clear();
 
             m_blockUpdates=false;
+        }
+
+        void scrolled(int value)
+        {
+            std::ignore=value;
+            updateBeginEndWidgets();
+        }
+
+        void updateBeginEndWidgets()
+        {
+            QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
+            p.setX(0);
+            auto beginWidget=m_scArea->widget()->childAt(p);
+            auto itemAtBegin=PointerHolder::getProperty<ItemT*>(beginWidget,ItemT::Property);
+
+            QSize s = m_scArea->viewport()->size();
+            QPoint p2(p);
+            if (m_llist->orientation()==Qt::Horizontal)
+            {
+                p2.setX(p2.x()+s.width());
+                p2.setY(0);
+            }
+            else
+            {
+                p2.setX(0);
+                p2.setY(p2.y()+s.height());
+            }
+            auto endWidget=m_scArea->widget()->childAt(p2);
+            auto itemAtEnd=PointerHolder::getProperty<ItemT*>(endWidget,ItemT::Property);
+
+//            if (beginWidget || endWidget)
+//            {
+//                qDebug() << "childTop= "<<beginWidget
+//                         << "childBottom= "<<endWidget;
+//            }
+
+            if (m_viewportChangedCb)
+            {
+                m_viewportChangedCb(itemAtBegin,itemAtEnd);
+            }
         }
 
     public:
@@ -167,6 +238,7 @@ class FlyweightListView_p
         bool m_inserting;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsBeforeCb;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsAfterCb;
+        typename FlyweightListView<ItemT>::ViewportChangedCb m_viewportChangedCb;
 
         QScrollArea* m_scArea;
         LinkedListView* m_llist;

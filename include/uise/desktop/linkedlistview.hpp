@@ -79,6 +79,8 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
     private:
 
         std::unique_ptr<detail::LinkedListView_p> pimpl;
+
+        friend class detail::LinkedListView_p;
 };
 
 UISE_DESKTOP_NAMESPACE_EMD

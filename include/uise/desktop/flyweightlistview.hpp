@@ -63,6 +63,7 @@ class FlyweightListView : public FlyweightListFrame
         constexpr static const size_t PrefetchItemCount=32;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
+        using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCount);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCount);
@@ -83,6 +84,8 @@ class FlyweightListView : public FlyweightListFrame
         void setRequestItemsBeforeCb(RequestItemsCb cb) noexcept;
         void setRequestItemsAfterCb(RequestItemsCb cb) noexcept;
 
+        void setViewportChangedCb(ViewportChangedCb cb) noexcept;
+
         void scrollTo(const typename ItemT::IdType& id, size_t offset=0, Direction offsetDirection=Direction::END);
         void scrollToEdge(Direction offsetDirection);
 
@@ -94,7 +97,9 @@ class FlyweightListView : public FlyweightListFrame
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation) noexcept;
 
-        QScrollArea* scrollArea() noexcept;
+    protected:
+
+        bool eventFilter(QObject * watched, QEvent * event) override;
 
     private:
 

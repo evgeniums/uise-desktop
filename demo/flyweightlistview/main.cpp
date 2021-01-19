@@ -45,6 +45,7 @@ class HelloWorldItem : public QLabel
               m_seqNum(seqNum)
         {
             setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
+            setObjectName(QString("Label %1").arg(m_id));
         }
 
         size_t seqNum() const noexcept
@@ -97,38 +98,77 @@ int main(int argc, char *argv[])
 
         auto v=new FlyweightListView<HelloWorldItemWrapper>();
 
-        auto item2=HelloWorldItemWrapper(new HelloWorldItem(2));
-        v->insertItem(std::move(item2));
-        auto item1=HelloWorldItemWrapper(new HelloWorldItem(1));
-        v->insertItem(std::move(item1));
+//        auto item2=HelloWorldItemWrapper(new HelloWorldItem(2));
+//        v->insertItem(std::move(item2));
+//        auto item1=HelloWorldItemWrapper(new HelloWorldItem(1));
+//        v->insertItem(std::move(item1));
 
-        for (size_t i=50;i<70;i++)
+//        for (size_t i=50;i<70;i++)
+//        {
+//            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+//            v->insertItem(std::move(item));
+//        }
+//        for (size_t i=3;i<30;i++)
+//        {
+//            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+//            v->insertItem(std::move(item));
+//        }
+
+//        for (size_t i=70;i<100;i++)
+//        {
+//            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+//            v->insertItem(std::move(item));
+//        }
+
+//        std::vector<HelloWorldItemWrapper> items;
+//        for (size_t i=30;i<50;i++)
+//        {
+//            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+//            items.push_back(std::move(item));
+//        }
+//        v->insertContinuousItems(items);
+
+//        items[0].item()->setSeqNum(80);
+//        v->insertItem(items[0]);
+
+        size_t start=200;
+        for (size_t i=start;i<start+100;i++)
         {
             auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
             v->insertItem(std::move(item));
         }
-        for (size_t i=3;i<30;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            v->insertItem(std::move(item));
-        }
 
-        for (size_t i=70;i<100;i++)
+        size_t count=0;
+        size_t currentPos=0;
+        using ItemT=HelloWorldItemWrapper;
+        auto beginEndChanged=[&currentPos,&v,&count](const ItemT* begin,const ItemT* end)
         {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            v->insertItem(std::move(item));
-        }
+            if (begin && begin->item())
+            {
+                qDebug() << "Begin ID=" << begin->id();
+            }
 
-        std::vector<HelloWorldItemWrapper> items;
-        for (size_t i=30;i<50;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            items.push_back(std::move(item));
-        }
-        v->insertContinuousItems(items);
+            if (end && end->item())
+            {
+                qDebug() << "End ID="<<end->id();
+            }
 
-        items[0].item()->setSeqNum(80);
-        v->insertItem(items[0]);
+            if (end && end->item() && begin && begin->item())
+            {
+                if (count>100 && count < 200)
+                {
+                    for (size_t i=currentPos;i<currentPos+10;i++)
+                    {
+                        auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+                        v->insertItem(std::move(item));
+                    }
+                    currentPos+=10;
+                    qDebug() << "Inserted 10 elements";
+                }
+                count++;
+            }
+        };
+        v->setViewportChangedCb(beginEndChanged);
 
         w.setCentralWidget(v);
         w.show();

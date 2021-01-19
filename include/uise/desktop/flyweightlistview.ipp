@@ -20,7 +20,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-#include <set>
+#include <QEvent>
+#include <QKeyEvent>
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
@@ -94,6 +95,13 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::setRequestItemsAfterCb(RequestItemsCb cb) noexcept
 {
     pimpl->m_requestItemsAfterCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setViewportChangedCb(ViewportChangedCb cb) noexcept
+{
+    pimpl->m_viewportChangedCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
@@ -187,6 +195,49 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
 {
     //! @todo Implement scrollToEdge
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched==pimpl->m_scArea->viewport())
+    {
+        if (event->type()==QEvent::Resize)
+        {
+            pimpl->updateBeginEndWidgets();
+        }
+    }
+    else if (watched==pimpl->m_scArea)
+    {
+        if (event->type()==QEvent::KeyPress)
+        {
+            QKeyEvent *e=dynamic_cast<QKeyEvent*>(event);
+            if (e)
+            {
+                if (e->key()==Qt::Key_PageUp)
+                {
+                    auto bar=orientation()==Qt::Horizontal?pimpl->m_scArea->horizontalScrollBar():pimpl->m_scArea->verticalScrollBar();
+                    bar->triggerAction(QScrollBar::SliderPageStepSub);
+                }
+                else if (e->key()==Qt::Key_PageDown)
+                {
+                    auto bar=orientation()==Qt::Horizontal?pimpl->m_scArea->horizontalScrollBar():pimpl->m_scArea->verticalScrollBar();
+                    bar->triggerAction(QScrollBar::SliderPageStepAdd);
+                }
+                else if (e->key()==Qt::Key_Home && (e->modifiers() & Qt::ControlModifier))
+                {
+                    emit homeRequested();
+                }
+                else if (e->key()==Qt::Key_End && (e->modifiers() & Qt::ControlModifier))
+                {
+                    emit endRequested();
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 //--------------------------------------------------------------------------

@@ -49,7 +49,10 @@ std::shared_ptr<LinkedListViewItem> LinkedListViewItem::getFromWidgetProperty(QO
 //--------------------------------------------------------------------------
 void LinkedListViewItem::clearWidgetProperty(QObject *widget)
 {
-    widget->setProperty(LinkedListViewItem::Property,QVariant());
+    if (widget)
+    {
+        widget->setProperty(LinkedListViewItem::Property,QVariant());
+    }
 }
 
 //--------------------------------------------------------------------------

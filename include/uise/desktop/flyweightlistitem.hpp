@@ -62,6 +62,8 @@ class FlyweightListItem
         using SortValueType=typename TraitsT::SortValueType;
         using IdType=typename TraitsT::IdType;
 
+        constexpr static const char* Property="uise_dt_FlyweightListItem";
+
         using ItemDeletionHandler=std::function<void ()>;
 
         /**

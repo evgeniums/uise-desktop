@@ -27,6 +27,7 @@ SET (HEADERS
 
     include/uise/desktop/utils/layout.hpp
     include/uise/desktop/utils/destroywidget.hpp
+    include/uise/desktop/utils/pointerholder.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
