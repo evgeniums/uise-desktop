@@ -73,6 +73,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::beginInserting() noexcept
 {
     pimpl->m_inserting=true;
+    //! @todo Implement beginInserting
 }
 
 //--------------------------------------------------------------------------
@@ -191,6 +192,7 @@ void FlyweightListView<ItemT>::insertItem(ItemT&& item, Direction scrollTo)
 template <typename ItemT>
 bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
+    //! @todo Implement queued scrolling
     return pimpl->scrollToItem(id,offset);
 }
 

@@ -20,6 +20,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <functional>
+
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -30,6 +32,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
+
+#include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/linkedlistview.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistitem.hpp>
@@ -39,6 +43,30 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 namespace detail {
+
+class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
+{
+    Q_OBJECT
+
+    public:
+
+        explicit FlyweightListView_q(
+            std::function<void (QObject*)> itemDestroyedHandler
+        ) : itemDestroyedHandler(std::move(itemDestroyedHandler))
+        {
+        }
+
+    public slots:
+
+        void onItemDestroyed(QObject* obj)
+        {
+            itemDestroyedHandler(obj);
+        }
+
+    private:
+
+        std::function<void (QObject*)> itemDestroyedHandler;
+};
 
 template <typename ItemT>
 class FlyweightListView_p
@@ -54,8 +82,16 @@ class FlyweightListView_p
                 m_inserting(false),
                 m_scArea(nullptr),
                 m_llist(nullptr),
-                m_blockUpdates(false)
+                m_blockUpdates(false),
+                m_qobjectHelper([this](QObject* obj){onItemDestroyed(obj);})
         {
+        }
+
+        void configureWidget(const ItemT* item)
+        {
+            auto widget=item->widget();
+            PointerHolder::keepProperty(item,widget,ItemT::Property);
+            QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onItemDestroyed(QObject*)));
         }
 
         //-------------------------------------
@@ -70,7 +106,7 @@ class FlyweightListView_p
             {
                 Q_ASSERT(idx.replace(result.first,item));
             }
-            PointerHolder::keepProperty(&(*result.first),widget,ItemT::Property);
+            configureWidget(&(*result.first));
 
             QWidget* afterWidget=nullptr;
             auto it=m_items.template project<0>(result.first);
@@ -98,7 +134,7 @@ class FlyweightListView_p
                 {
                     Q_ASSERT(idx.replace(result.first,item));
                 }
-                PointerHolder::keepProperty(&(*result.first),item.widget(),ItemT::Property);
+                configureWidget(&(*result.first));
 
                 if (i==0)
                 {
@@ -281,6 +317,16 @@ class FlyweightListView_p
             return !isHorizontal();
         }
 
+        void onItemDestroyed(QObject* obj)
+        {
+            auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
+            if (item)
+            {
+                auto& idx=m_items.template get<1>();
+                idx.erase(item->id());
+            }
+        }
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -315,6 +361,7 @@ class FlyweightListView_p
         LinkedListView* m_llist;
 
         bool m_blockUpdates;
+        FlyweightListView_q m_qobjectHelper;
 };
 
 } // namespace detail
