@@ -229,7 +229,14 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
     {
         if (event->type()==QEvent::Resize)
         {
-            pimpl->updateBeginEndWidgets();
+            pimpl->informUpdate();
+        }
+    }
+    else if (watched==pimpl->m_llist)
+    {
+        if (event->type()==QEvent::Resize)
+        {
+            pimpl->onListResize();
         }
     }
     else if (watched==pimpl->m_scArea)

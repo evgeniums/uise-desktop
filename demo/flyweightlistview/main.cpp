@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QMainWindow>
 #include <QLabel>
 #include <QTimer>
+#include <QPushButton>
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
@@ -114,30 +115,30 @@ int main(int argc, char *argv[])
         };
         v->setViewportChangedCb(beginEndChanged);
 
-        auto item2=HelloWorldItemWrapper(new HelloWorldItem(2));
+        auto item2=HelloWorldItemWrapper(new HelloWorldItem(102));
         v->insertItem(std::move(item2));
-        auto item1=HelloWorldItemWrapper(new HelloWorldItem(1));
+        auto item1=HelloWorldItemWrapper(new HelloWorldItem(101));
         v->insertItem(std::move(item1));
 
-        for (size_t i=50;i<70;i++)
+        for (size_t i=150;i<170;i++)
         {
             auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
             v->insertItem(std::move(item));
         }
-        for (size_t i=3;i<30;i++)
+        for (size_t i=103;i<130;i++)
         {
             auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
             v->insertItem(std::move(item));
         }
 
-        for (size_t i=70;i<100;i++)
+        for (size_t i=170;i<200;i++)
         {
             auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
             v->insertItem(std::move(item));
         }
 
         std::vector<HelloWorldItemWrapper> items;
-        for (size_t i=30;i<50;i++)
+        for (size_t i=130;i<150;i++)
         {
             auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
             items.push_back(std::move(item));
@@ -154,30 +155,36 @@ int main(int argc, char *argv[])
 //            v->insertItem(std::move(item));
 //        }
 
-//        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
+        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
+        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
 
 //        items[10].widget()->deleteLater();
 
 
-//            if (end && end->item() && begin && begin->item())
-//            {
-//                if (count>100 && count < 200)
-//                {
-//                    for (size_t i=currentPos;i<currentPos+10;i++)
-//                    {
-//                        auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-//                        v->insertItem(std::move(item));
-//                    }
-//                    currentPos+=10;
-//                    qDebug() << "Inserted 10 elements";
-//                }
-//                count++;
-//            }
+        QFrame* mainFrame=new QFrame();
+        auto layout=Layout::vertical(mainFrame);
+        layout->addWidget(v);
 
-        w.setCentralWidget(v);
+        size_t currentPos=0;
+
+        auto addButton=new QPushButton("Add items",mainFrame);
+        layout->addWidget(addButton);
+        QObject::connect(addButton,&QPushButton::clicked,
+            [&v,&currentPos]()
+            {
+                for (size_t i=currentPos;i<currentPos+10;i++)
+                {
+                    auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
+                    v->insertItem(std::move(item));
+                }
+                currentPos+=10;
+                qDebug() << "Inserted 10 elements";
+            }
+        );
+
+        w.setCentralWidget(mainFrame);
         w.show();
         app.exec();
     }

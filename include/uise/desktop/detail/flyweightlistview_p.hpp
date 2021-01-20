@@ -75,6 +75,8 @@ class FlyweightListView_p
 {
     public:
 
+        constexpr static const char* LastWidgetPosProperty="FlyweightListView_q_pos";
+
         //-------------------------------------
         FlyweightListView_p(
                 FlyweightListView<ItemT>* view,
@@ -190,6 +192,8 @@ class FlyweightListView_p
 
             m_llist=new LinkedListView(m_scArea);
             m_llist->setObjectName("FlyweightListViewLList");
+            m_llist->installEventFilter(m_view);
+
             m_scArea->setWidget(m_llist);
             m_scArea->setWidgetResizable(true);
             m_scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -250,6 +254,10 @@ class FlyweightListView_p
             p.setX(0);
             auto beginWidget=m_scArea->widget()->childAt(p);
             auto itemAtBegin=PointerHolder::getProperty<ItemT*>(beginWidget,ItemT::Property);
+            if (beginWidget)
+            {
+                beginWidget->setProperty(LastWidgetPosProperty,beginWidget->pos());
+            }
 
             QSize s = m_scArea->viewport()->size();
             QPoint p2(p);
@@ -368,6 +376,31 @@ class FlyweightListView_p
             {
                 auto& idx=m_items.template get<1>();
                 idx.erase(item->id());
+            }
+        }
+
+        void onListResize()
+        {
+            QPoint pos(0,0);
+            QPoint lastPos(0,0);
+
+            if (m_lastBeginWidget && m_lastBeginWidget->parent()==m_llist)
+            {
+                pos=m_lastBeginWidget->pos();
+                lastPos=m_lastBeginWidget->property(LastWidgetPosProperty).toPoint();
+            }
+            if (lastPos!=QPoint(0,0))
+            {
+                int offset=isHorizontal()?(lastPos.x()-pos.x()):(lastPos.y()-pos.y());
+
+                auto sbar=bar();
+                offset=sbar->value()-offset;
+                if (offset>0)
+                {
+                    sbar->setValue(offset);
+                }
+
+                informUpdate();
             }
         }
 
