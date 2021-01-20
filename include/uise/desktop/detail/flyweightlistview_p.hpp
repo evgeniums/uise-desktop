@@ -81,12 +81,37 @@ class FlyweightListView_p
                 size_t prefetchItemCount
             ) : m_view(view),
                 m_prefetchItemCount(prefetchItemCount),
-                m_inserting(false),
+                m_updating(false),
                 m_scArea(nullptr),
                 m_llist(nullptr),
-                m_blockUpdates(false),
                 m_qobjectHelper([this](QObject* obj){onItemDestroyed(obj);})
         {
+        }
+
+
+        void beginUpdate()
+        {
+            m_updating=true;
+        }
+
+        void endUpdate()
+        {
+            if (m_updating)
+            {
+                m_updating=false;
+                informUpdate();
+            }
+        }
+
+        void informUpdate()
+        {
+            m_updateTimer.shot(
+                0,
+                [this]()
+                {
+                    updateBeginEndWidgets();
+                }
+            );
         }
 
         void configureWidget(const ItemT* item)
@@ -118,6 +143,8 @@ class FlyweightListView_p
             }
 
             m_llist->insertWidgetAfter(widget,afterWidget);
+
+            informUpdate();
         }
 
         //-------------------------------------
@@ -178,8 +205,7 @@ class FlyweightListView_p
                                     return;
                                 }
 
-//                                qDebug() << "Scrolled vertical " << value;
-                                scrolled(value);
+                                onScrolled(value);
                             });
             QObject::connect(m_scArea->horizontalScrollBar(),&QScrollBar::valueChanged,
                              [this](int value)
@@ -189,15 +215,14 @@ class FlyweightListView_p
                                     return;
                                 }
 
-//                                qDebug() << "Scrolled horizontal " << value;
-                                scrolled(value);
+                                onScrolled(value);
                             });
         }
 
         //-------------------------------------
         void removeAllItems()
         {
-            m_blockUpdates=true;
+            beginUpdate();
 
             m_llist->blockSignals(true);
             m_llist->clear();
@@ -205,17 +230,22 @@ class FlyweightListView_p
 
             m_items.clear();
 
-            m_blockUpdates=false;
+            endUpdate();
         }
 
-        void scrolled(int value)
+        void onScrolled(int value)
         {
             std::ignore=value;
-            updateBeginEndWidgets();
+            informUpdate();
         }
 
         void updateBeginEndWidgets()
         {
+            if (m_updating)
+            {
+                return;
+            }
+
             QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
             p.setX(0);
             auto beginWidget=m_scArea->widget()->childAt(p);
@@ -236,13 +266,11 @@ class FlyweightListView_p
             auto endWidget=m_scArea->widget()->childAt(p2);
             auto itemAtEnd=PointerHolder::getProperty<ItemT*>(endWidget,ItemT::Property);
 
-//            if (beginWidget || endWidget)
-//            {
-//                qDebug() << "childTop= "<<beginWidget
-//                         << "childBottom= "<<endWidget;
-//            }
+            bool inform=m_lastBeginWidget.get()!=beginWidget || m_lastEndWidget!=endWidget;
+            m_lastBeginWidget=beginWidget;
+            m_lastEndWidget=endWidget;
 
-            if (m_viewportChangedCb)
+            if (inform && m_viewportChangedCb)
             {
                 m_viewportChangedCb(itemAtBegin,itemAtEnd);
             }
@@ -368,7 +396,7 @@ class FlyweightListView_p
 
         ItemsContainer m_items;
 
-        bool m_inserting;
+        bool m_updating;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsBeforeCb;
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsAfterCb;
         typename FlyweightListView<ItemT>::ViewportChangedCb m_viewportChangedCb;
@@ -376,9 +404,12 @@ class FlyweightListView_p
         QScrollArea* m_scArea;
         LinkedListView* m_llist;
 
-        bool m_blockUpdates;
         FlyweightListView_q m_qobjectHelper;
         SingleShotTimer m_scrollToItemTimer;
+        SingleShotTimer m_updateTimer;
+
+        QPointer<QWidget> m_lastBeginWidget;
+        QPointer<QWidget> m_lastEndWidget;
 };
 
 } // namespace detail

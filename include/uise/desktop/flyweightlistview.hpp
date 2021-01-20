@@ -75,8 +75,8 @@ class FlyweightListView : public FlyweightListFrame
         void insertItem(const ItemT& item, Direction scrollTo=Direction::NONE);
         void insertItem(ItemT&& item, Direction scrollTo=Direction::NONE);
 
-        void beginInserting() noexcept;
-        void endInserting();
+        void beginUpdate();
+        void endUpdate();
 
         void setPrefetchItemCount(size_t val) noexcept;
         size_t prefetchItemCount() const noexcept;

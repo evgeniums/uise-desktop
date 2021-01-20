@@ -99,6 +99,21 @@ int main(int argc, char *argv[])
 
         auto v=new FlyweightListView<HelloWorldItemWrapper>();
 
+        using ItemT=HelloWorldItemWrapper;
+        auto beginEndChanged=[](const ItemT* begin,const ItemT* end)
+        {
+            if (begin && begin->item())
+            {
+                qDebug() << "Begin ID=" << begin->id();
+            }
+
+            if (end && end->item())
+            {
+                qDebug() << "End ID="<<end->id();
+            }
+        };
+        v->setViewportChangedCb(beginEndChanged);
+
         auto item2=HelloWorldItemWrapper(new HelloWorldItem(2));
         v->insertItem(std::move(item2));
         auto item1=HelloWorldItemWrapper(new HelloWorldItem(1));
@@ -139,27 +154,13 @@ int main(int argc, char *argv[])
 //            v->insertItem(std::move(item));
 //        }
 
-        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
+//        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
 
 //        items[10].widget()->deleteLater();
 
-        size_t count=0;
-        size_t currentPos=0;
-        using ItemT=HelloWorldItemWrapper;
-        auto beginEndChanged=[&currentPos,&v,&count](const ItemT* begin,const ItemT* end)
-        {
-            if (begin && begin->item())
-            {
-                qDebug() << "Begin ID=" << begin->id();
-            }
-
-            if (end && end->item())
-            {
-                qDebug() << "End ID="<<end->id();
-            }
 
 //            if (end && end->item() && begin && begin->item())
 //            {
@@ -175,8 +176,6 @@ int main(int argc, char *argv[])
 //                }
 //                count++;
 //            }
-        };
-        v->setViewportChangedCb(beginEndChanged);
 
         w.setCentralWidget(v);
         w.show();

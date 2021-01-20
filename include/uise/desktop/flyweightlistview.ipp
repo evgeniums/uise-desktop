@@ -70,18 +70,16 @@ size_t FlyweightListView<ItemT>::itemCount() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::beginInserting() noexcept
+void FlyweightListView<ItemT>::beginUpdate()
 {
-    pimpl->m_inserting=true;
-    //! @todo Implement beginInserting
+    pimpl->beginUpdate();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::endInserting()
+void FlyweightListView<ItemT>::endUpdate()
 {
-    pimpl->m_inserting=false;
-    //! @todo Implement endInserting
+    pimpl->endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -142,7 +140,9 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
     clear();
+    beginUpdate();
     pimpl->insertContinuousItems(items);
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -150,12 +150,12 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
     auto wasAtEdge=isScrollAtEdge(scrollTo);
-    beginInserting();
+    beginUpdate();
     for (auto&& item:items)
     {
         pimpl->insertItem(item);
     }
-    endInserting();
+    endUpdate();
     pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
@@ -164,9 +164,9 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
     auto wasAtEdge=isScrollAtEdge(scrollTo);
-    beginInserting();
+    beginUpdate();
     pimpl->insertContinuousItems(items);
-    endInserting();
+    endUpdate();
     pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
