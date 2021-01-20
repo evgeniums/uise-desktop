@@ -260,21 +260,27 @@ class FlyweightListView_p
                 return;
             }
 
-            switch (offsetDirection)
-            {
-                case Direction::END:
-                case Direction::STAY_AT_END_EDGE:
-                    bar()->triggerAction(QScrollBar::SliderToMaximum);
-                    break;
+            m_scrollToItemTimer.shot(
+                0,
+                [this,offsetDirection]
+                {
+                    switch (offsetDirection)
+                    {
+                        case Direction::END:
+                        case Direction::STAY_AT_END_EDGE:
+                            bar()->triggerAction(QScrollBar::SliderToMaximum);
+                            break;
 
-                case Direction::HOME:
-                case Direction::STAY_AT_HOME_EDGE:
-                    bar()->triggerAction(QScrollBar::SliderToMinimum);
-                    break;
+                        case Direction::HOME:
+                        case Direction::STAY_AT_HOME_EDGE:
+                            bar()->triggerAction(QScrollBar::SliderToMinimum);
+                            break;
 
-                default:
-                    break;
-            }
+                        default:
+                            break;
+                    }
+                }
+            );
         }
 
         bool scrollToItem(const typename ItemT::IdType &id, size_t offset)
