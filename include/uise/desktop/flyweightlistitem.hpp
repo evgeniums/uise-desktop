@@ -23,10 +23,12 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #ifndef UISE_DESKTOP_FLYWEIGHTLISTITEM_HPP
 #define UISE_DESKTOP_FLYWEIGHTLISTITEM_HPP
 
+#include <type_traits>
 #include <string>
 #include <functional>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -41,6 +43,25 @@ struct FlyweightListItemTraits
     using SortValueType=SortValueT;
     using IdType=IdT;
 };
+
+namespace detail
+{
+
+template <typename T, typename Enable=void>
+struct HasDropWidget
+{
+    constexpr static const bool value=false;
+};
+
+template <typename T>
+struct HasDropWidget<T,
+            std::enable_if_t<std::is_same<decltype(&T::dropWidget),decltype(&T::dropWidget)>::value>
+        >
+{
+    constexpr static const bool value=true;
+};
+
+}
 
 /**
  * @brief Base template class for items of FlyweightListView.
@@ -137,6 +158,30 @@ class FlyweightListItem
         ItemType& item() noexcept
         {
             return m_item;
+        }
+
+        /**
+         * @brief Drop item's widget.
+         */
+        void dropWidget()
+        {
+            dropWidgetHandler()(widget());
+        }
+
+        /**
+         * @brief Get handler to be used for dropping widget drom view.
+         * @return Handler.
+         */
+        constexpr static std::function<void (QWidget*)> dropWidgetHandler() noexcept
+        {
+            if constexpr (detail::HasDropWidget<TraitsT>::value)
+            {
+                return &TraitsT::dropWidget;
+            }
+            else
+            {
+                return destroyWidget;
+            }
         }
 
         /**

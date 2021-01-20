@@ -22,7 +22,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <QBoxLayout>
 
-#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
 
 #include <uise/desktop/linkedlistviewitem.hpp>
@@ -217,13 +216,13 @@ LinkedListView::~LinkedListView()
 {}
 
 //--------------------------------------------------------------------------
-void LinkedListView::clear()
+void LinkedListView::clear(const DropWidgetHandler &dropWidget)
 {
     blockSignals(true);
     pimpl->blockUpdate=true;
     for (auto item=pimpl->head.lock(); item;)
     {
-        destroyWidget(item->widget());
+        dropWidget(item->widget());
         item=item->next();
     }
     pimpl->head.reset();

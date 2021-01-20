@@ -29,6 +29,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -42,6 +43,8 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
     Q_OBJECT
 
     public:
+
+        using DropWidgetHandler=std::function<void (QWidget*)>;
 
         explicit LinkedListView(QWidget* parent=nullptr, Qt::Orientation orientation=Qt::Vertical);
 
@@ -59,7 +62,7 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
 
         void takeWidget(QObject* widget);
 
-        void clear();
+        void clear(const DropWidgetHandler& dropWidget=destroyWidget);
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation);

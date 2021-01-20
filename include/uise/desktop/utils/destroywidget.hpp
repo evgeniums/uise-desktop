@@ -35,7 +35,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  *
  * The widget is hidden first and the destroyed with deletelater() in the next step of processing loop.
  */
-void destroyWidget(QWidget* widget)
+inline void destroyWidget(QWidget* widget)
 {
     if (widget)
     {

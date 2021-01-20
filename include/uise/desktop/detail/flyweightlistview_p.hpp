@@ -75,7 +75,7 @@ class FlyweightListView_p
 {
     public:
 
-        constexpr static const char* LastWidgetPosProperty="FlyweightListView_q_pos";
+        constexpr static const char* LastWidgetPosProperty="uise_dt_FlyweightListItemPos";
 
         //-------------------------------------
         FlyweightListView_p(
@@ -229,7 +229,7 @@ class FlyweightListView_p
             beginUpdate();
 
             m_llist->blockSignals(true);
-            m_llist->clear();
+            m_llist->clear(ItemT::dropWidgetHandler());
             m_llist->blockSignals(false);
 
             m_items.clear();
