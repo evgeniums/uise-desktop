@@ -52,6 +52,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::setPrefetchItemCount(size_t val) noexcept
 {
     pimpl->m_prefetchItemCount=val;
+    pimpl->m_maxCachedCount=2*val;
 }
 
 //--------------------------------------------------------------------------

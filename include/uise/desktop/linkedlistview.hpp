@@ -61,6 +61,8 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
         void insertWidgetsBefore(const std::vector<QWidget*>& newWidgets, QWidget* existingWidget=nullptr);
 
         void takeWidget(QObject* widget);
+        size_t widgetSeqPos(QObject* widget) const;
+        QWidget* widgetAtSeqPos(size_t pos) const;
 
         void clear(const DropWidgetHandler& dropWidget=destroyWidget);
 

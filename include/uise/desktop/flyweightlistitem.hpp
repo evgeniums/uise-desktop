@@ -169,6 +169,15 @@ class FlyweightListItem
         }
 
         /**
+         * @brief Drop some widget.
+         * @param widget Widget to drop.
+         */
+        static void dropWidget(QWidget* widget)
+        {
+            dropWidgetHandler()(widget);
+        }
+
+        /**
          * @brief Get handler to be used for dropping widget drom view.
          * @return Handler.
          */

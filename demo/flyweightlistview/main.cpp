@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
         }
         v->insertContinuousItems(items);
 
-        items[0].item()->setSeqNum(80);
-        v->insertItem(items[0]);
+//        items[0].item()->setSeqNum(80);
+//        v->insertItem(items[0]);
 
 //        size_t start=200;
 //        for (size_t i=start;i<start+100;i++)
@@ -155,10 +155,10 @@ int main(int argc, char *argv[])
 //            v->insertItem(std::move(item));
 //        }
 
-        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
-        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
+//        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
+//        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
 
 //        items[10].widget()->deleteLater();
 

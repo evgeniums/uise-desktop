@@ -85,6 +85,11 @@ class LinkedListView_p
                 LinkedListViewItem::clearWidgetProperty(item->widget());
                 if (!blockUpdate)
                 {
+                    if (head.lock().get()==item.get())
+                    {
+                        head=item->next();;
+                    }
+
                     for (auto nextItem=item->next();nextItem;)
                     {
                         nextItem->decPos();
@@ -222,6 +227,7 @@ void LinkedListView::clear(const DropWidgetHandler &dropWidget)
     pimpl->blockUpdate=true;
     for (auto item=pimpl->head.lock(); item;)
     {
+        item->clearWidgetProperty(item->widget());
         dropWidget(item->widget());
         item=item->next();
     }
@@ -306,6 +312,36 @@ void LinkedListView::takeWidget(QObject *widget)
 {
     auto item=LinkedListViewItem::getFromWidgetProperty(widget);
     pimpl->takeItem(item);
+}
+
+//--------------------------------------------------------------------------
+size_t LinkedListView::widgetSeqPos(QObject *widget) const
+{
+    auto item=LinkedListViewItem::getFromWidgetProperty(widget);
+    if (item)
+    {
+        return item->pos();
+    }
+    return 0;
+}
+
+//--------------------------------------------------------------------------
+QWidget* LinkedListView::widgetAtSeqPos(size_t pos) const
+{
+    auto item=pimpl->head.lock();
+    for (size_t i=0;i<pos;i++)
+    {
+        if (!item)
+        {
+            return nullptr;
+        }
+        item=item->next();
+    }
+    if (!item)
+    {
+        return nullptr;
+    }
+    return item->widget();
 }
 
 //--------------------------------------------------------------------------

@@ -53,21 +53,21 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
     public:
 
         explicit FlyweightListView_q(
-            std::function<void (QObject*)> itemDestroyedHandler
-        ) : itemDestroyedHandler(std::move(itemDestroyedHandler))
+            std::function<void (QObject*)> widgetDestroyedHandler
+        ) : widgetDestroyedHandler(std::move(widgetDestroyedHandler))
         {
         }
 
     public slots:
 
-        void onItemDestroyed(QObject* obj)
+        void onWidgetDestroyed(QObject* obj)
         {
-            itemDestroyedHandler(obj);
+            widgetDestroyedHandler(obj);
         }
 
     private:
 
-        std::function<void (QObject*)> itemDestroyedHandler;
+        std::function<void (QObject*)> widgetDestroyedHandler;
 };
 
 template <typename ItemT>
@@ -83,10 +83,11 @@ class FlyweightListView_p
                 size_t prefetchItemCount
             ) : m_view(view),
                 m_prefetchItemCount(prefetchItemCount),
+                m_maxCachedCount(prefetchItemCount*2),
                 m_updating(false),
                 m_scArea(nullptr),
                 m_llist(nullptr),
-                m_qobjectHelper([this](QObject* obj){onItemDestroyed(obj);})
+                m_qobjectHelper([this](QObject* obj){onWidgetDestroyed(obj);})
         {
         }
 
@@ -120,7 +121,7 @@ class FlyweightListView_p
         {
             auto widget=item->widget();
             PointerHolder::keepProperty(item,widget,ItemT::Property);
-            QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onItemDestroyed(QObject*)));
+            QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
         }
 
         //-------------------------------------
@@ -243,6 +244,67 @@ class FlyweightListView_p
             informUpdate();
         }
 
+        void processHiddenBefore(size_t hiddenBefore)
+        {
+            qDebug() << "processHiddenBefore " << hiddenBefore;
+
+            if (hiddenBefore<m_prefetchItemCount)
+            {
+                if (m_requestItemsBeforeCb)
+                {
+                    const ItemT* firstItem=nullptr;
+                    const auto& order=m_items.template get<0>();
+                    auto it=order.begin();
+                    if (it!=order.end())
+                    {
+                        firstItem=&(*it);
+                    }
+
+                    m_requestItemsBeforeCb(firstItem,m_prefetchItemCount);
+                }
+            }
+            else if (hiddenBefore>m_maxCachedCount)
+            {
+                auto count=hiddenBefore-m_maxCachedCount;
+                qDebug() << "Remove from beginning "<<count;
+                removeItemsFromBegin(count);
+            }
+        }
+
+        void processHiddenAfter(size_t hiddenAfter)
+        {
+            qDebug() << "processHiddenAfter " << hiddenAfter;
+
+            if (hiddenAfter<m_prefetchItemCount)
+            {
+                if (m_requestItemsAfterCb)
+                {
+                    const ItemT* lastItem=nullptr;
+                    const auto& order=m_items.template get<0>();
+                    auto it=order.rbegin();
+                    if (it!=order.rend())
+                    {
+                        lastItem=&(*it);
+                    }
+
+                    m_requestItemsAfterCb(lastItem,m_prefetchItemCount);
+                }
+            }
+            else if (hiddenAfter>m_maxCachedCount)
+            {
+                auto count=hiddenAfter-m_maxCachedCount;
+                qDebug() << "Remove from end "<<count;
+
+                removeItemsFromEnd(count);
+            }
+        }
+
+        void processHiddenItems(size_t hiddenBefore, size_t hiddenAfter)
+        {
+            processHiddenBefore(hiddenBefore);
+            processHiddenAfter(hiddenAfter);
+        }
+
         void updateBeginEndWidgets()
         {
             if (m_updating)
@@ -278,9 +340,30 @@ class FlyweightListView_p
             m_lastBeginWidget=beginWidget;
             m_lastEndWidget=endWidget;
 
-            if (inform && m_viewportChangedCb)
+            if (inform)
             {
-                m_viewportChangedCb(itemAtBegin,itemAtEnd);
+                if (m_viewportChangedCb)
+                {
+                    m_viewportChangedCb(itemAtBegin,itemAtEnd);
+                }
+
+                size_t beginSeqPos=0;
+                size_t endSeqPos=0;
+
+                if (beginWidget)
+                {
+                    beginSeqPos=m_llist->widgetSeqPos(beginWidget);
+                }
+                if (endWidget)
+                {
+                    endSeqPos=m_llist->widgetSeqPos(endWidget);
+                }
+
+                qDebug() << "beginSeqPos "<<beginSeqPos<<" endSeqPos "<<endSeqPos<<" endWidget "<<endWidget;
+
+                auto hiddenBefore=beginSeqPos;
+                auto hiddenAfter=(endWidget==nullptr)?0:(m_items.template get<1>().size()-endSeqPos);
+                processHiddenItems(hiddenBefore,hiddenAfter);
             }
         }
 
@@ -369,13 +452,71 @@ class FlyweightListView_p
             return !isHorizontal();
         }
 
-        void onItemDestroyed(QObject* obj)
+        void onWidgetDestroyed(QObject* obj)
         {
             auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
             if (item)
             {
                 auto& idx=m_items.template get<1>();
                 idx.erase(item->id());
+            }
+        }
+
+        void clearWidget(QWidget* widget)
+        {
+            PointerHolder::clearProperty(widget,ItemT::Property);
+            m_llist->takeWidget(widget);
+            ItemT::dropWidget(widget);
+        }
+
+        void removeItem(ItemT* item)
+        {
+            clearWidget(item->widget());
+
+            auto& idx=m_items.template get<1>();
+            idx.erase(item->id());
+        }
+
+        void removeItemsFromBegin(size_t count)
+        {
+            if (count==0)
+            {
+                return;
+            }
+
+            auto& order=m_items.template get<0>();
+            for (auto it=order.begin();it!=order.end();)
+            {
+                clearWidget(it->widget());
+                it=order.erase(it);
+
+                if (--count==0)
+                {
+                    break;
+                }
+            }
+        }
+
+        void removeItemsFromEnd(size_t count)
+        {
+            if (count==0)
+            {
+                return;
+            }
+
+            auto& order=m_items.template get<0>();
+            for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
+            {
+                nit=std::next(it);
+
+                clearWidget(it->widget());
+
+                nit = decltype(it){order.erase(std::next(it).base())};
+
+                if (--count==0)
+                {
+                    break;
+                }
             }
         }
 
@@ -426,6 +567,7 @@ class FlyweightListView_p
 
         FlyweightListView<ItemT>* m_view;
         size_t m_prefetchItemCount;
+        size_t m_maxCachedCount;
 
         ItemsContainer m_items;
 
