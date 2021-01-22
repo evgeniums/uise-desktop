@@ -215,12 +215,12 @@ bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOff
                 ((bar->sliderPosition()-bar->minimum())<maxOffset);
 }
 
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
-{
-    pimpl->scrollToEdge(offsetDirection,true);
-}
+////--------------------------------------------------------------------------
+//template <typename ItemT>
+//void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
+//{
+//    pimpl->scrollToEdge(offsetDirection,true);
+//}
 
 //--------------------------------------------------------------------------
 template <typename ItemT>

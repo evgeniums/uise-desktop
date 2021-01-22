@@ -35,11 +35,20 @@ using namespace UISE_DESKTOP_NAMESPACE;
 
 //--------------------------------------------------------------------------
 
-static size_t HelloWorldItemId=100000;
+static size_t HelloWorldItemId=1000000;
 
 class HelloWorldItem : public QLabel
 {
     public:
+
+        HelloWorldItem(size_t seqNum, size_t id, QWidget* parent=nullptr)
+            : QLabel(parent),
+              m_id(id),
+              m_seqNum(seqNum)
+        {
+            setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
+            setObjectName(QString("Label %1, %2").arg(seqNum).arg(m_id));
+        }
 
         HelloWorldItem(size_t seqNum, QWidget* parent=nullptr)
             : QLabel(parent),
@@ -100,6 +109,7 @@ int main(int argc, char *argv[])
 
         auto v=new FlyweightListView<HelloWorldItemWrapper>();
 
+#if 0
         using ItemT=HelloWorldItemWrapper;
         auto beginEndChanged=[](const ItemT* begin,const ItemT* end)
         {
@@ -185,6 +195,92 @@ int main(int argc, char *argv[])
         );
 
         w.setCentralWidget(mainFrame);
+
+#else
+
+        std::map<size_t,size_t> items;
+        size_t count=100000;
+        for (size_t i=0;i<count;i++)
+        {
+            items[i]=--HelloWorldItemId;
+        }
+
+        auto requestBefore=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount)
+        {
+            size_t idx=0;
+            if (item!=nullptr)
+            {
+                idx=item->sortValue();
+            }
+
+            qDebug() << "requestBefore "<<idx<<", "<<itemCount;
+
+            std::vector<HelloWorldItemWrapper> newItems;
+            if (item==nullptr)
+            {
+                for (size_t i=0;i<itemCount;i++)
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+            }
+            else
+            {
+                if (itemCount>idx)
+                {
+                    itemCount=idx;
+                }
+                for (size_t i=idx-itemCount;i<idx;i++)
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+            }
+
+            v->insertContinuousItems(newItems);
+        };
+
+        auto requestAfter=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount)
+        {
+            size_t idx=0;
+            if (item!=nullptr)
+            {
+                idx=item->sortValue();
+            }
+
+            qDebug() << "requestAfter "<<idx<<", "<<itemCount;
+
+            std::vector<HelloWorldItemWrapper> newItems;
+            if (item==nullptr)
+            {
+                for (size_t i=0;i<itemCount;i++)
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+            }
+            else
+            {
+                for (size_t i=idx+1;i<=idx+itemCount;i++)
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+            }
+
+            v->insertContinuousItems(newItems);
+        };
+
+        v->setRequestItemsBeforeCb(requestBefore);
+        v->setRequestItemsAfterCb(requestAfter);
+
+//        std::vector<HelloWorldItemWrapper> newItems;
+//        for (size_t i=256;i<512;i++)
+//        {
+//            newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+//        }
+//        v->loadItems(newItems);
+
+        v->reload();
+
+        w.setCentralWidget(v);
+#endif
         w.show();
         app.exec();
     }

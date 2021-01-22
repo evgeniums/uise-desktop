@@ -87,10 +87,12 @@ class FlyweightListView_p
                 m_updating(false),
                 m_scArea(nullptr),
                 m_llist(nullptr),
-                m_qobjectHelper([this](QObject* obj){onWidgetDestroyed(obj);})
+                m_qobjectHelper([this](QObject* obj){onWidgetDestroyed(obj);}),
+                m_scrollValue(0),
+                m_scrolledToEnd(true),
+                m_waitingForResize(false)
         {
         }
-
 
         void beginUpdate()
         {
@@ -109,7 +111,7 @@ class FlyweightListView_p
         void informUpdate()
         {
             m_updateTimer.shot(
-                0,
+                1,
                 [this]()
                 {
                     updateBeginEndWidgets();
@@ -117,11 +119,13 @@ class FlyweightListView_p
             );
         }
 
-        void configureWidget(const ItemT* item)
+        size_t configureWidget(const ItemT* item)
         {
             auto widget=item->widget();
             PointerHolder::keepProperty(item,widget,ItemT::Property);
             QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
+
+            return isHorizontal()?widget->sizeHint().width():widget->sizeHint().height();
         }
 
         //-------------------------------------
@@ -150,14 +154,28 @@ class FlyweightListView_p
             informUpdate();
         }
 
+        void updateScrollPosition()
+        {
+
+        }
+
         //-------------------------------------
         void insertContinuousItems(const std::vector<ItemT>& items)
         {
+            if (items.empty())
+            {
+                return;
+            }
+
+            m_waitingForResize=true;
+            auto oldSize=m_llist->size();
+
             auto& idx=m_items.template get<1>();
             auto& order=m_items.template get<0>();
 
+            size_t insertedSize=0;
             std::vector<QWidget*> widgets;
-            QWidget* afterWidget=nullptr;
+            QPointer<QWidget> afterWidget;
             for (size_t i=0;i<items.size();i++)
             {
                 const auto& item=items[i];
@@ -166,7 +184,7 @@ class FlyweightListView_p
                 {
                     Q_ASSERT(idx.replace(result.first,item));
                 }
-                configureWidget(&(*result.first));
+                insertedSize+=configureWidget(&(*result.first));
 
                 if (i==0)
                 {
@@ -179,7 +197,110 @@ class FlyweightListView_p
                 widgets.push_back(item.widget());
             }
 
+            qDebug() << "Add "<<items.size()<< " " << afterWidget;
+
             m_llist->insertWidgetsAfter(widgets,afterWidget);
+
+            size_t removedSize=0;
+
+            if (m_scrolledToEnd)
+            {
+                QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
+                if (isHorizontal())
+                {
+                    p.setY(0);
+                }
+                else
+                {
+                    p.setX(0);
+                }
+                auto beginWidget=m_scArea->widget()->childAt(p);
+                if (beginWidget)
+                {
+                    auto beginSeqPos=m_llist->widgetSeqPos(beginWidget);
+                    if (beginSeqPos>m_maxCachedCount)
+                    {
+                        auto count=beginSeqPos-m_maxCachedCount;
+                        if (count==items.size())
+                        {
+                            --count;
+                        }
+
+                        qDebug() << "Remove from begin "<<count<<"/"<<order.size();
+                        removedSize=removeItemsFromBegin(count);
+                    }
+                }
+            }
+            else
+            {
+                QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
+                if (isHorizontal())
+                {
+                    p.setY(0);
+                }
+                else
+                {
+                    p.setX(0);
+                }
+                QSize s = m_scArea->viewport()->size();
+                QPoint p2(p);
+                if (isHorizontal())
+                {
+                    p2.setX(p2.x()+s.width());
+                    p2.setY(0);
+                }
+                else
+                {
+                    p2.setX(0);
+                    p2.setY(p2.y()+s.height());
+                }
+                auto endWidget=m_scArea->widget()->childAt(p2);
+                if (endWidget)
+                {
+                    auto endSeqPos=m_llist->widgetSeqPos(endWidget);
+                    size_t hiddenCount=idx.size()-endSeqPos;
+                    if (hiddenCount>m_maxCachedCount)
+                    {
+                        auto count=hiddenCount-m_maxCachedCount;
+                        if (count==items.size())
+                        {
+                            --count;
+                        }
+
+                        qDebug() << "Remove from end "<<count<<"/"<<order.size();
+                        removeItemsFromEnd(count);
+                    }
+                }
+            }
+
+            m_resizeTimer.shot(2,
+                [this,removedSize,insertedSize,oldSize]()
+                {
+                    auto newSize=m_llist->size();
+                    auto sbar=bar();
+                    int offset=0;
+                    if (m_scrolledToEnd)
+                    {
+                        offset=removedSize;
+                    }
+                    else
+                    {
+                        offset=-insertedSize;
+                    }
+                    int newValue=sbar->value()-offset;
+
+                    qDebug() << "removed size "<<removedSize<<" inserted size "<<insertedSize<< " offset "<<offset
+                             << "old position "<<sbar->value() << "new position "<<newValue
+                             << "old size "<<oldSize << " new size "<<newSize;
+
+                    if (offset!=0)
+                    {
+                        sbar->setValue(newValue);
+                    }
+
+                    m_waitingForResize=false;
+                }
+            );
         }
 
         //-------------------------------------
@@ -240,69 +361,98 @@ class FlyweightListView_p
 
         void onScrolled(int value)
         {
-            std::ignore=value;
+            qDebug() << "scrolled " <<value;
+
+            if (!m_updating && !m_waitingForResize)
+            {
+                m_scrolledToEnd=value>m_scrollValue;
+            }
+            m_scrollValue=value;
+
             informUpdate();
         }
 
-        void processHiddenBefore(size_t hiddenBefore)
+        void removeExtraItems(bool end, size_t count, size_t offset=0)
         {
-            qDebug() << "processHiddenBefore " << hiddenBefore;
+            if (end)
+            {
+                const auto& order=m_items.template get<0>();
+                qDebug() << "Remove from end "<<count<<"/"<<order.size();
+                removeItemsFromEnd(count,offset);
+            }
+            else
+            {
+                const auto& order=m_items.template get<0>();
+                qDebug() << "Remove from beginning "<<count<<"/"<<order.size();
+                removeItemsFromBegin(count,offset);
+            }
+        }
 
-            if (hiddenBefore<m_prefetchItemCount)
+        void processHiddenBefore(size_t hiddenBefore, size_t hiddenAfter)
+        {
+            if (m_scrolledToEnd)
+            {
+                return;
+            }
+
+            const auto& order=m_items.template get<0>();
+            auto checkCount=m_prefetchItemCount/2;//+order.size()-hiddenAfter;
+
+            qDebug() << "processHiddenAfter hiddenBegore="<<hiddenBefore
+                     << " hiddenAfter="<<hiddenAfter
+                     << " checkCount="<<checkCount;
+
+            if (hiddenBefore<checkCount)
             {
                 if (m_requestItemsBeforeCb)
                 {
                     const ItemT* firstItem=nullptr;
-                    const auto& order=m_items.template get<0>();
                     auto it=order.begin();
                     if (it!=order.end())
                     {
                         firstItem=&(*it);
                     }
 
-                    m_requestItemsBeforeCb(firstItem,m_prefetchItemCount);
+                    auto prefetchCount=m_prefetchItemCount;//+order.size()-hiddenAfter;
+                    m_requestItemsBeforeCb(firstItem,prefetchCount);
                 }
-            }
-            else if (hiddenBefore>m_maxCachedCount)
-            {
-                auto count=hiddenBefore-m_maxCachedCount;
-                qDebug() << "Remove from beginning "<<count;
-                removeItemsFromBegin(count);
             }
         }
 
-        void processHiddenAfter(size_t hiddenAfter)
+        void processHiddenAfter(size_t hiddenBefore, size_t hiddenAfter)
         {
-            qDebug() << "processHiddenAfter " << hiddenAfter;
+            if (!m_scrolledToEnd)
+            {
+                return;
+            }
 
-            if (hiddenAfter<m_prefetchItemCount)
+            const auto& order=m_items.template get<0>();
+
+            auto checkCount=m_prefetchItemCount/2;//+order.size()-hiddenBefore;
+            qDebug() << "processHiddenAfter hiddenBegore="<<hiddenBefore
+                     << " hiddenAfter="<<hiddenAfter
+                     << " checkCount="<<checkCount;
+            if (hiddenAfter<checkCount)
             {
                 if (m_requestItemsAfterCb)
                 {
                     const ItemT* lastItem=nullptr;
-                    const auto& order=m_items.template get<0>();
                     auto it=order.rbegin();
                     if (it!=order.rend())
                     {
                         lastItem=&(*it);
                     }
 
-                    m_requestItemsAfterCb(lastItem,m_prefetchItemCount);
+                    auto prefetchCount=m_prefetchItemCount;//+order.size()-hiddenBefore;
+                    m_requestItemsAfterCb(lastItem,prefetchCount);
                 }
-            }
-            else if (hiddenAfter>m_maxCachedCount)
-            {
-                auto count=hiddenAfter-m_maxCachedCount;
-                qDebug() << "Remove from end "<<count;
-
-                removeItemsFromEnd(count);
             }
         }
 
         void processHiddenItems(size_t hiddenBefore, size_t hiddenAfter)
         {
-            processHiddenBefore(hiddenBefore);
-            processHiddenAfter(hiddenAfter);
+            processHiddenBefore(hiddenBefore,hiddenAfter);
+            processHiddenAfter(hiddenBefore,hiddenAfter);
         }
 
         void updateBeginEndWidgets()
@@ -359,7 +509,15 @@ class FlyweightListView_p
                     endSeqPos=m_llist->widgetSeqPos(endWidget);
                 }
 
-                qDebug() << "beginSeqPos "<<beginSeqPos<<" endSeqPos "<<endSeqPos<<" endWidget "<<endWidget;
+                if (m_lastBeginWidget && m_lastEndWidget)
+                qDebug() << "updateBeginEndWidgets count="<<m_items.template get<0>().size()
+                         << "m_lastBeginWidget->pos()="<<m_lastBeginWidget->pos()
+                         << "m_llist->pos()=" << m_llist->pos() << "m_llist->size()=" << m_llist->size()
+                         << "m_scArea->viewport()->pos()=" << m_scArea->viewport()->pos()
+                         << "itemAtBegin=" << itemAtBegin->sortValue()
+                         << "p="<<p
+                         << "itemAtEnd=" << itemAtEnd->sortValue()
+                         << "p2="<<p2;
 
                 auto hiddenBefore=beginSeqPos;
                 auto hiddenAfter=(endWidget==nullptr)?0:(m_items.template get<1>().size()-endSeqPos);
@@ -477,16 +635,26 @@ class FlyweightListView_p
             idx.erase(item->id());
         }
 
-        void removeItemsFromBegin(size_t count)
+        size_t removeItemsFromBegin(size_t count, size_t offset=0)
         {
             if (count==0)
             {
-                return;
+                return 0;
             }
+
+            size_t removedSize=0;
 
             auto& order=m_items.template get<0>();
             for (auto it=order.begin();it!=order.end();)
             {
+                if (offset>0)
+                {
+                    --offset;
+                    continue;
+                }
+
+                removedSize+=isHorizontal()?it->widget()->sizeHint().width() : it->widget()->sizeHint().height();
+
                 clearWidget(it->widget());
                 it=order.erase(it);
 
@@ -495,9 +663,11 @@ class FlyweightListView_p
                     break;
                 }
             }
+
+            return removedSize;
         }
 
-        void removeItemsFromEnd(size_t count)
+        void removeItemsFromEnd(size_t count, size_t offset=0)
         {
             if (count==0)
             {
@@ -507,6 +677,12 @@ class FlyweightListView_p
             auto& order=m_items.template get<0>();
             for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
             {
+                if (offset>0)
+                {
+                    --offset;
+                    continue;
+                }
+
                 nit=std::next(it);
 
                 clearWidget(it->widget());
@@ -522,6 +698,8 @@ class FlyweightListView_p
 
         void onListResize()
         {
+            return ;
+
             QPoint pos(0,0);
             QPoint lastPos(0,0);
 
@@ -529,17 +707,19 @@ class FlyweightListView_p
             {
                 pos=m_lastBeginWidget->pos();
                 lastPos=m_lastBeginWidget->property(LastWidgetPosProperty).toPoint();
+
+                qDebug() << "onListResize m_lastBeginWidget->pos()="<<pos
+                         << "lastPos="<<lastPos
+                         << "m_llist->pos()=" << m_llist->pos() << "m_llist->size()=" << m_llist->size()
+                         << "m_scArea->viewport()->pos()=" << m_scArea->viewport()->pos();
             }
+
             if (lastPos!=QPoint(0,0))
             {
-                int offset=isHorizontal()?(lastPos.x()-pos.x()):(lastPos.y()-pos.y());
-
-                auto sbar=bar();
-                offset=sbar->value()-offset;
-                if (offset>0)
-                {
-                    sbar->setValue(offset);
-                }
+//                int offset=isHorizontal()?(lastPos.x()-pos.x()):(lastPos.y()-pos.y());
+//                auto sbar=bar();
+//                offset=sbar->value()-offset;
+//                sbar->setValue(offset);
 
                 informUpdate();
             }
@@ -582,9 +762,15 @@ class FlyweightListView_p
         FlyweightListView_q m_qobjectHelper;
         SingleShotTimer m_scrollToItemTimer;
         SingleShotTimer m_updateTimer;
+        SingleShotTimer m_resizeTimer;
 
         QPointer<QWidget> m_lastBeginWidget;
         QPointer<QWidget> m_lastEndWidget;
+
+        int m_scrollValue;
+        bool m_scrolledToEnd;
+
+        bool m_waitingForResize;
 };
 
 } // namespace detail

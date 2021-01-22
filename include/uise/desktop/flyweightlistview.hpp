@@ -60,7 +60,7 @@ class FlyweightListView : public FlyweightListFrame
 {
     public:
 
-        constexpr static const size_t PrefetchItemCount=32;
+        constexpr static const size_t PrefetchItemCount=8;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
         using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
