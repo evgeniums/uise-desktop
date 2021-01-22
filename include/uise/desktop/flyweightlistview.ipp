@@ -49,10 +49,9 @@ FlyweightListView<ItemT>::FlyweightListView(
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setPrefetchItemCount(size_t val) noexcept
+void FlyweightListView<ItemT>::setPrefetchItemCountHint(size_t val) noexcept
 {
     pimpl->m_prefetchItemCount=val;
-    pimpl->m_maxCachedCount=2*val;
 }
 
 //--------------------------------------------------------------------------
@@ -115,11 +114,10 @@ void FlyweightListView<ItemT>::clear()
 template <typename ItemT>
 void FlyweightListView<ItemT>::reload()
 {
+    pimpl->m_autoLoad=true;
     clear();
-    if (pimpl->m_requestItemsBeforeCb)
-    {
-        pimpl->m_requestItemsBeforeCb(nullptr,pimpl->m_prefetchItemCount);
-    }
+    pimpl->checkNeedsMoreItems();
+    pimpl->m_autoLoad=false;
 }
 
 //--------------------------------------------------------------------------
@@ -215,12 +213,19 @@ bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOff
                 ((bar->sliderPosition()-bar->minimum())<maxOffset);
 }
 
-////--------------------------------------------------------------------------
-//template <typename ItemT>
-//void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
-//{
-//    pimpl->scrollToEdge(offsetDirection,true);
-//}
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
+{
+    pimpl->scrollToEdge(offsetDirection,true);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::clearRequestPending()
+{
+    pimpl->clearRequestPending();
+}
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
@@ -230,7 +235,7 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
     {
         if (event->type()==QEvent::Resize)
         {
-            pimpl->informUpdate();
+            pimpl->onListResize();
         }
     }
     else if (watched==pimpl->m_llist)

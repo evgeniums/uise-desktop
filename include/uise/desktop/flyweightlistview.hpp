@@ -54,19 +54,26 @@ class FlyweightListView_p;
 
 /**
  * @brief Flyweight list of widgets.
+ *
+ * @todo Inserting/removing/resizing widgets when either scrolling or inserting is in progress.
+ * @todo Auto scroll after inserting.
+ * @todo Test scroll to item.
+ * @todo Tidy up the code.
+ * @todo Test horizontal orientation.
+ * @todo Auto tests.
  */
 template <typename ItemT>
 class FlyweightListView : public FlyweightListFrame
 {
     public:
 
-        constexpr static const size_t PrefetchItemCount=8;
+        constexpr static const size_t PrefetchItemCountHint=32;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
         using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
 
-        explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCount);
-        explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCount);
+        explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
+        explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
 
         void loadItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
         void insertItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
@@ -78,11 +85,12 @@ class FlyweightListView : public FlyweightListFrame
         void beginUpdate();
         void endUpdate();
 
-        void setPrefetchItemCount(size_t val) noexcept;
+        void setPrefetchItemCountHint(size_t val) noexcept;
         size_t prefetchItemCount() const noexcept;
 
         void setRequestItemsBeforeCb(RequestItemsCb cb) noexcept;
         void setRequestItemsAfterCb(RequestItemsCb cb) noexcept;
+        void clearRequestPending();
 
         void setViewportChangedCb(ViewportChangedCb cb) noexcept;
 

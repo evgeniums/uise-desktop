@@ -80,45 +80,48 @@ class FlyweightListView_p
         //-------------------------------------
         FlyweightListView_p(
                 FlyweightListView<ItemT>* view,
-                size_t prefetchItemCount
+                size_t prefetchItemCountHint
             ) : m_view(view),
-                m_prefetchItemCount(prefetchItemCount),
-                m_maxCachedCount(prefetchItemCount*2),
+                m_prefetchItemCount(prefetchItemCountHint),
                 m_updating(false),
                 m_scArea(nullptr),
                 m_llist(nullptr),
                 m_qobjectHelper([this](QObject* obj){onWidgetDestroyed(obj);}),
                 m_scrollValue(0),
                 m_scrolledToEnd(true),
-                m_waitingForResize(false)
+                m_waitingForResize(false),
+                m_autoLoad(false),
+                m_requestPending(false)
         {
         }
 
+        //-------------------------------------
         void beginUpdate()
         {
             m_updating=true;
         }
 
+        //-------------------------------------
         void endUpdate()
         {
-            if (m_updating)
-            {
-                m_updating=false;
-                informUpdate();
-            }
+            m_updating=false;
+            clearRequestPending();
+            handleUpdate();
         }
 
-        void informUpdate()
+        //------------------------------------
+        void handleUpdate()
         {
             m_updateTimer.shot(
                 1,
                 [this]()
                 {
-                    updateBeginEndWidgets();
+                    checkNeedsMoreItems();
                 }
             );
         }
 
+        //-------------------------------------
         size_t configureWidget(const ItemT* item)
         {
             auto widget=item->widget();
@@ -126,6 +129,127 @@ class FlyweightListView_p
             QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
 
             return isHorizontal()?widget->sizeHint().width():widget->sizeHint().height();
+        }
+
+        //-------------------------------------
+        size_t prefetchItemCount() noexcept
+        {
+            return autoPrefetchCount();
+        }
+
+        //-------------------------------------
+        size_t autoPrefetchCount() noexcept
+        {
+            m_prefetchItemCount=std::max(m_prefetchItemCount,visibleCount()*2);
+            return m_prefetchItemCount;
+        }
+
+        //-------------------------------------
+        size_t maxHiddenItemsBeyondEdge() noexcept
+        {
+            return prefetchItemCount()*2;
+        }
+
+        //-------------------------------------
+        size_t prefetchThreshold() noexcept
+        {
+            return maxHiddenItemsBeyondEdge()/2;
+        }
+
+        //-------------------------------------
+        void processPositions()
+        {
+            // find begin widget in viewport
+            QPoint beginPos = QPoint(0,0) - m_scArea->widget()->pos();
+            if (isHorizontal())
+            {
+                beginPos.setY(0);
+            }
+            else
+            {
+                beginPos.setX(0);
+            }
+            m_lastBeginWidget=m_scArea->widget()->childAt(beginPos);
+            if (m_lastBeginWidget)
+            {
+                m_lastBeginWidget->setProperty(LastWidgetPosProperty,m_lastBeginWidget->pos());
+            }
+
+            // find end widget in viewport
+            QSize viewportSize = m_scArea->viewport()->size();
+            QPoint endPos(beginPos);
+            if (isHorizontal())
+            {
+                endPos.setX(endPos.x()+viewportSize.width());
+                endPos.setY(0);
+            }
+            else
+            {
+                endPos.setX(0);
+                endPos.setY(endPos.y()+viewportSize.height());
+            }
+            m_lastEndWidget=m_scArea->widget()->childAt(endPos);
+
+            // calculate numbers of hidden items out of the viewport
+            size_t beginSeqPos=0;
+            size_t endSeqPos=0;
+            if (m_lastBeginWidget)
+            {
+                beginSeqPos=m_llist->widgetSeqPos(m_lastBeginWidget);
+            }
+            if (m_lastEndWidget)
+            {
+                endSeqPos=m_llist->widgetSeqPos(m_lastEndWidget);
+            }
+            m_hiddenBefore=beginSeqPos;
+            m_hiddenAfter=(m_lastEndWidget==nullptr)?0:(m_items.template get<1>().size()-endSeqPos);
+
+            qDebug() << "count ="<<count()
+                     << "prefetchItemCount ="<<prefetchItemCount()
+                     << "visibleCount ="<<visibleCount()
+                     << "maxHiddenItemsBeyondEdge ="<<maxHiddenItemsBeyondEdge()
+                     << "prefetchThreshold ="<<prefetchThreshold()
+                     << "hiddenBefore ="<<m_hiddenBefore
+                     << "hiddenAfter ="<<m_hiddenAfter
+            ;
+        }
+
+        //-------------------------------------
+        void onViewportUpdated()
+        {
+            // skip if in updating progress
+            if (m_updating)
+            {
+                return;
+            }
+
+            // process begin/end positions
+            processPositions();
+
+            // notify application that viewport is updated
+            if (m_viewportChangedCb)
+            {
+                auto itemAtBegin=PointerHolder::getProperty<ItemT*>(m_lastBeginWidget,ItemT::Property);
+                auto itemAtEnd=PointerHolder::getProperty<ItemT*>(m_lastEndWidget,ItemT::Property);
+                m_viewportChangedCb(itemAtBegin,itemAtEnd);
+            }
+        }
+
+        //-------------------------------------
+        size_t count() const noexcept
+        {
+            return m_items.template get<1>().size();
+        }
+
+        //-------------------------------------
+        size_t visibleCount() const noexcept
+        {
+            auto all=count();
+            auto lastHidden=m_hiddenBefore+m_hiddenAfter;
+
+            auto visible=(lastHidden<all)?(all-lastHidden):0;
+
+            return visible;
         }
 
         //-------------------------------------
@@ -151,12 +275,38 @@ class FlyweightListView_p
 
             m_llist->insertWidgetAfter(widget,afterWidget);
 
-            informUpdate();
+            handleUpdate();
         }
 
-        void updateScrollPosition()
+        size_t removeExtraHiddenItems(bool fromBegin)
         {
+            size_t removedSize=0;
+            if (fromBegin)
+            {
+                if (m_lastBeginWidget)
+                {
+                    auto maxHiddenCount=maxHiddenItemsBeyondEdge();
+                    if (m_hiddenBefore>maxHiddenCount)
+                    {
+                        auto removeCount=m_hiddenBefore-maxHiddenCount;
+                        removedSize=removeItemsFromBegin(removeCount);
+                    }
+                }
+            }
+            else
+            {
+                if (m_lastEndWidget)
+                {
+                    auto maxHiddenCount=maxHiddenItemsBeyondEdge();
+                    if (m_hiddenAfter>maxHiddenCount)
+                    {
+                        auto removeCount=m_hiddenAfter-maxHiddenCount;
+                        removedSize=removeItemsFromEnd(removeCount);
+                    }
+                }
+            }
 
+            return removedSize;
         }
 
         //-------------------------------------
@@ -168,6 +318,7 @@ class FlyweightListView_p
             }
 
             m_waitingForResize=true;
+
             auto oldSize=m_llist->size();
 
             auto& idx=m_items.template get<1>();
@@ -201,77 +352,8 @@ class FlyweightListView_p
 
             m_llist->insertWidgetsAfter(widgets,afterWidget);
 
-            size_t removedSize=0;
-
-            if (m_scrolledToEnd)
-            {
-                QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
-                if (isHorizontal())
-                {
-                    p.setY(0);
-                }
-                else
-                {
-                    p.setX(0);
-                }
-                auto beginWidget=m_scArea->widget()->childAt(p);
-                if (beginWidget)
-                {
-                    auto beginSeqPos=m_llist->widgetSeqPos(beginWidget);
-                    if (beginSeqPos>m_maxCachedCount)
-                    {
-                        auto count=beginSeqPos-m_maxCachedCount;
-                        if (count==items.size())
-                        {
-                            --count;
-                        }
-
-                        qDebug() << "Remove from begin "<<count<<"/"<<order.size();
-                        removedSize=removeItemsFromBegin(count);
-                    }
-                }
-            }
-            else
-            {
-                QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
-                if (isHorizontal())
-                {
-                    p.setY(0);
-                }
-                else
-                {
-                    p.setX(0);
-                }
-                QSize s = m_scArea->viewport()->size();
-                QPoint p2(p);
-                if (isHorizontal())
-                {
-                    p2.setX(p2.x()+s.width());
-                    p2.setY(0);
-                }
-                else
-                {
-                    p2.setX(0);
-                    p2.setY(p2.y()+s.height());
-                }
-                auto endWidget=m_scArea->widget()->childAt(p2);
-                if (endWidget)
-                {
-                    auto endSeqPos=m_llist->widgetSeqPos(endWidget);
-                    size_t hiddenCount=idx.size()-endSeqPos;
-                    if (hiddenCount>m_maxCachedCount)
-                    {
-                        auto count=hiddenCount-m_maxCachedCount;
-                        if (count==items.size())
-                        {
-                            --count;
-                        }
-
-                        qDebug() << "Remove from end "<<count<<"/"<<order.size();
-                        removeItemsFromEnd(count);
-                    }
-                }
-            }
+            processPositions();
+            auto removedSize=removeExtraHiddenItems(m_scrolledToEnd);
 
             m_resizeTimer.shot(2,
                 [this,removedSize,insertedSize,oldSize]()
@@ -359,6 +441,7 @@ class FlyweightListView_p
             endUpdate();
         }
 
+        //-------------------------------------
         void onScrolled(int value)
         {
             qDebug() << "scrolled " <<value;
@@ -369,167 +452,79 @@ class FlyweightListView_p
             }
             m_scrollValue=value;
 
-            informUpdate();
+            handleUpdate();
         }
 
-        void removeExtraItems(bool end, size_t count, size_t offset=0)
-        {
-            if (end)
-            {
-                const auto& order=m_items.template get<0>();
-                qDebug() << "Remove from end "<<count<<"/"<<order.size();
-                removeItemsFromEnd(count,offset);
-            }
-            else
-            {
-                const auto& order=m_items.template get<0>();
-                qDebug() << "Remove from beginning "<<count<<"/"<<order.size();
-                removeItemsFromBegin(count,offset);
-            }
-        }
-
-        void processHiddenBefore(size_t hiddenBefore, size_t hiddenAfter)
+        //-------------------------------------
+        void checkNeedsItemsBefore()
         {
             if (m_scrolledToEnd)
             {
                 return;
             }
 
-            const auto& order=m_items.template get<0>();
-            auto checkCount=m_prefetchItemCount/2;//+order.size()-hiddenAfter;
-
-            qDebug() << "processHiddenAfter hiddenBegore="<<hiddenBefore
-                     << " hiddenAfter="<<hiddenAfter
-                     << " checkCount="<<checkCount;
-
-            if (hiddenBefore<checkCount)
+            if ((m_hiddenBefore<prefetchThreshold() || count()==0) && m_requestItemsBeforeCb)
             {
-                if (m_requestItemsBeforeCb)
+                const ItemT* firstItem=nullptr;
+                const auto& order=m_items.template get<0>();
+                auto it=order.begin();
+                if (it!=order.end())
                 {
-                    const ItemT* firstItem=nullptr;
-                    auto it=order.begin();
-                    if (it!=order.end())
-                    {
-                        firstItem=&(*it);
-                    }
-
-                    auto prefetchCount=m_prefetchItemCount;//+order.size()-hiddenAfter;
-                    m_requestItemsBeforeCb(firstItem,prefetchCount);
+                    firstItem=&(*it);
                 }
+
+                m_requestPending=true;
+                m_requestItemsBeforeCb(firstItem,prefetchItemCount());
             }
         }
 
-        void processHiddenAfter(size_t hiddenBefore, size_t hiddenAfter)
+        //-------------------------------------
+        void checkNeedsItemsAfter()
         {
-            if (!m_scrolledToEnd)
+            if (!m_scrolledToEnd && !m_lastEndWidget)
             {
                 return;
             }
 
-            const auto& order=m_items.template get<0>();
-
-            auto checkCount=m_prefetchItemCount/2;//+order.size()-hiddenBefore;
-            qDebug() << "processHiddenAfter hiddenBegore="<<hiddenBefore
-                     << " hiddenAfter="<<hiddenAfter
-                     << " checkCount="<<checkCount;
-            if (hiddenAfter<checkCount)
+            if ((m_hiddenAfter<prefetchThreshold() || !m_lastEndWidget ) && m_requestItemsAfterCb)
             {
-                if (m_requestItemsAfterCb)
+                const ItemT* lastItem=nullptr;
+                const auto& order=m_items.template get<0>();
+                auto it=order.rbegin();
+                if (it!=order.rend())
                 {
-                    const ItemT* lastItem=nullptr;
-                    auto it=order.rbegin();
-                    if (it!=order.rend())
-                    {
-                        lastItem=&(*it);
-                    }
-
-                    auto prefetchCount=m_prefetchItemCount;//+order.size()-hiddenBefore;
-                    m_requestItemsAfterCb(lastItem,prefetchCount);
+                    lastItem=&(*it);
                 }
+
+                m_requestPending=true;
+                m_requestItemsAfterCb(lastItem,prefetchItemCount());
             }
         }
 
-        void processHiddenItems(size_t hiddenBefore, size_t hiddenAfter)
+        //-------------------------------------
+        void checkNeedsMoreItems()
         {
-            processHiddenBefore(hiddenBefore,hiddenAfter);
-            processHiddenAfter(hiddenBefore,hiddenAfter);
-        }
+            auto beginWidget=m_lastBeginWidget;
+            auto endWidget=m_lastEndWidget;
 
-        void updateBeginEndWidgets()
-        {
-            if (m_updating)
+            onViewportUpdated();
+
+            bool updated=m_autoLoad || m_lastBeginWidget.get()!=beginWidget || m_lastEndWidget!=endWidget
+                        || count()>0&&!m_lastEndWidget;
+            if (updated && !m_requestPending)
             {
-                return;
-            }
-
-            QPoint p = QPoint(0,0) - m_scArea->widget()->pos();
-            p.setX(0);
-            auto beginWidget=m_scArea->widget()->childAt(p);
-            auto itemAtBegin=PointerHolder::getProperty<ItemT*>(beginWidget,ItemT::Property);
-            if (beginWidget)
-            {
-                beginWidget->setProperty(LastWidgetPosProperty,beginWidget->pos());
-            }
-
-            QSize s = m_scArea->viewport()->size();
-            QPoint p2(p);
-            if (isHorizontal())
-            {
-                p2.setX(p2.x()+s.width());
-                p2.setY(0);
-            }
-            else
-            {
-                p2.setX(0);
-                p2.setY(p2.y()+s.height());
-            }
-            auto endWidget=m_scArea->widget()->childAt(p2);
-            auto itemAtEnd=PointerHolder::getProperty<ItemT*>(endWidget,ItemT::Property);
-
-            bool inform=m_lastBeginWidget.get()!=beginWidget || m_lastEndWidget!=endWidget;
-            m_lastBeginWidget=beginWidget;
-            m_lastEndWidget=endWidget;
-
-            if (inform)
-            {
-                if (m_viewportChangedCb)
-                {
-                    m_viewportChangedCb(itemAtBegin,itemAtEnd);
-                }
-
-                size_t beginSeqPos=0;
-                size_t endSeqPos=0;
-
-                if (beginWidget)
-                {
-                    beginSeqPos=m_llist->widgetSeqPos(beginWidget);
-                }
-                if (endWidget)
-                {
-                    endSeqPos=m_llist->widgetSeqPos(endWidget);
-                }
-
-                if (m_lastBeginWidget && m_lastEndWidget)
-                qDebug() << "updateBeginEndWidgets count="<<m_items.template get<0>().size()
-                         << "m_lastBeginWidget->pos()="<<m_lastBeginWidget->pos()
-                         << "m_llist->pos()=" << m_llist->pos() << "m_llist->size()=" << m_llist->size()
-                         << "m_scArea->viewport()->pos()=" << m_scArea->viewport()->pos()
-                         << "itemAtBegin=" << itemAtBegin->sortValue()
-                         << "p="<<p
-                         << "itemAtEnd=" << itemAtEnd->sortValue()
-                         << "p2="<<p2;
-
-                auto hiddenBefore=beginSeqPos;
-                auto hiddenAfter=(endWidget==nullptr)?0:(m_items.template get<1>().size()-endSeqPos);
-                processHiddenItems(hiddenBefore,hiddenAfter);
+                checkNeedsItemsBefore();
+                checkNeedsItemsAfter();
             }
         }
 
+        //-------------------------------------
         QScrollBar* bar() const
         {
             return isHorizontal()?m_scArea->horizontalScrollBar():m_scArea->verticalScrollBar();
         }
 
+        //-------------------------------------
         void scrollToEdge(Direction offsetDirection, bool wasAtEdge)
         {
             if (!wasAtEdge && (offsetDirection==Direction::STAY_AT_END_EDGE || offsetDirection==Direction::STAY_AT_HOME_EDGE))
@@ -538,7 +533,7 @@ class FlyweightListView_p
             }
 
             m_scrollToItemTimer.shot(
-                0,
+                10,
                 [this,offsetDirection]
                 {
                     switch (offsetDirection)
@@ -560,6 +555,7 @@ class FlyweightListView_p
             );
         }
 
+        //-------------------------------------
         bool scrollToItem(const typename ItemT::IdType &id, size_t offset)
         {
             auto& idx=m_items.template get<1>();
@@ -569,7 +565,7 @@ class FlyweightListView_p
                 return false;
             }
 
-            m_scrollToItemTimer.shot(0,
+            m_scrollToItemTimer.shot(10,
                 [this,offset,widget{QPointer<QWidget>(it->widget())}]()
                 {
                     if (widget && widget->parent()==m_llist)
@@ -593,6 +589,7 @@ class FlyweightListView_p
             return true;
         }
 
+        //-------------------------------------
         bool hasItem(const typename ItemT::IdType& id) const noexcept
         {
             const auto& idx=m_items.template get<1>();
@@ -600,16 +597,19 @@ class FlyweightListView_p
             return it!=idx.end();
         }
 
+        //-------------------------------------
         bool isHorizontal() const noexcept
         {
             return m_llist->orientation()==Qt::Horizontal;
         }
 
+        //-------------------------------------
         bool isVertical() const noexcept
         {
             return !isHorizontal();
         }
 
+        //-------------------------------------
         void onWidgetDestroyed(QObject* obj)
         {
             auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
@@ -620,6 +620,7 @@ class FlyweightListView_p
             }
         }
 
+        //-------------------------------------
         void clearWidget(QWidget* widget)
         {
             PointerHolder::clearProperty(widget,ItemT::Property);
@@ -627,6 +628,7 @@ class FlyweightListView_p
             ItemT::dropWidget(widget);
         }
 
+        //-------------------------------------
         void removeItem(ItemT* item)
         {
             clearWidget(item->widget());
@@ -635,8 +637,11 @@ class FlyweightListView_p
             idx.erase(item->id());
         }
 
+        //-------------------------------------
         size_t removeItemsFromBegin(size_t count, size_t offset=0)
         {
+            qDebug() << "Remove from begin "<<count<<"/"<<this->count();
+
             if (count==0)
             {
                 return 0;
@@ -654,7 +659,6 @@ class FlyweightListView_p
                 }
 
                 removedSize+=isHorizontal()?it->widget()->sizeHint().width() : it->widget()->sizeHint().height();
-
                 clearWidget(it->widget());
                 it=order.erase(it);
 
@@ -667,12 +671,17 @@ class FlyweightListView_p
             return removedSize;
         }
 
-        void removeItemsFromEnd(size_t count, size_t offset=0)
+        //-------------------------------------
+        size_t removeItemsFromEnd(size_t count, size_t offset=0)
         {
+            qDebug() << "Remove from end "<<count<<"/"<<this->count();
+
             if (count==0)
             {
-                return;
+                return 0;
             }
+
+            size_t removedSize=0;
 
             auto& order=m_items.template get<0>();
             for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
@@ -685,6 +694,7 @@ class FlyweightListView_p
 
                 nit=std::next(it);
 
+                removedSize+=isHorizontal()?it->widget()->sizeHint().width() : it->widget()->sizeHint().height();
                 clearWidget(it->widget());
 
                 nit = decltype(it){order.erase(std::next(it).base())};
@@ -694,35 +704,31 @@ class FlyweightListView_p
                     break;
                 }
             }
+
+            return removedSize;
         }
 
+        //-------------------------------------
         void onListResize()
         {
-            return ;
-
-            QPoint pos(0,0);
-            QPoint lastPos(0,0);
-
-            if (m_lastBeginWidget && m_lastBeginWidget->parent()==m_llist)
+            if (m_updating)
             {
-                pos=m_lastBeginWidget->pos();
-                lastPos=m_lastBeginWidget->property(LastWidgetPosProperty).toPoint();
-
-                qDebug() << "onListResize m_lastBeginWidget->pos()="<<pos
-                         << "lastPos="<<lastPos
-                         << "m_llist->pos()=" << m_llist->pos() << "m_llist->size()=" << m_llist->size()
-                         << "m_scArea->viewport()->pos()=" << m_scArea->viewport()->pos();
+                return;
             }
 
-            if (lastPos!=QPoint(0,0))
-            {
-//                int offset=isHorizontal()?(lastPos.x()-pos.x()):(lastPos.y()-pos.y());
-//                auto sbar=bar();
-//                offset=sbar->value()-offset;
-//                sbar->setValue(offset);
+            handleUpdate();
+        }
 
-                informUpdate();
-            }
+        //-------------------------------------
+        void clearRequestPending()
+        {
+            m_requestPendingClearTimer.shot(10,
+                [this]()
+                {
+                    m_requestPending=false;
+                    handleUpdate();
+                }
+            );
         }
 
     public:
@@ -747,7 +753,6 @@ class FlyweightListView_p
 
         FlyweightListView<ItemT>* m_view;
         size_t m_prefetchItemCount;
-        size_t m_maxCachedCount;
 
         ItemsContainer m_items;
 
@@ -763,6 +768,7 @@ class FlyweightListView_p
         SingleShotTimer m_scrollToItemTimer;
         SingleShotTimer m_updateTimer;
         SingleShotTimer m_resizeTimer;
+        SingleShotTimer m_requestPendingClearTimer;
 
         QPointer<QWidget> m_lastBeginWidget;
         QPointer<QWidget> m_lastEndWidget;
@@ -771,6 +777,11 @@ class FlyweightListView_p
         bool m_scrolledToEnd;
 
         bool m_waitingForResize;
+
+        size_t m_hiddenBefore, m_hiddenAfter;
+        bool m_autoLoad;
+
+        bool m_requestPending;
 };
 
 } // namespace detail

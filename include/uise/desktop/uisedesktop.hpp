@@ -41,4 +41,12 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #define UISE_DESKTOP_NAMESPACE uise::desktop
 
+#ifdef WIN32
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#endif
+
 #endif // UISE_DESKTOP_HPP
