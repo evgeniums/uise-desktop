@@ -272,14 +272,14 @@ int main(int argc, char *argv[])
         v->setRequestItemsBeforeCb(requestBefore);
         v->setRequestItemsAfterCb(requestAfter);
 
-//        std::vector<HelloWorldItemWrapper> newItems;
-//        for (size_t i=256;i<512;i++)
-//        {
-//            newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
-//        }
-//        v->loadItems(newItems);
+        std::vector<HelloWorldItemWrapper> newItems;
+        for (size_t i=32;i<64;i++)
+        {
+            newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+        }
+        v->loadItems(newItems);
 
-        v->reload();
+//        v->reload();
 
         w.setCentralWidget(v);
 #endif
