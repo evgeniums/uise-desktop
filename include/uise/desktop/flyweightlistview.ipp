@@ -276,5 +276,33 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+{
+    pimpl->m_scArea->setHorizontalScrollBarPolicy(policy);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+Qt::ScrollBarPolicy FlyweightListView<ItemT>::horizontalScrollBarPolicy() const
+{
+    return pimpl->m_scArea->horizontalScrollBarPolicy();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+{
+    pimpl->m_scArea->setVerticalScrollBarPolicy(policy);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+Qt::ScrollBarPolicy FlyweightListView<ItemT>::verticalScrollBarPolicy() const
+{
+    return pimpl->m_scArea->verticalScrollBarPolicy();
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_EMD

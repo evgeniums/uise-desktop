@@ -33,8 +33,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/flyweightlistframe.hpp>
 
-class QScrollArea;
-
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 enum class Direction : uint8_t
@@ -106,6 +104,11 @@ class FlyweightListView : public FlyweightListFrame
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation) noexcept;
+
+        void setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy);
+        void setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy);
+        Qt::ScrollBarPolicy horizontalScrollBarPolicy() const;
+        Qt::ScrollBarPolicy verticalScrollBarPolicy() const;
 
     protected:
 

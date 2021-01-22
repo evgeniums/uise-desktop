@@ -198,6 +198,8 @@ int main(int argc, char *argv[])
 
 #else
 
+        v->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
         std::map<size_t,size_t> items;
         size_t count=100000;
         for (size_t i=0;i<count;i++)
