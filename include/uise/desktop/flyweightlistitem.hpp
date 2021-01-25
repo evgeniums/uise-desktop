@@ -61,6 +61,34 @@ struct HasDropWidget<T,
     constexpr static const bool value=true;
 };
 
+template <typename T, typename Enable=void>
+struct HasDefaultId
+{
+    constexpr static const bool value=false;
+};
+
+template <typename T>
+struct HasDefaultId<T,
+            std::enable_if_t<std::is_same<decltype(&T::defaultId),decltype(&T::defaultId)>::value>
+        >
+{
+    constexpr static const bool value=true;
+};
+
+template <typename T, typename Enable=void>
+struct HasDefaultSortValue
+{
+    constexpr static const bool value=false;
+};
+
+template <typename T>
+struct HasDefaultSortValue<T,
+            std::enable_if_t<std::is_same<decltype(&T::defaultSortValue),decltype(&T::defaultSortValue)>::value>
+        >
+{
+    constexpr static const bool value=true;
+};
+
 }
 
 /**
@@ -202,6 +230,54 @@ class FlyweightListItem
         friend bool operator< (const FlyweightListItem& left, const FlyweightListItem& right) noexcept
         {
             return left.sortValue()<right.sortValue();
+        }
+
+        /**
+         * @brief Construct default ID of the item.
+         * @return Default item's ID.
+         */
+        static IdType defaultId()
+        {
+            if constexpr (detail::HasDefaultId<TraitsT>::value)
+            {
+                return TraitsT::defaultId();
+            }
+            else if constexpr (std::is_integral_v<IdType>)
+            {
+                return IdType(0);
+            }
+            else if constexpr (std::is_pointer_v<IdType>)
+            {
+                return nullptr;
+            }
+            else
+            {
+                return IdType();
+            }
+        }
+
+        /**
+         * @brief Construct default sort value of the item.
+         * @return Default item's sort value.
+         */
+        static SortValueType defaultSortValue()
+        {
+            if constexpr (detail::HasDefaultSortValue<TraitsT>::value)
+            {
+                return TraitsT::defaultSortValue();
+            }
+            else if constexpr (std::is_integral_v<SortValueType>)
+            {
+                return SortValueType(0);
+            }
+            else if constexpr (std::is_pointer_v<SortValueType>)
+            {
+                return nullptr;
+            }
+            else
+            {
+                return SortValueType();
+            }
         }
 
     private:

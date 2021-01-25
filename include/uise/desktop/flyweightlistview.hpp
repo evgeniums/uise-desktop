@@ -61,14 +61,15 @@ class FlyweightListView_p;
  * @todo Auto tests.
  */
 template <typename ItemT>
-class FlyweightListView : public FlyweightListFrame
+class FlyweightListView : public QFrame
 {
     public:
 
-        constexpr static const size_t PrefetchItemCountHint=32;
+        constexpr static const size_t PrefetchItemCountHint=20;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
         using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
+        using RequestJumpCb=std::function<void ()>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
@@ -88,7 +89,9 @@ class FlyweightListView : public FlyweightListFrame
 
         void setRequestItemsBeforeCb(RequestItemsCb cb) noexcept;
         void setRequestItemsAfterCb(RequestItemsCb cb) noexcept;
-        void clearRequestPending();
+
+        void setRequestHomeCb(RequestJumpCb cb) noexcept;
+        void setRequestEndCb(RequestJumpCb cb) noexcept;
 
         void setViewportChangedCb(ViewportChangedCb cb) noexcept;
 
@@ -105,14 +108,18 @@ class FlyweightListView : public FlyweightListFrame
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation) noexcept;
 
-        void setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy);
-        void setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy);
-        Qt::ScrollBarPolicy horizontalScrollBarPolicy() const;
-        Qt::ScrollBarPolicy verticalScrollBarPolicy() const;
+        const ItemT* firstItem() const noexcept;
+        const ItemT* lastItem() const noexcept;
+
+        void setFlyweightEnabled(bool enable) noexcept;
+        bool isFlyweightEnabled() const noexcept;
+
+        void setStickHome(bool enable) noexcept;
+        bool isStickHome() const noexcept;
 
     protected:
 
-        bool eventFilter(QObject * watched, QEvent * event) override;
+        void resizeEvent(QResizeEvent *event) override;
 
     private:
 

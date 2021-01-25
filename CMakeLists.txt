@@ -41,6 +41,7 @@ SET (HEADERS
 
 SET (HEADERS ${HEADERS}
     include/uise/desktop/detail/flyweightlistview_p.hpp
+    include/uise/desktop/detail/flyweightlistview_p.ipp
 )
 
 SET (SOURCES

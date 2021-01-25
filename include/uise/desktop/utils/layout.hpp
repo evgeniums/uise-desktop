@@ -35,7 +35,7 @@ class Layout
 {
     public:
 
-        static void clear(QBoxLayout* layout)
+        static void clear(QLayout* layout)
         {
             layout->setContentsMargins(0,0,0,0);
             layout->setSpacing(0);

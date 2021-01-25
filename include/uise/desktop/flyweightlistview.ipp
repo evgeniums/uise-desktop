@@ -25,6 +25,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
+#include <uise/desktop/detail/flyweightlistview_p.ipp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -33,7 +34,7 @@ template <typename ItemT>
 FlyweightListView<ItemT>::FlyweightListView(
         QWidget* parent,
         size_t prefetchItemCount
-    ) : FlyweightListFrame(parent),
+    ) : QFrame(parent),
         pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(this,prefetchItemCount))
 {
     pimpl->setupUi();
@@ -58,7 +59,7 @@ void FlyweightListView<ItemT>::setPrefetchItemCountHint(size_t val) noexcept
 template <typename ItemT>
 size_t FlyweightListView<ItemT>::prefetchItemCount() const noexcept
 {
-    return pimpl->m_prefetchItemCount;
+    return pimpl->prefetchItemCount();
 }
 
 //--------------------------------------------------------------------------
@@ -105,6 +106,20 @@ void FlyweightListView<ItemT>::setViewportChangedCb(ViewportChangedCb cb) noexce
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::setRequestHomeCb(RequestJumpCb cb) noexcept
+{
+    pimpl->m_homeRequestCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
+{
+    pimpl->m_endRequestCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
     pimpl->removeAllItems();
@@ -139,9 +154,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
     clear();
-    beginUpdate();
-    pimpl->insertContinuousItems(items);
-    endUpdate();
+    insertContinuousItems(items,scrollTo);
 }
 
 //--------------------------------------------------------------------------
@@ -162,6 +175,11 @@ void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items, Dire
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items, Direction scrollTo)
 {
+    if (items.empty())
+    {
+        return;
+    }
+
     auto wasAtEdge=isScrollAtEdge(scrollTo);
     beginUpdate();
     pimpl->insertContinuousItems(items);
@@ -203,14 +221,24 @@ bool FlyweightListView<ItemT>::hasItem(const typename ItemT::IdType &id) const n
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+const ItemT* FlyweightListView<ItemT>::firstItem() const noexcept
+{
+    return pimpl->firstItem();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+const ItemT* FlyweightListView<ItemT>::lastItem() const noexcept
+{
+    return pimpl->lastItem();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOffset) const noexcept
 {
-    auto bar=pimpl->bar();
-    return (direction==Direction::END||direction==Direction::STAY_AT_END_EDGE)
-            ?
-                ((bar->maximum()-bar->sliderPosition())<maxOffset)
-            :
-                ((bar->sliderPosition()-bar->minimum())<maxOffset);
+    //! @todo Implement isScrollAtEdge
+    return false;
 }
 
 //--------------------------------------------------------------------------
@@ -220,87 +248,78 @@ void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
     pimpl->scrollToEdge(offsetDirection,true);
 }
 
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::clearRequestPending()
-{
-    pimpl->clearRequestPending();
-}
+#if 0
+    if (event->type()==QEvent::KeyPress)
+    {
+        auto e=dynamic_cast<QKeyEvent*>(event);
+        if (e)
+        {
+            qDebug() << "Key pressed "<<e;
 
-//--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched==pimpl->m_scArea->viewport())
-    {
-        if (event->type()==QEvent::Resize)
-        {
-            pimpl->onListResize();
-        }
-    }
-    else if (watched==pimpl->m_llist)
-    {
-        if (event->type()==QEvent::Resize)
-        {
-            pimpl->onListResize();
-        }
-    }
-    else if (watched==pimpl->m_scArea)
-    {
-        if (event->type()==QEvent::KeyPress)
-        {
-            auto e=dynamic_cast<QKeyEvent*>(event);
-            if (e)
+            if (e->key()==Qt::Key_PageUp)
             {
-                if (e->key()==Qt::Key_PageUp)
+                pimpl->bar()->triggerAction(QScrollBar::SliderPageStepSub);
+            }
+            else if (e->key()==Qt::Key_PageDown)
+            {
+                pimpl->bar()->triggerAction(QScrollBar::SliderPageStepAdd);
+            }
+            else if (e->key()==Qt::Key_Home && (e->modifiers() & Qt::ControlModifier))
+            {
+                qDebug() << "Key Ctrl+Home pressed ";
+
+                if (pimpl->m_homeRequestCb)
                 {
-                    pimpl->bar()->triggerAction(QScrollBar::SliderPageStepSub);
+                    pimpl->m_homeRequestCb();
                 }
-                else if (e->key()==Qt::Key_PageDown)
+            }
+            else if (e->key()==Qt::Key_End && (e->modifiers() & Qt::ControlModifier))
+            {
+                qDebug() << "Key Ctrl+End pressed ";
+
+                if (pimpl->m_endRequestCb)
                 {
-                    pimpl->bar()->triggerAction(QScrollBar::SliderPageStepAdd);
-                }
-                else if (e->key()==Qt::Key_Home && (e->modifiers() & Qt::ControlModifier))
-                {
-                    emit homeRequested();
-                }
-                else if (e->key()==Qt::Key_End && (e->modifiers() & Qt::ControlModifier))
-                {
-                    emit endRequested();
+                    pimpl->m_endRequestCb();
                 }
             }
         }
     }
+#endif
 
-    return false;
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::resizeEvent(QResizeEvent *event)
+{
+    QFrame::resizeEvent(event);
+    pimpl->onViewportResized(event);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+void FlyweightListView<ItemT>::setFlyweightEnabled(bool enable) noexcept
 {
-    pimpl->m_scArea->setHorizontalScrollBarPolicy(policy);
+    return pimpl->setFlyweightEnabled(enable);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-Qt::ScrollBarPolicy FlyweightListView<ItemT>::horizontalScrollBarPolicy() const
+bool FlyweightListView<ItemT>::isFlyweightEnabled() const noexcept
 {
-    return pimpl->m_scArea->horizontalScrollBarPolicy();
+    return pimpl->isFlyweightEnabled();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+void FlyweightListView<ItemT>::setStickHome(bool enable) noexcept
 {
-    pimpl->m_scArea->setVerticalScrollBarPolicy(policy);
+    return pimpl->m_stickToHome=enable;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-Qt::ScrollBarPolicy FlyweightListView<ItemT>::verticalScrollBarPolicy() const
+bool FlyweightListView<ItemT>::isStickHome() const noexcept
 {
-    return pimpl->m_scArea->verticalScrollBarPolicy();
+    return pimpl->pimpl->m_stickToHome;
 }
 
 //--------------------------------------------------------------------------

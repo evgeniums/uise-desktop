@@ -82,7 +82,7 @@ class PointerHolder
          * @param propertyName Name of the property.
          */
         template <typename T>
-        static T getProperty(QObject* obj, const char* propertyName)
+        static T getProperty(const QObject* obj, const char* propertyName)
         {
             if (!obj)
             {
