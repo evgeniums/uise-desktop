@@ -219,9 +219,13 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::setupUi()
 {
+    m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    m_view->setFocusPolicy(Qt::StrongFocus);
+
     m_llist=new LinkedListView(m_view);
     m_llist->setObjectName("FlyweightListViewLList");
-    m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    m_llist->setFocusProxy(m_view);
+
     updatePageStep();
 
 //! @todo Test horizontal

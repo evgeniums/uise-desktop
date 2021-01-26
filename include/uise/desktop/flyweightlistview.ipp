@@ -38,7 +38,6 @@ FlyweightListView<ItemT>::FlyweightListView(
         pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(this,prefetchItemCount))
 {
     pimpl->setupUi();
-    setFocusPolicy(Qt::ClickFocus);
 }
 
 //--------------------------------------------------------------------------
