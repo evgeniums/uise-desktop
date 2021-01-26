@@ -534,14 +534,25 @@ void FlyweightListView_p<ItemT>::updatePageStep()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::scroll(int delta)
 {
-    auto pos=m_llist->pos();
+    auto viewportSize=oprop(m_view,OProp::size);
+    auto listSize=oprop(m_llist,OProp::size);
 
-    int maxOffset=0;
-    int minOffset=0;
-
-    auto offset=std::clamp(minOffset,delta,maxOffset);
-    if (offset!=0)
+    int minPos=0;
+    int maxPos=0;
+    if (listSize>viewportSize)
     {
+        minPos=viewportSize-listSize;
+    }
+
+    auto pos=m_llist->pos();
+    auto posCoordinate=oprop(pos,OProp::pos);
+    auto newCoordinate=qBound(minPos,posCoordinate-delta,maxPos);
+
+    qDebug() << "Old coordinate "<<posCoordinate<<" new coordinate "<<newCoordinate;
+
+    if (newCoordinate!=posCoordinate)
+    {
+        setOProp(pos,OProp::pos,newCoordinate);
         m_llist->move(pos);
         viewportUpdated();
     }
@@ -816,6 +827,8 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
 {
     //! @todo Implement wheelEvent()
+
+    qDebug() << "Wheel event " << event;
 }
 
 #if 0

@@ -495,6 +495,7 @@ int main(int argc, char *argv[])
 //        te1->show();
 //        w1->show();
 
+        v->setFocus();
         w.show();
         app.exec();
     }
