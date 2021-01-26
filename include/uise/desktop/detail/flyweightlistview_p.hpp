@@ -83,6 +83,13 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
         std::function<void ()> listResizedHandler;
 };
 
+enum class OProp : uint8_t
+{
+    size,
+    pos,
+    edge
+};
+
 template <typename ItemT>
 class FlyweightListView_p
 {
@@ -164,6 +171,21 @@ class FlyweightListView_p
         void checkNewItemsNeeded();
         void informViewportUpdated();
 
+        void scroll(int delta);
+
+        void wheelEvent(QWheelEvent *event);
+        void updatePageStep();
+
+        void viewportUpdated();
+
+        template <typename T>
+        int oprop(const T& obj, OProp prop, bool other = false) const noexcept;
+
+        template <typename T>
+        void setOProp(T& obj, OProp prop, int value, bool other = false) noexcept;
+        template <typename T>
+        void setOProp(T& obj, OProp prop, int value, bool other = false) const noexcept;
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -213,6 +235,10 @@ class FlyweightListView_p
         typename ItemT::SortValueType m_firstViewportSortValue;
         typename ItemT::IdType m_lastViewportItemID;
         typename ItemT::SortValueType m_lastViewportSortValue;
+
+        size_t m_singleStep;
+        size_t m_pageStep;
+        size_t m_minPageStep;
 };
 
 } // namespace detail

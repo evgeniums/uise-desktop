@@ -139,7 +139,10 @@ void FlyweightListView<ItemT>::reload()
 template <typename ItemT>
 void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation) noexcept
 {
-    pimpl->m_llist->setOrientation(orientation);
+    pimpl->m_llist->setOrientation(orientation);    
+    pimpl->updatePageStep();
+
+    //! @todo Maybe forbid changing orintation when list is not empty?
 }
 
 //--------------------------------------------------------------------------
@@ -310,16 +313,104 @@ bool FlyweightListView<ItemT>::isFlyweightEnabled() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setStickHome(bool enable) noexcept
+void FlyweightListView<ItemT>::setStickMode(Direction mode) noexcept
 {
-    return pimpl->m_stickToHome=enable;
+    return pimpl->m_stick=mode;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-bool FlyweightListView<ItemT>::isStickHome() const noexcept
+Direction FlyweightListView<ItemT>::stickMode() const noexcept
 {
-    return pimpl->pimpl->m_stickToHome;
+    return pimpl->m_stick;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::scroll(int delta)
+{
+    pimpl->scroll(delta);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setSingleScrollStep(size_t value) noexcept
+{
+    pimpl->m_singleStep=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+size_t FlyweightListView<ItemT>::singleScrollStep() const noexcept
+{
+    return pimpl->m_singleStep;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setMinPageScrollStep(size_t value) noexcept
+{
+    pimpl->m_minPageStep=value;
+    pimpl->updatePageStep();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+size_t FlyweightListView<ItemT>::minPageScrollStep() const noexcept
+{
+    return pimpl->m_minPageStep;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+size_t FlyweightListView<ItemT>::pageScrollStep() const noexcept
+{
+    return pimpl->m_pageStep;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key()==(pimpl->isHorizontal()?Qt::Key_Left:Qt::Key_Up))
+    {
+        scroll(-static_cast<int>(pimpl->m_singleStep));
+    }
+    else if (event->key()==(pimpl->isHorizontal()?Qt::Key_Right:Qt::Key_Down))
+    {
+        scroll(static_cast<int>(pimpl->m_singleStep));
+    }
+    else if (event->key()==Qt::Key_PageUp)
+    {
+        scroll(-static_cast<int>(pimpl->m_pageStep));
+    }
+    else if (event->key()==Qt::Key_PageDown)
+    {
+        scroll(static_cast<int>(pimpl->m_pageStep));
+    }
+    else if (event->key()==Qt::Key_Home && (event->modifiers() & Qt::ControlModifier))
+    {
+        if (pimpl->m_homeRequestCb)
+        {
+            pimpl->m_homeRequestCb();
+        }
+    }
+    else if (event->key()==Qt::Key_End && (event->modifiers() & Qt::ControlModifier))
+    {
+        if (pimpl->m_endRequestCb)
+        {
+            pimpl->m_endRequestCb();
+        }
+    }
+
+    QFrame::keyPressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::wheelEvent(QWheelEvent *event)
+{
+    pimpl->wheelEvent(event);
 }
 
 //--------------------------------------------------------------------------

@@ -23,6 +23,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #ifndef UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_IPP
 #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_IPP
 
+#include <algorithm>
+
 #include <QResizeEvent>
 #include <QStyle>
 
@@ -33,6 +35,163 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 namespace detail {
+
+//--------------------------------------------------------------------------
+template <typename T>
+int GetOProp(bool horizontal, const T& obj, OProp prop) noexcept
+{
+    if constexpr (std::is_same_v<QPoint,std::decay_t<T>>)
+    {
+        switch (prop)
+        {
+            case(OProp::pos):
+                return horizontal?obj.x():obj.y();
+
+            case(OProp::size):
+            case(OProp::edge):
+                return 0;
+        }
+        return 0;
+    }
+    else if constexpr (std::is_base_of_v<QWidget,std::decay_t<T>>)
+    {
+        switch (prop)
+        {
+            case(OProp::size):
+                return horizontal?obj.width():obj.height();
+
+            case(OProp::pos):
+                return horizontal?obj.x():obj.y();
+
+            case(OProp::edge):
+                return horizontal?obj.geometry().right():obj.geometry().bottom();
+        }
+        return 0;
+    }
+    else if constexpr (std::is_same_v<QSize,std::decay_t<T>>)
+    {
+        return horizontal?obj.width():obj.height();
+    }
+
+    return 0;
+}
+
+//--------------------------------------------------------------------------
+template <typename T>
+void SetOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
+{
+    if constexpr (std::is_same_v<QPoint,std::decay_t<T>>)
+    {
+        switch (prop)
+        {
+            case(OProp::pos):
+                if (horizontal)
+                {
+                    obj.setX(value);
+                }
+                else
+                {
+                    obj.setY(value);
+                }
+            break;
+
+            case(OProp::size):
+            case(OProp::edge):
+            break;
+        }
+    }
+    else if constexpr (std::is_base_of_v<QWidget,std::decay_t<T>>)
+    {
+        switch (prop)
+        {
+            case(OProp::size):
+                if (horizontal)
+                {
+                    obj.setWidth(value);
+                }
+                else
+                {
+                    obj.setHeight(value);
+                }
+            break;
+
+            case(OProp::pos):
+            case(OProp::edge):
+            break;
+        }
+    }
+    else if constexpr (std::is_same_v<QSize,std::decay_t<T>>)
+    {
+        switch (prop)
+        {
+            case(OProp::size):
+                if (horizontal)
+                {
+                    obj.setWidth(value);
+                }
+                else
+                {
+                    obj.setHeight(value);
+                }
+            break;
+
+            case(OProp::pos):
+            case(OProp::edge):
+            break;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+template <typename T>
+int FlyweightListView_p<ItemT>::oprop(const T& obj, OProp prop, bool other) const noexcept
+{
+    bool horizontal=isHorizontal();
+    if (other)
+    {
+        horizontal=!horizontal;
+    }
+
+    if constexpr (std::is_pointer_v<std::remove_reference_t<T>>)
+    {
+        return GetOProp(horizontal,*obj,prop);
+    }
+    else
+    {
+        return GetOProp(horizontal,obj,prop);
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+template <typename T>
+void FlyweightListView_p<ItemT>::setOProp(T& obj, OProp prop, int value, bool other) noexcept
+{
+    bool horizontal=isHorizontal();
+    if (other)
+    {
+        horizontal=!horizontal;
+    }
+
+    if constexpr (std::is_pointer_v<std::remove_reference_t<T>>)
+    {
+        SetOProp(horizontal,*obj,prop,value);
+    }
+    else
+    {
+        SetOProp(horizontal,obj,prop,value);
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+template <typename T>
+void FlyweightListView_p<ItemT>::setOProp(T& obj, OProp prop, int value, bool other) const noexcept
+{
+    auto self=const_cast<FlyweightListView_p<ItemT>*>(this);
+    self->setOProp(obj,prop,value,other);
+}
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
@@ -49,7 +208,10 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_firstViewportItemID(ItemT::defaultId()),
         m_firstViewportSortValue(ItemT::defaultSortValue()),
         m_lastViewportItemID(ItemT::defaultId()),
-        m_lastViewportSortValue(ItemT::defaultSortValue())
+        m_lastViewportSortValue(ItemT::defaultSortValue()),
+        m_singleStep(1),
+        m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
+        m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep)
 {
 }
 
@@ -57,10 +219,10 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::setupUi()
 {
-    m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-
     m_llist=new LinkedListView(m_view);
     m_llist->setObjectName("FlyweightListViewLList");
+    m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    updatePageStep();
 
 //! @todo Test horizontal
 //    m_llist->move(-400,0);
@@ -110,7 +272,7 @@ size_t FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
     PointerHolder::keepProperty(item,widget,ItemT::Property);
     QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
 
-    return isHorizontal()?widget->width():widget->height();
+    return oprop(widget,OProp::size);
 }
 
 //--------------------------------------------------------------------------
@@ -257,52 +419,14 @@ template <typename ItemT>
 QPoint FlyweightListView_p<ItemT>::viewportEnd() const
 {
     auto pos=m_llist->pos();
-    if (isHorizontal())
-    {
-        if (m_llist->width()>0)
-        {
-            pos.setX(pos.x()+m_llist->width()-1);
-            pos.setY(0);
-        }
-    }
-    else
-    {
-        pos.setX(0);
-        if (m_llist->height()>0)
-        {
-            pos.setY(pos.y()+m_llist->height()-1);
-        }
-    }
-    return pos;
-}
 
-//--------------------------------------------------------------------------
-template <typename ItemT>
-QPoint FlyweightListView_p<ItemT>::viewportEnd(const QSize &oldSize) const
-{
-    auto pos=m_llist->pos();
-    if (!oldSize.isValid())
+    auto propSize=oprop(m_llist,OProp::size);
+    if (propSize>0)
     {
-        return pos;
+        setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+propSize-1);
+        setOProp(pos,OProp::pos,0,true);
     }
-    if (isHorizontal())
-    {
-        if (m_llist->width()>0)
-        {
-            pos.setX(pos.x()+m_llist->width()-1);
-            pos.setY(0);
-        }
-    }
-    else
-    {
-        pos.setX(0);
 
-        auto y=std::min(pos.y()+m_llist->height()-1,oldSize.height()-1);
-        if (m_llist->height()>0)
-        {
-            pos.setY(y);
-        }
-    }
     return pos;
 }
 
@@ -310,30 +434,21 @@ QPoint FlyweightListView_p<ItemT>::viewportEnd(const QSize &oldSize) const
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::isAtBegin() const
 {
-    return isHorizontal()?(m_llist->pos().x()==0):(m_llist->pos().y()==0);
+    return oprop(m_llist->pos(),OProp::pos)==0;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::isAtEnd() const
 {
-    return isHorizontal()?(viewportEnd().x()<=(m_view->width()-1)):(viewportEnd().y()<=m_view->height()-1);
+    return oprop(viewportEnd(),OProp::pos)<=(oprop(m_view,OProp::size)-1);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 int FlyweightListView_p<ItemT>::endItemEdge() const
 {
-    auto edge=0;
-    if (isHorizontal())
-    {
-        edge=m_llist->geometry().right();
-    }
-    else
-    {
-        edge=m_llist->geometry().bottom();
-    }
-    return edge;
+    return oprop(m_llist,OProp::edge);
 }
 
 //--------------------------------------------------------------------------
@@ -348,71 +463,39 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 
     // check if list must be moved
     bool moveBegin=!isAtBegin();
-    bool moveEnd=false;
-    if (isHorizontal())
-    {
-        moveEnd=endItemEdge()==(m_viewSize.width()-1)
-                ||
-                (endItemEdge()>(m_view->width()-1)) && (m_view->width()<m_viewSize.width())
-                ||
-                (endItemEdge()<(m_view->width()-1)) && (m_view->width()>m_viewSize.width())
-                ;
-    }
-    else
-    {
-        moveEnd=endItemEdge()==(m_viewSize.height()-1)
-                ||
-                (endItemEdge()>(m_view->height()-1)) && (m_view->height()<m_viewSize.height())
-                ||
-                (endItemEdge()<(m_view->height()-1)) && (m_view->height()>m_viewSize.height())
-                ;
-    }
+
+    auto oldViewSize=oprop(m_viewSize,OProp::size);
+    auto viewSize=oprop(m_view,OProp::size);
+    auto edge=endItemEdge();
+    bool moveEnd=edge==(oldViewSize-1)
+            ||
+            (edge>(viewSize-1)) && (viewSize<oldViewSize)
+            ||
+            (edge<(viewSize-1)) && (viewSize>oldViewSize)
+    ;
+
+    // if size of viewport changed then list will try to fit the viewport as much as possible
     if (m_stick==Direction::HOME && moveBegin || m_stick==Direction::END && moveEnd)
     {
-        // if size of viewport changed then list will try to fit the viewport as much as possible
-        if (isHorizontal())
+        auto oldListSize=oprop(m_llist,OProp::size);
+        auto delta=viewSize-oldViewSize;
+        auto newPos=oprop(m_llist,OProp::pos)+delta;
+        if ((newPos+oprop(m_llist,OProp::size))<0)
         {
-            auto delta=m_view->width()-m_viewSize.width();
-            auto newX=m_llist->pos().x()+delta;
-            if ((newX+m_llist->width())<0)
+            newPos=0;
+            if (m_stick==Direction::END)
             {
-                newX=0;
-                if (m_stick==Direction::END)
+                if (oldListSize>viewSize)
                 {
-                    if (m_llist->width()>m_view->width())
-                    {
-                        newX=m_view->width()-m_llist->width();
-                    }
+                    newPos=viewSize-oldViewSize;
                 }
             }
-            if (newX>0)
-            {
-                newX=0;
-            }
-            movePos.setX(newX);
         }
-        else
+        if (newPos>0)
         {
-            auto delta=m_view->height()-m_viewSize.height();
-            auto newY=m_llist->pos().y()+delta;
-            if ((newY+m_llist->height())<0)
-            {
-                newY=0;
-                if (m_stick==Direction::END)
-                {
-                    if (m_llist->height()>m_view->height())
-                    {
-                        newY=m_view->height()-m_llist->height();
-                    }
-                }
-            }
-            if (newY>0)
-            {
-                newY=0;
-            }
-            movePos.setY(newY);
+            newPos=0;
         }
-
+        setOProp(movePos,OProp::pos,newPos);
         moveList=true;
     }
     if (moveList)
@@ -420,24 +503,57 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
         m_llist->move(movePos);
     }
 
+    // update page step
+    updatePageStep();
+
     // resize only that dimension of the list that doesn't match the orientation
     auto listSize=m_listSize;
-    if (isHorizontal())
-    {
-        m_llist->resize(m_llist->width(),event->size().height());
-    }
-    else
-    {
-        m_llist->resize(event->size().width(),m_llist->height());
-    }
+    QSize newListSize;
+    setOProp(newListSize,OProp::size,oprop(m_llist,OProp::size));
+    setOProp(newListSize,OProp::size,oprop(event->size(),OProp::size,true),true);
+    m_llist->resize(newListSize);
 
     // if m_llist was resized then events are already handled, so invoke below only if the list was not resized
     if (m_llist->size()==listSize)
     {
-        keepCurrentConfiguration();
-        informViewportUpdated();
-        checkNewItemsNeeded();
+        viewportUpdated();
     }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::updatePageStep()
+{
+    m_pageStep=std::max(
+                static_cast<size_t>(oprop(m_view,OProp::size)),
+                m_minPageStep
+                );
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::scroll(int delta)
+{
+    auto pos=m_llist->pos();
+
+    int maxOffset=0;
+    int minOffset=0;
+
+    auto offset=std::clamp(minOffset,delta,maxOffset);
+    if (offset!=0)
+    {
+        m_llist->move(pos);
+        viewportUpdated();
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::viewportUpdated()
+{
+    keepCurrentConfiguration();
+    informViewportUpdated();
+    checkNewItemsNeeded();
 }
 
 //--------------------------------------------------------------------------
@@ -693,6 +809,13 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
         item=lastItem();
     }
     return item;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
+{
+    //! @todo Implement wheelEvent()
 }
 
 #if 0

@@ -66,6 +66,7 @@ class FlyweightListView : public QFrame
     public:
 
         constexpr static const size_t PrefetchItemCountHint=20;
+        constexpr static const size_t DefaultPageStep=10;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
         using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
@@ -114,12 +115,24 @@ class FlyweightListView : public QFrame
         void setFlyweightEnabled(bool enable) noexcept;
         bool isFlyweightEnabled() const noexcept;
 
-        void setStickHome(bool enable) noexcept;
-        bool isStickHome() const noexcept;
+        void setStickMode(Direction mode) noexcept;
+        Direction stickMode() const noexcept;
+
+        void scroll(int delta);
+
+        void setSingleScrollStep(size_t value) noexcept;
+        size_t singleScrollStep() const noexcept;
+
+        void setMinPageScrollStep(size_t value) noexcept;
+        size_t minPageScrollStep() const noexcept;
+
+        size_t pageScrollStep() const noexcept;
 
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void wheelEvent(QWheelEvent *event) override;
 
     private:
 
