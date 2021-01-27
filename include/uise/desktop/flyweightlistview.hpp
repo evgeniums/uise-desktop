@@ -75,12 +75,10 @@ class FlyweightListView : public QFrame
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
 
-        void loadItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
-        void insertItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
-        void insertContinuousItems(const std::vector<ItemT>& items, Direction scrollTo=Direction::NONE);
-
-        void insertItem(const ItemT& item, Direction scrollTo=Direction::NONE);
-        void insertItem(ItemT&& item, Direction scrollTo=Direction::NONE);
+        void insertItem(ItemT item);
+        void insertItems(const std::vector<ItemT>& items);
+        void insertContinuousItems(const std::vector<ItemT>& items);
+        void loadItems(const std::vector<ItemT>& items);
 
         void beginUpdate();
         void endUpdate();

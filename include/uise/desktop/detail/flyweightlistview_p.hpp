@@ -33,6 +33,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QPointer>
+#include <QEvent>
 
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -77,6 +78,30 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
             listResizedHandler();
         }
 
+    protected:
+
+        bool eventFilter(QObject *watched, QEvent *event) override
+        {
+            if (watched!=this)
+            {
+                switch (event->type())
+                {
+                    case QEvent::Resize: [[fallthrough]];
+                    case QEvent::Show: [[fallthrough]];
+                    case QEvent::Hide: [[fallthrough]];
+                    case QEvent::Destroy:
+                    {
+                        listResizedHandler();
+                    }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            return false;
+        }
+
     private:
 
         std::function<void (QObject*)> widgetDestroyedHandler;
@@ -108,7 +133,7 @@ class FlyweightListView_p
 
         void endUpdate();
 
-        size_t configureWidget(const ItemT* item);
+        void configureWidget(const ItemT* item);
 
         size_t prefetchItemCount() noexcept;
 
@@ -122,7 +147,7 @@ class FlyweightListView_p
 
         size_t visibleCount() const noexcept;
 
-        void insertItem(const ItemT& item);
+        void insertItem(ItemT item);
 
         void setFlyweightEnabled(bool enable) noexcept;
 
@@ -130,7 +155,7 @@ class FlyweightListView_p
 
         void insertContinuousItems(const std::vector<ItemT>& items);
 
-        void removeAllItems();
+        void clear();
 
         void scrollToEdge(Direction offsetDirection, bool wasAtEdge);
 
@@ -186,6 +211,10 @@ class FlyweightListView_p
         template <typename T>
         void setOProp(T& obj, OProp prop, int value, bool other = false) const noexcept;
 
+        void scrollTo(const std::function<int (int, int, int)>& cb);
+
+        void updateListSize();
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -221,10 +250,6 @@ class FlyweightListView_p
 
         FlyweightListView_q m_qobjectHelper;
 
-        int m_scrollValue;
-
-        size_t m_hiddenBefore, m_hiddenAfter;
-
         bool m_enableFlyweight;
         Direction m_stick;
 
@@ -241,6 +266,8 @@ class FlyweightListView_p
         size_t m_minPageStep;
 
         float m_wheelOffsetAccumulated;
+
+        bool m_ignoreUpdates;
 };
 
 } // namespace detail

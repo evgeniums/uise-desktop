@@ -190,6 +190,8 @@ class LinkedListView_p
                 item->setPos(++pos);
                 item=item->next();
             }
+
+            view->resize((view->sizeHint()));
         }
 
     public:

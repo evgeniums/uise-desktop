@@ -202,9 +202,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
     ) : m_view(view),
         m_prefetchItemCount(prefetchItemCountHint),
         m_llist(nullptr),
-        m_scrollValue(0),
         m_enableFlyweight(true),
-        m_stick(Direction::END),
+        m_stick(Direction::HOME),
         m_listSize(QSize(0,0)),
         m_firstViewportItemID(ItemT::defaultId()),
         m_firstViewportSortValue(ItemT::defaultSortValue()),
@@ -213,7 +212,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_singleStep(1),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
-        m_wheelOffsetAccumulated(0.0f)
+        m_wheelOffsetAccumulated(0.0f),
+        m_ignoreUpdates(false)
 {
 }
 
@@ -229,13 +229,7 @@ void FlyweightListView_p<ItemT>::setupUi()
     m_llist->setFocusProxy(m_view);
 
     updatePageStep();
-
-//! @todo Test horizontal
-//    m_llist->move(-400,0);
-//    m_llist->resize(500,m_view->size().height());
-
-    m_llist->move(0,-100);
-    m_llist->resize(m_view->size().width(),300);
+    updateListSize();
 
     m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
     m_qobjectHelper.setListResizedHandler([this](){onListResize();});
@@ -255,30 +249,33 @@ void FlyweightListView_p<ItemT>::setupUi()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::beginUpdate()
 {
+    m_ignoreUpdates=true;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::endUpdate()
 {
+    updateListSize();
+    m_ignoreUpdates=false;
+    viewportUpdated();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::onListResize()
 {
-
+    viewportUpdated();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
+void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
 {
     auto widget=item->widget();
     PointerHolder::keepProperty(item,widget,ItemT::Property);
     QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
-
-    return oprop(widget,OProp::size);
+    widget->installEventFilter(&m_qobjectHelper);
 }
 
 //--------------------------------------------------------------------------
@@ -393,22 +390,8 @@ bool FlyweightListView_p<ItemT>::isFlyweightEnabled() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertItem(const ItemT& item)
-{
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView_p<ItemT>::onListUpdated()
 {
-    bool moveList=false;
-    QPoint movePos;
-
-    if (moveList)
-    {
-        m_llist->move(movePos);
-    }
-
     // if stickToEnd and last widget was in viewport then new last widget must stay in viewport
     // if size of widgets before viewport changed then list must be moved to compensate size change
 }
@@ -538,34 +521,14 @@ void FlyweightListView_p<ItemT>::updatePageStep()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::scroll(int delta)
-{
-    auto viewportSize=oprop(m_view,OProp::size);
-    auto listSize=oprop(m_llist,OProp::size);
-
-    int minPos=0;
-    int maxPos=0;
-    if (listSize>viewportSize)
-    {
-        minPos=viewportSize-listSize;
-    }
-
-    auto pos=m_llist->pos();
-    auto posCoordinate=oprop(pos,OProp::pos);
-    auto newCoordinate=qBound(minPos,posCoordinate-delta,maxPos);
-
-    if (newCoordinate!=posCoordinate)
-    {
-        setOProp(pos,OProp::pos,newCoordinate);
-        m_llist->move(pos);
-        viewportUpdated();
-    }
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView_p<ItemT>::viewportUpdated()
 {
+    if (m_ignoreUpdates)
+    {
+        return;
+    }
+
+    onListUpdated();
     keepCurrentConfiguration();
     informViewportUpdated();
     checkNewItemsNeeded();
@@ -582,27 +545,51 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::checkNewItemsNeeded()
 {
+    if (!m_enableFlyweight)
+    {
+        return;
+    }
+
     //! @todo Implement checkNewItemsNeeded()
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::insertItem(ItemT item)
+{
+    auto& idx=m_items.template get<1>();
+    auto& order=m_items.template get<0>();
+
+    auto widget=item.widget();
+    auto result=idx.insert(item);
+    if (!result.second)
+    {
+        Q_ASSERT(idx.replace(result.first,item));
+    }
+    configureWidget(&(*result.first));
+
+    QWidget* afterWidget=nullptr;
+    auto it=m_items.template project<0>(result.first);
+    if (it!=order.begin())
+    {
+        afterWidget=(--it)->widget();
+    }
+
+    m_llist->insertWidgetAfter(widget,afterWidget);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>& items)
 {
-#if 0
     if (items.empty())
     {
         return;
     }
 
-    m_waitingForResize=true;
-
-    auto oldSize=m_llist->size();
-
     auto& idx=m_items.template get<1>();
     auto& order=m_items.template get<0>();
 
-    size_t insertedSize=0;
     std::vector<QWidget*> widgets;
     QPointer<QWidget> afterWidget;
     for (size_t i=0;i<items.size();i++)
@@ -613,7 +600,7 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
         {
             Q_ASSERT(idx.replace(result.first,item));
         }
-        insertedSize+=configureWidget(&(*result.first));
+        configureWidget(&(*result.first));
 
         if (i==0)
         {
@@ -626,54 +613,23 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
         widgets.push_back(item.widget());
     }
 
-    qDebug() << "Add "<<items.size()<< " " << afterWidget;
-
     m_llist->insertWidgetsAfter(widgets,afterWidget);
-
-    if (!m_enableFlyweight)
-    {
-        return;
-    }
-
-    processPositions();
-    auto removedSize=removeExtraHiddenItems();
-
-    m_resizeTimer.shot(1,
-        [this,removedSize,insertedSize,oldSize]()
-        {
-            auto newSize=m_llist->size();
-            auto sbar=bar();
-            int offset=0;
-            if (m_scrolled==Direction::END)
-            {
-                offset=removedSize;
-            }
-            else if (m_scrolled==Direction::HOME)
-            {
-                offset=-insertedSize;
-            }
-            int newValue=sbar->value()-offset;
-
-            qDebug() << "removed size "<<removedSize<<" inserted size "<<insertedSize<< " offset "<<offset
-                     << "old position "<<sbar->value() << "new position "<<newValue
-                     << "old size "<<oldSize << " new size "<<newSize;
-
-            if (offset!=0)
-            {
-                sbar->setValue(newValue);
-            }
-
-            m_waitingForResize=false;
-        }
-    );
-#endif
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeAllItems()
+void FlyweightListView_p<ItemT>::updateListSize()
 {
-#if 0
+    QSize listSize;
+    setOProp(listSize,OProp::size,oprop(m_view,OProp::size,true),true);
+    setOProp(listSize,OProp::size,oprop(m_llist->sizeHint(),OProp::size));
+    m_llist->resize(listSize);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::clear()
+{
     beginUpdate();
 
     const auto& order=m_items.template get<0>();
@@ -689,58 +645,122 @@ void FlyweightListView_p<ItemT>::removeAllItems()
 
     m_items.clear();
 
-    m_lastBeginWidget.clear();
-    m_lastEndWidget.clear();
-    m_scrollValue=0;
-    m_scrolled=Direction::NONE;
-    m_requestPending=false;
-    m_hiddenAfter=0;
-    m_hiddenBefore=0;
-    m_visibleCount=0;
-
     endUpdate();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::scroll(int delta)
+{
+    auto cb=[delta](int minPos, int maxPos, int oldPos)
+    {
+        return qBound(minPos,oldPos-delta,maxPos);
+    };
+
+    scrollTo(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
+{
+    auto numPixels = event->pixelDelta();
+    auto angleDelta = event->angleDelta();
+
+#ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
+   if (!numPixels.isNull())
+   {
+       scroll(-oprop(numPixels,OProp::pos));
+   }
+   else if (!angleDelta.isNull())
 #endif
+   {
+       auto deltaPos=qreal(oprop(angleDelta,OProp::pos));
+       auto scrollLines=QApplication::wheelScrollLines();
+       auto numStepsU = m_singleStep * scrollLines * deltaPos / 120;
+
+       if (qAbs(m_wheelOffsetAccumulated)>std::numeric_limits<decltype(m_wheelOffsetAccumulated)>::epsilon()
+           &&
+           (numStepsU/m_wheelOffsetAccumulated)<0
+           )
+       {
+           m_wheelOffsetAccumulated=0.0f;
+       }
+
+       m_wheelOffsetAccumulated+=numStepsU;
+       auto numSteps=static_cast<int>(m_wheelOffsetAccumulated);
+       m_wheelOffsetAccumulated-=numSteps;
+
+       scroll(-numSteps);
+   }
+
+   event->accept();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int)> &cb)
+{
+    auto viewportSize=oprop(m_view,OProp::size);
+    auto listSize=oprop(m_llist,OProp::size);
+
+    int minPos=0;
+    int maxPos=0;
+    if (listSize>viewportSize)
+    {
+        minPos=viewportSize-listSize;
+    }
+
+    auto pos=m_llist->pos();
+    auto posCoordinate=oprop(pos,OProp::pos);
+    auto newCoordinate=cb(minPos,maxPos,posCoordinate);
+
+    if (newCoordinate!=posCoordinate)
+    {
+        setOProp(pos,OProp::pos,newCoordinate);
+        m_llist->move(pos);
+        viewportUpdated();
+    }
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::scrollToEdge(Direction offsetDirection, bool wasAtEdge)
 {
-#if 0
     if (!wasAtEdge && (offsetDirection==Direction::STAY_AT_END_EDGE || offsetDirection==Direction::STAY_AT_HOME_EDGE))
     {
         return;
     }
 
-    m_scrollToItemTimer.shot(
-        10,
-        [this,offsetDirection]
+    auto cb=[offsetDirection](int minPos, int maxPos, int oldPos)
+    {
+        std::ignore=oldPos;
+        switch (offsetDirection)
         {
-            switch (offsetDirection)
-            {
-                case Direction::END:
-                case Direction::STAY_AT_END_EDGE:
-                    bar()->triggerAction(QScrollBar::SliderToMaximum);
-                    break;
+            case Direction::END:
+            case Direction::STAY_AT_END_EDGE:
+                return maxPos;
+                break;
 
-                case Direction::HOME:
-                case Direction::STAY_AT_HOME_EDGE:
-                    bar()->triggerAction(QScrollBar::SliderToMinimum);
-                    break;
+            case Direction::HOME:
+            case Direction::STAY_AT_HOME_EDGE:
+                return minPos;
+                break;
 
-                default:
-                    break;
-            }
+            default:
+                break;
         }
-    );
-#endif
+
+        return 0;
+    };
+
+    scrollTo(cb);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
-#if 0
     auto& idx=m_items.template get<1>();
     auto it=idx.find(id);
     if (it==idx.end())
@@ -748,27 +768,33 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
         return false;
     }
 
-    m_scrollToItemTimer.shot(10,
-        [this,offset,widget{QPointer<QWidget>(it->widget())}]()
+    auto cb=[offset,&it,this](int minPos, int maxPos, int oldPos)
+    {
+        auto widget=it->widget();
+        if (widget && widget->parent()==m_llist)
         {
-            if (widget && widget->parent()==m_llist)
-            {
-                auto offs=offset;
-                auto pos=widget->pos();
-                if (isHorizontal())
-                {
-                    offs+=pos.x();
-                }
-                else
-                {
-                    offs+=pos.y();
-                }
+            auto widgetBegin=oprop(widget,OProp::pos);
+            auto widgetEnd=oprop(widget,OProp::edge);
+            auto diff=widgetEnd-widgetBegin;
 
-                bar()->setValue(offs);
+            auto newPos=widgetBegin+offset;
+            auto newEnd=widgetEnd+offset;
+            if (newEnd>maxPos)
+            {
+                newPos=maxPos-diff;
             }
-        }
-    );
-#endif
+            else if (newPos<minPos)
+            {
+                newPos=minPos;
+            }
+
+            return newPos;
+        };
+
+        return oldPos;
+    };
+
+    scrollTo(cb);
     return true;
 }
 
@@ -826,157 +852,7 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
     return item;
 }
 
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
-{
-    auto numPixels = event->pixelDelta();
-    auto angleDelta = event->angleDelta();
-
-#ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
-   if (!numPixels.isNull())
-   {
-       scroll(-oprop(numPixels,OProp::pos));
-   }
-   else if (!angleDelta.isNull())
-#endif
-   {
-       auto deltaPos=qreal(oprop(angleDelta,OProp::pos));
-       auto scrollLines=QApplication::wheelScrollLines();
-       auto numStepsU = m_singleStep * scrollLines * deltaPos / 120;
-
-       if (qAbs(m_wheelOffsetAccumulated)>std::numeric_limits<decltype(m_wheelOffsetAccumulated)>::epsilon()
-           &&
-           (numStepsU/m_wheelOffsetAccumulated)<0
-           )
-       {
-           m_wheelOffsetAccumulated=0.0f;
-       }
-
-       m_wheelOffsetAccumulated+=numStepsU;
-       auto numSteps=static_cast<int>(m_wheelOffsetAccumulated);
-       m_wheelOffsetAccumulated-=numSteps;
-
-       scroll(-numSteps);
-   }
-
-   event->accept();
-}
-
 #if 0
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::processPositions()
-{
-#if 0
-    // find begin widget in viewport
-    QPoint beginPos = QPoint(0,0) - m_scArea->widget()->pos();
-    if (isHorizontal())
-    {
-        beginPos.setY(0);
-    }
-    else
-    {
-        beginPos.setX(0);
-    }
-    m_lastBeginWidget=m_scArea->widget()->childAt(beginPos);
-    if (m_lastBeginWidget)
-    {
-        m_lastBeginWidget->setProperty(LastWidgetPosProperty,m_lastBeginWidget->pos());
-    }
-
-    // find end widget in viewport
-    QSize viewportSize = m_scArea->viewport()->size();
-    QPoint endPos(beginPos);
-    if (isHorizontal())
-    {
-        endPos.setX(endPos.x()+viewportSize.width());
-        endPos.setY(0);
-    }
-    else
-    {
-        endPos.setX(0);
-        endPos.setY(endPos.y()+viewportSize.height());
-    }
-    m_lastEndWidget=m_scArea->widget()->childAt(endPos);
-
-    // calculate numbers of hidden items out of the viewport
-    m_visibleCount=0;
-    size_t beginSeqPos=0;
-    size_t endSeqPos=0;
-    if (m_lastBeginWidget)
-    {
-        beginSeqPos=m_llist->widgetSeqPos(m_lastBeginWidget);
-
-        m_visibleCount=count()-beginSeqPos;
-    }
-    if (m_lastEndWidget)
-    {
-        endSeqPos=m_llist->widgetSeqPos(m_lastEndWidget);
-
-        m_visibleCount=endSeqPos-beginSeqPos;
-    }
-    m_hiddenBefore=beginSeqPos;
-    m_hiddenAfter=(m_lastEndWidget==nullptr)?0:(m_items.template get<1>().size()-endSeqPos);
-
-    qDebug() << "count ="<<count()
-             << "prefetchItemCount ="<<prefetchItemCount()
-             << "visibleCount ="<<visibleCount()
-             << "maxHiddenItemsBeyondEdge ="<<maxHiddenItemsBeyondEdge()
-             << "prefetchThreshold ="<<prefetchThreshold()
-             << "hiddenBefore ="<<m_hiddenBefore
-             << "hiddenAfter ="<<m_hiddenAfter
-    ;
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onViewportUpdated()
-{
-#if 0
-    // process begin/end positions
-    processPositions();
-
-    // notify application that viewport is updated
-    if (m_viewportChangedCb)
-    {
-        auto itemAtBegin=PointerHolder::getProperty<ItemT*>(m_lastBeginWidget,ItemT::Property);
-        auto itemAtEnd=PointerHolder::getProperty<ItemT*>(m_lastEndWidget,ItemT::Property);
-        m_viewportChangedCb(itemAtBegin,itemAtEnd);
-    }
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertItem(const ItemT& item)
-{
-#if 0
-    auto& idx=m_items.template get<1>();
-    auto& order=m_items.template get<0>();
-
-    auto widget=item.widget();
-    auto result=idx.insert(item);
-    if (!result.second)
-    {
-        Q_ASSERT(idx.replace(result.first,item));
-    }
-    configureWidget(&(*result.first));
-
-    QWidget* afterWidget=nullptr;
-    auto it=m_items.template project<0>(result.first);
-    if (it!=order.begin())
-    {
-        afterWidget=(--it)->widget();
-    }
-
-    m_llist->insertWidgetAfter(widget,afterWidget);
-
-    handleUpdate();
-#endif
-}
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
@@ -1018,151 +894,6 @@ size_t FlyweightListView_p<ItemT>::removeExtraHiddenItems()
     }
 #endif
     return removedSize;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::setFlyweightEnabled(bool enable) noexcept
-{
-    m_enableFlyweight=enable;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::isFlyweightEnabled() const noexcept
-{
-    return m_enableFlyweight;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>& items)
-{
-#if 0
-    if (items.empty())
-    {
-        return;
-    }
-
-    m_waitingForResize=true;
-
-    auto oldSize=m_llist->size();
-
-    auto& idx=m_items.template get<1>();
-    auto& order=m_items.template get<0>();
-
-    size_t insertedSize=0;
-    std::vector<QWidget*> widgets;
-    QPointer<QWidget> afterWidget;
-    for (size_t i=0;i<items.size();i++)
-    {
-        const auto& item=items[i];
-        auto result=idx.insert(item);
-        if (!result.second)
-        {
-            Q_ASSERT(idx.replace(result.first,item));
-        }
-        insertedSize+=configureWidget(&(*result.first));
-
-        if (i==0)
-        {
-            auto it=m_items.template project<0>(result.first);
-            if (it!=order.begin())
-            {
-                afterWidget=(--it)->widget();
-            }
-        }
-        widgets.push_back(item.widget());
-    }
-
-    qDebug() << "Add "<<items.size()<< " " << afterWidget;
-
-    m_llist->insertWidgetsAfter(widgets,afterWidget);
-
-    if (!m_enableFlyweight)
-    {
-        return;
-    }
-
-    processPositions();
-    auto removedSize=removeExtraHiddenItems();
-
-    m_resizeTimer.shot(1,
-        [this,removedSize,insertedSize,oldSize]()
-        {
-            auto newSize=m_llist->size();
-            auto sbar=bar();
-            int offset=0;
-            if (m_scrolled==Direction::END)
-            {
-                offset=removedSize;
-            }
-            else if (m_scrolled==Direction::HOME)
-            {
-                offset=-insertedSize;
-            }
-            int newValue=sbar->value()-offset;
-
-            qDebug() << "removed size "<<removedSize<<" inserted size "<<insertedSize<< " offset "<<offset
-                     << "old position "<<sbar->value() << "new position "<<newValue
-                     << "old size "<<oldSize << " new size "<<newSize;
-
-            if (offset!=0)
-            {
-                sbar->setValue(newValue);
-            }
-
-            m_waitingForResize=false;
-        }
-    );
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeAllItems()
-{
-#if 0
-    beginUpdate();
-
-    const auto& order=m_items.template get<0>();
-
-    for (auto&& it : order)
-    {
-        PointerHolder::clearProperty(it.widget(),ItemT::Property);
-    }
-
-    m_llist->blockSignals(true);
-    m_llist->clear(ItemT::dropWidgetHandler());
-    m_llist->blockSignals(false);
-
-    m_items.clear();
-
-    m_lastBeginWidget.clear();
-    m_lastEndWidget.clear();
-    m_scrollValue=0;
-    m_scrolled=Direction::NONE;
-    m_requestPending=false;
-    m_hiddenAfter=0;
-    m_hiddenBefore=0;
-    m_visibleCount=0;
-
-    endUpdate();
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onScrolled(int value)
-{
-#if 0
-    if (!m_updating && !m_waitingForResize)
-    {
-        m_scrolled=(value>m_scrollValue)?Direction::END:Direction::HOME;
-        handleUpdate();
-    }
-    m_scrollValue=value;
-#endif
 }
 
 //--------------------------------------------------------------------------

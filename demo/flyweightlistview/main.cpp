@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
                 {
                     newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
                 }
-                v->loadItems(newItems,Direction::HOME);
+                v->loadItems(newItems);
             }
             else
             {
@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
                 {
                     newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
                 }
-                v->insertContinuousItems(newItems,Direction::HOME);
+                v->insertContinuousItems(newItems);
             }
 
         };
@@ -462,7 +462,7 @@ int main(int argc, char *argv[])
                 {
                     newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
                 }
-                v->loadItems(newItems,Direction::END);
+                v->loadItems(newItems);
             }
             else
             {
@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
                 {
                     newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
                 }
-                v->insertContinuousItems(newItems,Direction::END);
+                v->insertContinuousItems(newItems);
             }
         };
 
@@ -496,6 +496,8 @@ int main(int argc, char *argv[])
 //        w1->show();
 
         v->setFocus();
+        v->resize(500,400);
+
         w.show();
         app.exec();
     }

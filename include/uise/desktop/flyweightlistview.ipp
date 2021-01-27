@@ -122,7 +122,7 @@ void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
 template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
-    pimpl->removeAllItems();
+    pimpl->clear();
 }
 
 //--------------------------------------------------------------------------
@@ -154,58 +154,36 @@ Qt::Orientation FlyweightListView<ItemT>::orientation() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items, Direction scrollTo)
+void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items)
 {
     clear();
-    insertContinuousItems(items,scrollTo);
+    insertContinuousItems(items);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items, Direction scrollTo)
+void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items)
 {
-    auto wasAtEdge=isScrollAtEdge(scrollTo);
     beginUpdate();
     for (auto&& item:items)
     {
         pimpl->insertItem(item);
     }
     endUpdate();
-    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items, Direction scrollTo)
+void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items)
 {
-    if (items.empty())
-    {
-        return;
-    }
-
-    auto wasAtEdge=isScrollAtEdge(scrollTo);
-    beginUpdate();
     pimpl->insertContinuousItems(items);
-    endUpdate();
-    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::insertItem(const ItemT& item, Direction scrollTo)
+void FlyweightListView<ItemT>::insertItem(ItemT item)
 {
-    auto wasAtEdge=isScrollAtEdge(scrollTo);
-    pimpl->insertItem(ItemT(item));
-    pimpl->scrollToEdge(scrollTo,wasAtEdge);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::insertItem(ItemT&& item, Direction scrollTo)
-{
-    auto wasAtEdge=isScrollAtEdge(scrollTo);
     pimpl->insertItem(std::move(item));
-    pimpl->scrollToEdge(scrollTo,wasAtEdge);
 }
 
 //--------------------------------------------------------------------------
