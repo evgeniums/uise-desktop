@@ -25,6 +25,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <algorithm>
 
+#include <QApplication>
 #include <QResizeEvent>
 #include <QStyle>
 
@@ -211,7 +212,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_lastViewportSortValue(ItemT::defaultSortValue()),
         m_singleStep(1),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
-        m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep)
+        m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
+        m_wheelOffsetAccumulated(0.0f)
 {
 }
 
@@ -552,8 +554,6 @@ void FlyweightListView_p<ItemT>::scroll(int delta)
     auto posCoordinate=oprop(pos,OProp::pos);
     auto newCoordinate=qBound(minPos,posCoordinate-delta,maxPos);
 
-    qDebug() << "Old coordinate "<<posCoordinate<<" new coordinate "<<newCoordinate;
-
     if (newCoordinate!=posCoordinate)
     {
         setOProp(pos,OProp::pos,newCoordinate);
@@ -830,9 +830,37 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
 {
-    //! @todo Implement wheelEvent()
+    auto numPixels = event->pixelDelta();
+    auto angleDelta = event->angleDelta();
 
-    qDebug() << "Wheel event " << event;
+#ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
+   if (!numPixels.isNull())
+   {
+       scroll(-oprop(numPixels,OProp::pos));
+   }
+   else if (!angleDelta.isNull())
+#endif
+   {
+       auto deltaPos=qreal(oprop(angleDelta,OProp::pos));
+       auto scrollLines=QApplication::wheelScrollLines();
+       auto numStepsU = m_singleStep * scrollLines * deltaPos / 120;
+
+       if (qAbs(m_wheelOffsetAccumulated)>std::numeric_limits<decltype(m_wheelOffsetAccumulated)>::epsilon()
+           &&
+           (numStepsU/m_wheelOffsetAccumulated)<0
+           )
+       {
+           m_wheelOffsetAccumulated=0.0f;
+       }
+
+       m_wheelOffsetAccumulated+=numStepsU;
+       auto numSteps=static_cast<int>(m_wheelOffsetAccumulated);
+       m_wheelOffsetAccumulated-=numSteps;
+
+       scroll(-numSteps);
+   }
+
+   event->accept();
 }
 
 #if 0

@@ -239,6 +239,8 @@ class FlyweightListView_p
         size_t m_singleStep;
         size_t m_pageStep;
         size_t m_minPageStep;
+
+        float m_wheelOffsetAccumulated;
 };
 
 } // namespace detail
