@@ -215,6 +215,9 @@ class FlyweightListView_p
 
         void updateListSize();
 
+        void clearWidget(QWidget* widget);
+        void removeItem(ItemT* item);
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container

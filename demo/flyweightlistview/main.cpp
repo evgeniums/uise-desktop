@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 //        v->setOrientation(Qt::Horizontal);
 
         std::vector<HelloWorldItemWrapper> newItems;
-        for (size_t i=0;i<v->prefetchItemCount();i++)
+        for (size_t i=0;i<3/*v->prefetchItemCount()*/;i++)
         {
             newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
         }

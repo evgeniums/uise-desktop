@@ -203,7 +203,7 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_prefetchItemCount(prefetchItemCountHint),
         m_llist(nullptr),
         m_enableFlyweight(true),
-        m_stick(Direction::HOME),
+        m_stick(Direction::END),
         m_listSize(QSize(0,0)),
         m_firstViewportItemID(ItemT::defaultId()),
         m_firstViewportSortValue(ItemT::defaultSortValue()),
@@ -451,8 +451,6 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     QPoint movePos=m_llist->pos();
 
     // check if list must be moved
-    bool moveBegin=!isAtBegin();
-
     auto oldViewSize=oprop(m_viewSize,OProp::size);
     auto viewSize=oprop(m_view,OProp::size);
     auto edge=endItemEdge();
@@ -462,22 +460,20 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
             ||
             (edge<(viewSize-1)) && (viewSize>oldViewSize)
     ;
+    bool moveBegin=(edge<(viewSize-1)) && (viewSize>oldViewSize);
 
     // if size of viewport changed then list will try to fit the viewport as much as possible
     if (m_stick==Direction::HOME && moveBegin || m_stick==Direction::END && moveEnd)
     {
-        auto oldListSize=oprop(m_llist,OProp::size);
         auto delta=viewSize-oldViewSize;
         auto newPos=oprop(m_llist,OProp::pos)+delta;
-        if ((newPos+oprop(m_llist,OProp::size))<0)
+        auto listSize=oprop(m_llist,OProp::size);
+        if ((newPos+listSize)<0)
         {
             newPos=0;
             if (m_stick==Direction::END)
             {
-                if (oldListSize>viewSize)
-                {
-                    newPos=viewSize-oldViewSize;
-                }
+                newPos=viewSize-listSize;
             }
         }
         if (newPos>0)
@@ -852,6 +848,31 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
     return item;
 }
 
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::clearWidget(QWidget* widget)
+{
+    if (!widget)
+    {
+        return;
+    }
+
+    PointerHolder::clearProperty(widget,ItemT::Property);
+    m_llist->takeWidget(widget);
+    widget->removeEventFilter(&m_qobjectHelper);
+    ItemT::dropWidget(widget);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
+{
+    clearWidget(item->widget());
+
+    auto& idx=m_items.template get<1>();
+    idx.erase(item->id());
+}
+
 #if 0
 
 //--------------------------------------------------------------------------
@@ -971,25 +992,6 @@ void FlyweightListView_p<ItemT>::checkNeedsMoreItems()
         checkNeedsItemsAfter();
     }
 #endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::clearWidget(QWidget* widget)
-{
-    PointerHolder::clearProperty(widget,ItemT::Property);
-    m_llist->takeWidget(widget);
-    ItemT::dropWidget(widget);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
-{
-    clearWidget(item->widget());
-
-    auto& idx=m_items.template get<1>();
-    idx.erase(item->id());
 }
 
 //--------------------------------------------------------------------------
