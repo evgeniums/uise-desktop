@@ -213,10 +213,12 @@ class FlyweightListView_p
 
         void scrollTo(const std::function<int (int, int, int)>& cb);
 
-        void updateListSize();
+        void resizeList();
 
         void clearWidget(QWidget* widget);
         void removeItem(ItemT* item);
+
+        void setOrientation(Qt::Orientation orientation);
 
     public:
 
@@ -263,6 +265,8 @@ class FlyweightListView_p
         typename ItemT::SortValueType m_firstViewportSortValue;
         typename ItemT::IdType m_lastViewportItemID;
         typename ItemT::SortValueType m_lastViewportSortValue;
+        bool m_atBegin;
+        bool m_atEnd;
 
         size_t m_singleStep;
         size_t m_pageStep;

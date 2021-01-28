@@ -253,19 +253,16 @@ void LinkedListView::setOrientation(Qt::Orientation orientation)
 {
     if (orientation!=pimpl->orientation)
     {
+        clear();
+
         blockSignals(true);
         pimpl->blockUpdate=true;
-
-        //! @todo temporary take widgets from layout
 
         pimpl->orientation=orientation;
         pimpl->setupLayout();
 
-        //! @todo add widgets back to new layout
-
         blockSignals(false);
         pimpl->blockUpdate=false;
-        emit resized();
     }
 }
 

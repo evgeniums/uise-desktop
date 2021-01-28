@@ -28,6 +28,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QTextBrowser>
 #include <QSpinBox>
 #include <QComboBox>
+#include <QToolButton>
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
@@ -181,6 +182,23 @@ int main(int argc, char *argv[])
         auto reloadButton=new QPushButton("Reload",mainFrame);
         layout->addWidget(reloadButton,++row,3);
 
+        auto orientationButton=new QPushButton("Vertical",mainFrame);
+        layout->addWidget(orientationButton,++row,3);
+        orientationButton->setCheckable(true);
+
+        auto stickMode=new QComboBox(mainFrame);
+        layout->addWidget(stickMode,++row,3);
+        stickMode->addItem("Stick end",static_cast<int>(Direction::END));
+        stickMode->addItem("Stick home",static_cast<int>(Direction::HOME));
+        stickMode->addItem("Stick none",static_cast<int>(Direction::NONE));
+        QObject::connect(stickMode,&QComboBox::currentIndexChanged,
+            [&v,&stickMode](int index)
+            {
+                auto val=static_cast<Direction>(stickMode->itemData(index).toInt());
+                v->setStickMode(val);
+            }
+        );
+
         QObject::connect(clearButton,&QPushButton::clicked,
                          [&v](){v->clear();});
 
@@ -203,6 +221,21 @@ int main(int argc, char *argv[])
          [&v,&items,&loadItems]()
          {
             loadItems();
+         }
+        );
+
+        QObject::connect(orientationButton,&QPushButton::toggled,
+         [&v,&orientationButton](bool enable)
+         {
+            v->setOrientation(enable?Qt::Horizontal:Qt::Vertical);
+            if (enable)
+            {
+                orientationButton->setText("Horizontal");
+            }
+            else
+            {
+                orientationButton->setText("Vertical");
+            }
          }
         );
 
@@ -390,6 +423,7 @@ int main(int argc, char *argv[])
         v->setRequestEndCb(jumpEnd);
 
         v->setFocus();
+
         w.resize(600,300);
 
         loadItems();

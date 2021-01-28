@@ -129,12 +129,9 @@ void FlyweightListView<ItemT>::clear()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation) noexcept
+void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation)
 {
-    pimpl->m_llist->setOrientation(orientation);    
-    pimpl->updatePageStep();
-
-    //! @todo Maybe forbid changing orintation when list is not empty?
+    pimpl->setOrientation(orientation);
 }
 
 //--------------------------------------------------------------------------
@@ -251,7 +248,7 @@ bool FlyweightListView<ItemT>::isFlyweightEnabled() const noexcept
 template <typename ItemT>
 void FlyweightListView<ItemT>::setStickMode(Direction mode) noexcept
 {
-    return pimpl->m_stick=mode;
+    pimpl->m_stick=mode;
 }
 
 //--------------------------------------------------------------------------

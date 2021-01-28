@@ -44,6 +44,8 @@ class Layout
         template <typename LayoutT, typename WidgetT>
         static LayoutT* create(WidgetT* widget, bool reset=true)
         {
+            delete widget->layout();
+
             auto layout=new LayoutT(widget);
             if (reset)
             {

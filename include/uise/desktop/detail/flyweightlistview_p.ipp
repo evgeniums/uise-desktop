@@ -213,7 +213,9 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_wheelOffsetAccumulated(0.0f),
-        m_ignoreUpdates(false)
+        m_ignoreUpdates(false),
+        m_atBegin(true),
+        m_atEnd(true)
 {
 }
 
@@ -223,13 +225,14 @@ void FlyweightListView_p<ItemT>::setupUi()
 {
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_view->setFocusPolicy(Qt::StrongFocus);
+    m_view->resize(0,0);
 
     m_llist=new LinkedListView(m_view);
     m_llist->setObjectName("FlyweightListViewLList");
     m_llist->setFocusProxy(m_view);
 
     updatePageStep();
-    updateListSize();
+    resizeList();
 
     m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
     m_qobjectHelper.setListResizedHandler([this](){onListResize();});
@@ -250,13 +253,24 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::beginUpdate()
 {
     m_ignoreUpdates=true;
+    keepCurrentConfiguration();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::endUpdate()
 {
-    updateListSize();
+    resizeList();
+
+    if (m_stick==Direction::END)
+    {
+        scrollToEdge(m_stick,m_atEnd);
+    }
+    else if (m_stick==Direction::HOME)
+    {
+        scrollToEdge(m_stick,m_atBegin);
+    }
+
     m_ignoreUpdates=false;
     viewportUpdated();
 }
@@ -371,10 +385,11 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
     {
         auto& idx=m_items.template get<1>();
         idx.erase(item->id());
-    }
-    if (!m_ignoreUpdates)
-    {
-        endUpdate();
+
+        if (!m_ignoreUpdates)
+        {
+            endUpdate();
+        }
     }
 }
 
@@ -450,6 +465,10 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 {
     keepCurrentConfiguration();
     m_viewSize=event->oldSize();
+    if (!m_viewSize.isValid())
+    {
+        m_viewSize=QSize(0,0);
+    }
 
     bool moveList=false;
     QPoint movePos=m_llist->pos();
@@ -507,6 +526,17 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     {
         viewportUpdated();
     }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::setOrientation(Qt::Orientation orientation)
+{
+    beginUpdate();
+    clear();
+    m_llist->setOrientation(orientation);
+    updatePageStep();
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -618,7 +648,7 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::updateListSize()
+void FlyweightListView_p<ItemT>::resizeList()
 {
     QSize listSize;
     setOProp(listSize,OProp::size,oprop(m_view,OProp::size,true),true);
@@ -654,6 +684,8 @@ void FlyweightListView_p<ItemT>::clear()
     m_lastViewportItemID=ItemT::defaultId();
     m_lastViewportSortValue=ItemT::defaultSortValue();
     m_wheelOffsetAccumulated=0.0f;
+    m_atBegin=true;
+    m_atEnd=true;
 }
 
 //--------------------------------------------------------------------------
@@ -747,12 +779,12 @@ void FlyweightListView_p<ItemT>::scrollToEdge(Direction offsetDirection, bool wa
         {
             case Direction::END:
             case Direction::STAY_AT_END_EDGE:
-                return maxPos;
+                return minPos; // because pos is negative
                 break;
 
             case Direction::HOME:
             case Direction::STAY_AT_HOME_EDGE:
-                return minPos;
+                return maxPos; // because pos is negative
                 break;
 
             default:
@@ -831,6 +863,9 @@ void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
     keep(item,m_firstViewportItemID,m_firstViewportSortValue);
     item=lastViewportItem();
     keep(item,m_lastViewportItemID,m_lastViewportSortValue);
+
+    m_atBegin=isAtBegin();
+    m_atEnd=isAtEnd();
 }
 
 //--------------------------------------------------------------------------

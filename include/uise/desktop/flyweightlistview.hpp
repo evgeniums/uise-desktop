@@ -104,7 +104,7 @@ class FlyweightListView : public QFrame
         bool hasItem(const typename ItemT::IdType& id) const noexcept;
 
         Qt::Orientation orientation() const noexcept;
-        void setOrientation(Qt::Orientation orientation) noexcept;
+        void setOrientation(Qt::Orientation orientation);
 
         const ItemT* firstItem() const noexcept;
         const ItemT* lastItem() const noexcept;
