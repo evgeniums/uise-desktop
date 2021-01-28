@@ -39,7 +39,8 @@ inline void destroyWidget(QWidget* widget)
 {
     if (widget)
     {
-        widget->hide();
+        widget->setVisible(false);
+        widget->setParent(nullptr);
         widget->deleteLater();
     }
 }

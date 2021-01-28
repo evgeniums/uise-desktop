@@ -83,6 +83,8 @@ class LinkedListView_p
             if (item)
             {
                 LinkedListViewItem::clearWidgetProperty(item->widget());
+                item->widget()->setVisible(false);
+                item->widget()->setParent(nullptr);
                 if (!blockUpdate)
                 {
                     if (head.lock().get()==item.get())
@@ -155,6 +157,7 @@ class LinkedListView_p
                 newItem->setPrevAuto(lastItem);
 
                 layout->insertWidget(pos,newWidget,0,Qt::AlignLeft|Qt::AlignTop);
+                newWidget->setVisible(true);
                 newItem->setPos(pos++);
 
                 if (!firstItem)

@@ -116,95 +116,6 @@ int main(int argc, char *argv[])
 
         auto v=new FlyweightListView<HelloWorldItemWrapper>();
 
-#if 0
-        using ItemT=HelloWorldItemWrapper;
-        auto beginEndChanged=[](const ItemT* begin,const ItemT* end)
-        {
-            if (begin && begin->item())
-            {
-                qDebug() << "Begin ID=" << begin->id();
-            }
-
-            if (end && end->item())
-            {
-                qDebug() << "End ID="<<end->id();
-            }
-        };
-        v->setViewportChangedCb(beginEndChanged);
-
-        auto item2=HelloWorldItemWrapper(new HelloWorldItem(102));
-        v->insertItem(std::move(item2));
-        auto item1=HelloWorldItemWrapper(new HelloWorldItem(101));
-        v->insertItem(std::move(item1));
-
-        for (size_t i=150;i<170;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            v->insertItem(std::move(item));
-        }
-        for (size_t i=103;i<130;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            v->insertItem(std::move(item));
-        }
-
-        for (size_t i=170;i<200;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            v->insertItem(std::move(item));
-        }
-
-        std::vector<HelloWorldItemWrapper> items;
-        for (size_t i=130;i<150;i++)
-        {
-            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-            items.push_back(std::move(item));
-        }
-        v->insertContinuousItems(items);
-
-//        items[0].item()->setSeqNum(80);
-//        v->insertItem(items[0]);
-
-//        size_t start=200;
-//        for (size_t i=start;i<start+100;i++)
-//        {
-//            auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-//            v->insertItem(std::move(item));
-//        }
-
-//        qDebug() << "Has item start=" << v->hasItem(100000)<<", has some item="<<v->hasItem(0x123456);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+1) << v->scrollToItem(HelloWorldItemId+1);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+10) << v->scrollToItem(HelloWorldItemId+10);
-//        qDebug() << "Scrolled to item " << (HelloWorldItemId+3) << v->scrollToItem(HelloWorldItemId+3);
-
-//        items[10].widget()->deleteLater();
-
-
-        QFrame* mainFrame=new QFrame();
-        auto layout=Layout::vertical(mainFrame);
-        layout->addWidget(v);
-
-        size_t currentPos=0;
-
-        auto addButton=new QPushButton("Add items",mainFrame);
-        layout->addWidget(addButton);
-        QObject::connect(addButton,&QPushButton::clicked,
-            [&v,&currentPos]()
-            {
-                for (size_t i=currentPos;i<currentPos+10;i++)
-                {
-                    auto item=HelloWorldItemWrapper(new HelloWorldItem(i));
-                    v->insertItem(std::move(item));
-                }
-                currentPos+=10;
-                qDebug() << "Inserted 10 elements";
-            }
-        );
-
-        w.setCentralWidget(mainFrame);
-
-#else
-
         size_t count=100000;
 
         QFrame* mainFrame=new QFrame();
@@ -278,16 +189,22 @@ int main(int argc, char *argv[])
         {
             items[i]=--HelloWorldItemId;
         }
-
-        QObject::connect(reloadButton,&QPushButton::clicked,
-         [&v,&items](){
+        auto loadItems=[&v,&items]()
+        {
             std::vector<HelloWorldItemWrapper> newItems;
-            for (size_t i=0;i<v->prefetchItemCount()*10;i++)
+            for (size_t i=0;i<3;i++)
             {
                 newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
             }
             v->loadItems(newItems);
-        });
+        };
+
+        QObject::connect(reloadButton,&QPushButton::clicked,
+         [&v,&items,&loadItems]()
+         {
+            loadItems();
+         }
+        );
 
         auto requestBefore=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount)
         {
@@ -369,16 +286,7 @@ int main(int argc, char *argv[])
 
         v->setRequestItemsBeforeCb(requestBefore);
         v->setRequestItemsAfterCb(requestAfter);
-
         v->setFlyweightEnabled(false);
-//        v->setOrientation(Qt::Horizontal);
-
-        std::vector<HelloWorldItemWrapper> newItems;
-        for (size_t i=0;i<3/*v->prefetchItemCount()*/;i++)
-        {
-            newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
-        }
-        v->loadItems(newItems);
 
         w.setCentralWidget(mainFrame);
 
@@ -481,22 +389,10 @@ int main(int argc, char *argv[])
         v->setRequestHomeCb(jumpHome);
         v->setRequestEndCb(jumpEnd);
 
-#endif
-//        auto w1=new QMainWindow();
-
-//        auto f1=new QFrame(w1);
-//        w1->setCentralWidget(f1);
-
-//        auto te1=new QTextEdit(f1);
-
-//        te1->setFixedSize(1024,1024);
-//        te1->move(0,-800);
-
-//        te1->show();
-//        w1->show();
-
         v->setFocus();
-        v->resize(500,400);
+        w.resize(600,300);
+
+        loadItems();
 
         w.show();
         app.exec();

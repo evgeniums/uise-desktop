@@ -372,6 +372,10 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
         auto& idx=m_items.template get<1>();
         idx.erase(item->id());
     }
+    if (!m_ignoreUpdates)
+    {
+        endUpdate();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -626,8 +630,6 @@ void FlyweightListView_p<ItemT>::updateListSize()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::clear()
 {
-    beginUpdate();
-
     const auto& order=m_items.template get<0>();
 
     for (auto&& it : order)
@@ -637,11 +639,21 @@ void FlyweightListView_p<ItemT>::clear()
 
     m_llist->blockSignals(true);
     m_llist->clear(ItemT::dropWidgetHandler());
+    m_llist->move(0,0);
+    QSize newListSize;
+    setOProp(newListSize,OProp::size,oprop(m_llist->sizeHint(),OProp::size));
+    setOProp(newListSize,OProp::size,oprop(m_view,OProp::size,true),true);
+    m_llist->resize(newListSize);
     m_llist->blockSignals(false);
 
     m_items.clear();
 
-    endUpdate();
+    m_listSize=m_llist->size();
+    m_firstViewportItemID=ItemT::defaultId();
+    m_firstViewportSortValue=ItemT::defaultSortValue();
+    m_lastViewportItemID=ItemT::defaultId();
+    m_lastViewportSortValue=ItemT::defaultSortValue();
+    m_wheelOffsetAccumulated=0.0f;
 }
 
 //--------------------------------------------------------------------------

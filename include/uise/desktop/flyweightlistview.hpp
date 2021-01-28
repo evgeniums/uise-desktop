@@ -99,7 +99,6 @@ class FlyweightListView : public QFrame
         bool isScrollAtEdge(Direction direction, size_t maxOffset=5) const noexcept;
 
         void clear();
-        void reload();
 
         size_t itemCount() const noexcept;
         bool hasItem(const typename ItemT::IdType& id) const noexcept;

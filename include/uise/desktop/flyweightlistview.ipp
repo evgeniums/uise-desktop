@@ -122,17 +122,9 @@ void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
 template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
+    beginUpdate();
     pimpl->clear();
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::reload()
-{
-    pimpl->m_autoLoad=true;
-    clear();
-    pimpl->checkNeedsMoreItems();
-    pimpl->m_autoLoad=false;
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -156,8 +148,10 @@ Qt::Orientation FlyweightListView<ItemT>::orientation() const noexcept
 template <typename ItemT>
 void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items)
 {
-    clear();
-    insertContinuousItems(items);
+    beginUpdate();
+    pimpl->clear();
+    pimpl->insertContinuousItems(items);
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -176,7 +170,9 @@ void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items)
 template <typename ItemT>
 void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items)
 {
+    beginUpdate();
     pimpl->insertContinuousItems(items);
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -228,44 +224,6 @@ void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
 {
     pimpl->scrollToEdge(offsetDirection,true);
 }
-
-#if 0
-    if (event->type()==QEvent::KeyPress)
-    {
-        auto e=dynamic_cast<QKeyEvent*>(event);
-        if (e)
-        {
-            qDebug() << "Key pressed "<<e;
-
-            if (e->key()==Qt::Key_PageUp)
-            {
-                pimpl->bar()->triggerAction(QScrollBar::SliderPageStepSub);
-            }
-            else if (e->key()==Qt::Key_PageDown)
-            {
-                pimpl->bar()->triggerAction(QScrollBar::SliderPageStepAdd);
-            }
-            else if (e->key()==Qt::Key_Home && (e->modifiers() & Qt::ControlModifier))
-            {
-                qDebug() << "Key Ctrl+Home pressed ";
-
-                if (pimpl->m_homeRequestCb)
-                {
-                    pimpl->m_homeRequestCb();
-                }
-            }
-            else if (e->key()==Qt::Key_End && (e->modifiers() & Qt::ControlModifier))
-            {
-                qDebug() << "Key Ctrl+End pressed ";
-
-                if (pimpl->m_endRequestCb)
-                {
-                    pimpl->m_endRequestCb();
-                }
-            }
-        }
-    }
-#endif
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
