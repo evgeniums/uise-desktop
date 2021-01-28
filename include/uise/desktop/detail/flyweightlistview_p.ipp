@@ -751,7 +751,9 @@ void FlyweightListView_p<ItemT>::scroll(int delta)
 {
     auto cb=[delta](int minPos, int maxPos, int oldPos)
     {
-        return qBound(minPos,oldPos-delta,maxPos);
+        std::ignore=minPos;
+        std::ignore=maxPos;
+        return oldPos-delta;
     };
 
     scrollTo(cb);
@@ -802,16 +804,17 @@ void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int
     auto listSize=oprop(m_llist,OProp::size);
 
     int minPos=0;
-    int maxPos=0;
     if (listSize>viewportSize)
     {
         minPos=viewportSize-listSize;
     }
+    int maxPos=0;
 
     auto pos=m_llist->pos();
     auto posCoordinate=oprop(pos,OProp::pos);
     auto newCoordinate=cb(minPos,maxPos,posCoordinate);
 
+    newCoordinate=qBound(minPos,newCoordinate,maxPos);
     if (newCoordinate!=posCoordinate)
     {
         setOProp(pos,OProp::pos,newCoordinate);
@@ -887,6 +890,7 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
             }
 
             newPos=qBound(minPos,newPos,maxPos);
+
             return newPos;
         };
 
