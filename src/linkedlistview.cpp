@@ -92,11 +92,17 @@ class LinkedListView_p
                         head=item->next();;
                     }
 
+                    auto next=item->next();
+                    auto prev=item->prev();
+                    prev->setNextAuto(next);
+
                     for (auto nextItem=item->next();nextItem;)
                     {
                         nextItem->decPos();
                         nextItem=nextItem->next();
                     }
+
+                    item->reset();
                 }
             }
         }
@@ -233,8 +239,9 @@ void LinkedListView::clear(const DropWidgetHandler &dropWidget)
     for (auto item=pimpl->head.lock(); item;)
     {
         item->clearWidgetProperty(item->widget());
+        auto next=item->next();
         dropWidget(item->widget());
-        item=item->next();
+        item=next;
     }
     pimpl->head.reset();
     blockSignals(false);
@@ -301,7 +308,7 @@ void LinkedListView::insertWidgetsBefore(const std::vector<QWidget*>& newWidgets
 void LinkedListView::itemDestroyed(QObject *widget)
 {
     // ignore children of other objects, though it must not happen at all
-    if (widget->parent()!=this)
+    if (widget->parent() && widget->parent()!=this)
     {
         return;
     }

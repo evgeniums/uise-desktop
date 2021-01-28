@@ -157,7 +157,7 @@ class FlyweightListView_p
 
         void clear();
 
-        void scrollToEdge(Direction offsetDirection, bool wasAtEdge);
+        void scrollToEdge(Direction direction);
 
         bool scrollToItem(const typename ItemT::IdType &id, size_t offset);
 
@@ -217,8 +217,11 @@ class FlyweightListView_p
 
         void clearWidget(QWidget* widget);
         void removeItem(ItemT* item);
+        void removeItem(const typename ItemT::IdType& id);
 
         void setOrientation(Qt::Orientation orientation);
+
+        void compensateSizeChange();
 
     public:
 
@@ -267,6 +270,7 @@ class FlyweightListView_p
         typename ItemT::SortValueType m_lastViewportSortValue;
         bool m_atBegin;
         bool m_atEnd;
+        int m_firstWidgetPos;
 
         size_t m_singleStep;
         size_t m_pageStep;

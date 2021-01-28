@@ -215,7 +215,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_wheelOffsetAccumulated(0.0f),
         m_ignoreUpdates(false),
         m_atBegin(true),
-        m_atEnd(true)
+        m_atEnd(true),
+        m_firstWidgetPos(0)
 {
 }
 
@@ -228,7 +229,7 @@ void FlyweightListView_p<ItemT>::setupUi()
     m_view->resize(0,0);
 
     m_llist=new LinkedListView(m_view);
-    m_llist->setObjectName("FlyweightListViewLList");
+    m_llist->setObjectName("FlyweightListViewLLits");
     m_llist->setFocusProxy(m_view);
 
     updatePageStep();
@@ -242,8 +243,16 @@ void FlyweightListView_p<ItemT>::setupUi()
     // so, use workaround with legacy signal/slot connection
     QObject::connect(m_llist,SIGNAL(resized()),&m_qobjectHelper,SLOT(onListResized()));
 
-    m_llist->setStyleSheet("QFrame {background: red; border: 4px solid green;}");
-    m_view->setStyleSheet("QFrame {background: blue;}");
+    m_view->setStyleSheet("background: blue; padding:2px;");
+    m_llist->setStyleSheet("background: red; padding:0px;");
+
+    if (m_llist->frameWidth()!=0)
+    {
+        auto err=QString("CSS border, margin and padding for LinkedListView(FlyweightListViewLLits) must be 0 (actual: %1)").arg(m_llist->frameWidth());
+        qCritical()<<err;
+
+        Q_ASSERT_X(m_llist->frameWidth()==0,"FlyweightListView",err.toStdString().data());
+    }
 
     keepCurrentConfiguration();
 }
@@ -262,13 +271,13 @@ void FlyweightListView_p<ItemT>::endUpdate()
 {
     resizeList();
 
-    if (m_stick==Direction::END)
+    if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
     {
-        scrollToEdge(m_stick,m_atEnd);
+        scrollToEdge(m_stick);
     }
-    else if (m_stick==Direction::HOME)
+    else
     {
-        scrollToEdge(m_stick,m_atBegin);
+        compensateSizeChange();
     }
 
     m_ignoreUpdates=false;
@@ -419,7 +428,7 @@ void FlyweightListView_p<ItemT>::onListUpdated()
 template <typename ItemT>
 QPoint FlyweightListView_p<ItemT>::viewportBegin() const
 {
-    return QPoint(0,0);
+    return QPoint(0,0)-m_llist->pos();
 }
 
 //--------------------------------------------------------------------------
@@ -525,6 +534,53 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     if (m_llist->size()==listSize)
     {
         viewportUpdated();
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::compensateSizeChange()
+{
+    const ItemT* oldItem=nullptr;
+
+    auto& idx=m_items.template get<1>();
+    auto& order=m_items.template get<0>();
+    if (auto it=idx.find(m_firstViewportItemID); it!=idx.end())
+    {
+        oldItem=&(*it);
+    }
+    else if (auto it=order.find(m_firstViewportSortValue); it!=order.end())
+    {
+        oldItem=&(*it);
+    }
+    else
+    {
+        for (auto it=order.begin();it!=order.end();++it)
+        {
+            if (it->sortValue()>=m_firstViewportSortValue)
+            {
+                oldItem=&(*it);
+                break;
+            }
+        }
+    }
+    if (!oldItem)
+    {
+        return;
+    }
+    auto oldWidget=oldItem->widget();
+    if (!oldWidget)
+    {
+        return;
+    }
+
+    auto oldWidgetPos=oprop(oldWidget,OProp::pos);
+    if (oldWidgetPos!=m_firstWidgetPos)
+    {
+        auto delta=m_firstWidgetPos-oldWidgetPos;
+        auto pos=m_llist->pos();
+        setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+delta);
+        m_llist->move(pos);
     }
 }
 
@@ -686,6 +742,7 @@ void FlyweightListView_p<ItemT>::clear()
     m_wheelOffsetAccumulated=0.0f;
     m_atBegin=true;
     m_atEnd=true;
+    m_firstWidgetPos=0;
 }
 
 //--------------------------------------------------------------------------
@@ -765,25 +822,18 @@ void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::scrollToEdge(Direction offsetDirection, bool wasAtEdge)
+void FlyweightListView_p<ItemT>::scrollToEdge(Direction direction)
 {
-    if (!wasAtEdge && (offsetDirection==Direction::STAY_AT_END_EDGE || offsetDirection==Direction::STAY_AT_HOME_EDGE))
-    {
-        return;
-    }
-
-    auto cb=[offsetDirection](int minPos, int maxPos, int oldPos)
+    auto cb=[direction](int minPos, int maxPos, int oldPos)
     {
         std::ignore=oldPos;
-        switch (offsetDirection)
+        switch (direction)
         {
             case Direction::END:
-            case Direction::STAY_AT_END_EDGE:
                 return minPos; // because pos is negative
                 break;
 
             case Direction::HOME:
-            case Direction::STAY_AT_HOME_EDGE:
                 return maxPos; // because pos is negative
                 break;
 
@@ -860,6 +910,15 @@ void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
     };
 
     const auto* item=firstViewportItem();
+    if (item && item->widget())
+    {
+        m_firstWidgetPos=oprop(item->widget(),OProp::pos);
+    }
+    else
+    {
+        m_firstWidgetPos=0;
+    }
+
     keep(item,m_firstViewportItemID,m_firstViewportSortValue);
     item=lastViewportItem();
     keep(item,m_lastViewportItemID,m_lastViewportSortValue);
@@ -907,7 +966,21 @@ void FlyweightListView_p<ItemT>::clearWidget(QWidget* widget)
     PointerHolder::clearProperty(widget,ItemT::Property);
     m_llist->takeWidget(widget);
     widget->removeEventFilter(&m_qobjectHelper);
+    QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
     ItemT::dropWidget(widget);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::removeItem(const typename ItemT::IdType &id)
+{
+    auto& idx=m_items.template get<1>();
+    auto it=idx.find(id);
+    if (it!=idx.end())
+    {
+        auto* item=const_cast<ItemT*>(&(*it));
+        removeItem(item);
+    }
 }
 
 //--------------------------------------------------------------------------

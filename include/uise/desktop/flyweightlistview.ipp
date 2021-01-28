@@ -181,6 +181,25 @@ void FlyweightListView<ItemT>::insertItem(ItemT item)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::removeItem(const typename ItemT::IdType &id)
+{
+    pimpl->removeItem(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::removeItems(const std::vector<typename ItemT::IdType> &ids)
+{
+    beginUpdate();
+    for (auto&& id : ids)
+    {
+        pimpl->removeItem(id);
+    }
+    endUpdate();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
     return pimpl->scrollToItem(id,offset);
@@ -217,9 +236,9 @@ bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOff
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::scrollToEdge(Direction offsetDirection)
+void FlyweightListView<ItemT>::scrollToEdge(Direction direction)
 {
-    pimpl->scrollToEdge(offsetDirection,true);
+    pimpl->scrollToEdge(direction);
 }
 
 //--------------------------------------------------------------------------

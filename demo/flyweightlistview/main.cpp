@@ -135,25 +135,19 @@ int main(int argc, char *argv[])
         layout->addWidget(insertFrom,++row,0);
         insertFrom->setMinimum(0);
         insertFrom->setMaximum(count*2);
-        insertFrom->setValue(1);
+        insertFrom->setValue(100);
         auto insertNum=new QSpinBox(mainFrame);
         layout->addWidget(insertNum,row,1);
-        insertNum->setMinimum(0);
-        insertNum->setMinimum(10000);
-        auto scrollMode=new QComboBox(mainFrame);
-        layout->addWidget(scrollMode,row,2);
-        scrollMode->addItem("none",static_cast<int>(Direction::NONE));
-        scrollMode->addItem("home",static_cast<int>(Direction::HOME));
-        scrollMode->addItem("end",static_cast<int>(Direction::END));
-        scrollMode->addItem("stay at end",static_cast<int>(Direction::STAY_AT_END_EDGE));
-        scrollMode->addItem("stay at home",static_cast<int>(Direction::STAY_AT_HOME_EDGE));
+        insertNum->setMinimum(1);
+        insertNum->setMaximum(10000);
+        insertNum->setValue(10);
         auto insertButton=new QPushButton("Insert item(s)",mainFrame);
         layout->addWidget(insertButton,row,3);
 
         auto delFrom=new QSpinBox(mainFrame);
         layout->addWidget(delFrom,++row,0);
         delFrom->setMinimum(0);
-        delFrom->setMaximum(count*2);
+        delFrom->setMaximum(HelloWorldItemId*2);
         delFrom->setValue(1);
         auto delNum=new QSpinBox(mainFrame);
         layout->addWidget(delNum,row,1);
@@ -162,6 +156,25 @@ int main(int argc, char *argv[])
         delNum->setValue(1);
         auto delButton=new QPushButton("Delete item(s)",mainFrame);
         layout->addWidget(delButton,row,3);
+        QObject::connect(delButton,&QPushButton::clicked,
+        [&v,&delFrom,&delNum]()
+        {
+            if (delNum->value()==1)
+            {
+                v->beginUpdate();
+                v->removeItem(delFrom->value());
+                v->endUpdate();
+            }
+            else
+            {
+                std::vector<HelloWorldItemWrapper::IdType> ids;
+                for (size_t i=delFrom->value();i>delFrom->value()-delNum->value();i--)
+                {
+                    ids.emplace_back(i);
+                }
+                v->removeItems(ids);
+            }
+        });
 
         auto jumpItem=new QSpinBox(mainFrame);
         layout->addWidget(jumpItem,++row,0);
@@ -210,7 +223,7 @@ int main(int argc, char *argv[])
         auto loadItems=[&v,&items]()
         {
             std::vector<HelloWorldItemWrapper> newItems;
-            for (size_t i=0;i<3;i++)
+            for (size_t i=50;i<53;i++)
             {
                 newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
             }
@@ -222,6 +235,28 @@ int main(int argc, char *argv[])
          {
             loadItems();
          }
+        );
+
+        QObject::connect(
+            insertButton,&QPushButton::clicked,
+            [&v,&items,&insertFrom,&insertNum]()
+            {
+                std::vector<HelloWorldItemWrapper> newItems;
+                for (size_t i=insertFrom->value();i<insertFrom->value()+insertNum->value();i++)
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+                if (newItems.size()==1)
+                {
+                    v->beginUpdate();
+                    v->insertItem(newItems[0]);
+                    v->endUpdate();
+                }
+                else
+                {
+                    v->insertContinuousItems(newItems);
+                }
+            }
         );
 
         QObject::connect(orientationButton,&QPushButton::toggled,

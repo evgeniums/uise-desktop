@@ -39,9 +39,7 @@ enum class Direction : uint8_t
 {
     NONE=0,
     HOME=1,
-    END=2,
-    STAY_AT_HOME_EDGE=3,
-    STAY_AT_END_EDGE=4
+    END=2
 };
 
 namespace detail
@@ -83,6 +81,9 @@ class FlyweightListView : public QFrame
         void beginUpdate();
         void endUpdate();
 
+        void removeItem(const typename ItemT::IdType& id);
+        void removeItems(const std::vector<typename ItemT::IdType>& ids);
+
         void setPrefetchItemCountHint(size_t val) noexcept;
         size_t prefetchItemCount() const noexcept;
 
@@ -95,7 +96,7 @@ class FlyweightListView : public QFrame
         void setViewportChangedCb(ViewportChangedCb cb) noexcept;
 
         bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
-        void scrollToEdge(Direction offsetDirection);
+        void scrollToEdge(Direction direction);
         bool isScrollAtEdge(Direction direction, size_t maxOffset=5) const noexcept;
 
         void clear();
