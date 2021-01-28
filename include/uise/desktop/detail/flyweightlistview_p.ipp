@@ -863,21 +863,30 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
         auto widget=it->widget();
         if (widget && widget->parent()==m_llist)
         {
-            auto widgetBegin=oprop(widget,OProp::pos);
-            auto widgetEnd=oprop(widget,OProp::edge);
-            auto diff=widgetEnd-widgetBegin;
+            QPoint widgetListPos=widget->pos();
+            auto widgetSize=oprop(widget,OProp::size);
+            auto widgetViewPos=oprop(m_llist->mapToParent(widgetListPos),OProp::pos);
 
-            auto newPos=widgetBegin+offset;
-            auto newEnd=widgetEnd+offset;
-            if (newEnd>maxPos)
+            auto widgetBegin=oldPos-widgetViewPos;
+            int newPos=widgetBegin-offset;
+
+            QPoint newListPos;
+            setOProp(newListPos,OProp::pos,newPos);
+            setOProp(newListPos,OProp::pos,0,true);
+            auto newViewPos=oprop(m_llist->mapFromParent(newListPos),OProp::pos);
+            auto newViewEnd=newViewPos+widgetSize;
+            auto viewSize=oprop(m_view,OProp::size);
+            if (
+                    (newViewPos>viewSize) // widget would move after viewport
+                    ||
+                    newViewEnd<=0 // widget would move before viewport
+                )
             {
-                newPos=maxPos-diff;
-            }
-            else if (newPos<minPos)
-            {
-                newPos=minPos;
+                // ignore invalid offset
+                newPos=widgetBegin;
             }
 
+            newPos=qBound(minPos,newPos,maxPos);
             return newPos;
         };
 

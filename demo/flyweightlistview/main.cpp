@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
         layout->addWidget(v,row,0,1,4);
 
         layout->addWidget(new QLabel("From item"),++row,0,Qt::AlignHCenter);
-        layout->addWidget(new QLabel("Number of items"),row,1,Qt::AlignHCenter);
+        layout->addWidget(new QLabel("Number"),row,1,Qt::AlignHCenter);
         layout->addWidget(new QLabel("Mode"),row,2,Qt::AlignHCenter);
         layout->addWidget(new QLabel("Operation"),row,3,Qt::AlignHCenter);
 
@@ -179,8 +179,13 @@ int main(int argc, char *argv[])
         auto jumpItem=new QSpinBox(mainFrame);
         layout->addWidget(jumpItem,++row,0);
         jumpItem->setMinimum(0);
-        jumpItem->setMaximum(count*2);
+        jumpItem->setMaximum(HelloWorldItemId*2);
         jumpItem->setValue(1);
+        auto jumpOffset=new QSpinBox(mainFrame);
+        layout->addWidget(jumpOffset,row,1);
+        jumpOffset->setMinimum(-1000);
+        jumpOffset->setMaximum(1000);
+        jumpOffset->setValue(0);
         auto jumpMode=new QComboBox(mainFrame);
         layout->addWidget(jumpMode,row,2);
         jumpMode->addItem("item",static_cast<int>(Direction::NONE));
@@ -188,6 +193,33 @@ int main(int argc, char *argv[])
         jumpMode->addItem("end",static_cast<int>(Direction::END));
         auto jumpToButton=new QPushButton("Jump to",mainFrame);
         layout->addWidget(jumpToButton,row,3);
+        QObject::connect(
+            jumpToButton,
+            &QPushButton::clicked,
+            [&v,&jumpItem,&jumpMode,&jumpOffset]()
+            {
+                switch (static_cast<Direction>(jumpMode->currentData().toInt()))
+                {
+                    case Direction::HOME:
+                    {
+                        v->scrollToEdge(Direction::HOME);
+                    }
+                    break;
+
+                    case Direction::END:
+                    {
+                        v->scrollToEdge(Direction::END);
+                    }
+                    break;
+
+                    case Direction::NONE:
+                    {
+                        v->scrollToItem(jumpItem->value(),jumpOffset->value());
+                    }
+                    break;
+                }
+            }
+        );
 
         auto clearButton=new QPushButton("Clear",mainFrame);
         layout->addWidget(clearButton,++row,3);
@@ -459,10 +491,11 @@ int main(int argc, char *argv[])
 
         v->setFocus();
 
-        w.resize(600,300);
+        w.resize(600,400);
 
         loadItems();
 
+        w.setWindowTitle("FlyweightListView Demo");
         w.show();
         app.exec();
     }
