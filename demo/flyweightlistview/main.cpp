@@ -276,7 +276,15 @@ int main(int argc, char *argv[])
                 std::vector<HelloWorldItemWrapper> newItems;
                 for (size_t i=insertFrom->value();i<insertFrom->value()+insertNum->value();i++)
                 {
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                    auto item=v->item(i);
+                    if (!item)
+                    {
+                        newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                    }
+                    else
+                    {
+                        newItems.emplace_back(HelloWorldItemWrapper(item->item()));
+                    }
                 }
                 if (newItems.size()==1)
                 {

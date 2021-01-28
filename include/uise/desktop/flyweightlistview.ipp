@@ -214,6 +214,13 @@ bool FlyweightListView<ItemT>::hasItem(const typename ItemT::IdType &id) const n
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+const ItemT* FlyweightListView<ItemT>::item(const typename ItemT::IdType &id) const noexcept
+{
+    return pimpl->item(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 const ItemT* FlyweightListView<ItemT>::firstItem() const noexcept
 {
     return pimpl->firstItem();

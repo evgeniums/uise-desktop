@@ -298,7 +298,9 @@ void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
 {
     auto widget=item->widget();
     PointerHolder::keepProperty(item,widget,ItemT::Property);
+    QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
     QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
+    widget->removeEventFilter(&m_qobjectHelper);
     widget->installEventFilter(&m_qobjectHelper);
 }
 
@@ -352,6 +354,15 @@ bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const
     const auto& idx=m_items.template get<1>();
     auto it=idx.find(id);
     return it!=idx.end();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) const noexcept
+{
+    const auto& idx=m_items.template get<0>();
+    auto it=idx.find(id);
+    return (it!=idx.end())?&(*it):nullptr;
 }
 
 //--------------------------------------------------------------------------
@@ -642,27 +653,39 @@ void FlyweightListView_p<ItemT>::checkNewItemsNeeded()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertItem(ItemT item)
+QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bool findAfterWidget)
 {
     auto& idx=m_items.template get<1>();
-    auto& order=m_items.template get<0>();
-
-    auto widget=item.widget();
     auto result=idx.insert(item);
     if (!result.second)
     {
+        Q_ASSERT(result.first->widget()==item.widget());
         Q_ASSERT(idx.replace(result.first,item));
     }
-    configureWidget(&(*result.first));
-
-    QWidget* afterWidget=nullptr;
-    auto it=m_items.template project<0>(result.first);
-    if (it!=order.begin())
+    else
     {
-        afterWidget=(--it)->widget();
+        configureWidget(&(*result.first));
     }
 
-    m_llist->insertWidgetAfter(widget,afterWidget);
+    QWidget* afterWidget=nullptr;
+    if (findAfterWidget)
+    {
+        auto& order=m_items.template get<0>();
+        auto it=m_items.template project<0>(result.first);
+        if (it!=order.begin())
+        {
+            afterWidget=(--it)->widget();
+        }
+    }
+
+    return afterWidget;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::insertItem(const ItemT& item)
+{
+    m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
 }
 
 //--------------------------------------------------------------------------
@@ -674,28 +697,15 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
         return;
     }
 
-    auto& idx=m_items.template get<1>();
-    auto& order=m_items.template get<0>();
-
     std::vector<QWidget*> widgets;
-    QPointer<QWidget> afterWidget;
+    QWidget* afterWidget=nullptr;
     for (size_t i=0;i<items.size();i++)
     {
         const auto& item=items[i];
-        auto result=idx.insert(item);
-        if (!result.second)
-        {
-            Q_ASSERT(idx.replace(result.first,item));
-        }
-        configureWidget(&(*result.first));
-
+        auto afterWidgetTmp=insertItemToContainer(item,i==0);
         if (i==0)
         {
-            auto it=m_items.template project<0>(result.first);
-            if (it!=order.begin())
-            {
-                afterWidget=(--it)->widget();
-            }
+            afterWidget=afterWidgetTmp;
         }
         widgets.push_back(item.widget());
     }

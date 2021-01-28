@@ -147,7 +147,8 @@ class FlyweightListView_p
 
         size_t visibleCount() const noexcept;
 
-        void insertItem(ItemT item);
+        void insertItem(const ItemT& item);
+        QWidget* insertItemToContainer(const ItemT& item, bool findAfterWidget=true);
 
         void setFlyweightEnabled(bool enable) noexcept;
 
@@ -162,9 +163,8 @@ class FlyweightListView_p
         bool scrollToItem(const typename ItemT::IdType &id, size_t offset);
 
         bool hasItem(const typename ItemT::IdType& id) const noexcept;
-
+        const ItemT* item(const typename ItemT::IdType& id) const noexcept;
         const ItemT* firstItem() const noexcept;
-
         const ItemT* lastItem() const noexcept;
 
         bool isHorizontal() const noexcept;
