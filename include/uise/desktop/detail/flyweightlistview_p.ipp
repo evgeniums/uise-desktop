@@ -238,11 +238,6 @@ void FlyweightListView_p<ItemT>::setupUi()
     m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
     m_qobjectHelper.setListResizedHandler([this](){onListResize();});
 
-    // due to some bug in Qt the expression below doesn't work
-    // QObject::connect(m_llist,&LinkedListView::resized,[this](){onListResize();});
-    // so, use workaround with legacy signal/slot connection
-    QObject::connect(m_llist,SIGNAL(resized()),&m_qobjectHelper,SLOT(onListResized()));
-
     m_view->setStyleSheet("background: blue; padding:2px;");
     m_llist->setStyleSheet("background: red; padding:0px;");
 
@@ -288,6 +283,12 @@ void FlyweightListView_p<ItemT>::endUpdate()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::onListResize()
 {
+    if (!m_ignoreUpdates)
+    {
+        // update sticking positions
+        scroll(1);
+        scroll(-1);
+    }
     viewportUpdated();
 }
 
@@ -706,10 +707,18 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::resizeList()
 {
+    auto newSize=oprop(m_llist->sizeHint(),OProp::size);
     QSize listSize;
     setOProp(listSize,OProp::size,oprop(m_view,OProp::size,true),true);
-    setOProp(listSize,OProp::size,oprop(m_llist->sizeHint(),OProp::size));
-    m_llist->resize(listSize);
+    setOProp(listSize,OProp::size,newSize);
+    if (m_llist->size()!=listSize)
+    {
+        m_llist->resize(listSize);
+
+        // update sticking positions
+        scroll(1);
+        scroll(-1);
+    }
 }
 
 //--------------------------------------------------------------------------
