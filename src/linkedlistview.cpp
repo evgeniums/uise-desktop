@@ -94,7 +94,10 @@ class LinkedListView_p
 
                     auto next=item->next();
                     auto prev=item->prev();
-                    prev->setNextAuto(next);
+                    if (prev)
+                    {
+                        prev->setNextAuto(next);
+                    }
 
                     for (auto nextItem=item->next();nextItem;)
                     {
