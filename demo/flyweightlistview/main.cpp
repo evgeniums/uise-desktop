@@ -84,6 +84,11 @@ class HelloWorldItem : public QTextBrowser
 
     private:
 
+        void keyPressEvent(QKeyEvent *ev)
+        {
+            ev->ignore();
+        }
+
         size_t m_id;
         size_t m_seqNum;
 };
@@ -214,6 +219,36 @@ int main(int argc, char *argv[])
                 if (item)
                 {
                     delete item->widget();
+                }
+            }
+        });
+
+        auto resizeWidget=new QSpinBox(mainFrame);
+        layout->addWidget(resizeWidget,++row,0);
+        resizeWidget->setMinimum(0);
+        resizeWidget->setMaximum(HelloWorldItemId*2);
+        resizeWidget->setValue(1);
+        auto resizeWidgetVal=new QSpinBox(mainFrame);
+        layout->addWidget(resizeWidgetVal,row,1);
+        resizeWidgetVal->setMinimum(0);
+        resizeWidgetVal->setMaximum(1024);
+        resizeWidgetVal->setValue(100);
+        auto resizeWidgetButton=new QPushButton("Resize widget",mainFrame);
+        layout->addWidget(resizeWidgetButton,row,3);
+        QObject::connect(resizeWidgetButton,&QPushButton::clicked,
+        [&v,&resizeWidget,&resizeWidgetVal]()
+        {
+            const auto* item=v->item(resizeWidget->value());
+            if (item)
+            {
+                auto widget=item->widget();
+                if (v->orientation()==Qt::Horizontal)
+                {
+                    widget->setFixedWidth(resizeWidgetVal->value());
+                }
+                else
+                {
+                    widget->setFixedHeight(resizeWidgetVal->value());
                 }
             }
         });
@@ -544,9 +579,15 @@ int main(int argc, char *argv[])
 
         v->setFocus();
 
-        w.resize(600,400);
+        w.resize(600,500);
 
-        loadItems();
+        SingleShotTimer load;
+        load.shot(0,
+            [&loadItems]
+            {
+                loadItems();
+            }
+        );
 
         w.setWindowTitle("FlyweightListView Demo");
         w.show();

@@ -236,7 +236,7 @@ void FlyweightListView_p<ItemT>::setupUi()
     resizeList();
 
     m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
-    m_qobjectHelper.setListResizedHandler([this](){onListResize();});
+    m_qobjectHelper.setListResizeHandler([this](){onListContentResized();});
 
     m_view->setStyleSheet("background: blue; padding:2px;");
     m_llist->setStyleSheet("background: red; padding:0px;");
@@ -265,29 +265,21 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::endUpdate()
 {
     resizeList();
-
-    if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
-    {
-        scrollToEdge(m_stick);
-    }
-    else
-    {
-        compensateSizeChange();
-    }
-
     m_ignoreUpdates=false;
     viewportUpdated();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::onListResize()
+void FlyweightListView_p<ItemT>::onListContentResized()
 {
-    if (!m_ignoreUpdates)
-    {
-        updateStickingPositions();
-    }
-    viewportUpdated();
+    m_resizeList.shot(0,
+        [this]()
+        {
+            resizeList();
+            viewportUpdated();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -295,6 +287,7 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
 {
     auto widget=item->widget();
+
     PointerHolder::keepProperty(item,widget,ItemT::Property);
     QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
     QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
@@ -404,7 +397,7 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
     {
         auto& idx=m_items.template get<1>();
         idx.erase(item->id());
-        m_resizeOnWidgetDestroy.shot(0,
+        m_resizeList.shot(0,
             [this]()
             {
                 resizeList();
@@ -429,14 +422,6 @@ template <typename ItemT>
 bool FlyweightListView_p<ItemT>::isFlyweightEnabled() const noexcept
 {
     return m_enableFlyweight;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onListUpdated()
-{
-    // if stickToEnd and last widget was in viewport then new last widget must stay in viewport
-    // if size of widgets before viewport changed then list must be moved to compensate size change
 }
 
 //--------------------------------------------------------------------------
@@ -502,6 +487,20 @@ void FlyweightListView_p<ItemT>::updateStickingPositions()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView_p<ItemT>::adjustWidgetSize(QWidget *widget, int otherSize)
+{
+    if (isHorizontal())
+    {
+        widget->setFixedHeight(otherSize);
+    }
+    else
+    {
+        widget->setFixedWidth(otherSize);
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 {
     keepCurrentConfiguration();
@@ -556,23 +555,42 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     updatePageStep();
 
     // resize only that dimension of the list that doesn't match the orientation
-    auto listSize=m_listSize;
+    auto otherSize=oprop(event->size(),OProp::size,true);
     QSize newListSize;
     setOProp(newListSize,OProp::size,oprop(m_llist,OProp::size));
-    setOProp(newListSize,OProp::size,oprop(event->size(),OProp::size,true),true);
+    setOProp(newListSize,OProp::size,otherSize,true);
     m_llist->resize(newListSize);
 
-    // if m_llist was resized then events are already handled, so invoke below only if the list was not resized
-    if (m_llist->size()==listSize)
+    // adjust sizes of item widgets
+    const auto& order=m_items.template get<0>();
+    for (auto && it: order)
     {
-        viewportUpdated();
+        adjustWidgetSize(it.widget(),otherSize);
     }
+
+    // process updated viewport
+    viewportUpdated();
+
+    // update stick positions
+    m_updateStickingPositions.shot(
+        0,
+        [this]()
+        {
+            updateStickingPositions();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::compensateSizeChange()
 {
+    if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
+    {
+        scrollToEdge(m_stick);
+        return;
+    }
+
     const ItemT* oldItem=nullptr;
 
     auto& idx=m_items.template get<1>();
@@ -614,6 +632,14 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
         setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+delta);
         m_llist->move(pos);
     }
+
+    m_updateStickingPositions.shot(
+        0,
+        [this]()
+        {
+            updateStickingPositions();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -646,7 +672,6 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
         return;
     }
 
-    onListUpdated();
     keepCurrentConfiguration();
     informViewportUpdated();
     checkNewItemsNeeded();
@@ -744,13 +769,7 @@ void FlyweightListView_p<ItemT>::resizeList()
     if (m_llist->size()!=listSize)
     {
         m_llist->resize(listSize);
-        m_updateStickingPositions.shot(
-            0,
-            [this]()
-            {
-                updateStickingPositions();
-            }
-        );
+        compensateSizeChange();
     }
 }
 
@@ -763,6 +782,7 @@ void FlyweightListView_p<ItemT>::clear()
     for (auto&& it : order)
     {
         PointerHolder::clearProperty(it.widget(),ItemT::Property);
+        clearWidget(it.widget());
     }
 
     m_llist->blockSignals(true);

@@ -34,6 +34,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QScrollBar>
 #include <QPointer>
 #include <QEvent>
+#include <QResizeEvent>
 
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -61,9 +62,9 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
             widgetDestroyedHandler=std::move(handler);
         }
 
-        void setListResizedHandler(std::function<void ()>&& handler)
+        void setListResizeHandler(std::function<void ()>&& handler)
         {
-            listResizedHandler=std::move(handler);
+            listResizeHandler=std::move(handler);
         }
 
     public slots:
@@ -71,11 +72,6 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
         void onWidgetDestroyed(QObject* obj)
         {
             widgetDestroyedHandler(obj);
-        }
-
-        void onListResized()
-        {
-            listResizedHandler();
         }
 
     protected:
@@ -86,11 +82,16 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
             {
                 switch (event->type())
                 {
-                    case QEvent::Resize: [[fallthrough]];
+                    case QEvent::Resize:
+                    {
+//                        auto e=dynamic_cast<QResizeEvent*>(event);
+//                        qDebug() << "Widget resized "<<e;
+                    }
+                    [[fallthrough]];
                     case QEvent::Show: [[fallthrough]];
                     case QEvent::Hide:
                     {
-                        listResizedHandler();
+                        listResizeHandler();
                     }
                         break;
 
@@ -104,7 +105,7 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
     private:
 
         std::function<void (QObject*)> widgetDestroyedHandler;
-        std::function<void ()> listResizedHandler;
+        std::function<void ()> listResizeHandler;
 };
 
 enum class OProp : uint8_t
@@ -172,9 +173,7 @@ class FlyweightListView_p
 
         void onWidgetDestroyed(QObject* obj);
 
-        void onListResize();
-
-        void onListUpdated();
+        void onListContentResized();
 
         void onViewportResized(QResizeEvent* event);
 
@@ -222,6 +221,8 @@ class FlyweightListView_p
 
         void compensateSizeChange();
         void updateStickingPositions();
+
+        void adjustWidgetSize(QWidget* widget, int otherSize);
 
     public:
 
@@ -279,8 +280,8 @@ class FlyweightListView_p
         float m_wheelOffsetAccumulated;
 
         bool m_ignoreUpdates;
-        SingleShotTimer m_resizeOnWidgetDestroy;
         SingleShotTimer m_updateStickingPositions;
+        SingleShotTimer m_resizeList;
 };
 
 } // namespace detail

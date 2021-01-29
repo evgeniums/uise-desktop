@@ -20,6 +20,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <QDebug>
 #include <QBoxLayout>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -49,14 +50,15 @@ class LinkedListView_p
         void setupLayout()
         {
             layout=Layout::box(view,orientation);
-            if (orientation==Qt::Horizontal)
-            {
-                view->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
-            }
-            else
-            {
-                view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-            }
+//            layout->setSizeConstraint(QLayout::SetFixedSize);
+//            if (orientation==Qt::Horizontal)
+//            {
+//                view->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+//            }
+//            else
+//            {
+//                view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+//            }
         }
 
         std::shared_ptr<LinkedListViewItem> itemForWidget(QWidget *widget)
@@ -170,6 +172,14 @@ class LinkedListView_p
 
                 layout->insertWidget(pos,newWidget,0,Qt::AlignLeft|Qt::AlignTop);
                 newWidget->setVisible(true);
+                if (orientation==Qt::Horizontal)
+                {
+                    newWidget->setFixedHeight(view->height());
+                }
+                else
+                {
+                    newWidget->setFixedWidth(view->width());
+                }
                 newItem->setPos(pos++);
 
                 if (!firstItem)
@@ -204,9 +214,7 @@ class LinkedListView_p
             {
                 item->setPos(++pos);
                 item=item->next();
-            }
-
-            view->resize((view->sizeHint()));
+            }            
         }
 
     public:

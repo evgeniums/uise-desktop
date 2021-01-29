@@ -42,6 +42,14 @@ FlyweightListView<ItemT>::FlyweightListView(
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+FlyweightListView<ItemT>::~FlyweightListView()
+{
+    beginUpdate();
+    pimpl->clear();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 FlyweightListView<ItemT>::FlyweightListView(
         size_t prefetchItemCount
     ) : FlyweightListView(nullptr,prefetchItemCount)
