@@ -221,6 +221,7 @@ class FlyweightListView_p
         void setOrientation(Qt::Orientation orientation);
 
         void compensateSizeChange();
+        void updateStickingPositions();
 
     public:
 
@@ -279,6 +280,7 @@ class FlyweightListView_p
 
         bool m_ignoreUpdates;
         SingleShotTimer m_resizeOnWidgetDestroy;
+        SingleShotTimer m_updateStickingPositions;
 };
 
 } // namespace detail

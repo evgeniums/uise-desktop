@@ -118,6 +118,7 @@ int main(int argc, char *argv[])
         auto v=new FlyweightListView<HelloWorldItemWrapper>();
 
         size_t count=100000;
+        std::map<size_t,size_t> items;
 
         QFrame* mainFrame=new QFrame();
         auto layout=new QGridLayout(mainFrame);
@@ -176,7 +177,29 @@ int main(int argc, char *argv[])
             }
         });
 
+        auto insertRandom=new QLineEdit(mainFrame);
+        insertRandom->setPlaceholderText("Comma separated item seqnum");
+        layout->addWidget(insertRandom,++row,0);
+        auto insertRandomButton=new QPushButton("Insert random",mainFrame);
+        layout->addWidget(insertRandomButton,row,3);
+        QObject::connect(insertRandomButton,&QPushButton::clicked,
+        [&v,&items,&insertRandom]()
+        {
+            std::vector<HelloWorldItemWrapper> newItems;
+            auto seqnums=insertRandom->text().split(",");
+            foreach (const QString& seqnum, seqnums)
+            {
+                size_t num=seqnum.toUInt();
+                if (num<items.size())
+                {
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(num,items[num])));
+                }
+            }
+            v->insertItems(newItems);
+        });
+
         auto delWidgets=new QLineEdit(mainFrame);
+        delWidgets->setPlaceholderText("Comma separated item IDs");
         layout->addWidget(delWidgets,++row,0);
         auto delWidgetsButton=new QPushButton("Delete widget(s)",mainFrame);
         layout->addWidget(delWidgetsButton,row,3);
@@ -266,7 +289,6 @@ int main(int argc, char *argv[])
         QObject::connect(clearButton,&QPushButton::clicked,
                          [&v](){v->clear();});
 
-        std::map<size_t,size_t> items;
         for (size_t i=0;i<count;i++)
         {
             items[i]=--HelloWorldItemId;
@@ -295,7 +317,11 @@ int main(int argc, char *argv[])
                 std::vector<HelloWorldItemWrapper> newItems;
                 for (size_t i=insertFrom->value();i<insertFrom->value()+insertNum->value();i++)
                 {
-                    auto item=v->item(i);
+                    if (i>=items.size())
+                    {
+                        break;
+                    }
+                    auto item=v->item(items[i]);
                     if (!item)
                     {
                         newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));

@@ -285,9 +285,7 @@ void FlyweightListView_p<ItemT>::onListResize()
 {
     if (!m_ignoreUpdates)
     {
-        // update sticking positions
-        scroll(1);
-        scroll(-1);
+        updateStickingPositions();
     }
     viewportUpdated();
 }
@@ -407,14 +405,15 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
         auto& idx=m_items.template get<1>();
         idx.erase(item->id());
         m_resizeOnWidgetDestroy.shot(0,
-            [this](){
+            [this]()
+            {
                 resizeList();
-                if (!m_ignoreUpdates)
-                {
-                    endUpdate();
-                }
             }
         );
+        if (!m_ignoreUpdates)
+        {
+            endUpdate();
+        }
     }
 }
 
@@ -482,6 +481,23 @@ template <typename ItemT>
 int FlyweightListView_p<ItemT>::endItemEdge() const
 {
     return oprop(m_llist,OProp::edge);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::updateStickingPositions()
+{
+    auto begin=oprop(m_llist->pos(),OProp::pos);
+    auto end=oprop(viewportEnd(),OProp::pos);
+    auto viewPortSize=oprop(m_view,OProp::size);
+    if (begin>0)
+    {
+        scrollToEdge(Direction::HOME);
+    }
+    else if (end<(viewPortSize-1))
+    {
+        scrollToEdge(Direction::END);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -728,10 +744,13 @@ void FlyweightListView_p<ItemT>::resizeList()
     if (m_llist->size()!=listSize)
     {
         m_llist->resize(listSize);
-
-        // update sticking positions
-        scroll(1);
-        scroll(-1);
+        m_updateStickingPositions.shot(
+            0,
+            [this]()
+            {
+                updateStickingPositions();
+            }
+        );
     }
 }
 
@@ -830,6 +849,7 @@ void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int
     if (listSize>viewportSize)
     {
         minPos=viewportSize-listSize;
+        minPos=std::max(minPos,-listSize);
     }
     int maxPos=0;
 
