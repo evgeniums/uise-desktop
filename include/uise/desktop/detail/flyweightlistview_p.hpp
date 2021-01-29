@@ -181,8 +181,8 @@ class FlyweightListView_p
 
         const ItemT* itemAtPos(const QPoint& pos) const;
         QPoint viewportBegin() const;
-        QPoint viewportEnd() const;
-        QPoint viewportEnd(const QSize& oldSize) const;
+        QPoint listEndInViewport() const;
+        QPoint listEndInViewport(const QSize& oldSize) const;
 
         const ItemT* firstViewportItem() const;
         const ItemT* lastViewportItem() const;
@@ -272,6 +272,7 @@ class FlyweightListView_p
         bool m_atBegin;
         bool m_atEnd;
         int m_firstWidgetPos;
+        int m_scrollValue;
 
         size_t m_singleStep;
         size_t m_pageStep;
@@ -282,6 +283,8 @@ class FlyweightListView_p
         bool m_ignoreUpdates;
         SingleShotTimer m_updateStickingPositions;
         SingleShotTimer m_resizeList;
+
+        bool m_cleared;
 };
 
 } // namespace detail

@@ -209,14 +209,16 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_firstViewportSortValue(ItemT::defaultSortValue()),
         m_lastViewportItemID(ItemT::defaultId()),
         m_lastViewportSortValue(ItemT::defaultSortValue()),
+        m_atBegin(true),
+        m_atEnd(true),
+        m_firstWidgetPos(0),
+        m_scrollValue(0),
         m_singleStep(1),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_wheelOffsetAccumulated(0.0f),
         m_ignoreUpdates(false),
-        m_atBegin(true),
-        m_atEnd(true),
-        m_firstWidgetPos(0)
+        m_cleared(false)
 {
 }
 
@@ -257,7 +259,6 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::beginUpdate()
 {
     m_ignoreUpdates=true;
-    keepCurrentConfiguration();
 }
 
 //--------------------------------------------------------------------------
@@ -433,17 +434,15 @@ QPoint FlyweightListView_p<ItemT>::viewportBegin() const
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-QPoint FlyweightListView_p<ItemT>::viewportEnd() const
+QPoint FlyweightListView_p<ItemT>::listEndInViewport() const
 {
     auto pos=m_llist->pos();
-
     auto propSize=oprop(m_llist,OProp::size);
     if (propSize>0)
     {
         setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+propSize-1);
         setOProp(pos,OProp::pos,0,true);
     }
-
     return pos;
 }
 
@@ -458,7 +457,7 @@ bool FlyweightListView_p<ItemT>::isAtBegin() const
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::isAtEnd() const
 {
-    return oprop(viewportEnd(),OProp::pos)<=(oprop(m_view,OProp::size)-1);
+    return oprop(listEndInViewport(),OProp::pos)<=(oprop(m_view,OProp::size)-1);
 }
 
 //--------------------------------------------------------------------------
@@ -473,7 +472,7 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::updateStickingPositions()
 {
     auto begin=oprop(m_llist->pos(),OProp::pos);
-    auto end=oprop(viewportEnd(),OProp::pos);
+    auto end=oprop(listEndInViewport(),OProp::pos);
     auto viewPortSize=oprop(m_view,OProp::size);
     if (begin>0)
     {
@@ -503,7 +502,6 @@ void FlyweightListView_p<ItemT>::adjustWidgetSize(QWidget *widget, int otherSize
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 {
-    keepCurrentConfiguration();
     m_viewSize=event->oldSize();
     if (!m_viewSize.isValid())
     {
@@ -672,7 +670,6 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
         return;
     }
 
-    keepCurrentConfiguration();
     informViewportUpdated();
     checkNewItemsNeeded();
 }
@@ -681,7 +678,42 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::informViewportUpdated()
 {
-    //! @todo Implement informViewportUpdated()
+    auto l_scrollValue=m_scrollValue;
+    auto l_listSize=oprop(m_listSize,OProp::size);
+    auto l_firstViewportItemID=m_firstViewportItemID;
+    auto l_firstViewportSortValue=m_firstViewportSortValue;
+    auto l_lastViewportItemID=m_lastViewportItemID;
+    auto l_lastViewportSortValue=m_lastViewportSortValue;
+    auto l_cleared=m_cleared;
+    m_cleared=false;
+
+    keepCurrentConfiguration();
+
+    if (l_cleared
+            ||
+        l_scrollValue!=m_scrollValue
+            ||
+        l_listSize!=oprop(m_llist,OProp::size)
+        )
+    {
+        qDebug() << "scroll "<<m_scrollValue<<"/"<<oprop(m_llist,OProp::size);
+        //! @todo Update scroll positions and inform application
+    }
+    if (
+            l_cleared ||
+            l_firstViewportItemID!=m_firstViewportItemID ||
+            l_firstViewportSortValue!=m_firstViewportSortValue ||
+            l_lastViewportItemID!=m_lastViewportItemID ||
+            l_lastViewportSortValue!=m_lastViewportSortValue
+        )
+    {
+        qDebug() << "m_firstViewportSortValue= "<<m_firstViewportSortValue
+                 << "m_lastViewportSortValue= "<<m_lastViewportSortValue;
+        if (m_viewportChangedCb)
+        {
+            m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
+        }
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -805,6 +837,9 @@ void FlyweightListView_p<ItemT>::clear()
     m_atBegin=true;
     m_atEnd=true;
     m_firstWidgetPos=0;
+    m_scrollValue=0;
+
+    m_cleared=true;
 }
 
 //--------------------------------------------------------------------------
@@ -968,6 +1003,8 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
 {
+    m_scrollValue=-oprop(m_llist,OProp::pos);
+
     m_listSize=m_llist->size();
     m_viewSize=m_view->size();
 
@@ -1022,7 +1059,18 @@ const ItemT* FlyweightListView_p<ItemT>::firstViewportItem() const
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
 {
-    const auto* item=itemAtPos(viewportEnd());
+    auto edge=oprop(m_view,OProp::size);
+    if (edge!=0)
+    {
+        --edge;
+    }
+    QPoint viewLastPos;
+    setOProp(viewLastPos,OProp::pos,0,true);
+    setOProp(viewLastPos,OProp::pos,edge);
+
+    auto listLastViewportPoint=m_llist->mapFromParent(viewLastPos);
+
+    const auto* item=itemAtPos(listLastViewportPoint);
     if (item==nullptr)
     {
         item=lastItem();
