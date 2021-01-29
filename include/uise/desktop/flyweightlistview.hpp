@@ -75,6 +75,11 @@ class FlyweightListView : public QFrame
 
         ~FlyweightListView();
 
+        FlyweightListView(const FlyweightListView&)=delete;
+        FlyweightListView(FlyweightListView&&)=delete;
+        FlyweightListView& operator=(const FlyweightListView&)=delete;
+        FlyweightListView& operator=(FlyweightListView&&)=delete;
+
         void insertItem(ItemT item);
         void insertItems(const std::vector<ItemT>& items);
         void insertContinuousItems(const std::vector<ItemT>& items);
