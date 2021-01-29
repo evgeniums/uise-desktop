@@ -28,7 +28,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QTextBrowser>
 #include <QSpinBox>
 #include <QComboBox>
-#include <QToolButton>
+#include <QLineEdit>
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
@@ -173,6 +173,25 @@ int main(int argc, char *argv[])
                     ids.emplace_back(i);
                 }
                 v->removeItems(ids);
+            }
+        });
+
+        auto delWidgets=new QLineEdit(mainFrame);
+        layout->addWidget(delWidgets,++row,0);
+        auto delWidgetsButton=new QPushButton("Delete widget(s)",mainFrame);
+        layout->addWidget(delWidgetsButton,row,3);
+        QObject::connect(delWidgetsButton,&QPushButton::clicked,
+        [&v,&delWidgets]()
+        {
+            auto ids=delWidgets->text().split(",");
+            foreach (const QString& id, ids)
+            {
+                auto idInt=id.toInt();
+                const auto* item=v->item(idInt);
+                if (item)
+                {
+                    delete item->widget();
+                }
             }
         });
 

@@ -360,7 +360,7 @@ bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) const noexcept
 {
-    const auto& idx=m_items.template get<0>();
+    const auto& idx=m_items.template get<1>();
     auto it=idx.find(id);
     return (it!=idx.end())?&(*it):nullptr;
 }
@@ -369,18 +369,18 @@ const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) 
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
 {
-    const auto& idx=m_items.template get<0>();
-    auto it=idx.begin();
-    return (it!=idx.end())?&(*it):nullptr;
+    const auto& order=m_items.template get<0>();
+    auto it=order.begin();
+    return (it!=order.end())?&(*it):nullptr;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::lastItem() const noexcept
 {
-    const auto& idx=m_items.template get<0>();
-    auto it=idx.rbegin();
-    return it!=idx.rend()?&(*it):nullptr;
+    const auto& order=m_items.template get<0>();
+    auto it=order.rbegin();
+    return it!=order.rend()?&(*it):nullptr;
 }
 
 //--------------------------------------------------------------------------
@@ -406,11 +406,15 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
     {
         auto& idx=m_items.template get<1>();
         idx.erase(item->id());
-
-        if (!m_ignoreUpdates)
-        {
-            endUpdate();
-        }
+        m_resizeOnWidgetDestroy.shot(0,
+            [this](){
+                resizeList();
+                if (!m_ignoreUpdates)
+                {
+                    endUpdate();
+                }
+            }
+        );
     }
 }
 

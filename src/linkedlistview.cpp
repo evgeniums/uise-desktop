@@ -78,13 +78,16 @@ class LinkedListView_p
             return item;
         }
 
-        void takeItem(const std::shared_ptr<LinkedListViewItem>& item)
+        void takeItem(const std::shared_ptr<LinkedListViewItem>& item, bool destroyed=false)
         {
             if (item)
             {
                 LinkedListViewItem::clearWidgetProperty(item->widget());
-                item->widget()->setVisible(false);
-                item->widget()->setParent(nullptr);
+                if (!destroyed)
+                {
+                    item->widget()->setVisible(false);
+                    item->widget()->setParent(nullptr);
+                }
                 if (!blockUpdate)
                 {
                     if (head.lock().get()==item.get())
@@ -316,14 +319,14 @@ void LinkedListView::itemDestroyed(QObject *widget)
         return;
     }
 
-    takeWidget(widget);
+    takeWidget(widget,true);
 }
 
 //--------------------------------------------------------------------------
-void LinkedListView::takeWidget(QObject *widget)
+void LinkedListView::takeWidget(QObject *widget, bool destroyed)
 {
     auto item=LinkedListViewItem::getFromWidgetProperty(widget);
-    pimpl->takeItem(item);
+    pimpl->takeItem(item,destroyed);
 }
 
 //--------------------------------------------------------------------------

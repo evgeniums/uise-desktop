@@ -88,8 +88,7 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
                 {
                     case QEvent::Resize: [[fallthrough]];
                     case QEvent::Show: [[fallthrough]];
-                    case QEvent::Hide: [[fallthrough]];
-                    case QEvent::Destroy:
+                    case QEvent::Hide:
                     {
                         listResizedHandler();
                     }
@@ -279,6 +278,7 @@ class FlyweightListView_p
         float m_wheelOffsetAccumulated;
 
         bool m_ignoreUpdates;
+        SingleShotTimer m_resizeOnWidgetDestroy;
 };
 
 } // namespace detail
