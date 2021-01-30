@@ -39,6 +39,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/orientationinvariant.hpp>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/linkedlistview.hpp>
@@ -110,17 +111,8 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
         std::function<void ()> listResizeHandler;
 };
 
-enum class OProp : uint8_t
-{
-    size,
-    pos,
-    edge,
-    min_size,
-    max_size
-};
-
 template <typename ItemT>
-class FlyweightListView_p
+class FlyweightListView_p : public OrientationInvariant
 {
     public:
 
@@ -171,9 +163,7 @@ class FlyweightListView_p
         const ItemT* firstItem() const noexcept;
         const ItemT* lastItem() const noexcept;
 
-        bool isHorizontal() const noexcept;
-
-        bool isVertical() const noexcept;
+        bool isHorizontal() const noexcept override;
 
         void onWidgetDestroyed(QObject* obj);
 
@@ -204,14 +194,6 @@ class FlyweightListView_p
         void updatePageStep();
 
         void viewportUpdated();
-
-        template <typename T>
-        int oprop(const T& obj, OProp prop, bool other = false) const noexcept;
-
-        template <typename T>
-        void setOProp(T& obj, OProp prop, int value, bool other = false) noexcept;
-        template <typename T>
-        void setOProp(T& obj, OProp prop, int value, bool other = false) const noexcept;
 
         void scrollTo(const std::function<int (int, int, int)>& cb);
 
