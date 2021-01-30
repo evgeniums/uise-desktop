@@ -314,7 +314,7 @@ void FlyweightListView_p<ItemT>::endUpdate()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::onListContentResized()
 {
-    m_resizeList.shot(0,
+    m_resizeListTimer.shot(0,
         [this]()
         {
             resizeList();
@@ -407,7 +407,7 @@ size_t FlyweightListView_p<ItemT>::maxHiddenItemsBeyondEdge() noexcept
 template <typename ItemT>
 size_t FlyweightListView_p<ItemT>::prefetchThreshold() noexcept
 {
-    return prefetchItemCount();
+    return prefetchItemCount()/2;
 }
 
 //--------------------------------------------------------------------------
@@ -421,7 +421,18 @@ size_t FlyweightListView_p<ItemT>::itemsCount() const noexcept
 template <typename ItemT>
 size_t FlyweightListView_p<ItemT>::visibleCount() const noexcept
 {
-    return 0;
+    size_t count=0;
+
+    auto first=firstViewportItem();
+    auto last=lastViewportItem();
+    if (first&&last)
+    {
+        auto firstPos=m_llist->widgetSeqPos(first->widget());
+        auto lastPos=m_llist->widgetSeqPos(last->widget());
+        count=lastPos-firstPos+1;
+    }
+
+    return count;
 }
 
 //--------------------------------------------------------------------------
@@ -445,6 +456,13 @@ const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) 
 //--------------------------------------------------------------------------
 template <typename ItemT>
 const auto& FlyweightListView_p<ItemT>::itemOrder() const noexcept
+{
+    return m_items.template get<0>();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+auto& FlyweightListView_p<ItemT>::itemOrder() noexcept
 {
     return m_items.template get<0>();
 }
@@ -504,7 +522,7 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
     {
         auto& idx=itemIdx();
         idx.erase(item->id());
-        m_resizeList.shot(0,
+        m_resizeListTimer.shot(0,
             [this]()
             {
                 resizeList();
@@ -656,7 +674,7 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     viewportUpdated();
 
     // update stick positions
-    m_updateStickingPositions.shot(
+    m_updateStickingPositionsTimer.shot(
         0,
         [this]()
         {
@@ -717,7 +735,7 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
         m_llist->move(pos);
     }
 
-    m_updateStickingPositions.shot(
+    m_updateStickingPositionsTimer.shot(
         0,
         [this]()
         {
@@ -757,7 +775,14 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
     }
 
     informViewportUpdated();
-    checkNewItemsNeeded();
+
+    m_checkItemCountTimer.shot(
+        10,
+        [this]()
+        {
+            checkItemCount();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -805,14 +830,58 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkNewItemsNeeded()
+void FlyweightListView_p<ItemT>::checkItemCount()
 {
     if (!m_enableFlyweight)
     {
         return;
     }
 
-    //! @todo Implement checkNewItemsNeeded()
+    const auto& order=itemOrder();
+    auto maxHidden=maxHiddenItemsBeyondEdge();
+    auto minPrefetch=prefetchThreshold();
+
+    int hiddenBefore=0;
+    for (auto it=order.begin();it!=order.end();++it)
+    {
+        if (it->id()==m_firstViewportItemID)
+        {
+            break;
+        }
+        ++hiddenBefore;
+    }
+    if (hiddenBefore<minPrefetch)
+    {
+        if (m_requestItemsCb)
+        {
+            m_requestItemsCb(firstItem(),prefetchItemCount(),Direction::HOME);
+        }
+    }
+    else if (hiddenBefore>maxHidden)
+    {
+        removeExtraItemsFromBegin(hiddenBefore-maxHidden);
+    }
+
+    int hiddenAfter=0;
+    for (auto it=order.rbegin();it!=order.rend();++it)
+    {
+        if (it->id()==m_lastViewportItemID)
+        {
+            break;
+        }
+        ++hiddenAfter;
+    }
+    if (hiddenAfter<minPrefetch)
+    {
+        if (m_requestItemsCb)
+        {
+            m_requestItemsCb(lastItem(),prefetchItemCount(),Direction::END);
+        }
+    }
+    else if (hiddenAfter>maxHidden)
+    {
+        removeExtraItemsFromEnd(hiddenAfter-maxHidden);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1254,201 +1323,58 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
     }
 }
 
-#if 0
-
 //--------------------------------------------------------------------------
 template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::removeExtraHiddenItems()
+void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
 {
-    size_t removedSize=0;
-#if 0
-    qDebug() << "removeExtraHiddenItems direction="<<static_cast<int>(m_scrolled);
-
-    if (m_scrolled==Direction::END)
-    {
-        if (m_lastBeginWidget)
-        {
-            auto maxHiddenCount=maxHiddenItemsBeyondEdge();
-            if (m_hiddenBefore>maxHiddenCount)
-            {
-                auto removeCount=m_hiddenBefore-maxHiddenCount;
-
-                qDebug() << "Remove fromBegin "<<removeCount;
-
-                removedSize=removeItemsFromBegin(removeCount);
-            }
-        }
-    }
-    else if (m_scrolled==Direction::HOME)
-    {
-        if (m_lastEndWidget)
-        {
-            auto maxHiddenCount=maxHiddenItemsBeyondEdge();
-            if (m_hiddenAfter>maxHiddenCount)
-            {
-                auto removeCount=m_hiddenAfter-maxHiddenCount;
-
-                qDebug() << "Remove fromEnd "<<removeCount;
-
-                removedSize=removeItemsFromEnd(removeCount);
-            }
-        }
-    }
-#endif
-    return removedSize;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkNeedsItemsBefore()
-{
-#if 0
-    if (m_scrolled!=Direction::HOME)
-    {
-        return;
-    }
-
-    if ((m_hiddenBefore<prefetchThreshold() || count()==0) && m_requestItemsBeforeCb)
-    {
-        const ItemT* firstItem=nullptr;
-        const auto& order=itemOrder();
-        auto it=order.begin();
-        if (it!=order.end())
-        {
-            firstItem=&(*it);
-        }
-
-        m_requestPending=true;
-        m_requestItemsBeforeCb(firstItem,prefetchItemCount());
-    }
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkNeedsItemsAfter()
-{
-#if 0
-    if (m_scrolled!=Direction::END && !m_lastEndWidget)
-    {
-        return;
-    }
-
-    if ((m_hiddenAfter<prefetchThreshold() || !m_lastEndWidget ) && m_requestItemsAfterCb)
-    {
-        const ItemT* lastItem=nullptr;
-        const auto& order=itemOrder();
-        auto it=order.rbegin();
-        if (it!=order.rend())
-        {
-            lastItem=&(*it);
-        }
-
-        m_requestPending=true;
-        m_requestItemsAfterCb(lastItem,prefetchItemCount());
-    }
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkNeedsMoreItems()
-{
-#if 0
-    if (!m_enableFlyweight)
-    {
-        return;
-    }
-
-    auto beginWidget=m_lastBeginWidget;
-    auto endWidget=m_lastEndWidget;
-
-    onViewportUpdated();
-
-    bool updated=m_autoLoad || m_lastBeginWidget.get()!=beginWidget || m_lastEndWidget!=endWidget
-                || count()>0&&!m_lastEndWidget;
-    if (updated && !m_requestPending)
-    {
-        checkNeedsItemsBefore();
-        checkNeedsItemsAfter();
-    }
-#endif
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::removeItemsFromBegin(size_t count, size_t offset)
-{
-    size_t removedSize=0;
-#if 0
-    qDebug() << "Remove from begin "<<count<<"/"<<this->count();
-
     if (count==0)
     {
-        return 0;
+        return;
     }
 
-    const auto& order=itemOrder();
+    beginUpdate();
+
+    auto& order=itemOrder();
     for (auto it=order.begin();it!=order.end();)
     {
-        if (offset>0)
-        {
-            --offset;
-            continue;
-        }
-
-        removedSize+=isHorizontal()?it->widget()->width() : it->widget()->height();
-        clearWidget(it->widget());
-        it=order.erase(it);
-
-        if (--count==0)
+        if (count--==0)
         {
             break;
         }
+
+        clearWidget(it->widget());
+        it=order.erase(it);
     }
-#endif
-    return removedSize;
+
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::removeItemsFromEnd(size_t count, size_t offset)
+void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
 {
-    size_t removedSize=0;
-
-#if 0
-    qDebug() << "Remove from end "<<count<<"/"<<this->count();
-
     if (count==0)
     {
-        return 0;
+        return;
     }
 
-    const auto& order=itemOrder();
+    beginUpdate();
+
+    auto& order=itemOrder();
     for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
     {
-        if (offset>0)
+        if (count--==0)
         {
-            --offset;
-            continue;
+            break;
         }
 
         nit=std::next(it);
-
-        removedSize+=isHorizontal()?it->widget()->width() : it->widget()->height();
         clearWidget(it->widget());
-
         nit = decltype(it){order.erase(std::next(it).base())};
-
-        if (--count==0)
-        {
-            break;
-        }
     }
-#endif
-    return removedSize;
+
+    endUpdate();
 }
-#endif
 
 } // namespace detail
 

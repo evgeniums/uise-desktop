@@ -195,7 +195,7 @@ class FlyweightListView_p
         bool isAtEnd() const;
         int endItemEdge() const;
 
-        void checkNewItemsNeeded();
+        void checkItemCount();
         void informViewportUpdated();
 
         void scroll(int delta);
@@ -227,6 +227,7 @@ class FlyweightListView_p
         void updateStickingPositions();
 
         const auto& itemOrder() const noexcept;
+        auto& itemOrder() noexcept;
         const auto& itemIdx() const noexcept;
         auto& itemIdx() noexcept;
 
@@ -237,6 +238,9 @@ class FlyweightListView_p
 
         int orthogonalPos() const noexcept;
         void setOrthogonalPos(int value);
+
+        void removeExtraItemsFromBegin(size_t count);
+        void removeExtraItemsFromEnd(size_t count);
 
     public:
 
@@ -301,8 +305,9 @@ class FlyweightListView_p
         float m_wheelOffsetAccumulated;
 
         bool m_ignoreUpdates;
-        SingleShotTimer m_updateStickingPositions;
-        SingleShotTimer m_resizeList;
+        SingleShotTimer m_updateStickingPositionsTimer;
+        SingleShotTimer m_resizeListTimer;
+        SingleShotTimer m_checkItemCountTimer;
 
         bool m_cleared;
 
