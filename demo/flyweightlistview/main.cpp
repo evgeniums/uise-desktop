@@ -472,8 +472,6 @@ int main(int argc, char *argv[])
             v->insertContinuousItems(newItems);
         };
 
-        v->setRequestItemsBeforeCb(requestBefore);
-        v->setRequestItemsAfterCb(requestAfter);
         v->setFlyweightEnabled(false);
 
         w.setCentralWidget(mainFrame);

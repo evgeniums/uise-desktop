@@ -66,9 +66,10 @@ class FlyweightListView : public QFrame
         constexpr static const size_t PrefetchItemCountHint=20;
         constexpr static const size_t DefaultPageStep=10;
 
-        using RequestItemsCb=std::function<void (const ItemT*,size_t)>;
-        using ViewportChangedCb=std::function<void (const ItemT*,const ItemT*)>;
+        using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
+        using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void ()>;
+        using ScrolledCb=std::function<void (int,int)>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
@@ -94,13 +95,13 @@ class FlyweightListView : public QFrame
         void setPrefetchItemCountHint(size_t val) noexcept;
         size_t prefetchItemCount() const noexcept;
 
-        void setRequestItemsBeforeCb(RequestItemsCb cb) noexcept;
-        void setRequestItemsAfterCb(RequestItemsCb cb) noexcept;
+        void setRequestItemsCb(RequestItemsCb cb) noexcept;
+        void setViewportChangedCb(ItemRangeCb cb) noexcept;
+        void setItemRangeChangedCb(ItemRangeCb cb) noexcept;
 
         void setRequestHomeCb(RequestJumpCb cb) noexcept;
         void setRequestEndCb(RequestJumpCb cb) noexcept;
-
-        void setViewportChangedCb(ViewportChangedCb cb) noexcept;
+        void setScrolledCb(ScrolledCb cb) noexcept;
 
         bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
         void scrollToEdge(Direction direction);

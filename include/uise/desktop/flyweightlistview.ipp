@@ -93,23 +93,23 @@ void FlyweightListView<ItemT>::endUpdate()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setRequestItemsBeforeCb(RequestItemsCb cb) noexcept
+void FlyweightListView<ItemT>::setRequestItemsCb(RequestItemsCb cb) noexcept
 {
-    pimpl->m_requestItemsBeforeCb=std::move(cb);
+    pimpl->m_requestItemsCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setRequestItemsAfterCb(RequestItemsCb cb) noexcept
-{
-    pimpl->m_requestItemsAfterCb=std::move(cb);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setViewportChangedCb(ViewportChangedCb cb) noexcept
+void FlyweightListView<ItemT>::setViewportChangedCb(ItemRangeCb cb) noexcept
 {
     pimpl->m_viewportChangedCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setItemRangeChangedCb(ItemRangeCb cb) noexcept
+{
+    pimpl->m_itemRangeChangedCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
@@ -124,6 +124,13 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
 {
     pimpl->m_endRequestCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setScrolledCb(ScrolledCb cb) noexcept
+{
+    pimpl->m_scrolledCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------

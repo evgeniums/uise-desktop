@@ -229,6 +229,9 @@ class FlyweightListView_p
         const auto& itemOrder() const noexcept;
         const auto& itemIdx() const noexcept;
 
+        void beginItemRangeChange() noexcept;
+        void endItemRangeChange();
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -254,11 +257,13 @@ class FlyweightListView_p
 
         ItemsContainer m_items;
 
-        typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsBeforeCb;
-        typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsAfterCb;
-        typename FlyweightListView<ItemT>::ViewportChangedCb m_viewportChangedCb;
+        typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsCb;
+        typename FlyweightListView<ItemT>::ItemRangeCb m_viewportChangedCb;
+        typename FlyweightListView<ItemT>::ItemRangeCb m_itemRangeChangedCb;
+
         typename FlyweightListView<ItemT>::RequestJumpCb m_homeRequestCb;
         typename FlyweightListView<ItemT>::RequestJumpCb m_endRequestCb;
+        typename FlyweightListView<ItemT>::ScrolledCb m_scrolledCb;
 
         LinkedListView* m_llist;
 
@@ -278,6 +283,9 @@ class FlyweightListView_p
         bool m_atEnd;
         int m_firstWidgetPos;
         int m_scrollValue;
+
+        const ItemT* m_firstItem;
+        const ItemT* m_lastItem;
 
         size_t m_singleStep;
         size_t m_pageStep;

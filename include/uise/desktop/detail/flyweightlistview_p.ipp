@@ -218,7 +218,9 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_wheelOffsetAccumulated(0.0f),
         m_ignoreUpdates(false),
-        m_cleared(false)
+        m_cleared(false),
+        m_firstItem(nullptr),
+        m_lastItem(nullptr)
 {
 }
 
@@ -259,6 +261,7 @@ template <typename ItemT>
 void FlyweightListView_p<ItemT>::beginUpdate()
 {
     m_ignoreUpdates=true;
+    beginItemRangeChange();
 }
 
 //--------------------------------------------------------------------------
@@ -268,6 +271,7 @@ void FlyweightListView_p<ItemT>::endUpdate()
     resizeList();
     m_ignoreUpdates=false;
     viewportUpdated();
+    endItemRangeChange();
 }
 
 //--------------------------------------------------------------------------
@@ -710,8 +714,11 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
         l_listSize!=oprop(m_llist,OProp::size)
         )
     {
-        qDebug() << "scroll "<<m_scrollValue<<"/"<<oprop(m_llist,OProp::size);
-        //! @todo Update scroll positions and inform application
+        auto maxScrollValue=oprop(m_llist,OProp::size);
+        if (m_scrolledCb)
+        {
+            m_scrolledCb(m_scrollValue,maxScrollValue);
+        }
     }
     if (
             l_cleared ||
@@ -721,8 +728,6 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
             l_lastViewportSortValue!=m_lastViewportSortValue
         )
     {
-        qDebug() << "m_firstViewportSortValue= "<<m_firstViewportSortValue
-                 << "m_lastViewportSortValue= "<<m_lastViewportSortValue;
         if (m_viewportChangedCb)
         {
             m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
@@ -1129,6 +1134,52 @@ void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
 
     auto& idx=m_items.template get<1>();
     idx.erase(item->id());
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::beginItemRangeChange() noexcept
+{
+    m_firstItem=firstItem();
+    m_lastItem=lastItem();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::endItemRangeChange()
+{
+    const auto* first=m_firstItem;
+    const auto* last=m_lastItem;
+    m_firstItem=firstItem();
+    m_lastItem=lastItem();
+
+    if (m_firstItem!=first || m_lastItem!=last)
+    {
+        QString log("Item range changed: ");
+        if (m_firstItem)
+        {
+            log+=QString("first item %1, ").arg(m_firstItem->id());
+        }
+        else
+        {
+            log+=QString("no first item, ");
+        }
+        if (m_lastItem)
+        {
+            log+=QString("last item %1").arg(m_lastItem->id());
+        }
+        else
+        {
+            log+=QString("no last item");
+        }
+        std::ignore=log;
+//        qDebug() << log;
+
+        if (m_itemRangeChangedCb)
+        {
+            m_itemRangeChangedCb(m_firstItem,m_lastItem);
+        }
+    }
 }
 
 #if 0
