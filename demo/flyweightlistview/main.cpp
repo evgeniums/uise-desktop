@@ -343,6 +343,24 @@ int main(int argc, char *argv[])
             }
         );
 
+        auto flyweightButton=new QPushButton("Flyweight list",mainFrame);
+        layout->addWidget(flyweightButton,++row,3);
+        flyweightButton->setCheckable(true);
+        QObject::connect(flyweightButton,&QPushButton::toggled,
+         [&v,&flyweightButton](bool enable)
+         {
+            v->setFlyweightEnabled(!enable);
+            if (enable)
+            {
+                flyweightButton->setText("Fixed list");
+            }
+            else
+            {
+                flyweightButton->setText("Flyweight list");
+            }
+         }
+        );
+
         QObject::connect(clearButton,&QPushButton::clicked,
                          [&v](){v->clear();});
 
@@ -350,10 +368,24 @@ int main(int argc, char *argv[])
         {
             items[i]=--HelloWorldItemId;
         }
-        auto loadItems=[&v,&items]()
+        auto loadItems=[&v,&items,&stickMode]()
         {
+            v->setMaxSortValue(items.size()-1);
+            v->setMinSortValue(0);
+
             std::vector<HelloWorldItemWrapper> newItems;
-            for (size_t i=50;i<53;i++)
+
+            size_t count=10;
+
+            auto from=0;
+            auto to=count;
+            if (stickMode->currentData().toInt()==static_cast<int>(Direction::END))
+            {
+                from=items.size()-count;
+                to=items.size();
+            }
+
+            for (size_t i=from;i<to;i++)
             {
                 newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
             }
@@ -416,7 +448,7 @@ int main(int argc, char *argv[])
          }
         );
 
-        auto requestBefore=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount)
+        auto requestItems=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount, Direction direction)
         {
             size_t idx=0;
             if (item!=nullptr)
@@ -424,7 +456,7 @@ int main(int argc, char *argv[])
                 idx=item->sortValue();
             }
 
-            qDebug() << "requestBefore "<<idx<<", "<<itemCount;
+            qDebug() << "request items "<<idx<<", "<<itemCount<<", "<<static_cast<int>(direction);
 
             std::vector<HelloWorldItemWrapper> newItems;
             if (item==nullptr)
@@ -440,61 +472,38 @@ int main(int argc, char *argv[])
             }
             else
             {
-                if (itemCount>idx)
+                if (direction==Direction::END)
                 {
-                    itemCount=idx;
-                }
-                for (size_t i=idx-itemCount;i<idx;i++)
-                {
-                    if (i>=items.size())
+                    for (size_t i=idx+1;i<=idx+itemCount;i++)
                     {
-                        continue;
+                        if (i>=items.size())
+                        {
+                            continue;
+                        }
+                        newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
                     }
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                }
+                else
+                {
+                    if (itemCount>idx)
+                    {
+                        itemCount=idx;
+                    }
+                    for (size_t i=idx-itemCount;i<idx;i++)
+                    {
+                        if (i>=items.size())
+                        {
+                            continue;
+                        }
+                        newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                    }
                 }
             }
 
             v->insertContinuousItems(newItems);
         };
 
-        auto requestAfter=[&v,&items](const HelloWorldItemWrapper* item, size_t itemCount)
-        {
-            size_t idx=0;
-            if (item!=nullptr)
-            {
-                idx=item->sortValue();
-            }
-
-            qDebug() << "requestAfter "<<idx<<", "<<itemCount;
-
-            std::vector<HelloWorldItemWrapper> newItems;
-            if (item==nullptr)
-            {
-                for (size_t i=0;i<itemCount;i++)
-                {
-                    if (i>=items.size())
-                    {
-                        continue;
-                    }
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
-                }
-            }
-            else
-            {
-                for (size_t i=idx+1;i<=idx+itemCount;i++)
-                {
-                    if (i>=items.size())
-                    {
-                        continue;
-                    }
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
-                }
-            }
-
-            v->insertContinuousItems(newItems);
-        };
-
-        v->setFlyweightEnabled(false);
+        v->setRequestItemsCb(requestItems);
 
         w.setCentralWidget(mainFrame);
 
@@ -517,7 +526,6 @@ int main(int argc, char *argv[])
                 qDebug() << "jumpHome only jump";
 
                 // only jump
-                v->scrollToEdge(Direction::HOME);
             }
             else if (firstPos>prefetchCount)
             {
@@ -544,7 +552,7 @@ int main(int argc, char *argv[])
                 }
                 v->insertContinuousItems(newItems);
             }
-
+            v->scrollToEdge(Direction::HOME);
         };
         auto jumpEnd=[v,&items,&count]()
         {
@@ -565,7 +573,6 @@ int main(int argc, char *argv[])
                 qDebug() << "jumpEnd only jump";
 
                 // only jump
-                v->scrollToEdge(Direction::END);
             }
             else if ((lastPos+prefetchCount)<count)
             {
@@ -592,6 +599,7 @@ int main(int argc, char *argv[])
                 }
                 v->insertContinuousItems(newItems);
             }
+            v->scrollToEdge(Direction::END);
         };
 
         v->setRequestHomeCb(jumpHome);

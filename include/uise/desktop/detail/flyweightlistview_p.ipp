@@ -259,7 +259,9 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_cleared(false),
         m_firstItem(nullptr),
         m_lastItem(nullptr),
-        m_minOtherSize(0)
+        m_minOtherSize(0),
+        m_maxSortValue(ItemT::defaultSortValue()),
+        m_minSortValue(ItemT::defaultSortValue())
 {
 }
 
@@ -407,7 +409,7 @@ size_t FlyweightListView_p<ItemT>::maxHiddenItemsBeyondEdge() noexcept
 template <typename ItemT>
 size_t FlyweightListView_p<ItemT>::prefetchThreshold() noexcept
 {
-    return prefetchItemCount()/2;
+    return prefetchItemCount()*0.75;
 }
 
 //--------------------------------------------------------------------------
@@ -825,69 +827,6 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
         {
             m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
         }
-    }
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkItemCount()
-{
-    if (!m_enableFlyweight)
-    {
-        return;
-    }
-
-    if (itemsCount()==0)
-    {
-        // don't request items if the list was not loaded yet
-        return;
-    }
-
-    const auto& order=itemOrder();
-    auto maxHidden=maxHiddenItemsBeyondEdge();
-    auto minPrefetch=prefetchThreshold();
-    auto prefetch=prefetchItemCount();
-
-    int hiddenBefore=0;
-    auto first=firstItem();
-    auto firstVisible=firstViewportItem();
-    if (first&&firstVisible)
-    {
-        auto from=m_llist->widgetSeqPos(first->widget());
-        auto to=m_llist->widgetSeqPos(firstVisible->widget());
-        hiddenBefore=to-from;
-    }
-    if (hiddenBefore<minPrefetch)
-    {
-        if (m_requestItemsCb)
-        {
-            m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
-        }
-    }
-    else if (hiddenBefore>maxHidden)
-    {
-        removeExtraItemsFromBegin(hiddenBefore-maxHidden);
-    }
-
-    int hiddenAfter=0;
-    auto last=lastItem();
-    auto lastVisible=lastViewportItem();
-    if (last&&lastVisible)
-    {
-        auto from=m_llist->widgetSeqPos(lastVisible->widget());
-        auto to=m_llist->widgetSeqPos(last->widget());
-        hiddenAfter=to-from;
-    }
-    if (hiddenAfter<minPrefetch)
-    {
-        if (m_requestItemsCb)
-        {
-            m_requestItemsCb(lastItem(),prefetch,Direction::END);
-        }
-    }
-    else if (hiddenAfter>maxHidden)
-    {
-        removeExtraItemsFromEnd(hiddenAfter-maxHidden);
     }
 }
 
@@ -1334,6 +1273,81 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView_p<ItemT>::checkItemCount()
+{
+    if (!m_enableFlyweight)
+    {
+        return;
+    }
+
+    if (itemsCount()==0)
+    {
+        // don't request items if the list was not loaded yet
+        return;
+    }
+
+    auto maxHidden=maxHiddenItemsBeyondEdge();
+    auto minPrefetch=prefetchThreshold();
+    auto prefetch=prefetchItemCount();
+
+    int hiddenBefore=0;
+    auto first=firstItem();
+    auto firstVisible=firstViewportItem();
+    if (first&&firstVisible)
+    {
+        auto from=m_llist->widgetSeqPos(first->widget());
+        auto to=m_llist->widgetSeqPos(firstVisible->widget());
+        hiddenBefore=to-from;
+    }
+#if 0
+    qDebug() << "hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+             << " first->sortValue() "<<first->sortValue()
+             << " m_minSortValue "<<m_minSortValue;
+#endif
+    if (hiddenBefore<minPrefetch && first->sortValue()>m_minSortValue)
+    {
+        if (m_requestItemsCb)
+        {
+            m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
+        }
+    }
+    else if (hiddenBefore>maxHidden)
+    {
+        removeExtraItemsFromBegin(hiddenBefore-maxHidden);
+    }
+
+    int hiddenAfter=0;
+    auto last=lastItem();
+    auto lastVisible=lastViewportItem();
+    if (last&&lastVisible)
+    {
+        auto from=m_llist->widgetSeqPos(lastVisible->widget());
+        auto to=m_llist->widgetSeqPos(last->widget());
+        hiddenAfter=to-from;
+    }
+#if 0
+    qDebug() << "hiddenAfter "<<hiddenAfter<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+             << " last->sortValue() "<<last->sortValue()
+             << " m_maxSortValue "<<m_maxSortValue;
+#endif
+    if (hiddenAfter<minPrefetch  && last->sortValue()<m_maxSortValue)
+    {
+        if (m_requestItemsCb)
+        {
+            m_requestItemsCb(lastItem(),prefetch,Direction::END);
+        }
+    }
+    else if (hiddenAfter>maxHidden)
+    {
+        removeExtraItemsFromEnd(hiddenAfter-maxHidden);
+    }
+#if 0
+    qDebug() << " item count "<<itemsCount();
+#endif
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
 {
     if (count==0)
@@ -1350,7 +1364,9 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
         {
             break;
         }
-
+#if 0
+        qDebug() << "Removed item "<<it->sortValue()<< " before viewport";
+#endif
         clearWidget(it->widget());
         it=order.erase(it);
     }
@@ -1378,6 +1394,9 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
         }
 
         nit=std::next(it);
+#if 0
+        qDebug() << "Removed item "<<it->sortValue()<< " after viewport";
+#endif
         clearWidget(it->widget());
         nit = decltype(it){order.erase(std::next(it).base())};
     }

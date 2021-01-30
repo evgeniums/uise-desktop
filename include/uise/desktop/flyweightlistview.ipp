@@ -416,5 +416,33 @@ void FlyweightListView<ItemT>::setMinOrthogonalSizeChangedCb(MinOrthogonalSizeCh
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setMaxSortValue(const typename ItemT::SortValueType &value) noexcept
+{
+    pimpl->m_maxSortValue=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+typename ItemT::SortValueType FlyweightListView<ItemT>::maxSortValue() const noexcept
+{
+    return pimpl->m_maxSortValue;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setMinSortValue(const typename ItemT::SortValueType &value) noexcept
+{
+    pimpl->m_minSortValue=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+typename ItemT::SortValueType FlyweightListView<ItemT>::minSortValue() const noexcept
+{
+    return pimpl->m_minSortValue;
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_EMD

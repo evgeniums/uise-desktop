@@ -312,6 +312,9 @@ class FlyweightListView_p
         bool m_cleared;
 
         int m_minOtherSize;
+
+        typename ItemT::SortValueType m_maxSortValue;
+        typename ItemT::SortValueType m_minSortValue;
 };
 
 } // namespace detail

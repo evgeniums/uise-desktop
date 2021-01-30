@@ -141,6 +141,11 @@ class FlyweightListView : public QFrame
         int orthogonalPos() const noexcept;
         void setOrthogonalPos(int value);
 
+        typename ItemT::SortValueType maxSortValue() const noexcept;
+        void setMaxSortValue(const typename ItemT::SortValueType& value) noexcept;
+        typename ItemT::SortValueType minSortValue() const noexcept;
+        void setMinSortValue(const typename ItemT::SortValueType& value) noexcept;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
