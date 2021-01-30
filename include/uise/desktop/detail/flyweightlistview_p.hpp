@@ -226,6 +226,7 @@ class FlyweightListView_p
 
         const auto& itemOrder() const noexcept;
         const auto& itemIdx() const noexcept;
+        auto& itemIdx() noexcept;
 
         void beginItemRangeChange() noexcept;
         void endItemRangeChange();

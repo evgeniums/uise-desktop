@@ -374,6 +374,13 @@ const auto& FlyweightListView_p<ItemT>::itemIdx() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+auto& FlyweightListView_p<ItemT>::itemIdx() noexcept
+{
+    return m_items.template get<1>();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
 {
     const auto& order=itemOrder();
@@ -411,7 +418,7 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
     auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
     if (item)
     {
-        auto& idx=m_items.template get<1>();
+        auto& idx=itemIdx();
         idx.erase(item->id());
         m_resizeList.shot(0,
             [this]()
@@ -456,7 +463,6 @@ QPoint FlyweightListView_p<ItemT>::listEndInViewport() const
     if (propSize>0)
     {
         setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+propSize-1);
-        setOProp(pos,OProp::pos,0,true);
     }
     return pos;
 }
@@ -585,8 +591,8 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
 
     const ItemT* oldItem=nullptr;
 
-    auto& idx=m_items.template get<1>();
-    auto& order=m_items.template get<0>();
+    const auto& idx=itemIdx();
+    const auto& order=itemOrder();
     if (auto it=idx.find(m_firstViewportItemID); it!=idx.end())
     {
         oldItem=&(*it);
@@ -727,7 +733,7 @@ void FlyweightListView_p<ItemT>::checkNewItemsNeeded()
 template <typename ItemT>
 QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bool findAfterWidget)
 {
-    auto& idx=m_items.template get<1>();
+    auto& idx=itemIdx();
     auto result=idx.insert(item);
     if (!result.second)
     {
@@ -742,7 +748,7 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
     QWidget* afterWidget=nullptr;
     if (findAfterWidget)
     {
-        auto& order=m_items.template get<0>();
+        const auto& order=itemOrder();
         auto it=m_items.template project<0>(result.first);
         if (it!=order.begin())
         {
@@ -947,7 +953,7 @@ void FlyweightListView_p<ItemT>::scrollToEdge(Direction direction)
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
 {
-    auto& idx=m_items.template get<1>();
+    const auto& idx=itemIdx();
     auto it=idx.find(id);
     if (it==idx.end())
     {
@@ -1093,7 +1099,7 @@ void FlyweightListView_p<ItemT>::clearWidget(QWidget* widget)
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::removeItem(const typename ItemT::IdType &id)
 {
-    auto& idx=m_items.template get<1>();
+    const auto& idx=itemIdx();
     auto it=idx.find(id);
     if (it!=idx.end())
     {
@@ -1108,7 +1114,7 @@ void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
 {
     clearWidget(item->widget());
 
-    auto& idx=m_items.template get<1>();
+    auto& idx=itemIdx();
     idx.erase(item->id());
 }
 
@@ -1292,7 +1298,7 @@ size_t FlyweightListView_p<ItemT>::removeItemsFromBegin(size_t count, size_t off
         return 0;
     }
 
-    auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
     for (auto it=order.begin();it!=order.end();)
     {
         if (offset>0)
@@ -1328,7 +1334,7 @@ size_t FlyweightListView_p<ItemT>::removeItemsFromEnd(size_t count, size_t offse
         return 0;
     }
 
-    auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
     for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
     {
         if (offset>0)
