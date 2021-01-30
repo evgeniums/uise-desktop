@@ -47,9 +47,12 @@ int GetOProp(bool horizontal, const T& obj, OProp prop) noexcept
         {
             case(OProp::pos):
                 return horizontal?obj.x():obj.y();
+                break;
 
-            case(OProp::size):
-            case(OProp::edge):
+            case(OProp::size): [[fallthrough]];
+            case(OProp::edge): [[fallthrough]];
+            case(OProp::min_size): [[fallthrough]];
+            case(OProp::max_size):
                 return 0;
         }
         return 0;
@@ -60,12 +63,23 @@ int GetOProp(bool horizontal, const T& obj, OProp prop) noexcept
         {
             case(OProp::size):
                 return horizontal?obj.width():obj.height();
+                break;
 
             case(OProp::pos):
                 return horizontal?obj.x():obj.y();
+                break;
 
             case(OProp::edge):
                 return horizontal?obj.geometry().right():obj.geometry().bottom();
+                break;
+
+            case(OProp::min_size):
+                return horizontal?obj.minimumWidth():obj.minimumHeight();
+                break;
+
+            case(OProp::max_size):
+                return horizontal?obj.maximumWidth():obj.maximumHeight();
+                break;
         }
         return 0;
     }
@@ -96,7 +110,9 @@ void SetOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
                 }
             break;
 
-            case(OProp::size):
+            case(OProp::min_size): [[fallthrough]];
+            case(OProp::max_size): [[fallthrough]];
+            case(OProp::size): [[fallthrough]];
             case(OProp::edge):
             break;
         }
@@ -116,7 +132,29 @@ void SetOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
                 }
             break;
 
-            case(OProp::pos):
+            case(OProp::min_size):
+                if (horizontal)
+                {
+                    obj.setMinimumWidth(value);
+                }
+                else
+                {
+                    obj.setMinimumHeight(value);
+                }
+            break;
+
+            case(OProp::max_size):
+                if (horizontal)
+                {
+                    obj.setMaximumWidth(value);
+                }
+                else
+                {
+                    obj.setMaximumHeight(value);
+                }
+            break;
+
+            case(OProp::pos): [[fallthrough]];
             case(OProp::edge):
             break;
         }
@@ -136,7 +174,7 @@ void SetOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
                 }
             break;
 
-            case(OProp::pos):
+            case(OProp::pos): [[fallthrough]];
             case(OProp::edge):
             break;
         }
@@ -220,7 +258,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_ignoreUpdates(false),
         m_cleared(false),
         m_firstItem(nullptr),
-        m_lastItem(nullptr)
+        m_lastItem(nullptr),
+        m_minOtherSize(0)
 {
 }
 
@@ -267,8 +306,8 @@ void FlyweightListView_p<ItemT>::endUpdate()
 {
     resizeList();
     m_ignoreUpdates=false;
-    viewportUpdated();
     endItemRangeChange();
+    viewportUpdated();
 }
 
 //--------------------------------------------------------------------------
@@ -282,6 +321,51 @@ void FlyweightListView_p<ItemT>::onListContentResized()
             viewportUpdated();
         }
     );
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::updateMinOtherSize()
+{
+    int last=m_minOtherSize;
+    m_minOtherSize=0;
+    const auto& order=itemOrder();
+    for (auto&& it : order)
+    {
+        m_minOtherSize=std::max(
+                        m_minOtherSize,
+                        oprop(it.widget(),OProp::min_size,true)
+                    );
+    }
+
+    if (last!=m_minOtherSize)
+    {
+        if (m_minOtherSizeChangedCb)
+        {
+            m_minOtherSizeChangedCb(m_minOtherSize);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+int FlyweightListView_p<ItemT>::orthogonalPos() const noexcept
+{
+    return -oprop(m_llist,OProp::pos,true);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::setOrthogonalPos(int value)
+{
+    value=std::max(0,value);
+    if (m_minOtherSize!=value)
+    {
+        auto newPos=m_llist->pos();
+        setOProp(newPos,OProp::pos,value,true);
+        m_llist->move(newPos);
+        m_minOtherSize=value;
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -566,6 +650,8 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     setOProp(newListSize,OProp::size,otherSize,true);
     m_llist->resize(newListSize);
 
+    updateMinOtherSize();
+
     // process updated viewport
     viewportUpdated();
 
@@ -802,6 +888,8 @@ void FlyweightListView_p<ItemT>::resizeList()
     if (m_llist->size()!=listSize)
     {
         m_llist->resize(listSize);
+
+        updateMinOtherSize();
         compensateSizeChange();
     }
 }
@@ -839,6 +927,8 @@ void FlyweightListView_p<ItemT>::clear()
     m_atEnd=true;
     m_firstWidgetPos=0;
     m_scrollValue=0;
+
+    updateMinOtherSize();
 
     m_cleared=true;
 }

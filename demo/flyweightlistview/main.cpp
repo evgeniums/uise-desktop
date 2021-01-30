@@ -57,6 +57,7 @@ class HelloWorldItem : public QFrame
             m_browser->setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
             setObjectName(QString("Label %1, %2").arg(seqNum).arg(m_id));
             setFixedHeight(64);
+            setMinimumWidth(500);
 
             setStyleSheet("* {padding: 1px;} \n QTextBrowser {margin: 8px; margin-top: 0; margin-bottom: 0;}");
         }

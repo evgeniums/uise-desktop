@@ -70,6 +70,7 @@ class FlyweightListView : public QFrame
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void ()>;
         using ScrolledCb=std::function<void (int,int)>;
+        using MinOrthogonalSizeChangedCb=std::function<void (int)>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
@@ -103,6 +104,8 @@ class FlyweightListView : public QFrame
         void setRequestEndCb(RequestJumpCb cb) noexcept;
         void setScrolledCb(ScrolledCb cb) noexcept;
 
+        void setMinOrthogonalSizeChangedCb(MinOrthogonalSizeChangedCb cb) noexcept;
+
         bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
         void scrollToEdge(Direction direction);
         bool isScrollAtEdge(Direction direction, size_t maxOffset=5) const noexcept;
@@ -133,6 +136,10 @@ class FlyweightListView : public QFrame
         size_t minPageScrollStep() const noexcept;
 
         size_t pageScrollStep() const noexcept;
+
+        int minOrthogonalSize() const noexcept;
+        int orthogonalPos() const noexcept;
+        void setOrthogonalPos(int value);
 
     protected:
 

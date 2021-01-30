@@ -114,7 +114,9 @@ enum class OProp : uint8_t
 {
     size,
     pos,
-    edge
+    edge,
+    min_size,
+    max_size
 };
 
 template <typename ItemT>
@@ -231,6 +233,11 @@ class FlyweightListView_p
         void beginItemRangeChange() noexcept;
         void endItemRangeChange();
 
+        void updateMinOtherSize();
+
+        int orthogonalPos() const noexcept;
+        void setOrthogonalPos(int value);
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -263,6 +270,7 @@ class FlyweightListView_p
         typename FlyweightListView<ItemT>::RequestJumpCb m_homeRequestCb;
         typename FlyweightListView<ItemT>::RequestJumpCb m_endRequestCb;
         typename FlyweightListView<ItemT>::ScrolledCb m_scrolledCb;
+        typename FlyweightListView<ItemT>::MinOrthogonalSizeChangedCb m_minOtherSizeChangedCb;
 
         LinkedListView* m_llist;
 
@@ -297,6 +305,8 @@ class FlyweightListView_p
         SingleShotTimer m_resizeList;
 
         bool m_cleared;
+
+        int m_minOtherSize;
 };
 
 } // namespace detail
