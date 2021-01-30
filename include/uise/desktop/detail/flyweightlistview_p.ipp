@@ -343,7 +343,7 @@ size_t FlyweightListView_p<ItemT>::visibleCount() const noexcept
 template <typename ItemT>
 bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const noexcept
 {
-    const auto& idx=m_items.template get<1>();
+    const auto& idx=itemIdx();
     auto it=idx.find(id);
     return it!=idx.end();
 }
@@ -352,16 +352,30 @@ bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) const noexcept
 {
-    const auto& idx=m_items.template get<1>();
+    const auto& idx=itemIdx();
     auto it=idx.find(id);
     return (it!=idx.end())?&(*it):nullptr;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+const auto& FlyweightListView_p<ItemT>::itemOrder() const noexcept
+{
+    return m_items.template get<0>();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+const auto& FlyweightListView_p<ItemT>::itemIdx() const noexcept
+{
+    return m_items.template get<1>();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
 {
-    const auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
     auto it=order.begin();
     return (it!=order.end())?&(*it):nullptr;
 }
@@ -370,7 +384,7 @@ const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::lastItem() const noexcept
 {
-    const auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
     auto it=order.rbegin();
     return it!=order.rend()?&(*it):nullptr;
 }
@@ -560,7 +574,7 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     m_llist->resize(newListSize);
 
     // adjust sizes of item widgets
-    const auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
     for (auto && it: order)
     {
         adjustWidgetSize(it.widget(),otherSize);
@@ -809,7 +823,7 @@ void FlyweightListView_p<ItemT>::resizeList()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::clear()
 {
-    const auto& order=m_items.template get<0>();
+    const auto& order=itemOrder();
 
     for (auto&& it : order)
     {
@@ -1174,7 +1188,7 @@ void FlyweightListView_p<ItemT>::checkNeedsItemsBefore()
     if ((m_hiddenBefore<prefetchThreshold() || count()==0) && m_requestItemsBeforeCb)
     {
         const ItemT* firstItem=nullptr;
-        const auto& order=m_items.template get<0>();
+        const auto& order=itemOrder();
         auto it=order.begin();
         if (it!=order.end())
         {
@@ -1200,7 +1214,7 @@ void FlyweightListView_p<ItemT>::checkNeedsItemsAfter()
     if ((m_hiddenAfter<prefetchThreshold() || !m_lastEndWidget ) && m_requestItemsAfterCb)
     {
         const ItemT* lastItem=nullptr;
-        const auto& order=m_items.template get<0>();
+        const auto& order=itemOrder();
         auto it=order.rbegin();
         if (it!=order.rend())
         {

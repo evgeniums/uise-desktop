@@ -84,8 +84,10 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
                 {
                     case QEvent::Resize:
                     {
-//                        auto e=dynamic_cast<QResizeEvent*>(event);
-//                        qDebug() << "Widget resized "<<e;
+#if 0
+                        auto e=dynamic_cast<QResizeEvent*>(event);
+                        qDebug() << "Widget resized "<<e;
+#endif
                     }
                     [[fallthrough]];
                     case QEvent::Show: [[fallthrough]];
@@ -223,6 +225,9 @@ class FlyweightListView_p
         void updateStickingPositions();
 
         void adjustWidgetSize(QWidget* widget, int otherSize);
+
+        const auto& itemOrder() const noexcept;
+        const auto& itemIdx() const noexcept;
 
     public:
 
