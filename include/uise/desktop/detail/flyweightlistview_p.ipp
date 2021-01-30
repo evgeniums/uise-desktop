@@ -837,24 +837,31 @@ void FlyweightListView_p<ItemT>::checkItemCount()
         return;
     }
 
+    if (itemsCount()==0)
+    {
+        // don't request items if the list was not loaded yet
+        return;
+    }
+
     const auto& order=itemOrder();
     auto maxHidden=maxHiddenItemsBeyondEdge();
     auto minPrefetch=prefetchThreshold();
+    auto prefetch=prefetchItemCount();
 
     int hiddenBefore=0;
-    for (auto it=order.begin();it!=order.end();++it)
+    auto first=firstItem();
+    auto firstVisible=firstViewportItem();
+    if (first&&firstVisible)
     {
-        if (it->id()==m_firstViewportItemID)
-        {
-            break;
-        }
-        ++hiddenBefore;
+        auto from=m_llist->widgetSeqPos(first->widget());
+        auto to=m_llist->widgetSeqPos(firstVisible->widget());
+        hiddenBefore=to-from;
     }
     if (hiddenBefore<minPrefetch)
     {
         if (m_requestItemsCb)
         {
-            m_requestItemsCb(firstItem(),prefetchItemCount(),Direction::HOME);
+            m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
         }
     }
     else if (hiddenBefore>maxHidden)
@@ -863,19 +870,19 @@ void FlyweightListView_p<ItemT>::checkItemCount()
     }
 
     int hiddenAfter=0;
-    for (auto it=order.rbegin();it!=order.rend();++it)
+    auto last=lastItem();
+    auto lastVisible=lastViewportItem();
+    if (last&&lastVisible)
     {
-        if (it->id()==m_lastViewportItemID)
-        {
-            break;
-        }
-        ++hiddenAfter;
+        auto from=m_llist->widgetSeqPos(lastVisible->widget());
+        auto to=m_llist->widgetSeqPos(last->widget());
+        hiddenAfter=to-from;
     }
     if (hiddenAfter<minPrefetch)
     {
         if (m_requestItemsCb)
         {
-            m_requestItemsCb(lastItem(),prefetchItemCount(),Direction::END);
+            m_requestItemsCb(lastItem(),prefetch,Direction::END);
         }
     }
     else if (hiddenAfter>maxHidden)
@@ -1314,7 +1321,9 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
             log+=QString("no last item");
         }
         std::ignore=log;
-//        qDebug() << log;
+#if 0
+        qDebug() << log;
+#endif
 
         if (m_itemRangeChangedCb)
         {
