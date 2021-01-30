@@ -50,15 +50,14 @@ class LinkedListView_p
         void setupLayout()
         {
             layout=Layout::box(view,orientation);
-//            layout->setSizeConstraint(QLayout::SetFixedSize);
-//            if (orientation==Qt::Horizontal)
-//            {
-//                view->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
-//            }
-//            else
-//            {
-//                view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-//            }
+            if (orientation==Qt::Horizontal)
+            {
+                view->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+            }
+            else
+            {
+                view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+            }
         }
 
         std::shared_ptr<LinkedListViewItem> itemForWidget(QWidget *widget)
@@ -170,16 +169,8 @@ class LinkedListView_p
                 auto newItem=itemForWidget(newWidget);
                 newItem->setPrevAuto(lastItem);
 
-                layout->insertWidget(pos,newWidget,0,Qt::AlignLeft|Qt::AlignTop);
+                layout->insertWidget(pos,newWidget);
                 newWidget->setVisible(true);
-                if (orientation==Qt::Horizontal)
-                {
-                    newWidget->setFixedHeight(view->height());
-                }
-                else
-                {
-                    newWidget->setFixedWidth(view->width());
-                }
                 newItem->setPos(pos++);
 
                 if (!firstItem)

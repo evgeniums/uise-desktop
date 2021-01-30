@@ -224,8 +224,6 @@ class FlyweightListView_p
         void compensateSizeChange();
         void updateStickingPositions();
 
-        void adjustWidgetSize(QWidget* widget, int otherSize);
-
         const auto& itemOrder() const noexcept;
         const auto& itemIdx() const noexcept;
 

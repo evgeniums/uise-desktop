@@ -242,9 +242,6 @@ void FlyweightListView_p<ItemT>::setupUi()
     m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
     m_qobjectHelper.setListResizeHandler([this](){onListContentResized();});
 
-    m_view->setStyleSheet("background: blue; padding:2px;");
-    m_llist->setStyleSheet("background: red; padding:0px;");
-
     if (m_llist->frameWidth()!=0)
     {
         auto err=QString("CSS border, margin and padding for LinkedListView(FlyweightListViewLLits) must be 0 (actual: %1)").arg(m_llist->frameWidth());
@@ -504,20 +501,6 @@ void FlyweightListView_p<ItemT>::updateStickingPositions()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::adjustWidgetSize(QWidget *widget, int otherSize)
-{
-    if (isHorizontal())
-    {
-        widget->setFixedHeight(otherSize);
-    }
-    else
-    {
-        widget->setFixedWidth(otherSize);
-    }
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 {
     m_viewSize=event->oldSize();
@@ -576,13 +559,6 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     setOProp(newListSize,OProp::size,oprop(m_llist,OProp::size));
     setOProp(newListSize,OProp::size,otherSize,true);
     m_llist->resize(newListSize);
-
-    // adjust sizes of item widgets
-    const auto& order=itemOrder();
-    for (auto && it: order)
-    {
-        adjustWidgetSize(it.widget(),otherSize);
-    }
 
     // process updated viewport
     viewportUpdated();
