@@ -29,6 +29,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QResizeEvent>
 #include <QStyle>
 
+#include <uise/desktop/utils/directchildwidget.hpp>
+
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -353,7 +355,12 @@ bool FlyweightListView_p<ItemT>::isFlyweightEnabled() const noexcept
 template <typename ItemT>
 QPoint FlyweightListView_p<ItemT>::viewportBegin() const
 {
-    return QPoint(0,0)-m_llist->pos();
+    //! @note Using middle point of the llist, so the items must be centered in the view!
+
+    QPoint pos;
+    setOProp(pos,OProp::pos,oprop(m_llist,OProp::size,true)/2,true);
+    setOProp(pos,OProp::pos,-oprop(m_llist,OProp::pos));
+    return pos;
 }
 
 //--------------------------------------------------------------------------
@@ -948,7 +955,7 @@ void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::itemAtPos(const QPoint &pos) const
 {
-    const auto* widget=m_llist->childAt(pos);
+    const auto* widget=directChildWidgetAt(m_llist,pos);
     return PointerHolder::getProperty<const ItemT*>(widget,ItemT::Property);
 }
 

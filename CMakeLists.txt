@@ -30,6 +30,7 @@ SET (HEADERS
     include/uise/desktop/utils/pointerholder.hpp
     include/uise/desktop/utils/singleshottimer.hpp
     include/uise/desktop/utils/orientationinvariant.hpp
+    include/uise/desktop/utils/directchildwidget.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -50,6 +51,7 @@ SET (SOURCES
     src/linkedlistview.cpp
     src/flyweightlistframe.cpp
     src/singleshottimer.cpp
+    src/directchildwidget.cpp
 )
 
 IF (UISE_DESKTOP_STATIC)

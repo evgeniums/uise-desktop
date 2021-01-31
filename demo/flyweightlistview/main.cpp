@@ -35,103 +35,11 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/flyweightlistitem.hpp>
 
+#include "helloworlditem.hpp"
+
 using namespace UISE_DESKTOP_NAMESPACE;
 
 //--------------------------------------------------------------------------
-
-static size_t HelloWorldItemId=1000000;
-
-class HelloWorldItem : public QFrame
-{
-    public:
-
-        HelloWorldItem(size_t seqNum, size_t id, QWidget* parent=nullptr)
-            : QFrame(parent),
-              m_id(id),
-              m_seqNum(seqNum),
-              m_browser(new QTextBrowser(this))
-        {
-            auto l=Layout::horizontal(this);
-            l->addWidget(m_browser);
-
-            m_browser->setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
-            setObjectName(QString("Label %1, %2").arg(seqNum).arg(m_id));
-            setFixedHeight(64);
-            setMinimumWidth(500);
-
-            setStyleSheet("* {padding: 1px;} \n QTextBrowser {margin: 8px; margin-top: 0; margin-bottom: 0;}");
-        }
-
-        HelloWorldItem(size_t seqNum, QWidget* parent=nullptr)
-            : HelloWorldItem(seqNum,0,parent)
-        {
-        }
-
-        size_t seqNum() const noexcept
-        {
-            return m_seqNum;
-        }
-
-        size_t id() const noexcept
-        {
-            return m_id;
-        }
-
-        void setSeqNum(size_t value)
-        {
-            m_seqNum=value;
-        }
-
-    private:
-
-        void keyPressEvent(QKeyEvent *ev)
-        {
-            ev->ignore();
-        }
-
-#if 0
-        void resizeEvent(QResizeEvent* ev)
-        {
-            if (ev->size().width()<=20)
-            {
-                return;
-            }
-            auto newWidth=ev->size().width()-20;
-            if (newWidth<450)
-            {
-                 newWidth=450;
-            }
-            else if (newWidth>750)
-            {
-                newWidth=750;
-            }
-            m_browser->setFixedWidth(newWidth);
-        }
-#endif
-        size_t m_id;
-        size_t m_seqNum;
-        QTextEdit* m_browser;
-};
-
-struct HelloWorldItemTraits : public FlyweightListItemTraits<HelloWorldItem*,QFrame,size_t,size_t>
-{
-    static size_t sortValue(const HelloWorldItem* item) noexcept
-    {
-        return item->seqNum();
-    }
-
-    static QFrame* widget(HelloWorldItem* item) noexcept
-    {
-        return item;
-    }
-
-    static size_t id(const HelloWorldItem* item)
-    {
-        return item->id();
-    }
-};
-
-using HelloWorldItemWrapper=FlyweightListItem<HelloWorldItemTraits>;
 
 int main(int argc, char *argv[])
 {
@@ -154,7 +62,7 @@ int main(int argc, char *argv[])
 
         layout->addWidget(v,row,0,1,4);
 
-        layout->addWidget(new QLabel("From item"),++row,0,Qt::AlignHCenter);
+        layout->addWidget(new QLabel("Item(s)"),++row,0,Qt::AlignHCenter);
         layout->addWidget(new QLabel("Number"),row,1,Qt::AlignHCenter);
         layout->addWidget(new QLabel("Mode"),row,2,Qt::AlignHCenter);
         layout->addWidget(new QLabel("Operation"),row,3,Qt::AlignHCenter);
@@ -292,33 +200,6 @@ int main(int argc, char *argv[])
         jumpMode->addItem("end",static_cast<int>(Direction::END));
         auto jumpToButton=new QPushButton("Jump to",mainFrame);
         layout->addWidget(jumpToButton,row,3);
-        QObject::connect(
-            jumpToButton,
-            &QPushButton::clicked,
-            [&v,&jumpItem,&jumpMode,&jumpOffset]()
-            {
-                switch (static_cast<Direction>(jumpMode->currentData().toInt()))
-                {
-                    case Direction::HOME:
-                    {
-                        v->scrollToEdge(Direction::HOME);
-                    }
-                    break;
-
-                    case Direction::END:
-                    {
-                        v->scrollToEdge(Direction::END);
-                    }
-                    break;
-
-                    case Direction::NONE:
-                    {
-                        v->scrollToItem(jumpItem->value(),jumpOffset->value());
-                    }
-                    break;
-                }
-            }
-        );
 
         auto clearButton=new QPushButton("Clear",mainFrame);
         layout->addWidget(clearButton,++row,3);
@@ -604,6 +485,80 @@ int main(int argc, char *argv[])
 
         v->setRequestHomeCb(jumpHome);
         v->setRequestEndCb(jumpEnd);
+
+        QObject::connect(
+            jumpToButton,
+            &QPushButton::clicked,
+            [&v,&items,&jumpItem,&jumpMode,&jumpOffset,&jumpHome,&jumpEnd]()
+            {
+                switch (static_cast<Direction>(jumpMode->currentData().toInt()))
+                {
+                    case Direction::HOME:
+                    {
+                        jumpHome();
+                    }
+                    break;
+
+                    case Direction::END:
+                    {
+                        jumpEnd();
+                    }
+                    break;
+
+                    case Direction::NONE:
+                    {
+                        auto exists=v->scrollToItem(jumpItem->value(),jumpOffset->value());
+                        if (!exists)
+                        {
+                            size_t prefetchCount=v->prefetchItemCount();
+                            size_t itemCount=v->itemCount();
+                            if (itemCount<prefetchCount)
+                            {
+                                itemCount=3*prefetchCount;
+                            }
+                            size_t jumpPos=MaxHelloWorldItemId-jumpItem->value()-1;
+                            auto from=jumpPos;
+                            if (from>=MaxHelloWorldItemId)
+                            {
+                                return;
+                            }
+                            if (from<prefetchCount)
+                            {
+                                from=0;
+                            }
+                            else
+                            {
+                                from-=prefetchCount;
+                            }
+                            std::vector<HelloWorldItemWrapper> newItems;
+                            for (size_t i=from;i<from+itemCount;i++)
+                            {
+                                if (i>=items.size())
+                                {
+                                    break;
+                                }
+                                auto item=v->item(items[i]);
+                                if (!item)
+                                {
+                                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,items[i])));
+                                }
+                                else
+                                {
+                                    newItems.emplace_back(HelloWorldItemWrapper(item->item()));
+                                }
+                            }
+                            if (!newItems.empty())
+                            {
+                                v->loadItems(newItems);
+                                std::ignore=v->scrollToItem(jumpItem->value(),jumpOffset->value());
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        );
+
 
         v->setFocus();
         SingleShotTimer load;

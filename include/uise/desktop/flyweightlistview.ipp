@@ -20,6 +20,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#ifndef UISE_DESKTOP_FLYWEIGHTLISTVIEW_IPP
+#define UISE_DESKTOP_FLYWEIGHTLISTVIEW_IPP
+
 #include <QEvent>
 #include <QKeyEvent>
 
@@ -68,6 +71,13 @@ template <typename ItemT>
 size_t FlyweightListView<ItemT>::prefetchItemCount() const noexcept
 {
     return pimpl->prefetchItemCount();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+size_t FlyweightListView<ItemT>::visibleItemCount() const noexcept
+{
+    return pimpl->visibleCount();
 }
 
 //--------------------------------------------------------------------------
@@ -446,3 +456,5 @@ typename ItemT::SortValueType FlyweightListView<ItemT>::minSortValue() const noe
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_EMD
+
+#endif // #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_IPP
