@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/src/destroywidget.cpp
+/** \file uise/desktop/src/directchildwidget.cpp
 *
 *  Defines directChildWidget() method.
 *
