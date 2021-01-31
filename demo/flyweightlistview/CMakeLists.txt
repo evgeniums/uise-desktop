@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(flyweightlistview-demo)
+PROJECT(flyweightlistview-demo LANGUAGES CXX)
 
 SET (HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/helloworlditem.hpp
