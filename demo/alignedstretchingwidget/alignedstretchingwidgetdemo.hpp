@@ -60,7 +60,7 @@ class AlignedStretchingWidgetDemo : public QTabWidget
             addTab(m_verticalFrame,"Verical");
             m_horizontalFrame->setObjectName("m_verticalFrame");
 
-            setStyleSheet("\n uise--desktop--AlignedStretchingWidget {padding: 4px; background: #0000FF;} \n QTextBrowser {background: yellow}");
+            setStyleSheet("\n uise--desktop--AlignedStretchingWidget {padding: 8px 4px; background: #0000FF;} \n QTextBrowser {background: yellow}");
         }
 
         QFrame* fillTab(Qt::Orientation orientation)

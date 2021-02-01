@@ -126,6 +126,28 @@ class OrientationInvariant
             {
                 return horizontal?obj.width():obj.height();
             }
+            else if constexpr (
+                        std::is_base_of_v<QRect,std::decay_t<T>>
+                    )
+            {
+                switch (prop)
+                {
+                    case(OProp::size): [[fallthrough]];
+                    case(OProp::min_size): [[fallthrough]];
+                    case(OProp::max_size):
+                        return horizontal?obj.width():obj.height();
+                        break;
+
+                    case(OProp::pos):
+                        return horizontal?obj.x():obj.y();
+                        break;
+
+                    case(OProp::edge):
+                        return horizontal?obj.right():obj.bottom();
+                        break;
+                }
+                return 0;
+            }
 
             return 0;
         }
@@ -240,6 +262,40 @@ class OrientationInvariant
                     break;
 
                     case(OProp::pos): [[fallthrough]];
+                    case(OProp::min_size): [[fallthrough]];
+                    case(OProp::max_size): [[fallthrough]];
+                    case(OProp::edge):
+                    break;
+                }
+            }
+            else if constexpr (std::is_base_of_v<QRect,std::decay_t<T>>)
+            {
+                switch (prop)
+                {
+                    case(OProp::size):
+                        if (horizontal)
+                        {
+                            obj.setWidth(value);
+                        }
+                        else
+                        {
+                            obj.setHeight(value);
+                        }
+                    break;
+
+                    case(OProp::pos):
+                        if (horizontal)
+                        {
+                            obj.setX(value);
+                        }
+                        else
+                        {
+                            obj.setY(value);
+                        }
+                    break;
+
+                    case(OProp::min_size): [[fallthrough]];
+                    case(OProp::max_size): [[fallthrough]];
                     case(OProp::edge):
                     break;
                 }

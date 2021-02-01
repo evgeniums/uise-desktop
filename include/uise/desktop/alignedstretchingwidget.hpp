@@ -36,6 +36,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  *
  * Standard Qt box layout does not support stretching and alignment and the same time: only unligned widgets can be stretched,
  * and if alignment is set then stretching is truned off. This container can align widget and strech it as requested at the same time.
+ *
  */
 class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
                                                     public OrientationInvariant
