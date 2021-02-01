@@ -95,6 +95,8 @@ void FlyweightListView_p<ItemT>::setupUi()
         auto err=QString("CSS border, margin and padding for LinkedListView(FlyweightListViewLLits) must be 0 (actual: %1)").arg(m_llist->frameWidth());
         qCritical()<<err;
 
+        //! @todo Support other frame widths using contentsRect()
+
         Q_ASSERT_X(m_llist->frameWidth()==0,"FlyweightListView",err.toStdString().data());
     }
 
