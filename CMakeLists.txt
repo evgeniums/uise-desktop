@@ -40,6 +40,8 @@ SET (HEADERS
     include/uise/desktop/flyweightlistframe.hpp
     include/uise/desktop/flyweightlistview.hpp
     include/uise/desktop/flyweightlistview.ipp
+
+    include/uise/desktop/alignedstretchingwidget.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -53,6 +55,7 @@ SET (SOURCES
     src/flyweightlistframe.cpp
     src/singleshottimer.cpp
     src/directchildwidget.cpp
+    src/alignedstretchingwidget.cpp
 )
 
 IF (UISE_DESKTOP_STATIC)

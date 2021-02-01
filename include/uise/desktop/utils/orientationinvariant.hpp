@@ -78,7 +78,7 @@ class OrientationInvariant
          * @return Requested property.
          */
         template <typename T>
-        static int oprop(bool horizontal, const T& obj, OProp prop) noexcept
+        static int opropRef(bool horizontal, const T& obj, OProp prop) noexcept
         {
             if constexpr (std::is_same_v<QPoint,std::decay_t<T>>)
             {
@@ -128,6 +128,26 @@ class OrientationInvariant
             }
 
             return 0;
+        }
+
+        /**
+         * @brief Get object property for specified orientation.
+         * @param horizontal True if the orientation is horizontal, false if vertical.
+         * @param obj Object whose property to get.
+         * @param prop Property ID.
+         * @return Requested property.
+         */
+        template <typename T>
+        static int oprop(bool horizontal, const T& obj, OProp prop) noexcept
+        {
+            if constexpr (std::is_pointer_v<std::remove_reference_t<T>>)
+            {
+                return opropRef(horizontal,*obj,prop);
+            }
+            else
+            {
+                return opropRef(horizontal,obj,prop);
+            }
         }
 
         /**
@@ -240,15 +260,7 @@ class OrientationInvariant
             {
                 horizontal=!horizontal;
             }
-
-            if constexpr (std::is_pointer_v<std::remove_reference_t<T>>)
-            {
-                return oprop(horizontal,*obj,prop);
-            }
-            else
-            {
-                return oprop(horizontal,obj,prop);
-            }
+            return oprop(horizontal,obj,prop);
         }
 
         /**
