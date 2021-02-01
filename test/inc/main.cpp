@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file test/flyweightlistview/main.cpp
+/** @file test/flyweightlistview/main.cpp
 *
 *  Test application of FlyweightListView.
 *

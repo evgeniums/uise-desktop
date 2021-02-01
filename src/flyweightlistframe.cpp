@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/src/flyweightlitframe.cpp
+/** @file uise/desktop/src/flyweightlitframe.cpp
 *
 *  Contains implementation of FlyweightListFrame.
 *

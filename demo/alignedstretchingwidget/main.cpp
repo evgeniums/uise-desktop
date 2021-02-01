@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file demo/alignedstretchingwidget/main.cpp
+/** @file demo/alignedstretchingwidget/main.cpp
 *
 *  Demo application of AlignedStretchingWidget.
 *

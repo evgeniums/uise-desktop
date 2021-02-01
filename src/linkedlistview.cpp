@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/src/linkedlistview.cpp
+/** @file uise/desktop/src/linkedlistview.cpp
 *
 *  Contains implementation of LinkedListView.
 *

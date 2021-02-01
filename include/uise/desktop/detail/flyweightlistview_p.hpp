@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/detail/flyweightlistview_p.hpp
+/** @file uise/desktop/detail/flyweightlistview_p.hpp
 *
 *  Contains declaration of FlyweightListView_p.
 *

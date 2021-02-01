@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/flyweightlistitem.hpp
+/** @file uise/desktop/flyweightlistitem.hpp
 *
 *  Defines FlyweightListItem.
 *

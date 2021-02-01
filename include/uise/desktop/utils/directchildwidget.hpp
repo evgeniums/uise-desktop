@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/utils/directchildwidget.hpp
+/** @file uise/desktop/utils/directchildwidget.hpp
 *
 *  Declares directChildWidget() and directChildWidget() methods.
 *

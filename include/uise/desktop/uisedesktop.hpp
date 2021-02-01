@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/uisedesktop.hpp
+/** @file uise/desktop/uisedesktop.hpp
 *
 *  Defines macros for uise-desktop library.
 *

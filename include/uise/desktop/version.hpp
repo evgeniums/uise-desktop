@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/version.hpp
+/** @file uise/desktop/version.hpp
 *
 *  Defines macros for tracking the version of the library.
 *

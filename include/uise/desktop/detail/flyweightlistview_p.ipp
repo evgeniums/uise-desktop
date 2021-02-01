@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** \file uise/desktop/detail/flyweightlistview_p.ipp
+/** @file uise/desktop/detail/flyweightlistview_p.ipp
 *
 *  Contains detail implementation of FlyweightListView_p.
 *
