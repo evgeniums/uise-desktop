@@ -12,23 +12,20 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/inc/main.cpp
+/** @file uise/test/inc/uise-test.hpp
 *
-*  Test application.
+*  Test macros.
 *
 */
 
 /****************************************************************************/
 
-#include <uise/test/uise-testwrapper.hpp>
+#ifndef UISE_DESKTOP_TEST_HPP
+#define UISE_DESKTOP_TEST_HPP
 
-using namespace UISE_TEST_NAMESPACE;
+#define UISE_TEST_NAMESPACE_BEGIN namespace uise { namespace test {
+#define UISE_TEST_NAMESPACE_END }}
 
-//--------------------------------------------------------------------------
+#define UISE_TEST_NAMESPACE uise::test
 
-int main(int argc, char *argv[])
-{
-    return runTest(argc,argv);
-}
-
-//--------------------------------------------------------------------------
+#endif

@@ -12,23 +12,28 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/inc/main.cpp
+/** @file uise/test/inc/testcase.hpp
 *
-*  Test application.
+*  Test case.
 *
 */
 
 /****************************************************************************/
 
-#include <uise/test/uise-testwrapper.hpp>
+#ifndef UISE_DESKTOP_TEST_CASE_HPP
+#define UISE_DESKTOP_TEST_CASE_HPP
 
-using namespace UISE_TEST_NAMESPACE;
+#include <iostream>
 
-//--------------------------------------------------------------------------
+#include <QApplication>
+#include <QMainWindow>
+#include <QDebug>
 
-int main(int argc, char *argv[])
-{
-    return runTest(argc,argv);
-}
+#include <boost/test/unit_test.hpp>
+#include <uise/test/uise-test.hpp>
 
-//--------------------------------------------------------------------------
+UISE_TEST_NAMESPACE_BEGIN
+
+UISE_TEST_NAMESPACE_END
+
+#endif

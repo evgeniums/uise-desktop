@@ -16,7 +16,9 @@ FIND_PACKAGE(Boost 1.65 COMPONENTS unit_test_framework REQUIRED)
 FIND_PACKAGE(Qt6 COMPONENTS Test REQUIRED)
 
 SET (HEADERS
-    ${CMAKE_CURRENT_LIST_DIR}/uise-testwrapper.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-test.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testwrapper.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testcase.hpp
 )
 
 SET (SOURCES

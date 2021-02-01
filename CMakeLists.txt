@@ -14,7 +14,7 @@ FIND_PACKAGE(Qt6 COMPONENTS Widgets REQUIRED)
 OPTION(UISE_DESKTOP_STATIC "Build static uise-desktop library" OFF)
 OPTION(UISE_DESKTOP_DEMO "Build demo appliations using uise-desktop UI" ON)
 OPTION(UISE_DESKTOP_TEST "Build unit tests for uise-desktop UI" ON)
-OPTION(STANDALONE_BOOST_MULTI_INDEX "Use standalone version of boost multin_index_container in 3rdparty" ON)
+OPTION(UISE_TEST_JUNIT "Write tests result to XML file for JUnit" OFF)
 
 SET(UISE_DESKTOP_TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -77,5 +77,8 @@ ENDIF (UISE_DESKTOP_DEMO)
 
 IF (UISE_DESKTOP_TEST)
     ENABLE_TESTING(true)
+    IF (UISE_TEST_JUNIT)
+        ADD_DEFINITIONS(-DUISE_TEST_JUNIT)
+    ENDIF(UISE_TEST_JUNIT)
     ADD_SUBDIRECTORY(test)
 ENDIF (UISE_DESKTOP_TEST)

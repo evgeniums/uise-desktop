@@ -1,3 +1,25 @@
+/**
+@copyright Evgeny Sidorov 2021
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. For open source projects this software is distrubuted under the GNU GENERAL PUBLIC LICENSE, Version 3.0.
+(See accompanying file LICENSE-GPLv3.md or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+
+2. For proprietary license contact evgeniums@dracosha.com.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/test/inc/testwrapper.hpp
+*
+*  Test wrapper.
+*
+*/
+
+/****************************************************************************/
+
 #ifndef UISE_DESKTOP_TEST_WRAPPER_HPP
 #define UISE_DESKTOP_TEST_WRAPPER_HPP
 
@@ -12,11 +34,12 @@
 #define BOOST_TEST_ALTERNATIVE_INIT_API
 #include <boost/test/unit_test.hpp>
 
-#include <uise/desktop/uisedesktop.hpp>
-using namespace UISE_DESKTOP_NAMESPACE;
+#include <uise/test/uise-test.hpp>
+
+UISE_TEST_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
-inline bool init_unit_test()
+inline bool init_unit_test() noexcept
 {
   return true;
 }
@@ -35,7 +58,7 @@ inline int testConsole()
 
     const char* argv[]={appName.c_str(),"--log_level=test_suite"};
     int argc = 2;
-    return boost::unit_test::unit_test_main(::init_unit_test, argc, const_cast<char**>(argv));
+    return boost::unit_test::unit_test_main(init_unit_test, argc, const_cast<char**>(argv));
 }
 
 //--------------------------------------------------------------------------
@@ -58,11 +81,11 @@ inline int testJUnit()
                   "--log_level=all",
                   "--report_level=no",
                   "--result_code=no"};
-    return boost::unit_test::unit_test_main(::init_unit_test, argc, const_cast<char**>(argv));
+    return boost::unit_test::unit_test_main(init_unit_test, argc, const_cast<char**>(argv));
 }
 
 //--------------------------------------------------------------------------
-int runTest(int argc, char *argv[])
+inline int runTest(int argc, char *argv[])
 {
     QApplication app(argc,argv);
     QMainWindow w;
@@ -79,3 +102,5 @@ int runTest(int argc, char *argv[])
 }
 
 #endif
+
+UISE_TEST_NAMESPACE_END
