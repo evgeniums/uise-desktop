@@ -183,7 +183,7 @@ void AlignedStretchingWidget::updateSize()
     }
 
     // after move there can ne artefacts, repaint widget to get rid of them
-    repaint();
+    update();
 }
 
 //--------------------------------------------------------------------------
