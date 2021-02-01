@@ -25,13 +25,18 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <QFrame>
 #include <QPointer>
-#include <QVBoxLayout>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/orientationinvariant.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+/**
+ * @brief Container of a single widget that supports alignment and stretching at the same time.
+ *
+ * Standard Qt box layout does not support stretching and alignment and the same time: only unligned widgets can be stretched,
+ * and if alignment is set then stretching is truned off. This container can align widget and strech it as requested at the same time.
+ */
 class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
                                                     public OrientationInvariant
 {
@@ -39,16 +44,43 @@ class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
 
     public:
 
+        /**
+         * @brief Constructor.
+         * @param parent Parent widget.
+         */
         AlignedStretchingWidget(QWidget* parent=nullptr);
 
+        /**
+         * @brief Set widget to container.
+         * @param widget Widget with content.
+         * @param orientation Container orientation.
+         * @param alignment Widget alignment.
+         *
+         * This object will own the widget. Added widgets holds property "AlignedStretchingWidget"=true.
+         */
         void setWidget(QWidget* widget, Qt::Orientation orientation, Qt::Alignment alignment=Qt::Alignment());
+
+        /**
+         * @brief Take widget from container.
+         * @return Taken widget.
+         *
+         * This object will not own the widget any more.
+         */
         QWidget* takeWidget();
 
+        /**
+         * @brief Get content widget.
+         * @return COntent widget.
+         */
         inline QWidget* widget() const noexcept
         {
             return m_widget.data();
         }
 
+        /**
+         * @brief Check if container's orientation is horizontal.
+         * @return True for horizontal orientation, false otherwise.
+         */
         bool isHorizontal() const noexcept override;
 
     public slots:

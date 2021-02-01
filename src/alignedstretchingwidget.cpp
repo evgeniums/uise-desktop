@@ -21,7 +21,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 /****************************************************************************/
 
 #include <QVariant>
-#include <QEvent>
 #include <QResizeEvent>
 
 #include <uise/desktop/utils/layout.hpp>
