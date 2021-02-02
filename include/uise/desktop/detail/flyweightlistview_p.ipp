@@ -33,6 +33,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
 
+//#define UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
@@ -972,20 +974,29 @@ const ItemT* FlyweightListView_p<ItemT>::firstViewportItem() const
 template <typename ItemT>
 const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
 {
+    //! @note Looking for item in the center of view's end edge, so the items must be centered in the view!
+
     auto edge=oprop(m_view,OProp::size);
     if (edge!=0)
     {
         --edge;
     }
     QPoint viewLastPos;
-    setOProp(viewLastPos,OProp::pos,0,true);
+    setOProp(viewLastPos,OProp::pos,oprop(m_view,OProp::size,true)/2,true);
     setOProp(viewLastPos,OProp::pos,edge);
 
     auto listLastViewportPoint=m_llist->mapFromParent(viewLastPos);
 
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+    qDebug() << "lastViewportItem() listLastViewportPoint "<<listLastViewportPoint;
+#endif
+
     const auto* item=itemAtPos(listLastViewportPoint);
     if (item==nullptr)
     {
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+        qDebug() << "lastViewportItem() item not found";
+#endif
         item=lastItem();
     }
     return item;
@@ -1067,7 +1078,7 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
             log+=QString("no last item");
         }
         std::ignore=log;
-#if 0
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
         qDebug() << log;
 #endif
 
@@ -1106,7 +1117,7 @@ void FlyweightListView_p<ItemT>::checkItemCount()
         auto to=m_llist->widgetSeqPos(firstVisible->widget());
         hiddenBefore=to-from;
     }
-#if 0
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
     qDebug() << "hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
              << " first->sortValue() "<<first->sortValue()
              << " m_minSortValue "<<m_minSortValue;
@@ -1131,8 +1142,18 @@ void FlyweightListView_p<ItemT>::checkItemCount()
         auto from=m_llist->widgetSeqPos(lastVisible->widget());
         auto to=m_llist->widgetSeqPos(last->widget());
         hiddenAfter=to-from;
+
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+    qDebug() << "Last from "<<lastVisible->sortValue()<<" to "<<last->sortValue();
+#endif
     }
-#if 0
+    else
+    {
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+    qDebug() << "No last item or it is invisible";
+#endif
+    }
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
     qDebug() << "hiddenAfter "<<hiddenAfter<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
              << " last->sortValue() "<<last->sortValue()
              << " m_maxSortValue "<<m_maxSortValue;
@@ -1148,7 +1169,7 @@ void FlyweightListView_p<ItemT>::checkItemCount()
     {
         removeExtraItemsFromEnd(hiddenAfter-maxHidden);
     }
-#if 0
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
     qDebug() << " item count "<<itemsCount();
 #endif
 }
@@ -1171,7 +1192,7 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
         {
             break;
         }
-#if 0
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
         qDebug() << "Removed item "<<it->sortValue()<< " before viewport";
 #endif
         clearWidget(it->widget());
@@ -1201,7 +1222,7 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
         }
 
         nit=std::next(it);
-#if 0
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
         qDebug() << "Removed item "<<it->sortValue()<< " after viewport";
 #endif
         clearWidget(it->widget());

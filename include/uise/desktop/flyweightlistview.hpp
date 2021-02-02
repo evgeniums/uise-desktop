@@ -51,12 +51,7 @@ class FlyweightListView_p;
 /**
  * @brief Flyweight list of widgets.
  *
- * @todo Inserting/removing/resizing widgets when either scrolling or inserting is in progress.
- * @todo Auto scroll after inserting.
- * @todo Test scroll to item.
- * @todo Tidy up the code.
- * @todo Test horizontal orientation.
- * @todo Auto tests.
+ *  @note Widgets must be centered in layout.
  */
 template <typename ItemT>
 class FlyweightListView : public QFrame
