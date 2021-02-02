@@ -73,4 +73,46 @@ BOOST_AUTO_TEST_CASE(TestDirectChildWidget)
     TestThread::instance()->execTest();
 }
 
+BOOST_AUTO_TEST_CASE(TestDestroyWidget)
+{
+    std::atomic<bool> widgetDestroyed{false};
+
+    auto handler=[&widgetDestroyed]()
+    {
+        auto parent=new QFrame();
+        parent->resize(800,600);
+        auto parentLayout=Layout::vertical(parent);
+
+        auto child=new QFrame(parent);
+        parentLayout->addWidget(child,1);
+        QObject::connect(
+            child,
+            &QFrame::destroyed,
+            [parent,&widgetDestroyed]()
+            {
+                widgetDestroyed.store(true);
+                parent->deleteLater();
+                TestThread::instance()->continueTest();
+            }
+        );
+
+        parent->show();
+        parent->raise();
+
+        UISE_TEST_CHECK(parent->isVisible());
+        UISE_TEST_CHECK(child->isVisible());
+        UISE_TEST_CHECK(child->parent()==parent);
+
+        child->deleteLater();
+        destroyWidget(child);
+        UISE_TEST_CHECK(!child->isVisible());
+        UISE_TEST_CHECK(child->parent()==nullptr);
+    };
+
+    TestThread::instance()->postGuiThread(handler);
+    auto ret=TestThread::instance()->execTest(60000);
+    UISE_TEST_CHECK(ret);
+    UISE_TEST_CHECK(widgetDestroyed.load());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

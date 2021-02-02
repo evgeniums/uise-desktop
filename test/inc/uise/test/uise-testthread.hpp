@@ -75,6 +75,10 @@ class TestThread : public QThread
          */
         void continueTest();
 
+        /**
+         * @brief Get test mutex for thread safe test oprations.
+         * @return Test mutex.
+         */
         QMutex& testMutex() noexcept;
 
         /**
