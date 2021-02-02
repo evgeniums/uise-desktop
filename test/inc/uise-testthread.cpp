@@ -37,24 +37,21 @@ class TestThread_p
 {
     public:
 
-        TestThread_p(
-                TestThread* thread
-            ) : thread(thread),
-                started(false)
+        TestThread_p() : started(false)
         {}
-
-        TestThread* thread;
 
         std::atomic<bool> started;
         QMutex mutex;
         QWaitCondition wc;
+
+        QMutex testMutex;
 };
 
 static TestThread* Instance=nullptr;
 
 //--------------------------------------------------------------------------
 TestThread::TestThread(
-    ) : pimpl(std::make_unique<TestThread_p>(this))
+    ) : pimpl(std::make_unique<TestThread_p>())
 {
     setObjectName("Test Thread");
 
@@ -130,6 +127,12 @@ void TestThread::free()
 {
     delete Instance;
     Instance=nullptr;
+}
+
+//--------------------------------------------------------------------------
+QMutex& TestThread::testMutex() noexcept
+{
+    return pimpl->testMutex;
 }
 
 //--------------------------------------------------------------------------
