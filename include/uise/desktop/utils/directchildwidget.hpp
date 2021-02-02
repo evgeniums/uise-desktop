@@ -31,7 +31,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /**
- * @brief Get direct child widget of a parent widget where .
+ * @brief Get direct child widget of a parent widget.
  * @param parent Parent widget to look for the direct child of.
  * @param nestedChild Child widget of a parent that can be nested.
  * @return Direct child widget of a parent that exists in the parents chain of nestedChild.
