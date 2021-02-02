@@ -208,17 +208,6 @@ class OrientationInvariant
             {
                 switch (prop)
                 {
-                    case(OProp::size):
-                        if (horizontal)
-                        {
-                            obj.setWidth(value);
-                        }
-                        else
-                        {
-                            obj.setHeight(value);
-                        }
-                    break;
-
                     case(OProp::min_size):
                         if (horizontal)
                         {
@@ -241,6 +230,7 @@ class OrientationInvariant
                         }
                     break;
 
+                    case(OProp::size): [[fallthrough]];
                     case(OProp::pos): [[fallthrough]];
                     case(OProp::edge):
                     break;
@@ -248,31 +238,22 @@ class OrientationInvariant
             }
             else if constexpr (std::is_same_v<QSize,std::decay_t<T>>)
             {
-                switch (prop)
+                if (horizontal)
                 {
-                    case(OProp::size):
-                        if (horizontal)
-                        {
-                            obj.setWidth(value);
-                        }
-                        else
-                        {
-                            obj.setHeight(value);
-                        }
-                    break;
-
-                    case(OProp::pos): [[fallthrough]];
-                    case(OProp::min_size): [[fallthrough]];
-                    case(OProp::max_size): [[fallthrough]];
-                    case(OProp::edge):
-                    break;
+                    obj.setWidth(value);
+                }
+                else
+                {
+                    obj.setHeight(value);
                 }
             }
             else if constexpr (std::is_base_of_v<QRect,std::decay_t<T>>)
             {
                 switch (prop)
                 {
-                    case(OProp::size):
+                    case(OProp::size): [[fallthrough]];
+                    case(OProp::min_size): [[fallthrough]];
+                    case(OProp::max_size):
                         if (horizontal)
                         {
                             obj.setWidth(value);
@@ -294,8 +275,6 @@ class OrientationInvariant
                         }
                     break;
 
-                    case(OProp::min_size): [[fallthrough]];
-                    case(OProp::max_size): [[fallthrough]];
                     case(OProp::edge):
                     break;
                 }

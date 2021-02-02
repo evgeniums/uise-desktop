@@ -32,7 +32,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QDir>
 #include <QDebug>
 
-#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_MODULE UISE_TEST_MODULE
+#define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 
 #include <uise/test/uise-test.hpp>
@@ -43,12 +44,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 using namespace UISE_DESKTOP_NAMESPACE;
 
 UISE_TEST_NAMESPACE_BEGIN
-
-//--------------------------------------------------------------------------
-inline bool init_unit_test() noexcept
-{
-  return true;
-}
 
 //--------------------------------------------------------------------------
 inline std::string testAppName()
@@ -115,6 +110,33 @@ inline int runTest(int argc, char *argv[])
     TestThread::free();
     return ret;
 }
+
+//--------------------------------------------------------------------------
+struct TestGlobalFixture
+{
+
+  TestGlobalFixture()
+  {
+  }
+  ~TestGlobalFixture()
+  {
+  }
+
+  void setup()
+  {
+  }
+
+  void teardown()
+  {
+      TestThread::instance()->postGuiThread(
+        []()
+        {
+            qApp->quit();
+        }
+      );
+  }
+};
+BOOST_TEST_GLOBAL_FIXTURE(TestGlobalFixture);
 
 #endif
 

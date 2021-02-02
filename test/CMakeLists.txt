@@ -1,5 +1,6 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
 
+ADD_SUBDIRECTORY(utils)
 ADD_SUBDIRECTORY(alignedstretchingwidget)
 ADD_SUBDIRECTORY(flyweightlistview)
 
