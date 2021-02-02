@@ -18,11 +18,12 @@ FIND_PACKAGE(Qt6 COMPONENTS Test REQUIRED)
 SET (HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-test.hpp
     ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testwrapper.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testcase.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testthread.hpp
 )
 
 SET (SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise-testthread.cpp
 )
 
 TARGET_SOURCES(${PROJECT_NAME} PRIVATE ${HEADERS} ${SOURCES})

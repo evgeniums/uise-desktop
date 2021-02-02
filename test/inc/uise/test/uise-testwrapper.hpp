@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #define UISE_DESKTOP_TEST_WRAPPER_HPP
 
 #include <iostream>
+#include <atomic>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -35,6 +36,11 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <boost/test/unit_test.hpp>
 
 #include <uise/test/uise-test.hpp>
+#include <uise/test/uise-testthread.hpp>
+
+#include <uise/desktop/utils/singleshottimer.hpp>
+
+using namespace UISE_DESKTOP_NAMESPACE;
 
 UISE_TEST_NAMESPACE_BEGIN
 
@@ -91,13 +97,22 @@ inline int runTest(int argc, char *argv[])
     QMainWindow w;
     w.show();
 
-#ifdef UISE_TEST_JUNIT
-    auto ret=testJUnit();
-#else
-    auto ret=testConsole();
-#endif
+    std::atomic<int> ret{0};
+
+    TestThread::instance()->postTestThread(
+        [&ret]()
+        {
+        #ifdef UISE_TEST_JUNIT
+            ret=testJUnit();
+        #else
+            ret=testConsole();
+        #endif
+        }
+    );
 
     app.exec();
+
+    TestThread::free();
     return ret;
 }
 
