@@ -12,9 +12,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/inc/testcase.hpp
+/** @file uise/test/inc/uise-testthread.hpp
 *
-*  Test case.
+*  Test thread.
 *
 */
 
@@ -35,6 +35,9 @@ UISE_TEST_NAMESPACE_BEGIN
 
 class TestThread_p;
 
+/**
+ * @brief Thread where tests are running.
+ */
 class TestThread : public QThread
 {
     Q_OBJECT
@@ -46,13 +49,39 @@ class TestThread : public QThread
         TestThread& operator=(const TestThread&)=delete;
         TestThread& operator=(TestThread&&)=delete;
 
+        /**
+         * @brief Post task to testing thread.
+         * @param handler Task to execute in testing thread.
+         */
         void postTestThread(std::function<void ()> handler);
+
+        /**
+         * @brief Post task to GUI thread.
+         * @param handler Task to execute in GUI thread.
+         */
         void postGuiThread(std::function<void ()> handler);
 
+        /**
+         * @brief Run testing loop.
+         * @param timeout Maximum duration of testing loop running, if 0 then infinite.
+         * @return False if timeouted, true otherwise.
+         */
         bool execTest(uint32_t timeout=0);
+
+        /**
+         * @brief Exit testing loop and continue test.
+         */
         void continueTest();
 
+        /**
+         * @brief Get singleton instance of testing thread.
+         * @return Singleton instance.
+         */
         static TestThread* instance();
+
+        /**
+         * @brief Destroy singleton instance of testing thread.
+         */
         static void free();
 
     protected:
@@ -61,7 +90,14 @@ class TestThread : public QThread
 
     private:
 
+        /**
+         * @brief Constructor.
+         */
         TestThread();
+
+        /**
+         * @brief Destructor.
+         */
         ~TestThread();
 
         std::unique_ptr<TestThread_p> pimpl;
