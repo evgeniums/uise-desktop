@@ -28,6 +28,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -110,9 +111,72 @@ BOOST_AUTO_TEST_CASE(TestDestroyWidget)
     };
 
     TestThread::instance()->postGuiThread(handler);
-    auto ret=TestThread::instance()->execTest(60000);
+    auto ret=TestThread::instance()->execTest(1000);
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK(widgetDestroyed.load());
+}
+
+BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
+{
+    std::atomic<int> value{0};
+    std::atomic<int> value1{0};
+
+    auto handler=[&value,&value1]()
+    {
+        auto timerClear=new SingleShotTimer();
+        timerClear->shot(1,
+            [&value1]()
+            {
+                value1.store(1);
+            }
+        );
+        timerClear->clear();
+
+        auto timer=new SingleShotTimer();
+
+        timer->shot(10,
+            [timer,&value,timerClear]()
+            {
+                delete timerClear;
+
+                value.store(10);
+
+                timer->deleteLater();
+                TestThread::instance()->continueTest();
+            }
+        );
+
+        timer->shot(100,
+            [timer,&value,timerClear]()
+            {
+                delete timerClear;
+
+                value.store(100);
+
+                timer->deleteLater();
+                TestThread::instance()->continueTest();
+            }
+        );
+
+        timer->shot(10000,
+            [timer,&value,timerClear]()
+            {
+                delete timerClear;
+
+                value.store(10000);
+
+                timer->deleteLater();
+                TestThread::instance()->continueTest();
+            }
+        );
+    };
+
+    TestThread::instance()->postGuiThread(handler);
+    auto ret=TestThread::instance()->execTest(1000);
+
+    UISE_TEST_CHECK(ret);
+    UISE_TEST_CHECK_EQUAL(value.load(),10000);
+    UISE_TEST_CHECK_EQUAL(value1.load(),0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
