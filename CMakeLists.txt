@@ -9,6 +9,17 @@ SET(CMAKE_AUTORCC ON)
 SET(CMAKE_AUTOUIC ON)
 
 FIND_PACKAGE(Boost 1.65 REQUIRED)
+
+IF ("$ENV{QT_HOME}" STREQUAL "")
+ELSE()
+    MESSAGE (STATUS "Using Qt from $ENV{QT_HOME}")
+    SET (QT_HOME $ENV{QT_HOME})
+    SET (Qt6_DIR ${QT_HOME}/lib/cmake/Qt6)
+    SET (Qt6CoreTools_DIR ${QT_HOME}/lib/cmake/Qt6CoreTools)
+    SET (Qt6GuiTools_DIR ${QT_HOME}/lib/cmake/Qt6GuiTools)
+    SET (Qt6WidgetsTools_DIR ${QT_HOME}/lib/cmake/Qt6WidgetsTools)
+ENDIF()
+
 FIND_PACKAGE(Qt6 COMPONENTS Widgets REQUIRED)
 
 OPTION(UISE_DESKTOP_STATIC "Build static uise-desktop library" OFF)
@@ -77,8 +88,13 @@ ENDIF (UISE_DESKTOP_DEMO)
 
 IF (UISE_DESKTOP_TEST)
     ENABLE_TESTING(true)
+
+    ADD_DEFINITIONS("-DUISE_TEST_JUNIT_PATH=\"${CMAKE_BINARY_DIR}/junit/\"")
     IF (UISE_TEST_JUNIT)
+        MESSAGE(STATUS "Tests will write JUnit XML files")
+        FILE(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/junit")
         ADD_DEFINITIONS(-DUISE_TEST_JUNIT)
     ENDIF(UISE_TEST_JUNIT)
+
     ADD_SUBDIRECTORY(test)
 ENDIF (UISE_DESKTOP_TEST)

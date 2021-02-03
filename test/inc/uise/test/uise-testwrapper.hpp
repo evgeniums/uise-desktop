@@ -68,20 +68,18 @@ inline int testJUnit()
     auto appName=testAppName();
     std::cerr<<"Running test "<<appName<<std::endl;
 
-    auto dir=QDir(QCoreApplication::applicationDirPath());
-    dir.cdUp();
-    auto junitPath=dir.path()+"/junit";
-    auto path=std::string("--log_sink=")+junitPath.toStdString()+"/"+appName+".xml";
-    std::cerr<<"JUnit path "<<path<<std::endl;
+    auto junitPath=std::string(UISE_TEST_JUNIT_PATH);
+    auto junitLogger=std::string("--logger=JUNIT,all,")+junitPath+appName+".xml";
+    std::cerr<<"JUnit logger "<<junitLogger<<std::endl;
 
     int argc=6;
     const char* argv[]={
-                appName.c_str(),
-                "--log_format=JUNIT",
-                  path.c_str(),
-                  "--log_level=all",
+                  appName.c_str(),
+                  "--logger=HRF,test_suite",
+                  junitLogger.c_str(),
                   "--report_level=no",
-                  "--result_code=no"};
+                  "--result_code=no",
+                  "--detect_memory_leaks=0"};
     return boost::unit_test::unit_test_main(init_unit_test, argc, const_cast<char**>(argv));
 }
 
