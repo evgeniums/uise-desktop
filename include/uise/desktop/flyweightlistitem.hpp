@@ -209,7 +209,7 @@ class FlyweightListItem
          * @brief Get handler to be used for dropping widget drom view.
          * @return Handler.
          */
-        constexpr static std::function<void (QWidget*)> dropWidgetHandler() noexcept
+        static std::function<void (QWidget*)> dropWidgetHandler() noexcept
         {
             if constexpr (detail::HasDropWidget<TraitsT>::value)
             {
