@@ -60,8 +60,6 @@ void AlignedStretchingWidget::setWidget(
     {
         destroyWidget(m_widget);
     }
-    delete layout();
-
     if (!widget)
     {
         return;
@@ -76,6 +74,20 @@ void AlignedStretchingWidget::setWidget(
 
     m_widget->installEventFilter(this);
 
+    updateMinMaxSize();
+}
+
+//--------------------------------------------------------------------------
+void AlignedStretchingWidget::updateMinMaxSize()
+{
+    auto margins=contentsMargins();
+
+    auto width=m_widget->minimumWidth() + margins.left() + margins.right();
+    auto height=m_widget->minimumHeight() + margins.top() + margins.bottom();
+
+    setMinimumWidth(width);
+    setMinimumHeight(height);
+
     updateSize();
 }
 
@@ -87,58 +99,61 @@ void AlignedStretchingWidget::updateSize()
         return;
     }
 
-    auto rect=contentsRect();
+    auto margins=contentsMargins();
 
-    auto targetSize=oprop(rect,OProp::size);
+    auto targetSize=oprop(this,OProp::size);
+    targetSize-=isHorizontal()?(margins.left() + margins.right()):(margins.top() + margins.bottom());
     auto minSize=oprop(m_widget.data(),OProp::min_size);
     auto maxSize=oprop(m_widget.data(),OProp::max_size);
 
     targetSize=qBound(minSize,targetSize,maxSize);
+    auto targetSizeDiff=oprop(this,OProp::size)-targetSize;
 
     auto minOtherSize=oprop(m_widget.data(),OProp::min_size,true);
     auto maxOtherSize=oprop(m_widget.data(),OProp::max_size,true);
-    auto otherSize=oprop(rect,OProp::size,true);
+    auto otherSize=oprop(this,OProp::size,true);
+    otherSize-=!isHorizontal()?(margins.left() + margins.right()):(margins.top() + margins.bottom());
     otherSize=qBound(minOtherSize,otherSize,maxOtherSize);
+    auto otherSizeDiff=oprop(this,OProp::size,true)-otherSize;
 
-    auto widgetSize=m_widget->size();
+    QSize widgetSize;
     setOProp(widgetSize,OProp::size,targetSize);
     setOProp(widgetSize,OProp::size,otherSize,true);
-
-    QPoint pos=m_widget->pos();
     m_widget->resize(widgetSize);
 
+    QPoint pos;
     bool move=false;
     if (m_orientation==Qt::Horizontal)
     {
         if (m_alignment & Qt::AlignHCenter)
         {
-            setOProp(pos,OProp::pos,(width()-targetSize)/2);
+            setOProp(pos,OProp::pos,margins.left() + (width()-margins.left()-margins.right()-targetSize)/2);
             move=true;
         }
         else if (m_alignment & Qt::AlignLeft)
         {
-            setOProp(pos,OProp::pos,rect.x());
+            setOProp(pos,OProp::pos,margins.left());
             move=true;
         }
         else if (m_alignment & Qt::AlignRight)
         {
-            setOProp(pos,OProp::pos,rect.right()-targetSize);
+            setOProp(pos,OProp::pos,targetSizeDiff - margins.right());
             move=true;
         }
 
         if (m_alignment & Qt::AlignVCenter || (m_alignment & Qt::AlignVertical_Mask)==0)
         {
-            setOProp(pos,OProp::pos,(height()-otherSize)/2,true);
+            setOProp(pos,OProp::pos,margins.top() + (height()-margins.top()-margins.bottom()-otherSize)/2,true);
             move=true;
         }
         else if (m_alignment & Qt::AlignTop)
         {
-            setOProp(pos,OProp::pos,rect.y(),true);
+            setOProp(pos,OProp::pos,margins.top(),true);
             move=true;
         }
         else if (m_alignment & Qt::AlignBottom)
         {
-            setOProp(pos,OProp::pos,rect.bottom()-otherSize,true);
+            setOProp(pos,OProp::pos,otherSizeDiff - margins.bottom(),true);
             move=true;
         }
     }
@@ -146,37 +161,36 @@ void AlignedStretchingWidget::updateSize()
     {
         if (m_alignment & Qt::AlignVCenter)
         {
-            setOProp(pos,OProp::pos,(height()-targetSize)/2);
+            setOProp(pos,OProp::pos,margins.top() + (height()-margins.top()-margins.bottom()-targetSize)/2);
             move=true;
         }
         else if (m_alignment & Qt::AlignTop)
         {
-            setOProp(pos,OProp::pos,rect.y());
+            setOProp(pos,OProp::pos,margins.top());
             move=true;
         }
         else if (m_alignment & Qt::AlignBottom)
         {
-            setOProp(pos,OProp::pos,rect.bottom()-targetSize);
+            setOProp(pos,OProp::pos,targetSizeDiff - margins.bottom());
             move=true;
         }
 
         if (m_alignment & Qt::AlignHCenter || (m_alignment & Qt::AlignHorizontal_Mask)==0)
         {
-            setOProp(pos,OProp::pos,(width()-otherSize)/2,true);
+            setOProp(pos,OProp::pos,margins.left() + (width()-margins.left()-margins.right()-otherSize)/2,true);
             move=true;
         }
         else if (m_alignment & Qt::AlignLeft)
         {
-            setOProp(pos,OProp::pos,rect.x(),true);
+            setOProp(pos,OProp::pos,margins.left(),true);
             move=true;
         }
         else if (m_alignment & Qt::AlignRight)
         {
-            setOProp(pos,OProp::pos,rect.right()-otherSize,true);
+            setOProp(pos,OProp::pos,otherSizeDiff - margins.right(),true);
             move=true;
         }
     }
-
     if (move)
     {
         m_widget->move(pos);

@@ -118,6 +118,11 @@ class Layout
                       :
                         static_cast<QBoxLayout*>(vertical(widget,reset));
         }
+
+        static Qt::Orientation orthOrientation(Qt::Orientation orientation) noexcept
+        {
+            return orientation==Qt::Horizontal?Qt::Vertical:Qt::Horizontal;
+        }
 };
 
 UISE_DESKTOP_NAMESPACE_EMD

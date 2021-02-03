@@ -86,11 +86,12 @@ class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
 
     public slots:
 
-        void updateSize();
+        void updateMinMaxSize();
 
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+        void updateSize();
 
     private:
 

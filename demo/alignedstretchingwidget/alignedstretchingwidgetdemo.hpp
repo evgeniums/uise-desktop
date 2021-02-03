@@ -210,7 +210,7 @@ class AlignedStretchingWidgetDemo : public QTabWidget
         {
             for (auto&& widget:m_horizontalWidgets)
             {
-                widget->updateSize();
+                widget->updateMinMaxSize();
             }
         }
 
@@ -218,7 +218,7 @@ class AlignedStretchingWidgetDemo : public QTabWidget
         {
             for (auto&& widget:m_verticalWidgets)
             {
-                widget->updateSize();
+                widget->updateMinMaxSize();
             }
         }
 

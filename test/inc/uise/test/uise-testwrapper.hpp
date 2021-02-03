@@ -89,8 +89,7 @@ inline int testJUnit()
 inline int runTest(int argc, char *argv[])
 {
     QApplication app(argc,argv);
-    QMainWindow w;
-    w.show();
+    app.setQuitOnLastWindowClosed(false);
 
     std::atomic<int> ret{0};
 
