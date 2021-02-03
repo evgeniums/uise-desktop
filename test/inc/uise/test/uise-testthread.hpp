@@ -116,6 +116,8 @@ UISE_TEST_NAMESPACE_END
 #define UISE_TEST_TS \
     QMutexLocker l(&::UISE_TEST_NAMESPACE::TestThread::instance()->testMutex());
 
+#define UISE_MACRO_EXPAND(x) x
+
 #define UISE_TEST_CHECK(...) \
     { UISE_TEST_TS \
     BOOST_CHECK(__VA_ARGS__); }
@@ -126,7 +128,7 @@ UISE_TEST_NAMESPACE_END
 
 #define UISE_TEST_CHECK_EQUAL(...) \
     { UISE_TEST_TS \
-      BOOST_CHECK_EQUAL(__VA_ARGS__); }
+      UISE_MACRO_EXPAND(BOOST_CHECK_EQUAL(__VA_ARGS__)); }
 
 #define UISE_TEST_MESSAGE(...) \
     { UISE_TEST_TS \
