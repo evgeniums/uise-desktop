@@ -4,5 +4,5 @@ REMOVE_DEFINITIONS(-DUISE_DESKTOP_BUILD)
 
 ADD_SUBDIRECTORY(utils)
 ADD_SUBDIRECTORY(alignedstretchingwidget)
-#ADD_SUBDIRECTORY(flyweightlistview)
+ADD_SUBDIRECTORY(flyweightlistview)
 
