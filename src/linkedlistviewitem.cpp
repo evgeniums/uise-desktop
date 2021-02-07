@@ -57,4 +57,4 @@ void LinkedListViewItem::clearWidgetProperty(QObject *widget)
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END

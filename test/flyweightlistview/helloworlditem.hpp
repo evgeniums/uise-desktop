@@ -135,7 +135,7 @@ struct HelloWorldItemTraits : public FlyweightListItemTraits<HelloWorldItem*,QFr
 
 using HelloWorldItemWrapper=FlyweightListItem<HelloWorldItemTraits>;
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 //--------------------------------------------------------------------------
 #endif // UISE_DESKTOP_TEST_HELLOWORLDITEM_HPP

@@ -45,6 +45,6 @@ class UISE_DESKTOP_EXPORT FlyweightListFrame : public QFrame
         void endRequested();
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FLYWEIGHTLISTFRAME_HPP

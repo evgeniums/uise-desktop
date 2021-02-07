@@ -146,7 +146,7 @@ class UISE_DESKTOP_EXPORT LinkedListViewItem : public std::enable_shared_from_th
 
 using LinkedListViewItemSharedPtr=std::shared_ptr<LinkedListViewItem>;
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 Q_DECLARE_METATYPE(UISE_DESKTOP_NAMESPACE::LinkedListViewItemSharedPtr)
 

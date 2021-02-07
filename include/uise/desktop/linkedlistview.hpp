@@ -88,6 +88,6 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
         friend class detail::LinkedListView_p;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_LINKEDLISTVIEW_HPP

@@ -37,10 +37,10 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #endif
 
 #define UISE_DESKTOP_NAMESPACE_BEGIN namespace uise { namespace desktop {
-#define UISE_DESKTOP_NAMESPACE_EMD }}
+#define UISE_DESKTOP_NAMESPACE_END }}
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #define UISE_DESKTOP_NAMESPACE uise::desktop
 

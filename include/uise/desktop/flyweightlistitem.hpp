@@ -285,6 +285,6 @@ class FlyweightListItem
         ItemType m_item;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FLYWEIGHTLISTITEM_HPP

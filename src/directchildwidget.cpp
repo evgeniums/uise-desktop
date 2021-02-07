@@ -37,4 +37,4 @@ UISE_DESKTOP_EXPORT QWidget* directChildWidget(QWidget* parent, QWidget* nestedC
     return directChildWidget(parent,qobject_cast<QWidget*>(nestedChild->parent()));
 }
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END

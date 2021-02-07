@@ -100,6 +100,6 @@ class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
         Qt::Alignment m_alignment;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_ALIGNEDSTRETCHINGWIDGET_HPP

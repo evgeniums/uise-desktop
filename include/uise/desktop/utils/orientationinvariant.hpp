@@ -358,6 +358,6 @@ class OrientationInvariant
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_ORIENTATIONINVARIANT_HPP

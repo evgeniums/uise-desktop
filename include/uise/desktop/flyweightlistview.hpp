@@ -153,6 +153,6 @@ class FlyweightListView : public QFrame
         std::unique_ptr<detail::FlyweightListView_p<ItemT>> pimpl;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FLYWEIGHTLISTVIEW_HPP

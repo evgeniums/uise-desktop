@@ -1236,6 +1236,6 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_IPP

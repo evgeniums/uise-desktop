@@ -64,4 +64,4 @@ void SingleShotTimer::clear()
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END

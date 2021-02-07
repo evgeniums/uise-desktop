@@ -77,6 +77,6 @@ class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
         HandlerT m_handler;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_SINGLESHOTTIMER_HPP

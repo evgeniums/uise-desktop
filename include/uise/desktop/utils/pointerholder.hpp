@@ -109,7 +109,7 @@ class PointerHolder
         uintptr_t m_value;
 };
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 Q_DECLARE_METATYPE(UISE_DESKTOP_NAMESPACE::PointerHolder)
 

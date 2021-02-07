@@ -303,6 +303,6 @@ class FlyweightListView_p : public OrientationInvariant
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_HPP

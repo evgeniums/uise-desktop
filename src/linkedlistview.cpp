@@ -360,4 +360,4 @@ QWidget* LinkedListView::widgetAtSeqPos(size_t pos) const
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END

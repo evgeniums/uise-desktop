@@ -455,6 +455,6 @@ typename ItemT::SortValueType FlyweightListView<ItemT>::minSortValue() const noe
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_EMD
+UISE_DESKTOP_NAMESPACE_END
 
 #endif // #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_IPP
