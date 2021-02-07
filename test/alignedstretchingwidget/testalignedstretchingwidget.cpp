@@ -12,9 +12,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/utils/testmiscutils.cpp
+/** @file uise/test/utils/testalignedstretchingwidget.cpp
 *
-*  Test miscellaneous utils.
+*  Test AlignedStretchingWidget.
 *
 */
 
