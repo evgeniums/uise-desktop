@@ -20,6 +20,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#ifndef UISE_DESKTOP_TEST_HELLOWORLDITEM_HPP
+#define UISE_DESKTOP_TEST_HELLOWORLDITEM_HPP
+
 #include <QApplication>
 #include <QMainWindow>
 #include <QLabel>
@@ -32,15 +35,14 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
-
 #include <uise/desktop/flyweightlistitem.hpp>
 
-using namespace UISE_DESKTOP_NAMESPACE;
+UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-static size_t MaxHelloWorldItemId=1000000;
-static size_t HelloWorldItemId=MaxHelloWorldItemId;
+inline size_t MaxHelloWorldItemId=1000000;
+inline size_t HelloWorldItemId=MaxHelloWorldItemId;
 
 class HelloWorldItem : public QFrame
 {
@@ -133,4 +135,7 @@ struct HelloWorldItemTraits : public FlyweightListItemTraits<HelloWorldItem*,QFr
 
 using HelloWorldItemWrapper=FlyweightListItem<HelloWorldItemTraits>;
 
+UISE_DESKTOP_NAMESPACE_EMD
+
 //--------------------------------------------------------------------------
+#endif // UISE_DESKTOP_TEST_HELLOWORLDITEM_HPP

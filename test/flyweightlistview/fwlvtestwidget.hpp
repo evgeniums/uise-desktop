@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/flyweightlistview/fwlvtestwidget.cpp
+/** @file uise/test/flyweightlistview/fwlvtestwidget.hpp
 *
 *  Test widgety of FlyweightListView.
 *
@@ -20,7 +20,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-#include <QMainWindow>
+#include <QFrame>
 #include <QLabel>
 #include <QTimer>
 #include <QPushButton>
@@ -31,32 +31,74 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
-
 #include <uise/desktop/flyweightlistitem.hpp>
 
 #include <helloworlditem.hpp>
-#include <uise/test/uise-test.hpp>
 
-using namespace UISE_DESKTOP_NAMESPACE;
+UISE_DESKTOP_NAMESPACE_BEGIN
 
-UISE_TEST_NAMESPACE_BEGIN
+using FlwListType=FlyweightListView<HelloWorldItemWrapper>;
 
 //--------------------------------------------------------------------------
+class FwlvTestWidget_p
+{
+    public:
 
-class FwlvTestWidget_p;
+        std::map<size_t,size_t> items;
 
-class FwlvTestWidget : public QFra
+        FlwListType* view=nullptr;
+
+        QSpinBox* insertFrom=nullptr;
+        QSpinBox* insertNum=nullptr;
+        QPushButton* insertButton=nullptr;
+
+        QSpinBox* delFrom=nullptr;
+        QSpinBox* delNum=nullptr;
+        QPushButton* delButton=nullptr;
+
+        QLineEdit* insertRandom=nullptr;
+        QPushButton* insertRandomButton=nullptr;
+
+        QLineEdit* delWidgets=nullptr;
+        QPushButton* delWidgetsButton=nullptr;
+
+        QSpinBox* resizeWidget=nullptr;
+        QSpinBox* resizeWidgetVal=nullptr;
+        QPushButton* resizeWidgetButton=nullptr;
+
+        QSpinBox* jumpItem=nullptr;
+        QSpinBox* jumpOffset=nullptr;
+        QComboBox* jumpMode=nullptr;
+        QPushButton* jumpToButton=nullptr;
+
+        QPushButton* clearButton=nullptr;
+        QPushButton* reloadButton=nullptr;
+        QPushButton* orientationButton=nullptr;
+        QPushButton* flyweightButton=nullptr;
+        QComboBox* stickMode=nullptr;
+};
+
+//--------------------------------------------------------------------------
+class FwlvTestWidget : public QFrame
 {
     Q_OBJECT
 
     public:
 
-      FwlvTestWidget(QWidget* parent=nullptr);
+        FwlvTestWidget(QWidget* parent=nullptr);
+
+    public slots:
+
+        void loadItems();
+
+    public:
+
+        std::unique_ptr<FwlvTestWidget_p> pimpl;
 
     private:
 
-      std::uniqu
+        void setup();
 };
 
 //--------------------------------------------------------------------------
-UISE_TEST_NAMESPACE_END
+UISE_DESKTOP_NAMESPACE_EMD
