@@ -72,7 +72,7 @@ void checkConfiguration(SampleContainer* container)
 
     QSize newSize(900,700);
     container->mainWindow->resize(newSize);
-    QTimer::singleShot(PlayStepPeriod,
+    QTimer::singleShot(PlayStepPeriod,container->widget,
         [container]
         {
             UISE_TEST_CHECK_EQUAL(container->wrapper->width(),container->mainWindow->width());
@@ -86,7 +86,7 @@ void checkConfiguration(SampleContainer* container)
 
             QSize newSize1(container->widget->maximumWidth()-90,container->widget->maximumHeight()-70);
             container->mainWindow->resize(newSize1);
-            QTimer::singleShot(PlayStepPeriod,
+            QTimer::singleShot(PlayStepPeriod,container->widget,
                 [container,newSize1]
                 {
                     UISE_TEST_CHECK_EQUAL(container->wrapper->width(),container->mainWindow->width());
@@ -100,7 +100,7 @@ void checkConfiguration(SampleContainer* container)
 
                     QSize newSize2(container->widget->minimumWidth()-90,container->widget->minimumHeight()-70);
                     container->mainWindow->resize(newSize2);
-                    QTimer::singleShot(PlayStepPeriod,
+                    QTimer::singleShot(PlayStepPeriod,container->widget,
                         [container]
                         {
                             UISE_TEST_CHECK_EQUAL(container->wrapper->width(),container->widget->minimumWidth()+container->padding.left()+container->padding.right());
@@ -115,7 +115,7 @@ void checkConfiguration(SampleContainer* container)
                             QSize newSize3(container->widget->minimumWidth()+90,container->widget->minimumHeight()+70);
                             container->widget->setMinimumSize(newSize3);
                             container->wrapper->updateMinMaxSize();
-                            QTimer::singleShot(PlayStepPeriod,
+                            QTimer::singleShot(PlayStepPeriod,container->widget,
                                 [container,newSize3]
                                 {
                                     UISE_TEST_CHECK_EQUAL(container->wrapper->width(),newSize3.width()+container->padding.left()+container->padding.right());
@@ -199,7 +199,7 @@ static void runTestCase(
             checkConfiguration(container);
         };
 
-        QTimer::singleShot(PlayStepPeriod,checkInit);
+        QTimer::singleShot(PlayStepPeriod,container->widget,checkInit);
     };
 
     TestThread::instance()->postGuiThread(init);
