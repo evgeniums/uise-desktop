@@ -12,6 +12,11 @@ then
 export uise_build=$2
 fi
 
+if [ -z "$uise_test_name" ];
+then
+export uise_test_name=$3
+fi
+
 if [ -z "$uise_compiler" ];
 then
 export uise_compiler=clang
@@ -66,6 +71,11 @@ then
     export build_type=MinSizeRel
 fi
 
+if [[ "$uise_test_name" != "" ]];
+then
+    export test_name="-R $uise_test_name"
+fi
+
 export build_dir=$PWD/builds/build-$uise_compiler-$uise_build
 export src_dir=$self_path/..
 
@@ -85,7 +95,7 @@ cmake --build . -j$build_workers
 
 if [[ "$uise_run_tests" == "1" ]];
 then
-    ctest -VV
+    ctest -VV $test_name
 fi
 
 cd $current_dir

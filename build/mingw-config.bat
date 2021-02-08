@@ -1,5 +1,3 @@
-@ECHO OFF
-
 IF "%MINGW_PATH%"=="" SET MINGW_PATH=C:\Qt\Tools\mingw810_64\bin
 
 IF "%QT_HOME_MINGW%"=="" SET QT_HOME_MINGW=C:\Qt\6.0.1\mingw81_64

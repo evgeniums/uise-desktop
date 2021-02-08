@@ -2,6 +2,7 @@
 
 IF "%UISE_COMPILER%"=="" SET UISE_COMPILER=%1
 IF "%UISE_BUILD%"=="" SET UISE_BUILD=%2
+IF "%UISE_TEST_NAME%"=="" SET UISE_TEST_NAME=%3
 
 IF "%DEPS_UNIVERSAL_ROOT%"=="" SET DEPS_UNIVERSAL_ROOT=C:\projects\dracosha\deps
 IF "%BUILD_WORKERS%"=="" SET BUILD_WORKERS=4
@@ -20,6 +21,10 @@ SET BUILD_TYPE=Debug
 )
 IF "%UISE_BUILD%" == "minsize_release" (
 SET BUILD_TYPE=MinSizeRel
+)
+
+IF NOT "%UISE_TEST_NAME%" == "" (
+SET TEST_NAME=-R %UISE_TEST_NAME%
 )
 
 SET BUILD_DIR=%cd%\builds\build-%TOOLCHAIN%-%UISE_BUILD%
@@ -41,7 +46,7 @@ cmake --build . -j%BUILD_WORKERS%
 if %errorlevel% neq 0 exit %errorlevel%
 
 IF "%UISE_RUN_TESTS%"=="1" (
-ctest -VV
+ctest -VV %TEST_NAME%
 if %errorlevel% neq 0 exit %errorlevel%
 )
 
@@ -57,7 +62,7 @@ cmake --build . --config %BUILD_TYPE% -- /m:1 /p:UseMultiToolTask=true /p:MultiP
 if %errorlevel% neq 0 exit %errorlevel%
 
 IF "%UISE_RUN_TESTS%"=="1" (
-ctest -C %BUILD_TYPE% -VV
+ctest -C %BUILD_TYPE% -VV %TEST_NAME%
 if %errorlevel% neq 0 exit %errorlevel%
 )
 )
