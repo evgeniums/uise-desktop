@@ -106,7 +106,7 @@ class FlyweightListView : public QFrame
 
         bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
         void scrollToEdge(Direction direction);
-        bool isScrollAtEdge(Direction direction, size_t maxOffset=5) const noexcept;
+        bool isScrollAtEdge(Direction direction) const noexcept;
 
         void clear();
 

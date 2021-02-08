@@ -262,10 +262,9 @@ const ItemT* FlyweightListView<ItemT>::lastItem() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction, size_t maxOffset) const noexcept
+bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction) const noexcept
 {
-    //! @todo Implement isScrollAtEdge
-    return false;
+    return direction==Direction::END?pimpl->isAtEnd():pimpl->isAtBegin();
 }
 
 //--------------------------------------------------------------------------
