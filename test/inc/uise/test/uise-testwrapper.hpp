@@ -52,35 +52,25 @@ inline std::string testAppName()
 }
 
 //--------------------------------------------------------------------------
-inline int testConsole()
+inline void testConsole(std::vector<std::string>& args)
 {
-    auto appName=testAppName();
-    std::cerr<<"Running test "<<appName<<std::endl;
-
-    const char* argv[]={appName.c_str(),"--log_level=test_suite"};
-    int argc = 2;
-    return boost::unit_test::unit_test_main(init_unit_test, argc, const_cast<char**>(argv));
+    args.push_back("--log_level=test_suite");
 }
 
 //--------------------------------------------------------------------------
-inline int testJUnit()
+inline void testJUnit(const std::string& appName,std::vector<std::string>& args)
 {
-    auto appName=testAppName();
-    std::cerr<<"Running test "<<appName<<std::endl;
-
     auto junitPath=std::string(UISE_TEST_JUNIT_PATH);
     auto junitLogger=std::string("--logger=JUNIT,all,")+junitPath+appName+".xml";
     std::cerr<<"JUnit logger "<<junitLogger<<std::endl;
 
-    int argc=6;
-    const char* argv[]={
-                  appName.c_str(),
+    std::vector<std::string> extraArgs{
                   "--logger=HRF,test_suite",
-                  junitLogger.c_str(),
+                  junitLogger,
                   "--report_level=no",
                   "--result_code=no",
                   "--detect_memory_leaks=0"};
-    return boost::unit_test::unit_test_main(init_unit_test, argc, const_cast<char**>(argv));
+    args.insert(std::end(args),std::begin(extraArgs),std::end(extraArgs));
 }
 
 //--------------------------------------------------------------------------
@@ -91,14 +81,42 @@ inline int runTest(int argc, char *argv[])
 
     std::atomic<int> ret{0};
 
-    TestThread::instance()->postTestThread(
-        [&ret]()
+    QString testName;
+    auto args=app.arguments();
+    foreach(const QString& arg, args)
+    {
+        if (arg.startsWith("--run_test="))
         {
-        #ifdef UISE_TEST_JUNIT
-            ret=testJUnit();
-        #else
-            ret=testConsole();
-        #endif
+            testName=arg;
+            break;
+        }
+    }
+
+    TestThread::instance()->postTestThread(
+        [&ret,testName]()
+        {        
+            auto appName=testAppName();
+            auto test=testName.toStdString();
+            std::cerr<<"Running test "<<appName<<" "<<test<<std::endl;
+
+            std::vector<std::string> args{appName};
+            #ifdef UISE_TEST_JUNIT
+                testJUnit(appName,args);
+            #else
+                testConsole(args);
+            #endif
+
+            if (!test.empty())
+            {
+                args.push_back(test);
+            }
+
+            const char* argv[args.size()];
+            for (size_t i=0;i<args.size();i++)
+            {
+                argv[i]=args[i].c_str();
+            }
+            ret=boost::unit_test::unit_test_main(init_unit_test, args.size(), const_cast<char**>(argv));
         }
     );
 
