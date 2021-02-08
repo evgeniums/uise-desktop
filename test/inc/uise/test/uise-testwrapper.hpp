@@ -111,12 +111,13 @@ inline int runTest(int argc, char *argv[])
                 args.push_back(test);
             }
 
-            const char* argv[args.size()];
+            auto argv=new const char* [args.size()];
             for (size_t i=0;i<args.size();i++)
             {
                 argv[i]=args[i].c_str();
             }
             ret=boost::unit_test::unit_test_main(init_unit_test, args.size(), const_cast<char**>(argv));
+            delete [] argv;
         }
     );
 
