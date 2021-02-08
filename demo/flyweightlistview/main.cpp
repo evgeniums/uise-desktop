@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
         auto v=new FwlvTestWidget();
         w.setCentralWidget(v);
         v->setFocus();
-        w.resize(600,500);
+        w.resize(1000,800);
         w.setWindowTitle("FlyweightListView Demo");
         w.show();
 

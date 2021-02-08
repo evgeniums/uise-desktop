@@ -46,7 +46,10 @@ template <typename ItemT>
 FlyweightListView_p<ItemT>::FlyweightListView_p(
         FlyweightListView<ItemT>* view,
         size_t prefetchItemCountHint
-    ) : m_view(view),
+    ) : m_obj(view),
+        m_vbar(nullptr),
+        m_hbar(nullptr),
+        m_view(nullptr),
         m_prefetchItemCount(prefetchItemCountHint),
         m_llist(nullptr),
         m_enableFlyweight(true),
@@ -70,7 +73,9 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_lastItem(nullptr),
         m_minOtherSize(0),
         m_maxSortValue(ItemT::defaultSortValue()),
-        m_minSortValue(ItemT::defaultSortValue())
+        m_minSortValue(ItemT::defaultSortValue()),
+        m_vbarPolicy(Qt::ScrollBarAsNeeded),
+        m_hbarPolicy(Qt::ScrollBarAsNeeded)
 {
 }
 
@@ -78,6 +83,20 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::setupUi()
 {
+    auto vlayout=Layout::vertical(m_obj);
+
+    auto middleFrame=new QFrame(m_obj);
+    vlayout->addWidget(middleFrame,1);
+    m_hbar=new QScrollBar(m_obj);
+    m_hbar->setOrientation(Qt::Horizontal);
+    vlayout->addWidget(m_hbar);
+    auto hlayout=Layout::horizontal(middleFrame);
+
+    m_view=new QFrame(middleFrame);
+    hlayout->addWidget(m_view,1);
+    m_vbar=new QScrollBar(middleFrame);
+    hlayout->addWidget(m_vbar);
+
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_view->setFocusPolicy(Qt::StrongFocus);
     m_view->resize(0,0);
@@ -103,6 +122,12 @@ void FlyweightListView_p<ItemT>::setupUi()
     }
 
     keepCurrentConfiguration();
+
+    updateScrollBarOrientation();
+    QObject::connect(m_vbar,&QScrollBar::valueChanged,[this](int value){m_vScrollCb(value);});
+    QObject::connect(m_hbar,&QScrollBar::valueChanged,[this](int value){m_hScrollCb(value);});
+
+    QTimer::singleShot(0,m_obj,[this](){onResized();});
 }
 
 //--------------------------------------------------------------------------
@@ -420,6 +445,14 @@ void FlyweightListView_p<ItemT>::updateStickingPositions()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView_p<ItemT>::onResized()
+{
+    auto margins=m_obj->contentsMargins();
+    m_hbar->resize(m_obj->width()-m_vbar->width()-margins.left()-margins.right(),m_hbar->height());
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 {
     m_viewSize=event->oldSize();
@@ -474,6 +507,8 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 
     // resize only that dimension of the list that doesn't match the orientation
     auto otherSize=oprop(event->size(),OProp::size,true);
+    auto otherHintSize=oprop(m_llist->sizeHint(),OProp::size,true);
+    otherSize=std::max(otherHintSize,otherSize);
     QSize newListSize;
     setOProp(newListSize,OProp::size,oprop(m_llist,OProp::size));
     setOProp(newListSize,OProp::size,otherSize,true);
@@ -557,11 +592,40 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView_p<ItemT>::updateScrollBarOrientation()
+{
+    if (isHorizontal())
+    {
+        m_hScrollCb=[this](int value){onMainSbarChanged(value);};
+        m_vScrollCb=[this](int value){onOtherSbarChanged(value);};
+
+        m_vbar->setSingleStep(1);
+        m_vbar->setPageStep(FlyweightListView<ItemT>::DefaultPageStep);
+
+        m_hbar->setSingleStep(m_singleStep);
+        m_hbar->setPageStep(m_pageStep);
+    }
+    else
+    {
+        m_vScrollCb=[this](int value){onMainSbarChanged(value);};
+        m_hScrollCb=[this](int value){onOtherSbarChanged(value);};
+
+        m_vbar->setSingleStep(m_singleStep);
+        m_vbar->setPageStep(m_pageStep);
+
+        m_hbar->setSingleStep(1);
+        m_hbar->setPageStep(FlyweightListView<ItemT>::DefaultPageStep);
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView_p<ItemT>::setOrientation(Qt::Orientation orientation)
 {
     beginUpdate();
     clear();
     m_llist->setOrientation(orientation);
+    updateScrollBarOrientation();
     updatePageStep();
     endUpdate();
 }
@@ -574,6 +638,16 @@ void FlyweightListView_p<ItemT>::updatePageStep()
                 static_cast<size_t>(oprop(m_view,OProp::size)),
                 m_minPageStep
                 );
+    if (isHorizontal())
+    {
+        m_hbar->setPageStep(m_pageStep);
+        m_vbar->setPageStep(FlyweightListView<ItemT>::DefaultPageStep);
+    }
+    else
+    {
+        m_hbar->setPageStep(FlyweightListView<ItemT>::DefaultPageStep);
+        m_vbar->setPageStep(m_pageStep);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -637,6 +711,8 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
             m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
         }
     }
+
+    m_scrollBarsTimer.shot(0,[this](){updateScrollBars();});
 }
 
 //--------------------------------------------------------------------------
@@ -707,7 +783,10 @@ void FlyweightListView_p<ItemT>::resizeList()
 {
     auto newSize=oprop(m_llist->sizeHint(),OProp::size);
     QSize listSize;
-    setOProp(listSize,OProp::size,oprop(m_view,OProp::size,true),true);
+    auto otherSize=oprop(m_view,OProp::size,true);
+    auto otherHintSize=oprop(m_llist->sizeHint(),OProp::size,true);
+    otherSize=std::max(otherHintSize,otherSize);
+    setOProp(listSize,OProp::size,otherSize,true);
     setOProp(listSize,OProp::size,newSize);
     if (m_llist->size()!=listSize)
     {
@@ -1231,6 +1310,94 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
 
     endUpdate();
 }
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::updateScrollBars()
+{
+    m_vbar->blockSignals(true);
+    m_hbar->blockSignals(true);
+
+    switch (m_vbarPolicy)
+    {
+        case Qt::ScrollBarAlwaysOff:
+            m_vbar->setVisible(false);
+        break;
+
+        case Qt::ScrollBarAlwaysOn:
+            m_vbar->setVisible(true);
+            m_vbar->setMaximum(0);
+        break;
+
+        case Qt::ScrollBarAsNeeded:
+            m_vbar->setVisible(m_view->height()<m_llist->height());
+        break;
+
+        default:
+        break;
+    }
+    if (m_view->height()<m_llist->height())
+    {
+        m_vbar->setMaximum(m_llist->height()-m_view->height());
+        m_vbar->setValue(-m_llist->y());
+    }
+    else
+    {
+        m_vbar->setValue(0);
+        m_vbar->setMaximum(0);
+    }
+
+    switch (m_hbarPolicy)
+    {
+        case Qt::ScrollBarAlwaysOff:
+            m_hbar->setVisible(false);
+        break;
+
+        case Qt::ScrollBarAlwaysOn:
+            m_hbar->setVisible(true);
+        break;
+
+        case Qt::ScrollBarAsNeeded:
+            m_hbar->setVisible(m_view->width()<m_llist->width());
+        break;
+
+        default:
+        break;
+    }
+    if (m_view->width()<m_llist->width())
+    {
+        m_hbar->setMaximum(m_llist->width()-m_view->width());
+        m_hbar->setValue(-m_llist->x());
+    }
+    else
+    {
+        m_hbar->setValue(0);
+        m_hbar->setMaximum(0);
+    }
+
+    m_vbar->blockSignals(false);
+    m_hbar->blockSignals(false);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::onMainSbarChanged(int value)
+{
+    auto oldPos=oprop(m_llist,OProp::pos);
+    auto diff=-value-oldPos;
+    scroll(-diff);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::onOtherSbarChanged(int value)
+{
+    auto pos=m_llist->pos();
+    setOProp(pos,OProp::pos,-value,true);
+    m_llist->move(pos);
+}
+
+//--------------------------------------------------------------------------
 
 } // namespace detail
 

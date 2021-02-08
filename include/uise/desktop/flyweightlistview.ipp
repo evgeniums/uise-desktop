@@ -41,6 +41,8 @@ FlyweightListView<ItemT>::FlyweightListView(
         pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(this,prefetchItemCount))
 {
     pimpl->setupUi();
+
+    pimpl->m_view->installEventFilter(this);
 }
 
 //--------------------------------------------------------------------------
@@ -278,7 +280,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::resizeEvent(QResizeEvent *event)
 {
     QFrame::resizeEvent(event);
-    pimpl->onViewportResized(event);
+    pimpl->onResized();
 }
 
 //--------------------------------------------------------------------------
@@ -399,6 +401,19 @@ void FlyweightListView<ItemT>::wheelEvent(QWheelEvent *event)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched==pimpl->m_view && event->type()==QEvent::Resize)
+    {
+        auto e=dynamic_cast<QResizeEvent*>(event);
+        pimpl->onViewportResized(e);
+    }
+
+    return false;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 int FlyweightListView<ItemT>::minOrthogonalSize() const noexcept
 {
     return pimpl->m_minOtherSize;
@@ -451,6 +466,50 @@ template <typename ItemT>
 typename ItemT::SortValueType FlyweightListView<ItemT>::minSortValue() const noexcept
 {
     return pimpl->m_minSortValue;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+QScrollBar* FlyweightListView<ItemT>::verticalScrollBar() const noexcept
+{
+    return pimpl->m_vbar;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+Qt::ScrollBarPolicy FlyweightListView<ItemT>::verticalScrollBarPolicy() const noexcept
+{
+    return pimpl->m_vbarPolicy;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+{
+    pimpl->m_vbarPolicy=policy;
+    pimpl->updateScrollBars();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+QScrollBar* FlyweightListView<ItemT>::horizontalScrollBar() const noexcept
+{
+    return pimpl->m_hbar;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+Qt::ScrollBarPolicy FlyweightListView<ItemT>::horizontalScrollBarPolicy() const noexcept
+{
+    return pimpl->m_hbarPolicy;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+{
+    pimpl->m_hbarPolicy=policy;
+    pimpl->updateScrollBars();
 }
 
 //--------------------------------------------------------------------------

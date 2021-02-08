@@ -50,14 +50,6 @@ class LinkedListView_p
         void setupLayout()
         {
             layout=Layout::box(view,orientation);
-            if (orientation==Qt::Horizontal)
-            {
-                view->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
-            }
-            else
-            {
-                view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-            }
         }
 
         std::shared_ptr<LinkedListViewItem> itemForWidget(QWidget *widget)

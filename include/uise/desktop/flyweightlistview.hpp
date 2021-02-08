@@ -33,6 +33,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/flyweightlistframe.hpp>
 
+class QScrollBar;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 enum class Direction : uint8_t
@@ -142,11 +144,21 @@ class FlyweightListView : public QFrame
         typename ItemT::SortValueType minSortValue() const noexcept;
         void setMinSortValue(const typename ItemT::SortValueType& value) noexcept;
 
+        QScrollBar* verticalScrollBar() const noexcept;
+        QScrollBar* horizontalScrollBar() const noexcept;
+
+        void setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy);
+        Qt::ScrollBarPolicy horizontalScrollBarPolicy() const noexcept;
+        void setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy);
+        Qt::ScrollBarPolicy verticalScrollBarPolicy() const noexcept;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
         void keyPressEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
+
+        bool eventFilter(QObject *watched, QEvent *event) override;
 
     private:
 

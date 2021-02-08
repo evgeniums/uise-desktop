@@ -61,7 +61,7 @@ class HelloWorldItem : public QFrame
 
             m_browser->setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
             setObjectName(QString("Item %1, %2").arg(seqNum).arg(m_id));
-            setFixedHeight(64);
+            setFixedHeight(100);
         }
 
         HelloWorldItem(size_t seqNum, QWidget* parent=nullptr)
@@ -91,25 +91,6 @@ class HelloWorldItem : public QFrame
             ev->ignore();
         }
 
-#if 0
-        void resizeEvent(QResizeEvent* ev)
-        {
-            if (ev->size().width()<=20)
-            {
-                return;
-            }
-            auto newWidth=ev->size().width()-20;
-            if (newWidth<450)
-            {
-                 newWidth=450;
-            }
-            else if (newWidth>750)
-            {
-                newWidth=750;
-            }
-            m_browser->setFixedWidth(newWidth);
-        }
-#endif
         size_t m_id;
         size_t m_seqNum;
         QTextEdit* m_browser;

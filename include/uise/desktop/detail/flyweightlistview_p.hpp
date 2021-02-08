@@ -30,7 +30,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <boost/multi_index/mem_fun.hpp>
 
 #include <QDebug>
-#include <QScrollArea>
 #include <QScrollBar>
 #include <QPointer>
 #include <QEvent>
@@ -170,6 +169,7 @@ class FlyweightListView_p : public OrientationInvariant
         void onListContentResized();
 
         void onViewportResized(QResizeEvent* event);
+        void onResized();
 
         void keepCurrentConfiguration();
 
@@ -224,6 +224,13 @@ class FlyweightListView_p : public OrientationInvariant
         void removeExtraItemsFromBegin(size_t count);
         void removeExtraItemsFromEnd(size_t count);
 
+        void updateScrollBars();
+
+        void onMainSbarChanged(int value);
+        void onOtherSbarChanged(int value);
+
+        void updateScrollBarOrientation();
+
     public:
 
         using ItemsContainer=boost::multi_index::multi_index_container
@@ -244,7 +251,11 @@ class FlyweightListView_p : public OrientationInvariant
                 >
             >;
 
-        FlyweightListView<ItemT>* m_view;
+        QFrame* m_obj;
+        QScrollBar* m_vbar;
+        QScrollBar* m_hbar;
+
+        QFrame* m_view;
         size_t m_prefetchItemCount;
 
         ItemsContainer m_items;
@@ -297,6 +308,14 @@ class FlyweightListView_p : public OrientationInvariant
 
         typename ItemT::SortValueType m_maxSortValue;
         typename ItemT::SortValueType m_minSortValue;
+
+        Qt::ScrollBarPolicy m_vbarPolicy;
+        Qt::ScrollBarPolicy m_hbarPolicy;
+
+        SingleShotTimer m_scrollBarsTimer;
+
+        std::function<void (int)> m_vScrollCb;
+        std::function<void (int)> m_hScrollCb;
 };
 
 } // namespace detail
