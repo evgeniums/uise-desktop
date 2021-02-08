@@ -98,3 +98,12 @@ IF (UISE_DESKTOP_TEST)
 
     ADD_SUBDIRECTORY(test)
 ENDIF (UISE_DESKTOP_TEST)
+
+SET (BUILD_CI_FILES
+    build/windows-ci.bat
+    build/mingw-config.bat
+    build/msvc-config.bat
+    build/unix-ci.sh
+)
+
+ADD_CUSTOM_TARGET(build SOURCES ${BUILD_CI_FILES})
