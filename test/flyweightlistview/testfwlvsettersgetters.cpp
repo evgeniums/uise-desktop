@@ -32,7 +32,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
 
-BOOST_AUTO_TEST_SUITE(TestFlyWeightListView1)
+BOOST_AUTO_TEST_SUITE(TestFlyWeightListView)
 
 namespace {
 void checkSettersGetters(FlwListType* view)

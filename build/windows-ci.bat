@@ -23,8 +23,10 @@ IF "%UISE_BUILD%" == "minsize_release" (
 SET BUILD_TYPE=MinSizeRel
 )
 
-IF NOT "%UISE_TEST_NAME%" == "" (
-SET TEST_NAME=-R %UISE_TEST_NAME%
+IF "%UISE_TEST_NAME%" == "" (
+    SET TEST_NAME=-L ALL
+) ELSE (
+    SET TEST_NAME=-R ^%UISE_TEST_NAME%$
 )
 
 SET BUILD_DIR=%cd%\builds\build-%TOOLCHAIN%-%UISE_BUILD%
