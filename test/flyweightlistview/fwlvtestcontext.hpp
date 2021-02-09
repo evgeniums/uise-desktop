@@ -49,7 +49,7 @@ struct FwlvTestContext
     bool flyweightMode=true;
 
     size_t initialWidth=1000;
-    size_t initialHeight=800;
+    size_t initialHeight=830;
 
     inline bool isHorizontal() const noexcept
     {
