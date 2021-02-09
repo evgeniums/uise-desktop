@@ -73,7 +73,7 @@ void doChecks(FwlvTestContext* ctx, size_t actualCount)
         }
         else
         {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),4);
+            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
             UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),backID+ctx->view->visibleItemCount()-1);
         }
 
@@ -89,12 +89,12 @@ void doChecks(FwlvTestContext* ctx, size_t actualCount)
 
         if (ctx->isHorizontal())
         {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),4);
+            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
             UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),frontID-ctx->view->visibleItemCount()+1);
         }
         else
         {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),4);
+            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
             UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),frontID-ctx->view->visibleItemCount()+1);
         }
 
