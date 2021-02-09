@@ -71,11 +71,16 @@ then
     export build_type=MinSizeRel
 fi
 
-if [[ "$uise_test_name" == "" ]];
+if [[ "$uise_test_name" == "" || "$uise_test_name" == "all" ]];
 then
     export test_name="-L ALL"
+    if [[ "$uise_test_name" == "all" ]];
+    then
+        export uise_run_tests=1
+    fi
 else
     export test_name="-R ^$uise_test_name\$"
+    export uise_run_tests=1
 fi
 
 export build_dir=$PWD/builds/build-$uise_compiler-$uise_build
