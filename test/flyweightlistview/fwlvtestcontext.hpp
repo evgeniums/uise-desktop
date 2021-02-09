@@ -38,7 +38,7 @@ UISE_TEST_NAMESPACE_BEGIN
 
 struct FwlvTestContext
 {
-    constexpr static const int PlayStepPeriod=500;
+    constexpr static const int PlayStepPeriod=100;
 
     FwlvTestWidget* testWidget=nullptr;
     FlwListType* view=nullptr;

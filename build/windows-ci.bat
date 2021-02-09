@@ -23,11 +23,19 @@ IF "%UISE_BUILD%" == "minsize_release" (
 SET BUILD_TYPE=MinSizeRel
 )
 
-IF "%UISE_TEST_NAME%" == "" (
-    SET TEST_NAME=-L ALL
-) ELSE (
-    SET TEST_NAME=-R ^%UISE_TEST_NAME%$
+IF "%UISE_TEST_NAME%" == "" GOTO test_all
+IF "%UISE_TEST_NAME%" == "all" (
+    SET UISE_RUN_TESTS=1
+    GOTO test_all
 )
+ECHO Running test %UISE_TEST_NAME%
+SET TEST_NAME=-R ^%UISE_TEST_NAME%$
+SET UISE_RUN_TESTS=1
+GOTO skip_test_all
+:test_all
+ECHO Running all tests
+SET TEST_NAME=-L ALL
+:skip_test_all
 
 SET BUILD_DIR=%cd%\builds\build-%TOOLCHAIN%-%UISE_BUILD%
 SET SRC_DIR=%~dp0..
@@ -63,7 +71,7 @@ if %errorlevel% neq 0 exit %errorlevel%
 cmake --build . --config %BUILD_TYPE% -- /m:1 /p:UseMultiToolTask=true /p:MultiProcMaxCount=%BUILD_WORKERS% /fileLogger
 if %errorlevel% neq 0 exit %errorlevel%
 
-IF "%UISE_RUN_TESTS%"=="1" (
+IF "%UISE_RUN_TESTS%" == "1" (
 ctest -C %BUILD_TYPE% -VV %TEST_NAME%
 if %errorlevel% neq 0 exit %errorlevel%
 )

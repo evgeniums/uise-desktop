@@ -64,9 +64,9 @@ inline void testJUnit(const std::string& appName,std::vector<std::string>& args)
     auto junitLogger=std::string("--logger=JUNIT,all,")+junitPath+appName+".xml";
     std::cerr<<"JUnit logger "<<junitLogger<<std::endl;
 
-    std::vector<std::string> extraArgs{
-                  "--logger=HRF,test_suite",
+    std::vector<std::string> extraArgs{                  
                   junitLogger,
+                  "--logger=HRF,error,stdout",
                   "--report_level=no",
                   "--result_code=no",
                   "--detect_memory_leaks=0"};
