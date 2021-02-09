@@ -134,4 +134,10 @@ UISE_TEST_NAMESPACE_END
     { UISE_TEST_TS \
     BOOST_TEST_MESSAGE(__VA_ARGS__); }
 
+#define UISE_TEST_CHECK_GE(Val1,Val2) \
+    BOOST_CHECK_GE(Val1,Val2);
+
+#define UISE_TEST_CHECK_GT(Val1,Val2) \
+    BOOST_CHECK_GE(Val1,Val2);
+
 #endif
