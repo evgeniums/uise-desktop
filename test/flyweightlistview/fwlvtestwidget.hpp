@@ -20,6 +20,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#ifndef UISE_DESKTOP_TEST_FWLVTESTWIDGET_HPP
+#define UISE_DESKTOP_TEST_FWLVTESTWIDGET_HPP
+
 #include <QFrame>
 #include <QLabel>
 #include <QTimer>
@@ -105,3 +108,5 @@ class FwlvTestWidget : public QFrame
 
 //--------------------------------------------------------------------------
 UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_TEST_FWLVTESTWIDGET_HPP

@@ -4,6 +4,7 @@ PROJECT (flyweightlistview-test LANGUAGES CXX)
 SET (HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/helloworlditem.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fwlvtestwidget.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fwlvtestcontext.hpp
 )
 
 SET (SOURCES

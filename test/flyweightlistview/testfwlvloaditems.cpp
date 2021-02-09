@@ -28,6 +28,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/utils/destroywidget.hpp>
 
 #include "fwlvtestwidget.hpp"
+#include "fwlvtestcontext.hpp"
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -36,51 +37,7 @@ BOOST_AUTO_TEST_SUITE(TestFlyWeightListView)
 
 namespace {
 
-struct Context
-{
-    FwlvTestWidget* testWidget=nullptr;
-    FlwListType* view=nullptr;
-    QMainWindow* mainWindow=nullptr;
-
-    Qt::Orientation orientation=Qt::Vertical;
-    Direction stickMode=Direction::END;
-    bool flyweightMode=true;
-
-    size_t initialWidth=1000;
-    size_t initialHeight=800;
-
-    bool isHorizontal() const noexcept
-    {
-        return orientation==Qt::Horizontal;
-    }
-};
-
-static void endTestCase(
-        Context* ctx
-    )
-{
-    destroyWidget(ctx->mainWindow);
-    delete ctx;
-    TestThread::instance()->continueTest();
-}
-
-void initWidgets(Context* ctx, std::function<void ()> handler)
-{
-    ctx->mainWindow=new QMainWindow();
-    ctx->testWidget=new FwlvTestWidget();
-    ctx->view=ctx->testWidget->pimpl->view;
-    ctx->mainWindow->setCentralWidget(ctx->testWidget);
-    ctx->mainWindow->show();
-    ctx->mainWindow->resize(ctx->initialWidth,ctx->initialHeight);
-
-    ctx->testWidget->pimpl->stickMode->setCurrentIndex(ctx->testWidget->pimpl->stickMode->findData(static_cast<int>(ctx->stickMode)));
-    ctx->testWidget->pimpl->orientationButton->setChecked(ctx->isHorizontal());
-    ctx->testWidget->pimpl->flyweightButton->setChecked(!ctx->flyweightMode);
-
-    QTimer::singleShot(0,ctx->mainWindow,handler);
-}
-
-void doChecks(Context* ctx, size_t actualCount)
+void doChecks(FwlvTestContext* ctx, size_t actualCount)
 {
     UISE_TEST_CHECK_EQUAL(ctx->view->itemCount(),actualCount);
 
@@ -146,20 +103,20 @@ void doChecks(Context* ctx, size_t actualCount)
     }
 }
 
-void checkLoadItems(Context* ctx, bool clear);
+void checkLoadItems(FwlvTestContext* ctx, bool clear);
 
-void checkClearItems(Context* ctx)
+void checkClearItems(FwlvTestContext* ctx)
 {
     ctx->testWidget->pimpl->clearButton->click();
 
-    QTimer::singleShot(10,ctx->mainWindow,
+    QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
     [ctx]()
     {
         checkLoadItems(ctx,false);
     });
 }
 
-void checkLoadItems(Context* ctx, bool clear)
+void checkLoadItems(FwlvTestContext* ctx, bool clear)
 {
     UISE_TEST_CHECK(!ctx->view->horizontalScrollBar()->isVisible());
     UISE_TEST_CHECK(!ctx->view->verticalScrollBar()->isVisible());
@@ -177,7 +134,7 @@ void checkLoadItems(Context* ctx, bool clear)
     ctx->testWidget->loadItems();
     doChecks(ctx,ctx->testWidget->initialItemCount);
 
-    QTimer::singleShot(100,ctx->mainWindow,
+    QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
     [ctx,clear]()
     {
         if (ctx->isHorizontal())
@@ -206,116 +163,20 @@ void checkLoadItems(Context* ctx, bool clear)
         }
         else
         {
-            endTestCase(ctx);
+            ctx->endTestCase();
         }
     });
 }
 
-void runTest(Context* ctx)
+}
+
+BOOST_AUTO_TEST_CASE(TestLoadItems)
 {
-    auto handler=[ctx]()
+    auto handler=[](FwlvTestContext* ctx)
     {
         checkLoadItems(ctx,true);
     };
-    TestThread::instance()->postGuiThread(
-        [ctx,handler](){initWidgets(ctx,handler);}
-    );
-    auto ret=TestThread::instance()->execTest(15000);
-    UISE_TEST_CHECK(ret);
-}
-
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalEnd)
-{
-    auto ctx=new Context();
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalEnd)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalHome)
-{
-    auto ctx=new Context();
-    ctx->stickMode=Direction::HOME;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalHome)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    ctx->stickMode=Direction::HOME;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalNone)
-{
-    auto ctx=new Context();
-    ctx->stickMode=Direction::NONE;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalNone)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    ctx->stickMode=Direction::NONE;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalEndNoFlw)
-{
-    auto ctx=new Context();
-    ctx->flyweightMode=false;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalEndNoFlw)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    ctx->flyweightMode=false;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalHomeNoFlw)
-{
-    auto ctx=new Context();
-    ctx->stickMode=Direction::HOME;
-    ctx->flyweightMode=false;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalHomeNoFlw)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    ctx->stickMode=Direction::HOME;
-    ctx->flyweightMode=false;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsVerticalNoneNoFlw)
-{
-    auto ctx=new Context();
-    ctx->stickMode=Direction::NONE;
-    ctx->flyweightMode=false;
-    runTest(ctx);
-}
-
-BOOST_AUTO_TEST_CASE(TestLoadItemsHorizontalNoneNoFlw)
-{
-    auto ctx=new Context();
-    ctx->orientation=Qt::Horizontal;
-    ctx->stickMode=Direction::NONE;
-    ctx->flyweightMode=false;
-    runTest(ctx);
+    FwlvTestContext::execAllModes(handler);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
