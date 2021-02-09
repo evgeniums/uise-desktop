@@ -69,6 +69,12 @@ SET (SOURCES
     src/alignedstretchingwidget.cpp
 )
 
+IF (NOT UISE_DESKTOP_STATIC)
+    IF (NOT "$ENV{UISE_DESKTOP_STATIC}" STREQUAL "")
+        SET (UISE_DESKTOP_STATIC $ENV{UISE_DESKTOP_STATIC})
+    ENDIF()
+ENDIF()
+
 IF (UISE_DESKTOP_STATIC)
     MESSAGE(STATUS "Building static uise-desktop library")
     ADD_LIBRARY(${PROJECT_NAME} STATIC ${HEADERS} ${SOURCES})
