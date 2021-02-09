@@ -30,6 +30,7 @@ FwlvTestWidget::FwlvTestWidget(
     ) : QFrame(parent),
         pimpl(std::make_unique<FwlvTestWidget_p>())
 {
+    HelloWorldItem::HelloWorldItemId=1000000;
     setup();
 }
 
@@ -87,7 +88,7 @@ void FwlvTestWidget::setup()
     pimpl->delFrom=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->delFrom,++row,0);
     pimpl->delFrom->setMinimum(0);
-    pimpl->delFrom->setMaximum(HelloWorldItemId*2);
+    pimpl->delFrom->setMaximum(HelloWorldItem::HelloWorldItemId*2);
     pimpl->delFrom->setValue(1);
     pimpl->delNum=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->delNum,row,1);
@@ -160,7 +161,7 @@ void FwlvTestWidget::setup()
     pimpl->resizeWidget=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->resizeWidget,++row,0);
     pimpl->resizeWidget->setMinimum(0);
-    pimpl->resizeWidget->setMaximum(HelloWorldItemId*2);
+    pimpl->resizeWidget->setMaximum(HelloWorldItem::HelloWorldItemId*2);
     pimpl->resizeWidget->setValue(1);
     pimpl->resizeWidgetVal=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->resizeWidgetVal,row,1);
@@ -190,7 +191,7 @@ void FwlvTestWidget::setup()
     pimpl->jumpItem=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->jumpItem,++row,0);
     pimpl->jumpItem->setMinimum(0);
-    pimpl->jumpItem->setMaximum(HelloWorldItemId*2);
+    pimpl->jumpItem->setMaximum(HelloWorldItem::HelloWorldItemId*2);
     pimpl->jumpItem->setValue(1);
     pimpl->jumpItem=new QSpinBox(mainFrame);
     layout->addWidget(pimpl->jumpItem,row,1);
@@ -251,7 +252,7 @@ void FwlvTestWidget::setup()
 
     for (size_t i=0;i<count;i++)
     {
-        pimpl->items[i]=--HelloWorldItemId;
+        pimpl->items[i]=--HelloWorldItem::HelloWorldItemId;
     }
 
     QObject::connect(pimpl->reloadButton,&QPushButton::clicked,
@@ -494,9 +495,9 @@ void FwlvTestWidget::setup()
                         {
                             itemCount=3*prefetchCount;
                         }
-                        size_t jumpPos=MaxHelloWorldItemId-pimpl->jumpItem->value()-1;
+                        size_t jumpPos=HelloWorldItem::MaxHelloWorldItemId-pimpl->jumpItem->value()-1;
                         auto from=jumpPos;
-                        if (from>=MaxHelloWorldItemId)
+                        if (from>=HelloWorldItem::MaxHelloWorldItemId)
                         {
                             return;
                         }

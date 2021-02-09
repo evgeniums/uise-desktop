@@ -41,14 +41,14 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-inline size_t MaxHelloWorldItemId=1000000;
-inline size_t HelloWorldItemId=MaxHelloWorldItemId;
-
 class HelloWorldItem : public QFrame
 {
     Q_OBJECT
 
     public:
+
+        inline static size_t MaxHelloWorldItemId=1000000;
+        inline static size_t HelloWorldItemId=MaxHelloWorldItemId;
 
         HelloWorldItem(size_t seqNum, size_t id, QWidget* parent=nullptr)
             : QFrame(parent),
