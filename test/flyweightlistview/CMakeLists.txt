@@ -8,6 +8,7 @@ SET (HEADERS
 
 SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/fwlvtestwidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testfixedlist.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

@@ -216,11 +216,6 @@ class FlyweightListView_p : public OrientationInvariant
         void beginItemRangeChange() noexcept;
         void endItemRangeChange();
 
-        void updateMinOtherSize();
-
-        int orthogonalPos() const noexcept;
-        void setOrthogonalPos(int value);
-
         void removeExtraItemsFromBegin(size_t count);
         void removeExtraItemsFromEnd(size_t count);
 
@@ -257,6 +252,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         QFrame* m_view;
         size_t m_prefetchItemCount;
+        size_t m_prefetchItemCountHint;
 
         ItemsContainer m_items;
 
@@ -267,7 +263,6 @@ class FlyweightListView_p : public OrientationInvariant
         typename FlyweightListView<ItemT>::RequestJumpCb m_homeRequestCb;
         typename FlyweightListView<ItemT>::RequestJumpCb m_endRequestCb;
         typename FlyweightListView<ItemT>::ScrolledCb m_scrolledCb;
-        typename FlyweightListView<ItemT>::MinOrthogonalSizeChangedCb m_minOtherSizeChangedCb;
 
         LinkedListView* m_llist;
 
@@ -303,8 +298,6 @@ class FlyweightListView_p : public OrientationInvariant
         SingleShotTimer m_checkItemCountTimer;
 
         bool m_cleared;
-
-        int m_minOtherSize;
 
         typename ItemT::SortValueType m_maxSortValue;
         typename ItemT::SortValueType m_minSortValue;

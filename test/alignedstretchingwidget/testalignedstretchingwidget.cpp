@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/utils/testalignedstretchingwidget.cpp
+/** @file uise/test/alignedstretchingwidget/testalignedstretchingwidget.cpp
 *
 *  Test AlignedStretchingWidget.
 *

@@ -77,6 +77,13 @@ size_t FlyweightListView<ItemT>::prefetchItemCount() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+size_t FlyweightListView<ItemT>::prefetchItemCountHint() const noexcept
+{
+    return pimpl->m_prefetchItemCountHint;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 size_t FlyweightListView<ItemT>::visibleItemCount() const noexcept
 {
     return pimpl->visibleCount();
@@ -409,34 +416,6 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
     }
 
     return false;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-int FlyweightListView<ItemT>::minOrthogonalSize() const noexcept
-{
-    return pimpl->m_minOtherSize;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-int FlyweightListView<ItemT>::orthogonalPos() const noexcept
-{
-    return pimpl->orthogonalPos();
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setOrthogonalPos(int value)
-{
-    pimpl->setOrthogonalPos(value);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setMinOrthogonalSizeChangedCb(MinOrthogonalSizeChangedCb cb) noexcept
-{
-    pimpl->m_minOtherSizeChangedCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------

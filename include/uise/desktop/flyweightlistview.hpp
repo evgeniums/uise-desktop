@@ -60,8 +60,8 @@ class FlyweightListView : public QFrame
 {
     public:
 
-        constexpr static const size_t PrefetchItemCountHint=20;
-        constexpr static const size_t DefaultPageStep=10;
+        inline static size_t PrefetchItemCountHint=20;
+        inline static size_t DefaultPageStep=10;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
@@ -91,6 +91,8 @@ class FlyweightListView : public QFrame
         void removeItems(const std::vector<typename ItemT::IdType>& ids);
 
         void setPrefetchItemCountHint(size_t val) noexcept;
+        size_t prefetchItemCountHint() const noexcept;
+
         size_t prefetchItemCount() const noexcept;
         size_t visibleItemCount() const noexcept;
 
@@ -134,10 +136,6 @@ class FlyweightListView : public QFrame
         size_t minPageScrollStep() const noexcept;
 
         size_t pageScrollStep() const noexcept;
-
-        int minOrthogonalSize() const noexcept;
-        int orthogonalPos() const noexcept;
-        void setOrthogonalPos(int value);
 
         typename ItemT::SortValueType maxSortValue() const noexcept;
         void setMaxSortValue(const typename ItemT::SortValueType& value) noexcept;

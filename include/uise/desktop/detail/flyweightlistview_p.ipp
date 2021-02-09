@@ -51,6 +51,7 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_hbar(nullptr),
         m_view(nullptr),
         m_prefetchItemCount(prefetchItemCountHint),
+        m_prefetchItemCountHint(prefetchItemCountHint),
         m_llist(nullptr),
         m_enableFlyweight(true),
         m_stick(Direction::END),
@@ -71,7 +72,6 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_cleared(false),
         m_firstItem(nullptr),
         m_lastItem(nullptr),
-        m_minOtherSize(0),
         m_maxSortValue(ItemT::defaultSortValue()),
         m_minSortValue(ItemT::defaultSortValue()),
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
@@ -159,51 +159,6 @@ void FlyweightListView_p<ItemT>::onListContentResized()
             viewportUpdated();
         }
     );
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::updateMinOtherSize()
-{
-    int last=m_minOtherSize;
-    m_minOtherSize=0;
-    const auto& order=itemOrder();
-    for (auto&& it : order)
-    {
-        m_minOtherSize=std::max(
-                        m_minOtherSize,
-                        oprop(it.widget(),OProp::min_size,true)
-                    );
-    }
-
-    if (last!=m_minOtherSize)
-    {
-        if (m_minOtherSizeChangedCb)
-        {
-            m_minOtherSizeChangedCb(m_minOtherSize);
-        }
-    }
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-int FlyweightListView_p<ItemT>::orthogonalPos() const noexcept
-{
-    return -oprop(m_llist,OProp::pos,true);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::setOrthogonalPos(int value)
-{
-    value=std::max(0,value);
-    if (m_minOtherSize!=value)
-    {
-        auto newPos=m_llist->pos();
-        setOProp(newPos,OProp::pos,value,true);
-        m_llist->move(newPos);
-        m_minOtherSize=value;
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -514,8 +469,6 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
     setOProp(newListSize,OProp::size,otherSize,true);
     m_llist->resize(newListSize);
 
-    updateMinOtherSize();
-
     // process updated viewport
     viewportUpdated();
 
@@ -791,8 +744,6 @@ void FlyweightListView_p<ItemT>::resizeList()
     if (m_llist->size()!=listSize)
     {
         m_llist->resize(listSize);
-
-        updateMinOtherSize();
         compensateSizeChange();
     }
 }
@@ -830,8 +781,7 @@ void FlyweightListView_p<ItemT>::clear()
     m_atEnd=true;
     m_firstWidgetPos=0;
     m_scrollValue=0;
-
-    updateMinOtherSize();
+    m_prefetchItemCount=m_prefetchItemCountHint;
 
     m_cleared=true;
 }
