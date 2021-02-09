@@ -12,9 +12,9 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/flyweightlistview/testfixedlist.cpp
+/** @file uise/test/flyweightlistview/testfwlvsettersgetters.cpp
 *
-*  Test fixed mode of FlyweightListView.
+*  Test setters/getters of FlyweightListView.
 *
 */
 

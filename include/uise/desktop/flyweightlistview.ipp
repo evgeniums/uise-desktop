@@ -147,13 +147,6 @@ void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::setScrolledCb(ScrolledCb cb) noexcept
-{
-    pimpl->m_scrolledCb=std::move(cb);
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
     beginUpdate();
@@ -262,9 +255,23 @@ const ItemT* FlyweightListView<ItemT>::firstItem() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+const ItemT* FlyweightListView<ItemT>::firstViewportItem() const noexcept
+{
+    return pimpl->firstViewportItem();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 const ItemT* FlyweightListView<ItemT>::lastItem() const noexcept
 {
     return pimpl->lastItem();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+const ItemT* FlyweightListView<ItemT>::lastViewportItem() const noexcept
+{
+    return pimpl->lastViewportItem();
 }
 
 //--------------------------------------------------------------------------

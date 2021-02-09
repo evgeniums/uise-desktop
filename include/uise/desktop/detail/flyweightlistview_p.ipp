@@ -638,19 +638,6 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 
     keepCurrentConfiguration();
 
-    if (l_cleared
-            ||
-        l_scrollValue!=m_scrollValue
-            ||
-        l_listSize!=oprop(m_llist,OProp::size)
-        )
-    {
-        auto maxScrollValue=oprop(m_llist,OProp::size);
-        if (m_scrolledCb)
-        {
-            m_scrolledCb(m_scrollValue,maxScrollValue);
-        }
-    }
     if (
             l_cleared ||
             l_firstViewportItemID!=m_firstViewportItemID ||

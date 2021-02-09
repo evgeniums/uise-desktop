@@ -24,13 +24,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
-namespace {
-
-constexpr const size_t count=100000;
-constexpr const size_t initialItemCount=10;
-
-}
-
 //--------------------------------------------------------------------------
 FwlvTestWidget::FwlvTestWidget(
         QWidget *parent

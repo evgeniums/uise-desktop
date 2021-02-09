@@ -85,6 +85,9 @@ class FwlvTestWidget : public QFrame
 
     public:
 
+        constexpr static const size_t count=100000;
+        constexpr static const size_t initialItemCount=10;
+
         FwlvTestWidget(QWidget* parent=nullptr);
 
     public slots:

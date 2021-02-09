@@ -102,9 +102,6 @@ class FlyweightListView : public QFrame
 
         void setRequestHomeCb(RequestJumpCb cb) noexcept;
         void setRequestEndCb(RequestJumpCb cb) noexcept;
-        void setScrolledCb(ScrolledCb cb) noexcept;
-
-        void setMinOrthogonalSizeChangedCb(MinOrthogonalSizeChangedCb cb) noexcept;
 
         bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
         void scrollToEdge(Direction direction);
@@ -117,6 +114,8 @@ class FlyweightListView : public QFrame
         const ItemT* item(const typename ItemT::IdType& id) const noexcept;
         const ItemT* firstItem() const noexcept;
         const ItemT* lastItem() const noexcept;
+        const ItemT* firstViewportItem() const noexcept;
+        const ItemT* lastViewportItem() const noexcept;
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation);
