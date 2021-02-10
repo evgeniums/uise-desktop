@@ -797,13 +797,14 @@ void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
     auto numPixels = event->pixelDelta();
     auto angleDelta = event->angleDelta();
 
-    size_t scrollOther=0;
+    int scrollOther=0;
+    int scrollMain=0;
 
 #ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
    if (!numPixels.isNull())
    {
-       scroll(-oprop(numPixels,OProp::pos));
-       scrollOther=-oprop(numPixels,OProp::pos,true);
+       scrollMain=oprop(numPixels,OProp::pos);
+       scrollOther=oprop(numPixels,OProp::pos,true);
    }
    else if (!angleDelta.isNull())
 #endif
@@ -827,24 +828,25 @@ void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
            return numSteps;
        };
 
-       auto scrollMain=evalOffset(m_wheelOffsetAccumulated,false);
+       scrollMain=evalOffset(m_wheelOffsetAccumulated,false);
        scrollOther=evalOffset(m_wheelOffsetAccumulatedOther,true);
-
-       scroll(-scrollMain);
-
-       if (m_scrollWheelHorizontal && isHorizontal())
-       {
-           if (m_view->height()>=m_llist->height()
-                   &&
-               m_view->width()<m_llist->width()
-              )
-           {
-               scroll(-scrollOther);
-           }
-       }
    }
 
-   if (scrollOther!=0)
+   scroll(-scrollMain);
+
+   if (
+           m_scrollWheelHorizontal
+           &&
+           isHorizontal()
+           &&
+           m_view->height()>=m_llist->height()
+           &&
+           m_view->width()<m_llist->width()
+           )
+   {
+        scroll(-scrollOther);
+   }
+   else if (scrollOther!=0)
    {
        if (isHorizontal())
        {
