@@ -290,6 +290,7 @@ class FlyweightListView_p : public OrientationInvariant
         size_t m_minPageStep;
 
         float m_wheelOffsetAccumulated;
+        float m_wheelOffsetAccumulatedOther;
 
         bool m_ignoreUpdates;
         SingleShotTimer m_updateStickingPositionsTimer;
@@ -308,6 +309,8 @@ class FlyweightListView_p : public OrientationInvariant
 
         std::function<void (int)> m_vScrollCb;
         std::function<void (int)> m_hScrollCb;
+
+        bool m_scrollWheelHorizontal;
 };
 
 } // namespace detail

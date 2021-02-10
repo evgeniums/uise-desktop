@@ -290,6 +290,20 @@ void FlyweightListView<ItemT>::scrollToEdge(Direction direction)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::setWheelHorizontalScrollEnabled(bool enabled) noexcept
+{
+    pimpl->m_scrollWheelHorizontal=enabled;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+bool FlyweightListView<ItemT>::islWheelHorizontaScrollEnabled() const noexcept
+{
+    return pimpl->m_scrollWheelHorizontal;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView<ItemT>::resizeEvent(QResizeEvent *event)
 {
     QFrame::resizeEvent(event);

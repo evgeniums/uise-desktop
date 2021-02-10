@@ -68,6 +68,7 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_wheelOffsetAccumulated(0.0f),
+        m_wheelOffsetAccumulatedOther(0.0f),
         m_ignoreUpdates(false),
         m_cleared(false),
         m_firstItem(nullptr),
@@ -75,7 +76,8 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_maxSortValue(ItemT::defaultSortValue()),
         m_minSortValue(ItemT::defaultSortValue()),
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
-        m_hbarPolicy(Qt::ScrollBarAsNeeded)
+        m_hbarPolicy(Qt::ScrollBarAsNeeded),
+        m_scrollWheelHorizontal(true)
 {
 }
 
@@ -764,6 +766,7 @@ void FlyweightListView_p<ItemT>::clear()
     m_lastViewportItemID=ItemT::defaultId();
     m_lastViewportSortValue=ItemT::defaultSortValue();
     m_wheelOffsetAccumulated=0.0f;
+    m_wheelOffsetAccumulatedOther=0.0f;
     m_atBegin=true;
     m_atEnd=true;
     m_firstWidgetPos=0;
@@ -794,31 +797,63 @@ void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
     auto numPixels = event->pixelDelta();
     auto angleDelta = event->angleDelta();
 
+    size_t scrollOther=0;
+
 #ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
    if (!numPixels.isNull())
    {
        scroll(-oprop(numPixels,OProp::pos));
+       scrollOther=-oprop(numPixels,OProp::pos,true);
    }
    else if (!angleDelta.isNull())
 #endif
    {
-       auto deltaPos=qreal(oprop(angleDelta,OProp::pos));
-       auto scrollLines=QApplication::wheelScrollLines();
-       auto numStepsU = m_singleStep * scrollLines * deltaPos / 120;
-
-       if (qAbs(m_wheelOffsetAccumulated)>std::numeric_limits<decltype(m_wheelOffsetAccumulated)>::epsilon()
-           &&
-           (numStepsU/m_wheelOffsetAccumulated)<0
-           )
+       auto evalOffset=[this,&angleDelta](float& accumulated, bool other)
        {
-           m_wheelOffsetAccumulated=0.0f;
+           auto deltaPos=qreal(oprop(angleDelta,OProp::pos,other));
+           auto scrollLines=QApplication::wheelScrollLines();
+           auto numStepsU = m_singleStep * scrollLines * deltaPos / 120;
+           if (qAbs(accumulated)>std::numeric_limits<float>::epsilon()
+               &&
+               (numStepsU/accumulated)<0
+               )
+           {
+               accumulated=0.0f;
+           }
+           accumulated+=numStepsU;
+           auto numSteps=static_cast<int>(accumulated);
+           accumulated-=numSteps;
+
+           return numSteps;
+       };
+
+       auto scrollMain=evalOffset(m_wheelOffsetAccumulated,false);
+       scrollOther=evalOffset(m_wheelOffsetAccumulatedOther,true);
+
+       scroll(-scrollMain);
+
+       if (m_scrollWheelHorizontal && isHorizontal())
+       {
+           if (m_view->height()>=m_llist->height()
+                   &&
+               m_view->width()<m_llist->width()
+              )
+           {
+               scroll(-scrollOther);
+           }
        }
+   }
 
-       m_wheelOffsetAccumulated+=numStepsU;
-       auto numSteps=static_cast<int>(m_wheelOffsetAccumulated);
-       m_wheelOffsetAccumulated-=numSteps;
-
-       scroll(-numSteps);
+   if (scrollOther!=0)
+   {
+       if (isHorizontal())
+       {
+           m_vbar->setValue(m_vbar->value()-scrollOther);
+       }
+       else
+       {
+           m_hbar->setValue(m_hbar->value()-scrollOther);
+       }
    }
 
    event->accept();
