@@ -11,6 +11,7 @@ SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/fwlvtestwidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvsettersgetters.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvloaditems.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvresize.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

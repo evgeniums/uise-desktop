@@ -66,8 +66,6 @@ class FlyweightListView : public QFrame
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void ()>;
-        using ScrolledCb=std::function<void (int,int)>;
-        using MinOrthogonalSizeChangedCb=std::function<void (int)>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
@@ -119,6 +117,14 @@ class FlyweightListView : public QFrame
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation);
+        bool isHorizontal() const noexcept
+        {
+            return orientation()==Qt::Horizontal;
+        }
+        bool isVertical() const noexcept
+        {
+            return orientation()==Qt::Vertical;
+        }
 
         void setFlyweightEnabled(bool enable) noexcept;
         bool isFlyweightEnabled() const noexcept;

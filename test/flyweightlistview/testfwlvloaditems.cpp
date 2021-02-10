@@ -37,72 +37,6 @@ BOOST_AUTO_TEST_SUITE(TestFlyWeightListView)
 
 namespace {
 
-void doChecks(FwlvTestContext* ctx, size_t actualCount)
-{
-    UISE_TEST_CHECK_EQUAL(ctx->view->itemCount(),actualCount);
-
-    const auto* firstItem=ctx->view->firstItem();
-    UISE_TEST_REQUIRE(firstItem!=nullptr);
-    const auto* firstViewportItem=ctx->view->firstViewportItem();
-    UISE_TEST_REQUIRE(firstViewportItem!=nullptr);
-
-    const auto* lastItem=ctx->view->lastItem();
-    UISE_TEST_REQUIRE(lastItem!=nullptr);
-    const auto* lastViewportItem=ctx->view->lastViewportItem();
-    UISE_TEST_REQUIRE(lastViewportItem!=nullptr);
-
-    UISE_TEST_CHECK(ctx->view->hasItem(firstItem->id()));
-    UISE_TEST_CHECK(ctx->view->hasItem(lastItem->id()));
-    UISE_TEST_CHECK(ctx->view->item(firstItem->id())==firstItem);
-    UISE_TEST_CHECK(ctx->view->item(lastItem->id())==lastItem);
-
-    auto frontID=ctx->testWidget->pimpl->items.begin()->second;
-    auto backID=ctx->testWidget->pimpl->items.rbegin()->second;
-
-    if (ctx->stickMode==Direction::END)
-    {
-        UISE_TEST_CHECK(firstItem!=firstViewportItem);
-        UISE_TEST_CHECK(lastItem==lastViewportItem);
-        UISE_TEST_CHECK_EQUAL(firstItem->id(),backID+actualCount-1);
-        UISE_TEST_CHECK_EQUAL(lastItem->id(),backID);
-
-        if (ctx->isHorizontal())
-        {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
-            UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),backID+ctx->view->visibleItemCount()-1);
-        }
-        else
-        {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
-            UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),backID+ctx->view->visibleItemCount()-1);
-        }
-
-        UISE_TEST_CHECK(ctx->view->isScrollAtEdge(Direction::END));
-        UISE_TEST_CHECK(!ctx->view->isScrollAtEdge(Direction::HOME));
-    }
-    else
-    {
-        UISE_TEST_CHECK(firstItem==firstViewportItem);
-        UISE_TEST_CHECK(lastItem!=lastViewportItem);
-        UISE_TEST_CHECK_EQUAL(firstItem->id(),frontID);
-        UISE_TEST_CHECK_EQUAL(lastItem->id(),frontID-actualCount+1);
-
-        if (ctx->isHorizontal())
-        {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
-            UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),frontID-ctx->view->visibleItemCount()+1);
-        }
-        else
-        {
-            UISE_TEST_CHECK_GE(ctx->view->visibleItemCount(),3);
-            UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),frontID-ctx->view->visibleItemCount()+1);
-        }
-
-        UISE_TEST_CHECK(!ctx->view->isScrollAtEdge(Direction::END));
-        UISE_TEST_CHECK(ctx->view->isScrollAtEdge(Direction::HOME));
-    }
-}
-
 void checkLoadItems(FwlvTestContext* ctx, bool clear);
 
 void checkClearItems(FwlvTestContext* ctx)
@@ -132,30 +66,19 @@ void checkLoadItems(FwlvTestContext* ctx, bool clear)
     UISE_TEST_CHECK(lastViewportItem==nullptr);
 
     ctx->testWidget->loadItems();
-    doChecks(ctx,ctx->testWidget->initialItemCount);
+
+    ctx->fillExpectedAfterLoad();
+    ctx->expectedVisibleScrollBar=false;
+    ctx->expectedItemCount=ctx->testWidget->initialItemCount;
+    ctx->fillExpectedIds(ctx->testWidget->pimpl->items.begin()->second,
+                         ctx->testWidget->pimpl->items.rbegin()->second);
+    BOOST_TEST_CONTEXT("Immediately after load") {ctx->doChecks();}
 
     QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
     [ctx,clear]()
     {
-        if (ctx->isHorizontal())
-        {
-            UISE_TEST_CHECK(ctx->view->horizontalScrollBar()->isVisible());
-            UISE_TEST_CHECK(!ctx->view->verticalScrollBar()->isVisible());
-        }
-        else
-        {
-            UISE_TEST_CHECK(!ctx->view->horizontalScrollBar()->isVisible());
-            UISE_TEST_CHECK(ctx->view->verticalScrollBar()->isVisible());
-        }
-
-        if (ctx->flyweightMode)
-        {
-            doChecks(ctx,ctx->testWidget->initialItemCount+ctx->view->prefetchItemCount());
-        }
-        else
-        {
-            doChecks(ctx,ctx->testWidget->initialItemCount);
-        }
+        ctx->fillExpectedAfterLoad();
+        BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
 
         if (clear)
         {

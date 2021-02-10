@@ -48,15 +48,160 @@ struct FwlvTestContext
     Direction stickMode=Direction::END;
     bool flyweightMode=true;
 
-    size_t initialWidth=1000;
-    size_t initialHeight=830;
+    size_t step=0;
 
-    inline bool isHorizontal() const noexcept
+    size_t initialWidth=1000;
+    size_t initialHeight=800;
+
+    size_t expectedVisibleItemCount=0;
+    size_t expectedItemCount=0;
+
+    size_t expectedFirstItemId=0;
+    size_t expectedLastItemId=0;
+    size_t expectedFirstVisibleItemId=0;
+    size_t expectedLastVisibleItemId=0;
+
+    bool expectedVisibleScrollBar=false;
+
+    QSize itemSize() const noexcept
+    {
+        if (view)
+        {
+            auto item=view->firstItem();
+            if (item)
+            {
+                auto widget=item->widget();
+                if (widget)
+                {
+                    return widget->size();
+                }
+            }
+        }
+
+        return QSize();
+    }
+
+    size_t maybeVisibleCount() const noexcept
+    {
+        if (view)
+        {
+            auto isize=itemSize();
+            if (isize.isValid() && !isize.isNull())
+            {
+                if (view->isHorizontal())
+                {
+                    return ceil(static_cast<float>(view->width())/isize.width());
+                }
+                else
+                {
+                    return ceil(static_cast<float>(view->height())/isize.height());
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    void fillExpectedIds(size_t frontID, size_t backID, int visibleIdOffset=0) noexcept
+    {
+        if (stickMode==Direction::END)
+        {
+            expectedFirstItemId=backID+expectedItemCount-1;
+            expectedLastItemId=backID;
+
+            expectedLastVisibleItemId=backID+visibleIdOffset;
+            expectedFirstVisibleItemId=expectedLastVisibleItemId+expectedVisibleItemCount-1;
+        }
+        else
+        {
+            expectedFirstItemId=frontID;
+            expectedLastItemId=frontID-expectedItemCount+1;
+
+            expectedFirstVisibleItemId=frontID+visibleIdOffset;
+            expectedLastVisibleItemId=expectedFirstVisibleItemId-expectedVisibleItemCount+1;
+        }
+    }
+
+    void fillExpectedAfterLoad() noexcept
+    {
+        expectedVisibleItemCount=maybeVisibleCount();
+
+        auto frontID=testWidget->pimpl->items.begin()->second;
+        auto backID=testWidget->pimpl->items.rbegin()->second;
+        if (flyweightMode)
+        {
+            expectedItemCount=testWidget->initialItemCount+view->prefetchItemCount();
+        }
+        else
+        {
+            expectedItemCount=testWidget->initialItemCount;
+        }
+        expectedVisibleScrollBar=true;
+        fillExpectedIds(frontID,backID);
+    }
+
+    void doChecks()
+    {
+        UISE_TEST_CHECK_EQUAL(view->itemCount(),expectedItemCount);
+
+        const auto* firstItem=view->firstItem();
+        UISE_TEST_REQUIRE(firstItem!=nullptr);
+        const auto* firstViewportItem=view->firstViewportItem();
+        UISE_TEST_REQUIRE(firstViewportItem!=nullptr);
+
+        const auto* lastItem=view->lastItem();
+        UISE_TEST_REQUIRE(lastItem!=nullptr);
+        const auto* lastViewportItem=view->lastViewportItem();
+        UISE_TEST_REQUIRE(lastViewportItem!=nullptr);
+
+        UISE_TEST_CHECK(view->hasItem(firstItem->id()));
+        UISE_TEST_CHECK(view->hasItem(lastItem->id()));
+        UISE_TEST_CHECK(view->item(firstItem->id())==firstItem);
+        UISE_TEST_CHECK(view->item(lastItem->id())==lastItem);
+
+        UISE_TEST_CHECK_EQUAL(firstItem->id(),expectedFirstItemId);
+        UISE_TEST_CHECK_EQUAL(lastItem->id(),expectedLastItemId);
+        UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),expectedFirstVisibleItemId);
+        UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),expectedLastVisibleItemId);
+        UISE_TEST_CHECK_EQUAL(view->visibleItemCount(),expectedVisibleItemCount);
+
+        if (stickMode==Direction::END)
+        {
+            UISE_TEST_CHECK(view->isScrollAtEdge(Direction::END));
+            UISE_TEST_CHECK(!view->isScrollAtEdge(Direction::HOME));
+        }
+        else
+        {
+            UISE_TEST_CHECK(!view->isScrollAtEdge(Direction::END));
+            UISE_TEST_CHECK(view->isScrollAtEdge(Direction::HOME));
+        }
+
+        if (expectedVisibleScrollBar)
+        {
+            if (isHorizontal())
+            {
+                UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
+                UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+            }
+            else
+            {
+                UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+                UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
+            }
+        }
+        else
+        {
+            UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+            UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+        }
+    }
+
+    bool isHorizontal() const noexcept
     {
         return orientation==Qt::Horizontal;
     }
 
-    inline void endTestCase()
+    void endTestCase()
     {
         destroyWidget(mainWindow);
         delete this;
@@ -91,7 +236,7 @@ struct FwlvTestContext
         UISE_TEST_CHECK(ret);
     }
 
-    static inline void execSingleMode(std::function<void (FwlvTestContext* ctx)> handler,Qt::Orientation orientation, Direction stickMode, bool flyweightMode)
+    static void execSingleMode(std::function<void (FwlvTestContext* ctx)> handler,Qt::Orientation orientation, Direction stickMode, bool flyweightMode)
     {
         auto ctx=new FwlvTestContext();
         ctx->orientation=orientation;
@@ -100,21 +245,21 @@ struct FwlvTestContext
         ctx->runTest(handler);
     }
 
-    static inline void execAllModes(std::function<void (FwlvTestContext* ctx)> handler)
+    static void execAllModes(std::function<void (FwlvTestContext* ctx)> handler)
     {
-        BOOST_TEST_CONTEXT("VerticalStickEndFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::END,true);}
-        BOOST_TEST_CONTEXT("HorizontalStickEndFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::END,true);}
-        BOOST_TEST_CONTEXT("VerticalStickHomeFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::HOME,true);}
-        BOOST_TEST_CONTEXT("HorizontalStickHomeFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::HOME,true);}
-        BOOST_TEST_CONTEXT("VerticalStickNoneFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::NONE,true);}
-        BOOST_TEST_CONTEXT("HorizontalStickNoneFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::NONE,true);}
+        UISE_TEST_CONTEXT("VerticalStickEndFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::END,true);}
+        UISE_TEST_CONTEXT("HorizontalStickEndFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::END,true);}
+        UISE_TEST_CONTEXT("VerticalStickHomeFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::HOME,true);}
+        UISE_TEST_CONTEXT("HorizontalStickHomeFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::HOME,true);}
+        UISE_TEST_CONTEXT("VerticalStickNoneFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::NONE,true);}
+        UISE_TEST_CONTEXT("HorizontalStickNoneFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::NONE,true);}
 
-        BOOST_TEST_CONTEXT("VerticalStickEndNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::END,false);}
-        BOOST_TEST_CONTEXT("HorizontalStickEndNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::END,false);}
-        BOOST_TEST_CONTEXT("VerticalStickHomeNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::HOME,false);}
-        BOOST_TEST_CONTEXT("HorizontalStickHomeNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::HOME,false);}
-        BOOST_TEST_CONTEXT("VerticalStickNoneNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::NONE,false);}
-        BOOST_TEST_CONTEXT("HorizontalStickNoneNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::NONE,false);}
+        UISE_TEST_CONTEXT("VerticalStickEndNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::END,false);}
+        UISE_TEST_CONTEXT("HorizontalStickEndNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::END,false);}
+        UISE_TEST_CONTEXT("VerticalStickHomeNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::HOME,false);}
+        UISE_TEST_CONTEXT("HorizontalStickHomeNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::HOME,false);}
+        UISE_TEST_CONTEXT("VerticalStickNoneNoFlyweight") {execSingleMode(handler,Qt::Vertical,Direction::NONE,false);}
+        UISE_TEST_CONTEXT("HorizontalStickNoneNoFlyweight") {execSingleMode(handler,Qt::Horizontal,Direction::NONE,false);}
     }
 };
 
