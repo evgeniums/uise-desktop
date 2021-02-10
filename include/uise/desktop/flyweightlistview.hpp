@@ -31,7 +31,6 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/flyweightlistframe.hpp>
 
 class QScrollBar;
 

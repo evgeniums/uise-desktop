@@ -48,7 +48,6 @@ SET (HEADERS
     include/uise/desktop/linkedlistviewitem.hpp
 
     include/uise/desktop/flyweightlistitem.hpp
-    include/uise/desktop/flyweightlistframe.hpp
     include/uise/desktop/flyweightlistview.hpp
     include/uise/desktop/flyweightlistview.ipp
 
@@ -63,7 +62,6 @@ SET (HEADERS ${HEADERS}
 SET (SOURCES
     src/linkedlistviewitem.cpp
     src/linkedlistview.cpp
-    src/flyweightlistframe.cpp
     src/singleshottimer.cpp
     src/directchildwidget.cpp
     src/alignedstretchingwidget.cpp
