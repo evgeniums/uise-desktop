@@ -66,7 +66,7 @@ inline void testJUnit(const std::string& appName,std::vector<std::string>& args)
 
     std::vector<std::string> extraArgs{                  
                   junitLogger,
-                  "--logger=HRF,error,stdout",
+                  "--logger=HRF,test_suite,stdout",
                   "--report_level=no",
                   "--result_code=no",
                   "--detect_memory_leaks=0"};
