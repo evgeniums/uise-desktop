@@ -222,6 +222,8 @@ struct FwlvTestContext
                 UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
             }
         }
+
+        UISE_TEST_CHECK_EQUAL(view->pageScrollStep(),OrientationInvariant::oprop(view->isHorizontal(),view->viewportSize(),OProp::size));
     }
 
     bool isHorizontal() const noexcept
