@@ -63,6 +63,8 @@ struct FwlvTestContext
 
     bool expectedVisibleScrollBar=false;
 
+    size_t visibleItemsChangedCount=0;
+
     QSize itemSize() const noexcept
     {
         if (view)

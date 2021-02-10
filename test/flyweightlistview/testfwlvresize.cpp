@@ -39,6 +39,8 @@ namespace {
 
 void visibleItemsChanged(FwlvTestContext* ctx, const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
 {
+    ++ctx->visibleItemsChangedCount;
+
     ctx->fillExpectedAfterLoad();
 
     std::string msg=std::string("visibleItemsChanged, step ")+std::to_string(ctx->step);
@@ -89,6 +91,8 @@ void runTest(FwlvTestContext* ctx)
             {
                 ctx->fillExpectedAfterLoad();
                 BOOST_TEST_CONTEXT("After decrease") {ctx->doChecks();}
+
+                UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,2);
 
                 ctx->endTestCase();
            });
