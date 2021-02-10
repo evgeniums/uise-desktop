@@ -140,7 +140,7 @@ struct FwlvTestContext
         fillExpectedIds(frontID,backID);
     }
 
-    void doChecks()
+    void doChecks(bool withCsrollbars=true)
     {
         UISE_TEST_CHECK_EQUAL(view->itemCount(),expectedItemCount);
 
@@ -176,46 +176,49 @@ struct FwlvTestContext
             UISE_TEST_CHECK(view->isScrollAtEdge(Direction::HOME));
         }
 
-        if (expectedVisibleScrollBar)
+        if (withCsrollbars)
         {
-            auto isize=itemSize();
-            if (isHorizontal())
+            if (expectedVisibleScrollBar)
             {
-                UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
-
-                if (isize.isValid())
+                auto isize=itemSize();
+                if (isHorizontal())
                 {
-                    if (isize.height()<=view->viewportSize().height())
+                    UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
+
+                    if (isize.isValid())
                     {
-                        UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+                        if (isize.height()<=view->viewportSize().height())
+                        {
+                            UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+                        }
+                        else
+                        {
+                            UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
+                        }
                     }
-                    else
+                }
+                else
+                {
+                    if (isize.isValid())
                     {
-                        UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
+                        if (isize.width()<=view->viewportSize().width())
+                        {
+                            UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+                        }
+                        else
+                        {
+                            UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
+                        }
                     }
+
+                    UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
                 }
             }
             else
             {
-                if (isize.isValid())
-                {
-                    if (isize.width()<=view->viewportSize().width())
-                    {
-                        UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
-                    }
-                    else
-                    {
-                        UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
-                    }
-                }
-
-                UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
+                UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+                UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
             }
-        }
-        else
-        {
-            UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
-            UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
         }
     }
 

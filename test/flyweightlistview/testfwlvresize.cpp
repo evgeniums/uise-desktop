@@ -44,7 +44,7 @@ void visibleItemsChanged(FwlvTestContext* ctx, const HelloWorldItemWrapper* begi
     std::string msg=std::string("visibleItemsChanged, step ")+std::to_string(ctx->step);
     BOOST_TEST_CONTEXT(msg.c_str())
     {
-        ctx->doChecks();
+        ctx->doChecks(false);
 
         UISE_TEST_REQUIRE(begin!=nullptr);
         UISE_TEST_REQUIRE(end!=nullptr);
