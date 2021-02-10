@@ -178,14 +178,37 @@ struct FwlvTestContext
 
         if (expectedVisibleScrollBar)
         {
+            auto isize=itemSize();
             if (isHorizontal())
             {
                 UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
-                UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+
+                if (isize.isValid())
+                {
+                    if (isize.height()<=view->viewportSize().height())
+                    {
+                        UISE_TEST_CHECK(!view->verticalScrollBar()->isVisible());
+                    }
+                    else
+                    {
+                        UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
+                    }
+                }
             }
             else
             {
-                UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+                if (isize.isValid())
+                {
+                    if (isize.width()<=view->viewportSize().width())
+                    {
+                        UISE_TEST_CHECK(!view->horizontalScrollBar()->isVisible());
+                    }
+                    else
+                    {
+                        UISE_TEST_CHECK(view->horizontalScrollBar()->isVisible());
+                    }
+                }
+
                 UISE_TEST_CHECK(view->verticalScrollBar()->isVisible());
             }
         }

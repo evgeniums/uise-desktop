@@ -498,6 +498,13 @@ void FlyweightListView<ItemT>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy 
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT>
+QSize FlyweightListView<ItemT>::viewportSize() const noexcept
+{
+    return pimpl->m_view->size();
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
 

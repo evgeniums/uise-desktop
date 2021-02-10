@@ -155,6 +155,8 @@ class FlyweightListView : public QFrame
         void setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy);
         Qt::ScrollBarPolicy verticalScrollBarPolicy() const noexcept;
 
+        QSize viewportSize() const noexcept;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
