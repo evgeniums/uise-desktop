@@ -332,7 +332,82 @@ void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrol
             });
         });
     };
-//    FwlvTestContext::execSingleMode(handler,Qt::Horizontal,Direction::HOME,true);
+    FwlvTestContext::execAllModes(handler);
+}
+
+void checkScrollPage()
+{
+    auto handler=[](FwlvTestContext* ctx)
+    {
+        auto scrollHandler=[ctx](int pages)
+        {
+            Qt::Key key=pages<0?Qt::Key_PageUp:Qt::Key_PageDown;
+            for (size_t i=0;i<qAbs(pages);i++)
+            {
+                QTest::keyPress(ctx->view,key,Qt::NoModifier,1);
+            }
+            QTest::keyRelease(ctx->view,key,Qt::NoModifier,1);
+        };
+
+        init(ctx);
+
+        ctx->view->setViewportChangedCb(
+            [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+            {
+            }
+        );
+
+        QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+        [ctx,scrollHandler]()
+        {
+            ctx->fillExpectedAfterLoad();
+            BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
+
+            ++ctx->step;
+            scrollHandler(signedDelta(ctx,1));
+
+            QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+            [ctx,scrollHandler]()
+            {
+                ++ctx->step;
+
+                auto delta=ctx->view->pageScrollStep();
+                auto itemSize=OrientationInvariant::oprop(ctx->isHorizontal(),ctx->itemSize(),OProp::size);
+                auto idDelta=floor(static_cast<float>(delta)/itemSize);
+
+                auto frontID=ctx->frontID();
+                auto backID=ctx->backID();
+
+                auto viewSize=OrientationInvariant::oprop(ctx->isHorizontal(),ctx->view,OProp::size);
+                auto visibleCount=ceil(static_cast<float>(viewSize)/static_cast<float>(itemSize));
+
+                if (ctx->isHorizontal())
+                {
+                    if (viewSize%itemSize!=0)
+                    {
+                        ++visibleCount;
+                    }
+                }
+                ctx->expectedVisibleItemCount=visibleCount;
+                ctx->fillExpectedIds(frontID,backID,idOffset(ctx,idDelta));
+                ctx->scrollAtEdge=false;
+                BOOST_TEST_CONTEXT("After scroll") {ctx->doChecks();}
+
+                scrollHandler(signedDelta(ctx,-1));
+
+                QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+                [ctx]()
+                {
+                    ++ctx->step;
+
+                    ctx->fillExpectedAfterLoad();
+                    BOOST_TEST_CONTEXT("After scroll back") {ctx->doChecks();}
+
+                    ctx->endTestCase();
+               });
+            });
+        });
+    };
 
     FwlvTestContext::execAllModes(handler);
 }
@@ -394,6 +469,11 @@ BOOST_AUTO_TEST_CASE(TestScrollLongDirect)
 BOOST_AUTO_TEST_CASE(TestScrollLongScrollBar)
 {
     checkScrollLong(scrollBarScrollHandler);
+}
+
+BOOST_AUTO_TEST_CASE(TestScrollPage)
+{
+    checkScrollPage();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

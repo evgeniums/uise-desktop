@@ -318,7 +318,7 @@ void FwlvTestWidget::setup()
         {
             idx=item->sortValue();
         }
-#if 1
+#if 0
         qDebug() << "request pimpl->items "<<idx<<", "<<itemCount<<", "<<static_cast<int>(direction);
 #endif
         std::vector<HelloWorldItemWrapper> newItems;
