@@ -114,7 +114,7 @@ struct FwlvTestContext
             expectedLastItemId=backID;
 
             expectedLastVisibleItemId=backID+visibleIdOffset;
-            expectedFirstVisibleItemId=expectedLastVisibleItemId+expectedVisibleItemCount-1;
+            expectedFirstVisibleItemId=expectedLastVisibleItemId+view->visibleItemCount()-1;
         }
         else
         {
@@ -122,7 +122,7 @@ struct FwlvTestContext
             expectedLastItemId=frontID-expectedItemCount+1;
 
             expectedFirstVisibleItemId=frontID+visibleIdOffset;
-            expectedLastVisibleItemId=expectedFirstVisibleItemId-expectedVisibleItemCount+1;
+            expectedLastVisibleItemId=expectedFirstVisibleItemId-view->visibleItemCount()+1;
         }
     }
 
@@ -158,6 +158,22 @@ struct FwlvTestContext
     {
         UISE_TEST_CHECK_EQUAL(view->itemCount(),expectedItemCount);
 
+        // two cases because sometimes the first and the last items partially fit into the viewport, so that there can be +1 item
+        if (view->visibleItemCount()!=expectedVisibleItemCount
+               &&
+            view->visibleItemCount()!=(expectedVisibleItemCount+1)
+           )
+        {
+            if (view->visibleItemCount()!=expectedVisibleItemCount)
+            {
+                UISE_TEST_CHECK_EQUAL(view->visibleItemCount(),expectedVisibleItemCount);
+            }
+            if (view->visibleItemCount()!=(expectedVisibleItemCount+1))
+            {
+                UISE_TEST_CHECK_EQUAL(view->visibleItemCount(),expectedVisibleItemCount+1);
+            }
+        }
+
         const auto* firstItem=view->firstItem();
         UISE_TEST_REQUIRE(firstItem!=nullptr);
         const auto* firstViewportItem=view->firstViewportItem();
@@ -177,7 +193,6 @@ struct FwlvTestContext
         UISE_TEST_CHECK_EQUAL(lastItem->id(),expectedLastItemId);
         UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),expectedFirstVisibleItemId);
         UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),expectedLastVisibleItemId);
-        UISE_TEST_CHECK_EQUAL(view->visibleItemCount(),expectedVisibleItemCount);
 
         if (stickMode==Direction::END)
         {

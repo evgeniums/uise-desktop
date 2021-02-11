@@ -103,7 +103,15 @@ void visibleItemsChangedLong(FwlvTestContext* ctx, const HelloWorldItemWrapper* 
         ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,CountBeforeScroll/2));
 
         BOOST_TEST_CONTEXT(msg.c_str())
-        {ctx->doChecks();}
+        {
+            ctx->doChecks();
+
+            UISE_TEST_REQUIRE(begin!=nullptr);
+            UISE_TEST_REQUIRE(end!=nullptr);
+
+            UISE_TEST_CHECK_EQUAL(begin->id(),ctx->expectedFirstVisibleItemId);
+            UISE_TEST_CHECK_EQUAL(end->id(),ctx->expectedLastVisibleItemId);
+        }
     }
 }
 
@@ -383,6 +391,9 @@ void checkScrollPage()
 
                 if (ctx->isHorizontal())
                 {
+                    // when the first and the last items partially fit into viewport then there are +1 item
+                    // this is very likely to happen for horizontal orientation
+                    // it might happen for vertical orientation also but very unlikely, so we ignore that case for vertical orientation
                     if (viewSize%itemSize!=0)
                     {
                         ++visibleCount;
