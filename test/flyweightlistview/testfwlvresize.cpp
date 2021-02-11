@@ -92,7 +92,7 @@ void runTest(FwlvTestContext* ctx)
                 ctx->fillExpectedAfterLoad();
                 BOOST_TEST_CONTEXT("After decrease") {ctx->doChecks();}
 
-                UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,2);
+                UISE_TEST_CHECK_GE(ctx->visibleItemsChangedCount,2);
 
                 ctx->endTestCase();
            });
