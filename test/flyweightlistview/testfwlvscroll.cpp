@@ -42,6 +42,10 @@ namespace {
 
 bool BlockCheckVisibleItemsChanged=false;
 
+size_t FrontIDBeforeScroll=0;
+size_t BackIDBeforeScroll=0;
+size_t CountBeforeScroll=0;
+
 int signedDelta(FwlvTestContext* ctx, int delta) noexcept
 {
     return ctx->stickMode==Direction::END?-delta:delta;
@@ -52,7 +56,7 @@ int idOffset(FwlvTestContext* ctx, int offset) noexcept
     return ctx->stickMode==Direction::END?offset:-offset;
 }
 
-void visibleItemsChanged(FwlvTestContext* ctx, const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+void visibleItemsChangedShort(FwlvTestContext* ctx, const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
 {
     if (BlockCheckVisibleItemsChanged)
     {
@@ -83,17 +87,83 @@ void visibleItemsChanged(FwlvTestContext* ctx, const HelloWorldItemWrapper* begi
     }
 }
 
+void visibleItemsChangedLong(FwlvTestContext* ctx, const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+{
+    if (BlockCheckVisibleItemsChanged)
+    {
+        return;
+    }
+    ++ctx->visibleItemsChangedCount;
+
+    std::string msg=std::string("visibleItemsChanged, step ")+std::to_string(ctx->step);
+
+    if (ctx->step==2)
+    {
+        ctx->scrollAtEdge=false;
+        ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,CountBeforeScroll/2));
+
+        BOOST_TEST_CONTEXT(msg.c_str())
+        {ctx->doChecks();}
+    }
+}
+
+void itemRangeChangedLong(FwlvTestContext* ctx, const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+{
+    ++ctx->itemRangeChangedCount;
+    std::string msg=std::string("itemRangeChangedLong, step ")+std::to_string(ctx->step);
+
+    if (ctx->step==2)
+    {
+        ctx->scrollAtEdge=false;
+        if (!ctx->flyweightMode)
+        {
+            ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,CountBeforeScroll/2));
+        }
+        else
+        {
+            ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemCount();
+            if (ctx->stickMode==Direction::END)
+            {
+                ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemCount(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
+            }
+            else
+            {
+                ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemCount(),idOffset(ctx,CountBeforeScroll/2));
+            }
+        }
+
+        BOOST_TEST_CONTEXT(msg.c_str())
+        {ctx->doChecks();}
+    }
+    else if (ctx->step==3)
+    {
+        ctx->scrollAtEdge=true;
+        if (!ctx->flyweightMode)
+        {
+            ctx->fillExpectedAfterLoad();
+        }
+        else
+        {
+            ctx->expectedItemCount=ctx->view->visibleItemCount()+ctx->view->maxHiddenItemCount();
+            if (ctx->stickMode==Direction::END)
+            {
+                ctx->fillExpectedIds(BackIDBeforeScroll+ctx->expectedItemCount,BackIDBeforeScroll);
+            }
+            else
+            {
+                ctx->fillExpectedIds(FrontIDBeforeScroll,FrontIDBeforeScroll-ctx->expectedItemCount);
+            }
+        }
+
+        BOOST_TEST_CONTEXT(msg.c_str())
+        {ctx->doChecks();}
+    }
+}
+
 void init(FwlvTestContext* ctx)
 {
     ctx->testWidget->loadItems();
     ++ctx->step;
-
-    ctx->view->setViewportChangedCb(
-        [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
-        {
-            visibleItemsChanged(ctx,begin,end);
-        }
-    );
 }
 
 void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scrollHandler)
@@ -101,6 +171,13 @@ void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scro
     auto handler=[scrollHandler](FwlvTestContext* ctx)
     {
         init(ctx);
+
+        ctx->view->setViewportChangedCb(
+            [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+            {
+                visibleItemsChangedShort(ctx,begin,end);
+            }
+        );
 
         QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
         [ctx,scrollHandler]()
@@ -139,54 +216,184 @@ void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scro
             });
         });
     };
-//    FwlvTestContext::execSingleMode(handler,Qt::Vertical,Direction::END,true);
     FwlvTestContext::execAllModes(handler);
+}
+
+void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrollHandler)
+{
+    auto handler=[scrollHandler](FwlvTestContext* ctx)
+    {
+        init(ctx);
+
+        ctx->view->setViewportChangedCb(
+            [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+            {
+                visibleItemsChangedLong(ctx,begin,end);
+            }
+        );
+
+        ctx->view->setItemRangeChangedCb(
+            [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+            {
+                itemRangeChangedLong(ctx,begin,end);
+            }
+        );
+
+        QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+        [ctx,scrollHandler]()
+        {
+            ctx->fillExpectedAfterLoad();
+            BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
+
+            FrontIDBeforeScroll=ctx->frontID();
+            BackIDBeforeScroll=ctx->backID();
+            CountBeforeScroll=ctx->view->itemCount();
+
+            ++ctx->step;
+            int delta=OrientationInvariant::oprop(ctx->isHorizontal(),ctx->itemSize(),OProp::size)*ctx->view->itemCount()/2+10;
+            scrollHandler(ctx,signedDelta(ctx,delta));
+
+            QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+            [ctx,scrollHandler,delta]()
+            {
+                ++ctx->step;
+
+                ctx->scrollAtEdge=false;
+                if (!ctx->flyweightMode)
+                {
+                    ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,CountBeforeScroll/2));
+                }
+                else
+                {
+                    ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemCount();
+                    if (ctx->stickMode==Direction::END)
+                    {
+                        ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemCount(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
+                    }
+                    else
+                    {
+                        ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemCount(),idOffset(ctx,CountBeforeScroll/2));
+                    }
+                }
+                BOOST_TEST_CONTEXT("After scroll") {ctx->doChecks();}
+
+                scrollHandler(ctx,signedDelta(ctx,-delta));
+
+                QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+                [ctx]()
+                {
+                    ctx->scrollAtEdge=true;
+                    ++ctx->step;
+
+                    if (!ctx->flyweightMode)
+                    {
+                        ctx->fillExpectedAfterLoad();
+                    }
+                    else
+                    {
+                        ctx->expectedItemCount=ctx->view->visibleItemCount()+ctx->view->maxHiddenItemCount();
+                        size_t frontID=0;
+                        size_t backID=0;
+                        if (ctx->stickMode==Direction::END)
+                        {
+                            frontID=BackIDBeforeScroll+ctx->expectedItemCount;
+                            backID=BackIDBeforeScroll;
+                        }
+                        else
+                        {
+                            frontID=FrontIDBeforeScroll;
+                            backID=FrontIDBeforeScroll-ctx->expectedItemCount;
+                        }
+
+                        ctx->fillExpectedIds(frontID,backID);
+                    }
+
+                    BOOST_TEST_CONTEXT("After scroll back") {ctx->doChecks();}
+
+                    if (!BlockCheckVisibleItemsChanged)
+                    {
+                        UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,2);
+                    }
+                    if (ctx->flyweightMode)
+                    {
+                        UISE_TEST_CHECK_EQUAL(ctx->itemRangeChangedCount,3);
+                    }
+                    else
+                    {
+                        UISE_TEST_CHECK_EQUAL(ctx->itemRangeChangedCount,0);
+                    }
+
+                    QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+                    [ctx]()
+                    {
+                        ctx->endTestCase();
+                    });
+               });
+            });
+        });
+    };
+//    FwlvTestContext::execSingleMode(handler,Qt::Horizontal,Direction::HOME,true);
+
+    FwlvTestContext::execAllModes(handler);
+}
+
+void directScrollHandler(FwlvTestContext* ctx,int delta)
+{
+    ctx->view->scroll(delta);
+}
+
+void keyScrollHandler(FwlvTestContext* ctx,int delta)
+{
+    Qt::Key key;
+    if (ctx->orientation==Qt::Vertical)
+    {
+        key=delta<0?Qt::Key_Up:Qt::Key_Down;
+    }
+    else
+    {
+        key=delta<0?Qt::Key_Left:Qt::Key_Right;
+    }
+    for (size_t i=0;i<qAbs(delta);i++)
+    {
+        QTest::keyPress(ctx->view,key,Qt::NoModifier,1);
+    }
+    QTest::keyRelease(ctx->view,key,Qt::NoModifier,1);
+}
+
+void scrollBarScrollHandler(FwlvTestContext* ctx,int delta)
+{
+    QScrollBar* bar=ctx->isHorizontal()?ctx->view->horizontalScrollBar():ctx->view->verticalScrollBar();
+    int value=bar->value()+delta;
+    bar->setValue(value);
 }
 
 }
 
 BOOST_AUTO_TEST_CASE(TestScrollShortDirect)
 {
-    auto scrollHandler=[](FwlvTestContext* ctx,int delta)
-    {
-        ctx->view->scroll(delta);
-    };
-    checkScrollShort(scrollHandler);
+    checkScrollShort(directScrollHandler);
 }
 
 BOOST_AUTO_TEST_CASE(TestScrollShortKey)
 {
     BlockCheckVisibleItemsChanged=true;
-    auto scrollHandler=[](FwlvTestContext* ctx,int delta)
-    {
-        Qt::Key key;
-        if (ctx->orientation==Qt::Vertical)
-        {
-            key=delta<0?Qt::Key_Up:Qt::Key_Down;
-        }
-        else
-        {
-            key=delta<0?Qt::Key_Left:Qt::Key_Right;
-        }
-        for (size_t i=0;i<qAbs(delta);i++)
-        {
-            QTest::keyPress(ctx->view,key,Qt::NoModifier,1);
-        }
-        QTest::keyRelease(ctx->view,key,Qt::NoModifier,1);
-    };
-    checkScrollShort(scrollHandler);
+    checkScrollShort(keyScrollHandler);
     BlockCheckVisibleItemsChanged=false;
 }
 
 BOOST_AUTO_TEST_CASE(TestScrollShortScrollBar)
 {
-    auto scrollHandler=[](FwlvTestContext* ctx,int delta)
-    {
-        QScrollBar* bar=ctx->isHorizontal()?ctx->view->horizontalScrollBar():ctx->view->verticalScrollBar();
-        int value=bar->value()+delta;
-        bar->setValue(value);
-    };
-    checkScrollShort(scrollHandler);
+    checkScrollShort(scrollBarScrollHandler);
+}
+
+BOOST_AUTO_TEST_CASE(TestScrollLongDirect)
+{
+    checkScrollLong(directScrollHandler);
+}
+
+BOOST_AUTO_TEST_CASE(TestScrollLongScrollBar)
+{
+    checkScrollLong(scrollBarScrollHandler);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

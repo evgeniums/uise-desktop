@@ -91,6 +91,13 @@ size_t FlyweightListView<ItemT>::visibleItemCount() const noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+size_t FlyweightListView<ItemT>::maxHiddenItemCount() const noexcept
+{
+    return pimpl->maxHiddenItemsBeyondEdge();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 size_t FlyweightListView<ItemT>::itemCount() const noexcept
 {
     return pimpl->m_items.size();

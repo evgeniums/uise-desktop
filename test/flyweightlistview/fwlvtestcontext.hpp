@@ -64,6 +64,7 @@ struct FwlvTestContext
     bool expectedVisibleScrollBar=false;
 
     size_t visibleItemsChangedCount=0;
+    size_t itemRangeChangedCount=0;
     bool scrollAtEdge=true;
 
     QSize itemSize() const noexcept

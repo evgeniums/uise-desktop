@@ -92,6 +92,7 @@ class FlyweightListView : public QFrame
 
         size_t prefetchItemCount() const noexcept;
         size_t visibleItemCount() const noexcept;
+        size_t maxHiddenItemCount() const noexcept;
 
         void setRequestItemsCb(RequestItemsCb cb) noexcept;
         void setViewportChangedCb(ItemRangeCb cb) noexcept;
