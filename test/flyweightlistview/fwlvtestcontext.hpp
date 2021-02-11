@@ -64,6 +64,7 @@ struct FwlvTestContext
     bool expectedVisibleScrollBar=false;
 
     size_t visibleItemsChangedCount=0;
+    bool scrollAtEdge=true;
 
     QSize itemSize() const noexcept
     {
@@ -124,12 +125,20 @@ struct FwlvTestContext
         }
     }
 
+    size_t frontID() const noexcept
+    {
+        return testWidget->pimpl->items.begin()->second;
+    }
+
+    size_t backID() const noexcept
+    {
+        return testWidget->pimpl->items.rbegin()->second;
+    }
+
     void fillExpectedAfterLoad() noexcept
     {
         expectedVisibleItemCount=maybeVisibleCount();
 
-        auto frontID=testWidget->pimpl->items.begin()->second;
-        auto backID=testWidget->pimpl->items.rbegin()->second;
         if (flyweightMode)
         {
             expectedItemCount=testWidget->initialItemCount+view->prefetchItemCount();
@@ -139,7 +148,9 @@ struct FwlvTestContext
             expectedItemCount=testWidget->initialItemCount;
         }
         expectedVisibleScrollBar=true;
-        fillExpectedIds(frontID,backID);
+        scrollAtEdge=true;
+
+        fillExpectedIds(frontID(),backID());
     }
 
     void doChecks(bool withCsrollbars=true)
@@ -169,13 +180,13 @@ struct FwlvTestContext
 
         if (stickMode==Direction::END)
         {
-            UISE_TEST_CHECK(view->isScrollAtEdge(Direction::END));
+            UISE_TEST_CHECK(scrollAtEdge==view->isScrollAtEdge(Direction::END));
             UISE_TEST_CHECK(!view->isScrollAtEdge(Direction::HOME));
         }
         else
         {
             UISE_TEST_CHECK(!view->isScrollAtEdge(Direction::END));
-            UISE_TEST_CHECK(view->isScrollAtEdge(Direction::HOME));
+            UISE_TEST_CHECK(scrollAtEdge==view->isScrollAtEdge(Direction::HOME));
         }
 
         if (withCsrollbars)
