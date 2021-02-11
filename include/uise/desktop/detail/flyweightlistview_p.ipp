@@ -640,6 +640,8 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 
     keepCurrentConfiguration();
 
+    m_scrollBarsTimer.shot(0,[this](){updateScrollBars();});
+
     if (
             l_cleared ||
             l_firstViewportItemID!=m_firstViewportItemID ||
@@ -648,13 +650,16 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
             l_lastViewportSortValue!=m_lastViewportSortValue
         )
     {
-        if (m_viewportChangedCb)
-        {
-            m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
-        }
-    }
-
-    m_scrollBarsTimer.shot(0,[this](){updateScrollBars();});
+        m_informViewportUpdateTimer.shot(1,
+            [this]()
+            {
+                if (m_viewportChangedCb)
+                {
+                    m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
+                }
+            }
+        );
+    }    
 }
 
 //--------------------------------------------------------------------------

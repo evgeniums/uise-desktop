@@ -64,9 +64,9 @@ void visibleItemsChangedShort(FwlvTestContext* ctx, const HelloWorldItemWrapper*
     }
     ++ctx->visibleItemsChangedCount;
 
-    if (ctx->step==0 || ctx->step==3)
+    if (ctx->step==1 || ctx->step==3)
     {
-        ctx->fillExpectedAfterLoad();
+        ctx->fillExpectedAfterLoad(ctx->step==3);
     }
     else
     {
@@ -170,8 +170,8 @@ void itemRangeChangedLong(FwlvTestContext* ctx, const HelloWorldItemWrapper* beg
 
 void init(FwlvTestContext* ctx)
 {
-    ctx->testWidget->loadItems();
     ++ctx->step;
+    ctx->testWidget->loadItems();    
 }
 
 void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scrollHandler)
@@ -217,7 +217,7 @@ void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scro
 
                     if (!BlockCheckVisibleItemsChanged)
                     {
-                        UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,2);
+                        UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,3);
                     }
                     ctx->endTestCase();
                });
@@ -225,6 +225,7 @@ void checkScrollShort(std::function<void (FwlvTestContext* ctx, int delta)> scro
         });
     };
     FwlvTestContext::execAllModes(handler);
+//    FwlvTestContext::execSingleMode(handler,Qt::Vertical,Direction::END,true);
 }
 
 void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrollHandler)
@@ -320,7 +321,7 @@ void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrol
 
                     if (!BlockCheckVisibleItemsChanged)
                     {
-                        UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,2);
+                        UISE_TEST_CHECK_EQUAL(ctx->visibleItemsChangedCount,3);
                     }
                     if (ctx->flyweightMode)
                     {
@@ -341,6 +342,7 @@ void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrol
         });
     };
     FwlvTestContext::execAllModes(handler);
+//    FwlvTestContext::execSingleMode(handler,Qt::Vertical,Direction::END,true);
 }
 
 void checkScrollPage()

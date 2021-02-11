@@ -61,41 +61,45 @@ void runTest(FwlvTestContext* ctx)
     ctx->testWidget->loadItems();
     ++ctx->step;
 
-    ctx->view->setViewportChangedCb(
-        [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
-        {
-            visibleItemsChanged(ctx,begin,end);
-        }
-    );
-
     QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
     [ctx]()
     {
-        ctx->fillExpectedAfterLoad();
-        BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
-
-        ctx->mainWindow->resize(ctx->mainWindow->width()+ctx->mainWindow->width()/4,ctx->mainWindow->height()+ctx->mainWindow->height()/4);
-        ++ctx->step;
+        ctx->view->setViewportChangedCb(
+            [ctx](const HelloWorldItemWrapper* begin,const HelloWorldItemWrapper* end)
+            {
+                visibleItemsChanged(ctx,begin,end);
+            }
+        );
 
         QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
         [ctx]()
         {
             ctx->fillExpectedAfterLoad();
-            BOOST_TEST_CONTEXT("After increase") {ctx->doChecks();}
+            BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
 
-            ctx->mainWindow->resize(ctx->mainWindow->width()-ctx->initialWidth/2,ctx->mainWindow->height()-ctx->initialHeight/2);
+            ctx->mainWindow->resize(ctx->mainWindow->width()+ctx->mainWindow->width()/4,ctx->mainWindow->height()+ctx->mainWindow->height()/4);
             ++ctx->step;
 
             QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
             [ctx]()
             {
                 ctx->fillExpectedAfterLoad();
-                BOOST_TEST_CONTEXT("After decrease") {ctx->doChecks();}
+                BOOST_TEST_CONTEXT("After increase") {ctx->doChecks();}
 
-                UISE_TEST_CHECK_GE(ctx->visibleItemsChangedCount,2);
+                ctx->mainWindow->resize(ctx->mainWindow->width()-ctx->initialWidth/2,ctx->mainWindow->height()-ctx->initialHeight/2);
+                ++ctx->step;
 
-                ctx->endTestCase();
-           });
+                QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+                [ctx]()
+                {
+                    ctx->fillExpectedAfterLoad();
+                    BOOST_TEST_CONTEXT("After decrease") {ctx->doChecks();}
+
+                    UISE_TEST_CHECK_GE(ctx->visibleItemsChangedCount,2);
+
+                    ctx->endTestCase();
+               });
+            });
         });
     });
 }

@@ -306,6 +306,7 @@ class FlyweightListView_p : public OrientationInvariant
         Qt::ScrollBarPolicy m_hbarPolicy;
 
         SingleShotTimer m_scrollBarsTimer;
+        SingleShotTimer m_informViewportUpdateTimer;
 
         std::function<void (int)> m_vScrollCb;
         std::function<void (int)> m_hScrollCb;

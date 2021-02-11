@@ -136,11 +136,11 @@ struct FwlvTestContext
         return testWidget->pimpl->items.rbegin()->second;
     }
 
-    void fillExpectedAfterLoad() noexcept
+    void fillExpectedAfterLoad(bool prefetched=true) noexcept
     {
         expectedVisibleItemCount=maybeVisibleCount();
 
-        if (flyweightMode)
+        if (flyweightMode && prefetched)
         {
             expectedItemCount=testWidget->initialItemCount+view->prefetchItemCount();
         }
