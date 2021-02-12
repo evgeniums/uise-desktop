@@ -452,6 +452,13 @@ void scrollBarScrollHandler(FwlvTestContext* ctx,int delta)
 {
     QScrollBar* bar=ctx->isHorizontal()?ctx->view->horizontalScrollBar():ctx->view->verticalScrollBar();
     int value=bar->value()+delta;
+
+    std::string msg=std::string("scrollBarScrollHandler delta=")+std::to_string(delta) + std::string(" size=")
+            +std::to_string(OrientationInvariant::oprop(ctx->isHorizontal(),ctx->view,OProp::size))
+            +std::string(" old value=")+std::to_string(bar->value())
+            +std::string(" new value=")+std::to_string(value);
+    UISE_TEST_MESSAGE(msg.c_str());
+
     bar->setValue(value);
 }
 
