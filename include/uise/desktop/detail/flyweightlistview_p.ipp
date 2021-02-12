@@ -63,7 +63,6 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_atBegin(true),
         m_atEnd(true),
         m_firstWidgetPos(0),
-        m_scrollValue(0),
         m_singleStep(1),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
@@ -629,8 +628,6 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::informViewportUpdated()
 {
-    auto l_scrollValue=m_scrollValue;
-    auto l_listSize=oprop(m_listSize,OProp::size);
     auto l_firstViewportItemID=m_firstViewportItemID;
     auto l_firstViewportSortValue=m_firstViewportSortValue;
     auto l_lastViewportItemID=m_lastViewportItemID;
@@ -640,7 +637,7 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 
     keepCurrentConfiguration();
 
-    m_scrollBarsTimer.shot(0,[this](){updateScrollBars();});
+    m_scrollBarsTimer.shot(10,[this](){updateScrollBars();});
 
     if (
             l_cleared ||
@@ -650,7 +647,7 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
             l_lastViewportSortValue!=m_lastViewportSortValue
         )
     {
-        m_informViewportUpdateTimer.shot(1,
+        m_informViewportUpdateTimer.shot(0,
             [this]()
             {
                 if (m_viewportChangedCb)
@@ -775,7 +772,6 @@ void FlyweightListView_p<ItemT>::clear()
     m_atBegin=true;
     m_atEnd=true;
     m_firstWidgetPos=0;
-    m_scrollValue=0;
     m_prefetchItemCount=m_prefetchItemCountHint;
 
     m_cleared=true;
@@ -976,8 +972,6 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
 {
-    m_scrollValue=-oprop(m_llist,OProp::pos);
-
     m_listSize=m_llist->size();
     m_viewSize=m_view->size();
 
