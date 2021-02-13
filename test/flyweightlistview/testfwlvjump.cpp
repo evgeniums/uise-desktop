@@ -184,7 +184,7 @@ void checkJumpItem(FwlvTestContext* ctx)
                     }
                     ctx->scrollAtEdge=false;
 
-                    BOOST_TEST_CONTEXT("After jump") {ctx->doChecks();}
+                    BOOST_TEST_CONTEXT("After jump") {ctx->doChecks(true,false,true);}
 
                     ctx->endTestCase();
                 });
