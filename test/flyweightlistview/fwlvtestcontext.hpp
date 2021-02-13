@@ -38,7 +38,7 @@ UISE_TEST_NAMESPACE_BEGIN
 
 struct FwlvTestContext
 {
-    constexpr static const int PlayStepPeriod=100;
+    constexpr static const int PlayStepPeriod=200;
 
     FwlvTestWidget* testWidget=nullptr;
     FlwListType* view=nullptr;
@@ -291,6 +291,7 @@ struct FwlvTestContext
         mainWindow->setCentralWidget(testWidget);
         mainWindow->show();
         mainWindow->resize(initialWidth,initialHeight);
+        mainWindow->move(20,20);
 
         testWidget->pimpl->stickMode->setCurrentIndex(testWidget->pimpl->stickMode->findData(static_cast<int>(stickMode)));
         testWidget->pimpl->orientationButton->setChecked(isHorizontal());
