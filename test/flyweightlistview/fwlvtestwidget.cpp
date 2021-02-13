@@ -369,8 +369,9 @@ void FwlvTestWidget::setup()
 
     auto jumpHome=[this]()
     {
+#if 0
         qDebug() << "jumpHome";
-
+#endif
         size_t itemCount=pimpl->view->itemCount();
 
         if (itemCount==0)
@@ -383,14 +384,17 @@ void FwlvTestWidget::setup()
         size_t firstPos=firstItem->sortValue();
         if (firstPos==0)
         {
+#if 0
             qDebug() << "jumpHome only jump";
+#endif
 
             // only jump
         }
         else if (firstPos>prefetchCount)
         {
+#if 0
             qDebug() << "jumpHome reload all";
-
+#endif
             // reload all pimpl->items
             itemCount=std::max(itemCount,prefetchCount);
             std::vector<HelloWorldItemWrapper> newItems;
@@ -402,8 +406,9 @@ void FwlvTestWidget::setup()
         }
         else
         {
+#if 0
             qDebug() << "jumpHome prefetch some pimpl->items";
-
+#endif
             // prefetch only some elements
             std::vector<HelloWorldItemWrapper> newItems;
             for (size_t i=0;i<firstPos;i++)
@@ -416,8 +421,9 @@ void FwlvTestWidget::setup()
     };
     auto jumpEnd=[this]()
     {
+#if 0
         qDebug() << "jumpEnd";
-
+#endif
         size_t itemCount=pimpl->view->itemCount();
 
         if (itemCount==0)
@@ -430,14 +436,16 @@ void FwlvTestWidget::setup()
         size_t lastPos=lastItem->sortValue();
         if (lastPos>=count-1)
         {
+#if 0
             qDebug() << "jumpEnd only jump";
-
+#endif
             // only jump
         }
         else if ((lastPos+prefetchCount)<count)
         {
+#if 0
             qDebug() << "jumpEnd reload all";
-
+#endif
             // reload all pimpl->items
             itemCount=std::max(itemCount,prefetchCount);
             std::vector<HelloWorldItemWrapper> newItems;
@@ -449,8 +457,9 @@ void FwlvTestWidget::setup()
         }
         else
         {
+#if 0
             qDebug() << "jumpEnd prefetch last pimpl->items";
-
+#endif
             // prefetch only last elements
             std::vector<HelloWorldItemWrapper> newItems;
             for (size_t i=count-lastPos;i<count;i++)
@@ -468,7 +477,7 @@ void FwlvTestWidget::setup()
     QObject::connect(
         pimpl->jumpToButton,
         &QPushButton::clicked,
-        [this,&jumpHome,&jumpEnd]()
+        [this,jumpHome,jumpEnd]()
         {
             switch (static_cast<Direction>(pimpl->jumpMode->currentData().toInt()))
             {

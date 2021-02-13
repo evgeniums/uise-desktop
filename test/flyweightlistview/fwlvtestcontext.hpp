@@ -106,9 +106,11 @@ struct FwlvTestContext
         return 0;
     }
 
-    void fillExpectedIds(size_t frontID, size_t backID, int visibleIdOffset=0) noexcept
+    void fillExpectedIds(size_t frontID, size_t backID, int visibleIdOffset=0, bool inverseDirection=false) noexcept
     {
-        if (stickMode==Direction::END)
+        auto selectFirst=!inverseDirection?stickMode==Direction::END:stickMode!=Direction::END;
+
+        if (selectFirst)
         {
             expectedFirstItemId=backID+expectedItemCount-1;
             expectedLastItemId=backID;
@@ -154,7 +156,7 @@ struct FwlvTestContext
         fillExpectedIds(frontID(),backID());
     }
 
-    void doChecks(bool withCsrollbars=true)
+    void doChecks(bool withCsrollbars=true, bool inverseDirection=false)
     {
         UISE_TEST_CHECK_EQUAL(view->itemCount(),expectedItemCount);
 
@@ -194,7 +196,8 @@ struct FwlvTestContext
         UISE_TEST_CHECK_EQUAL(firstViewportItem->id(),expectedFirstVisibleItemId);
         UISE_TEST_CHECK_EQUAL(lastViewportItem->id(),expectedLastVisibleItemId);
 
-        if (stickMode==Direction::END)
+        auto selectFirst=!inverseDirection?stickMode==Direction::END:stickMode!=Direction::END;
+        if (selectFirst)
         {
             UISE_TEST_CHECK(scrollAtEdge==view->isScrollAtEdge(Direction::END));
             UISE_TEST_CHECK(!view->isScrollAtEdge(Direction::HOME));
