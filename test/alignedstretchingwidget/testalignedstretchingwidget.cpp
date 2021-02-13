@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_SUITE(TestAlignedStretchingWidget)
 
 namespace {
 
-constexpr static const int PlayStepPeriod=500;
+constexpr static const int PlayStepPeriod=100;
 
 struct SampleContainer
 {
