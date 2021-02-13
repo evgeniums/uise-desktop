@@ -193,11 +193,11 @@ void FwlvTestWidget::setup()
     pimpl->jumpItem->setMinimum(0);
     pimpl->jumpItem->setMaximum(HelloWorldItem::HelloWorldItemId*2);
     pimpl->jumpItem->setValue(1);
-    pimpl->jumpItem=new QSpinBox(mainFrame);
-    layout->addWidget(pimpl->jumpItem,row,1);
-    pimpl->jumpItem->setMinimum(-1000);
-    pimpl->jumpItem->setMaximum(1000);
-    pimpl->jumpItem->setValue(0);
+    pimpl->jumpOffset=new QSpinBox(mainFrame);
+    layout->addWidget(pimpl->jumpOffset,row,1);
+    pimpl->jumpOffset->setMinimum(-1000);
+    pimpl->jumpOffset->setMaximum(1000);
+    pimpl->jumpOffset->setValue(0);
     pimpl->jumpMode=new QComboBox(mainFrame);
     layout->addWidget(pimpl->jumpMode,row,2);
     pimpl->jumpMode->addItem("item",static_cast<int>(Direction::NONE));
@@ -495,7 +495,7 @@ void FwlvTestWidget::setup()
 
                 case Direction::NONE:
                 {
-                    auto exists=pimpl->view->scrollToItem(pimpl->jumpItem->value(),pimpl->jumpItem->value());
+                    auto exists=pimpl->view->scrollToItem(pimpl->jumpItem->value(),pimpl->jumpOffset->value());
                     if (!exists)
                     {
                         size_t prefetchCount=pimpl->view->prefetchItemCount();
@@ -538,7 +538,7 @@ void FwlvTestWidget::setup()
                         if (!newItems.empty())
                         {
                             pimpl->view->loadItems(newItems);
-                            std::ignore=pimpl->view->scrollToItem(pimpl->jumpItem->value(),pimpl->jumpItem->value());
+                            std::ignore=pimpl->view->scrollToItem(pimpl->jumpItem->value(),pimpl->jumpOffset->value());
                         }
                     }
                 }

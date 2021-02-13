@@ -155,7 +155,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         void scrollToEdge(Direction direction);
 
-        bool scrollToItem(const typename ItemT::IdType &id, size_t offset);
+        bool scrollToItem(const typename ItemT::IdType &id, int offset);
 
         bool hasItem(const typename ItemT::IdType& id) const noexcept;
         const ItemT* item(const typename ItemT::IdType& id) const noexcept;

@@ -101,7 +101,7 @@ class FlyweightListView : public QFrame
         void setRequestHomeCb(RequestJumpCb cb) noexcept;
         void setRequestEndCb(RequestJumpCb cb) noexcept;
 
-        bool scrollToItem(const typename ItemT::IdType& id, size_t offset=0);
+        bool scrollToItem(const typename ItemT::IdType& id, int offset=0);
         void scrollToEdge(Direction direction);
         bool isScrollAtEdge(Direction direction) const noexcept;
         void setWheelHorizontalScrollEnabled(bool enable) noexcept;

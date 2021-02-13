@@ -919,8 +919,11 @@ void FlyweightListView_p<ItemT>::scrollToEdge(Direction direction)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
+bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, int offset)
 {
+#if 0
+    qDebug() << "Scroll to item "<<id<<" offset "<<offset;
+#endif
     const auto& idx=itemIdx();
     auto it=idx.find(id);
     if (it==idx.end())
@@ -934,30 +937,10 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
         if (widget && widget->parent()==m_llist)
         {
             QPoint widgetListPos=widget->pos();
-            auto widgetSize=oprop(widget,OProp::size);
             auto widgetViewPos=oprop(m_llist->mapToParent(widgetListPos),OProp::pos);
-
             auto widgetBegin=oldPos-widgetViewPos;
             int newPos=widgetBegin-offset;
-
-            QPoint newListPos;
-            setOProp(newListPos,OProp::pos,newPos);
-            setOProp(newListPos,OProp::pos,0,true);
-            auto newViewPos=oprop(m_llist->mapFromParent(newListPos),OProp::pos);
-            auto newViewEnd=newViewPos+widgetSize;
-            auto viewSize=oprop(m_view,OProp::size);
-            if (
-                    (newViewPos>viewSize) // widget would move after viewport
-                    ||
-                    newViewEnd<=0 // widget would move before viewport
-                )
-            {
-                // ignore invalid offset
-                newPos=widgetBegin;
-            }
-
             newPos=qBound(minPos,newPos,maxPos);
-
             return newPos;
         };
 

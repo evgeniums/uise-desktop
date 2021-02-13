@@ -234,7 +234,7 @@ void FlyweightListView<ItemT>::removeItems(const std::vector<typename ItemT::IdT
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, size_t offset)
+bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, int offset)
 {
     return pimpl->scrollToItem(id,offset);
 }

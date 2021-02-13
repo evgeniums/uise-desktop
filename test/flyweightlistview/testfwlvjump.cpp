@@ -134,13 +134,81 @@ void checkJumpEdge(FwlvTestContext* ctx)
     });
 }
 
+constexpr const int ID_DELTA=5;
+int idOffset(FwlvTestContext* ctx, int offset) noexcept
+{
+    return ctx->stickMode==Direction::END?offset:-offset;
 }
 
-BOOST_AUTO_TEST_CASE(TestJumpEdge)
+void checkJumpItem(FwlvTestContext* ctx)
+{
+    ctx->testWidget->initialItemCount=ctx->testWidget->initialItemCount+ID_DELTA;
+    ctx->testWidget->loadItems();
+    ++ctx->step;
+
+    QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+    [ctx]()
+    {
+        QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+        [ctx]()
+        {
+            ctx->fillExpectedAfterLoad();
+            BOOST_TEST_CONTEXT("After load with delay") {ctx->doChecks();}
+
+            auto itemSize=OrientationInvariant::oprop(ctx->isHorizontal(),ctx->itemSize(),OProp::size);
+            auto backDeltaBefore=ctx->backID()-ctx->view->lastViewportItem()->id();
+
+            ++ctx->step;
+            ctx->testWidget->pimpl->jumpMode->setCurrentIndex(ctx->testWidget->pimpl->jumpMode->findData(static_cast<int>(Direction::NONE)));
+            ctx->testWidget->pimpl->jumpItem->setValue(ctx->view->firstViewportItem()->id()+idOffset(ctx,ID_DELTA));
+            ctx->testWidget->pimpl->jumpOffset->setValue(idOffset(ctx,10));
+
+            QTimer::singleShot(1,ctx->mainWindow,
+            [ctx,itemSize,backDeltaBefore]()
+            {
+                ctx->testWidget->pimpl->jumpToButton->click();
+
+                QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+                [ctx,itemSize,backDeltaBefore]()
+                {
+                    auto viewSize=OrientationInvariant::oprop(ctx->isHorizontal(),ctx->view,OProp::size);
+                    auto visibleCount=ceil(static_cast<float>(viewSize)/static_cast<float>(itemSize));
+                    ctx->expectedVisibleItemCount=visibleCount;
+                    if (ctx->stickMode==Direction::END)
+                    {
+                        ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,ID_DELTA)+backDeltaBefore);
+                    }
+                    else
+                    {
+                        ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),idOffset(ctx,ID_DELTA)+1);
+                    }
+                    ctx->scrollAtEdge=false;
+
+                    BOOST_TEST_CONTEXT("After jump") {ctx->doChecks();}
+
+                    ctx->endTestCase();
+                });
+            });
+        });
+    });
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestJumpToEdge)
 {
     auto handler=[](FwlvTestContext* ctx)
     {
         checkJumpEdge(ctx);
+    };
+    FwlvTestContext::execAllModes(handler);
+}
+
+BOOST_AUTO_TEST_CASE(TestJumpToItem)
+{
+    auto handler=[](FwlvTestContext* ctx)
+    {
+        checkJumpItem(ctx);
     };
 //    FwlvTestContext::execSingleMode(handler,Qt::Vertical,Direction::END,true);
     FwlvTestContext::execAllModes(handler);
