@@ -1,1 +1,1 @@
-uise-desktop is a C++ library of UI components for desktop applications built on top of Qt library.
+Project is paused
