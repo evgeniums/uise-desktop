@@ -64,7 +64,7 @@ class FlyweightListView : public QFrame
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
-        using RequestJumpCb=std::function<void ()>;
+        using RequestJumpCb=std::function<void (Qt::KeyboardModifiers)>;
 
         explicit FlyweightListView(QWidget* parent, size_t prefetchItemCount=PrefetchItemCountHint);
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);

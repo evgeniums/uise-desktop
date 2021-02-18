@@ -408,18 +408,18 @@ void FlyweightListView<ItemT>::keyPressEvent(QKeyEvent *event)
     {
         scroll(static_cast<int>(pimpl->m_pageStep));
     }
-    else if (event->key()==Qt::Key_Home && (event->modifiers() & Qt::ControlModifier))
+    else if (event->key()==Qt::Key_Home)
     {
         if (pimpl->m_homeRequestCb)
         {
-            pimpl->m_homeRequestCb();
+            pimpl->m_homeRequestCb(event->modifiers());
         }
     }
-    else if (event->key()==Qt::Key_End && (event->modifiers() & Qt::ControlModifier))
+    else if (event->key()==Qt::Key_End)
     {
         if (pimpl->m_endRequestCb)
         {
-            pimpl->m_endRequestCb();
+            pimpl->m_endRequestCb(event->modifiers());
         }
     }
 
