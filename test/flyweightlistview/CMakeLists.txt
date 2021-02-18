@@ -14,6 +14,7 @@ SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvresize.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvscroll.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvjump.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testfwlvinsertdelete.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

@@ -109,7 +109,7 @@ void FwlvTestWidget::setup()
         else
         {
             std::vector<HelloWorldItemWrapper::IdType> ids;
-            for (size_t i=pimpl->delFrom->value();i>pimpl->delFrom->value()-pimpl->delNum->value();i--)
+            for (size_t i=pimpl->delFrom->value();i<pimpl->delFrom->value()+pimpl->delNum->value();i++)
             {
                 ids.emplace_back(i);
             }

@@ -219,11 +219,19 @@ size_t FlyweightListView_p<ItemT>::visibleCount() const noexcept
 
     auto first=firstViewportItem();
     auto last=lastViewportItem();
+
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+    qDebug() << "visibleCount() first="<<first<<" last="<<last;
+#endif
+
     if (first&&last)
     {
         auto firstPos=m_llist->widgetSeqPos(first->widget());
         auto lastPos=m_llist->widgetSeqPos(last->widget());
         count=lastPos-firstPos+1;
+#ifdef UISE_DEAKTOP_FLYWEIGHTLISTVIEW_DEBUG
+        qDebug() << "visibleCount() firstPos="<<firstPos<<" lastPos="<<lastPos<<" count=" << count;
+#endif
     }
 
     return count;
@@ -667,8 +675,17 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
     auto result=idx.insert(item);
     if (!result.second)
     {
-        Q_ASSERT(result.first->widget()==item.widget());
-        Q_ASSERT(idx.replace(result.first,item));
+        if (result.first->widget()!=item.widget())
+        {
+            removeItem(result.first->id());
+            result=idx.insert(item);
+            Q_ASSERT(result.second);
+            configureWidget(&(*result.first));
+        }
+        else
+        {
+            Q_ASSERT(idx.replace(result.first,item));
+        }
     }
     else
     {

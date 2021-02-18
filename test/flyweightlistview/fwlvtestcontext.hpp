@@ -138,6 +138,11 @@ struct FwlvTestContext
         return testWidget->pimpl->items.rbegin()->second;
     }
 
+    int idOffset(int offset) const noexcept
+    {
+        return stickMode==Direction::END?offset:-offset;
+    }
+
     void fillExpectedAfterLoad(bool prefetched=true) noexcept
     {
         expectedVisibleItemCount=maybeVisibleCount();

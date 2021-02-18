@@ -208,9 +208,9 @@ void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &i
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView<ItemT>::insertItem(ItemT item)
+void FlyweightListView<ItemT>::insertItem(const ItemT& item)
 {
-    pimpl->insertItem(std::move(item));
+    pimpl->insertItem(item);
 }
 
 //--------------------------------------------------------------------------
@@ -227,7 +227,7 @@ void FlyweightListView<ItemT>::removeItems(const std::vector<typename ItemT::IdT
     beginUpdate();
     for (auto&& id : ids)
     {
-        pimpl->removeItem(id);
+        removeItem(id);
     }
     endUpdate();
 }
