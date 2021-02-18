@@ -72,8 +72,6 @@ void AlignedStretchingWidget::setWidget(
     m_widget->setParent(this);
     m_widget->setProperty("AlignedStretchingWidget",true);
 
-    m_widget->installEventFilter(this);
-
     updateMinMaxSize();
 }
 
