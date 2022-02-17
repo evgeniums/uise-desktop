@@ -52,6 +52,8 @@ SET (HEADERS
     include/uise/desktop/flyweightlistview.ipp
 
     include/uise/desktop/alignedstretchingwidget.hpp
+
+    include/uise/desktop/editablelabel.hpp
 )
 
 SET (HEADERS ${HEADERS}
