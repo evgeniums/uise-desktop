@@ -20,8 +20,10 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-#include <QMainWindow>
 #include <QKeyEvent>
+#include <QMenu>
+#include <QClipboard>
+#include <QGuiApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/editablelabel.hpp>
@@ -63,10 +65,29 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
     }
-    else if (watched == m_label && event->type() == QEvent::MouseButtonDblClick)
+    else if (watched == m_label)
     {
-        setEditable(true);
-        return true;
+        if (event->type() == QEvent::MouseButtonDblClick)
+        {
+            setEditable(true);
+            return true;
+        }
+        if (event->type() == QEvent::ContextMenu)
+        {
+            auto menu=new QMenu(m_label);
+            auto edit = menu->addAction(tr("Edit"),this,[this](){setEditable(true);});
+            menu->addAction(tr("Copy"),this,[this](){
+                auto selected = m_label->selectedText();
+                if (selected.isEmpty())
+                {
+                    selected = m_label->text();
+                }
+                QGuiApplication::clipboard()->setText(selected);
+            });
+            menu->setDefaultAction(edit);
+            menu->exec(QCursor::pos());
+            return true;
+        }
     }
 
     return false;
