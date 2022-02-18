@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
     dbl->widget()->setMinimum(-100.00);
     dbl->widget()->setMaximum(100.00);
     dbl->widget()->setSingleStep(0.01);
+    dbl->widget()->setDecimals(4);
     dbl->setValue(50.00);
     l->addWidget(dbl);
 

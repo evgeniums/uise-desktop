@@ -32,6 +32,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QDateEdit>
 #include <QTimeEdit>
 #include <QDateTimeEdit>
+#include <QCoreApplication>
 
 #include <QBoxLayout>
 #include <QEvent>
@@ -275,7 +276,8 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     {
         using valueType=decltype(widget->date());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Date,valueType>(label,formatter,[widget](){return widget->date();},[](const valueType& val){return val.toString();});
+        auto dateFormat = QLocale().dateFormat(QLocale::ShortFormat);
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Date,valueType>(label,formatter,[widget](){return widget->date();},[dateFormat](const valueType& val){return val.toString(dateFormat);});
     }
 
     static auto value(const type* widget)
@@ -298,7 +300,7 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     {
         using valueType=decltype(widget->time());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,[widget](){return widget->time();},[](const valueType& val){return val.toString();});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,[widget](){return widget->time();},[](const valueType& val){return val.toString("HH:mm");});
     }
 
     static auto value(const type* widget)
@@ -321,7 +323,8 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     {
         using valueType=decltype(widget->dateTime());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::DateTime,valueType>(label,formatter,[widget](){return widget->dateTime();},[](const valueType& val){return val.toString();});
+        auto dateTimeFormat = QLocale().dateTimeFormat(QLocale::ShortFormat);
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::DateTime,valueType>(label,formatter,[widget](){return widget->dateTime();},[dateTimeFormat](const valueType& val){return val.toString(dateTimeFormat);});
     }
 
     static auto value(const type* widget)
