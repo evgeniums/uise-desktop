@@ -67,6 +67,7 @@ SET (SOURCES
     src/singleshottimer.cpp
     src/directchildwidget.cpp
     src/alignedstretchingwidget.cpp
+    src/editablelabel.cpp
 )
 
 IF (NOT UISE_DESKTOP_STATIC)
