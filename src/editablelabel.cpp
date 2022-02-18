@@ -14,7 +14,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /** @file uise/desktop/src/editablelabel.cpp
 *
-*  Defines AlignedEditableLabel.
+*  Defines EditableLabel.
 *
 */
 
