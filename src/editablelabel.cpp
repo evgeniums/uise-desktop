@@ -37,7 +37,7 @@ EditableLabel::EditableLabel(
         m_label(new QLabel(this)),
         m_formatter(nullptr)
 {
-    m_layout=Layout::create<QVBoxLayout>(this);
+    m_layout=Layout::vertical(this);
     m_layout->addWidget(m_label);
 
     m_label->setObjectName("label");
