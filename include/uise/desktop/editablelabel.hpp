@@ -94,6 +94,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         {
             m_label->setVisible(!enable);
             editableWidget()->setVisible(enable);
+            editableWidget()->setFocus();
         }
 
         virtual void apply() = 0;
@@ -411,6 +412,7 @@ class EditableLabelTmpl : public EditableLabel
 
         virtual void apply() override
         {
+            setEditable(false);
             m_backupValue=helper::value(m_widget);
             helper::loadLabel(label(),m_widget,formatter());
             emit valueSet();
