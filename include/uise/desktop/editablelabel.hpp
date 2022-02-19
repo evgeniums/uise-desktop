@@ -133,7 +133,7 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
 {
     public:
 
-        ~EditableLabelFormatter() = default;
+        virtual ~EditableLabelFormatter() = default;
 
         EditableLabelFormatter()=default;
         EditableLabelFormatter(const EditableLabelFormatter&)=default;
