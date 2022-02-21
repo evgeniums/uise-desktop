@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     auto l = Layout::vertical(mainFrame);
 
     auto text = new EditableLabelText(mainFrame);
-    text->setValue("Hello world");
+    text->setValue("Hello world Hello world Hello world");
     l->addWidget(text);
 
     auto integer = new EditableLabelInt(mainFrame);

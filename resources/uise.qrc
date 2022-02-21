@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/uise/desktop">
+        <file>document-edit.svg</file>
+        <file>dialog-cancel.svg</file>
+        <file>dialog-ok-apply.svg</file>
+    </qresource>
+</RCC>

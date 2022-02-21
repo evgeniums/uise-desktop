@@ -33,6 +33,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QTimeEdit>
 #include <QDateTimeEdit>
 #include <QCoreApplication>
+#include <QPushButton>
 
 #include <QBoxLayout>
 #include <QEvent>
@@ -61,7 +62,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             Custom
         };
 
-        EditableLabel(Type type, QWidget* parent=nullptr);
+        EditableLabel(Type type, QWidget* parent=nullptr, bool inGroup=false);
 
         Type type() const noexcept
         {
@@ -89,11 +90,33 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             return m_formatter;
         }
 
+        void setInGroup(bool val)
+        {
+            m_inGroup=val;
+            setEditable(m_editable);
+        }
+        bool isInGroup() const noexcept
+        {
+            return m_inGroup;
+        }
+
+        bool isEditable() const noexcept
+        {
+            return m_editable;
+        }
+
     public slots:
 
         void setEditable(bool enable)
         {
-            m_label->setVisible(!enable);
+            m_editable=enable;
+            m_label->setVisible(!m_inGroup && !enable);
+
+            m_editButton->setVisible(!m_inGroup && !enable);
+            m_cancelButton->setVisible(!m_inGroup && enable);
+            m_applyButton->setVisible(!m_inGroup && enable);
+
+            editableWidget()->setMinimumWidth(m_label->width());
             editableWidget()->setVisible(enable);
             editableWidget()->setFocus();
         }
@@ -104,6 +127,11 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         {
             setEditable(false);
             restoreWidgetValue();
+        }
+
+        void edit()
+        {
+            setEditable(true);
         }
 
     signals:
@@ -127,6 +155,12 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         QLabel* m_label;
         QBoxLayout* m_layout;
         EditableLabelFormatter* m_formatter;
+        bool m_editable;
+        bool m_inGroup;
+
+        QPushButton* m_editButton;
+        QPushButton* m_applyButton;
+        QPushButton* m_cancelButton;
 };
 
 class UISE_DESKTOP_EXPORT EditableLabelFormatter
@@ -377,11 +411,11 @@ class EditableLabelTmpl : public EditableLabel
         using helper = EditableLabelHelper<TypeId>;
         using widgetType = typename helper::type;
 
-        EditableLabelTmpl(QWidget* parent=nullptr)
-            : EditableLabel(TypeId),
+        EditableLabelTmpl(QWidget* parent=nullptr, bool inGroup=false)
+            : EditableLabel(TypeId,parent,inGroup),
               m_widget(helper::createWidget(parent))
         {
-            boxLayout()->addWidget(m_widget);
+            boxLayout()->insertWidget(0,m_widget);
             m_widget->setVisible(false);
 
             m_widget->setObjectName("widget");

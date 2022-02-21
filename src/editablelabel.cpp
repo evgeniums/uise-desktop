@@ -1,5 +1,5 @@
 /**
-@copyright Evgeny Sidorov 2021
+@copyright Evgeny Sidorov 2022
 
 This software is dual-licensed. Choose the appropriate license for your project.
 
@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QMenu>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QSizePolicy>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/editablelabel.hpp>
@@ -33,19 +34,58 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 EditableLabel::EditableLabel(
         Type type,
-        QWidget* parent
+        QWidget* parent,
+        bool inGroup
     ) : QFrame(parent),
         m_type(type),
         m_label(new QLabel(this)),
-        m_formatter(nullptr)
+        m_formatter(nullptr),
+        m_editable(false),
+        m_inGroup(inGroup)
 {
-    m_layout=Layout::vertical(this);
+    m_layout=Layout::horizontal(this);
+
     m_layout->addWidget(m_label);
+
+    m_editButton = new QPushButton(this);
+    auto editIcon = QIcon::fromTheme("document-edit",QIcon(":/uise/desktop/document-edit.svg"));
+    m_editButton->setIcon(editIcon);
+    m_editButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    m_editButton->setFlat(true);
+    m_editButton->setProperty("label-button",true);
+    m_editButton->setToolTip(tr("Edit"));
+    connect(m_editButton,&QPushButton::clicked,this,&EditableLabel::edit);
+    m_layout->addWidget(m_editButton);
+    m_editButton->setVisible(!m_inGroup);
+
+    m_applyButton = new QPushButton(this);
+    auto applyIcon = QIcon::fromTheme("dialog-ok-apply",QIcon(":/uise/desktop/dialog-ok-apply.svg"));
+    m_applyButton->setIcon(applyIcon);
+    m_applyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    m_applyButton->setFlat(true);
+    m_applyButton->setProperty("label-button",true);
+    m_applyButton->setToolTip(tr("Apply"));
+    connect(m_applyButton,&QPushButton::clicked,this,&EditableLabel::apply);
+    m_layout->addWidget(m_applyButton);
+    m_applyButton->setVisible(false);
+
+    m_cancelButton = new QPushButton(this);
+    auto cancelIcon = QIcon::fromTheme("dialog-cancel",QIcon(":/uise/desktop/dialog-cancel.svg"));
+    m_cancelButton->setIcon(cancelIcon);
+    m_cancelButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    m_cancelButton->setFlat(true);
+    m_cancelButton->setProperty("label-button",true);
+    m_cancelButton->setToolTip(tr("Cancel"));
+    m_cancelButton->setVisible(false);
+    connect(m_cancelButton,&QPushButton::clicked,this,&EditableLabel::cancel);
+    m_layout->addWidget(m_cancelButton);
 
     m_label->setObjectName("label");
     m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
 
     m_label->installEventFilter(this);
+
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------
@@ -53,6 +93,11 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == editableWidget() && event->type() == QEvent::KeyPress)
     {
+        if (m_inGroup)
+        {
+            return false;
+        }
+
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->key()==Qt::Key_Escape)
         {
@@ -69,13 +114,24 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
     {
         if (event->type() == QEvent::MouseButtonDblClick)
         {
+            if (m_inGroup)
+            {
+                return false;
+            }
+
             setEditable(true);
             return true;
         }
         if (event->type() == QEvent::ContextMenu)
         {
             auto menu=new QMenu(m_label);
-            auto edit = menu->addAction(tr("Edit"),this,[this](){setEditable(true);});
+
+            if (!m_inGroup)
+            {
+                auto edit = menu->addAction(tr("Edit"),this,[this](){setEditable(true);});
+                menu->setDefaultAction(edit);
+            }
+
             menu->addAction(tr("Copy"),this,[this](){
                 auto selected = m_label->selectedText();
                 if (selected.isEmpty())
@@ -83,8 +139,7 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
                     selected = m_label->text();
                 }
                 QGuiApplication::clipboard()->setText(selected);
-            });
-            menu->setDefaultAction(edit);
+            });            
             menu->exec(QCursor::pos());
             return true;
         }
