@@ -59,7 +59,7 @@ class OrientationInvariant
 {
     public:
 
-        //! Cpnstructor.
+        //! Constructor.
         OrientationInvariant()=default;
 
         //! Destructor.
@@ -180,7 +180,7 @@ class OrientationInvariant
          * @param value Value to set to the property.
          */
         template <typename T>
-        void setOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
+        static void setOProp(bool horizontal, T& obj, OProp prop, int value) noexcept
         {
             if constexpr (std::is_same_v<QPoint,std::decay_t<T>>)
             {
