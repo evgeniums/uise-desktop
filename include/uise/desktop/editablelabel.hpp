@@ -144,15 +144,15 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
         virtual QString format(EditableLabel::Type type, const QVariant& value) =0;
 
         template <EditableLabel::Type Type, typename ValueT>
-        static void loadLabel(QLabel* label, EditableLabelFormatter* formatter, const std::function<ValueT ()>& valueGetter, const std::function<QString (const ValueT&)>& defaultFormatter)
+        static void loadLabel(QLabel* label, EditableLabelFormatter* formatter, const ValueT& value, const std::function<QString (const ValueT&)>& defaultFormatter)
         {
             if (formatter==nullptr)
             {
-                label->setText(defaultFormatter(valueGetter()));
+                label->setText(defaultFormatter(value));
             }
             else
             {
-                label->setText(formatter->format(Type,valueGetter()));
+                label->setText(formatter->format(Type,value));
             }
         }
 };
@@ -169,7 +169,7 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
 
     static void loadLabel(QLabel* label, type* widget, EditableLabelFormatter* formatter=nullptr)
     {
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Text,QString>(label,formatter,[widget](){return widget->text();},[](const QString& val){return val;});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Text,QString>(label,formatter,widget->text(),[](const QString& val){return val;});
     }
 
     static auto value(const type* widget)
@@ -192,7 +192,7 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
     {
         using valueType=decltype(widget->value());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Int,valueType>(label,formatter,[widget](){return widget->value();},[](const valueType& val){return QString::number(val);});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Int,valueType>(label,formatter,widget->value(),[](const valueType& val){return QString::number(val);});
     }
 
     static auto value(const type* widget)
@@ -215,7 +215,7 @@ struct EditableLabelTraits<EditableLabel::Type::Float>
     {
         using valueType=decltype(widget->value());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Float,valueType>(label,formatter,[widget](){return widget->value();},[](const valueType& val){return QString::number(val);});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Float,valueType>(label,formatter,widget->value(),[](const valueType& val){return QString::number(val);});
     }
 
     static auto value(const type* widget)
@@ -243,7 +243,7 @@ struct EditableLabelTraits<EditableLabel::Type::List>
 
     static void loadLabel(QLabel* label, type* widget, EditableLabelFormatter* formatter=nullptr)
     {
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::List,QString>(label,formatter,[widget](){return widget->currentText();},[](const QString& val){return val;});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::List,QString>(label,formatter,widget->currentText(),[](const QString& val){return val;});
     }
 
     static auto value(const type* widget)
@@ -277,7 +277,7 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
         using valueType=decltype(widget->date());
 
         auto dateFormat = QLocale().dateFormat(QLocale::ShortFormat);
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Date,valueType>(label,formatter,[widget](){return widget->date();},[dateFormat](const valueType& val){return val.toString(dateFormat);});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Date,valueType>(label,formatter,widget->date(),[dateFormat](const valueType& val){return val.toString(dateFormat);});
     }
 
     static auto value(const type* widget)
@@ -300,7 +300,7 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     {
         using valueType=decltype(widget->time());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,[widget](){return widget->time();},[](const valueType& val){return val.toString("HH:mm");});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,widget->time(),[](const valueType& val){return val.toString("HH:mm");});
     }
 
     static auto value(const type* widget)
@@ -324,7 +324,7 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
         using valueType=decltype(widget->dateTime());
 
         auto dateTimeFormat = QLocale().dateTimeFormat(QLocale::ShortFormat);
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::DateTime,valueType>(label,formatter,[widget](){return widget->dateTime();},[dateTimeFormat](const valueType& val){return val.toString(dateTimeFormat);});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::DateTime,valueType>(label,formatter,widget->dateTime(),[dateTimeFormat](const valueType& val){return val.toString(dateTimeFormat);});
     }
 
     static auto value(const type* widget)
