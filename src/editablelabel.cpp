@@ -91,7 +91,7 @@ EditableLabel::EditableLabel(
 //--------------------------------------------------------------------------
 bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == editableWidget() && event->type() == QEvent::KeyPress)
+    if (watched == editor() && event->type() == QEvent::KeyPress)
     {
         if (m_inGroup)
         {

@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     integer->setValue(50);
     l->addWidget(integer);
 
-    auto dbl = new EditableLabelFloat(mainFrame);
+    auto dbl = new EditableLabelDouble(mainFrame);
     dbl->widget()->setMinimum(-100.00);
     dbl->widget()->setMaximum(100.00);
     dbl->widget()->setSingleStep(0.01);

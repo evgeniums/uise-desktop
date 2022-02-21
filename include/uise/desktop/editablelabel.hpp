@@ -44,17 +44,23 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class EditableLabelFormatter;
 
+/**
+ * @brief Base class for editable labels.
+ */
 class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 {
     Q_OBJECT
 
     public:
 
+        /**
+         * @brief Type of label content.
+         */
         enum class Type : int
         {
             Text,
             Int,
-            Float,
+            Double,
             List,
             Date,
             Time,
@@ -62,44 +68,88 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             Custom
         };
 
+        /**
+         * @brief Constructor.
+         * @param type Type of label content.
+         * @param parent Parent widget.
+         * @param inGroup Label is part of a group, see also setInGroup().
+         */
         EditableLabel(Type type, QWidget* parent=nullptr, bool inGroup=false);
 
+        /**
+         * @brief Get type of label content.
+         * @return Query result.
+         */
         Type type() const noexcept
         {
             return m_type;
         }
 
+        /**
+         * @brief Get label object.
+         * @return Query result.
+         */
         QLabel* label() const noexcept
         {
             return m_label;
         }
 
+        /**
+         * @brief Get label text.
+         * @return Query result.
+         */
         QString text() const
         {
             return m_label->text();
         }
 
-        virtual QWidget* editableWidget() const noexcept =0;
+        /**
+         * @brief Get label editor.
+         * @return Query result.
+         */
+        virtual QWidget* editor() const noexcept =0;
 
+        /**
+         * @brief Set text formatter.
+         * @param formatter Formatter.
+         */
         void setFormatter(EditableLabelFormatter* formatter) noexcept
         {
             m_formatter=formatter;
         }
+        /**
+         * @brief Get text formatter.
+         * @return Query result.
+         */
         EditableLabelFormatter* formatter() const noexcept
         {
             return m_formatter;
         }
 
+        /**
+         * @brief Set group mode.
+         * @param val If true then the label is part of a group.
+         *
+         * When label is in group then editing mode is controlled by that group so that buttons and corresponding events are disabled.
+         */
         void setInGroup(bool val)
         {
             m_inGroup=val;
             setEditable(m_editable);
         }
+        /**
+         * @brief Check if label is in a group.
+         * @return Query result.
+         */
         bool isInGroup() const noexcept
         {
             return m_inGroup;
         }
 
+        /**
+         * @brief Check if label is in editing mode now.
+         * @return Query result.
+         */
         bool isEditable() const noexcept
         {
             return m_editable;
@@ -107,6 +157,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 
     public slots:
 
+        /**
+         * @brief Set editing mode.
+         * @param enable If trure then show editor, potherwise show text label.
+         */
         void setEditable(bool enable)
         {
             m_editable=enable;
@@ -116,19 +170,28 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             m_cancelButton->setVisible(!m_inGroup && enable);
             m_applyButton->setVisible(!m_inGroup && enable);
 
-            editableWidget()->setMinimumWidth(m_label->width());
-            editableWidget()->setVisible(enable);
-            editableWidget()->setFocus();
+            editor()->setMinimumWidth(m_label->width());
+            editor()->setVisible(enable);
+            editor()->setFocus();
         }
 
+        /**
+         * @brief Apply editor,
+         */
         virtual void apply() = 0;
 
+        /**
+         * @brief Cancel editing.
+         */
         void cancel()
         {
             setEditable(false);
             restoreWidgetValue();
         }
 
+        /**
+         * @brief Enable editing.
+         */
         void edit()
         {
             setEditable(true);
@@ -136,6 +199,9 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 
     signals:
 
+        /**
+         * @brief New value was set for the label.
+         */
         void valueSet();
 
     protected:
@@ -163,10 +229,14 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         QPushButton* m_cancelButton;
 };
 
+/**
+ * @brief Base class for formatters of editable label text.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelFormatter
 {
     public:
 
+        //! Destructor.
         virtual ~EditableLabelFormatter() = default;
 
         EditableLabelFormatter()=default;
@@ -175,8 +245,21 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
         EditableLabelFormatter& operator = (const EditableLabelFormatter&)=default;
         EditableLabelFormatter& operator = (EditableLabelFormatter&&)=default;
 
+        /**
+         * @brief Format text of the label.
+         * @param type Type of the label content.
+         * @param value Variant value from label editor.
+         * @return Formatted text.
+         */
         virtual QString format(EditableLabel::Type type, const QVariant& value) =0;
 
+        /**
+         * @brief Load lable with formatted text.
+         * @param label Label to set text to.
+         * @param formatter Formatter for text formatting.
+         * @param value Value to format and to to label.
+         * @param defaultFormatter Default text formatter.
+         */
         template <EditableLabel::Type Type, typename ValueT>
         static void loadLabel(QLabel* label, EditableLabelFormatter* formatter, const ValueT& value, const std::function<QString (const ValueT&)>& defaultFormatter)
         {
@@ -191,11 +274,17 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
         }
 };
 
+/**
+ * @brief Base template for traits of editable labels.
+ */
 template <EditableLabel::Type Type>
 struct EditableLabelTraits
 {
 };
 
+/**
+ * @brief Traits of editable label of text type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::Text>
 {
@@ -217,6 +306,9 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
     }
 };
 
+/**
+ * @brief Traits of editable label of int type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::Int>
 {
@@ -240,8 +332,11 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
     }
 };
 
+/**
+ * @brief Traits of editable label of double type.
+ */
 template <>
-struct EditableLabelTraits<EditableLabel::Type::Float>
+struct EditableLabelTraits<EditableLabel::Type::Double>
 {
     using type=QDoubleSpinBox;
 
@@ -249,7 +344,7 @@ struct EditableLabelTraits<EditableLabel::Type::Float>
     {
         using valueType=decltype(widget->value());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Float,valueType>(label,formatter,widget->value(),[](const valueType& val){return QString::number(val);});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Double,valueType>(label,formatter,widget->value(),[](const valueType& val){return QString::number(val);});
     }
 
     static auto value(const type* widget)
@@ -263,6 +358,9 @@ struct EditableLabelTraits<EditableLabel::Type::Float>
     }
 };
 
+/**
+ * @brief Value of editable list.
+ */
 struct UISE_DESKTOP_EXPORT EditableLabelListValue
 {
     int index;
@@ -270,6 +368,9 @@ struct UISE_DESKTOP_EXPORT EditableLabelListValue
     QVariant data;
 };
 
+/**
+ * @brief Traits of editable label of list type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::List>
 {
@@ -301,6 +402,9 @@ struct EditableLabelTraits<EditableLabel::Type::List>
     }
 };
 
+/**
+ * @brief Traits of editable label of date type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::Date>
 {
@@ -325,6 +429,9 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     }
 };
 
+/**
+ * @brief Traits of editable label of time type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::Time>
 {
@@ -348,6 +455,9 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     }
 };
 
+/**
+ * @brief Traits of editable label of datetime type.
+ */
 template <>
 struct EditableLabelTraits<EditableLabel::Type::DateTime>
 {
@@ -403,6 +513,9 @@ struct EditableLabelHelper
     }
 };
 
+/**
+ * @brief Base template class for editable labels of various types.
+ */
 template <EditableLabel::Type TypeId>
 class EditableLabelTmpl : public EditableLabel
 {
@@ -411,6 +524,11 @@ class EditableLabelTmpl : public EditableLabel
         using helper = EditableLabelHelper<TypeId>;
         using widgetType = typename helper::type;
 
+        /**
+         * @brief Constructor.
+         * @param parent Parent widget.
+         * @param inGroup Label is part of a group, see also setInGroup().
+         */
         EditableLabelTmpl(QWidget* parent=nullptr, bool inGroup=false)
             : EditableLabel(TypeId,parent,inGroup),
               m_widget(helper::createWidget(parent))
@@ -422,11 +540,18 @@ class EditableLabelTmpl : public EditableLabel
             m_widget->installEventFilter(this);
         }
 
+        /**
+         * @brief Get value of the label.
+         */
         auto value() const
         {
            return helper::value(m_widget);
         }
 
+        /**
+         * @brief Set value of the label.
+         * @param value Value to set.
+         */
         template <typename ValueType>
         void setValue(const ValueType& value)
         {
@@ -437,16 +562,27 @@ class EditableLabelTmpl : public EditableLabel
             m_widget->blockSignals(false);
         }
 
-        QWidget* editableWidget() const noexcept override
+        /**
+         * @brief Get editor widget.
+         * @return Query result.
+         */
+        QWidget* editor() const noexcept override
         {
             return m_widget;
         }
 
+        /**
+         * @brief Get editor.
+         * @return Query result.
+         */
         auto widget() const noexcept
         {
             return m_widget;
         }
 
+        /**
+         * @brief Apply editor.
+         */
         virtual void apply() override
         {
             setEditable(false);
@@ -478,6 +614,9 @@ class EditableLabelTmpl : public EditableLabel
 
 }
 
+/**
+ * @brief Editable text label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelText : public detail::EditableLabelTmpl<EditableLabel::Type::Text>
 {
     Q_OBJECT
@@ -500,6 +639,9 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public detail::EditableLabelTmpl<E
         }
 };
 
+/**
+ * @brief Editable integer label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<EditableLabel::Type::Int>
 {
     Q_OBJECT
@@ -512,6 +654,10 @@ class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<Ed
 
     signals:
 
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
         void valueChanged(int value);
 
     protected:
@@ -522,18 +668,25 @@ class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<Ed
         }
 };
 
-class UISE_DESKTOP_EXPORT EditableLabelFloat : public detail::EditableLabelTmpl<EditableLabel::Type::Float>
+/**
+ * @brief Editable double label.
+ */
+class UISE_DESKTOP_EXPORT EditableLabelDouble : public detail::EditableLabelTmpl<EditableLabel::Type::Double>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Float>;
+        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Double>;
 
         using baseType::baseType;
 
     signals:
 
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
         void valueChanged(double value);
 
     protected:
@@ -544,6 +697,9 @@ class UISE_DESKTOP_EXPORT EditableLabelFloat : public detail::EditableLabelTmpl<
         }
 };
 
+/**
+ * @brief Editable date label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<EditableLabel::Type::Date>
 {
     Q_OBJECT
@@ -556,6 +712,10 @@ class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<E
 
     signals:
 
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
         void valueChanged(const QDate& value);
 
     protected:
@@ -566,6 +726,9 @@ class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<E
         }
 };
 
+/**
+ * @brief Editable time label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<EditableLabel::Type::Time>
 {
     Q_OBJECT
@@ -578,6 +741,10 @@ class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<Ed
 
     signals:
 
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
         void valueChanged(const QTime& value);
 
     protected:
@@ -588,6 +755,9 @@ class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<Ed
         }
 };
 
+/**
+ * @brief Editable datetime label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmpl<EditableLabel::Type::DateTime>
 {
     Q_OBJECT
@@ -600,6 +770,10 @@ class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmp
 
     signals:
 
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
         void valueChanged(const QDateTime& value);
 
     protected:
@@ -610,6 +784,9 @@ class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmp
         }
 };
 
+/**
+ * @brief Editable list label.
+ */
 class UISE_DESKTOP_EXPORT EditableLabelList: public detail::EditableLabelTmpl<EditableLabel::Type::List>
 {
     Q_OBJECT
@@ -622,7 +799,16 @@ class UISE_DESKTOP_EXPORT EditableLabelList: public detail::EditableLabelTmpl<Ed
 
     signals:
 
+        /**
+         * @brief Signal that current index of the list was changed.
+         * @param index Current index.
+         */
         void indexChanged(int index);
+
+        /**
+         * @brief Signal that current text of the list was changed.
+         * @param text Current text.
+         */
         void textChanged(const QString& text);
 
     protected:
