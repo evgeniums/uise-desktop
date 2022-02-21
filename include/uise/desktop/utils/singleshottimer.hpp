@@ -34,7 +34,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Single shot timer that invokes a handler at most once.
  *
- * Sucessive calls of shot() will result in invokation of the handler from the last call only.
+ * Successive calls of shot() will result in invokation of the handler from the last call only.
  */
 class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
 {
@@ -45,7 +45,7 @@ class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
         using HandlerT=std::function<void ()>;
 
         /**
-         * @brief SingleShotTimer
+         * @brief Constructor.
          * @param parent Parent QObject.
          */
         SingleShotTimer(QObject* parent=nullptr);

@@ -282,7 +282,7 @@ class OrientationInvariant
         }
 
         /**
-         * @brief Set object's property depending on the orientation of this object.
+         * @brief Get object's property depending on the orientation of this object.
          * @param obj Object whose property to get.
          * @param prop Property ID.
          * @param other If set then use orientation that is orthogonal to the orientation of this object (horizontal<->vertical).
