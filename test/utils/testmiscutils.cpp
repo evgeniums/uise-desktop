@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
 
         auto timer=new SingleShotTimer();
 
-        timer->shot(10,
+        timer->shot(300,
             [timer,&value,timerClear]()
             {
                 UISE_TEST_MESSAGE("In timer 10")
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
             }
         );
 
-        timer->shot(100,
+        timer->shot(500,
             [timer,&value,timerClear]()
             {
                 UISE_TEST_MESSAGE("In timer 100")
