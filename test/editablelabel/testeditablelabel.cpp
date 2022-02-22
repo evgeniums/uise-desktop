@@ -24,6 +24,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <QFrame>
 #include <QMainWindow>
+#include <QPointer>
 
 #include <uise/test/uise-testthread.hpp>
 
@@ -39,51 +40,53 @@ BOOST_AUTO_TEST_SUITE(TestEditableLabel)
 
 namespace {
 
-constexpr static const int PlayStepPeriod=100;
+constexpr static const int PlayStepPeriod=200;
 
 struct SampleContainer
 {
-    QMainWindow* mainWindow=nullptr;
+    QPointer<QMainWindow> mainWindow;
     QFrame* content=nullptr;
     EditableLabel* label=nullptr;
+
+    ~SampleContainer()
+    {
+        if (mainWindow)
+        {
+            mainWindow->hide();
+            mainWindow->deleteLater();
+        }
+    }
 };
 
-void endTestCase(
-        SampleContainer* container
-    )
+void runStep(std::shared_ptr<SampleContainer> container, std::vector<std::function<void (std::shared_ptr<SampleContainer>)>> steps, size_t index)
 {
-    container->mainWindow->hide();
-    container->mainWindow->deleteLater();
-
-    delete container;
-    TestThread::instance()->continueTest();
+    if (index>=steps.size())
+    {
+        TestThread::instance()->continueTest();
+        return;
+    }
+    steps[index](container);
+    QTimer::singleShot(PlayStepPeriod,container->content,[container,steps,index](){
+        runStep(container,steps,index+1);
+    });
 }
 
 void runTestCase(
-        std::function<void (SampleContainer*)> init,
-        std::function<void (SampleContainer*)> action,
-        std::function<void (SampleContainer*)> check
+        std::vector<std::function<void (std::shared_ptr<SampleContainer>)>> steps
     )
 {
-    auto container=new SampleContainer();
-    auto run=[container,init,action,check]()
+    auto container=std::make_shared<SampleContainer>();
+    auto run=[container,steps]()
     {
-        init(container);
-        QTimer::singleShot(PlayStepPeriod,container->content,[action,container,check](){
-            action(container);
-            QTimer::singleShot(PlayStepPeriod,container->content,[check,container](){
-                check(container);
-                endTestCase(container);
-            });
-        });
+        runStep(container,steps,0);
     };
 
     TestThread::instance()->postGuiThread(run);
     auto ret=TestThread::instance()->execTest(3000);
-    UISE_TEST_CHECK(ret);    
+    UISE_TEST_CHECK(ret);
 }
 
-void beginTestCase(SampleContainer* container, EditableLabel* label, const QString& testName)
+void beginTestCase(std::shared_ptr<SampleContainer> container, EditableLabel* label, const QString& testName)
 {
     container->label=label;
     container->mainWindow=new QMainWindow();
@@ -106,7 +109,7 @@ BOOST_AUTO_TEST_CASE(TestText)
     QString updatedValue("New text");
 
     auto checkCount=0;
-    auto checkValueSet=[&updatedValue,&checkCount](SampleContainer* container){
+    auto checkValueSet=[&updatedValue,&checkCount](std::shared_ptr<SampleContainer> container){
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
 
         auto textLabel = qobject_cast<EditableLabelText*>(container->label);
@@ -117,16 +120,30 @@ BOOST_AUTO_TEST_CASE(TestText)
         ++checkCount;
     };
 
-    auto init=[&initialValue,checkValueSet](SampleContainer* container){
+    auto checkValueCount=0;
+    auto checkValueChanged=[&updatedValue,&checkValueCount](std::shared_ptr<SampleContainer> container, const QString& value){
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,value);
+
+        ++checkValueCount;
+    };
+
+    auto init=[&initialValue,checkValueSet,checkValueChanged](std::shared_ptr<SampleContainer> container){
         auto label = new EditableLabelText();
         label->setValue(initialValue);
 
         QObject::connect(label,&EditableLabel::valueSet,[container,checkValueSet](){checkValueSet(container);});
 
         beginTestCase(container,label,"Test editable text label");
+
+        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isInGroup());
+        UISE_TEST_CHECK(container->label->formatter()==nullptr);
+        UISE_TEST_CHECK(container->label->type()==EditableLabel::Type::Text);
+
+        QObject::connect(label,&EditableLabelText::valueChanged,[container,checkValueChanged](const QString& value){checkValueChanged(container,value);});
     };
 
-    auto action=[&initialValue,&updatedValue](SampleContainer* container){
+    auto setValueMethod=[&initialValue,&updatedValue](std::shared_ptr<SampleContainer> container){
 
         // initial check
         UISE_TEST_CHECK_EQUAL_QSTR(initialValue,container->label->text());
@@ -140,12 +157,76 @@ BOOST_AUTO_TEST_CASE(TestText)
         textLabel->setValue(updatedValue);
     };
 
-    auto check=[checkValueSet,&updatedValue,&checkCount](SampleContainer* container){
+    auto checkSetValueMethod=[checkValueSet,&updatedValue,&checkCount,&checkValueCount](std::shared_ptr<SampleContainer> container){
         checkValueSet(container);
         UISE_TEST_CHECK_EQUAL(checkCount,1);
+        UISE_TEST_CHECK_EQUAL(checkValueCount,0);
     };
 
-    runTestCase(init,action,check);
+    auto setValueGui=[&initialValue,&updatedValue](std::shared_ptr<SampleContainer> container){
+
+        // initial check
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
+
+        auto textLabel = qobject_cast<EditableLabelText*>(container->label);
+        UISE_TEST_REQUIRE(textLabel!=nullptr);
+        UISE_TEST_REQUIRE(textLabel->widget()!=nullptr);
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,textLabel->widget()->text());
+
+        auto prevValue = updatedValue;
+
+        // set editable mode
+        container->label->edit();
+
+        // set value
+        updatedValue="New updated text";
+        textLabel->widget()->setText(updatedValue);
+
+        // label text didn't change
+        UISE_TEST_CHECK_EQUAL_QSTR(prevValue,container->label->text());
+        // editor label changed
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,textLabel->widget()->text());
+
+        // cancel editable mode
+        container->label->cancel();
+        UISE_TEST_CHECK(!container->label->isEditable());
+
+        // label text didn't change
+        UISE_TEST_CHECK_EQUAL_QSTR(prevValue,container->label->text());
+        // editor label changed
+        UISE_TEST_CHECK_EQUAL_QSTR(prevValue,textLabel->widget()->text());
+
+        // set editable mode
+        container->label->edit();
+        UISE_TEST_CHECK(container->label->isEditable());
+
+        // set value
+        updatedValue="New updated text";
+        textLabel->widget()->setText(updatedValue);
+
+        // apply changes
+        container->label->apply();
+        UISE_TEST_CHECK(!container->label->isEditable());
+
+        // label text changed
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
+        // editor label changed
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,textLabel->widget()->text());
+    };
+
+    auto checkSetValueGui=[checkValueSet,&updatedValue,&checkCount,&checkValueCount](std::shared_ptr<SampleContainer> container){
+        UISE_TEST_CHECK_EQUAL(checkCount,2);
+        UISE_TEST_CHECK_EQUAL(checkValueCount,1);
+    };
+
+    std::vector<std::function<void (std::shared_ptr<SampleContainer>)>> steps={
+            init,
+            setValueMethod,
+            checkSetValueMethod,
+            setValueGui,
+            checkSetValueGui
+    };
+    runTestCase(steps);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
