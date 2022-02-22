@@ -123,10 +123,13 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
 
     auto handler=[&value,&value1]()
     {
+        UISE_TEST_MESSAGE("In handler")
+
         auto timerClear=new SingleShotTimer();
         timerClear->shot(1,
             [&value1]()
             {
+                UISE_TEST_MESSAGE("In timer clear")
                 value1.store(1);
             }
         );
@@ -137,6 +140,8 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
         timer->shot(10,
             [timer,&value,timerClear]()
             {
+                UISE_TEST_MESSAGE("In timer 10")
+
                 delete timerClear;
 
                 value.store(10);
@@ -149,6 +154,8 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
         timer->shot(100,
             [timer,&value,timerClear]()
             {
+                UISE_TEST_MESSAGE("In timer 100")
+
                 delete timerClear;
 
                 value.store(100);
@@ -161,6 +168,8 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
         timer->shot(10000,
             [timer,&value,timerClear]()
             {
+                UISE_TEST_MESSAGE("In timer 10000")
+
                 delete timerClear;
 
                 value.store(10000);
@@ -171,8 +180,11 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
         );
     };
 
+    UISE_TEST_MESSAGE("Posting handler")
     TestThread::instance()->postGuiThread(handler);
+    UISE_TEST_MESSAGE("Executing test")
     auto ret=TestThread::instance()->execTest(15000);
+    UISE_TEST_MESSAGE("Return execTest")
 
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK_EQUAL(value.load(),10000);
