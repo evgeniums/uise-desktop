@@ -108,10 +108,12 @@ BOOST_AUTO_TEST_CASE(TestDestroyWidget)
         destroyWidget(child);
         UISE_TEST_CHECK(!child->isVisible());
         UISE_TEST_CHECK(child->parent()==nullptr);
+
+        TestThread::instance()->continueTest();
     };
 
     TestThread::instance()->postGuiThread(handler);
-    auto ret=TestThread::instance()->execTest(1000);
+    auto ret=TestThread::instance()->execTest(5000);
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK(widgetDestroyed.load());
 }
@@ -172,7 +174,7 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
     };
 
     TestThread::instance()->postGuiThread(handler);
-    auto ret=TestThread::instance()->execTest(1000);
+    auto ret=TestThread::instance()->execTest(15000);
 
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK_EQUAL(value.load(),10000);

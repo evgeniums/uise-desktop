@@ -82,7 +82,7 @@ void runTestCase(
     };
 
     TestThread::instance()->postGuiThread(run);
-    auto ret=TestThread::instance()->execTest(3000);
+    auto ret=TestThread::instance()->execTest(15000);
     UISE_TEST_CHECK(ret);
 }
 
