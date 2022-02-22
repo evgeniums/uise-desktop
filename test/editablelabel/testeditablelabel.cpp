@@ -229,4 +229,245 @@ BOOST_AUTO_TEST_CASE(TestText)
     runTestCase(steps);
 }
 
+template <EditableLabel::Type TypeId, typename ObjectT=typename EditableLabelHelper<TypeId>::type, typename ValueT=typename EditableLabelHelper<TypeId>::valueT>
+void testLabelWithValue(const ValueT& initialValue, const ValueT& setValue, const ValueT& editedValue,
+                        const QString& initialValueStr, const QString& setValueStr, const QString& editedValueStr,
+                        const QString& title,
+                        std::function<void (ObjectT*)> configLabel
+                        )
+{
+    auto updatedValue=setValue;
+    auto updatedValueStr=setValueStr;
+
+    auto checkCount=0;
+    auto checkValueSet=[&updatedValue,&updatedValueStr,&checkCount](std::shared_ptr<SampleContainer> container){
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValueStr,container->label->text());
+
+        auto actualLabel = qobject_cast<ObjectT*>(container->label);
+        UISE_TEST_REQUIRE(actualLabel !=nullptr);
+        UISE_TEST_REQUIRE(actualLabel->widget()!=nullptr);
+        UISE_TEST_CHECK(updatedValue==actualLabel->value());
+
+        ++checkCount;
+    };
+
+    auto checkValueCount=0;
+    auto checkValueChanged=[&updatedValue,&checkValueCount](std::shared_ptr<SampleContainer> container, const ValueT& value){
+        UISE_TEST_CHECK(updatedValue==value);
+
+        ++checkValueCount;
+    };
+
+    auto init=[&initialValue,checkValueSet,checkValueChanged,&title,&configLabel](std::shared_ptr<SampleContainer> container){
+        auto label = new ObjectT();
+        configLabel(label);
+        label->setValue(initialValue);
+
+        QObject::connect(label,&EditableLabel::valueSet,[container,checkValueSet](){checkValueSet(container);});
+
+        beginTestCase(container,label,title);
+
+        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isInGroup());
+        UISE_TEST_CHECK(container->label->formatter()==nullptr);
+        UISE_TEST_CHECK(container->label->type()==TypeId);
+
+        QObject::connect(label,&ObjectT::valueChanged,[container,checkValueChanged](const ValueT& value){checkValueChanged(container,value);});
+    };
+
+    auto setValueMethod=[&initialValue,&initialValueStr,&updatedValue,&updatedValueStr](std::shared_ptr<SampleContainer> container){
+
+        // initial check
+        UISE_TEST_CHECK_EQUAL_QSTR(initialValueStr,container->label->text());
+
+        auto actualLabel = qobject_cast<ObjectT*>(container->label);
+        UISE_TEST_REQUIRE(actualLabel!=nullptr);
+        UISE_TEST_REQUIRE(actualLabel->widget()!=nullptr);
+        UISE_TEST_CHECK(initialValue==actualLabel->value());
+
+        // set value
+        actualLabel->setValue(updatedValue);
+
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValueStr,container->label->text());
+        UISE_TEST_CHECK(updatedValue==actualLabel->value());
+    };
+
+    auto checkSetValueMethod=[checkValueSet,&updatedValue,&checkCount,&checkValueCount](std::shared_ptr<SampleContainer> container){
+        checkValueSet(container);
+        UISE_TEST_CHECK_EQUAL(checkCount,1);
+        UISE_TEST_CHECK_EQUAL(checkValueCount,0);
+    };
+
+    auto setValueGui=[&initialValue,&updatedValue,&editedValue,&updatedValueStr,&editedValueStr](std::shared_ptr<SampleContainer> container){
+
+        // initial check
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValueStr,container->label->text());
+
+        auto actualLabel = qobject_cast<ObjectT*>(container->label);
+        UISE_TEST_REQUIRE(actualLabel!=nullptr);
+        UISE_TEST_REQUIRE(actualLabel->widget()!=nullptr);
+        UISE_TEST_CHECK(updatedValue==actualLabel->value());
+
+        auto prevValue = updatedValue;
+        auto prevValueStr = updatedValueStr;
+
+        // set editable mode
+        container->label->edit();
+
+        // set value
+        updatedValue=editedValue;
+        updatedValueStr=editedValueStr;
+        EditableLabelHelper<TypeId>::setValue(actualLabel->widget(),updatedValue);
+
+        // label text didn't change
+        UISE_TEST_CHECK_EQUAL_QSTR(prevValueStr,container->label->text());
+        // editor label changed
+        UISE_TEST_CHECK(updatedValue==actualLabel->value());
+
+        // cancel editable mode
+        container->label->cancel();
+        UISE_TEST_CHECK(!container->label->isEditable());
+
+        // label text didn't change
+        UISE_TEST_CHECK_EQUAL_QSTR(prevValueStr,container->label->text());
+        // editor label didn't change
+        UISE_TEST_CHECK(prevValue==actualLabel->value());
+
+        // set editable mode
+        container->label->edit();
+        UISE_TEST_CHECK(container->label->isEditable());
+
+        // set value
+        EditableLabelHelper<TypeId>::setValue(actualLabel->widget(),updatedValue);
+
+        // apply changes
+        container->label->apply();
+        UISE_TEST_CHECK(!container->label->isEditable());
+
+        // label text changed
+        UISE_TEST_CHECK_EQUAL_QSTR(updatedValueStr,container->label->text());
+        // editor label changed
+        UISE_TEST_CHECK(updatedValue==actualLabel->value());
+    };
+
+    auto checkSetValueGui=[&checkCount,&checkValueCount](std::shared_ptr<SampleContainer> container){
+        UISE_TEST_CHECK_EQUAL(checkCount,2);
+        UISE_TEST_CHECK_EQUAL(checkValueCount,1);
+    };
+
+    std::vector<std::function<void (std::shared_ptr<SampleContainer>)>> steps={
+            init,
+            setValueMethod,
+            checkSetValueMethod,
+            setValueGui,
+            checkSetValueGui
+    };
+    runTestCase(steps);
+
+}
+
+BOOST_AUTO_TEST_CASE(TestInt)
+{
+    int initialValue=100;
+    int setValue=-50;
+    int editValue=12;
+
+    auto initialValueStr=QString::number(initialValue);
+    auto setValueStr=QString::number(setValue);
+    auto editValueStr=QString::number(editValue);
+
+    std::function<void (EditableLabelInt*)> configLabel=[](EditableLabelInt* label) {
+        label->widget()->setRange(-1000,1000);
+    };
+
+    testLabelWithValue<EditableLabel::Type::Int>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable int label", configLabel);
+}
+
+BOOST_AUTO_TEST_CASE(TestDouble)
+{
+    double initialValue=100.21;
+    double setValue=-50.32;
+    double editValue=12.00;
+
+    auto initialValueStr=QString::number(initialValue);
+    auto setValueStr=QString::number(setValue);
+    auto editValueStr=QString::number(editValue);
+
+    std::function<void (EditableLabelDouble*)> configLabel=[](EditableLabelDouble* label) {
+        label->widget()->setRange(-1000,1000);
+    };
+
+    testLabelWithValue<EditableLabel::Type::Double>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable double label", configLabel);
+}
+
+BOOST_AUTO_TEST_CASE(TestTime)
+{
+    QString initialValueStr="21:35";
+    QString setValueStr="15:03";
+    QString editValueStr="00:01";
+
+    QTime initialValue=QTime::fromString(initialValueStr);
+    QTime setValue=QTime::fromString(setValueStr);
+    QTime editValue=QTime::fromString(editValueStr);
+
+    std::function<void (EditableLabelTime*)> configLabel=[](EditableLabelTime*) {
+    };
+
+    testLabelWithValue<EditableLabel::Type::Time>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable time label", configLabel);
+}
+
+BOOST_AUTO_TEST_CASE(TestDate)
+{
+    QString initialValueStr="2022-02-22";
+    QString setValueStr="2000-01-11";
+    QString editValueStr="2023-05-15";
+
+    QDate initialValue=QDate::fromString(initialValueStr,Qt::ISODate);
+    QDate setValue=QDate::fromString(setValueStr,Qt::ISODate);
+    QDate editValue=QDate::fromString(editValueStr,Qt::ISODate);
+
+    auto format = QLocale().dateFormat(QLocale::ShortFormat);
+    initialValueStr=initialValue.toString(format);
+    setValueStr=setValue.toString(format);
+    editValueStr=editValue.toString(format);
+
+    std::function<void (EditableLabelDate*)> configLabel=[](EditableLabelDate*) {
+    };
+
+    testLabelWithValue<EditableLabel::Type::Date>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable date label", configLabel);
+}
+
+BOOST_AUTO_TEST_CASE(TestDateTime)
+{
+    QString initialDateStr="2022-02-22";
+    QString setDateStr="2000-01-11";
+    QString editDateStr="2023-05-15";
+
+    QString initialTimeStr="21:35";
+    QString setTimeStr="15:03";
+    QString editTimeStr="00:01";
+
+    QTime initialTime=QTime::fromString(initialTimeStr);
+    QTime setTime=QTime::fromString(setTimeStr);
+    QTime editTime=QTime::fromString(editTimeStr);
+
+    QDate initialDate=QDate::fromString(initialDateStr,Qt::ISODate);
+    QDate setDate=QDate::fromString(setDateStr,Qt::ISODate);
+    QDate editDate=QDate::fromString(editDateStr,Qt::ISODate);
+
+    QDateTime initialValue(initialDate,initialTime);
+    QDateTime setValue(setDate,setTime);
+    QDateTime editValue(editDate,editTime);
+
+    auto format = QLocale().dateTimeFormat(QLocale::ShortFormat);
+    auto initialValueStr=initialValue.toString(format);
+    auto setValueStr=setValue.toString(format);
+    auto editValueStr=editValue.toString(format);
+
+    std::function<void (EditableLabelDateTime*)> configLabel=[](EditableLabelDateTime*) {
+    };
+
+    testLabelWithValue<EditableLabel::Type::DateTime>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable date time label", configLabel);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
