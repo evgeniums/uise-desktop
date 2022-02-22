@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(TestDestroyWidget)
     };
 
     TestThread::instance()->postGuiThread(handler);
-    auto ret=TestThread::instance()->execTest(1000);
+    auto ret=TestThread::instance()->execTest(10000);
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK(widgetDestroyed.load());
 }
