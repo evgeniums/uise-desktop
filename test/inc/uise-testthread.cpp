@@ -113,6 +113,12 @@ void TestThread::postGuiThread(std::function<void ()> handler)
 }
 
 //--------------------------------------------------------------------------
+void TestThread::execGuiThread(std::function<void ()> handler)
+{
+    QMetaObject::invokeMethod(qApp->thread(),std::move(handler),Qt::BlockingQueuedConnection);
+}
+
+//--------------------------------------------------------------------------
 TestThread* TestThread::instance()
 {
     if (!Instance)

@@ -64,6 +64,12 @@ class TestThread : public QThread
         void postGuiThread(std::function<void ()> handler);
 
         /**
+         * @brief Synchronously exec task in GUI thread.
+         * @param handler Task to execute in GUI thread.
+         */
+        void execGuiThread(std::function<void ()> handler);
+
+        /**
          * @brief Run testing loop.
          * @param timeout Maximum duration of testing loop running, if 0 then infinite.
          * @return False if timeouted, true otherwise.
