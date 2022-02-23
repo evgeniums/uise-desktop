@@ -46,29 +46,29 @@ int main(int argc, char *argv[])
     l->addWidget(text);
 
     auto integer = new EditableLabelInt(mainFrame);
-    integer->widget()->setMinimum(-100);
-    integer->widget()->setMaximum(100);
+    integer->editorWidget()->setMinimum(-100);
+    integer->editorWidget()->setMaximum(100);
     integer->setValue(50);
     l->addWidget(integer);
 
     auto dbl = new EditableLabelDouble(mainFrame);
-    dbl->widget()->setMinimum(-100.00);
-    dbl->widget()->setMaximum(100.00);
-    dbl->widget()->setSingleStep(0.01);
-    dbl->widget()->setDecimals(4);
+    dbl->editorWidget()->setMinimum(-100.00);
+    dbl->editorWidget()->setMaximum(100.00);
+    dbl->editorWidget()->setSingleStep(0.01);
+    dbl->editorWidget()->setDecimals(4);
     dbl->setValue(50.00);
     l->addWidget(dbl);
 
     auto dateTime = new EditableLabelDateTime(mainFrame);
     dateTime->setValue(QDateTime::currentDateTime());
-    dateTime->widget()->setCalendarPopup(true);
-    dateTime->widget()->setCalendarWidget(new QCalendarWidget());
+    dateTime->editorWidget()->setCalendarPopup(true);
+    dateTime->editorWidget()->setCalendarWidget(new QCalendarWidget());
     l->addWidget(dateTime);
 
     auto date= new EditableLabelDate(mainFrame);
     date->setValue(QDate::currentDate());
-    date->widget()->setCalendarPopup(true);
-    date->widget()->setCalendarWidget(new QCalendarWidget());
+    date->editorWidget()->setCalendarPopup(true);
+    date->editorWidget()->setCalendarWidget(new QCalendarWidget());
     l->addWidget(date);
 
     auto time= new EditableLabelTime(mainFrame);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     l->addWidget(time);
 
     auto list= new EditableLabelList(mainFrame);
-    list->widget()->addItems({"one","two","three","four","five"});
+    list->editorWidget()->addItems({"one","two","three","four","five"});
     list->setValue("three");
     l->addWidget(list);
 

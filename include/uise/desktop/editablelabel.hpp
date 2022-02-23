@@ -121,7 +121,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          * @brief Set text formatter.
          * @param formatter Formatter.
          */
-        void setFormatter(EditableLabelFormatter* formatter) noexcept
+        void setFormatter(const EditableLabelFormatter* formatter) noexcept
         {
             m_formatter=formatter;
         }
@@ -129,7 +129,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          * @brief Get text formatter.
          * @return Query result.
          */
-        EditableLabelFormatter* formatter() const noexcept
+        const EditableLabelFormatter* formatter() const noexcept
         {
             return m_formatter;
         }
@@ -228,7 +228,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         Type m_type;
         QLabel* m_label;
         QBoxLayout* m_layout;
-        EditableLabelFormatter* m_formatter;
+        const EditableLabelFormatter* m_formatter;
         bool m_editable;
         bool m_inGroup;
 
@@ -259,7 +259,7 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
          * @param value Variant value from label editor.
          * @return Formatted text.
          */
-        virtual QString format(EditableLabel::Type type, const QVariant& value) =0;
+        virtual QString format(EditableLabel::Type type, const QVariant& value) const =0;
 
         /**
          * @brief Load lable with formatted text.
@@ -269,7 +269,7 @@ class UISE_DESKTOP_EXPORT EditableLabelFormatter
          * @param defaultFormatter Default text formatter.
          */
         template <EditableLabel::Type Type, typename ValueT>
-        static void loadLabel(QLabel* label, EditableLabelFormatter* formatter, const ValueT& value, const std::function<QString (const ValueT&)>& defaultFormatter)
+        static void loadLabel(QLabel* label, const EditableLabelFormatter* formatter, const ValueT& value, const std::function<QString (const ValueT&)>& defaultFormatter)
         {
             if (formatter==nullptr)
             {
@@ -299,7 +299,7 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
     using type=EditableLabelText;
     using widgetType=QLineEdit;
 
-    static void loadLabel(QLabel* label, widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         EditableLabelFormatter::loadLabel<EditableLabel::Type::Text,QString>(label,formatter,widget->text(),[](const QString& val){return val;});
     }
@@ -324,7 +324,7 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
     using type=EditableLabelInt;
     using widgetType=QSpinBox;
 
-    static void loadLabel(QLabel* label, widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         using valueType=decltype(widget->value());
 
@@ -351,7 +351,7 @@ struct EditableLabelTraits<EditableLabel::Type::Double>
     using type=EditableLabelDouble;
     using widgetType=QDoubleSpinBox;
 
-    static void loadLabel(QLabel* label, widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         using valueType=decltype(widget->value());
 
@@ -388,7 +388,7 @@ struct EditableLabelTraits<EditableLabel::Type::List>
     using type=EditableLabelList;
     using widgetType=QComboBox;
 
-    static void loadLabel(QLabel* label, widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         EditableLabelFormatter::loadLabel<EditableLabel::Type::List,QString>(label,formatter,widget->currentText(),[](const QString& val){return val;});
     }
@@ -423,7 +423,7 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     using type=EditableLabelDate;
     using widgetType=QDateEdit;
 
-    static void loadLabel(QLabel* label, const widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         using valueType=decltype(widget->date());
 
@@ -451,7 +451,7 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     using type=EditableLabelTime;
     using widgetType=QTimeEdit;
 
-    static void loadLabel(QLabel* label, const widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         using valueType=decltype(widget->time());
 
@@ -478,7 +478,7 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     using type=EditableLabelDateTime;
     using widgetType=QDateTimeEdit;
 
-    static void loadLabel(QLabel* label, const widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         using valueType=decltype(widget->dateTime());
 
@@ -511,7 +511,7 @@ struct EditableLabelHelper
         return new widgetType(parent);
     }
 
-    static void loadLabel(QLabel* label, widgetType* widget, EditableLabelFormatter* formatter=nullptr)
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
         traits::loadLabel(label, widget, formatter);
     }
@@ -549,13 +549,13 @@ class EditableLabelTmpl : public EditableLabel
          */
         EditableLabelTmpl(QWidget* parent=nullptr, bool inGroup=false)
             : EditableLabel(TypeId,parent,inGroup),
-              m_widget(helper::createWidget(parent))
+              m_editor(helper::createWidget(parent))
         {
-            boxLayout()->insertWidget(0,m_widget);
-            m_widget->setVisible(false);
+            boxLayout()->insertWidget(0,m_editor);
+            m_editor->setVisible(false);
 
-            m_widget->setObjectName("widget");
-            m_widget->installEventFilter(this);
+            m_editor->setObjectName("editor");
+            m_editor->installEventFilter(this);
         }
 
         /**
@@ -563,7 +563,7 @@ class EditableLabelTmpl : public EditableLabel
          */
         auto value() const
         {
-           return helper::value(m_widget);
+           return helper::value(m_editor);
         }
 
         /**
@@ -573,11 +573,11 @@ class EditableLabelTmpl : public EditableLabel
         template <typename ValueType>
         void setValue(const ValueType& value)
         {
-            m_widget->blockSignals(true);
-            helper::setValue(m_widget,value);
-            helper::loadLabel(label(),m_widget,formatter());
-            m_backupValue=helper::value(m_widget);
-            m_widget->blockSignals(false);
+            m_editor->blockSignals(true);
+            helper::setValue(m_editor,value);
+            helper::loadLabel(label(),m_editor,formatter());
+            m_backupValue=helper::value(m_editor);
+            m_editor->blockSignals(false);
         }
 
         /**
@@ -586,16 +586,16 @@ class EditableLabelTmpl : public EditableLabel
          */
         QWidget* editor() const noexcept override
         {
-            return m_widget;
+            return m_editor;
         }
 
         /**
-         * @brief Get editor.
+         * @brief Get editor widget.
          * @return Query result.
          */
-        auto widget() const noexcept
+        auto editorWidget() const noexcept
         {
-            return m_widget;
+            return m_editor;
         }
 
         /**
@@ -604,8 +604,8 @@ class EditableLabelTmpl : public EditableLabel
         virtual void apply() override
         {
             setEditable(false);
-            m_backupValue=helper::value(m_widget);
-            helper::loadLabel(label(),m_widget,formatter());
+            m_backupValue=helper::value(m_editor);
+            helper::loadLabel(label(),m_editor,formatter());
             emit valueSet();
             notifyValueChanged();
         }
@@ -616,14 +616,14 @@ class EditableLabelTmpl : public EditableLabel
 
         virtual void restoreWidgetValue() override
         {
-            m_widget->blockSignals(true);
-            helper::setValue(m_widget,m_backupValue);
-            m_widget->blockSignals(false);
+            m_editor->blockSignals(true);
+            helper::setValue(m_editor,m_backupValue);
+            m_editor->blockSignals(false);
         }
 
     private:
 
-        typename helper::widgetType *m_widget;
+        typename helper::widgetType *m_editor;
         typename helper::valueType m_backupValue;
 };
 
@@ -650,7 +650,7 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public detail::EditableLabelTmpl<E
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->text());
+            emit valueChanged(editorWidget()->text());
         }
 };
 
@@ -679,7 +679,7 @@ class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<Ed
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->value());
+            emit valueChanged(editorWidget()->value());
         }
 };
 
@@ -708,7 +708,7 @@ class UISE_DESKTOP_EXPORT EditableLabelDouble : public detail::EditableLabelTmpl
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->value());
+            emit valueChanged(editorWidget()->value());
         }
 };
 
@@ -737,7 +737,7 @@ class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<E
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->date());
+            emit valueChanged(editorWidget()->date());
         }
 };
 
@@ -766,7 +766,7 @@ class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<Ed
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->time());
+            emit valueChanged(editorWidget()->time());
         }
 };
 
@@ -795,7 +795,7 @@ class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmp
 
         virtual void notifyValueChanged() override
         {
-            emit valueChanged(widget()->dateTime());
+            emit valueChanged(editorWidget()->dateTime());
         }
 };
 
@@ -830,8 +830,8 @@ class UISE_DESKTOP_EXPORT EditableLabelList: public detail::EditableLabelTmpl<Ed
 
         virtual void notifyValueChanged() override
         {
-            emit indexChanged(widget()->currentIndex());
-            emit textChanged(widget()->currentText());
+            emit indexChanged(editorWidget()->currentIndex());
+            emit textChanged(editorWidget()->currentText());
         }
 };
 
