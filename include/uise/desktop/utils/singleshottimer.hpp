@@ -34,7 +34,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Single shot timer that invokes a handler at most once.
  *
- * Successive calls of shot() will result in invokation of the handler from the last call only.
+ * Successive calls of shot() will result in invokation of the handler from the last call only at the time point set with the first call.
  */
 class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
 {
@@ -55,7 +55,7 @@ class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
          * @param milliseconds Timer interval.
          * @param handler Handler to invoke after timeout.
          *
-         * Successive calls to shot() method before timer is invoked will result in invoking the handler of the last call.
+         * Successive calls to shot() method before timer is invoked will result in invoking the handler of the last call at the time point set with the first call.
          */
         void shot(
             size_t milliseconds,
