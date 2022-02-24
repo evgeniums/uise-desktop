@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/uise/desktop">
+    <qresource prefix="/uise/desktop/icons">
         <file>document-edit.svg</file>
         <file>dialog-cancel.svg</file>
         <file>dialog-ok-apply.svg</file>

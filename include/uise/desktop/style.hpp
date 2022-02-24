@@ -1,0 +1,369 @@
+/**
+@copyright Evgeny Sidorov 2021
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. For open source projects this software is distrubuted under the GNU GENERAL PUBLIC LICENSE, Version 3.0.
+(See accompanying file LICENSE-GPLv3.md or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+
+2. For proprietary license contact evgeniums@dracosha.com.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/desktop/editablelabel.hpp
+*
+*  Declares EditableLabel.
+*
+*/
+
+/****************************************************************************/
+
+#ifndef UISE_DESKTOP_STYLE_HPP
+#define UISE_DESKTOP_STYLE_HPP
+
+#include <map>
+#include <QString>
+#include <QIcon>
+
+#include <uise/desktop/uisedesktop.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+/**
+ * @brief Helper class to work with Qt style sheets and icons.
+ */
+class UISE_DESKTOP_EXPORT Style
+{
+    public:
+
+        /**
+         * @brief Modes of style sheet theme.
+         */
+        enum class StyleSheetMode : int
+        {
+            Auto, //!< Detect theme automatically depending on default application style.
+            Light, //!< Light theme.
+            Dark //!< Dark theme.
+        };
+
+        /**
+         * @brief Constructor.
+         */
+        Style();
+
+        /**
+         * @brief Get style singleton object.
+         * @return Style singleton object.
+         */
+        Style& instance();
+
+        /**
+         * @brief Reset style to initial state.
+         *
+         * QIcon theme settings are not reset.
+         */
+        void reset();
+
+        /**
+         * @brief Query if current style is in dark theme.
+         * @return Query result.
+         */
+        bool isDarkTheme() const
+        {
+            return m_darkTheme;
+        }
+
+        /**
+         * @brief Check if application style is in dark theme.
+         * @return Query result.
+         *
+         * Dark theme is automatically detected depending on QLabel pallete found in Qapplication.
+         */
+        bool checkDarkTheme();
+
+        /**
+         * @brief Get style sheet mode.
+         * @return Query result.
+         */
+        StyleSheetMode styleSheetMode() const
+        {
+            return m_darkStyleSheetMode;
+        }
+
+        /**
+         * @brief Set style sheet mode.
+         * @param val New mode.
+         *
+         * New mode will be applied to the style only after call to reloadStyleSheet().
+         * New style can be applied to widgets or application by calling applyStyleSheet().
+         */
+        void setStyleSheetMode(StyleSheetMode val)
+        {
+            m_darkStyleSheetMode=val;
+        }
+
+        /**
+         * @brief Get style sheet path.
+         * @return Query result.
+         *
+         * See also setStyleSheetPath().
+         */
+        QString styleSheetPath() const
+        {
+            return m_styleSheetPath;
+        }
+        /**
+         * @brief Set style sheet path.
+         * @param path Path to folder with files containing style sheets.
+         *
+         * Path of the folder for dark theme is automatically constructed by adding "/dark" to the style sheet path.
+         * Thus, the style sheet path points to folder with style sheet files for light theme and subfolder "/dark" with style sheet files for dark theme.
+         * Style sheet files must have *.qss or *.css extensions.
+         */
+        void setStyleSheetPath(QString path)
+        {
+            m_styleSheetPath=std::move(path);
+        }
+
+        /**
+         * @brief Get actual style sheet.
+         * @return Query result.
+         *
+         * Actual style sheet must be either set with setStyleSheet() or automatically constructed with reloadStyleSheet() in advance.
+         */
+        QString styleSheet() const
+        {
+            return m_styleSheet;
+        }
+        /**
+         * @brief Explicitly set actual style sheet.
+         * @param styleSheet New style sheet.
+         *
+         * Style sheet will be applied to widgets or application only after calling applyStyleSheet().
+         */
+        void setStyleSheet(const QString& styleSheet)
+        {
+            m_styleSheet=QString("%1\n%2").arg(m_baseStyleSheet,styleSheet);
+        }
+
+        /**
+         * @brief Get base style sheet.
+         * @return Query result.
+         *
+         * See also setBaseStyleSheet().
+         */
+        QString baseStyleSheet() const
+        {
+            return m_baseStyleSheet;
+        }
+        /**
+         * @brief Set base style sheet.
+         * @param baseStyleSheet New base style sheet.
+         *
+         * Base style sheet is an immutable part of automatically constructed actual style sheet.
+         * Base style sheet is prepended to the automatically constructed style sheet in reloadStyleSheet().
+         */
+        void setBaseStyleSheet(QString baseStyleSheet)
+        {
+            m_baseStyleSheet=std::move(baseStyleSheet);
+        }
+
+        /**
+         * @brief Get loaded style sheet.
+         * @return Loaded style sheet.
+         *
+         * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read folder at styleSheetPath().
+         */
+        QString loadedStyleSheet() const
+        {
+            return m_loadedStyleSheet;
+        }
+
+        /**
+         * @brief Get color map.
+         * @return Query result.
+         *
+         * See also setColorMap().
+         */
+        std::map<QString,QString> colorMap() const
+        {
+            return m_colorMap;
+        }
+        /**
+         * @brief Set color map.
+         * @param colorMap New color map.
+         *
+         * Color map is used to substitute colors in style sheets read into loadedStyleSheet().
+         * New color map will be applied to the style only after call to reloadStyleSheet().
+         * New style can be applied to widgets or application by calling applyStyleSheet().
+         */
+        void setColorMap(std::map<QString,QString> colorMap)
+        {
+            m_colorMap=std::move(colorMap);
+        }
+
+        /**
+         * @brief Set substitutaion for a color in style sheets.
+         * @param keyColor Initial color to substitute.
+         * @param targetColor New color.
+         *
+         * See also setColorMap().
+         */
+        void setColor(QString keyColor, QString targetColor)
+        {
+            m_colorMap.emplace(std::move(keyColor),std::move(targetColor));
+        }
+
+        /**
+         * @brief Load color map from JSON file.
+         * @param fileName Name of JSON file.
+         * @param errMsg Error description in case of error.
+         * @return Operation status.
+         *
+         * JSON document must contain "colors" object containing key-value pairs for colors and their substitutions.
+         * Note that only hex color values starting with # are supported.
+         * For example:
+         * <pre>
+         * {
+         *      "colors":
+         *          {
+         *              "#00000000": "#FFFFFFFF",
+         *              "#FFFFFFFF": "#00000000"
+         *          }
+         * }
+         * </pre>
+         *
+         * See alco setColorMap().
+         */
+        bool loadColorMap(const QString& fileName, QString* errMsg=nullptr);
+
+        /**
+         * @brief Reload style sheet with actual settings.
+         *
+         * Constructs new actual styleSheet() depending on the styleSheetPath(), styleSheetMode() and colorMap().
+         * New style can be applied to widgets or application by calling applyStyleSheet().
+         */
+        void reloadStyleSheet();
+
+        /**
+         * @brief Apply style sheet to widget or application.
+         * @param widget WIdget to actual apply style sheet to, If nullptr then the style will be applied to entire application.
+         */
+        void applyStyleSheet(QWidget* widget=nullptr);
+
+        /**
+         * @brief Create icon.
+         * @param name Name of the icon.
+         * @param ext Extension to use for construction of filename of fallback icon.
+         * @return Requested icon if file for the icon is found.
+         *
+         * Search for the icon is performed in the following order:
+         * <pre>
+         * 1. Look up at iconThemeName() of QIcon::themeSearchPaths().
+         * 2. Look up at iconThemeFallbackName() of QIcon::fallbackThemePaths().
+         * 3. Look up at fallbackIconPath() or fallbackIconPath()/dark depending on the dark/light state of current theme.
+         * </pre>
+         */
+        QIcon icon(const QString& name, const QString& ext="svg") const;
+
+        /**
+         * @brief Get the first path of icon theme paths QIcon::themeSearchPaths().
+         * @return Query result.
+         *
+         * See also icon().
+         */
+        static QString firstIconThemeSearchPath();
+
+        /**
+         * @brief Prepend icon theme path to QIcon::themeSearchPaths().
+         * @param path Theme path to prepend.
+         *
+         * See also icon().
+         */
+        static void prependIconThemeSearchPath(const QString& path);
+
+        /**
+         * @brief Get name of icon theme.
+         * @return Query result.
+         *
+         * See also icon().
+         */
+        static QString iconThemeName();
+
+        /**
+         * @brief Set name of icon theme.
+         * @param name New name of icon theme.
+         */
+        static void setIconThemeName(const QString& name);
+
+        /**
+         * @brief Get the first path of fallback icon theme paths QIcon::fallbackThemePaths().
+         * @return Query result.
+         *
+         * See also icon().
+         */
+        static QString firstIconThemeFallbackPath();
+
+        /**
+         * @brief Prepend icon theme path to QIcon::fallbackThemePaths().
+         * @param path Theme path to prepend.
+         *
+         * See also icon().
+         */
+        static void prependIconThemeFallbackPath(const QString& path);
+
+        /**
+         * @brief Set name of fallback icon theme.
+         * @param name New name of fallback icon theme.
+         */
+        static void setIconThemeFallbackName(const QString& name);
+
+        /**
+         * @brief Get name of fallback icon theme.
+         * @return Query result.
+         *
+         * See also icon().
+         */
+        static QString iconThemeFallbackName();
+
+        /**
+         * @brief Get path of fallback icons.
+         * @return Query result.
+         *
+         * See also icon().
+         */
+        QString fallbacktIconPath() const
+        {
+            return m_fallbackIconPath;
+        }
+
+        /**
+         * @brief Set path of fallback icons.
+         * @param path New path.
+         *
+         * See also icon().
+         */
+        void setFallbackIconPath(QString path)
+        {
+            m_fallbackIconPath=std::move(path);
+        }
+
+    private:
+
+        QString m_styleSheet;
+        QString m_baseStyleSheet;
+        QString m_loadedStyleSheet;
+        QString m_styleSheetPath;
+        QString m_fallbackIconPath;
+
+        bool m_darkTheme;
+        StyleSheetMode m_darkStyleSheetMode;
+
+        std::map<QString,QString> m_colorMap;
+};
+
+UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_STYLE_HPP

@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(uise-desktop VERSION 0.0.1 LANGUAGES CXX)
+PROJECT(uisedesktop VERSION 0.0.1 LANGUAGES CXX)
 
 SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -54,6 +54,8 @@ SET (HEADERS
     include/uise/desktop/alignedstretchingwidget.hpp
 
     include/uise/desktop/editablelabel.hpp
+
+    include/uise/desktop/style.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -68,6 +70,7 @@ SET (SOURCES
     src/directchildwidget.cpp
     src/alignedstretchingwidget.cpp
     src/editablelabel.cpp
+    src/style.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
