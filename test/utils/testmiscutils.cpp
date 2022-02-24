@@ -29,6 +29,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/utils/directchildwidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/substitutecolors.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -189,6 +190,32 @@ BOOST_AUTO_TEST_CASE(TestSingleShotTimer)
     UISE_TEST_CHECK(ret);
     UISE_TEST_CHECK_EQUAL(value.load(),10000);
     UISE_TEST_CHECK_EQUAL(value1.load(),0);
+}
+
+BOOST_AUTO_TEST_CASE(TestSubstituteColors)
+{
+    std::map<std::string,std::string> m={
+        {"#00000000","#ffffffff"},
+        {"#ffffffff","#00000000"}
+    };
+
+    std::string str=""
+            "QLabel {"
+            " background: #00000000;"
+            " font-color: #44444444;"
+            " something: #ffffffff;"
+            "}"
+            "\n"
+            "QTextEdit {"
+            " background: #00000000;"
+            " font-color: #44444444;"
+            " something: #ffffffff;"
+            "}"
+            ;
+
+    auto result = substituteColors(str,m);
+//    UISE_TEST_MESSAGE(result)
+    UISE_TEST_CHECK_EQUAL("QLabel { background: #ffffffff; font-color: #44444444; something: #00000000;}\nQTextEdit { background: #ffffffff; font-color: #44444444; something: #00000000;}",result.c_str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

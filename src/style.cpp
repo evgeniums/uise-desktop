@@ -29,6 +29,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <uise/desktop/utils/substitutecolors.hpp>
+
 #include <uise/desktop/style.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -114,12 +116,22 @@ void Style::reloadStyleSheet()
     }
 
     // apply color map
-    auto styleSheet=m_loadedStyleSheet;
-    for (auto&& color: m_colorMap)
+    if (m_colorMap.empty())
     {
-        styleSheet.replace(color.first,color.second,Qt::CaseInsensitive);
+        setStyleSheet(m_loadedStyleSheet);
     }
-    setStyleSheet(styleSheet);
+    else
+    {
+        auto loadedStyleSheet=m_loadedStyleSheet;
+        loadedStyleSheet=loadedStyleSheet.toLower();
+        std::map<std::string,std::string> colorMap;
+        for (auto&& it:m_colorMap)
+        {
+            colorMap[it.first.toLower().toStdString()]=it.second.toLower().toStdString();
+        }
+        auto styleSheet=substituteColors(loadedStyleSheet.toStdString(),colorMap);
+        setStyleSheet(QString::fromStdString(styleSheet));
+    }
 }
 
 //--------------------------------------------------------------------------

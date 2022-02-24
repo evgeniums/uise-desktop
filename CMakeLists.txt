@@ -43,6 +43,7 @@ SET (HEADERS
     include/uise/desktop/utils/singleshottimer.hpp
     include/uise/desktop/utils/orientationinvariant.hpp
     include/uise/desktop/utils/directchildwidget.hpp
+    include/uise/desktop/utils/substitutecolors.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp

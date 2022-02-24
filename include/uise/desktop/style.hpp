@@ -252,7 +252,8 @@ class UISE_DESKTOP_EXPORT Style
          *      "colors":
          *          {
          *              "#00000000": "#FFFFFFFF",
-         *              "#FFFFFFFF": "#00000000"
+         *              "#FFFFFFFF": "#00000000",
+         *              "#aabbccdd": "#ddccbbaa"
          *          }
          * }
          * </pre>
