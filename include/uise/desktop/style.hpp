@@ -34,7 +34,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Helper class to work with Qt style sheets and icons.
  */
-class UISE_DESKTOP_EXPORT Style
+class UISE_DESKTOP_EXPORT Style final
 {
     public:
 
@@ -70,7 +70,7 @@ class UISE_DESKTOP_EXPORT Style
          * @brief Query if current style is in dark theme.
          * @return Query result.
          */
-        bool isDarkTheme() const
+        bool isDarkTheme() const noexcept
         {
             return m_darkTheme;
         }
@@ -87,7 +87,7 @@ class UISE_DESKTOP_EXPORT Style
          * @brief Get style sheet mode.
          * @return Query result.
          */
-        StyleSheetMode styleSheetMode() const
+        StyleSheetMode styleSheetMode() const noexcept
         {
             return m_darkStyleSheetMode;
         }
@@ -99,7 +99,7 @@ class UISE_DESKTOP_EXPORT Style
          * New mode will be applied to the style only after call to reloadStyleSheet().
          * New style can be applied to widgets or application by calling applyStyleSheet().
          */
-        void setStyleSheetMode(StyleSheetMode val)
+        void setStyleSheetMode(StyleSheetMode val) noexcept
         {
             m_darkStyleSheetMode=val;
         }

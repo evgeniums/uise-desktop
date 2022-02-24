@@ -47,6 +47,7 @@ Style::Style(
         m_darkStyleSheetMode(StyleSheetMode::Auto)
 {
     resetFallbackIconPaths();
+    resetStyleSheetPaths();
 }
 
 //--------------------------------------------------------------------------
@@ -287,6 +288,7 @@ void Style::reset()
 //--------------------------------------------------------------------------
 void Style::resetFallbackIconPaths()
 {
+    m_fallbackIconPaths.clear();
     m_fallbackIconPaths.push_back(UiseIconPath);
 }
 
