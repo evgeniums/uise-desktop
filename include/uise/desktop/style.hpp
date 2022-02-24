@@ -57,7 +57,7 @@ class UISE_DESKTOP_EXPORT Style
          * @brief Get style singleton object.
          * @return Style singleton object.
          */
-        Style& instance();
+        static Style& instance();
 
         /**
          * @brief Reset style to initial state.

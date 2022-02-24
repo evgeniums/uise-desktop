@@ -27,6 +27,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QSizePolicy>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/editablelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -48,7 +49,7 @@ EditableLabel::EditableLabel(
     m_layout->addWidget(m_label);
 
     m_editButton = new QPushButton(this);
-    auto editIcon = QIcon::fromTheme("document-edit",QIcon(":/uise/desktop/document-edit.svg"));
+    auto editIcon = Style::instance().icon("document-edit");
     m_editButton->setIcon(editIcon);
     m_editButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_editButton->setFlat(true);
@@ -60,7 +61,7 @@ EditableLabel::EditableLabel(
     m_editButton->setVisible(!m_inGroup);
 
     m_applyButton = new QPushButton(this);
-    auto applyIcon = QIcon::fromTheme("dialog-ok-apply",QIcon(":/uise/desktop/dialog-ok-apply.svg"));
+    auto applyIcon = Style::instance().icon("dialog-ok-apply");
     m_applyButton->setIcon(applyIcon);
     m_applyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_applyButton->setFlat(true);
@@ -72,7 +73,7 @@ EditableLabel::EditableLabel(
     m_applyButton->setVisible(false);
 
     m_cancelButton = new QPushButton(this);
-    auto cancelIcon = QIcon::fromTheme("dialog-cancel",QIcon(":/uise/desktop/dialog-cancel.svg"));
+    auto cancelIcon = Style::instance().icon("dialog-cancel");
     m_cancelButton->setIcon(cancelIcon);
     m_cancelButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_cancelButton->setFlat(true);
