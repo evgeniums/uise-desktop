@@ -227,13 +227,13 @@ class UISE_DESKTOP_EXPORT Style
         }
 
         /**
-         * @brief Set substitutaion for a color in style sheets.
+         * @brief Set substitution for a color in style sheets.
          * @param keyColor Initial color to substitute.
          * @param targetColor New color.
          *
          * See also setColorMap().
          */
-        void setColor(QString keyColor, QString targetColor)
+        void setColorSubstitution(QString keyColor, QString targetColor)
         {
             m_colorMap.emplace(std::move(keyColor),std::move(targetColor));
         }
