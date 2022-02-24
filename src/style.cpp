@@ -41,10 +41,11 @@ const char* UiseIconPath=":/uise/desktop/icons";
 
 //--------------------------------------------------------------------------
 Style::Style(
-    ) : m_fallbackIconPath(UiseIconPath),
-        m_darkTheme(false),
+    ) : m_darkTheme(false),
         m_darkStyleSheetMode(StyleSheetMode::Auto)
-{}
+{
+    resetFallbackIconPaths();
+}
 
 //--------------------------------------------------------------------------
 bool Style::checkDarkTheme()
@@ -121,22 +122,35 @@ void Style::reloadStyleSheet()
 //--------------------------------------------------------------------------
 QIcon Style::icon(const QString &name, const QString &ext) const
 {
-    QIcon fallback;
-    if (!m_fallbackIconPath.isEmpty())
+    auto findPath=[this,&name,&ext](const QString withDark)
     {
-        auto fallbackPath=QString("%1/%2.%3").arg(m_fallbackIconPath,name,ext);
-        if (m_darkTheme)
+        for (auto&& path:m_fallbackIconPaths)
         {
-            auto darkFallbackPath=QString("%1/dark").arg(m_fallbackIconPath);
-            auto darkIconPath=QString("%1/%2.%3").arg(darkFallbackPath,name,ext);
-            if (QFile::exists(darkIconPath))
+            auto iconPath=QString("%1%2/%3.%4").arg(path,withDark,name,ext);
+            if (QFile::exists(iconPath))
             {
-                fallbackPath=darkIconPath;
+                return iconPath;
             }
         }
-        fallback=QIcon(fallbackPath);
+        return QString();
+    };
+
+    QString fallbackPath;
+    if (m_darkTheme)
+    {
+        fallbackPath=findPath("/dark");
     }
-    return QIcon::fromTheme(name,fallback);
+    if (fallbackPath.isEmpty())
+    {
+        fallbackPath=findPath("");
+    }
+
+    if (!fallbackPath.isEmpty())
+    {
+        return QIcon::fromTheme(name,QIcon(fallbackPath));
+    }
+
+    return QIcon::fromTheme(name);
 }
 
 //--------------------------------------------------------------------------
@@ -151,68 +165,6 @@ void Style::applyStyleSheet(QWidget *widget)
         widget->setStyleSheet(m_styleSheet);
         checkDarkTheme();
     }
-}
-
-//--------------------------------------------------------------------------
-void Style::prependIconThemeSearchPath(const QString &path)
-{
-    auto paths =QIcon::themeSearchPaths();
-    paths.prepend(path);
-    QIcon::setThemeSearchPaths(paths);
-}
-
-//--------------------------------------------------------------------------
-QString Style::firstIconThemeSearchPath()
-{
-    auto paths=QIcon::themeSearchPaths();
-    if (!paths.isEmpty())
-    {
-        return paths.first();
-    }
-    return QString();
-}
-
-//--------------------------------------------------------------------------
-void Style::setIconThemeName(const QString &name)
-{
-    QIcon::setThemeName(name);
-}
-
-//--------------------------------------------------------------------------
-QString Style::iconThemeName()
-{
-    return QIcon::themeName();
-}
-
-//--------------------------------------------------------------------------
-void Style::prependIconThemeFallbackPath(const QString &path)
-{
-    auto paths =QIcon::fallbackSearchPaths();
-    paths.prepend(path);
-    QIcon::setFallbackSearchPaths(paths);
-}
-
-//--------------------------------------------------------------------------
-QString Style::firstIconThemeFallbackPath()
-{
-    auto paths=QIcon::fallbackSearchPaths();
-    if (!paths.isEmpty())
-    {
-        return paths.first();
-    }
-    return QString();
-}
-
-//--------------------------------------------------------------------------
-void Style::setIconThemeFallbackName(const QString &name)
-{
-    QIcon::setFallbackThemeName(name);
-}
-
-//--------------------------------------------------------------------------
-QString Style::iconThemeFallbackName()
-{
-    return QIcon::fallbackThemeName();
 }
 
 //--------------------------------------------------------------------------
@@ -308,13 +260,19 @@ void Style::reset()
     m_styleSheet.clear();
     m_baseStyleSheet.clear();
     m_loadedStyleSheet.clear();
-    m_styleSheetPath.clear();
-    m_fallbackIconPath=UiseIconPath;
+    m_styleSheetPath.clear();   
 
     m_darkTheme=false;
     m_darkStyleSheetMode=StyleSheetMode::Auto;
 
     m_colorMap.clear();
+    resetFallbackIconPaths();
+}
+
+//--------------------------------------------------------------------------
+void Style::resetFallbackIconPaths()
+{
+    m_fallbackIconPaths.push_back(UiseIconPath);
 }
 
 //--------------------------------------------------------------------------

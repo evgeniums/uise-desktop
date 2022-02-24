@@ -261,94 +261,53 @@ class UISE_DESKTOP_EXPORT Style
          *
          * Search for the icon is performed in the following order:
          * <pre>
-         * 1. Look up at iconThemeName() of QIcon::themeSearchPaths().
-         * 2. Look up at iconThemeFallbackName() of QIcon::fallbackThemePaths().
-         * 3. Look up at fallbackIconPath() or fallbackIconPath()/dark depending on the dark/light state of current theme.
+         * 1. Look up at QIcon::themeName() of QIcon::themeSearchPaths().
+         * 2. Look up at QIcon::fallbackThemeName() of QIcon::fallbackThemePaths().
+         * 3. Look up at fallbackIconPaths() or fallbackIconPaths()/dark one by one depending on the dark/light state of current theme.
          * </pre>
          */
         QIcon icon(const QString& name, const QString& ext="svg") const;
 
         /**
-         * @brief Get the first path of icon theme paths QIcon::themeSearchPaths().
+         * @brief Get paths of fallback icons.
          * @return Query result.
          *
          * See also icon().
          */
-        static QString firstIconThemeSearchPath();
-
-        /**
-         * @brief Prepend icon theme path to QIcon::themeSearchPaths().
-         * @param path Theme path to prepend.
-         *
-         * See also icon().
-         */
-        static void prependIconThemeSearchPath(const QString& path);
-
-        /**
-         * @brief Get name of icon theme.
-         * @return Query result.
-         *
-         * See also icon().
-         */
-        static QString iconThemeName();
-
-        /**
-         * @brief Set name of icon theme.
-         * @param name New name of icon theme.
-         */
-        static void setIconThemeName(const QString& name);
-
-        /**
-         * @brief Get the first path of fallback icon theme paths QIcon::fallbackThemePaths().
-         * @return Query result.
-         *
-         * See also icon().
-         */
-        static QString firstIconThemeFallbackPath();
-
-        /**
-         * @brief Prepend icon theme path to QIcon::fallbackThemePaths().
-         * @param path Theme path to prepend.
-         *
-         * See also icon().
-         */
-        static void prependIconThemeFallbackPath(const QString& path);
-
-        /**
-         * @brief Set name of fallback icon theme.
-         * @param name New name of fallback icon theme.
-         */
-        static void setIconThemeFallbackName(const QString& name);
-
-        /**
-         * @brief Get name of fallback icon theme.
-         * @return Query result.
-         *
-         * See also icon().
-         */
-        static QString iconThemeFallbackName();
-
-        /**
-         * @brief Get path of fallback icons.
-         * @return Query result.
-         *
-         * See also icon().
-         */
-        QString fallbacktIconPath() const
+        QStringList fallbacktIconPaths() const
         {
-            return m_fallbackIconPath;
+            return m_fallbackIconPaths;
         }
 
         /**
-         * @brief Set path of fallback icons.
-         * @param path New path.
+         * @brief Set paths of fallback icons.
+         * @param path New list of paths.
          *
          * See also icon().
          */
-        void setFallbackIconPath(QString path)
+        void setFallbackIconPaths(QStringList paths)
         {
-            m_fallbackIconPath=std::move(path);
+            m_fallbackIconPaths=std::move(paths);
         }
+
+        /**
+         * @brief Prepend path to list of paths of fallback icons.
+         * @param path New default path.
+         *
+         * See also icon().
+         */
+        void prependFallbackIconPath(QString path)
+        {
+            m_fallbackIconPaths.push_front(std::move(path));
+        }
+
+        /**
+         * @brief Reset paths of fallback icons.
+         * @param path New list of paths.
+         *
+         * See also icon().
+         */
+        void resetFallbackIconPaths();
 
     private:
 
@@ -356,7 +315,7 @@ class UISE_DESKTOP_EXPORT Style
         QString m_baseStyleSheet;
         QString m_loadedStyleSheet;
         QString m_styleSheetPath;
-        QString m_fallbackIconPath;
+        QStringList m_fallbackIconPaths;
 
         bool m_darkTheme;
         StyleSheetMode m_darkStyleSheetMode;
