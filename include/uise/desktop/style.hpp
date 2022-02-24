@@ -105,27 +105,46 @@ class UISE_DESKTOP_EXPORT Style
         }
 
         /**
-         * @brief Get style sheet path.
+         * @brief Get style sheet paths.
          * @return Query result.
          *
-         * See also setStyleSheetPath().
+         * See also setStyleSheetPaths().
          */
-        QString styleSheetPath() const
+        QStringList styleSheetPaths() const
         {
-            return m_styleSheetPath;
+            return m_styleSheetPaths;
         }
+
         /**
          * @brief Set style sheet path.
-         * @param path Path to folder with files containing style sheets.
+         * @param paths Paths to folders with files containing style sheets.
          *
          * Path of the folder for dark theme is automatically constructed by adding "/dark" to the style sheet path.
          * Thus, the style sheet path points to folder with style sheet files for light theme and subfolder "/dark" with style sheet files for dark theme.
          * Style sheet files must have *.qss or *.css extensions.
          */
-        void setStyleSheetPath(QString path)
+        void setStyleSheetPaths(QStringList paths)
         {
-            m_styleSheetPath=std::move(path);
+            m_styleSheetPaths=std::move(paths);
         }
+
+        /**
+         * @brief Append path to list of style sheet paths.
+         * @param path New path.
+         *
+         * See also setStyleSheetPaths().
+         */
+        void appendStyleSheetPath(QString path)
+        {
+            m_styleSheetPaths.push_back(std::move(path));
+        }
+
+        /**
+         * @brief Reset paths of style sheets.
+         *
+         * See also setStyleSheetPaths().
+         */
+        void resetStyleSheetPaths();
 
         /**
          * @brief Get actual style sheet.
@@ -137,6 +156,7 @@ class UISE_DESKTOP_EXPORT Style
         {
             return m_styleSheet;
         }
+
         /**
          * @brief Explicitly set actual style sheet.
          * @param styleSheet New style sheet.
@@ -158,6 +178,7 @@ class UISE_DESKTOP_EXPORT Style
         {
             return m_baseStyleSheet;
         }
+
         /**
          * @brief Set base style sheet.
          * @param baseStyleSheet New base style sheet.
@@ -191,6 +212,7 @@ class UISE_DESKTOP_EXPORT Style
         {
             return m_colorMap;
         }
+
         /**
          * @brief Set color map.
          * @param colorMap New color map.
@@ -314,7 +336,7 @@ class UISE_DESKTOP_EXPORT Style
         QString m_styleSheet;
         QString m_baseStyleSheet;
         QString m_loadedStyleSheet;
-        QString m_styleSheetPath;
+        QStringList m_styleSheetPaths;
         QStringList m_fallbackIconPaths;
 
         bool m_darkTheme;

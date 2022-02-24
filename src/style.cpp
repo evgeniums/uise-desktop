@@ -79,33 +79,36 @@ void Style::reloadStyleSheet()
         darkTheme=true;
     }
 
-    // check if folder exists for dark theme
-    auto folderPath=m_styleSheetPath;
-    if (darkTheme)
+    // load style sheets from files at paths
+    for (auto&& folderPath:m_styleSheetPaths)
     {
-        auto tryDarkFolderPath=QString("%1/dark").arg(folderPath);
-        if (QFileInfo::exists(tryDarkFolderPath))
+        // check if folder exists for dark theme
+        if (darkTheme)
         {
-            folderPath=tryDarkFolderPath;
-        }
-    }
-
-    // collect style sheets from files in folder
-    m_loadedStyleSheet.clear();
-    QDir stylesDir(folderPath);
-    QStringList filters;
-    filters << "*.css" << "*.qss";
-    stylesDir.setNameFilters(filters);
-    auto items=stylesDir.entryInfoList(QDir::Files);
-    for (auto&& item:items)
-    {
-        QFile file(item.canonicalFilePath());
-        if (file.open(QFile::ReadOnly))
-        {
-            auto data=file.readAll();
-            if (!data.isEmpty())
+            auto tryDarkFolderPath=QString("%1/dark").arg(folderPath);
+            if (QFileInfo::exists(tryDarkFolderPath))
             {
-                m_loadedStyleSheet+=QString("%1\n").arg(QString::fromUtf8(data));
+                folderPath=tryDarkFolderPath;
+            }
+        }
+
+        // collect style sheets from files in folder
+        m_loadedStyleSheet.clear();
+        QDir stylesDir(folderPath);
+        QStringList filters;
+        filters << "*.css" << "*.qss";
+        stylesDir.setNameFilters(filters);
+        auto items=stylesDir.entryInfoList(QDir::Files);
+        for (auto&& item:items)
+        {
+            QFile file(item.canonicalFilePath());
+            if (file.open(QFile::ReadOnly))
+            {
+                auto data=file.readAll();
+                if (!data.isEmpty())
+                {
+                    m_loadedStyleSheet+=QString("%1\n").arg(QString::fromUtf8(data));
+                }
             }
         }
     }
@@ -260,19 +263,25 @@ void Style::reset()
     m_styleSheet.clear();
     m_baseStyleSheet.clear();
     m_loadedStyleSheet.clear();
-    m_styleSheetPath.clear();   
 
     m_darkTheme=false;
     m_darkStyleSheetMode=StyleSheetMode::Auto;
 
     m_colorMap.clear();
     resetFallbackIconPaths();
+    resetStyleSheetPaths();
 }
 
 //--------------------------------------------------------------------------
 void Style::resetFallbackIconPaths()
 {
     m_fallbackIconPaths.push_back(UiseIconPath);
+}
+
+//--------------------------------------------------------------------------
+void Style::resetStyleSheetPaths()
+{
+    m_styleSheetPaths.clear();
 }
 
 //--------------------------------------------------------------------------
