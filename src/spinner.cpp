@@ -76,17 +76,60 @@ void Spinner::paintEvent(QPaintEvent *event)
     auto x=0;
     for (auto&& section:m_sections)
     {
-        int y=section->currentOffset;
+        int y=section->currentOffset%h;
+
+        if (section->circular && y>0)
+        {
+            if (y>0)
+            {
+                auto itemsCount=qCeil(double(y)/double(section->itemHeight));
+                if (itemsCount<section->items.size())
+                {
+                    int yy=y-itemsCount*section->itemHeight;
+                    for (auto i=section->items.size()-itemsCount;i<section->items.size();i++)
+                    {
+                        section->items[i]->render(&painter,QPoint(x,yy));
+                        yy+=section->itemHeight;
+
+                        if (yy>=h)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         for (auto&& item:section->items)
         {
             item->render(&painter,QPoint(x,y));
-            y+=item->height();
-
+            y+=section->itemHeight;
             if (y>h)
             {
                 break;
             }
         }
+
+        if (section->circular &&  y<h)
+        {
+            auto hy = h-y;
+            auto itemsCount=qCeil(double(hy)/double(section->itemHeight));
+            if (itemsCount<section->items.size())
+            {
+                int yy=y;
+                for (auto i=0;i<itemsCount;i++)
+                {
+                    section->items[i]->render(&painter,QPoint(x,yy));
+                    yy+=section->itemHeight;
+
+                    if (yy>h)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
         x+=section->width();
     }
 
@@ -307,14 +350,14 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
     {
         for (auto&& item:section->items)
         {
-            auto ih=item->sizeHint().height();
-            if (h<ih)
+            section->itemHeight=item->sizeHint().height()*2;
+            if (h<section->itemHeight)
             {
-                h=ih;
+                h=section->itemHeight;
             }
         }
     }
-    m_selectionHeight=h*2;
+    m_selectionHeight=h;
 }
 
 

@@ -53,6 +53,8 @@ struct SpinnerSection
     QWidget* barLabel=nullptr;
     int currentOffset=0;
     int currentItemIndex=0;
+    bool circular=false;
+    int itemHeight=0;
 
     int width() const noexcept
     {

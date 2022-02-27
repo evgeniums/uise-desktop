@@ -45,17 +45,29 @@ int main(int argc, char *argv[])
     auto spinner = new Spinner(mainFrame);
     l->addWidget(spinner);
 
-    auto section=std::make_shared<SpinnerSection>();
-    section->itemsWidth = 50;
-    for (auto i=0;i<30;i++)
+    auto section1=std::make_shared<SpinnerSection>();
+    section1->itemsWidth = 50;
+    section1->circular = true;
+    for (auto i=0;i<20;i++)
     {
         auto item=new QLabel(QString::number(i));
         item->setAlignment(Qt::AlignCenter);
-        item->setFixedWidth(section->itemsWidth);
-        section->items.append(item);
+        item->setFixedWidth(section1->itemsWidth);
+        section1->items.append(item);
     }
 
-    std::vector<std::shared_ptr<SpinnerSection>> sections{section};
+    std::vector<QString> text{"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
+    auto section2=std::make_shared<SpinnerSection>();
+    section2->itemsWidth = 70;
+    for (auto i=0;i<text.size();i++)
+    {
+        auto item=new QLabel(text[i]);
+        item->setAlignment(Qt::AlignCenter);
+        item->setFixedWidth(section2->itemsWidth);
+        section2->items.append(item);
+    }
+
+    std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2};
     spinner->setSections(sections);
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
@@ -72,8 +84,6 @@ int main(int argc, char *argv[])
     w.setWindowTitle("Spinner Demo");
     w.show();
     auto ret=app.exec();
-    //! @todo delete items in section destructor
-    qDeleteAll(section->items);
     return ret;
 }
 
