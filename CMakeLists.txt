@@ -53,10 +53,12 @@ SET (HEADERS
     include/uise/desktop/flyweightlistview.ipp
 
     include/uise/desktop/alignedstretchingwidget.hpp
-
     include/uise/desktop/editablelabel.hpp
-
     include/uise/desktop/style.hpp
+
+#    include/uise/desktop/combowheel.hpp
+
+    include/uise/desktop/spinner.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -72,6 +74,7 @@ SET (SOURCES
     src/alignedstretchingwidget.cpp
     src/editablelabel.cpp
     src/style.cpp
+    src/spinner.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
