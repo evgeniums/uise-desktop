@@ -59,7 +59,8 @@ int main(int argc, char *argv[])
         section1->items.append(item);
     }
 
-    std::vector<QString> text{"zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
+    std::vector<QString> text{"zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen",
+                             "sixteen","seventeen","eightteen","nineteen","twenty"};
     auto section2=std::make_shared<SpinnerSection>();
     section2->itemsWidth = 100;
     for (auto i=0;i<text.size();i++)
@@ -71,18 +72,43 @@ int main(int argc, char *argv[])
         section2->items.append(item);
     }
 
-    std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2};
+    std::vector<QString> text2{"yes","no","maybe"};
+    auto section3=std::make_shared<SpinnerSection>();
+    section3->itemsWidth = 100;
+    section3->circular = true;
+    for (auto i=0;i<text2.size();i++)
+    {
+        auto item=new QLabel(text2[i]);
+        item->setAlignment(Qt::AlignCenter);
+        item->setFixedWidth(section3->itemsWidth);
+        item->setFixedHeight(itemHeight);
+        section3->items.append(item);
+    }
+
+    std::vector<QString> text3{"hi","hello","how are you"};
+    auto section4=std::make_shared<SpinnerSection>();
+    section4->itemsWidth = 200;
+    for (auto i=0;i<text3.size();i++)
+    {
+        auto item=new QLabel(text3[i]);
+        item->setAlignment(Qt::AlignCenter);
+        item->setFixedWidth(section4->itemsWidth);
+        item->setFixedHeight(itemHeight);
+        section4->items.append(item);
+    }
+
+    std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2, section3, section4};
     spinner->setItemHeight(itemHeight);
     spinner->setSections(sections);
 
-    spinner->selectItem(section2.get(),7);
-    spinner->selectItem(section1.get(),17);
+//    spinner->selectItem(section2.get(),7);
+//    spinner->selectItem(section1.get(),17);
 
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
     spinner->setStyleSample(ll);
     qApp->setStyleSheet("* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}");
-//    qApp->setStyleSheet("* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: black; selection-background-color: darkgray;}");
+//    qApp->setStyleSheet("* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}");
 
     spinner->setFixedSize(500,500);
 

@@ -98,6 +98,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         }
 
         QRect selectionRect() const;
+        QRect selectionRect(int height, int offset) const;
+        QRect selectionRect(SpinnerSection* section) const;
 
         int selectedItemIndex(SpinnerSection* section) const;
         void selectItem(SpinnerSection* section, int index);
@@ -121,6 +123,10 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         std::shared_ptr<SpinnerSection> sectionUnderCursor() const;
         void adjustPosition(SpinnerSection* section, bool animate=true, bool noDelay=false);
+
+        int itemsHeight(SpinnerSection* section) const;
+        int sectionHeight(SpinnerSection* section) const;
+        int sectionOffset(SpinnerSection* section) const;
 
         QWidget* m_styleSample;
         std::vector<std::shared_ptr<SpinnerSection>> m_sections;
