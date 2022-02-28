@@ -42,6 +42,7 @@ Spinner::Spinner(
         m_pageScrollStep(DefaultPageScrollStep),
         m_wheelOffsetAccumulated(0.0),
         m_mousePressed(false),
+        m_keyPressed(false),
         m_selectionHeight(0),
         m_itemHeight(0)
 {
@@ -329,7 +330,6 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
 
     section->currentOffset=pos;
     repaint();
-
     adjustPosition(section);
 }
 
@@ -404,24 +404,31 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
     for (auto&& section:m_sections)
     {
         section->adjustTimer=new SingleShotTimer(this);
+        section->selectionTimer=new SingleShotTimer(this);
         section->animation=new QVariantAnimation(section->adjustTimer);
         section->animation->setDuration(300);
         section->animation->setEasingCurve(QEasingCurve::OutQuad);
+
+        if (!section->items.empty())
+        {
+            selectItem(section.get(),0);
+        }
     }
 }
 
 //--------------------------------------------------------------------------
-int Spinner::itemOffset(SpinnerSection* section, int index) const
+void Spinner::selectItem(SpinnerSection *section, int index)
 {
-    auto offs=index * m_itemHeight;
-    return offs;
-}
-
-//--------------------------------------------------------------------------
-void Spinner::scrollToItem(SpinnerSection *section, int index)
-{
-    auto offs = itemOffset(section,index);
-    scrollTo(section,offs);
+    if (index>=section->items.size())
+    {
+        throw std::out_of_range("Index is out of range");
+    }
+    section->selectionTimer->shot(50,[this,section,index](){
+        auto delta=index-section->currentItemIndex;
+        auto offset=delta*m_itemHeight;
+        auto pos=section->currentOffset-offset;
+        scrollTo(section,pos);
+    });
 }
 
 //--------------------------------------------------------------------------
@@ -429,20 +436,17 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
 {
     if (section->currentItemPosition<0)
     {
-        qDebug() << "Spinner::adjustPosition 1 section->currentItemPosition " << section->currentItemPosition;
         return;
     }
 
     int delay = noDelay ? 0 : 100;
     section->animation->stop();
     section->adjustTimer->clear();
-    section->adjustTimer->shot(delay,[section,animate,this](){
 
-        qDebug() << "Spinner::adjustPosition in timer";
+    auto handler=[section,animate,this](){
 
         if (section->currentItemPosition<0)
         {
-            qDebug() << "Spinner::adjustPosition 2 section->currentItemPosition " << section->currentItemPosition;
             return;
         }
 
@@ -523,9 +527,24 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         else
         {
             section->currentOffset-=offset;
-            repaint();
+            update();
         }
-    });
+    };
+
+    if (delay==0)
+    {
+        handler();
+    }
+    else
+    {
+        section->adjustTimer->shot(delay,handler);
+    }
+}
+
+//--------------------------------------------------------------------------
+int Spinner::selectedItemIndex(SpinnerSection *section) const
+{
+    return section->currentItemIndex;
 }
 
 //--------------------------------------------------------------------------

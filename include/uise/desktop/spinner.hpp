@@ -57,6 +57,7 @@ struct SpinnerSection
     bool circular=false;
     SingleShotTimer *adjustTimer=nullptr;
     QVariantAnimation *animation=nullptr;
+    SingleShotTimer *selectionTimer=nullptr;
     int animationVal=0;
 
     int width() const noexcept
@@ -80,11 +81,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         void scroll(SpinnerSection* section, int delta);
         void scrollTo(SpinnerSection* section, int pos);
-        void scrollToItem(SpinnerSection* section, int index);
 
         void setSections(std::vector<std::shared_ptr<SpinnerSection>> sections);
-
-        int itemOffset(SpinnerSection* section, int index) const;
 
         void setSelectionHeight(int val) noexcept
         {
@@ -105,6 +103,9 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         }
 
         QRect selectionRect() const;
+
+        int selectedItemIndex(SpinnerSection* section) const;
+        void selectItem(SpinnerSection* section, int index);
 
     protected:
 

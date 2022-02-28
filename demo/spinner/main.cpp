@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         section1->items.append(item);
     }
 
-    std::vector<QString> text{"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
+    std::vector<QString> text{"zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
     auto section2=std::make_shared<SpinnerSection>();
     section2->itemsWidth = 100;
     for (auto i=0;i<text.size();i++)
@@ -75,6 +75,9 @@ int main(int argc, char *argv[])
     spinner->setItemHeight(itemHeight);
     spinner->setSelectionHeight(itemHeight);
     spinner->setSections(sections);
+
+//    spinner->selectItem(section2.get(),7);
+//    spinner->selectItem(section1.get(),17);
 
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
