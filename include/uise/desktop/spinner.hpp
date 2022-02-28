@@ -96,6 +96,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         void setItemHeight(int val) noexcept
         {
             m_itemHeight=val;
+            m_singleScrollStep=val;
+            m_pageScrollStep=5*val;
         }
         int itemHeight() const noexcept
         {

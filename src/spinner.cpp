@@ -216,19 +216,19 @@ void Spinner::keyPressEvent(QKeyEvent *event)
 
     if (event->key()==Qt::Key_Up)
     {
-        scroll(section.get(),m_singleScrollStep);
+        scroll(section.get(),-m_singleScrollStep);
     }
     else if (event->key()==Qt::Key_Down)
     {
-        scroll(section.get(),-m_singleScrollStep);
+        scroll(section.get(),m_singleScrollStep);
     }
     else if (event->key()==Qt::Key_PageUp)
     {
-        scroll(section.get(),m_pageScrollStep);
+        scroll(section.get(),-m_pageScrollStep);
     }
     else if (event->key()==Qt::Key_PageDown)
     {
-        scroll(section.get(),-m_pageScrollStep);
+        scroll(section.get(),m_pageScrollStep);
     }
 
     QFrame::keyPressEvent(event);
