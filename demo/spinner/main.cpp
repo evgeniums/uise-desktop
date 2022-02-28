@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
     }
 
     std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2};
-    spinner->setSections(sections);
     spinner->setItemHeight(itemHeight);
     spinner->setSelectionHeight(itemHeight);
+    spinner->setSections(sections);
 
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");

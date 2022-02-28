@@ -82,6 +82,9 @@ void Spinner::paintEvent(QPaintEvent *event)
         int y=0;
         int lastItemOffset=0;
 
+        bool wasNotSelected=section->currentItemIndex<0;
+        bool needAdjusting=false;
+
         if (section->circular)
         {
             auto b = qFloor(section->currentOffset/m_itemHeight)%section->items.size();
@@ -106,14 +109,18 @@ void Spinner::paintEvent(QPaintEvent *event)
 
         section->currentItemIndex=-1;
         section->currentItemPosition=-1;
-        auto renderItems=[this,h,section,&x,&y,&painter,&lastItemOffset](int from, int to)
+        auto renderItems=[this,h,section,&x,&y,&painter,&lastItemOffset,&sel,&wasNotSelected,&needAdjusting](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
-                if (y>(h/2-m_selectionHeight/2) && y<(h/2+m_selectionHeight/2))
+                if (y>=sel.top() && y<=sel.bottom())
                 {
                     section->currentItemIndex=i;
                     section->currentItemPosition=y;
+                    if (wasNotSelected)
+                    {
+                        needAdjusting=true;
+                    }
                 }
 
                 lastItemOffset=y;
@@ -131,6 +138,11 @@ void Spinner::paintEvent(QPaintEvent *event)
         renderItems(0,topItemIndex-1);
 
         x+=section->width();
+
+        if (needAdjusting)
+        {
+            adjustPosition(section.get(),false,true);
+        }
     }
 
     //  construct gradient mask with highliter hole
@@ -292,7 +304,7 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
         {
             // down
 
-            auto edge=itemsHeight-(height()+m_selectionHeight)/2;
+            auto edge=itemsHeight-(height()+m_itemHeight)/2;
             if (qAbs(pos)>edge)
             {
                 pos=-edge;
@@ -395,9 +407,7 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         section->animation=new QVariantAnimation(section->adjustTimer);
         section->animation->setDuration(300);
         section->animation->setEasingCurve(QEasingCurve::OutQuad);
-
-        adjustPosition(section.get(),false,true);
-    }    
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -419,16 +429,20 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
 {
     if (section->currentItemPosition<0)
     {
+        qDebug() << "Spinner::adjustPosition 1 section->currentItemPosition " << section->currentItemPosition;
         return;
     }
 
-    int delay = noDelay ? 50 : 100;
+    int delay = noDelay ? 0 : 100;
     section->animation->stop();
     section->adjustTimer->clear();
     section->adjustTimer->shot(delay,[section,animate,this](){
 
+        qDebug() << "Spinner::adjustPosition in timer";
+
         if (section->currentItemPosition<0)
         {
+            qDebug() << "Spinner::adjustPosition 2 section->currentItemPosition " << section->currentItemPosition;
             return;
         }
 
