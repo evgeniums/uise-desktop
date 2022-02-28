@@ -48,8 +48,13 @@ int main(int argc, char *argv[])
     int itemHeight=50;
 
     auto section1=std::make_shared<SpinnerSection>();
-    section1->itemsWidth = 80;
+    section1->itemsWidth = 30;
     section1->circular = true;
+    auto leftLb = new QLabel(" $");
+    leftLb->setAlignment(Qt::AlignCenter);
+    leftLb->setFixedHeight(itemHeight);
+    section1->leftBarLabel=leftLb;
+    section1->leftBarWidth=leftLb->sizeHint().width();
     for (auto i=0;i<20;i++)
     {
         auto item=new QLabel(QString::number(i));
@@ -62,11 +67,16 @@ int main(int argc, char *argv[])
     std::vector<QString> text{"zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen",
                              "sixteen","seventeen","eightteen","nineteen","twenty"};
     auto section2=std::make_shared<SpinnerSection>();
-    section2->itemsWidth = 100;
+    section2->itemsWidth = 120;
+    auto rightLb = new QLabel(" km ");
+    rightLb->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    rightLb->setFixedHeight(itemHeight);
+    section2->rightBarLabel=rightLb;
+    section2->rightBarWidth=rightLb->sizeHint().width();
     for (auto i=0;i<text.size();i++)
     {
         auto item=new QLabel(text[i]);
-        item->setAlignment(Qt::AlignCenter);
+        item->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         item->setFixedWidth(section2->itemsWidth);
         item->setFixedHeight(itemHeight);
         section2->items.append(item);

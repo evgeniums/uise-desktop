@@ -61,8 +61,8 @@ void Spinner::setStyleSample(QWidget *widget)
 void Spinner::paintEvent(QPaintEvent *event)
 {
     auto w = width();
-
-    auto h = height();
+    auto widgetHeight=height();
+    auto h=widgetHeight;
     auto sel = selectionRect();
 
     QPainter painter(this);
@@ -76,10 +76,19 @@ void Spinner::paintEvent(QPaintEvent *event)
     painter.setBrush(m_styleSample->palette().color(QPalette::Highlight));
     painter.drawRoundedRect(sel,3,3);
 
-    // draw section items
-    auto x=0;
+    // draw sections
+    auto x=sel.left();
     for (auto&& section:m_sections)
-    {
+    {        
+        // render left bar label
+        if (section->leftBarLabel!=nullptr)
+        {
+            auto labelY = (widgetHeight-section->leftBarLabel->height())/2;
+            section->leftBarLabel->render(&painter,QPoint(x,labelY));
+        }
+        x+=section->leftBarWidth;
+
+        // calculate items positions
         int topItemIndex=0;
         int offset=sectionOffset(section.get());
         int y=offset;
@@ -156,6 +165,7 @@ void Spinner::paintEvent(QPaintEvent *event)
             }
         };
 
+        // render items
         renderItems(topItemIndex,section->items.size());
         if (section->circular)
         {
@@ -164,15 +174,22 @@ void Spinner::paintEvent(QPaintEvent *event)
                 renderItems(0,section->items.size());
             }
         }
+        x+=section->itemsWidth;
 
-        x+=section->width();
+        // render right bar label
+        if (section->rightBarLabel!=nullptr)
+        {
+            auto labelY = (widgetHeight-section->rightBarLabel->height())/2;
+            section->rightBarLabel->render(&painter,QPoint(x,labelY));
+        }
+        x+=section->rightBarWidth;
 
+        // adjust position
         if (needAdjusting)
         {
             adjustPosition(section.get(),false,true);
         }
-    }
-
+    }    
     //  construct gradient mask with highlighter hole
     auto maskPixmap = QPixmap(w,h);
     maskPixmap.fill(Qt::transparent);

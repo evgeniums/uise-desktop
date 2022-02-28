@@ -45,13 +45,16 @@ struct SpinnerSection
 
     ~SpinnerSection()
     {
+        //! @todo delete labels
         qDeleteAll(items);
     }
 
     int index=-1;
     int itemsWidth=0;
-    int barWidth=0;
-    QWidget* barLabel=nullptr;
+    int leftBarWidth=0;
+    QWidget* leftBarLabel=nullptr;
+    int rightBarWidth=0;
+    QWidget* rightBarLabel=nullptr;
     int currentOffset=0;
     int previousItemIndex=-1;
     int currentItemIndex=-1;
@@ -64,7 +67,7 @@ struct SpinnerSection
 
     int width() const noexcept
     {
-        return itemsWidth+barWidth;
+        return itemsWidth+leftBarWidth+rightBarWidth;
     }
 };
 
