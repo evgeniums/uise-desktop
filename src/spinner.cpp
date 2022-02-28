@@ -61,6 +61,7 @@ void Spinner::paintEvent(QPaintEvent *event)
 {
     auto h = height();
     auto w = width();
+    auto sel = selectionRect();
 
     QPainter painter(this);
     painter.setPen(Qt::NoPen);
@@ -71,7 +72,7 @@ void Spinner::paintEvent(QPaintEvent *event)
 
     // draw highliting
     painter.setBrush(m_styleSample->palette().color(QPalette::Highlight));
-    painter.drawRoundedRect(5,h/2-m_selectionHeight/2,w-10,m_selectionHeight,3,3);
+    painter.drawRoundedRect(sel,3,3);
 
     // draw section items
     auto x=0;
@@ -79,6 +80,7 @@ void Spinner::paintEvent(QPaintEvent *event)
     {
         int topItemIndex=0;
         int y=0;
+        int lastItemOffset=0;
 
         if (section->circular)
         {
@@ -102,25 +104,31 @@ void Spinner::paintEvent(QPaintEvent *event)
             y=section->currentOffset%h;
         }
 
-        for (int i=topItemIndex;i<section->items.size();i++)
+        section->currentItemIndex=-1;
+        section->currentItemPosition=-1;
+        auto renderItems=[this,h,section,&x,&y,&painter,&lastItemOffset](int from, int to)
         {
-            section->items[i]->render(&painter,QPoint(x,y));
-            y+=m_itemHeight;
-            if (y>h)
+            for (int i=from;i<to;i++)
             {
-                break;
-            }
-        }
+                if (y>(h/2-m_selectionHeight/2) && y<(h/2+m_selectionHeight/2))
+                {
+                    section->currentItemIndex=i;
+                    section->currentItemPosition=y;
+                }
 
-        for (int i=0;i<topItemIndex-1;i++)
-        {
-            section->items[i]->render(&painter,QPoint(x,y));
-            y+=m_itemHeight;
-            if (y>h)
-            {
-                break;
+                lastItemOffset=y;
+                section->items[i]->render(&painter,QPoint(x,y));
+                y+=m_itemHeight;
+
+                if (y>h)
+                {
+                    break;
+                }
             }
-        }
+        };
+
+        renderItems(topItemIndex,section->items.size());
+        renderItems(0,topItemIndex-1);
 
         x+=section->width();
     }
@@ -146,7 +154,7 @@ void Spinner::paintEvent(QPaintEvent *event)
     imagePainter.setBrush(Qt::transparent);
     imagePainter.setOpacity(1.0);
     imagePainter.setCompositionMode(QPainter::CompositionMode_Source);
-    imagePainter.drawRoundedRect(5,h/2-m_selectionHeight/2,w-10,m_selectionHeight,3,3);
+    imagePainter.drawRoundedRect(sel,3,3);
 
     // draw mask
     painter.drawPixmap(0,0,maskPixmap);
@@ -156,6 +164,12 @@ void Spinner::paintEvent(QPaintEvent *event)
 QSize Spinner::sizeHint() const
 {
     return size();
+}
+
+//--------------------------------------------------------------------------
+QRect Spinner::selectionRect() const
+{
+    return QRect(5,height()/2-m_selectionHeight/2,width()-10,m_selectionHeight);
 }
 
 //--------------------------------------------------------------------------
@@ -271,6 +285,36 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
+    if (!section->circular)
+    {
+        auto itemsHeight=section->items.size()*m_itemHeight;
+        if (pos<0)
+        {
+            // down
+
+            auto edge=itemsHeight-(height()+m_selectionHeight)/2;
+            if (qAbs(pos)>edge)
+            {
+                pos=-edge;
+            }
+        }
+        else
+        {
+            // up
+
+            auto edge=height()/2 - m_itemHeight/2;
+            if (pos>edge)
+            {
+                pos=edge;
+            }
+        }
+    }
+
+    if (section->currentOffset==pos)
+    {
+        return;
+    }
+
     section->currentOffset=pos;
     repaint();
 
@@ -351,7 +395,9 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         section->animation=new QVariantAnimation(section->adjustTimer);
         section->animation->setDuration(300);
         section->animation->setEasingCurve(QEasingCurve::OutQuad);
-    }
+
+        adjustPosition(section.get(),false,true);
+    }    
 }
 
 //--------------------------------------------------------------------------
@@ -369,11 +415,22 @@ void Spinner::scrollToItem(SpinnerSection *section, int index)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::adjustPosition(SpinnerSection *section)
+void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay)
 {
+    if (section->currentItemPosition<0)
+    {
+        return;
+    }
+
+    int delay = noDelay ? 50 : 100;
     section->animation->stop();
     section->adjustTimer->clear();
-    section->adjustTimer->shot(200,[section,this](){
+    section->adjustTimer->shot(delay,[section,animate,this](){
+
+        if (section->currentItemPosition<0)
+        {
+            return;
+        }
 
         section->animation->stop();
         if (m_mousePressed || m_keyPressed)
@@ -382,47 +439,78 @@ void Spinner::adjustPosition(SpinnerSection *section)
             return;
         }
 
-        auto offset = section->currentOffset;
-        auto remainder=std::remainder(offset,m_itemHeight);
-
-        if (qAbs(remainder)<std::numeric_limits<double>::epsilon())
+        auto pos=section->currentItemPosition%height();
+        auto sel=selectionRect();
+        auto offset=pos-sel.top();
+        if (offset==0)
         {
             return;
         }
-        auto halfDelta=double(m_itemHeight)/2.0-remainder;
-        auto delta = m_itemHeight-remainder;
+
+        // jump to next item if scroll is above/below half height of the item
+        if (qAbs(offset)>m_itemHeight/2)
+        {
+            if (offset<0)
+            {
+                // down
+
+                // enable for non circtular section or not last item
+                if (!section->circular || section->currentItemIndex<(section->items.size()-1))
+                {
+                    offset+=m_itemHeight;
+                }
+            }
+            else
+            {
+                // up
+
+                // enable for non circtular section or not first item
+                if (!section->circular || section->currentItemIndex>0)
+                {
+                    offset-=m_itemHeight;
+                }
+            }
+        }
 
         int endVal=0;
-        bool asc=remainder>0;
+        bool asc=offset>0;
         if (asc)
         {
-            endVal=remainder;
+            endVal=offset;
         }
         else
         {
-            endVal=-remainder;
+            endVal=-offset;
         }
 
-        section->animationVal=0;
-        section->animation->setStartValue(0);
-        section->animation->setEndValue(endVal);
-        section->animation->disconnect(this);
-        connect(section->animation,&QVariantAnimation::valueChanged,this,[this,section,asc,remainder](const QVariant& val){
+        if (animate)
+        {
+            section->animationVal=0;
+            section->animation->setStartValue(0);
+            section->animation->setEndValue(endVal);
+            section->animation->disconnect(this);
+            connect(section->animation,&QVariantAnimation::valueChanged,this,[this,section,asc](const QVariant& val){
 
-            if (m_mousePressed || m_keyPressed)
-            {
-                adjustPosition(section);
-                return;
-            }
+                if (m_mousePressed || m_keyPressed)
+                {
+                    adjustPosition(section);
+                    return;
+                }
 
-            int rm = asc?val.toInt():-val.toInt();
-            auto offs = section->animationVal - rm;
-            section->animationVal=rm;
+                int rm = asc?val.toInt():-val.toInt();
+                auto offs = section->animationVal - rm;
+                section->animationVal=rm;
 
-            section->currentOffset+=offs;
+                section->currentOffset+=offs;
+                repaint();
+            });
+            section->animation->start();
+        }
+        else
+        {
+            section->currentOffset-=offset;
             repaint();
-        });
-        section->animation->start();
+        }
     });
 }
 

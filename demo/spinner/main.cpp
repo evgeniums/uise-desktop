@@ -53,8 +53,9 @@ int main(int argc, char *argv[])
     for (auto i=0;i<20;i++)
     {
         auto item=new QLabel(QString::number(i));
-        item->setAlignment(Qt::AlignCenter);
+        item->setAlignment(Qt::AlignHCenter);
         item->setFixedWidth(section1->itemsWidth);
+        item->setFixedHeight(itemHeight);
         section1->items.append(item);
     }
 
@@ -64,8 +65,9 @@ int main(int argc, char *argv[])
     for (auto i=0;i<text.size();i++)
     {
         auto item=new QLabel(text[i]);
-        item->setAlignment(Qt::AlignCenter);
+        item->setAlignment(Qt::AlignHCenter);
         item->setFixedWidth(section2->itemsWidth);
+        item->setFixedHeight(itemHeight);
         section2->items.append(item);
     }
 

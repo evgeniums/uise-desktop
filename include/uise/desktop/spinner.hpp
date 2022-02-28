@@ -52,7 +52,8 @@ struct SpinnerSection
     int barWidth=0;
     QWidget* barLabel=nullptr;
     int currentOffset=0;
-    int currentItemIndex=0;
+    int currentItemIndex=-1;
+    int currentItemPosition=-1;
     bool circular=false;
     SingleShotTimer *adjustTimer=nullptr;
     QVariantAnimation *animation=nullptr;
@@ -103,6 +104,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
             return m_itemHeight;
         }
 
+        QRect selectionRect() const;
+
     protected:
 
         void paintEvent(QPaintEvent *paint) override;
@@ -121,7 +124,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
     private:
 
         std::shared_ptr<SpinnerSection> sectionUnderCursor() const;
-        void adjustPosition(SpinnerSection* section);
+        void adjustPosition(SpinnerSection* section, bool animate=true, bool noDelay=false);
 
         QWidget* m_styleSample;
         std::vector<std::shared_ptr<SpinnerSection>> m_sections;
