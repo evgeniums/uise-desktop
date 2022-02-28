@@ -26,10 +26,10 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <memory>
 
 #include <QFrame>
+#include <QVariantAnimation>
 
 #include <uise/desktop/uisedesktop.hpp>
-
-class QEnterEvent;
+#include <uise/desktop/utils/singleshottimer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -54,7 +54,9 @@ struct SpinnerSection
     int currentOffset=0;
     int currentItemIndex=0;
     bool circular=false;
-    int itemHeight=0;
+    SingleShotTimer *adjustTimer=nullptr;
+    QVariantAnimation *animation=nullptr;
+    int animationVal=0;
 
     int width() const noexcept
     {
@@ -68,7 +70,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
     public:
 
-        inline static int DefaultPageScrollStep=15;
+        inline static int DefaultPageScrollStep=60;
         inline static int DefaultSingleScrollStep=4;
 
         Spinner(QWidget* parent=nullptr);
@@ -77,11 +79,28 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         void scroll(SpinnerSection* section, int delta);
         void scrollTo(SpinnerSection* section, int pos);
+        void scrollToItem(SpinnerSection* section, int index);
+
         void setSections(std::vector<std::shared_ptr<SpinnerSection>> sections);
 
-        void setSelectionHeight(int val)
+        int itemOffset(SpinnerSection* section, int index) const;
+
+        void setSelectionHeight(int val) noexcept
         {
             m_selectionHeight=val;
+        }
+        int selectionHeight() const noexcept
+        {
+            return m_selectionHeight;
+        }
+
+        void setItemHeight(int val) noexcept
+        {
+            m_itemHeight=val;
+        }
+        int itemHeight() const noexcept
+        {
+            return m_itemHeight;
         }
 
     protected:
@@ -90,6 +109,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         QSize sizeHint() const override;
         void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
 
         void mouseMoveEvent(QMouseEvent *event) override;
@@ -101,6 +121,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
     private:
 
         std::shared_ptr<SpinnerSection> sectionUnderCursor() const;
+        void adjustPosition(SpinnerSection* section);
 
         QWidget* m_styleSample;
         std::vector<std::shared_ptr<SpinnerSection>> m_sections;
@@ -112,8 +133,10 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         QPoint m_lastMousePos;
         bool m_mousePressed;
+        bool m_keyPressed;
         std::shared_ptr<SpinnerSection> m_sectionUnderCursor;
         int m_selectionHeight;
+        int m_itemHeight;
 };
 
 UISE_DESKTOP_NAMESPACE_END

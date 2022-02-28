@@ -42,7 +42,8 @@ Spinner::Spinner(
         m_pageScrollStep(DefaultPageScrollStep),
         m_wheelOffsetAccumulated(0.0),
         m_mousePressed(false),
-        m_selectionHeight(0)
+        m_selectionHeight(0),
+        m_itemHeight(0)
 {
     setFocusPolicy(Qt::StrongFocus);
     setFocus();
@@ -76,57 +77,53 @@ void Spinner::paintEvent(QPaintEvent *event)
     auto x=0;
     for (auto&& section:m_sections)
     {
-        int y=section->currentOffset%h;
+        int topItemIndex=0;
+        int y=0;
 
-        if (section->circular && y>0)
+        if (section->circular)
         {
-            if (y>0)
-            {
-                auto itemsCount=qCeil(double(y)/double(section->itemHeight));
-                if (itemsCount<section->items.size())
-                {
-                    int yy=y-itemsCount*section->itemHeight;
-                    for (auto i=section->items.size()-itemsCount;i<section->items.size();i++)
-                    {
-                        section->items[i]->render(&painter,QPoint(x,yy));
-                        yy+=section->itemHeight;
+            auto b = qFloor(section->currentOffset/m_itemHeight)%section->items.size();
+            topItemIndex=(section->items.size()-b)%section->items.size();
 
-                        if (yy>=h)
-                        {
-                            break;
-                        }
-                    }
-                }
+            auto delta=section->currentOffset%m_itemHeight;
+            if (delta<0)
+            {
+                y=delta;
             }
+            else
+            {
+                y=y+delta;
+            }
+
+//            qDebug() << " section->currentOffset " << section->currentOffset
+//                     << "m_itemHeight" << m_itemHeight
+//                     << " b " << b
+//                     << " topItemIndex " << topItemIndex
+//                     << " delta "<< delta
+//                     << " y "<< y;
+        }
+        else
+        {
+            y=section->currentOffset%h;
         }
 
-        for (auto&& item:section->items)
+        for (int i=topItemIndex;i<section->items.size();i++)
         {
-            item->render(&painter,QPoint(x,y));
-            y+=section->itemHeight;
+            section->items[i]->render(&painter,QPoint(x,y));
+            y+=m_itemHeight;
             if (y>h)
             {
                 break;
             }
         }
 
-        if (section->circular &&  y<h)
+        for (int i=0;i<topItemIndex-1;i++)
         {
-            auto hy = h-y;
-            auto itemsCount=qCeil(double(hy)/double(section->itemHeight));
-            if (itemsCount<section->items.size())
+            section->items[i]->render(&painter,QPoint(x,y));
+            y+=m_itemHeight;
+            if (y>h)
             {
-                int yy=y;
-                for (auto i=0;i<itemsCount;i++)
-                {
-                    section->items[i]->render(&painter,QPoint(x,yy));
-                    yy+=section->itemHeight;
-
-                    if (yy>h)
-                    {
-                        break;
-                    }
-                }
+                break;
             }
         }
 
@@ -188,6 +185,7 @@ std::shared_ptr<SpinnerSection> Spinner::sectionUnderCursor() const
 //--------------------------------------------------------------------------
 void Spinner::keyPressEvent(QKeyEvent *event)
 {
+    m_keyPressed=true;
     auto section=m_sectionUnderCursor;
     if (!section)
     {
@@ -212,6 +210,12 @@ void Spinner::keyPressEvent(QKeyEvent *event)
     }
 
     QFrame::keyPressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+void Spinner::keyReleaseEvent(QKeyEvent *)
+{
+    m_keyPressed=false;
 }
 
 //--------------------------------------------------------------------------
@@ -275,7 +279,7 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     section->currentOffset=pos;
     repaint();
 
-    //! @todo process current index
+    adjustPosition(section);
 }
 
 //--------------------------------------------------------------------------
@@ -342,24 +346,90 @@ void Spinner::mouseMoveEvent(QMouseEvent *event)
     m_lastMousePos.setY(y);
 }
 
+//--------------------------------------------------------------------------
 void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 {
     m_sections=std::move(sections);
-    auto h = 0;
     for (auto&& section:m_sections)
     {
-        for (auto&& item:section->items)
-        {
-            section->itemHeight=item->sizeHint().height()*2;
-            if (h<section->itemHeight)
-            {
-                h=section->itemHeight;
-            }
-        }
+        section->adjustTimer=new SingleShotTimer(this);
+        section->animation=new QVariantAnimation(section->adjustTimer);
+        section->animation->setDuration(300);
+        section->animation->setEasingCurve(QEasingCurve::OutQuad);
     }
-    m_selectionHeight=h;
 }
 
+//--------------------------------------------------------------------------
+int Spinner::itemOffset(SpinnerSection* section, int index) const
+{
+    auto offs=index * m_itemHeight;
+    return offs;
+}
+
+//--------------------------------------------------------------------------
+void Spinner::scrollToItem(SpinnerSection *section, int index)
+{
+    auto offs = itemOffset(section,index);
+    scrollTo(section,offs);
+}
+
+//--------------------------------------------------------------------------
+void Spinner::adjustPosition(SpinnerSection *section)
+{
+    section->animation->stop();
+    section->adjustTimer->clear();
+    section->adjustTimer->shot(200,[section,this](){
+
+        section->animation->stop();
+        if (m_mousePressed || m_keyPressed)
+        {
+            adjustPosition(section);
+            return;
+        }
+
+        auto offset = section->currentOffset;
+        auto remainder=std::remainder(offset,m_itemHeight);
+
+        if (qAbs(remainder)<std::numeric_limits<double>::epsilon())
+        {
+            return;
+        }
+        auto halfDelta=double(m_itemHeight)/2.0-remainder;
+        auto delta = m_itemHeight-remainder;
+
+        int endVal=0;
+        bool asc=remainder>0;
+        if (asc)
+        {
+            endVal=remainder;
+        }
+        else
+        {
+            endVal=-remainder;
+        }
+
+        section->animationVal=0;
+        section->animation->setStartValue(0);
+        section->animation->setEndValue(endVal);
+        section->animation->disconnect(this);
+        connect(section->animation,&QVariantAnimation::valueChanged,this,[this,section,asc,remainder](const QVariant& val){
+
+            if (m_mousePressed || m_keyPressed)
+            {
+                adjustPosition(section);
+                return;
+            }
+
+            int rm = asc?val.toInt():-val.toInt();
+            auto offs = section->animationVal - rm;
+            section->animationVal=rm;
+
+            section->currentOffset+=offs;
+            repaint();
+        });
+        section->animation->start();
+    });
+}
 
 //--------------------------------------------------------------------------
 

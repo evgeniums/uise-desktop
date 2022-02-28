@@ -45,8 +45,10 @@ int main(int argc, char *argv[])
     auto spinner = new Spinner(mainFrame);
     l->addWidget(spinner);
 
+    int itemHeight=30;
+
     auto section1=std::make_shared<SpinnerSection>();
-    section1->itemsWidth = 50;
+    section1->itemsWidth = 80;
     section1->circular = true;
     for (auto i=0;i<20;i++)
     {
@@ -58,7 +60,7 @@ int main(int argc, char *argv[])
 
     std::vector<QString> text{"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
     auto section2=std::make_shared<SpinnerSection>();
-    section2->itemsWidth = 70;
+    section2->itemsWidth = 100;
     for (auto i=0;i<text.size();i++)
     {
         auto item=new QLabel(text[i]);
@@ -69,6 +71,9 @@ int main(int argc, char *argv[])
 
     std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2};
     spinner->setSections(sections);
+    spinner->setItemHeight(itemHeight);
+    spinner->setSelectionHeight(itemHeight);
+
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
     spinner->setStyleSample(ll);
