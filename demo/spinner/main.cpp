@@ -25,6 +25,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QStyle>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/spinner.hpp>
@@ -121,12 +122,35 @@ int main(int argc, char *argv[])
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
     spinner->setStyleSample(ll);
-    qApp->setStyleSheet("* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}");
-//    qApp->setStyleSheet("* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}");
 
     spinner->setFixedSize(500,500);
 
+    QString darkTheme="* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}";
+    QString lightTheme="* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}";
+//    qApp->setStyleSheet("* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}");
+//    qApp->setStyleSheet("* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}");
+
+    auto styleButton=new QPushButton();
+    styleButton->setText("Dark theme");
+    styleButton->setCheckable(true);
+    QObject::connect(styleButton,&QPushButton::toggled,spinner,[&darkTheme,&lightTheme,spinner,styleButton](bool enable){
+        if (enable)
+        {
+            qApp->setStyleSheet(darkTheme);
+            styleButton->setText("Light theme");
+        }
+        else
+        {
+            qApp->setStyleSheet(lightTheme);
+            styleButton->setText("Dark theme");
+        }
+        spinner->style()->unpolish(spinner);
+        spinner->style()->polish(spinner);
+    });
+    l->addWidget(styleButton);
     l->addStretch(1);
+
+    qApp->setStyleSheet(lightTheme);
 
     w.setCentralWidget(mainFrame);
     w.resize(600,500);
