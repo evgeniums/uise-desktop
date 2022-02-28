@@ -374,6 +374,12 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     section->currentOffset=pos;
     repaint();
     adjustPosition(section);
+
+    if (section->previousItemIndex!=section->currentItemIndex)
+    {
+        section->previousItemIndex=section->currentItemIndex;
+        emit itemChanged(section->index,section->currentItemIndex);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -444,8 +450,11 @@ void Spinner::mouseMoveEvent(QMouseEvent *event)
 void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 {
     m_sections=std::move(sections);
+    int i=0;
     for (auto&& section:m_sections)
     {
+        section->index=i;
+
         section->adjustTimer=new SingleShotTimer(this);
         section->selectionTimer=new SingleShotTimer(this);
         section->animation=new QVariantAnimation(section->adjustTimer);
@@ -456,6 +465,8 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         {
             selectItem(section.get(),0);
         }
+
+        ++i;
     }
 }
 

@@ -48,10 +48,12 @@ struct SpinnerSection
         qDeleteAll(items);
     }
 
+    int index=-1;
     int itemsWidth=0;
     int barWidth=0;
     QWidget* barLabel=nullptr;
     int currentOffset=0;
+    int previousItemIndex=-1;
     int currentItemIndex=-1;
     int currentItemPosition=-1;
     bool circular=false;
@@ -103,6 +105,10 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         int selectedItemIndex(SpinnerSection* section) const;
         void selectItem(SpinnerSection* section, int index);
+
+    signals:
+
+        void itemChanged(int sectionIndex, int itemIndex);
 
     protected:
 

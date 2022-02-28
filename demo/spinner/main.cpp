@@ -101,6 +101,10 @@ int main(int argc, char *argv[])
     spinner->setItemHeight(itemHeight);
     spinner->setSections(sections);
 
+    QObject::connect(spinner,&Spinner::itemChanged,[](int section, int item){
+        qDebug() << "Item changed: section "<<section<<" item "<<item;
+    });
+
 //    spinner->selectItem(section2.get(),7);
 //    spinner->selectItem(section1.get(),17);
 
