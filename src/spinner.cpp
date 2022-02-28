@@ -495,7 +495,14 @@ void Spinner::selectItem(SpinnerSection *section, int index)
         throw std::out_of_range("Index is out of range");
     }
     section->selectionTimer->shot(50,[this,section,index](){
-        auto delta=index-section->currentItemIndex;
+
+        auto idx=index;
+        if (idx>=section->items.size())
+        {
+            idx=section->items.size()-1;
+        }
+
+        auto delta=idx-section->currentItemIndex;
         auto offset=delta*m_itemHeight;
         auto pos=section->currentOffset-offset;
         scrollTo(section,pos);
@@ -651,6 +658,34 @@ int Spinner::sectionOffset(SpinnerSection *section) const
     }
 
     return (h-itemsH)/2;
+}
+
+//--------------------------------------------------------------------------
+void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
+{
+    auto section=m_sections[sectionIndex];
+    section->items.append(items);
+    selectItem(section.get(),section->currentItemIndex);
+    update();
+}
+
+//--------------------------------------------------------------------------
+void Spinner::removeLastItems(int sectionIndex, int count)
+{
+    auto section=m_sections[sectionIndex];
+
+    for (auto i=0;i<count;i++)
+    {
+        section->items.removeLast();
+    }
+
+    int index=section->currentItemIndex;
+    if (index>=section->items.size())
+    {
+        index=section->items.size()-1;
+    }
+    selectItem(section.get(),index);
+    update();
 }
 
 //--------------------------------------------------------------------------

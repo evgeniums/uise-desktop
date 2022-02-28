@@ -102,12 +102,21 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
             return m_itemHeight;
         }
 
-        QRect selectionRect() const;
-        QRect selectionRect(int height, int offset) const;
-        QRect selectionRect(SpinnerSection* section) const;
-
         int selectedItemIndex(SpinnerSection* section) const;
         void selectItem(SpinnerSection* section, int index);
+
+        void appendItems(int section, const QList<QWidget*>& items);
+        void removeLastItems(int section, int count);
+
+        void appendItem(int section, QWidget* item)
+        {
+            QList<QWidget*> items{item};
+            appendItems(section,items);
+        }
+        void removeLastItem(int section)
+        {
+            removeLastItems(section,1);
+        }
 
     signals:
 
@@ -121,6 +130,10 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         void keyPressEvent(QKeyEvent* event) override;
         void keyReleaseEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
+
+        QRect selectionRect() const;
+        QRect selectionRect(int height, int offset) const;
+        QRect selectionRect(SpinnerSection* section) const;
 
         void mouseMoveEvent(QMouseEvent *event) override;
         void mousePressEvent(QMouseEvent *event) override;

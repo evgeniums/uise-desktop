@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     leftLb->setFixedHeight(itemHeight);
     section1->leftBarLabel=leftLb;
     section1->leftBarWidth=leftLb->sizeHint().width();
-    for (auto i=0;i<20;i++)
+    for (auto i=1;i<=31;i++)
     {
         auto item=new QLabel(QString::number(i));
         item->setAlignment(Qt::AlignCenter);
@@ -112,8 +112,41 @@ int main(int argc, char *argv[])
     spinner->setItemHeight(itemHeight);
     spinner->setSections(sections);
 
-    QObject::connect(spinner,&Spinner::itemChanged,[](int section, int item){
+    QObject::connect(spinner,&Spinner::itemChanged,[spinner,section1,itemHeight](int section, int item){
         qDebug() << "Item changed: section "<<section<<" item "<<item;
+
+        if (section==1)
+        {
+            if (item==2)
+            {
+                qDebug() << "Items size before remove "<<section1->items.size();
+                if (section1->items.size()==31)
+                {
+                    qDebug() << "Remove 3 items";
+                    spinner->removeLastItems(0,3);
+                }
+                qDebug() << "Items size after remove "<<section1->items.size();
+            }
+            else if (item==0)
+            {
+                if (section1->items.size()!=31)
+                {
+                    qDebug() << "Append 3 items";
+
+                    QList<QWidget*> items;
+                    for (auto i=29;i<=31;i++)
+                    {
+                        auto item=new QLabel(QString::number(i));
+                        item->setAlignment(Qt::AlignCenter);
+                        item->setFixedWidth(section1->itemsWidth);
+                        item->setFixedHeight(itemHeight);
+                        items.append(item);
+                    }
+                    spinner->appendItems(0,items);
+                }
+            }
+        }
+
     });
 
 //    spinner->selectItem(section2.get(),7);
