@@ -159,7 +159,6 @@ void Spinner::paintEvent(QPaintEvent *event)
         renderItems(topItemIndex,section->items.size());
         if (section->circular)
         {
-//            renderItems(0,topItemIndex-1);
             while (y<h)
             {
                 renderItems(0,section->items.size());
@@ -174,7 +173,7 @@ void Spinner::paintEvent(QPaintEvent *event)
         }
     }
 
-    //  construct gradient mask with highliter hole
+    //  construct gradient mask with highlighter hole
     auto maskPixmap = QPixmap(w,h);
     maskPixmap.fill(Qt::transparent);
     QPainter imagePainter;
@@ -478,7 +477,6 @@ void Spinner::selectItem(SpinnerSection *section, int index)
 //--------------------------------------------------------------------------
 void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay)
 {
-//    return;
     if (section->currentItemPosition<0)
     {
         return;
