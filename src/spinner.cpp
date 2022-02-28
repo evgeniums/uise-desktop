@@ -86,21 +86,16 @@ void Spinner::paintEvent(QPaintEvent *event)
             topItemIndex=(section->items.size()-b)%section->items.size();
 
             auto delta=section->currentOffset%m_itemHeight;
-            if (delta<0)
+            if (delta>0)
             {
-                y=delta;
+                topItemIndex-=1;
+                if (topItemIndex<0)
+                {
+                    topItemIndex=section->items.size()-1;
+                }
+                delta=delta-m_itemHeight;
             }
-            else
-            {
-                y=y+delta;
-            }
-
-//            qDebug() << " section->currentOffset " << section->currentOffset
-//                     << "m_itemHeight" << m_itemHeight
-//                     << " b " << b
-//                     << " topItemIndex " << topItemIndex
-//                     << " delta "<< delta
-//                     << " y "<< y;
+            y+=delta;
         }
         else
         {
