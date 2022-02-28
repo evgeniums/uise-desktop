@@ -266,7 +266,7 @@ void Spinner::wheelEvent(QWheelEvent *event)
        {
            auto deltaPos=static_cast<qreal>(angleDelta.y());
            auto scrollLines=QApplication::wheelScrollLines();
-           auto numStepsU = m_singleScrollStep * scrollLines * deltaPos / 120;
+           auto numStepsU = WheelScrollStep * scrollLines * deltaPos / 120;
            if (qAbs(accumulated)>std::numeric_limits<float>::epsilon()
                &&
                (numStepsU/accumulated)<0

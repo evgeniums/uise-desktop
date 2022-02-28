@@ -74,6 +74,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         inline static int DefaultPageScrollStep=60;
         inline static int DefaultSingleScrollStep=4;
+        inline static int WheelScrollStep=4;
 
         Spinner(QWidget* parent=nullptr);
 
@@ -84,18 +85,10 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         void setSections(std::vector<std::shared_ptr<SpinnerSection>> sections);
 
-        void setSelectionHeight(int val) noexcept
-        {
-            m_selectionHeight=val;
-        }
-        int selectionHeight() const noexcept
-        {
-            return m_selectionHeight;
-        }
-
         void setItemHeight(int val) noexcept
         {
             m_itemHeight=val;
+            m_selectionHeight=val;
             m_singleScrollStep=val;
             m_pageScrollStep=5*val;
         }

@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     auto spinner = new Spinner(mainFrame);
     l->addWidget(spinner);
 
-    int itemHeight=30;
+    int itemHeight=50;
 
     auto section1=std::make_shared<SpinnerSection>();
     section1->itemsWidth = 80;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     for (auto i=0;i<20;i++)
     {
         auto item=new QLabel(QString::number(i));
-        item->setAlignment(Qt::AlignHCenter);
+        item->setAlignment(Qt::AlignCenter);
         item->setFixedWidth(section1->itemsWidth);
         item->setFixedHeight(itemHeight);
         section1->items.append(item);
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     for (auto i=0;i<text.size();i++)
     {
         auto item=new QLabel(text[i]);
-        item->setAlignment(Qt::AlignHCenter);
+        item->setAlignment(Qt::AlignCenter);
         item->setFixedWidth(section2->itemsWidth);
         item->setFixedHeight(itemHeight);
         section2->items.append(item);
@@ -73,11 +73,10 @@ int main(int argc, char *argv[])
 
     std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2};
     spinner->setItemHeight(itemHeight);
-    spinner->setSelectionHeight(itemHeight);
     spinner->setSections(sections);
 
-//    spinner->selectItem(section2.get(),7);
-//    spinner->selectItem(section1.get(),17);
+    spinner->selectItem(section2.get(),7);
+    spinner->selectItem(section1.get(),17);
 
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
