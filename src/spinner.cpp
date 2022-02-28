@@ -81,7 +81,6 @@ void Spinner::paintEvent(QPaintEvent *event)
     {
         int topItemIndex=0;
         int y=0;
-        int lastItemOffset=0;
 
         bool wasNotSelected=section->currentItemIndex<0;
         bool needAdjusting=false;
@@ -105,12 +104,34 @@ void Spinner::paintEvent(QPaintEvent *event)
         }
         else
         {
-            y=section->currentOffset%h;
+            if (section->currentOffset>h)
+            {
+                topItemIndex = qFloor(section->currentOffset/m_itemHeight)%section->items.size();
+
+                auto delta=section->currentOffset%m_itemHeight;
+                if (delta>0)
+                {
+                    topItemIndex-=1;
+                    if (topItemIndex<0)
+                    {
+                        topItemIndex=0;
+                    }
+                    delta=delta-m_itemHeight;
+                }
+                y=delta;
+            }
+            else
+            {
+                y=section->currentOffset;
+            }
         }
+
+//        qDebug() << " begin y "<<y<< " topItemIndex "<<topItemIndex << " section->currentOffset " << section->currentOffset
+//                 << " height " << h << " m_itemHeight " << m_itemHeight;
 
         section->currentItemIndex=-1;
         section->currentItemPosition=-1;
-        auto renderItems=[this,h,section,&x,&y,&painter,&lastItemOffset,&sel,&wasNotSelected,&needAdjusting](int from, int to)
+        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&wasNotSelected,&needAdjusting](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
@@ -124,7 +145,6 @@ void Spinner::paintEvent(QPaintEvent *event)
                     }
                 }
 
-                lastItemOffset=y;
                 section->items[i]->render(&painter,QPoint(x,y));
                 y+=m_itemHeight;
 
@@ -136,7 +156,10 @@ void Spinner::paintEvent(QPaintEvent *event)
         };
 
         renderItems(topItemIndex,section->items.size());
-        renderItems(0,topItemIndex-1);
+        if (section->circular)
+        {
+            renderItems(0,topItemIndex-1);
+        }
 
         x+=section->width();
 
@@ -301,14 +324,19 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     if (!section->circular)
     {
         auto itemsHeight=section->items.size()*m_itemHeight;
+        qDebug() << " itemsHeight "<<itemsHeight<<" pos " << pos << " section->currentOffset "<<section->currentOffset;
         if (pos<0)
         {
             // down
 
             auto edge=itemsHeight-(height()+m_itemHeight)/2;
+
+            qDebug() << "pos< edge " << edge;
+
             if (qAbs(pos)>edge)
             {
                 pos=-edge;
+                qDebug() << "new pos< " << pos;
             }
         }
         else
@@ -316,6 +344,9 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
             // up
 
             auto edge=height()/2 - m_itemHeight/2;
+
+            qDebug() << "pos> edge " << edge;
+
             if (pos>edge)
             {
                 pos=edge;
