@@ -44,6 +44,7 @@ SET (HEADERS
     include/uise/desktop/utils/orientationinvariant.hpp
     include/uise/desktop/utils/directchildwidget.hpp
     include/uise/desktop/utils/substitutecolors.hpp
+    include/uise/desktop/utils/wheeleventhandler.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -57,7 +58,7 @@ SET (HEADERS
     include/uise/desktop/style.hpp
 
     include/uise/desktop/spinner.hpp
-    include/uise/desktop/spinnersection.hpp
+    include/uise/desktop/spinnersection.hpp    
 )
 
 SET (HEADERS ${HEADERS}
@@ -77,6 +78,7 @@ SET (SOURCES
     src/style.cpp
     src/spinner.cpp
     src/spinnersection.cpp
+    src/wheeleventhandler.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

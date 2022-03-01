@@ -28,7 +28,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/wheeleventhandler.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -49,7 +49,8 @@ class Spinner_p;
  * All items in all spinner sections have the same height that must be set with setItemHeight().
  *
  */
-class UISE_DESKTOP_EXPORT Spinner : public QFrame
+class UISE_DESKTOP_EXPORT Spinner : public QFrame,
+                                    public WheelEventHandler
 {
     Q_OBJECT
 

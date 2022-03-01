@@ -46,7 +46,6 @@ class Spinner_p
             styleSample(nullptr),
             singleScrollStep(Spinner::DefaultSingleScrollStep),
             pageScrollStep(Spinner::DefaultPageScrollStep),
-            wheelOffsetAccumulated(0.0),
             mousePressed(false),
             keyPressed(false),
             selectionHeight(0),
@@ -58,8 +57,6 @@ class Spinner_p
 
         int singleScrollStep;
         int pageScrollStep;
-
-        float wheelOffsetAccumulated;
 
         QPoint lastMousePos;
         bool mousePressed;
@@ -74,6 +71,7 @@ class Spinner_p
 Spinner::Spinner(
         QWidget* parent
     ) : QFrame(parent),
+        WheelEventHandler(WheelScrollStep),
         pimpl(std::make_unique<Spinner_p>())
 {
     setFocusPolicy(Qt::StrongFocus);
@@ -358,42 +356,7 @@ void Spinner::wheelEvent(QWheelEvent *event)
         return;
     }
 
-    auto numPixels = event->pixelDelta();
-    auto angleDelta = event->angleDelta();
-
-    int scrollDelta=0;
-
-#ifndef Q_WS_X11 // Qt documentation says that on X11 pixelDelta() is unreliable and should not be used
-   if (!numPixels.isNull())
-   {
-       scrollDelta=numPixels.y();
-   }
-   else if (!angleDelta.isNull())
-#endif
-   {
-       auto evalOffset=[this,&angleDelta](float& accumulated)
-       {
-           auto deltaPos=static_cast<qreal>(angleDelta.y());
-           auto scrollLines=QApplication::wheelScrollLines();
-           auto numStepsU = WheelScrollStep * scrollLines * deltaPos / 120;
-           if (qAbs(accumulated)>std::numeric_limits<float>::epsilon()
-               &&
-               (numStepsU/accumulated)<0
-               )
-           {
-               accumulated=0.0f;
-           }
-           accumulated+=numStepsU;
-           auto numSteps=static_cast<int>(accumulated);
-           accumulated-=numSteps;
-
-           return numSteps;
-       };
-
-       scrollDelta=evalOffset(pimpl->wheelOffsetAccumulated);
-   }
-
-   scroll(section.get(),-scrollDelta);
+   scroll(section.get(),-handleWheelEvent(event));
    event->accept();
 }
 
@@ -455,7 +418,7 @@ void Spinner::leaveEvent(QEvent *)
 void Spinner::enterEvent(QEnterEvent *event)
 {
     pimpl->sectionUnderCursor=sectionUnderCursor();
-    pimpl->wheelOffsetAccumulated=0;
+    resetWheel();
 }
 
 //--------------------------------------------------------------------------
@@ -489,7 +452,7 @@ void Spinner::mouseMoveEvent(QMouseEvent *event)
     auto section=sectionUnderCursor();
     if (pimpl->sectionUnderCursor!=section)
     {
-        pimpl->wheelOffsetAccumulated=0;
+        resetWheel();
     }
     pimpl->sectionUnderCursor=section;
 
