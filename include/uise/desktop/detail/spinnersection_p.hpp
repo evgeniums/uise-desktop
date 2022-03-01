@@ -56,6 +56,7 @@ class SpinnerSection_p
         QPointer<SingleShotTimer> adjustTimer;
         QPointer<QVariantAnimation> animation;
         QPointer<SingleShotTimer> selectionTimer;
+        QPointer<SingleShotTimer> notifyTimer;
 
         QList<QWidget*> items;
 };

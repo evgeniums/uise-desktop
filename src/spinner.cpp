@@ -176,7 +176,7 @@ void Spinner::paintEvent(QPaintEvent *event)
             }
         }
 
-        section->pimpl->currentItemIndex=-1;
+//        section->pimpl->currentItemIndex=-1;
         section->pimpl->currentItemPosition=-1;
         auto renderItems=[this,h,section,&x,&y,&painter,&sel,&wasNotSelected,&needAdjusting,&offset](int from, int to)
         {
@@ -184,8 +184,13 @@ void Spinner::paintEvent(QPaintEvent *event)
             {
                 if (y>=sel.top() && y<=sel.bottom())
                 {
-                    section->pimpl->currentItemIndex=i;
                     section->pimpl->currentItemPosition=y;
+
+                    if (y==sel.top())
+                    {
+                        section->pimpl->currentItemIndex=i;
+                    }
+
                     if (wasNotSelected)
                     {
                         needAdjusting=true;
@@ -225,6 +230,16 @@ void Spinner::paintEvent(QPaintEvent *event)
         if (needAdjusting)
         {
             adjustPosition(section.get(),false,true);
+        }
+
+        // notify that item changed
+        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
+        {
+            section->pimpl->notifyTimer->clear();
+            section->pimpl->notifyTimer->shot(100,[section,this](){
+                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
+            });
         }
     }    
     //  construct gradient mask with highlighter hole
@@ -428,12 +443,6 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     section->pimpl->currentOffset=pos;
     repaint();
     adjustPosition(section);
-
-    if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
-    {
-        section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
-        emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -511,6 +520,7 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 
         section->pimpl->adjustTimer=new SingleShotTimer(this);
         section->pimpl->selectionTimer=new SingleShotTimer(this);
+        section->pimpl->notifyTimer=new SingleShotTimer(this);
         section->pimpl->animation=new QVariantAnimation(section->pimpl->adjustTimer);
         section->pimpl->animation->setDuration(300);
         section->pimpl->animation->setEasingCurve(QEasingCurve::OutQuad);
@@ -610,26 +620,29 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         }
 
         // jump to next item if scroll is above/below half height of the item
-        if (qAbs(offset)>pimpl->itemHeight/2)
+        if (section->pimpl->currentItemIndex>=0)
         {
-            if (offset<0)
+            if (qAbs(offset)>pimpl->itemHeight/2)
             {
-                // down
-
-                // enable for non circtular section or not last item
-                if (!section->pimpl->circular || section->pimpl->currentItemIndex<(section->pimpl->items.size()-1))
+                if (offset<0)
                 {
-                    offset+=pimpl->itemHeight;
+                    // down
+
+                    // enable for non circtular section or not last item
+                    if (!section->pimpl->circular || section->pimpl->currentItemIndex<(section->pimpl->items.size()-1))
+                    {
+                        offset+=pimpl->itemHeight;
+                    }
                 }
-            }
-            else
-            {
-                // up
-
-                // enable for non circtular section or not first item
-                if (!section->pimpl->circular || section->pimpl->currentItemIndex>0)
+                else
                 {
-                    offset-=pimpl->itemHeight;
+                    // up
+
+                    // enable for non circtular section or not first item
+                    if (!section->pimpl->circular || section->pimpl->currentItemIndex>0)
+                    {
+                        offset-=pimpl->itemHeight;
+                    }
                 }
             }
         }
@@ -741,8 +754,13 @@ void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
 
 //--------------------------------------------------------------------------
 void Spinner::removeLastItems(int sectionIndex, int count)
-{
+{    
     auto section=pimpl->sections[sectionIndex];
+
+    if (section->pimpl->currentItemIndex<0)
+    {
+        return;
+    }
 
     for (auto i=0;i<count;i++)
     {
