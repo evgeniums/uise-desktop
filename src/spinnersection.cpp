@@ -56,6 +56,10 @@ SpinnerSection::~SpinnerSection()
     {
         delete pimpl->selectionTimer;
     }
+    if (!pimpl->notifyTimer.isNull())
+    {
+        delete pimpl->notifyTimer;
+    }
 }
 
 //--------------------------------------------------------------------------
