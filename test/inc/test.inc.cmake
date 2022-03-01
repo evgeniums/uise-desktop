@@ -57,6 +57,7 @@ SET (HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-test.hpp
     ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testwrapper.hpp
     ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testthread.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/uise/test/uise-testutils.hpp
 )
 
 SET (SOURCES

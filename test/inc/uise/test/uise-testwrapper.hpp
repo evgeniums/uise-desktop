@@ -154,6 +154,7 @@ struct TestGlobalFixture
 };
 BOOST_TEST_GLOBAL_FIXTURE(TestGlobalFixture);
 
+UISE_TEST_NAMESPACE_END
+
 #endif
 
-UISE_TEST_NAMESPACE_END

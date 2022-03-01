@@ -212,9 +212,6 @@ int main(int argc, char *argv[])
 
     l->addWidget(jump);
 
-//    spinner->selectItem(section2.get(),7);
-//    spinner->selectItem(section1.get(),17);
-
     auto ll = new QLineEdit();
     ll->setObjectName("LineEdit");
     spinner->setStyleSample(ll);

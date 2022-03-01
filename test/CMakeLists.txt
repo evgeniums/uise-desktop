@@ -4,4 +4,4 @@ ADD_SUBDIRECTORY(utils)
 ADD_SUBDIRECTORY(alignedstretchingwidget)
 ADD_SUBDIRECTORY(flyweightlistview)
 ADD_SUBDIRECTORY(editablelabel)
-
+ADD_SUBDIRECTORY(spinner)

@@ -12,7 +12,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
-/** @file uise/test/alignedstretchingwidget/testeditablelabel.cpp
+/** @file uise/test/editablelabel/testeditablelabel.cpp
 *
 *  Test EditableLabel.
 *
@@ -373,7 +373,6 @@ void testLabelWithValue(const ValueT& initialValue, const ValueT& setValue, cons
             checkSetValueGui
     };
     runTestCase(steps);
-
 }
 
 BOOST_AUTO_TEST_CASE(TestInt)

@@ -30,9 +30,10 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/wheeleventhandler.hpp>
 
+#include <uise/desktop/spinnersection.hpp>
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class SpinnerSection;
 class Spinner_p;
 
 /**
