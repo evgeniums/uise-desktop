@@ -89,6 +89,9 @@ Spinner::~Spinner()
 void Spinner::setStyleSample(QWidget *widget)
 {
     pimpl->styleSample=widget;
+    pimpl->styleSample->setParent(this);
+    pimpl->styleSample->setVisible(false);
+    pimpl->styleSample->setProperty("style-sample",true);
 }
 
 //--------------------------------------------------------------------------
@@ -511,6 +514,22 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         section->pimpl->animation=new QVariantAnimation(section->pimpl->adjustTimer);
         section->pimpl->animation->setDuration(300);
         section->pimpl->animation->setEasingCurve(QEasingCurve::OutQuad);
+
+        for (auto&& item:section->pimpl->items)
+        {
+            item->setParent(this);
+            item->setVisible(false);
+            if (section->pimpl->leftBarLabel)
+            {
+                section->pimpl->leftBarLabel->setParent(this);
+                section->pimpl->leftBarLabel->setVisible(false);
+            }
+            if (section->pimpl->rightBarLabel)
+            {
+                section->pimpl->rightBarLabel->setParent(this);
+                section->pimpl->rightBarLabel->setVisible(false);
+            }
+        }
 
         if (!section->pimpl->items.empty())
         {

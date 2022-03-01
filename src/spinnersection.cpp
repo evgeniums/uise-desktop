@@ -20,6 +20,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <uise/desktop/spinner.hpp>
 #include <uise/desktop/spinnersection.hpp>
 #include <uise/desktop/detail/spinnersection_p.hpp>
 
@@ -121,12 +122,14 @@ void SpinnerSection::setItems(QList<QWidget *> items)
 void SpinnerSection::setLeftBarLabel(QWidget *widget) noexcept
 {
     pimpl->leftBarLabel=widget;
+    pimpl->leftBarLabel->setParent(pimpl->spinner);
 }
 
 //--------------------------------------------------------------------------
 void SpinnerSection::setRightBarLabel(QWidget *widget) noexcept
 {
     pimpl->rightBarLabel=widget;
+    pimpl->rightBarLabel->setParent(pimpl->spinner);
 }
 
 //--------------------------------------------------------------------------

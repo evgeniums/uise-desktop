@@ -26,6 +26,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QLineEdit>
 #include <QPushButton>
 #include <QStyle>
+#include <QTextEdit>
+#include <QSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/spinner.hpp>
@@ -49,6 +51,9 @@ int main(int argc, char *argv[])
 
     int itemHeight=50;
 
+    std::vector<QList<QLabel*>> labels;
+    labels.resize(4);
+
     auto section1=std::make_shared<SpinnerSection>();
     section1->setItemsWidth(30);
     section1->setCircular(true);
@@ -65,6 +70,7 @@ int main(int argc, char *argv[])
         item->setFixedWidth(section1->itemsWidth());
         item->setFixedHeight(itemHeight);
         items1.append(item);
+        labels[0].append(item);
     }
     section1->setItems(items1);
 
@@ -85,6 +91,7 @@ int main(int argc, char *argv[])
         item->setFixedWidth(section2->itemsWidth());
         item->setFixedHeight(itemHeight);
         items2.append(item);
+        labels[1].append(item);
     }
     section2->setItems(items2);
 
@@ -93,6 +100,7 @@ int main(int argc, char *argv[])
     section3->setItemsWidth(100);
     section3->setCircular(true);
     QList<QWidget*> items3;
+    QList<QLabel*> labels3;
     for (auto i=0;i<text2.size();i++)
     {
         auto item=new QLabel(text2[i]);
@@ -100,6 +108,7 @@ int main(int argc, char *argv[])
         item->setFixedWidth(section3->itemsWidth());
         item->setFixedHeight(itemHeight);
         items3.append(item);
+        labels[2].append(item);
     }
     section3->setItems(items3);
 
@@ -107,6 +116,7 @@ int main(int argc, char *argv[])
     auto section4=std::make_shared<SpinnerSection>();
     section4->setItemsWidth(200);
     QList<QWidget*> items4;
+    QList<QLabel*> labels4;
     for (auto i=0;i<text3.size();i++)
     {
         auto item=new QLabel(text3[i]);
@@ -114,6 +124,7 @@ int main(int argc, char *argv[])
         item->setFixedWidth(section4->itemsWidth());
         item->setFixedHeight(itemHeight);
         items4.append(item);
+        labels[3].append(item);
     }
     section4->setItems(items4);
 
@@ -121,7 +132,17 @@ int main(int argc, char *argv[])
     spinner->setItemHeight(itemHeight);
     spinner->setSections(sections);
 
-    QObject::connect(spinner,&Spinner::itemChanged,[spinner,section1,itemHeight](int section, int item){
+    auto messagesView=new QTextEdit();
+    messagesView->setReadOnly(true);
+    l->addWidget(messagesView);
+
+    QObject::connect(spinner,&Spinner::itemChanged,[spinner,section1,itemHeight,messagesView,labels](int section, int item){
+
+        QString val=labels[section].at(item)->text();
+        auto msg=QString("Section %1, item %2, value %3 \n").arg(section).arg(item).arg(val);
+        messagesView->insertPlainText(msg);
+        messagesView->ensureCursorVisible();
+
         qDebug() << "Item changed: section "<<section<<" item "<<item;
 
         if (section==1)
@@ -158,6 +179,39 @@ int main(int argc, char *argv[])
 
     });
 
+    auto jump=new QFrame();
+    jump->setObjectName("JumpFrame");
+    auto jl = Layout::grid(jump);
+
+    auto jump2_1=new QLabel(" section ");
+    jl->addWidget(jump2_1,0,1);
+    auto jump2=new QSpinBox();
+    jump2->setRange(0,3);
+    jl->addWidget(jump2,0,2);
+
+    auto jump3_1=new QLabel(" item ");
+    jl->addWidget(jump3_1,0,3);
+    auto jump3=new QSpinBox();
+    jl->addWidget(jump3,0,4);
+
+    auto jump4=new QPushButton();
+    jump4->setText("Jump");
+    jl->addWidget(jump4,0,5);
+
+    auto stretch=new QFrame();
+    stretch->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    jl->addWidget(stretch,0,6);
+
+    QObject::connect(jump2,&QSpinBox::valueChanged,[jump3,labels](int val){
+        jump3->setRange(0,labels[val].size()-1);
+    });
+
+    QObject::connect(jump4,&QPushButton::clicked,[spinner,jump2,jump3](){
+        spinner->selectItem(jump2->value(),jump3->value());
+    });
+
+    l->addWidget(jump);
+
 //    spinner->selectItem(section2.get(),7);
 //    spinner->selectItem(section1.get(),17);
 
@@ -167,10 +221,8 @@ int main(int argc, char *argv[])
 
     spinner->setFixedSize(500,500);
 
-    QString darkTheme="* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}";
-    QString lightTheme="* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}";
-//    qApp->setStyleSheet("* {color: black; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: white; selection-background-color: lightgray;}");
-//    qApp->setStyleSheet("* {color: white; font-size: 20px;} \n QLabel {background-color: transparent;} \n QLineEdit {background-color: #111111; selection-background-color: #444444;}");
+    QString darkTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: white;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: #111111; selection-background-color: #444444;}";
+    QString lightTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: black;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
 
     auto styleButton=new QPushButton();
     styleButton->setText("Dark theme");
@@ -190,12 +242,13 @@ int main(int argc, char *argv[])
         spinner->style()->polish(spinner);
     });
     l->addWidget(styleButton);
+
     l->addStretch(1);
 
     qApp->setStyleSheet(lightTheme);
 
     w.setCentralWidget(mainFrame);
-    w.resize(600,500);
+    w.resize(600,800);
     w.setWindowTitle("Spinner Demo");
     w.show();
     auto ret=app.exec();
