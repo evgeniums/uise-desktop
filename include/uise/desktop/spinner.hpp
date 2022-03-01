@@ -26,50 +26,14 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <memory>
 
 #include <QFrame>
-#include <QVariantAnimation>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-struct SpinnerSection
-{
-    QList<QWidget*> items;
-
-    SpinnerSection() = default;
-    SpinnerSection(const SpinnerSection&) = default;
-    SpinnerSection(SpinnerSection&&) = default;
-    SpinnerSection& operator=(const SpinnerSection&) = default;
-    SpinnerSection& operator=(SpinnerSection&&) = default;
-
-    ~SpinnerSection()
-    {
-        //! @todo delete labels
-        qDeleteAll(items);
-    }
-
-    int index=-1;
-    int itemsWidth=0;
-    int leftBarWidth=0;
-    QWidget* leftBarLabel=nullptr;
-    int rightBarWidth=0;
-    QWidget* rightBarLabel=nullptr;
-    int currentOffset=0;
-    int previousItemIndex=-1;
-    int currentItemIndex=-1;
-    int currentItemPosition=-1;
-    bool circular=false;
-    SingleShotTimer *adjustTimer=nullptr;
-    QVariantAnimation *animation=nullptr;
-    SingleShotTimer *selectionTimer=nullptr;
-    int animationVal=0;
-
-    int width() const noexcept
-    {
-        return itemsWidth+leftBarWidth+rightBarWidth;
-    }
-};
+class SpinnerSection;
+class Spinner_p;
 
 class UISE_DESKTOP_EXPORT Spinner : public QFrame
 {
@@ -82,28 +46,39 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         inline static int WheelScrollStep=4;
 
         Spinner(QWidget* parent=nullptr);
+        ~Spinner();
+
+        Spinner(const Spinner&) = delete;
+        Spinner(Spinner&&) = delete;
+        Spinner& operator=(const Spinner&) = delete;
+        Spinner& operator=(Spinner&&) = delete;
 
         void setStyleSample(QWidget* widget);
 
-        void scroll(SpinnerSection* section, int delta);
-        void scrollTo(SpinnerSection* section, int pos);
-
         void setSections(std::vector<std::shared_ptr<SpinnerSection>> sections);
+        std::shared_ptr<SpinnerSection> section(int index) const;
+        size_t sectionCount() const noexcept;
 
-        void setItemHeight(int val) noexcept
+        void scroll(int sectionIndex, int delta)
         {
-            m_itemHeight=val;
-            m_selectionHeight=val;
-            m_singleScrollStep=val;
-            m_pageScrollStep=5*val;
+            scroll(section(sectionIndex).get(),delta);
         }
-        int itemHeight() const noexcept
+        void scrollTo(int sectionIndex, int pos)
         {
-            return m_itemHeight;
+            scrollTo(section(sectionIndex).get(),pos);
         }
 
-        int selectedItemIndex(SpinnerSection* section) const;
-        void selectItem(SpinnerSection* section, int index);
+        int selectedItemIndex(int sectionIndex) const
+        {
+            return selectedItemIndex(section(sectionIndex).get());
+        }
+        void selectItem(int sectionIndex, int index)
+        {
+            selectItem(section(sectionIndex).get(),index);
+        }
+
+        void setItemHeight(int val) noexcept;
+        int itemHeight() const noexcept;
 
         void appendItems(int section, const QList<QWidget*>& items);
         void removeLastItems(int section, int count);
@@ -118,6 +93,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
             removeLastItems(section,1);
         }
 
+        QSize sizeHint() const override;
+
     signals:
 
         void itemChanged(int sectionIndex, int itemIndex);
@@ -126,14 +103,9 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
         void paintEvent(QPaintEvent *paint) override;
 
-        QSize sizeHint() const override;
         void keyPressEvent(QKeyEvent* event) override;
         void keyReleaseEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
-
-        QRect selectionRect() const;
-        QRect selectionRect(int height, int offset) const;
-        QRect selectionRect(SpinnerSection* section) const;
 
         void mouseMoveEvent(QMouseEvent *event) override;
         void mousePressEvent(QMouseEvent *event) override;
@@ -143,6 +115,15 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
 
     private:
 
+        void scroll(SpinnerSection* section, int delta);
+        void scrollTo(SpinnerSection* section, int pos);
+        int selectedItemIndex(SpinnerSection* section) const;
+        void selectItem(SpinnerSection* section, int index);
+
+        QRect selectionRect() const;
+        QRect selectionRect(int height, int offset) const;
+        QRect selectionRect(SpinnerSection* section) const;
+
         std::shared_ptr<SpinnerSection> sectionUnderCursor() const;
         void adjustPosition(SpinnerSection* section, bool animate=true, bool noDelay=false);
 
@@ -150,20 +131,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame
         int sectionHeight(SpinnerSection* section) const;
         int sectionOffset(SpinnerSection* section) const;
 
-        QWidget* m_styleSample;
-        std::vector<std::shared_ptr<SpinnerSection>> m_sections;
-
-        int m_singleScrollStep;
-        int m_pageScrollStep;
-
-        float m_wheelOffsetAccumulated;
-
-        QPoint m_lastMousePos;
-        bool m_mousePressed;
-        bool m_keyPressed;
-        std::shared_ptr<SpinnerSection> m_sectionUnderCursor;
-        int m_selectionHeight;
-        int m_itemHeight;
+        std::unique_ptr<Spinner_p> pimpl;
 };
 
 UISE_DESKTOP_NAMESPACE_END

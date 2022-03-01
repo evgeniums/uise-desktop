@@ -20,6 +20,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <stdexcept>
+
 #include <QApplication>
 #include <QPalette>
 #include <QStyle>
@@ -31,20 +33,48 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/spinner.hpp>
 
+#include <uise/desktop/spinnersection.hpp>
+#include <uise/desktop/detail/spinnersection_p.hpp>
+
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+class Spinner_p
+{
+    public:
+
+        Spinner_p() :
+            styleSample(nullptr),
+            singleScrollStep(Spinner::DefaultSingleScrollStep),
+            pageScrollStep(Spinner::DefaultPageScrollStep),
+            wheelOffsetAccumulated(0.0),
+            mousePressed(false),
+            keyPressed(false),
+            selectionHeight(0),
+            itemHeight(0)
+        {}
+
+        QWidget* styleSample;
+        std::vector<std::shared_ptr<SpinnerSection>> sections;
+
+        int singleScrollStep;
+        int pageScrollStep;
+
+        float wheelOffsetAccumulated;
+
+        QPoint lastMousePos;
+        bool mousePressed;
+        bool keyPressed;
+        std::shared_ptr<SpinnerSection> sectionUnderCursor;
+        int selectionHeight;
+        int itemHeight;
+
+};
 
 //--------------------------------------------------------------------------
 Spinner::Spinner(
         QWidget* parent
     ) : QFrame(parent),
-        m_styleSample(nullptr),
-        m_singleScrollStep(DefaultSingleScrollStep),
-        m_pageScrollStep(DefaultPageScrollStep),
-        m_wheelOffsetAccumulated(0.0),
-        m_mousePressed(false),
-        m_keyPressed(false),
-        m_selectionHeight(0),
-        m_itemHeight(0)
+        pimpl(std::make_unique<Spinner_p>())
 {
     setFocusPolicy(Qt::StrongFocus);
     setFocus();
@@ -52,9 +82,13 @@ Spinner::Spinner(
 }
 
 //--------------------------------------------------------------------------
+Spinner::~Spinner()
+{}
+
+//--------------------------------------------------------------------------
 void Spinner::setStyleSample(QWidget *widget)
 {
-    m_styleSample=widget;
+    pimpl->styleSample=widget;
 }
 
 //--------------------------------------------------------------------------
@@ -69,24 +103,24 @@ void Spinner::paintEvent(QPaintEvent *event)
     painter.setPen(Qt::NoPen);
 
     // draw background
-    painter.setBrush(m_styleSample->palette().color(QPalette::Base));
+    painter.setBrush(pimpl->styleSample->palette().color(QPalette::Base));
     painter.drawRect(geometry());
 
     // draw highliting
-    painter.setBrush(m_styleSample->palette().color(QPalette::Highlight));
+    painter.setBrush(pimpl->styleSample->palette().color(QPalette::Highlight));
     painter.drawRoundedRect(sel,3,3);
 
     // draw sections
     auto x=sel.left();
-    for (auto&& section:m_sections)
+    for (auto&& section:pimpl->sections)
     {        
         // render left bar label
-        if (section->leftBarLabel!=nullptr)
+        if (section->pimpl->leftBarLabel!=nullptr)
         {
-            auto labelY = (widgetHeight-section->leftBarLabel->height())/2;
-            section->leftBarLabel->render(&painter,QPoint(x,labelY));
+            auto labelY = (widgetHeight-section->pimpl->leftBarLabel->height())/2;
+            section->pimpl->leftBarLabel->render(&painter,QPoint(x,labelY));
         }
-        x+=section->leftBarWidth;
+        x+=section->pimpl->leftBarWidth;
 
         // calculate items positions
         int topItemIndex=0;
@@ -95,33 +129,33 @@ void Spinner::paintEvent(QPaintEvent *event)
         int h=sectionHeight(section.get());
         auto sel = selectionRect(h,offset);
 
-        bool wasNotSelected=section->currentItemIndex<0;
+        bool wasNotSelected=section->pimpl->currentItemIndex<0;
         bool needAdjusting=false;
 
-        if (section->circular)
+        if (section->pimpl->circular)
         {
-            auto b = qFloor(section->currentOffset/m_itemHeight)%section->items.size();
-            topItemIndex=(section->items.size()-b)%section->items.size();
+            auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
+            topItemIndex=(section->pimpl->items.size()-b)%section->pimpl->items.size();
 
-            auto delta=section->currentOffset%m_itemHeight;
+            auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
             if (delta>0)
             {
                 topItemIndex-=1;
                 if (topItemIndex<0)
                 {
-                    topItemIndex=section->items.size()-1;
+                    topItemIndex=section->pimpl->items.size()-1;
                 }
-                delta=delta-m_itemHeight;
+                delta=delta-pimpl->itemHeight;
             }
             y+=delta;
         }
         else
         {
-            if (section->currentOffset>h)
+            if (section->pimpl->currentOffset>h)
             {
-                topItemIndex = qFloor(section->currentOffset/m_itemHeight)%section->items.size();
+                topItemIndex = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
 
-                auto delta=section->currentOffset%m_itemHeight;
+                auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
                 if (delta>0)
                 {
                     topItemIndex-=1;
@@ -129,34 +163,34 @@ void Spinner::paintEvent(QPaintEvent *event)
                     {
                         topItemIndex=0;
                     }
-                    delta=delta-m_itemHeight;
+                    delta=delta-pimpl->itemHeight;
                 }
                 y+=delta;
             }
             else
             {
-                y+=section->currentOffset;
+                y+=section->pimpl->currentOffset;
             }
         }
 
-        section->currentItemIndex=-1;
-        section->currentItemPosition=-1;
+        section->pimpl->currentItemIndex=-1;
+        section->pimpl->currentItemPosition=-1;
         auto renderItems=[this,h,section,&x,&y,&painter,&sel,&wasNotSelected,&needAdjusting,&offset](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
                 if (y>=sel.top() && y<=sel.bottom())
                 {
-                    section->currentItemIndex=i;
-                    section->currentItemPosition=y;
+                    section->pimpl->currentItemIndex=i;
+                    section->pimpl->currentItemPosition=y;
                     if (wasNotSelected)
                     {
                         needAdjusting=true;
                     }
                 }
 
-                section->items[i]->render(&painter,QPoint(x,y));
-                y+=m_itemHeight;
+                section->pimpl->items[i]->render(&painter,QPoint(x,y));
+                y+=pimpl->itemHeight;
 
                 if (y>(offset+h))
                 {
@@ -166,23 +200,23 @@ void Spinner::paintEvent(QPaintEvent *event)
         };
 
         // render items
-        renderItems(topItemIndex,section->items.size());
-        if (section->circular)
+        renderItems(topItemIndex,section->pimpl->items.size());
+        if (section->pimpl->circular)
         {
             while (y<h)
             {
-                renderItems(0,section->items.size());
+                renderItems(0,section->pimpl->items.size());
             }
         }
-        x+=section->itemsWidth;
+        x+=section->pimpl->itemsWidth;
 
         // render right bar label
-        if (section->rightBarLabel!=nullptr)
+        if (section->pimpl->rightBarLabel!=nullptr)
         {
-            auto labelY = (widgetHeight-section->rightBarLabel->height())/2;
-            section->rightBarLabel->render(&painter,QPoint(x,labelY));
+            auto labelY = (widgetHeight-section->pimpl->rightBarLabel->height())/2;
+            section->pimpl->rightBarLabel->render(&painter,QPoint(x,labelY));
         }
-        x+=section->rightBarWidth;
+        x+=section->pimpl->rightBarWidth;
 
         // adjust position
         if (needAdjusting)
@@ -198,7 +232,7 @@ void Spinner::paintEvent(QPaintEvent *event)
     imagePainter.setPen(Qt::NoPen);
     // gradient
     QLinearGradient gr(w, 0, w, h);
-    auto c = m_styleSample->palette().color(QPalette::Base);
+    auto c = pimpl->styleSample->palette().color(QPalette::Base);
     auto mc =c ;
     mc.setAlpha(64);
     gr.setColorAt(0.0, c);
@@ -240,7 +274,7 @@ QRect Spinner::selectionRect(SpinnerSection* section) const
 //--------------------------------------------------------------------------
 QRect Spinner::selectionRect(int height, int offset) const
 {
-    return QRect(5,offset+height/2-m_selectionHeight/2,width()-10,m_selectionHeight);
+    return QRect(5,offset+height/2-pimpl->selectionHeight/2,width()-10,pimpl->selectionHeight);
 }
 
 //--------------------------------------------------------------------------
@@ -249,7 +283,7 @@ std::shared_ptr<SpinnerSection> Spinner::sectionUnderCursor() const
     auto pos = QCursor::pos();
     int x=mapToGlobal(QPoint(0,0)).x();
 
-    for (auto&& sec:m_sections)
+    for (auto&& sec:pimpl->sections)
     {
         auto nextX = x + sec->width();
         if (pos.x()>=x && pos.x()<nextX)
@@ -265,8 +299,8 @@ std::shared_ptr<SpinnerSection> Spinner::sectionUnderCursor() const
 //--------------------------------------------------------------------------
 void Spinner::keyPressEvent(QKeyEvent *event)
 {
-    m_keyPressed=true;
-    auto section=m_sectionUnderCursor;
+    pimpl->keyPressed=true;
+    auto section=pimpl->sectionUnderCursor;
     if (!section)
     {
         return;
@@ -274,19 +308,19 @@ void Spinner::keyPressEvent(QKeyEvent *event)
 
     if (event->key()==Qt::Key_Up)
     {
-        scroll(section.get(),-m_singleScrollStep);
+        scroll(section.get(),-pimpl->singleScrollStep);
     }
     else if (event->key()==Qt::Key_Down)
     {
-        scroll(section.get(),m_singleScrollStep);
+        scroll(section.get(),pimpl->singleScrollStep);
     }
     else if (event->key()==Qt::Key_PageUp)
     {
-        scroll(section.get(),-m_pageScrollStep);
+        scroll(section.get(),-pimpl->pageScrollStep);
     }
     else if (event->key()==Qt::Key_PageDown)
     {
-        scroll(section.get(),m_pageScrollStep);
+        scroll(section.get(),pimpl->pageScrollStep);
     }
 
     QFrame::keyPressEvent(event);
@@ -295,13 +329,13 @@ void Spinner::keyPressEvent(QKeyEvent *event)
 //--------------------------------------------------------------------------
 void Spinner::keyReleaseEvent(QKeyEvent *)
 {
-    m_keyPressed=false;
+    pimpl->keyPressed=false;
 }
 
 //--------------------------------------------------------------------------
 void Spinner::wheelEvent(QWheelEvent *event)
 {
-    auto section=m_sectionUnderCursor;
+    auto section=pimpl->sectionUnderCursor;
     if (!section)
     {
         return;
@@ -339,7 +373,7 @@ void Spinner::wheelEvent(QWheelEvent *event)
            return numSteps;
        };
 
-       scrollDelta=evalOffset(m_wheelOffsetAccumulated);
+       scrollDelta=evalOffset(pimpl->wheelOffsetAccumulated);
    }
 
    scroll(section.get(),-scrollDelta);
@@ -349,7 +383,7 @@ void Spinner::wheelEvent(QWheelEvent *event)
 //--------------------------------------------------------------------------
 void Spinner::scroll(SpinnerSection* section, int delta)
 {
-    auto pos=section->currentOffset-delta;
+    auto pos=section->pimpl->currentOffset-delta;
     scrollTo(section,pos);
 }
 
@@ -358,14 +392,14 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
     auto h=sectionHeight(section);
 
-    if (!section->circular)
+    if (!section->pimpl->circular)
     {
-        auto itemsHeight=section->items.size()*m_itemHeight;
+        auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
         if (pos<0)
         {
             // down
 
-            auto edge=itemsHeight-(h+m_itemHeight)/2;
+            auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
             if (qAbs(pos)>edge)
             {
                 pos=-edge;
@@ -375,7 +409,7 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
         {
             // up
 
-            auto edge=h/2 - m_itemHeight/2;
+            auto edge=h/2 - pimpl->itemHeight/2;
             if (pos>edge)
             {
                 pos=edge;
@@ -383,46 +417,46 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
         }
     }
 
-    if (section->currentOffset==pos)
+    if (section->pimpl->currentOffset==pos)
     {
         return;
     }
 
-    section->currentOffset=pos;
+    section->pimpl->currentOffset=pos;
     repaint();
     adjustPosition(section);
 
-    if (section->previousItemIndex!=section->currentItemIndex)
+    if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
     {
-        section->previousItemIndex=section->currentItemIndex;
-        emit itemChanged(section->index,section->currentItemIndex);
+        section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+        emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
     }
 }
 
 //--------------------------------------------------------------------------
 void Spinner::leaveEvent(QEvent *)
 {
-    m_sectionUnderCursor.reset();
-    m_mousePressed=false;
+    pimpl->sectionUnderCursor.reset();
+    pimpl->mousePressed=false;
 }
 
 //--------------------------------------------------------------------------
 void Spinner::enterEvent(QEnterEvent *event)
 {
-    m_sectionUnderCursor=sectionUnderCursor();
-    m_wheelOffsetAccumulated=0;
+    pimpl->sectionUnderCursor=sectionUnderCursor();
+    pimpl->wheelOffsetAccumulated=0;
 }
 
 //--------------------------------------------------------------------------
 void Spinner::mousePressEvent(QMouseEvent *event)
 {
-    if (!m_sectionUnderCursor)
+    if (!pimpl->sectionUnderCursor)
     {
         return;
     }
 
-    m_mousePressed=true;
-    m_lastMousePos.setY(event->position().y());
+    pimpl->mousePressed=true;
+    pimpl->lastMousePos.setY(event->position().y());
     QCursor cursor;
     cursor.setShape(Qt::OpenHandCursor);
     setCursor(cursor);
@@ -431,7 +465,7 @@ void Spinner::mousePressEvent(QMouseEvent *event)
 //--------------------------------------------------------------------------
 void Spinner::mouseReleaseEvent(QMouseEvent *event)
 {
-    m_mousePressed=false;
+    pimpl->mousePressed=false;
 
     QCursor cursor;
     cursor.setShape(Qt::ArrowCursor);
@@ -442,43 +476,43 @@ void Spinner::mouseReleaseEvent(QMouseEvent *event)
 void Spinner::mouseMoveEvent(QMouseEvent *event)
 {
     auto section=sectionUnderCursor();
-    if (m_sectionUnderCursor!=section)
+    if (pimpl->sectionUnderCursor!=section)
     {
-        m_wheelOffsetAccumulated=0;
+        pimpl->wheelOffsetAccumulated=0;
     }
-    m_sectionUnderCursor=section;
+    pimpl->sectionUnderCursor=section;
 
     if (!section)
     {
         return;
     }
 
-    if (!m_mousePressed)
+    if (!pimpl->mousePressed)
     {
         return;
     }
 
     auto y=event->position().y();
-    scroll(section.get(),m_lastMousePos.y()-y);
-    m_lastMousePos.setY(y);
+    scroll(section.get(),pimpl->lastMousePos.y()-y);
+    pimpl->lastMousePos.setY(y);
 }
 
 //--------------------------------------------------------------------------
 void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 {
-    m_sections=std::move(sections);
+    pimpl->sections=std::move(sections);
     int i=0;
-    for (auto&& section:m_sections)
+    for (auto&& section:pimpl->sections)
     {
-        section->index=i;
+        section->pimpl->index=i;
 
-        section->adjustTimer=new SingleShotTimer(this);
-        section->selectionTimer=new SingleShotTimer(this);
-        section->animation=new QVariantAnimation(section->adjustTimer);
-        section->animation->setDuration(300);
-        section->animation->setEasingCurve(QEasingCurve::OutQuad);
+        section->pimpl->adjustTimer=new SingleShotTimer(this);
+        section->pimpl->selectionTimer=new SingleShotTimer(this);
+        section->pimpl->animation=new QVariantAnimation(section->pimpl->adjustTimer);
+        section->pimpl->animation->setDuration(300);
+        section->pimpl->animation->setEasingCurve(QEasingCurve::OutQuad);
 
-        if (!section->items.empty())
+        if (!section->pimpl->items.empty())
         {
             selectItem(section.get(),0);
         }
@@ -488,23 +522,35 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 }
 
 //--------------------------------------------------------------------------
+std::shared_ptr<SpinnerSection> Spinner::section(int index) const
+{
+    return pimpl->sections.at(index);
+}
+
+//--------------------------------------------------------------------------
+size_t Spinner::sectionCount() const noexcept
+{
+    return pimpl->sections.size();
+}
+
+//--------------------------------------------------------------------------
 void Spinner::selectItem(SpinnerSection *section, int index)
 {
-    if (index>=section->items.size())
+    if (index>=section->pimpl->items.size())
     {
         throw std::out_of_range("Index is out of range");
     }
-    section->selectionTimer->shot(50,[this,section,index](){
+    section->pimpl->selectionTimer->shot(50,[this,section,index](){
 
         auto idx=index;
-        if (idx>=section->items.size())
+        if (idx>=section->pimpl->items.size())
         {
-            idx=section->items.size()-1;
+            idx=section->pimpl->items.size()-1;
         }
 
-        auto delta=idx-section->currentItemIndex;
-        auto offset=delta*m_itemHeight;
-        auto pos=section->currentOffset-offset;
+        auto delta=idx-section->pimpl->currentItemIndex;
+        auto offset=delta*pimpl->itemHeight;
+        auto pos=section->pimpl->currentOffset-offset;
         scrollTo(section,pos);
     });
 }
@@ -512,31 +558,31 @@ void Spinner::selectItem(SpinnerSection *section, int index)
 //--------------------------------------------------------------------------
 void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay)
 {
-    if (section->currentItemPosition<0)
+    if (section->pimpl->currentItemPosition<0)
     {
         return;
     }
 
     auto h=height();
     int delay = noDelay ? 0 : 100;
-    section->animation->stop();
-    section->adjustTimer->clear();
+    section->pimpl->animation->stop();
+    section->pimpl->adjustTimer->clear();
 
     auto handler=[section,animate,h,this](){
 
-        if (section->currentItemPosition<0)
+        if (section->pimpl->currentItemPosition<0)
         {
             return;
         }
 
-        section->animation->stop();
-        if (m_mousePressed || m_keyPressed)
+        section->pimpl->animation->stop();
+        if (pimpl->mousePressed || pimpl->keyPressed)
         {
             adjustPosition(section);
             return;
         }
 
-        auto pos=section->currentItemPosition%h;
+        auto pos=section->pimpl->currentItemPosition%h;
         auto sel=selectionRect();
         auto offset=pos-sel.top();
         if (offset==0)
@@ -545,16 +591,16 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         }
 
         // jump to next item if scroll is above/below half height of the item
-        if (qAbs(offset)>m_itemHeight/2)
+        if (qAbs(offset)>pimpl->itemHeight/2)
         {
             if (offset<0)
             {
                 // down
 
                 // enable for non circtular section or not last item
-                if (!section->circular || section->currentItemIndex<(section->items.size()-1))
+                if (!section->pimpl->circular || section->pimpl->currentItemIndex<(section->pimpl->items.size()-1))
                 {
-                    offset+=m_itemHeight;
+                    offset+=pimpl->itemHeight;
                 }
             }
             else
@@ -562,9 +608,9 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 // up
 
                 // enable for non circtular section or not first item
-                if (!section->circular || section->currentItemIndex>0)
+                if (!section->pimpl->circular || section->pimpl->currentItemIndex>0)
                 {
-                    offset-=m_itemHeight;
+                    offset-=pimpl->itemHeight;
                 }
             }
         }
@@ -582,30 +628,30 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
 
         if (animate)
         {
-            section->animationVal=0;
-            section->animation->setStartValue(0);
-            section->animation->setEndValue(endVal);
-            section->animation->disconnect(this);
-            connect(section->animation,&QVariantAnimation::valueChanged,this,[this,section,asc](const QVariant& val){
+            section->pimpl->animationVal=0;
+            section->pimpl->animation->setStartValue(0);
+            section->pimpl->animation->setEndValue(endVal);
+            section->pimpl->animation->disconnect(this);
+            connect(section->pimpl->animation,&QVariantAnimation::valueChanged,this,[this,section,asc](const QVariant& val){
 
-                if (m_mousePressed || m_keyPressed)
+                if (pimpl->mousePressed || pimpl->keyPressed)
                 {
                     adjustPosition(section);
                     return;
                 }
 
                 int rm = asc?val.toInt():-val.toInt();
-                auto offs = section->animationVal - rm;
-                section->animationVal=rm;
+                auto offs = section->pimpl->animationVal - rm;
+                section->pimpl->animationVal=rm;
 
-                section->currentOffset+=offs;
+                section->pimpl->currentOffset+=offs;
                 repaint();
             });
-            section->animation->start();
+            section->pimpl->animation->start();
         }
         else
         {
-            section->currentOffset-=offset;
+            section->pimpl->currentOffset-=offset;
             update();
         }
     };
@@ -616,26 +662,26 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
     }
     else
     {
-        section->adjustTimer->shot(delay,handler);
+        section->pimpl->adjustTimer->shot(delay,handler);
     }
 }
 
 //--------------------------------------------------------------------------
 int Spinner::selectedItemIndex(SpinnerSection *section) const
 {
-    return section->currentItemIndex;
+    return section->pimpl->currentItemIndex;
 }
 
 //--------------------------------------------------------------------------
 int Spinner::itemsHeight(SpinnerSection *section) const
 {
-    return section->items.size()*m_itemHeight;
+    return section->pimpl->items.size()*pimpl->itemHeight;
 }
 
 //--------------------------------------------------------------------------
 int Spinner::sectionHeight(SpinnerSection *section) const
 {
-    if (section->circular)
+    if (section->pimpl->circular)
     {
         return height();
     }
@@ -645,7 +691,7 @@ int Spinner::sectionHeight(SpinnerSection *section) const
 //--------------------------------------------------------------------------
 int Spinner::sectionOffset(SpinnerSection *section) const
 {
-    if (section->circular)
+    if (section->pimpl->circular)
     {
         return 0;
     }
@@ -663,29 +709,44 @@ int Spinner::sectionOffset(SpinnerSection *section) const
 //--------------------------------------------------------------------------
 void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
 {
-    auto section=m_sections[sectionIndex];
-    section->items.append(items);
-    selectItem(section.get(),section->currentItemIndex);
+    auto section=pimpl->sections[sectionIndex];
+    section->pimpl->items.append(items);
+    selectItem(section.get(),section->pimpl->currentItemIndex);
     update();
 }
 
 //--------------------------------------------------------------------------
 void Spinner::removeLastItems(int sectionIndex, int count)
 {
-    auto section=m_sections[sectionIndex];
+    auto section=pimpl->sections[sectionIndex];
 
     for (auto i=0;i<count;i++)
     {
-        section->items.removeLast();
+        section->pimpl->items.removeLast();
     }
 
-    int index=section->currentItemIndex;
-    if (index>=section->items.size())
+    int index=section->pimpl->currentItemIndex;
+    if (index>=section->pimpl->items.size())
     {
-        index=section->items.size()-1;
+        index=section->pimpl->items.size()-1;
     }
     selectItem(section.get(),index);
     update();
+}
+
+//--------------------------------------------------------------------------
+void Spinner::setItemHeight(int val) noexcept
+{
+    pimpl->itemHeight=val;
+    pimpl->selectionHeight=val;
+    pimpl->singleScrollStep=val;
+    pimpl->pageScrollStep=5*val;
+}
+
+//--------------------------------------------------------------------------
+int Spinner::itemHeight() const noexcept
+{
+   return pimpl->itemHeight;
 }
 
 //--------------------------------------------------------------------------

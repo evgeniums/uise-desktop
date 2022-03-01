@@ -29,6 +29,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/spinner.hpp>
+#include <uise/desktop/spinnersection.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -49,64 +50,72 @@ int main(int argc, char *argv[])
     int itemHeight=50;
 
     auto section1=std::make_shared<SpinnerSection>();
-    section1->itemsWidth = 30;
-    section1->circular = true;
+    section1->setItemsWidth(30);
+    section1->setCircular(true);
     auto leftLb = new QLabel(" $");
     leftLb->setAlignment(Qt::AlignCenter);
     leftLb->setFixedHeight(itemHeight);
-    section1->leftBarLabel=leftLb;
-    section1->leftBarWidth=leftLb->sizeHint().width();
+    section1->setLeftBarLabel(leftLb);
+    section1->setLeftBarWidth(leftLb->sizeHint().width());
+    QList<QWidget*> items1;
     for (auto i=1;i<=31;i++)
     {
         auto item=new QLabel(QString::number(i));
         item->setAlignment(Qt::AlignCenter);
-        item->setFixedWidth(section1->itemsWidth);
+        item->setFixedWidth(section1->itemsWidth());
         item->setFixedHeight(itemHeight);
-        section1->items.append(item);
+        items1.append(item);
     }
+    section1->setItems(items1);
 
     std::vector<QString> text{"zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen",
                              "sixteen","seventeen","eightteen","nineteen","twenty"};
     auto section2=std::make_shared<SpinnerSection>();
-    section2->itemsWidth = 120;
+    section2->setItemsWidth(120);
     auto rightLb = new QLabel(" km ");
     rightLb->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     rightLb->setFixedHeight(itemHeight);
-    section2->rightBarLabel=rightLb;
-    section2->rightBarWidth=rightLb->sizeHint().width();
+    section2->setRightBarLabel(rightLb);
+    section2->setRightBarWidth(rightLb->sizeHint().width());
+    QList<QWidget*> items2;
     for (auto i=0;i<text.size();i++)
     {
         auto item=new QLabel(text[i]);
         item->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        item->setFixedWidth(section2->itemsWidth);
+        item->setFixedWidth(section2->itemsWidth());
         item->setFixedHeight(itemHeight);
-        section2->items.append(item);
+        items2.append(item);
     }
+    section2->setItems(items2);
 
     std::vector<QString> text2{"yes","no","maybe"};
     auto section3=std::make_shared<SpinnerSection>();
-    section3->itemsWidth = 100;
-    section3->circular = true;
+    section3->setItemsWidth(100);
+    section3->setCircular(true);
+    QList<QWidget*> items3;
     for (auto i=0;i<text2.size();i++)
     {
         auto item=new QLabel(text2[i]);
         item->setAlignment(Qt::AlignCenter);
-        item->setFixedWidth(section3->itemsWidth);
+        item->setFixedWidth(section3->itemsWidth());
         item->setFixedHeight(itemHeight);
-        section3->items.append(item);
+        items3.append(item);
     }
+    section3->setItems(items3);
 
     std::vector<QString> text3{"hi","hello","how are you"};
     auto section4=std::make_shared<SpinnerSection>();
-    section4->itemsWidth = 200;
+    section4->setItemsWidth(200);
+    QList<QWidget*> items4;
     for (auto i=0;i<text3.size();i++)
     {
         auto item=new QLabel(text3[i]);
         item->setAlignment(Qt::AlignCenter);
-        item->setFixedWidth(section4->itemsWidth);
+        item->setFixedWidth(section4->itemsWidth());
         item->setFixedHeight(itemHeight);
-        section4->items.append(item);
+        items4.append(item);
     }
+    section4->setItems(items4);
 
     std::vector<std::shared_ptr<SpinnerSection>> sections{section1, section2, section3, section4};
     spinner->setItemHeight(itemHeight);
@@ -119,17 +128,17 @@ int main(int argc, char *argv[])
         {
             if (item==2)
             {
-                qDebug() << "Items size before remove "<<section1->items.size();
-                if (section1->items.size()==31)
+                qDebug() << "Items size before remove "<<section1->itemsCount();
+                if (section1->itemsCount()==31)
                 {
                     qDebug() << "Remove 3 items";
                     spinner->removeLastItems(0,3);
                 }
-                qDebug() << "Items size after remove "<<section1->items.size();
+                qDebug() << "Items size after remove "<<section1->itemsCount();
             }
             else if (item==0)
             {
-                if (section1->items.size()!=31)
+                if (section1->itemsCount()!=31)
                 {
                     qDebug() << "Append 3 items";
 
@@ -138,7 +147,7 @@ int main(int argc, char *argv[])
                     {
                         auto item=new QLabel(QString::number(i));
                         item->setAlignment(Qt::AlignCenter);
-                        item->setFixedWidth(section1->itemsWidth);
+                        item->setFixedWidth(section1->itemsWidth());
                         item->setFixedHeight(itemHeight);
                         items.append(item);
                     }

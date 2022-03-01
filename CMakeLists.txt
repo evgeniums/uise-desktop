@@ -56,14 +56,15 @@ SET (HEADERS
     include/uise/desktop/editablelabel.hpp
     include/uise/desktop/style.hpp
 
-#    include/uise/desktop/combowheel.hpp
-
     include/uise/desktop/spinner.hpp
+    include/uise/desktop/spinnersection.hpp
 )
 
 SET (HEADERS ${HEADERS}
     include/uise/desktop/detail/flyweightlistview_p.hpp
     include/uise/desktop/detail/flyweightlistview_p.ipp
+
+    include/uise/desktop/detail/spinnersection_p.hpp
 )
 
 SET (SOURCES
@@ -75,6 +76,7 @@ SET (SOURCES
     src/editablelabel.cpp
     src/style.cpp
     src/spinner.cpp
+    src/spinnersection.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
