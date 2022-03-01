@@ -63,25 +63,31 @@ class UISE_DESKTOP_EXPORT SpinnerSection
 
         /**
          * @brief Full width of the section.
-         * @return
+         * @return Query result.
          */
         int width() const noexcept;
 
         /**
          * @brief Load list of items to section.
          * @param items List of widgets.
+         *
+         * Spinner will own the widgets after loading this section to the spinner.
          */
         void setItems(QList<QWidget*> items);
 
         /**
          * @brief Set widget to be used as a selection label in the left bar.
          * @param widget Bar label
+         *
+         * Spinner will own the label after loading this section to the spinner.
          */
         void setLeftBarLabel(QWidget* widget=nullptr) noexcept;
 
         /**
          * @brief Set widget to be used as a selection label in the right bar.
-         * @param widget Bar label
+         * @param widget Bar label.
+         *
+         * Spinner will own the label after loading this section to the spinner.
          */
         void setRightBarLabel(QWidget* widget=nullptr) noexcept;
 

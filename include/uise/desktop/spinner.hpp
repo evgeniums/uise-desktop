@@ -40,10 +40,11 @@ class Spinner_p;
  *
  * Spinner can represent a few item lists at once.
  * Each list is processed by a spinner section representing a scrollable list of items.
- * In addition, a section can be expanded with left and/or right bar containing static label in the center of a section.
+ *
+ * A spinner section can be expanded with left and/or right bar containing static label in the center of a section.
  *
  * A spinner section can be either linear or circular which is enabled by SpinnerSection::setCircular().
- * Different section of the same spinner can be of different modes.
+ * Different sections of the same spinner can be of different modes.
  *
  * All items in all spinner sections have the same height that must be set with setItemHeight().
  *
