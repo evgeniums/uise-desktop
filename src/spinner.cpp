@@ -232,7 +232,7 @@ void Spinner::paintEvent(QPaintEvent *event)
             adjustPosition(section.get(),false,true);
         }
 
-        // notify that item changed
+        // notify that selected item changed
         if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
         {
             section->pimpl->notifyTimer->clear();
