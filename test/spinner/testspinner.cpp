@@ -76,6 +76,8 @@ Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std
     UISE_TEST_CHECK_EQUAL(spinner->section(0)->itemsWidth(),itemsWidth);
     UISE_TEST_CHECK(!spinner->section(0)->circular());
     UISE_TEST_CHECK_EQUAL(spinner->section(0)->width(),itemsWidth);
+    UISE_TEST_CHECK_EQUAL(spinner->section(0)->leftBarWidth(),0);
+    UISE_TEST_CHECK_EQUAL(spinner->section(0)->rightBarWidth(),0);
 
     return spinner;
 }
@@ -88,7 +90,7 @@ BOOST_AUTO_TEST_CASE(TestItemSelection)
 {
     auto init=[](SpinnerContainerPtr container){
         auto spinner=createSpinner();
-        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner");
+        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
     };
 
     int selectItem=20;
