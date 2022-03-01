@@ -730,6 +730,11 @@ void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
 {
     auto section=pimpl->sections[sectionIndex];
     section->pimpl->items.append(items);
+    for (auto&& item:items)
+    {
+        item->setParent(this);
+        item->setVisible(false);
+    }
     selectItem(section.get(),section->pimpl->currentItemIndex);
     update();
 }
