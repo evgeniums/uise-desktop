@@ -176,7 +176,6 @@ void Spinner::paintEvent(QPaintEvent *event)
             }
         }
 
-//        section->pimpl->currentItemIndex=-1;
         section->pimpl->currentItemPosition=-1;
         auto renderItems=[this,h,section,&x,&y,&painter,&sel,&wasNotSelected,&needAdjusting,&offset](int from, int to)
         {
