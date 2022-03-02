@@ -235,16 +235,16 @@ void Spinner::paintEvent(QPaintEvent *event)
         }
 
         // notify that selected item changed
-        std::cout << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
-                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex << std::endl;
-        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
-        {
-            section->pimpl->notifyTimer->clear();
-            section->pimpl->notifyTimer->shot(100,[section,this](){
-                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
-                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
-            });
-        }
+//        std::cout << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
+//                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex << std::endl;
+//        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
+//        {
+//            section->pimpl->notifyTimer->clear();
+//            section->pimpl->notifyTimer->shot(100,[section,this](){
+//                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+//                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
+//            });
+//        }
     }
     //  construct gradient mask with highlighter hole
     auto maskPixmap = QPixmap(w,h);
@@ -382,8 +382,6 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
-    std::cout << "Spinner::scrollTo "<<pos<< std::endl;
-
     auto h=sectionHeight(section);
 
     if (!section->pimpl->circular)
@@ -417,6 +415,8 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     }
 
     section->pimpl->currentOffset=pos;
+
+    updateCurrentIndex(section,pos);
 
     repaint();
     adjustPosition(section);
@@ -539,8 +539,6 @@ size_t Spinner::sectionCount() const noexcept
 //--------------------------------------------------------------------------
 void Spinner::selectItem(SpinnerSection *section, int index)
 {
-    std::cout << "Select item "<<index<< std::endl;
-
     if (index>=section->pimpl->items.size())
     {
         throw std::out_of_range("Index is out of range");
@@ -657,6 +655,8 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 section->pimpl->animationVal=rm;
                 section->pimpl->currentOffset+=offs;
 
+                updateCurrentIndex(section,section->pimpl->currentOffset);
+
                 repaint();
             });
             section->pimpl->animation->start();
@@ -664,6 +664,8 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         else
         {
             section->pimpl->currentOffset-=offset;
+
+            updateCurrentIndex(section,section->pimpl->currentOffset);
             repaint();
         }
     };
@@ -769,6 +771,61 @@ void Spinner::setItemHeight(int val) noexcept
 int Spinner::itemHeight() const noexcept
 {
    return pimpl->itemHeight;
+}
+
+//--------------------------------------------------------------------------
+void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
+{
+    auto sel=selectionRect(section);
+
+    auto offset= sel.top()-pos-sectionOffset(section);
+
+//    qDebug() << "Spinner::updateCurrentIndex "
+//             << " pos " << pos
+//             << " sel.top() " << sel.top()
+//             << " pimpl->itemHeight " << pimpl->itemHeight
+//             << " offset " << offset
+//             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
+//            ;
+
+    if (offset%pimpl->itemHeight!=0)
+    {
+        return;
+    }
+
+    auto idx=qFloor(offset/pimpl->itemHeight);
+    if (idx<0)
+    {
+        if (section->circular())
+        {
+            idx+=section->pimpl->items.size();
+        }
+        else
+        {
+            idx=0;
+        }
+    }
+
+    section->pimpl->currentItemIndex=idx;
+    if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
+    {
+        section->pimpl->notifyTimer->clear();
+        section->pimpl->notifyTimer->shot(100,[section,this](){
+            section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+            emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
+        });
+    }
+
+//    qDebug() << "Spinner::updateCurrentIndex "
+//             << " idx " << idx
+//             << " at pos " << pos
+//             << " sel.top() " << sel.top()
+//             << " pimpl->itemHeight " << pimpl->itemHeight
+//             << " offset " << offset
+//             << " currentOffset " << section->pimpl->currentOffset
+//             << " currentItemIndex " << section->pimpl->currentItemIndex
+//             << " currentItemPosition " << section->pimpl->currentItemPosition
+//            ;
 }
 
 //--------------------------------------------------------------------------

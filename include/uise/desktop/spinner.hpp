@@ -220,6 +220,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
 
     private:
 
+        void updateCurrentIndex(SpinnerSection* section, int pos);
+
         void scroll(SpinnerSection* section, int delta);
         void scrollTo(SpinnerSection* section, int pos);
         int selectedItemIndex(SpinnerSection* section) const;
