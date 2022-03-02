@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(TestScroll)
     auto init=[](SpinnerContainerPtr container){
         auto spinner=createSpinner();
         SpinnerContainer::PlayStepPeriod=300;
-        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
+        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner scroll");
     };
 
     int scrollDelta=20;
@@ -222,6 +222,8 @@ BOOST_AUTO_TEST_CASE(TestCircular)
 {
     auto init=[](SpinnerContainerPtr container){
 
+        UISE_TEST_MESSAGE("init begin");
+
         auto section=std::make_shared<SpinnerSection>();
         section->setItemsWidth(30);
         QList<QWidget*> items;
@@ -247,7 +249,9 @@ BOOST_AUTO_TEST_CASE(TestCircular)
         spinner->setStyleSample(styleSample);
 
         SpinnerContainer::PlayStepPeriod=300;
-        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
+        SpinnerContainer::beginTestCase(container,spinner,"Test Spinner circular");
+
+        UISE_TEST_MESSAGE("init end");
     };
 
     int scrollDelta=20;
@@ -255,74 +259,104 @@ BOOST_AUTO_TEST_CASE(TestCircular)
     int changedCount=0;
     auto handleItemChanged=[&changedCount,section](int sectionIndex, int itemIndex)
     {
+        UISE_TEST_MESSAGE("handleItemChanged begin");
+
         UISE_TEST_CHECK_EQUAL(sectionIndex,section);
         changedCount++;
+
+        UISE_TEST_MESSAGE("handleItemChanged end");
     };
 
-    auto scrollTwoItems=[section,&handleItemChanged](SpinnerContainerPtr container){
+    auto scrollTwoItems=[section,&handleItemChanged](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("scrollTwoItems begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),0);
         QObject::connect(spinner,&Spinner::itemChanged,handleItemChanged);
 
         spinner->scroll(section,itemHeight*2);
+
+        UISE_TEST_MESSAGE("scrollTwoItems end");
     };
 
-    auto checkScrollTwoItems=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScrollTwoItems=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScrollTwoItems begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),2);
         UISE_TEST_CHECK_EQUAL(changedCount,1);
 
         spinner->scroll(section,itemHeight*0.75);
+
+        UISE_TEST_MESSAGE("checkScrollTwoItems end");
     };
 
-    auto checkScroll075Delay=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScroll075Delay=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScroll075Delay begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),2);
         UISE_TEST_CHECK_EQUAL(changedCount,1);
+        UISE_TEST_MESSAGE("checkScroll075Delay end");
     };
 
-    auto checkScroll075=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScroll075=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScroll075 begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),3);
         UISE_TEST_CHECK_EQUAL(changedCount,2);
 
         spinner->scroll(section,itemHeight*0.3);
+        UISE_TEST_MESSAGE("checkScroll075 end");
     };
 
-    auto checkScroll03Delay=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScroll03Delay=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScroll03Delay begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),3);
         UISE_TEST_CHECK_EQUAL(changedCount,2);
+        UISE_TEST_MESSAGE("checkScroll03Delay end");
     };
 
-    auto checkScroll03=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScroll03=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScroll03 begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),3);
         UISE_TEST_CHECK_EQUAL(changedCount,2);
 
         spinner->scroll(section,-4*itemHeight);
+        UISE_TEST_MESSAGE("checkScroll03 end");
     };
 
-    auto checkScrollBegin=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScrollBegin=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScrollBegin begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),30);
         UISE_TEST_CHECK_EQUAL(changedCount,3);
 
         spinner->scroll(section,50*itemHeight);
+        UISE_TEST_MESSAGE("checkScrollBegin end");
     };
 
-    auto checkScrollEnd=[&changedCount,section](SpinnerContainerPtr container){
+    auto checkScrollEnd=[&changedCount,section](SpinnerContainerPtr container)
+    {
+        UISE_TEST_MESSAGE("checkScrollEnd begin");
         auto spinner=container->testWidget;
 
         UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),18);
         UISE_TEST_CHECK_EQUAL(changedCount,4);
+        UISE_TEST_MESSAGE("checkScrollEnd end");
     };
 
     std::vector<std::function<void (SpinnerContainerPtr container)>> steps={
@@ -338,6 +372,5 @@ BOOST_AUTO_TEST_CASE(TestCircular)
     };
     SpinnerContainer::runTestCase(steps);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
