@@ -381,6 +381,8 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
+    qDebug() << "Spinner::scrollTo "<<pos;
+
     auto h=sectionHeight(section);
 
     if (!section->pimpl->circular)
@@ -536,6 +538,8 @@ size_t Spinner::sectionCount() const noexcept
 //--------------------------------------------------------------------------
 void Spinner::selectItem(SpinnerSection *section, int index)
 {
+    qDebug() << "Select item "<<index;
+
     if (index>=section->pimpl->items.size())
     {
         throw std::out_of_range("Index is out of range");
