@@ -92,6 +92,8 @@ BOOST_AUTO_TEST_CASE(TestItemSelection)
 {
     auto init=[](SpinnerContainerPtr container){
         auto spinner=createSpinner();
+        spinner->selectItem(0,5);
+
         SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
     };
 
@@ -105,10 +107,10 @@ BOOST_AUTO_TEST_CASE(TestItemSelection)
         changedCount++;
     };
 
-    auto checkFirstItemSelected=[section,selectItem,&handleItemChanged](SpinnerContainerPtr container){
+    auto checkFirstSelectedItem=[section,selectItem,&handleItemChanged](SpinnerContainerPtr container){
         auto spinner=container->testWidget;
 
-        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),0);
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),5);
         QObject::connect(spinner,&Spinner::itemChanged,handleItemChanged);
 
         spinner->selectItem(section,selectItem);
@@ -123,7 +125,7 @@ BOOST_AUTO_TEST_CASE(TestItemSelection)
 
     std::vector<std::function<void (SpinnerContainerPtr container)>> steps={
             init,
-            checkFirstItemSelected,
+            checkFirstSelectedItem,
             checkSelectedItem
     };
     SpinnerContainer::runTestCase(steps);

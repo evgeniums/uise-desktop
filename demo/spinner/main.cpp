@@ -132,6 +132,8 @@ int main(int argc, char *argv[])
     spinner->setItemHeight(itemHeight);
     spinner->setSections(sections);
 
+    spinner->selectItem(0,5);
+
     auto messagesView=new QTextEdit();
     messagesView->setReadOnly(true);
     l->addWidget(messagesView);

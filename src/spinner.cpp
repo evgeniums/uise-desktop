@@ -49,7 +49,8 @@ class Spinner_p
             mousePressed(false),
             keyPressed(false),
             selectionHeight(0),
-            itemHeight(0)
+            itemHeight(0),
+            firstPainting(true)
         {}
 
         QWidget* styleSample;
@@ -64,7 +65,7 @@ class Spinner_p
         std::shared_ptr<SpinnerSection> sectionUnderCursor;
         int selectionHeight;
         int itemHeight;
-
+        bool firstPainting;
 };
 
 //--------------------------------------------------------------------------
@@ -114,7 +115,7 @@ void Spinner::paintEvent(QPaintEvent *event)
     // draw sections
     auto x=sel.left();
     for (auto&& section:pimpl->sections)
-    {        
+    {
         // render left bar label
         if (section->pimpl->leftBarLabel!=nullptr)
         {
@@ -130,7 +131,11 @@ void Spinner::paintEvent(QPaintEvent *event)
         int h=sectionHeight(section.get());
         auto sel = selectionRect(h,offset);
 
-        bool wasNotSelected=section->pimpl->currentItemIndex<0;
+        if (pimpl->firstPainting)
+        {
+            section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2
+                    -section->pimpl->currentItemIndex*pimpl->itemHeight;
+        }
         bool needAdjusting=false;
 
         if (section->pimpl->circular)
@@ -174,8 +179,7 @@ void Spinner::paintEvent(QPaintEvent *event)
             }
         }
 
-        section->pimpl->currentItemPosition=-1;
-        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&wasNotSelected,&needAdjusting,&offset](int from, int to)
+        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&needAdjusting,&offset](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
@@ -188,7 +192,7 @@ void Spinner::paintEvent(QPaintEvent *event)
                         section->pimpl->currentItemIndex=i;
                     }
 
-                    if (wasNotSelected)
+                    if (pimpl->firstPainting)
                     {
                         needAdjusting=true;
                     }
@@ -238,7 +242,7 @@ void Spinner::paintEvent(QPaintEvent *event)
                 emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
             });
         }
-    }    
+    }
     //  construct gradient mask with highlighter hole
     auto maskPixmap = QPixmap(w,h);
     maskPixmap.fill(Qt::transparent);
@@ -264,6 +268,11 @@ void Spinner::paintEvent(QPaintEvent *event)
 
     // draw mask
     painter.drawPixmap(0,0,maskPixmap);
+
+    if (pimpl->firstPainting)
+    {
+        pimpl->firstPainting=false;
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -510,16 +519,10 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
             }
         }
 
-        if (!section->pimpl->items.empty())
-        {
-            auto pos=height()/2-pimpl->itemHeight/2;
-            section->pimpl->currentOffset=pos;
-        }
+        section->pimpl->currentItemIndex=0;
 
         ++i;
     }
-
-    repaint();
 }
 
 //--------------------------------------------------------------------------
@@ -541,20 +544,23 @@ void Spinner::selectItem(SpinnerSection *section, int index, bool noDelay)
     {
         throw std::out_of_range("Index is out of range");
     }
-    auto handler=[this,section,index,noDelay](){
 
-        auto idx=index;
-        if (idx>=section->pimpl->items.size())
-        {
-            idx=section->pimpl->items.size()-1;
-        }
+    auto idx=index;
+    if (idx>=section->pimpl->items.size())
+    {
+        idx=section->pimpl->items.size()-1;
+    }
 
-        auto delta=idx-section->pimpl->currentItemIndex;
-        auto offset=delta*pimpl->itemHeight;
-        auto pos=section->pimpl->currentOffset-offset;
-        scrollTo(section,pos,noDelay);
-    };
-    section->pimpl->selectionTimer->shot(50,handler);
+    if (pimpl->firstPainting)
+    {
+        section->pimpl->currentItemIndex=idx;
+        return;
+    }
+
+    auto delta=idx-section->pimpl->currentItemIndex;
+    auto offset=delta*pimpl->itemHeight;
+    auto pos=section->pimpl->currentOffset-offset;
+    scrollTo(section,pos,noDelay);
 }
 
 //--------------------------------------------------------------------------
