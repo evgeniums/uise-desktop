@@ -38,6 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 namespace {
 
 const char* UiseIconPath=":/uise/desktop/icons";
+const char* UiseQssPath=":/uise/desktop/qss";
 
 }
 
@@ -296,6 +297,7 @@ void Style::resetFallbackIconPaths()
 void Style::resetStyleSheetPaths()
 {
     m_styleSheetPaths.clear();
+    m_styleSheetPaths.push_back(UiseQssPath);
 }
 
 //--------------------------------------------------------------------------
