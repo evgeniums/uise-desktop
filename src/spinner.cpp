@@ -124,7 +124,8 @@ void Spinner::paintEvent(QPaintEvent *event)
         x+=section->pimpl->leftBarWidth;
 
         // calculate items positions
-        auto [topItemIndex,offset,y,h] = calcTopItem(section.get());
+        int topItemIndex,offset,y,h;
+        std::tie(topItemIndex,offset,y,h) = calcTopItem(section.get());
         auto sel = selectionRect(h,offset);
 
         // render items
@@ -742,7 +743,8 @@ std::tuple<int,int,int,int> Spinner::calcTopItem(SpinnerSection *section) const
 //--------------------------------------------------------------------------
 void Spinner::updateCurrentIndex(SpinnerSection *section)
 {
-    auto [topItemIndex,offset,y,h] = calcTopItem(section);
+    int topItemIndex,offset,y,h;
+    std::tie(topItemIndex,offset,y,h) = calcTopItem(section);
     auto sel = selectionRect(h,offset);
 
     // set offset for the first run
