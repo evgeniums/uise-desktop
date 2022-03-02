@@ -40,6 +40,8 @@ static const int itemHeight=50;
 
 Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std::vector<std::shared_ptr<SpinnerSection>>())
 {
+    qDebug() << "createSpinner";
+
     SpinnerContainer::PlayStepPeriod=300;
 
     auto spinner=new Spinner();
