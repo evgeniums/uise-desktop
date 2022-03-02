@@ -32,35 +32,7 @@ SpinnerSection::SpinnerSection() : pimpl(std::make_unique<detail::SpinnerSection
 
 //--------------------------------------------------------------------------
 SpinnerSection::~SpinnerSection()
-{
-//    qDeleteAll(pimpl->items);
-
-//    if (!pimpl->leftBarLabel.isNull())
-//    {
-//        delete pimpl->leftBarLabel;
-//    }
-//    if (!pimpl->rightBarLabel.isNull())
-//    {
-//        delete pimpl->rightBarLabel;
-//    }
-
-//    if (!pimpl->adjustTimer.isNull())
-//    {
-//        delete pimpl->adjustTimer;
-//    }
-//    if (!pimpl->animation.isNull())
-//    {
-//        delete pimpl->animation;
-//    }
-//    if (!pimpl->selectionTimer.isNull())
-//    {
-//        delete pimpl->selectionTimer;
-//    }
-//    if (!pimpl->notifyTimer.isNull())
-//    {
-//        delete pimpl->notifyTimer;
-//    }
-}
+{}
 
 //--------------------------------------------------------------------------
 int SpinnerSection::width() const noexcept

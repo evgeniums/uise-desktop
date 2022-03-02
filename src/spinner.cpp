@@ -553,6 +553,7 @@ void Spinner::selectItem(SpinnerSection *section, int index)
     if (pimpl->firstPainting)
     {
         section->pimpl->currentItemIndex=idx;
+        notifySelectionChanged(section);
         return;
     }
 
@@ -780,16 +781,16 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
     auto secOffs=pos-sectionOffset(section);
     auto offset= sel.top()-secOffs;
 
-    std::cout << "Spinner::updateCurrentIndex "
-             << " pos " << pos
-             << " sel.top() " << sel.top()
-             << " secOffs " << secOffs
-             << " height " << sectionHeight(section)
-             << " pimpl->itemHeight " << pimpl->itemHeight
-             << " offset " << offset
-             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
-             << std::endl;
-            ;
+//    std::cout << "Spinner::updateCurrentIndex "
+//             << " pos " << pos
+//             << " sel.top() " << sel.top()
+//             << " secOffs " << secOffs
+//             << " height " << sectionHeight(section)
+//             << " pimpl->itemHeight " << pimpl->itemHeight
+//             << " offset " << offset
+//             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
+//             << std::endl;
+//            ;
 
     if (offset%pimpl->itemHeight!=0)
     {
@@ -810,6 +811,24 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
     }
 
     section->pimpl->currentItemIndex=idx;
+    notifySelectionChanged(section);
+
+//    std::cout << "Spinner::updateCurrentIndex "
+//             << " idx " << idx
+//             << " at pos " << pos
+//             << " sel.top() " << sel.top()
+//             << " pimpl->itemHeight " << pimpl->itemHeight
+//             << " offset " << offset
+//             << " currentOffset " << section->pimpl->currentOffset
+//             << " currentItemIndex " << section->pimpl->currentItemIndex
+//             << " currentItemPosition " << section->pimpl->currentItemPosition
+//             << std::endl;
+//            ;
+}
+
+//--------------------------------------------------------------------------
+void Spinner::notifySelectionChanged(SpinnerSection* section)
+{
     if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
     {
         section->pimpl->notifyTimer->clear();
@@ -818,18 +837,6 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
             emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
         });
     }
-
-    std::cout << "Spinner::updateCurrentIndex "
-             << " idx " << idx
-             << " at pos " << pos
-             << " sel.top() " << sel.top()
-             << " pimpl->itemHeight " << pimpl->itemHeight
-             << " offset " << offset
-             << " currentOffset " << section->pimpl->currentOffset
-             << " currentItemIndex " << section->pimpl->currentItemIndex
-             << " currentItemPosition " << section->pimpl->currentItemPosition
-             << std::endl;
-            ;
 }
 
 //--------------------------------------------------------------------------

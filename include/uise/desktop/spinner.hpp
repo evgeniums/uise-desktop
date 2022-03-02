@@ -238,6 +238,8 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
         int sectionHeight(SpinnerSection* section) const;
         int sectionOffset(SpinnerSection* section) const;
 
+        void notifySelectionChanged(SpinnerSection* section);
+
         std::unique_ptr<Spinner_p> pimpl;
 };
 
