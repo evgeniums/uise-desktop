@@ -40,7 +40,7 @@ static const int itemHeight=50;
 
 Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std::vector<std::shared_ptr<SpinnerSection>>())
 {
-    SpinnerContainer::PlayStepPeriod=300;
+    SpinnerContainer::PlayStepPeriod=3000;
 
     auto spinner=new Spinner();
 
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(TestScroll)
 {
     auto init=[](SpinnerContainerPtr container){
         auto spinner=createSpinner();
-        SpinnerContainer::PlayStepPeriod=300;
+//        SpinnerContainer::PlayStepPeriod=300;
         SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
     };
 
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE(TestCircular)
 
         std::vector<std::shared_ptr<SpinnerSection>> sections{section};
         auto spinner=createSpinner(sections);
-        SpinnerContainer::PlayStepPeriod=300;
+//        SpinnerContainer::PlayStepPeriod=300;
         SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
     };
 
