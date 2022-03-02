@@ -382,34 +382,28 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
-//    if (!pimpl->firstPainting)
+    auto h=sectionHeight(section);
+    if (!section->pimpl->circular)
     {
-        auto h=sectionHeight(section);
-
-        std::cout << "Spinner::scrollTo height " << h << std::endl;
-
-        if (!section->pimpl->circular)
+        auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
+        if (pos<0)
         {
-            auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
-            if (pos<0)
-            {
-                // down
+            // down
 
-                auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
-                if (qAbs(pos)>edge)
-                {
-                    pos=-edge;
-                }
+            auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
+            if (qAbs(pos)>edge)
+            {
+                pos=-edge;
             }
-            else
-            {
-                // up
+        }
+        else
+        {
+            // up
 
-                auto edge=h/2 - pimpl->itemHeight/2;
-                if (pos>edge)
-                {
-                    pos=edge;
-                }
+            auto edge=h/2 - pimpl->itemHeight/2;
+            if (pos>edge)
+            {
+                pos=edge;
             }
         }
     }
@@ -420,6 +414,7 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     }
 
     section->pimpl->currentOffset=pos;
+
     updateCurrentIndex(section,pos);
 
     repaint();
@@ -785,16 +780,16 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
     auto secOffs=pos-sectionOffset(section);
     auto offset= sel.top()-secOffs;
 
-//    std::cout << "Spinner::updateCurrentIndex "
-//             << " pos " << pos
-//             << " sel.top() " << sel.top()
-//             << " secOffs " << secOffs
-//             << " height " << sectionHeight(section)
-//             << " pimpl->itemHeight " << pimpl->itemHeight
-//             << " offset " << offset
-//             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
-//             << std::endl;
-//            ;
+    std::cout << "Spinner::updateCurrentIndex "
+             << " pos " << pos
+             << " sel.top() " << sel.top()
+             << " secOffs " << secOffs
+             << " height " << sectionHeight(section)
+             << " pimpl->itemHeight " << pimpl->itemHeight
+             << " offset " << offset
+             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
+             << std::endl;
+            ;
 
     if (offset%pimpl->itemHeight!=0)
     {
@@ -817,17 +812,17 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
     section->pimpl->currentItemIndex=idx;
     notifySelectionChanged(section);
 
-//    std::cout << "Spinner::updateCurrentIndex "
-//             << " idx " << idx
-//             << " at pos " << pos
-//             << " sel.top() " << sel.top()
-//             << " pimpl->itemHeight " << pimpl->itemHeight
-//             << " offset " << offset
-//             << " currentOffset " << section->pimpl->currentOffset
-//             << " currentItemIndex " << section->pimpl->currentItemIndex
-//             << " currentItemPosition " << section->pimpl->currentItemPosition
-//             << std::endl;
-//            ;
+    std::cout << "Spinner::updateCurrentIndex "
+             << " idx " << idx
+             << " at pos " << pos
+             << " sel.top() " << sel.top()
+             << " pimpl->itemHeight " << pimpl->itemHeight
+             << " offset " << offset
+             << " currentOffset " << section->pimpl->currentOffset
+             << " currentItemIndex " << section->pimpl->currentItemIndex
+             << " currentItemPosition " << section->pimpl->currentItemPosition
+             << std::endl;
+            ;
 }
 
 //--------------------------------------------------------------------------
