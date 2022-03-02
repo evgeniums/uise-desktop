@@ -221,9 +221,9 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
     private:
 
         void scroll(SpinnerSection* section, int delta);
-        void scrollTo(SpinnerSection* section, int pos);
+        void scrollTo(SpinnerSection* section, int pos, bool noDelay=false);
         int selectedItemIndex(SpinnerSection* section) const;
-        void selectItem(SpinnerSection* section, int index);
+        void selectItem(SpinnerSection* section, int index, bool noDelay=false);
 
         QRect selectionRect() const;
         QRect selectionRect(int height, int offset) const;

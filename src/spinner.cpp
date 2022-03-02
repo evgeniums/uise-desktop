@@ -368,7 +368,7 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::scrollTo(SpinnerSection* section, int pos)
+void Spinner::scrollTo(SpinnerSection* section, int pos, bool noDelay)
 {
     auto h=sectionHeight(section);
 
@@ -404,7 +404,14 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
 
     section->pimpl->currentOffset=pos;
     repaint();
-    adjustPosition(section);
+    if (noDelay)
+    {
+        adjustPosition(section,false,true);
+    }
+    else
+    {
+        adjustPosition(section);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -525,13 +532,13 @@ size_t Spinner::sectionCount() const noexcept
 }
 
 //--------------------------------------------------------------------------
-void Spinner::selectItem(SpinnerSection *section, int index)
+void Spinner::selectItem(SpinnerSection *section, int index, bool noDelay)
 {
     if (index>=section->pimpl->items.size())
     {
         throw std::out_of_range("Index is out of range");
     }
-    section->pimpl->selectionTimer->shot(50,[this,section,index](){
+    auto handler=[this,section,index,noDelay](){
 
         auto idx=index;
         if (idx>=section->pimpl->items.size())
@@ -542,8 +549,9 @@ void Spinner::selectItem(SpinnerSection *section, int index)
         auto delta=idx-section->pimpl->currentItemIndex;
         auto offset=delta*pimpl->itemHeight;
         auto pos=section->pimpl->currentOffset-offset;
-        scrollTo(section,pos);
-    });
+        scrollTo(section,pos,noDelay);
+    };
+    section->pimpl->selectionTimer->shot(100,handler);
 }
 
 //--------------------------------------------------------------------------
