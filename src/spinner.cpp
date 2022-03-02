@@ -236,7 +236,7 @@ void Spinner::paintEvent(QPaintEvent *event)
 
         // notify that selected item changed
         std::cout << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
-                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex;
+                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex << std::endl;
         if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
         {
             section->pimpl->notifyTimer->clear();
@@ -382,7 +382,7 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
-    std::cout << "Spinner::scrollTo "<<pos;
+    std::cout << "Spinner::scrollTo "<<pos<< std::endl;
 
     auto h=sectionHeight(section);
 
@@ -539,7 +539,7 @@ size_t Spinner::sectionCount() const noexcept
 //--------------------------------------------------------------------------
 void Spinner::selectItem(SpinnerSection *section, int index)
 {
-    std::cout << "Select item "<<index;
+    std::cout << "Select item "<<index<< std::endl;
 
     if (index>=section->pimpl->items.size())
     {
