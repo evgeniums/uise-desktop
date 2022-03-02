@@ -777,16 +777,19 @@ int Spinner::itemHeight() const noexcept
 void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
 {
     auto sel=selectionRect(section);
+    auto secOffs=pos-sectionOffset(section);
+    auto offset= sel.top()-secOffs;
 
-    auto offset= sel.top()-pos-sectionOffset(section);
-
-//    qDebug() << "Spinner::updateCurrentIndex "
-//             << " pos " << pos
-//             << " sel.top() " << sel.top()
-//             << " pimpl->itemHeight " << pimpl->itemHeight
-//             << " offset " << offset
-//             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
-//            ;
+    std::cout << "Spinner::updateCurrentIndex "
+             << " pos " << pos
+             << " sel.top() " << sel.top()
+             << " secOffs " << secOffs
+             << " height " << sectionHeight(section)
+             << " pimpl->itemHeight " << pimpl->itemHeight
+             << " offset " << offset
+             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
+             << std::endl;
+            ;
 
     if (offset%pimpl->itemHeight!=0)
     {
@@ -816,16 +819,17 @@ void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
         });
     }
 
-//    qDebug() << "Spinner::updateCurrentIndex "
-//             << " idx " << idx
-//             << " at pos " << pos
-//             << " sel.top() " << sel.top()
-//             << " pimpl->itemHeight " << pimpl->itemHeight
-//             << " offset " << offset
-//             << " currentOffset " << section->pimpl->currentOffset
-//             << " currentItemIndex " << section->pimpl->currentItemIndex
-//             << " currentItemPosition " << section->pimpl->currentItemPosition
-//            ;
+    std::cout << "Spinner::updateCurrentIndex "
+             << " idx " << idx
+             << " at pos " << pos
+             << " sel.top() " << sel.top()
+             << " pimpl->itemHeight " << pimpl->itemHeight
+             << " offset " << offset
+             << " currentOffset " << section->pimpl->currentOffset
+             << " currentItemIndex " << section->pimpl->currentItemIndex
+             << " currentItemPosition " << section->pimpl->currentItemPosition
+             << std::endl;
+            ;
 }
 
 //--------------------------------------------------------------------------
