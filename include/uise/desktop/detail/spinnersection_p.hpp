@@ -47,6 +47,7 @@ class SpinnerSection_p
         int currentItemPosition=-1;
         bool circular=false;
         int animationVal=0;
+        bool firstIndexUpdating=true;
 
         Spinner *spinner;
 

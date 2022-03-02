@@ -50,8 +50,7 @@ class Spinner_p
             mousePressed(false),
             keyPressed(false),
             selectionHeight(0),
-            itemHeight(0),
-            firstPainting(true)
+            itemHeight(0)
         {}
 
         QWidget* styleSample;
@@ -66,7 +65,6 @@ class Spinner_p
         std::shared_ptr<SpinnerSection> sectionUnderCursor;
         int selectionHeight;
         int itemHeight;
-        bool firstPainting;
 };
 
 //--------------------------------------------------------------------------
@@ -132,13 +130,6 @@ void Spinner::paintEvent(QPaintEvent *event)
         int h=sectionHeight(section.get());
         auto sel = selectionRect(h,offset);
 
-        if (pimpl->firstPainting)
-        {
-            section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2
-                    -section->pimpl->currentItemIndex*pimpl->itemHeight;
-        }
-        bool needAdjusting=false;
-
         if (section->pimpl->circular)
         {
             auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
@@ -180,25 +171,10 @@ void Spinner::paintEvent(QPaintEvent *event)
             }
         }
 
-        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&needAdjusting,&offset](int from, int to)
+        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&offset](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
-                if (y>=sel.top() && y<=sel.bottom())
-                {
-                    section->pimpl->currentItemPosition=y;
-
-                    if (y==sel.top())
-                    {
-                        section->pimpl->currentItemIndex=i;
-                    }
-
-                    if (pimpl->firstPainting)
-                    {
-                        needAdjusting=true;
-                    }
-                }
-
                 section->pimpl->items[i]->render(&painter,QPoint(x,y));
                 y+=pimpl->itemHeight;
 
@@ -227,25 +203,8 @@ void Spinner::paintEvent(QPaintEvent *event)
             section->pimpl->rightBarLabel->render(&painter,QPoint(x,labelY));
         }
         x+=section->pimpl->rightBarWidth;
-
-        // adjust position
-        if (needAdjusting)
-        {
-            adjustPosition(section.get(),false,true);
-        }
-
-        // notify that selected item changed
-//        std::cout << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
-//                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex << std::endl;
-//        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
-//        {
-//            section->pimpl->notifyTimer->clear();
-//            section->pimpl->notifyTimer->shot(100,[section,this](){
-//                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
-//                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
-//            });
-//        }
     }
+
     //  construct gradient mask with highlighter hole
     auto maskPixmap = QPixmap(w,h);
     maskPixmap.fill(Qt::transparent);
@@ -271,11 +230,6 @@ void Spinner::paintEvent(QPaintEvent *event)
 
     // draw mask
     painter.drawPixmap(0,0,maskPixmap);
-
-    if (pimpl->firstPainting)
-    {
-        pimpl->firstPainting=false;
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -415,9 +369,9 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
 
     section->pimpl->currentOffset=pos;
 
-    updateCurrentIndex(section,pos);
-
+    updateCurrentIndex(section);
     repaint();
+
     adjustPosition(section);
 }
 
@@ -517,7 +471,7 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
             }
         }
 
-        section->pimpl->currentItemIndex=0;
+        selectItem(section.get(),0);
 
         ++i;
     }
@@ -549,11 +503,16 @@ void Spinner::selectItem(SpinnerSection *section, int index)
         idx=section->pimpl->items.size()-1;
     }
 
-    if (pimpl->firstPainting)
+    if (section->pimpl->firstIndexUpdating)
     {
         section->pimpl->currentItemIndex=idx;
-        section->pimpl->currentItemPosition=sectionHeight(section)/2-pimpl->selectionHeight/2;
-        notifySelectionChanged(section);
+        section->pimpl->selectionTimer->shot(
+            0,
+            [section,this]()
+            {
+                updateCurrentIndex(section);
+            }
+        );
         return;
     }
 
@@ -656,8 +615,7 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 section->pimpl->animationVal=rm;
                 section->pimpl->currentOffset+=offs;
 
-                updateCurrentIndex(section,section->pimpl->currentOffset);
-
+                updateCurrentIndex(section);
                 repaint();
             });
             section->pimpl->animation->start();
@@ -666,7 +624,7 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         {
             section->pimpl->currentOffset-=offset;
 
-            updateCurrentIndex(section,section->pimpl->currentOffset);
+            updateCurrentIndex(section);
             repaint();
         }
     };
@@ -775,55 +733,110 @@ int Spinner::itemHeight() const noexcept
 }
 
 //--------------------------------------------------------------------------
-void Spinner::updateCurrentIndex(SpinnerSection *section, int pos)
+void Spinner::updateCurrentIndex(SpinnerSection *section)
 {
-    auto sel=selectionRect(section);
-    auto secOffs=pos-sectionOffset(section);
-    auto offset= sel.top()-secOffs;
-
-    std::cout << "Spinner::updateCurrentIndex "
-             << " pos " << pos
-             << " sel.top() " << sel.top()
-             << " secOffs " << secOffs
-             << " height " << sectionHeight(section)
-             << " pimpl->itemHeight " << pimpl->itemHeight
-             << " offset " << offset
-             << " offset%pimpl->itemHeight " << offset%pimpl->itemHeight
-             << std::endl;
-            ;
-
-    if (offset%pimpl->itemHeight!=0)
+    for (auto&& section:pimpl->sections)
     {
-        return;
-    }
+        // calculate items positions
+        int topItemIndex=0;
+        int offset=sectionOffset(section.get());
+        int y=offset;
+        int h=sectionHeight(section.get());
+        auto sel = selectionRect(h,offset);
 
-    auto idx=qFloor(offset/pimpl->itemHeight);
-    if (idx<0)
-    {
-        if (section->circular())
+        if (section->pimpl->firstIndexUpdating)
         {
-            idx+=section->pimpl->items.size();
+            section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
+        }
+
+        if (section->pimpl->circular)
+        {
+            auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
+            topItemIndex=(section->pimpl->items.size()-b)%section->pimpl->items.size();
+
+            auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
+            if (delta>0)
+            {
+                topItemIndex-=1;
+                if (topItemIndex<0)
+                {
+                    topItemIndex=section->pimpl->items.size()-1;
+                }
+                delta=delta-pimpl->itemHeight;
+            }
+            y+=delta;
         }
         else
         {
-            idx=0;
+            if (section->pimpl->currentOffset>h)
+            {
+                topItemIndex = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
+
+                auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
+                if (delta>0)
+                {
+                    topItemIndex-=1;
+                    if (topItemIndex<0)
+                    {
+                        topItemIndex=0;
+                    }
+                    delta=delta-pimpl->itemHeight;
+                }
+                y+=delta;
+            }
+            else
+            {
+                y+=section->pimpl->currentOffset;
+            }
+        }
+
+        auto renderItems=[this,h,section,&y,&sel,&offset](int from, int to)
+        {
+            for (int i=from;i<to;i++)
+            {
+                if (y>=sel.top() && y<=sel.bottom())
+                {
+                    section->pimpl->currentItemPosition=y;
+
+                    if (y==sel.top())
+                    {
+                        section->pimpl->currentItemIndex=i;
+                    }
+                }
+
+                y+=pimpl->itemHeight;
+
+                if (y>(offset+h))
+                {
+                    break;
+                }
+            }
+        };
+
+        renderItems(topItemIndex,section->pimpl->items.size());
+        if (section->pimpl->circular)
+        {
+            while (y<h)
+            {
+                renderItems(0,section->pimpl->items.size());
+            }
+        }
+
+        // notify that selected item changed
+        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
+        {
+            section->pimpl->notifyTimer->clear();
+            section->pimpl->notifyTimer->shot(100,[section,this](){
+                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
+            });
         }
     }
 
-    section->pimpl->currentItemIndex=idx;
-    notifySelectionChanged(section);
-
-    std::cout << "Spinner::updateCurrentIndex "
-             << " idx " << idx
-             << " at pos " << pos
-             << " sel.top() " << sel.top()
-             << " pimpl->itemHeight " << pimpl->itemHeight
-             << " offset " << offset
-             << " currentOffset " << section->pimpl->currentOffset
-             << " currentItemIndex " << section->pimpl->currentItemIndex
-             << " currentItemPosition " << section->pimpl->currentItemPosition
-             << std::endl;
-            ;
+    if (section->pimpl->firstIndexUpdating)
+    {
+        section->pimpl->firstIndexUpdating=false;
+    }
 }
 
 //--------------------------------------------------------------------------

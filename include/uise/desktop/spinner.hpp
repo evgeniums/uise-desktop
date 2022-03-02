@@ -220,7 +220,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
 
     private:
 
-        void updateCurrentIndex(SpinnerSection* section, int pos);
+        void updateCurrentIndex(SpinnerSection* section);
 
         void scroll(SpinnerSection* section, int delta);
         void scrollTo(SpinnerSection* section, int pos);
