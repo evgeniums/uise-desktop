@@ -234,6 +234,8 @@ void Spinner::paintEvent(QPaintEvent *event)
         }
 
         // notify that selected item changed
+        qDebug() << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
+                 <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex;
         if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
         {
             section->pimpl->notifyTimer->clear();
