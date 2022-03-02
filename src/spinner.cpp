@@ -382,29 +382,34 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
-    auto h=sectionHeight(section);
-
-    if (!section->pimpl->circular)
+//    if (!pimpl->firstPainting)
     {
-        auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
-        if (pos<0)
-        {
-            // down
+        auto h=sectionHeight(section);
 
-            auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
-            if (qAbs(pos)>edge)
+        std::cout << "Spinner::scrollTo height " << h << std::endl;
+
+        if (!section->pimpl->circular)
+        {
+            auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
+            if (pos<0)
             {
-                pos=-edge;
+                // down
+
+                auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
+                if (qAbs(pos)>edge)
+                {
+                    pos=-edge;
+                }
             }
-        }
-        else
-        {
-            // up
-
-            auto edge=h/2 - pimpl->itemHeight/2;
-            if (pos>edge)
+            else
             {
-                pos=edge;
+                // up
+
+                auto edge=h/2 - pimpl->itemHeight/2;
+                if (pos>edge)
+                {
+                    pos=edge;
+                }
             }
         }
     }
@@ -415,7 +420,6 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     }
 
     section->pimpl->currentOffset=pos;
-
     updateCurrentIndex(section,pos);
 
     repaint();
