@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(TestItemSelection)
     auto checkFirstItemSelected=[section,selectItem,&handleItemChanged](SpinnerContainerPtr container){
         auto spinner=container->testWidget;
 
-        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(0),0);
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(section),0);
         QObject::connect(spinner,&Spinner::itemChanged,handleItemChanged);
 
         spinner->selectItem(section,selectItem);

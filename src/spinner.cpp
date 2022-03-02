@@ -512,11 +512,14 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 
         if (!section->pimpl->items.empty())
         {
-            selectItem(section.get(),0);
+            auto pos=height()/2-pimpl->itemHeight/2;
+            section->pimpl->currentOffset=pos;
         }
 
         ++i;
     }
+
+    repaint();
 }
 
 //--------------------------------------------------------------------------
@@ -551,7 +554,7 @@ void Spinner::selectItem(SpinnerSection *section, int index, bool noDelay)
         auto pos=section->pimpl->currentOffset-offset;
         scrollTo(section,pos,noDelay);
     };
-    section->pimpl->selectionTimer->shot(100,handler);
+    section->pimpl->selectionTimer->shot(50,handler);
 }
 
 //--------------------------------------------------------------------------
