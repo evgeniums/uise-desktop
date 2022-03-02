@@ -72,11 +72,7 @@ struct TestWidgetContainer
     TestWidgetContainer& operator=(TestWidgetContainer&&)=delete;
 
     ~TestWidgetContainer()
-    {
-        UISE_TEST_MESSAGE("TestWidgetContainer destructor begin");
-        TestThread::instance()->execGuiThread([this](){destroy();});
-        UISE_TEST_MESSAGE("TestWidgetContainer destructor end");
-    }
+    {}
 
     static void runStep(std::shared_ptr<TestWidgetContainer<T>> container,
                  std::vector<std::function<void (std::shared_ptr<TestWidgetContainer<T>>)>> steps,
