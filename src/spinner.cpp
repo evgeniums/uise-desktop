@@ -20,6 +20,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <iostream>
 #include <stdexcept>
 
 #include <QApplication>
@@ -234,7 +235,7 @@ void Spinner::paintEvent(QPaintEvent *event)
         }
 
         // notify that selected item changed
-        qDebug() << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
+        std::cout << "Paint event pimpl->previousItemIndex="<<section->pimpl->previousItemIndex
                  <<" section->pimpl->currentItemIndex"<<section->pimpl->currentItemIndex;
         if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
         {
@@ -381,7 +382,7 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 //--------------------------------------------------------------------------
 void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
-    qDebug() << "Spinner::scrollTo "<<pos;
+    std::cout << "Spinner::scrollTo "<<pos;
 
     auto h=sectionHeight(section);
 
@@ -538,7 +539,7 @@ size_t Spinner::sectionCount() const noexcept
 //--------------------------------------------------------------------------
 void Spinner::selectItem(SpinnerSection *section, int index)
 {
-    qDebug() << "Select item "<<index;
+    std::cout << "Select item "<<index;
 
     if (index>=section->pimpl->items.size())
     {
