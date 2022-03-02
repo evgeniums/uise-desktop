@@ -49,13 +49,15 @@ struct TestWidgetContainer
 
     void destroy()
     {
-        UISE_TEST_MESSAGE("TestWidgetContainer destroy begin");
         if (mainWindow)
         {
+            UISE_TEST_MESSAGE("TestWidgetContainer destroy begin");
+
             mainWindow->hide();
             mainWindow->deleteLater();
+
+            UISE_TEST_MESSAGE("TestWidgetContainer destroy end");
         }
-        UISE_TEST_MESSAGE("TestWidgetContainer destroy end");
     }
 
     TestWidgetContainer(int width=800, int height=600)
@@ -82,6 +84,7 @@ struct TestWidgetContainer
     {
         if (index>=steps.size())
         {
+            container->destroy();
             TestThread::instance()->continueTest();
             return;
         }
