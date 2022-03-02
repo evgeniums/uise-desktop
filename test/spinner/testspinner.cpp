@@ -64,9 +64,6 @@ Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std
     section1->setItems(items1);
     sections.insert(sections.begin(),section1);
 
-    auto styleSample = new QLineEdit();
-    spinner->setStyleSample(styleSample);
-
     spinner->setFixedSize(500,500);
 
     QString lightTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: black;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
@@ -245,6 +242,10 @@ BOOST_AUTO_TEST_CASE(TestCircular)
 
         std::vector<std::shared_ptr<SpinnerSection>> sections{section};
         auto spinner=createSpinner(sections);
+
+        auto styleSample = new QLineEdit();
+        spinner->setStyleSample(styleSample);
+
         SpinnerContainer::PlayStepPeriod=300;
         SpinnerContainer::beginTestCase(container,spinner,"Test Spinner item selection");
     };

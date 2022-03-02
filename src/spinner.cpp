@@ -30,6 +30,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 #include <QPainter>
 #include <QColor>
 #include <QEnterEvent>
+#include <QLineEdit>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/spinner.hpp>
@@ -77,6 +78,8 @@ Spinner::Spinner(
     setFocusPolicy(Qt::StrongFocus);
     setFocus();
     setMouseTracking(true);
+
+    setStyleSample(new QLineEdit());
 }
 
 //--------------------------------------------------------------------------
