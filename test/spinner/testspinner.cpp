@@ -20,6 +20,8 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 /****************************************************************************/
 
+#include <iostream>
+
 #include <QLabel>
 #include <QLineEdit>
 
@@ -40,7 +42,8 @@ static const int itemHeight=50;
 
 Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std::vector<std::shared_ptr<SpinnerSection>>())
 {
-    qDebug() << "createSpinner";
+    std::cout << "createSpinner cout" << std::endl;
+    std::cerr << "createSpinner cerr" << std::endl;
 
     SpinnerContainer::PlayStepPeriod=300;
 
