@@ -552,6 +552,7 @@ void Spinner::selectItem(SpinnerSection *section, int index)
     if (pimpl->firstPainting)
     {
         section->pimpl->currentItemIndex=idx;
+        section->pimpl->currentItemPosition=sectionHeight(section)/2-pimpl->selectionHeight/2;
         notifySelectionChanged(section);
         return;
     }
