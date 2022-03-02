@@ -1,7 +1,9 @@
 <RCC>
-    <qresource prefix="/uise/desktop/icons">
-        <file>document-edit.svg</file>
-        <file>dialog-cancel.svg</file>
-        <file>dialog-ok-apply.svg</file>
+    <qresource prefix="/uise/desktop">
+        <file>icons/dialog-cancel.svg</file>
+        <file>icons/dialog-ok-apply.svg</file>
+        <file>icons/document-edit.svg</file>
+        <file>qss/spinner.qss</file>
+        <file>qss/dark/spinner.qss</file>
     </qresource>
 </RCC>

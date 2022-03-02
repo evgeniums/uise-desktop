@@ -1,0 +1,10 @@
+uise--desktop--Spinner * {
+    color: #ffffff;
+}
+uise--desktop--Spinner QLabel {
+    background-color: transparent;
+}
+uise--desktop--Spinner * [style-sample="true"] {
+    background-color: #111111;
+    selection-background-color: #444444;
+}
