@@ -377,7 +377,7 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::scrollTo(SpinnerSection* section, int pos, bool noDelay)
+void Spinner::scrollTo(SpinnerSection* section, int pos)
 {
     auto h=sectionHeight(section);
 
@@ -412,15 +412,9 @@ void Spinner::scrollTo(SpinnerSection* section, int pos, bool noDelay)
     }
 
     section->pimpl->currentOffset=pos;
+
     repaint();
-    if (noDelay)
-    {
-        adjustPosition(section,false,true);
-    }
-    else
-    {
-        adjustPosition(section);
-    }
+    adjustPosition(section);
 }
 
 //--------------------------------------------------------------------------
@@ -538,7 +532,7 @@ size_t Spinner::sectionCount() const noexcept
 }
 
 //--------------------------------------------------------------------------
-void Spinner::selectItem(SpinnerSection *section, int index, bool noDelay)
+void Spinner::selectItem(SpinnerSection *section, int index)
 {
     if (index>=section->pimpl->items.size())
     {
@@ -560,7 +554,7 @@ void Spinner::selectItem(SpinnerSection *section, int index, bool noDelay)
     auto delta=idx-section->pimpl->currentItemIndex;
     auto offset=delta*pimpl->itemHeight;
     auto pos=section->pimpl->currentOffset-offset;
-    scrollTo(section,pos,noDelay);
+    scrollTo(section,pos);
 }
 
 //--------------------------------------------------------------------------
@@ -639,10 +633,10 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
 
         if (animate)
         {
+            section->pimpl->animation->disconnect(this);
             section->pimpl->animationVal=0;
             section->pimpl->animation->setStartValue(0);
             section->pimpl->animation->setEndValue(endVal);
-            section->pimpl->animation->disconnect(this);
             connect(section->pimpl->animation,&QVariantAnimation::valueChanged,this,[this,section,asc](const QVariant& val){
 
                 if (pimpl->mousePressed || pimpl->keyPressed)
@@ -654,8 +648,8 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 int rm = asc?val.toInt():-val.toInt();
                 auto offs = section->pimpl->animationVal - rm;
                 section->pimpl->animationVal=rm;
-
                 section->pimpl->currentOffset+=offs;
+
                 repaint();
             });
             section->pimpl->animation->start();
@@ -663,7 +657,7 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         else
         {
             section->pimpl->currentOffset-=offset;
-            update();
+            repaint();
         }
     };
 
@@ -733,7 +727,7 @@ void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
 
 //--------------------------------------------------------------------------
 void Spinner::removeLastItems(int sectionIndex, int count)
-{    
+{
     auto section=pimpl->sections[sectionIndex];
 
     if (section->pimpl->currentItemIndex<0)
