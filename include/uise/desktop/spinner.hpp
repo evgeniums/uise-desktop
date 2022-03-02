@@ -220,6 +220,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
 
     private:
 
+        std::tuple<int,int,int,int> calcTopItem(SpinnerSection *section) const;
         void updateCurrentIndex(SpinnerSection* section);
 
         void scroll(SpinnerSection* section, int delta);

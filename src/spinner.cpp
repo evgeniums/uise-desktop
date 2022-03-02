@@ -124,53 +124,10 @@ void Spinner::paintEvent(QPaintEvent *event)
         x+=section->pimpl->leftBarWidth;
 
         // calculate items positions
-        int topItemIndex=0;
-        int offset=sectionOffset(section.get());
-        int y=offset;
-        int h=sectionHeight(section.get());
+        auto [topItemIndex,offset,y,h] = calcTopItem(section.get());
         auto sel = selectionRect(h,offset);
 
-        if (section->pimpl->circular)
-        {
-            auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
-            topItemIndex=(section->pimpl->items.size()-b)%section->pimpl->items.size();
-
-            auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
-            if (delta>0)
-            {
-                topItemIndex-=1;
-                if (topItemIndex<0)
-                {
-                    topItemIndex=section->pimpl->items.size()-1;
-                }
-                delta=delta-pimpl->itemHeight;
-            }
-            y+=delta;
-        }
-        else
-        {
-            if (section->pimpl->currentOffset>h)
-            {
-                topItemIndex = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
-
-                auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
-                if (delta>0)
-                {
-                    topItemIndex-=1;
-                    if (topItemIndex<0)
-                    {
-                        topItemIndex=0;
-                    }
-                    delta=delta-pimpl->itemHeight;
-                }
-                y+=delta;
-            }
-            else
-            {
-                y+=section->pimpl->currentOffset;
-            }
-        }
-
+        // render items
         auto renderItems=[this,h,section,&x,&y,&painter,&sel,&offset](int from, int to)
         {
             for (int i=from;i<to;i++)
@@ -184,8 +141,6 @@ void Spinner::paintEvent(QPaintEvent *event)
                 }
             }
         };
-
-        // render items
         renderItems(topItemIndex,section->pimpl->items.size());
         if (section->pimpl->circular)
         {
@@ -733,26 +688,35 @@ int Spinner::itemHeight() const noexcept
 }
 
 //--------------------------------------------------------------------------
-void Spinner::updateCurrentIndex(SpinnerSection *section)
+std::tuple<int,int,int,int> Spinner::calcTopItem(SpinnerSection *section) const
 {
-    for (auto&& section:pimpl->sections)
+    int topItemIndex=0;
+    int offset=sectionOffset(section);
+    int y=offset;
+    int h=sectionHeight(section);
+
+    if (section->pimpl->circular)
     {
-        // calculate items positions
-        int topItemIndex=0;
-        int offset=sectionOffset(section.get());
-        int y=offset;
-        int h=sectionHeight(section.get());
-        auto sel = selectionRect(h,offset);
+        auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
+        topItemIndex=(section->pimpl->items.size()-b)%section->pimpl->items.size();
 
-        if (section->pimpl->firstIndexUpdating)
+        auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
+        if (delta>0)
         {
-            section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
+            topItemIndex-=1;
+            if (topItemIndex<0)
+            {
+                topItemIndex=section->pimpl->items.size()-1;
+            }
+            delta=delta-pimpl->itemHeight;
         }
-
-        if (section->pimpl->circular)
+        y+=delta;
+    }
+    else
+    {
+        if (section->pimpl->currentOffset>h)
         {
-            auto b = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
-            topItemIndex=(section->pimpl->items.size()-b)%section->pimpl->items.size();
+            topItemIndex = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
 
             auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
             if (delta>0)
@@ -760,7 +724,7 @@ void Spinner::updateCurrentIndex(SpinnerSection *section)
                 topItemIndex-=1;
                 if (topItemIndex<0)
                 {
-                    topItemIndex=section->pimpl->items.size()-1;
+                    topItemIndex=0;
                 }
                 delta=delta-pimpl->itemHeight;
             }
@@ -768,75 +732,69 @@ void Spinner::updateCurrentIndex(SpinnerSection *section)
         }
         else
         {
-            if (section->pimpl->currentOffset>h)
-            {
-                topItemIndex = qFloor(section->pimpl->currentOffset/pimpl->itemHeight)%section->pimpl->items.size();
-
-                auto delta=section->pimpl->currentOffset%pimpl->itemHeight;
-                if (delta>0)
-                {
-                    topItemIndex-=1;
-                    if (topItemIndex<0)
-                    {
-                        topItemIndex=0;
-                    }
-                    delta=delta-pimpl->itemHeight;
-                }
-                y+=delta;
-            }
-            else
-            {
-                y+=section->pimpl->currentOffset;
-            }
-        }
-
-        auto renderItems=[this,h,section,&y,&sel,&offset](int from, int to)
-        {
-            for (int i=from;i<to;i++)
-            {
-                if (y>=sel.top() && y<=sel.bottom())
-                {
-                    section->pimpl->currentItemPosition=y;
-
-                    if (y==sel.top())
-                    {
-                        section->pimpl->currentItemIndex=i;
-                    }
-                }
-
-                y+=pimpl->itemHeight;
-
-                if (y>(offset+h))
-                {
-                    break;
-                }
-            }
-        };
-
-        renderItems(topItemIndex,section->pimpl->items.size());
-        if (section->pimpl->circular)
-        {
-            while (y<h)
-            {
-                renderItems(0,section->pimpl->items.size());
-            }
-        }
-
-        // notify that selected item changed
-        if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
-        {
-            section->pimpl->notifyTimer->clear();
-            section->pimpl->notifyTimer->shot(100,[section,this](){
-                section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
-                emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
-            });
+            y+=section->pimpl->currentOffset;
         }
     }
 
+    return std::make_tuple(topItemIndex,offset,y,h);
+}
+
+//--------------------------------------------------------------------------
+void Spinner::updateCurrentIndex(SpinnerSection *section)
+{
+    auto [topItemIndex,offset,y,h] = calcTopItem(section);
+    auto sel = selectionRect(h,offset);
+
+    // set offset for the first run
     if (section->pimpl->firstIndexUpdating)
     {
-        section->pimpl->firstIndexUpdating=false;
+        section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
     }
+
+    // render items
+    auto renderItems=[this,h,section,&y,&sel,&offset](int from, int to)
+    {
+        for (int i=from;i<to;i++)
+        {
+            if (y>=sel.top() && y<=sel.bottom())
+            {
+                section->pimpl->currentItemPosition=y;
+
+                if (y==sel.top())
+                {
+                    section->pimpl->currentItemIndex=i;
+                }
+            }
+
+            y+=pimpl->itemHeight;
+
+            if (y>(offset+h))
+            {
+                break;
+            }
+        }
+    };
+    renderItems(topItemIndex,section->pimpl->items.size());
+    if (section->pimpl->circular)
+    {
+        while (y<h)
+        {
+            renderItems(0,section->pimpl->items.size());
+        }
+    }
+
+    // notify that selected item changed
+    if (section->pimpl->previousItemIndex!=section->pimpl->currentItemIndex)
+    {
+        section->pimpl->notifyTimer->clear();
+        section->pimpl->notifyTimer->shot(100,[section,this](){
+            section->pimpl->previousItemIndex=section->pimpl->currentItemIndex;
+            emit itemChanged(section->pimpl->index,section->pimpl->currentItemIndex);
+        });
+    }
+
+    // uncheck first run
+    section->pimpl->firstIndexUpdating=false;
 }
 
 //--------------------------------------------------------------------------
