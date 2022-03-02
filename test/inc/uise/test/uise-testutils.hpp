@@ -49,16 +49,20 @@ struct TestWidgetContainer
 
     void destroy()
     {
+        UISE_TEST_MESSAGE("TestWidgetContainer destroy begin");
         if (mainWindow)
         {
             mainWindow->hide();
-            delete mainWindow;
+            mainWindow->deleteLater();
         }
+        UISE_TEST_MESSAGE("TestWidgetContainer destroy end");
     }
 
     TestWidgetContainer(int width=800, int height=600)
         :windowSize(width,height)
-    {}
+    {
+        UISE_TEST_MESSAGE("TestWidgetContainer constructor");
+    }
 
     TestWidgetContainer(const TestWidgetContainer&)=delete;
     TestWidgetContainer& operator=(const TestWidgetContainer&)=delete;
@@ -67,7 +71,9 @@ struct TestWidgetContainer
 
     ~TestWidgetContainer()
     {
+        UISE_TEST_MESSAGE("TestWidgetContainer destructor begin");
         TestThread::instance()->execGuiThread([this](){destroy();});
+        UISE_TEST_MESSAGE("TestWidgetContainer destructor end");
     }
 
     static void runStep(std::shared_ptr<TestWidgetContainer<T>> container,
