@@ -105,7 +105,7 @@ class BusyWaiting_p
         bool    centerOnParent=false;
         bool    disableParentWhenSpinning=false;
         int     currentCounter=0;
-        bool    isSpinning=false;
+        bool    running=false;
 
         QWidget *styleSample=nullptr;
 };
@@ -156,7 +156,7 @@ void BusyWaiting::initialize()
     pimpl->lineWidth = 2;
     pimpl->innerRadius = 10;
     pimpl->currentCounter = 0;
-    pimpl->isSpinning = false;
+    pimpl->running = false;
 
     pimpl->timer = new QTimer(this);
     connect(pimpl->timer, SIGNAL(timeout()), this, SLOT(rotate()));
@@ -206,7 +206,7 @@ void BusyWaiting::paintEvent(QPaintEvent *)
 void BusyWaiting::start()
 {
     updatePosition();
-    pimpl->isSpinning = true;
+    pimpl->running = true;
     show();
 
     if(parentWidget() && pimpl->disableParentWhenSpinning)
@@ -224,7 +224,7 @@ void BusyWaiting::start()
 //--------------------------------------------------------------------------
 void BusyWaiting::stop()
 {
-    pimpl->isSpinning = false;
+    pimpl->running = false;
     hide();
 
     if(parentWidget() && pimpl->disableParentWhenSpinning)
@@ -266,6 +266,12 @@ void BusyWaiting::setInnerRadius(int radius) noexcept
 {
     pimpl->innerRadius = radius;
     updateSize();
+}
+
+//--------------------------------------------------------------------------
+QColor BusyWaiting::overrideColor() const noexcept
+{
+    return pimpl->overrideColor;
 }
 
 //--------------------------------------------------------------------------
@@ -336,9 +342,9 @@ int BusyWaiting::innerRadius() const noexcept
 }
 
 //--------------------------------------------------------------------------
-bool BusyWaiting::isSpinning() const noexcept
+bool BusyWaiting::isRunning() const noexcept
 {
-    return pimpl->isSpinning;
+    return pimpl->running;
 }
 
 //--------------------------------------------------------------------------
