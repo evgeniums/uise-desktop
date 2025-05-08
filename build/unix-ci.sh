@@ -45,9 +45,13 @@ export self_path="`( cd \"$self_path\" && pwd )`"
 
 if [ -z "$deps_universal_root" ];
 then
-export deps_universal_root=$self_path/../../../../dracosha/deps
+export deps_universal_root=$self_path/../../../../hatn/deps
 fi
-export BOOST_ROOT=$deps_universal_root/root-$uise_compiler
+
+if [ -z "$Boost_DIR" ]
+then
+    export Boost_DIR=$deps_universal_root/root-$uise_compiler
+fi
 
 if [ -z "$QT_HOME" ];
 then
