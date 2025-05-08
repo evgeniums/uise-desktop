@@ -37,8 +37,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Wrapper of a single widget that supports alignment and stretching at the same time.
  *
- * Standard Qt box layout does not support stretching and alignment at the same time: only unligned widgets can be stretched,
- * and if alignment is set then stretching is truned off. This container can align widget and strech it as requested at the same time.
+ * Standard Qt box layout does not support stretching and alignment at the same time: only unaligned widgets can be stretched,
+ * and if alignment is set then stretching is turned off. AlignedStretchingWidget container can align widget and strech it as requested at the same time.
  *
  */
 class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
@@ -74,7 +74,7 @@ class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
 
         /**
          * @brief Get content widget.
-         * @return COntent widget.
+         * @return Content widget.
          */
         inline QWidget* widget() const noexcept
         {
