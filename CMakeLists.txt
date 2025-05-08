@@ -61,6 +61,7 @@ SET (HEADERS
     include/uise/desktop/spinnersection.hpp
 
     include/uise/desktop/busywaiting.hpp
+    include/uise/desktop/modalpopup.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -82,6 +83,7 @@ SET (SOURCES
     src/spinnersection.cpp
     src/wheeleventhandler.cpp
     src/busywaiting.cpp
+    src/modalpopup.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

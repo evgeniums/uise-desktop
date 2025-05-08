@@ -40,11 +40,11 @@ You may select, at your option, one of the above-listed licenses.
 
 //! @ingroup group-config
 //! Macro expanding to the minor version of the library, i.e. the `y` in `x.y.z`.
-#define UISE_DESKTOP_MINOR_VERSION 0
+#define UISE_DESKTOP_MINOR_VERSION 1
 
 //! @ingroup group-config
 //! Macro expanding to the patch level of the library, i.e. the `z` in `x.y.z`.
-#define UISE_DESKTOP_PATCH_VERSION 1
+#define UISE_DESKTOP_PATCH_VERSION 0
 
 //! @ingroup group-config
 //! Macro expanding to the full version of the library, in hexadecimal

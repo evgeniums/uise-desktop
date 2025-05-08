@@ -1,0 +1,295 @@
+/**
+@copyright Evgeny Sidorov 2022
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+    
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/desktop/src/modalpopup.cpp
+*
+*  Defines SpinnerSection.
+*
+*/
+
+/****************************************************************************/
+
+#include <QResizeEvent>
+#include <QShortcut>
+#include <QPalette>
+
+#include <uise/desktop/modalpopup.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+/**********************************ModalPopup********************************/
+
+//--------------------------------------------------------------------------
+
+class ModalPopup_p
+{
+    public:
+
+        QWidget* widget=nullptr;
+        FrameWithModalPopup* parent=nullptr;
+        QShortcut* shortcut=nullptr;
+};
+
+//--------------------------------------------------------------------------
+
+ModalPopup::ModalPopup(FrameWithModalPopup* parent)
+    : QFrame(parent),
+      pimpl(std::make_unique<ModalPopup_p>())
+{
+    pimpl->parent=parent;
+    pimpl->shortcut=new QShortcut(Qt::Key_Escape, this);
+    pimpl->shortcut->setContext(Qt::WindowShortcut);
+    connect(
+        pimpl->shortcut,
+        &QShortcut::activated,
+        this,
+        [this]()
+        {
+            close();
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+ModalPopup::~ModalPopup()
+{}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::setWidget(QWidget* widget)
+{
+    QPalette pal = pimpl->parent->palette();
+    auto background=pal.color(QPalette::Window);
+
+    QString css("uise--desktop--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
+    css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->popupAlpha());
+    setStyleSheet(css);
+
+    pimpl->widget=widget;
+    pimpl->widget->setParent(this);
+    pimpl->widget->setVisible(true);
+    pimpl->widget->setFocus();
+    pimpl->shortcut->setEnabled(true);
+    updateWidgetGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::close()
+{
+    hide();
+    if (pimpl->widget!=nullptr)
+    {
+        pimpl->widget->hide();
+        pimpl->widget->deleteLater();
+        pimpl->widget=nullptr;
+    }
+    pimpl->shortcut->setEnabled(false);
+    pimpl->parent->setPopupHidden();
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::resizeEvent(QResizeEvent *event)
+{
+    std::ignore=event;
+    updateWidgetGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::updateWidgetGeometry()
+{
+    if (pimpl->widget==nullptr)
+    {
+        return;
+    }
+
+    auto h=height();
+    auto w=width();
+
+    auto setPos=[h,w,this](int width, int height)
+    {
+        auto x=(w-width)/2;
+        if (x<0)
+        {
+            x=0;
+        }
+        auto y=(h-height)/2;
+        if (y<0)
+        {
+            y=0;
+        }
+        pimpl->widget->move(x,y);
+    };
+
+    auto minSize=pimpl->widget->minimumSize();
+    if (minSize.isNull())
+    {
+        minSize=pimpl->widget->minimumSizeHint();
+    }
+    auto maxSize=pimpl->widget->maximumSize();
+    if (minSize==maxSize && minSize.isValid())
+    {
+        // no resize needed
+        setPos(minSize.width(),minSize.height());
+        return;
+    }
+
+    auto newW=w * pimpl->parent->maxWidthPercent()/100;
+    auto newH=h * pimpl->parent->maxHeightPercent()/100;
+
+    if (maxSize.width()!=0 && newW>maxSize.width())
+    {
+        newW=maxSize.width();
+    }
+    if (minSize.width()!=0 && newW<minSize.width())
+    {
+        newW=minSize.width();
+    }
+
+    if (maxSize.height()!=0 && newH>maxSize.height())
+    {
+        newH=maxSize.height();
+    }
+    if (minSize.height()!=0 && newH<minSize.height())
+    {
+        newH=minSize.height();
+    }
+
+    pimpl->widget->resize(newW,newH);
+    setPos(newW,newH);
+}
+
+/****************************FrameWithModalPopup******************************/
+
+//--------------------------------------------------------------------------
+
+class FrameWithModalPopup_p
+{
+    public:
+
+        ModalPopup* popup;
+        bool locked=false;
+
+        int maxWidthPercent=FrameWithModalPopup::DefaultMaxWidthPercent;
+        int maxHeightPercent=FrameWithModalPopup::DefaultMaxHeightPercent;
+        int popupAlpha=FrameWithModalPopup::DefaultPopupAlpha;
+};
+
+//--------------------------------------------------------------------------
+
+FrameWithModalPopup::FrameWithModalPopup(QWidget* parent)
+    : QFrame(parent),
+      pimpl(std::make_unique<FrameWithModalPopup_p>())
+{
+    pimpl->popup=new ModalPopup(this);
+}
+
+//--------------------------------------------------------------------------
+
+FrameWithModalPopup::~FrameWithModalPopup()
+{}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::popup(QWidget* widget)
+{
+    pimpl->popup->close();
+    pimpl->locked=true;
+    pimpl->popup->setWidget(widget);
+    pimpl->popup->show();
+    pimpl->popup->raise();
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::closePopup()
+{
+    pimpl->popup->close();
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPopup::isPopupLocked() const
+{
+    return pimpl->locked;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setPopupHidden()
+{
+    pimpl->locked=false;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::resizeEvent(QResizeEvent *event)
+{
+    QFrame::resizeEvent(event);
+
+    pimpl->popup->resize(event->size());
+    pimpl->popup->move(0,0);
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setMaxWidthPercent(int val)
+{
+    pimpl->maxWidthPercent=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FrameWithModalPopup::maxWidthPercent() const
+{
+    return pimpl->maxWidthPercent;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setMaxHeightPercent(int val)
+{
+    pimpl->maxHeightPercent=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FrameWithModalPopup::maxHeightPercent() const
+{
+    return pimpl->maxHeightPercent;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setPopupAlpha(int val)
+{
+    pimpl->popupAlpha=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FrameWithModalPopup::popupAlpha() const
+{
+    return pimpl->popupAlpha;
+}
+
+//--------------------------------------------------------------------------
+
+UISE_DESKTOP_NAMESPACE_END
