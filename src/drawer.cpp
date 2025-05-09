@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPalette>
 #include <QVariantAnimation>
 
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/drawer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -246,11 +247,7 @@ Drawer::~Drawer()
 
 void Drawer::setWidget(QWidget* widget)
 {
-    if (pimpl->widget!=nullptr)
-    {
-        pimpl->widget->hide();
-        pimpl->widget->deleteLater();
-    }
+    destroyWidget(pimpl->widget);
 
     pimpl->widget=widget;
     pimpl->widget->setParent(this);
