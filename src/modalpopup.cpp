@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QShortcut>
 #include <QPalette>
 
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/modalpopup.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -93,12 +94,8 @@ void ModalPopup::setWidget(QWidget* widget)
 void ModalPopup::close()
 {
     hide();
-    if (pimpl->widget!=nullptr)
-    {
-        pimpl->widget->hide();
-        pimpl->widget->deleteLater();
-        pimpl->widget=nullptr;
-    }
+    destroyWidget(pimpl->widget);
+    pimpl->widget=nullptr;
     pimpl->shortcut->setEnabled(false);
     pimpl->parent->setPopupHidden();
 }
