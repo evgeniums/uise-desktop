@@ -229,6 +229,15 @@ class AlignedStretchingWidgetDemo : public QTabWidget
         {
             if (slider==m_horizontalMin)
             {
+                if (m_horizontalMax!=nullptr)
+                {
+                    if (m_horizontalMin->value()>m_horizontalMax->value())
+                    {
+                        m_horizontalMin->setValue(m_horizontalMax->value());
+                        return;
+                    }
+                }
+
                 for (auto&& widget:m_horizontalWidgets)
                 {
                     widget->widget()->setMinimumWidth(value);
@@ -237,6 +246,15 @@ class AlignedStretchingWidgetDemo : public QTabWidget
             }
             else if (slider==m_horizontalMax)
             {
+                if (m_horizontalMin!=nullptr)
+                {
+                    if (m_horizontalMin->value()>m_horizontalMax->value())
+                    {
+                        m_horizontalMax->setValue(m_horizontalMin->value());
+                        return;
+                    }
+                }
+
                 for (auto&& widget:m_horizontalWidgets)
                 {
                     widget->widget()->setMaximumWidth(value);
@@ -245,6 +263,15 @@ class AlignedStretchingWidgetDemo : public QTabWidget
             }
             else if (slider==m_verticalMin)
             {
+                if (m_verticalMax!=nullptr)
+                {
+                    if (m_verticalMin->value()>m_verticalMax->value())
+                    {
+                        m_verticalMin->setValue(m_verticalMax->value());
+                        return;
+                    }
+                }
+
                 for (auto&& widget:m_verticalWidgets)
                 {
                     widget->widget()->setMinimumHeight(value);
@@ -253,6 +280,15 @@ class AlignedStretchingWidgetDemo : public QTabWidget
             }
             else if (slider==m_verticalMax)
             {
+                if (m_verticalMin!=nullptr)
+                {
+                    if (m_verticalMin->value()>m_verticalMax->value())
+                    {
+                        m_verticalMax->setValue(m_verticalMin->value());
+                        return;
+                    }
+                }
+
                 for (auto&& widget:m_verticalWidgets)
                 {
                     widget->widget()->setMaximumHeight(value);
