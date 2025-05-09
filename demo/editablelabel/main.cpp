@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
     bool darkTheme=Style::instance().checkDarkTheme();
     std::cout << "Dark theme="<<darkTheme<<std::endl;
 
+    w.setStyleSheet("\n QPushButton {padding: 6px 2px;}");
+
     auto l = Layout::vertical(mainFrame);
 
     auto text = new EditableLabelText(mainFrame);
