@@ -23,11 +23,14 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <iostream>
+
 #include <QApplication>
 #include <QMainWindow>
 #include <QDateTime>
 #include <QCalendarWidget>
 
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/editablelabel.hpp>
 
@@ -41,6 +44,9 @@ int main(int argc, char *argv[])
 
     QMainWindow w;
     auto mainFrame=new QFrame();
+
+    bool darkTheme=Style::instance().checkDarkTheme();
+    std::cout << "Dark theme="<<darkTheme<<std::endl;
 
     auto l = Layout::vertical(mainFrame);
 

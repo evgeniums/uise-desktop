@@ -5,5 +5,8 @@
         <file>icons/document-edit.svg</file>
         <file>qss/spinner.qss</file>
         <file>qss/dark/spinner.qss</file>
+        <file>icons/dark/dialog-cancel.svg</file>
+        <file>icons/dark/dialog-ok-apply.svg</file>
+        <file>icons/dark/document-edit.svg</file>
     </qresource>
 </RCC>
