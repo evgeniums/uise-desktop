@@ -69,7 +69,7 @@ Spinner *createSpinner(std::vector<std::shared_ptr<SpinnerSection>> sections=std
 
     spinner->setFixedSize(500,500);
 
-    QString lightTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: black;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
+    QString lightTheme="*{font-size: 20px;} \n uise--Spinner *{color: black;} \n uise--Spinner QLabel {background-color: transparent;} \n uise--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
     qApp->setStyleSheet(lightTheme);
 
     spinner->setSections(sections);

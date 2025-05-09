@@ -170,7 +170,7 @@ static void runTestCase(
         container->padding.setBottom(4);
 
         QString qss=QString(
-            "\n uise--desktop--AlignedStretchingWidget {padding-left: %1px; padding-top: %2px; padding-right: %3px; padding-bottom: %4px; background: #0000FF;} \n QTextBrowser {background: yellow}"
+            "\n uise--AlignedStretchingWidget {padding-left: %1px; padding-top: %2px; padding-right: %3px; padding-bottom: %4px; background: #0000FF;} \n QTextBrowser {background: yellow}"
         ).arg(container->padding.left())
          .arg(container->padding.top())
          .arg(container->padding.right())

@@ -265,7 +265,7 @@ void Drawer::openDrawer()
 
     QPalette pal = pimpl->parent->palette();
     auto background=pal.color(QPalette::Window);
-    QString css("uise--desktop--Drawer {background-color: rgba(%1,%2,%3,%4);}");
+    QString css("uise--Drawer {background-color: rgba(%1,%2,%3,%4);}");
     css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->drawerAlpha());
     setStyleSheet(css);
 

@@ -77,7 +77,7 @@ void ModalPopup::setWidget(QWidget* widget)
     QPalette pal = pimpl->parent->palette();
     auto background=pal.color(QPalette::Window);
 
-    QString css("uise--desktop--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
+    QString css("uise--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
     css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->popupAlpha());
     setStyleSheet(css);
 

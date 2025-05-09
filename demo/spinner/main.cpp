@@ -223,8 +223,8 @@ int main(int argc, char *argv[])
 
     spinner->setFixedSize(500,500);
 
-    QString darkTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: white;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: #111111; selection-background-color: #444444;}";
-    QString lightTheme="*{font-size: 20px;} \n uise--desktop--Spinner *{color: black;} \n uise--desktop--Spinner QLabel {background-color: transparent;} \n uise--desktop--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
+    QString darkTheme="*{font-size: 20px;} \n uise--Spinner *{color: white;} \n uise--Spinner QLabel {background-color: transparent;} \n uise--Spinner *[style-sample=\"true\"] {background-color: #111111; selection-background-color: #444444;}";
+    QString lightTheme="*{font-size: 20px;} \n uise--Spinner *{color: black;} \n uise--Spinner QLabel {background-color: transparent;} \n uise--Spinner *[style-sample=\"true\"] {background-color: white; selection-background-color: lightgray;}";
 
     auto styleButton=new QPushButton();
     styleButton->setText("Dark theme");

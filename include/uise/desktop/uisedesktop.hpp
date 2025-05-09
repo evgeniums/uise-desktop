@@ -39,13 +39,13 @@ You may select, at your option, one of the above-listed licenses.
 #  endif
 #endif
 
-#define UISE_DESKTOP_NAMESPACE_BEGIN namespace uise { namespace desktop {
-#define UISE_DESKTOP_NAMESPACE_END }}
+#define UISE_DESKTOP_NAMESPACE_BEGIN namespace uise {
+#define UISE_DESKTOP_NAMESPACE_END }
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 UISE_DESKTOP_NAMESPACE_END
 
-#define UISE_DESKTOP_NAMESPACE uise::desktop
+#define UISE_DESKTOP_NAMESPACE uise
 
 #ifdef WIN32
 

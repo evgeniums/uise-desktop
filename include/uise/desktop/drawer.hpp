@@ -80,7 +80,7 @@ class UISE_DESKTOP_EXPORT Drawer : public QFrame
 class FrameWithDrawer_p;
 
 /**
- * @brief FrameWithDrawer enabled drawer control over widget.
+ * @brief FrameWithDrawer enables drawer control over widget.
  */
 class UISE_DESKTOP_EXPORT FrameWithDrawer : public QFrame,
                                             public OrientationInvariant
