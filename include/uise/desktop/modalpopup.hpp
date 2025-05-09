@@ -75,7 +75,7 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
 class FrameWithModalPopup_p;
 
 /**
- * @brief FrameWithModalPopup enables modul dialog within widget.
+ * @brief FrameWithModalPopup enables modal dialog within widget.
  */
 class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
 {

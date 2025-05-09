@@ -17,7 +17,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /** @file uise/desktop/src/modalpopup.cpp
 *
-*  Defines SpinnerSection.
+*  Defines FrameWithModalPopup.
 *
 */
 
@@ -120,20 +120,24 @@ void ModalPopup::updateWidgetGeometry()
         return;
     }
 
-    auto h=height();
     auto w=width();
+    auto h=height();    
 
-    auto setPos=[h,w,this](int width, int height)
+    auto margins=contentsMargins();
+    w-=(margins.left()+margins.right());
+    h-=(margins.top()+margins.bottom());
+
+    auto setPos=[h,w,&margins,this](int width, int height)
     {
-        auto x=(w-width)/2;
-        if (x<0)
+        auto x=(w-width)/2+margins.left();
+        if (x<margins.left())
         {
-            x=0;
+            x=margins.left();
         }
-        auto y=(h-height)/2;
-        if (y<0)
+        auto y=(h-height)/2+margins.top();
+        if (y<margins.top())
         {
-            y=0;
+            y=margins.top();
         }
         pimpl->widget->move(x,y);
     };
@@ -245,7 +249,8 @@ void FrameWithModalPopup::resizeEvent(QResizeEvent *event)
     QFrame::resizeEvent(event);
 
     pimpl->popup->resize(event->size());
-    pimpl->popup->move(0,0);
+    auto margins=contentsMargins();
+    pimpl->popup->move(margins.left(),margins.top());
 }
 
 //--------------------------------------------------------------------------
