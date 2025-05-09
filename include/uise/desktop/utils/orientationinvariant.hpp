@@ -53,7 +53,7 @@ enum class OProp : uint8_t
 /**
  * @brief Base class for implementing orientation invariant classes.
  *
- * Orientation invariant class is a class that has a orientation property and must be processed in the same way
+ * Orientation invariant class is a class that has an orientation property and must be processed in the same way
  * regardless of the current value of the orientation property. Special methods must be used to work with sizes and coordintaes.
  * Instead of width/height/x/y methods use oprop/setOprop methods as getters/setters of corresponding fields.
  *
@@ -148,6 +148,28 @@ class OrientationInvariant
                     case(OProp::edge):
                         return horizontal?obj.right():obj.bottom();
                         break;
+                }
+                return 0;
+            }
+            else if constexpr (
+                std::is_same_v<QMargins,std::decay_t<T>>
+                )
+            {
+                switch (prop)
+                {
+                case(OProp::size): [[fallthrough]];
+                case(OProp::min_size): [[fallthrough]];
+                case(OProp::max_size):
+                    return horizontal?(obj.left()+obj.right()):(obj.top()+obj.bottom());
+                    break;
+
+                case(OProp::pos):
+                    return horizontal?obj.left():obj.top();
+                    break;
+
+                case(OProp::edge):
+                    return horizontal?obj.right():obj.bottom();
+                    break;
                 }
                 return 0;
             }
@@ -357,6 +379,38 @@ class OrientationInvariant
         {
             return !isHorizontal();
         }
+};
+
+class WithOrientationInvariant : public OrientationInvariant
+{
+    public:
+
+        using OrientationInvariant::OrientationInvariant;
+
+        virtual bool isHorizontal() const noexcept override
+        {
+            return m_orientation==Qt::Horizontal;
+        }
+
+        Qt::Orientation orientation() const noexcept
+        {
+            return m_orientation;
+        }
+
+        void setOrientation(Qt::Orientation orientation)
+        {
+            m_orientation=orientation;
+            updateOrientation();
+        }
+
+    protected:
+
+        virtual void updateOrientation()
+        {}
+
+    private:
+
+        Qt::Orientation m_orientation=Qt::Vertical;
 };
 
 //--------------------------------------------------------------------------
