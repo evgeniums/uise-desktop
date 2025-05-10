@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QFrame>
 #include <QToolButton>
+#include <QLabel>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -69,6 +70,28 @@ class UISE_DESKTOP_EXPORT NavigationBarButton : public QToolButton
     public:
 
         NavigationBarButton(QWidget* parent=nullptr);
+
+    signals:
+
+        void shown();
+
+    protected:
+
+        void enterEvent(QEnterEvent * event) override;
+        void showEvent(QShowEvent * event) override;
+
+    private:
+
+        bool m_firstShow;
+};
+
+class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
+{
+    Q_OBJECT
+
+    public:
+
+        NavigationBarSeparator(QWidget* parent=nullptr);
 };
 
 class NavigationBar_p;
@@ -109,6 +132,10 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
 
         void indexSelected(int index);
 
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
+
     private:
 
         std::unique_ptr<NavigationBar_p> pimpl;
@@ -146,13 +173,21 @@ class UISE_DESKTOP_EXPORT StackWithNavigationBar : public QFrame
 
         void replaceWidget(FrameWithRefresh* widget, const QString& name, int index, const QString& tooltip=QString());
 
-        size_t widgetCount() const;
+        size_t count() const;
 
         void setWidgetName(int index, const QString& name);
 
         void setWidgetTooltip(int index, const QString& tooltip);
 
         void clearFromIndex(int index);
+
+        int currentIndex() const;
+
+        FrameWithRefresh* currentWidget() const;
+        FrameWithRefresh* widget(int index) const;
+
+        void setRefreshOnSelect(bool enable) noexcept;
+        bool isRefreshOnSelect() const noexcept;
 
     public slots:
 

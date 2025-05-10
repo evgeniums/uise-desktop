@@ -65,6 +65,7 @@ SET (HEADERS
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
 
+    include/uise/desktop/scrollarea.hpp
     include/uise/desktop/stackwithnavigationbar.hpp
 )
 
@@ -89,6 +90,7 @@ SET (SOURCES
     src/busywaiting.cpp
     src/modalpopup.cpp
     src/drawer.cpp
+    src/scrollarea.cpp
     src/stackwithnavigationbar.cpp
 )
 
