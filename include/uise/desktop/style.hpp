@@ -198,7 +198,7 @@ class UISE_DESKTOP_EXPORT Style final
          * @brief Get loaded style sheet.
          * @return Loaded style sheet.
          *
-         * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read folder at styleSheetPath().
+         * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read from folder at styleSheetPath().
          */
         QString loadedStyleSheet() const
         {
@@ -275,7 +275,7 @@ class UISE_DESKTOP_EXPORT Style final
 
         /**
          * @brief Apply style sheet to widget or application.
-         * @param widget WIdget to actual apply style sheet to, If nullptr then the style will be applied to entire application.
+         * @param widget Widget to apply style sheet to, if nullptr then the style will be applied to the entire application.
          */
         void applyStyleSheet(QWidget* widget=nullptr);
 
