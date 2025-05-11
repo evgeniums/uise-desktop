@@ -45,7 +45,7 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
 
     public:
 
-        NavigationBarItem(QWidget* parent=nullptr);
+        NavigationBarItem(QWidget* parent=nullptr, bool chackable=true);
 
         void setHoveringCursor(const Qt::CursorShape& cursor) noexcept
         {
@@ -135,34 +135,6 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
          */
         void addItem(const QString& name, const QString& tooltip=QString{}, const QString& id={});
 
-        /**
-         * @brief Set name of the item.
-         * @param index Item's index.
-         * @param name New name.
-         */
-        void setItemName(int index, const QString& name);
-
-        /**
-         * @brief Set ID of the item.
-         * @param index Item's index.
-         * @param name New ID.
-         */
-        void setItemId(int index, const QString& id);
-
-        /**
-         * @brief Set data for the item.
-         * @param index Item's index.
-         * @param data New data.
-         */
-        void setItemData(int index, QVariant data);
-
-        /**
-         * @brief Set ID of the item.
-         * @param index Item's index.
-         * @param name New tooltip.
-         */
-        void setItemTooltip(int index, const QString& tooltip);
-
         QString itemName(int index) const;
         QString itemId(int index) const;
         QString itemTooltip(int index) const;
@@ -180,6 +152,9 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
          * @param index Index of item to select.
          */
         void setCurrentIndex(int index);
+
+        void setCheckable(bool enable);
+        bool isCheckable() const;
 
         /**
          * @brief Check the item by index.
@@ -238,11 +213,43 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setItemHoveringCursor(const Qt::CursorShape& cursor) noexcept;
         Qt::CursorShape itemHoveringCursor() const noexcept;
 
+    public slots:
+
+        /**
+         * @brief Set name of the item.
+         * @param index Item's index.
+         * @param name New name.
+         */
+        void setItemName(int index, const QString& name);
+
+        /**
+         * @brief Set ID of the item.
+         * @param index Item's index.
+         * @param name New ID.
+         */
+        void setItemId(int index, const QString& id);
+
+        /**
+         * @brief Set data for the item.
+         * @param index Item's index.
+         * @param data New data.
+         */
+        void setItemData(int index, QVariant data);
+
+        /**
+         * @brief Set ID of the item.
+         * @param index Item's index.
+         * @param name New tooltip.
+         */
+        void setItemTooltip(int index, const QString& tooltip);
+
     signals:
 
+        void indexClicked(int index);
         void indexSelected(int index);
         void indexToggled(int index, bool checked);
 
+        void idClicked(const QString& id);
         void idSelected(const QString& id);
         void idToggled(const QString& id, bool checked);
 

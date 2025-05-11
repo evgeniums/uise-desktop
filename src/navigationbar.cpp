@@ -40,11 +40,11 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-NavigationBarItem::NavigationBarItem(QWidget* parent)
+NavigationBarItem::NavigationBarItem(QWidget* parent, bool chackable)
     : QToolButton(parent),
       m_hoveringCursor(NavigationBar::DefaultHoveringCursor)
 {
-    setCheckable(true);
+    setCheckable(chackable);
 
     connect(this,&QToolButton::toggled,this,
         [this](bool checked)
@@ -137,6 +137,8 @@ class NavigationBar_p
         NavigationBarSeparator* sepSample=nullptr;
         bool sepsVisible=true;
         Qt::CursorShape hoveringCursor=NavigationBar::DefaultHoveringCursor;
+
+        bool checkable=true;
 };
 
 //--------------------------------------------------------------------------
@@ -201,6 +203,17 @@ NavigationBar::NavigationBar(QWidget* parent)
             }
         }
     );
+    connect(pimpl->buttons,&QButtonGroup::idClicked,this,
+        [this](int index)
+        {
+            emit indexClicked(index);
+            auto id=itemId(index);
+            if (!id.isEmpty())
+            {
+                emit idClicked(id);
+            }
+        }
+    );
 
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     pimpl->panel->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
@@ -233,7 +246,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         delete pimpl->layout->takeAt(pimpl->layout->count()-1);
     }
 
-    auto button=new NavigationBarItem(this);
+    auto button=new NavigationBarItem(this,pimpl->checkable);
     button->setHoveringCursor(pimpl->hoveringCursor);
     if (!tooltip.isEmpty())
     {
@@ -245,11 +258,11 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
     }
     button->setText(name);
 
-    auto prevButtins=pimpl->buttons->buttons();
-    pimpl->buttons->addButton(button,prevButtins.count());
+    auto prevButtons=pimpl->buttons->buttons();
+    pimpl->buttons->addButton(button,prevButtons.count());
 
     int w=0;
-    if (!prevButtins.isEmpty())
+    if (!prevButtons.isEmpty())
     {
         NavigationBarSeparator* sep=nullptr;
         if (pimpl->sepSample!=nullptr)
@@ -490,6 +503,20 @@ void NavigationBar::setExclusive(bool enable)
 bool NavigationBar::isExclusive() const
 {
     return pimpl->buttons->exclusive();
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setCheckable(bool enable)
+{
+    pimpl->checkable=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool NavigationBar::isCheckable() const
+{
+    return pimpl->checkable;
 }
 
 //--------------------------------------------------------------------------
