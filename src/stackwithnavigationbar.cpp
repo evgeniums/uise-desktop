@@ -34,279 +34,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
+#include <uise/desktop/framewithrefresh.hpp>
+#include <uise/desktop/navigationbar.hpp>
 #include <uise/desktop/stackwithnavigationbar.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-/********************************NavigationBarButton*******************************/
-
-//--------------------------------------------------------------------------
-
-NavigationBarButton::NavigationBarButton(QWidget* parent) : QToolButton(parent),m_firstShow(true)
-{
-    setCheckable(true);
-
-    connect(this,&QToolButton::toggled,this,
-        [this](bool checked)
-        {
-            if (!checked)
-            {
-                setCursor(Qt::PointingHandCursor);
-            }
-            else
-            {
-                setCursor(Qt::ArrowCursor);
-            }
-        }
-    );
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBarButton::enterEvent(QEnterEvent * event)
-{
-    QToolButton::enterEvent(event);
-    if (!isChecked())
-    {
-        setCursor(Qt::PointingHandCursor);
-    }
-    else
-    {
-        setCursor(Qt::ArrowCursor);
-    }
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBarButton::showEvent(QShowEvent* event)
-{
-    QToolButton::showEvent(event);
-    if (m_firstShow)
-    {
-        emit shown();
-        m_firstShow=false;
-    }
-}
-
-/********************************NavigationBarSeparator**********************/
-
-NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
-{
-    setText("–");
-}
-
-/********************************NavigationBar*******************************/
-
-//--------------------------------------------------------------------------
-
-class NavigationBar_p
-{
-    public:
-
-        NavigationBar* self=nullptr;
-        StackWithNavigationBar* parent=nullptr;
-
-        ScrollArea* scArea=nullptr;
-        NavigationBarPanel* panel=nullptr;
-        QHBoxLayout* layout=nullptr;
-
-        QButtonGroup* buttons;
-
-        std::vector<NavigationBarSeparator*> separators;
-
-        void updateScrollArea(int addWidth=0);
-
-        int prevWidth=0;
-};
-
-//--------------------------------------------------------------------------
-
-void NavigationBar_p::updateScrollArea(int addWidth)
-{
-    auto newWidth=prevWidth+addWidth;
-    auto w=panel->width();
-    if (addWidth!=0)
-    {
-        w=newWidth;
-    }
-    if (w>self->width())
-    {
-        scArea->setMinimumHeight(panel->height()+scArea->horizontalScrollBar()->height());
-    }
-    else
-    {
-        scArea->setMinimumHeight(panel->height());
-    }
-    prevWidth=w;
-}
-
-//--------------------------------------------------------------------------
-
-NavigationBar::NavigationBar(StackWithNavigationBar* parent)
-    : QFrame(parent),
-      pimpl(std::make_unique<NavigationBar_p>())
-{
-    pimpl->self=this;
-    pimpl->parent=parent;
-    auto vl=Layout::vertical(this);
-
-    pimpl->scArea=new ScrollArea(this);
-    vl->addWidget(pimpl->scArea);
-    pimpl->scArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    pimpl->scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    pimpl->scArea->setWidgetResizable(true);
-
-    pimpl->panel=new NavigationBarPanel(pimpl->scArea);
-    pimpl->layout=Layout::horizontal(pimpl->panel);
-    pimpl->scArea->setWidget(pimpl->panel);
-
-    pimpl->buttons=new QButtonGroup(pimpl->panel);
-    pimpl->buttons->setExclusive(true);
-    connect(pimpl->buttons,&QButtonGroup::idToggled,this,
-        [this](int index, bool checked)
-        {
-            if (checked)
-            {
-                emit indexSelected(index);
-            }
-        }
-    );
-
-    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-    pimpl->panel->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-    pimpl->scArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-    if (pimpl->scArea->viewport())
-    {
-        pimpl->scArea->viewport()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
-    }
-}
-
-//--------------------------------------------------------------------------
-
-NavigationBar::~NavigationBar()
-{}
-
-//--------------------------------------------------------------------------
-
-void  NavigationBar::resizeEvent(QResizeEvent* event)
-{
-    QFrame::resizeEvent(event);
-    pimpl->updateScrollArea();
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::addWidget(const QString& name, int index, const QString& tooltip)
-{
-    if (pimpl->layout->count()!=0)
-    {
-        delete pimpl->layout->takeAt(pimpl->layout->count()-1);
-    }
-
-    auto button=new NavigationBarButton(this);
-    if (!tooltip.isEmpty())
-    {
-        button->setToolTip(tooltip);
-    }
-    button->setText(name);
-    pimpl->buttons->addButton(button,index);
-
-    int w=0;
-    if (index>0)
-    {
-        auto sep=new NavigationBarSeparator(pimpl->panel);
-        pimpl->layout->addWidget(sep);
-        pimpl->separators.emplace_back(sep);
-        w+=sep->sizeHint().width();
-    }
-
-    pimpl->layout->addWidget(button,0,Qt::AlignLeft);
-    pimpl->layout->addStretch(1);
-    w+=button->sizeHint().width();
-
-    pimpl->updateScrollArea(w);
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::setWidgetName(int index, const QString& name)
-{
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setText(name);
-    }
-
-    pimpl->updateScrollArea();
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::setWidgetTooltip(int index, const QString& tooltip)
-{
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setToolTip(tooltip);
-    }
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::setCurrentIndex(int index)
-{
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setChecked(true);
-    }
-
-    pimpl->updateScrollArea();
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::clear()
-{
-    clearFromIndex(0);
-}
-
-//--------------------------------------------------------------------------
-
-void NavigationBar::clearFromIndex(int index)
-{
-    int w=0;
-
-    pimpl->buttons->blockSignals(true);
-
-    auto buttons=pimpl->buttons->buttons();
-    for (size_t i=index;i<buttons.count();i++)
-    {
-        auto button=buttons[i];
-        w-=button->sizeHint().width();
-        pimpl->buttons->removeButton(button);
-        destroyWidget(button);
-
-        if (i>0)
-        {
-            auto sep=pimpl->separators[i-1];
-            w-=sep->sizeHint().width();
-            destroyWidget(sep);
-        }
-    }
-    if (index>0)
-    {
-        pimpl->separators.resize(index-1);
-    }
-    else
-    {
-        pimpl->separators.clear();
-    }
-    pimpl->buttons->blockSignals(false);
-
-    pimpl->updateScrollArea(w);
-}
 
 /****************************StackWithNavigationBar******************************/
 
@@ -363,7 +95,7 @@ StackWithNavigationBar::~StackWithNavigationBar()
 void StackWithNavigationBar::addWidget(FrameWithRefresh* widget, const QString& name, const QString& tooltip)
 {
     pimpl->stack->addWidget(widget);
-    pimpl->navbar->addWidget(name,count()-1,tooltip);
+    pimpl->navbar->addItem(name,tooltip);
 
     if (count()==1)
     {
@@ -390,7 +122,7 @@ void StackWithNavigationBar::replaceWidget(FrameWithRefresh* widget, const QStri
 
 void StackWithNavigationBar::closeWidget(int index)
 {
-    clearFromIndex(index);
+    truncate(index);
 }
 
 //--------------------------------------------------------------------------
@@ -434,7 +166,7 @@ void StackWithNavigationBar::setCurrentWidget(UISE_DESKTOP_NAMESPACE::FrameWithR
 
 //--------------------------------------------------------------------------
 
-void StackWithNavigationBar::clearFromIndex(int index)
+void StackWithNavigationBar::truncate(int index)
 {
     if (index<0 || index>=count())
     {
@@ -443,7 +175,7 @@ void StackWithNavigationBar::clearFromIndex(int index)
 
     auto wasIndex=currentIndex();
 
-    pimpl->navbar->clearFromIndex(index);
+    pimpl->navbar->truncate(index);
 
     pimpl->stack->blockSignals(true);
     auto widget=pimpl->stack->widget(index);
@@ -465,7 +197,7 @@ void StackWithNavigationBar::clearFromIndex(int index)
 
 void StackWithNavigationBar::clear()
 {
-    clearFromIndex(0);
+    truncate(0);
 }
 
 //--------------------------------------------------------------------------
@@ -477,16 +209,9 @@ size_t StackWithNavigationBar::count() const
 
 //--------------------------------------------------------------------------
 
-void StackWithNavigationBar::setWidgetName(int index, const QString& name)
+NavigationBar* StackWithNavigationBar::navigationBar() const
 {
-    pimpl->navbar->setWidgetName(index,name);
-}
-
-//--------------------------------------------------------------------------
-
-void StackWithNavigationBar::setWidgetTooltip(int index, const QString& tooltip)
-{
-    pimpl->navbar->setWidgetTooltip(index,tooltip);
+    return pimpl->navbar;
 }
 
 //--------------------------------------------------------------------------

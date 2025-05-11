@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDoubleSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/framewithrefresh.hpp>
 #include <uise/desktop/stackwithnavigationbar.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -155,10 +156,10 @@ int main(int argc, char *argv[])
         }
     );
 
-    auto remove=new QPushButton("Remove");
-    bl->addWidget(remove,1,2);
+    auto truncate=new QPushButton("Truncate");
+    bl->addWidget(truncate,1,2);
     QObject::connect(
-        remove,
+        truncate,
         &QPushButton::clicked,
         testWidget,
         [testWidget,index]()
