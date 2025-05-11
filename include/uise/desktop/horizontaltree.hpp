@@ -35,11 +35,46 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class HorizontalTreeePathElement
+class HorizontalTreePathElementConfig
 {
     public:
 
-        HorizontalTreeePathElement(
+        HorizontalTreePathElementConfig(bool expanded=true, int width=-1)
+            : m_expanded(expanded),
+              m_width(width)
+        {}
+
+        bool expanded() const noexcept
+        {
+            return m_expanded;
+        }
+
+        int width() const noexcept
+        {
+            return m_width;
+        }
+
+        void setExpanded(bool m_expanded) noexcept
+        {
+            m_expanded=m_expanded;
+        }
+
+        void setWidth(int width) noexcept
+        {
+            m_width=width;
+        }
+
+    private:
+
+        bool m_expanded;
+        int m_width;
+};
+
+class HorizontalTreePathElement
+{
+    public:
+
+        HorizontalTreePathElement(
             std::string type,
             std::string id,
             std::string name={}
@@ -63,38 +98,74 @@ class HorizontalTreeePathElement
             return m_name;
         }
 
+        const HorizontalTreePathElementConfig& config() const noexcept
+        {
+            return m_config;
+        }
+
+        void setConfig(HorizontalTreePathElementConfig config) noexcept
+        {
+            m_config=std::move(config);
+        }
+
     private:
 
         std::string m_type;
         std::string m_id;
         std::string m_name;
+
+        HorizontalTreePathElementConfig m_config;
 };
 
-class HorizontalTreeePath
+class HorizontalTreePathConfig
 {
     public:
 
-        HorizontalTreeePath(std::vector<HorizontalTreeePathElement> elements={}) : m_elements(std::move(elements))
+        HorizontalTreePathConfig(int tabIndex=-1)
+            : m_tabIndex(tabIndex)
         {}
 
-        const std::vector<HorizontalTreeePathElement>& elements() const noexcept
+
+        int tabIndex() const noexcept
+        {
+            return m_tabIndex;
+        }
+
+        void setTabIndex(int tabIndex) noexcept
+        {
+            m_tabIndex=tabIndex;
+        }
+
+    private:
+
+        int m_tabIndex;
+};
+
+class HorizontalTreePath
+{
+    public:
+
+        HorizontalTreePath(std::vector<HorizontalTreePathElement> elements={}) : m_elements(std::move(elements))
+        {}
+
+        const std::vector<HorizontalTreePathElement>& elements() const noexcept
         {
             return m_elements;
         }
 
-        std::vector<HorizontalTreeePathElement>& elements() noexcept
+        std::vector<HorizontalTreePathElement>& elements() noexcept
         {
             return m_elements;
         }
 
-        void setElements(std::vector<HorizontalTreeePathElement> elements)
+        void setElements(std::vector<HorizontalTreePathElement> elements)
         {
             m_elements=std::move(elements);
         }
 
     private:
 
-        std::vector<HorizontalTreeePathElement> m_elements;
+        std::vector<HorizontalTreePathElement> m_elements;
 };
 
 class HorizontalTree;
@@ -162,16 +233,28 @@ class UISE_DESKTOP_EXPORT HorizontalTreeNode : public FrameWithRefresh
         void setTree(HorizontalTree* tree);
         HorizontalTree* tree() const;
 
-        void setPath(HorizontalTreeePath path);
-        const HorizontalTreeePath& path() const;
+        void setPath(HorizontalTreePath path);
+        const HorizontalTreePath& path() const;
 
         void setParentNode(HorizontalTreeNode* node);
         HorizontalTreeNode* parentNode() const;
 
-        void loadNextNode(const HorizontalTreeePathElement& pathElement);
-        HorizontalTreeNode* nextNode() const;
+        bool isExpanded() const noexcept;
 
-        void resetNextNode();
+        QString id() const;
+        QString name() const;
+        QIcon icon() const;
+        QString tooltip() const;
+
+    public slots:
+
+        void setExpanded(bool enable);
+
+    signals:
+
+        void nameUpdated(const QString&);
+        void tooltipUpdated(const QString&);
+        void iconUpdated(const QIcon&);
 
     private:
 
@@ -209,12 +292,63 @@ class UISE_DESKTOP_EXPORT HorizontalTreeBranch : public HorizontalTreeNode
         HorizontalTreeBranch& operator=(const HorizontalTreeBranch&)=delete;
         HorizontalTreeBranch& operator=(HorizontalTreeBranch&&)=delete;
 
+        void loadNextNode(const HorizontalTreePathElement& pathElement);
+        HorizontalTreeNode* nextNode() const;
+        void closeNextNode();
+        void refreshNextNode();
+
     private:
 
         std::unique_ptr<HorizontalTreeBranch_p> pimpl;
 };
 
-class HorizontalTreeNodeFactory;
+class UISE_DESKTOP_EXPORT HorizontalTreeNodeFactory
+{
+    public:
+
+        HorizontalTreeNode* makeNode(HorizontalTreePath path) const;
+};
+
+class HorizontalTreeTab_p;
+
+class UISE_DESKTOP_EXPORT HorizontalTreeTab : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        /**
+         * @brief Constructor.
+         * @param parent Parent widget.
+         */
+        HorizontalTreeTab(HorizontalTree* tree=nullptr, QWidget* parent=nullptr);
+
+        /**
+         * @brief Destructor.
+         */
+        ~HorizontalTreeTab();
+
+        HorizontalTreeTab(const HorizontalTreeTab&)=delete;
+        HorizontalTreeTab(HorizontalTreeTab&&)=delete;
+        HorizontalTreeTab& operator=(const HorizontalTreeTab&)=delete;
+        HorizontalTreeTab& operator=(HorizontalTreeTab&&)=delete;
+
+        void openPath(HorizontalTreePath path);
+
+        HorizontalTreeNode* node() const;
+
+    signals:
+
+        void nameUpdated(const QString&);
+        void tooltipUpdated(const QString&);
+        void iconUpdated(const QIcon&);
+
+    private:
+
+        friend class HorizontalTree;
+
+        std::unique_ptr<HorizontalTreeTab_p> pimpl;
+};
 
 class HorizontalTree_p;
 
@@ -225,14 +359,14 @@ class UISE_DESKTOP_EXPORT HorizontalTree : public QFrame
     public:
 
         /**
-         * @brief Constructor.
-         * @param parent Parent widget.
-         */
+             * @brief Constructor.
+             * @param parent Parent widget.
+             */
         HorizontalTree(QWidget* parent=nullptr);
 
         /**
-         * @brief Destructor.
-         */
+             * @brief Destructor.
+             */
         ~HorizontalTree();
 
         HorizontalTree(const HorizontalTree&)=delete;
@@ -240,17 +374,22 @@ class UISE_DESKTOP_EXPORT HorizontalTree : public QFrame
         HorizontalTree& operator=(const HorizontalTree&)=delete;
         HorizontalTree& operator=(HorizontalTree&&)=delete;
 
-        void setNodeFactory(const HorizontalTreeNodeFactory* factory);
-        const HorizontalTreeNodeFactory* nodeFactory() const;
+        void setNodeFactory(const HorizontalTreeNodeFactory* factory) noexcept;
+        const HorizontalTreeNodeFactory* nodeFactory() const noexcept;
 
-        void openPath(const HorizontalTreeePath& path, int tabIndex=-1);
-        void refreshPath(const HorizontalTreeePath& path, int tabIndex=-1);
+        void openPath(HorizontalTreePath path, int tabIndex=0);
 
-        HorizontalTreeNode* rootNode(int tabIndex) const;
+        void loadPaths(const std::vector<HorizontalTreePath>& paths);
+        std::vector<HorizontalTreePath> paths() const;
 
         int tabCount() const;
+        int currentTabIndex() const;
         void setCurrentTab(int tabIndex);
         void closeTab(int tabIndex);
+
+        HorizontalTreeTab* tab(int tabIndex=0) const;
+
+        void closeAllTabs();
 
     private:
 
