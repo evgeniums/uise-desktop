@@ -177,15 +177,14 @@ int main(int argc, char *argv[])
         &StackWithNavigationBar::clear
     );
 
-    QString qss="*{color: #FFFFFF;} \n"
-                  "QFrame {background-color: gray;} \n"
-                  "QFrame#mainFrame {background-color:blue;margin:0;padding:0;}\n"
-                  "QFrame#topFrame {background-color:green;margin:0;}\n"
+    QString qss=""
+                  "QFrame#mainFrame {margin:0;padding:0;}\n"
+                  "QFrame#topFrame {margin:0;}\n"
                   "uise--NavigationBarPanel {padding:0;margin:0;}"
-                  "uise--NavigationBar {background-color:white;padding:0;margin:0;}\n"
+                  "uise--NavigationBar {padding:0;margin:0;}\n"
                   "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;}\n"
                   "uise--NavigationBar QToolButton {padding:0;margin:0;border:none;font-size:12px;text-decoration:underline;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color:#EEEEEE;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color:#999999;}\n"
                   "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
         ;
