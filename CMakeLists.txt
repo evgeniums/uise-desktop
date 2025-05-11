@@ -65,8 +65,13 @@ SET (HEADERS
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
 
+    include/uise/desktop/framewithrefresh.hpp
+
     include/uise/desktop/scrollarea.hpp
+    include/uise/desktop/navigationbar.hpp
     include/uise/desktop/stackwithnavigationbar.hpp
+
+    include/uise/desktop/horizontaltree.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -91,7 +96,10 @@ SET (SOURCES
     src/modalpopup.cpp
     src/drawer.cpp
     src/scrollarea.cpp
+    src/framewithrefresh.cpp
+    src/navigationbar.cpp
     src/stackwithnavigationbar.cpp
+    src/horizontaltree.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
