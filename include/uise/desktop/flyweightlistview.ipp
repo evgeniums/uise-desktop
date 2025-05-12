@@ -157,6 +157,20 @@ void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::setInsertItemCb(InsertItemCb cb) noexcept
+{
+    pimpl->m_insertItemCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView<ItemT>::setRemoveItemCb(RemoveItemCb cb) noexcept
+{
+    pimpl->m_removeItemCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView<ItemT>::clear()
 {
     beginUpdate();

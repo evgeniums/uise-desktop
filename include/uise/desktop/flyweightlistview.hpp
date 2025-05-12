@@ -28,7 +28,6 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <vector>
 #include <memory>
-#include <string>
 #include <functional>
 
 #include <QFrame>
@@ -72,6 +71,9 @@ class FlyweightListView : public QFrame
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void (Qt::KeyboardModifiers)>;
+
+        using InsertItemCb=std::function<void (typename ItemT::WidgetType*)>;
+        using RemoveItemCb=std::function<void (typename ItemT::WidgetType*)>;
 
         /**
          * @brief Constructor.
@@ -221,6 +223,18 @@ class FlyweightListView : public QFrame
          * @param cb Callback function.
          */
         void setRequestEndCb(RequestJumpCb cb) noexcept;
+
+        /**
+         * @brief Set callback function used to notify listener that an item was inserted into the list.
+         * @param cb Callback function.
+         */
+        void setInsertItemCb(InsertItemCb cb) noexcept;
+
+        /**
+         * @brief Set callback function used to notify listener that an item was removed from the list.
+         * @param cb Callback function.
+         */
+        void setRemoveItemCb(InsertItemCb cb) noexcept;
 
         /**
          * @brief Scroll to an item.
@@ -493,6 +507,40 @@ class FlyweightListView : public QFrame
     private:
 
         std::unique_ptr<detail::FlyweightListView_p<ItemT>> pimpl;
+};
+
+/**
+ * @brief Widget containing FlyweightListView.
+ */
+template <typename ItemT, typename BaseT=QFrame>
+class WithFlyweightListView : public BaseT
+{
+    public:
+
+        using BaseT::BaseT;
+
+        FlyweightListView<ItemT>* listView() const noexcept
+        {
+            return m_listView;
+        }
+
+        void reload()
+        {
+            doReload();
+        }
+
+    protected:
+
+        void setListView(FlyweightListView<ItemT>* listView) noexcept
+        {
+            m_listView=listView;
+        }
+
+        virtual void doReload()=0;
+
+    private:
+
+        FlyweightListView<ItemT>* m_listView=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END

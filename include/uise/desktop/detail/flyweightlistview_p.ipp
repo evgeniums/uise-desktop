@@ -176,6 +176,11 @@ void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
     QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
     widget->removeEventFilter(&m_qobjectHelper);
     widget->installEventFilter(&m_qobjectHelper);
+
+    if (m_insertItemCb)
+    {
+        m_insertItemCb(widget);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1059,17 +1064,23 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-void FlyweightListView_p<ItemT>::clearWidget(QWidget* widget)
+void FlyweightListView_p<ItemT>::clearWidget(typename ItemT::WidgetType* widget)
 {
     if (!widget)
     {
         return;
     }
 
+    if (m_removeItemCb)
+    {
+        m_removeItemCb(widget);
+    }
+
     PointerHolder::clearProperty(widget,ItemT::Property);
     m_llist->takeWidget(widget);
     widget->removeEventFilter(&m_qobjectHelper);
     QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
+
     ItemT::dropWidget(widget);
 }
 

@@ -85,14 +85,7 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
             {
                 switch (event->type())
                 {
-                    case QEvent::Resize:
-                    {
-#if 0
-                        auto e=dynamic_cast<QResizeEvent*>(event);
-                        qDebug() << "Widget resized "<<e;
-#endif
-                    }
-                    [[fallthrough]];
+                    case QEvent::Resize: [[fallthrough]];
                     case QEvent::Show: [[fallthrough]];
                     case QEvent::Hide:
                     {
@@ -202,7 +195,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         void resizeList();
 
-        void clearWidget(QWidget* widget);
+        void clearWidget(typename ItemT::WidgetType* widget);
         void removeItem(ItemT* item);
         void removeItem(const typename ItemT::IdType& id);
 
@@ -265,6 +258,9 @@ class FlyweightListView_p : public OrientationInvariant
 
         typename FlyweightListView<ItemT>::RequestJumpCb m_homeRequestCb;
         typename FlyweightListView<ItemT>::RequestJumpCb m_endRequestCb;
+
+        typename FlyweightListView<ItemT>::InsertItemCb m_insertItemCb;
+        typename FlyweightListView<ItemT>::RemoveItemCb m_removeItemCb;
 
         LinkedListView* m_llist;
 
