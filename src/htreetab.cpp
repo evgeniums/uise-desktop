@@ -372,8 +372,7 @@ bool HTreeTab::openPath(HTreePath path)
         else
         {
             UiseAssert(i==0,"Previous last node must exist for all path elements except for the first");
-            HTreePath partialPath{el};
-            auto node=pimpl->tree->nodeFactory()->makeNode(partialPath);
+            auto node=pimpl->tree->nodeFactory()->makeNode(el,nullptr,this);
             if (node==nullptr)
             {
                 return false;

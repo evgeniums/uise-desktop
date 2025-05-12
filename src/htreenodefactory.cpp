@@ -23,15 +23,41 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <uise/desktop/htreenode.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-HTreeNode* HTreeNodeFactory::makeNode(HTreePath path, HTreeTab* treeTab) const
+HTreeNodeFactory::~HTreeNodeFactory()
+{}
+
+//--------------------------------------------------------------------------
+
+HTreeNode* HTreeNodeFactory::makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab) const
 {
-    //! @todo Implement creating node
+    auto node=doMakeNode(pathElement,parentNode,treeTab);
+    if (node!=nullptr)
+    {
+        node->setParentNode(parentNode);
+        node->setTreeTab(treeTab);
+        return node;
+    }
+
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNode* HTreeNodeFactory::doMakeNode(const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab) const
+{
+    auto b=builder(pathElement.type());
+    if (b)
+    {
+        return b(pathElement,parentNode,treeTab);
+    }
+
     return nullptr;
 }
 

@@ -86,10 +86,7 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
 {
     closeNextNode();
 
-    HTreePath nextPath=path();
-    nextPath.elements().push_back(pathElement);
-    pimpl->nextNode=treeTab()->tree()->nodeFactory()->makeNode(std::move(nextPath),treeTab());
-    pimpl->nextNode->setParentNode(this);
+    pimpl->nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
     treeTab()->appendNode(pimpl->nextNode);
     pimpl->nextNode->refresh();
 

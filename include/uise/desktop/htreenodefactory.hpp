@@ -26,6 +26,9 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_NODE_FACTORY_HPP
 #define UISE_DESKTOP_HTREE_NODE_FACTORY_HPP
 
+#include <functional>
+#include <map>
+
 #include <uise/desktop/uisedesktop.hpp>
 
 #include <uise/desktop/htreepath.hpp>
@@ -35,11 +38,44 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class HTreeTab;
 class HTreeNode;
 
+using HTreeNodeBuilder=std::function<HTreeNode* (const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab)>;
+
 class UISE_DESKTOP_EXPORT HTreeNodeFactory
 {
     public:
 
-        HTreeNode* makeNode(HTreePath path, HTreeTab* treeTab=nullptr) const;
+        HTreeNodeFactory()=default;
+        virtual ~HTreeNodeFactory();
+
+        HTreeNodeFactory(const HTreeNodeFactory&)=default;
+        HTreeNodeFactory(HTreeNodeFactory&&)=default;
+        HTreeNodeFactory& operator= (const HTreeNodeFactory&)=default;
+        HTreeNodeFactory& operator= (HTreeNodeFactory&&)=default;
+
+        HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const;
+
+        void registerBuilder(std::string type, HTreeNodeBuilder builder)
+        {
+            m_builders.emplace(std::move(type),std::move(builder));
+        }
+
+        HTreeNodeBuilder builder(const std::string& type) const
+        {
+            auto it=m_builders.find(type);
+            if (it!=m_builders.end())
+            {
+                return it->second;
+            }
+            return HTreeNodeBuilder{};
+        }
+
+    protected:
+
+        virtual HTreeNode* doMakeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const;
+
+    private:
+
+        std::map<std::string,HTreeNodeBuilder> m_builders;
 };
 
 UISE_DESKTOP_NAMESPACE_END
