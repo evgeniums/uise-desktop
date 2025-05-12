@@ -1,0 +1,477 @@
+/**
+@copyright Evgeny Sidorov 2022
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+    
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/desktop/htreetab.hpp
+*
+*  Defines HTreeTab.
+*
+*/
+
+/****************************************************************************/
+
+#include <QScrollBar>
+#include <QSplitter>
+#include <QSignalMapper>
+
+#include <uise/desktop/utils/assert.hpp>
+#include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/scrollarea.hpp>
+#include <uise/desktop/navigationbar.hpp>
+
+#include <uise/desktop/htreenode.hpp>
+#include <uise/desktop/htreebranch.hpp>
+#include <uise/desktop/htreenodefactory.hpp>
+#include <uise/desktop/htree.hpp>
+#include <uise/desktop/htreetab.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+//--------------------------------------------------------------------------
+
+class HTreeTab_p
+{
+    public:
+
+        HTreeTab* self;
+        HTree* tree;
+
+        NavigationBar* navbar=nullptr;
+
+        QScrollArea* scArea=nullptr;
+        QSplitter* splitter=nullptr;
+
+        QSignalMapper* nodeDestroyedMapper;
+
+        std::vector<HTreeNode*> nodes;                
+
+        void appendNode(HTreeNode* node);
+
+        void updateLastNode();
+        void disconnectNode(HTreeNode* node, bool beforeDestroy=true);
+        void truncate(int index, bool onDestroy=false);
+        void scrollToNode(HTreeNode* node);
+        void scrollToEnd();
+};
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::scrollToEnd()
+{
+    scArea->horizontalScrollBar()->setValue(scArea->horizontalScrollBar()->maximum());
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::scrollToNode(HTreeNode* node)
+{
+    if (node->path().elements().size()==nodes.size())
+    {
+        scrollToEnd();
+    }
+    else
+    {
+        scArea->ensureWidgetVisible(node);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
+{
+    if (node!=nullptr)
+    {
+        node->disconnect(
+            node,
+            &HTreeNode::nameUpdated,
+            self,
+            &HTreeTab::nameUpdated
+            );
+        node->disconnect(
+            node,
+            &HTreeNode::tooltipUpdated,
+            self,
+            &HTreeTab::tooltipUpdated
+            );
+        node->disconnect(
+            node,
+            &HTreeNode::iconUpdated,
+            self,
+            &HTreeTab::iconUpdated
+        );
+
+        if (beforeDestroy)
+        {
+            nodeDestroyedMapper->removeMappings(node);
+            node->disconnect(
+                node,
+                SIGNAL(destroyed),
+                nodeDestroyedMapper,
+                SLOT(map)
+            );
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::truncate(int index, bool onDestroy)
+{
+    if (index<0 || index>=nodes.size())
+    {
+        return;
+    }
+
+    auto lastIndex=nodes.size()-index-1;
+    for (auto i=lastIndex;i>=index;i--)
+    {
+        if (!onDestroy || i!=index)
+        {
+            auto w=splitter->widget(i);
+            auto n=qobject_cast<HTreeNode*>(w);
+            if (n!=nullptr)
+            {
+                disconnectNode(n,true);
+            }
+            destroyWidget(w);
+        }
+    }
+    nodes.resize(lastIndex);
+
+    navbar->blockSignals(true);
+    navbar->truncate(index);
+    navbar->blockSignals(false);
+
+    updateLastNode();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::appendNode(HTreeNode* node)
+{    
+    if (!nodes.empty())
+    {
+        auto lastNode=nodes.back();
+        node->setParentNode(lastNode);
+        disconnectNode(lastNode);
+    }
+
+    // add to nodes
+    nodes.push_back(node);
+
+    // add widget to splitter
+    splitter->addWidget(node);
+
+    // add item to navigation bar
+    navbar->addItem(node->name(),node->tooltip(),node->id());
+    self->connect(
+        node,
+        &HTreeNode::nameUpdated,
+        self,
+        [this](const QString& val)
+        {
+            navbar->setItemName(nodes.size(),val);
+        }
+        );
+    self->connect(
+        node,
+        &HTreeNode::tooltipUpdated,
+        self,
+        [this](const QString& val)
+        {
+            navbar->setItemTooltip(nodes.size(),val);
+        }
+    );
+
+    // update last node
+    updateLastNode();
+
+    // scroll to end
+    scrollToNode(node);
+
+    // watch node destroying
+    node->connect(
+        node,
+        SIGNAL(destroyed),
+        nodeDestroyedMapper,
+        SLOT(map)
+    );
+    nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::updateLastNode()
+{
+    if (nodes.empty())
+    {
+        return;
+    }
+    HTreeNode* lastNode=nodes.back();
+
+    // signal that last node is updated
+    emit self->nodeUpdated(lastNode->path());
+    emit self->nameUpdated(lastNode->name());
+    emit self->tooltipUpdated(lastNode->tooltip());
+    emit self->iconUpdated(lastNode->icon());
+
+    // connect last node
+    lastNode->connect(
+        lastNode,
+        &HTreeNode::nameUpdated,
+        self,
+        &HTreeTab::nameUpdated
+    );
+    lastNode->connect(
+        lastNode,
+        &HTreeNode::tooltipUpdated,
+        self,
+        &HTreeTab::tooltipUpdated
+    );
+    lastNode->connect(
+        lastNode,
+        &HTreeNode::iconUpdated,
+        self,
+        &HTreeTab::iconUpdated
+    );
+}
+
+//--------------------------------------------------------------------------
+
+HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
+    : QFrame(parent),
+      pimpl(std::make_unique<HTreeTab_p>())
+{
+    pimpl->self=this;
+    pimpl->tree=tree;
+
+    auto l=Layout::vertical(this);
+
+    pimpl->navbar=new NavigationBar(this);
+    pimpl->navbar->setCheckable(false);
+    pimpl->navbar->setExclusive(false);
+    l->addWidget(pimpl->navbar);
+
+    pimpl->scArea=new ScrollArea(this);
+    pimpl->scArea->setObjectName("hTreaTabScArea");
+    pimpl->scArea->setWidgetResizable(true);
+    l->addWidget(pimpl->scArea);
+
+    pimpl->splitter=new QSplitter(pimpl->scArea);
+    pimpl->splitter->setOrientation(Qt::Horizontal);
+    pimpl->splitter->setObjectName("hTreeTabSplitter");
+    pimpl->scArea->setWidget(pimpl->splitter);
+
+    pimpl->nodeDestroyedMapper=new QSignalMapper(this);
+    connect(pimpl->nodeDestroyedMapper,&QSignalMapper::mappedInt,this,
+        [this](int index)
+        {
+            pimpl->truncate(index,true);
+        }
+    );
+
+    connect(
+        pimpl->navbar,
+        &NavigationBar::indexClicked,
+        this,
+        [this](int index)
+        {
+            auto node=pimpl->nodes[index];
+            auto branch=qobject_cast<HTreeBranch*>(node);
+            if (branch!=nullptr && !branch->isExpanded())
+            {
+                branch->setExpanded(true);
+            }
+            scrollToNode(node);
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+HTreeTab::~HTreeTab()
+{}
+
+//--------------------------------------------------------------------------
+
+HTreeNode* HTreeTab::node() const
+{
+    if (pimpl->nodes.empty())
+    {
+        return nullptr;
+    }
+    return pimpl->nodes.back();
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNode* HTreeTab::node(const HTreePath& path, bool exact) const
+{
+    if (pimpl->nodes.empty())
+    {
+        return nullptr;
+    }
+
+    auto n=node();
+    if (exact)
+    {
+        if (n->path()==path)
+        {
+            return n;
+        }
+    }
+
+    while(n!=nullptr)
+    {
+        if (n->path()==path)
+        {
+            return n;
+        }
+        n=n->parentNode();
+    }
+
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::openPath(HTreePath path)
+{
+    truncate(0);
+
+    QList<int> splitterSizes;    
+
+    for (size_t i=0;i<path.elements().size();i++)
+    {
+        const auto& el=path.elements().at(i);
+        auto lastNode=node();
+        if (lastNode!=nullptr)
+        {
+            auto branch=qobject_cast<HTreeBranch*>(lastNode);
+            UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
+            auto node=branch->loadNextNode(el);
+            if (node==nullptr)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            UiseAssert(i==0,"Previous last node must exist for all path elements except for the first");
+            HTreePath partialPath{el};
+            auto node=pimpl->tree->nodeFactory()->makeNode(partialPath);
+            if (node==nullptr)
+            {
+                return false;
+            }
+            appendNode(node);
+            node->refresh();
+        }
+
+        splitterSizes.push_back(el.config().width());
+    }
+
+    pimpl->splitter->setSizes(splitterSizes);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+HTreePath HTreeTab::path() const
+{
+    HTreePath p;
+
+    auto splitterSizes=pimpl->splitter->sizes();
+    auto n=node();
+    if (n!=nullptr)
+    {
+        p=n->path();
+        for (int j=0;j<p.elements().size();j++)
+        {
+            auto& el=p.elements().at(j);
+            bool expanded=true;
+            auto branch=qobject_cast<HTreeBranch*>(n);
+            if (branch!=nullptr)
+            {
+                expanded=branch->isExpanded();
+            }
+            HTreePathElementConfig cfg{expanded,splitterSizes[j]};
+            el.setConfig(std::move(cfg));
+        }
+    }
+
+    return p;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::appendNode(HTreeNode* node)
+{
+    pimpl->appendNode(node);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::setTree(HTree* tree)
+{
+    pimpl->tree=tree;
+}
+
+//--------------------------------------------------------------------------
+
+HTree* HTreeTab::tree() const
+{
+    return pimpl->tree;
+}
+
+//--------------------------------------------------------------------------
+
+NavigationBar* HTreeTab::navbar() const
+{
+    return pimpl->navbar;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::closeNode(HTreeNode* node)
+{
+    if(node==nullptr)
+    {
+        return;
+    }
+
+    int index=node->path().elements().size()-1;
+    pimpl->truncate(index);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::truncate(int index)
+{
+    pimpl->truncate(index);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::scrollToNode(HTreeNode* node)
+{
+    pimpl->scrollToNode(node);
+}
+
+//--------------------------------------------------------------------------
+
+UISE_DESKTOP_NAMESPACE_END

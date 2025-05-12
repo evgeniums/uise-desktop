@@ -37,6 +37,7 @@ SET (HEADERS
     include/uise/desktop/uisedesktop.hpp
     include/uise/desktop/version.hpp
 
+    include/uise/desktop/utils/assert.hpp
     include/uise/desktop/utils/layout.hpp
     include/uise/desktop/utils/destroywidget.hpp
     include/uise/desktop/utils/pointerholder.hpp
@@ -71,7 +72,15 @@ SET (HEADERS
     include/uise/desktop/navigationbar.hpp
     include/uise/desktop/stackwithnavigationbar.hpp
 
-    include/uise/desktop/horizontaltree.hpp
+    include/uise/desktop/htreepath.hpp
+    include/uise/desktop/htreenode.hpp
+    include/uise/desktop/htreenodefactory.hpp
+    include/uise/desktop/htreelistitem.hpp
+    include/uise/desktop/htreebranch.hpp
+    include/uise/desktop/htreelist.hpp
+    include/uise/desktop/htreesidebar.hpp
+    include/uise/desktop/htreetab.hpp
+    include/uise/desktop/htree.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -99,7 +108,15 @@ SET (SOURCES
     src/framewithrefresh.cpp
     src/navigationbar.cpp
     src/stackwithnavigationbar.cpp
-    src/horizontaltree.cpp
+
+    src/htree.cpp
+    src/htreenode.cpp
+    src/htreenodefactory.cpp
+    src/htreebranch.cpp
+    src/htreelistitem.cpp
+    src/htreelist.cpp
+    src/htreetab.cpp
+    src/htreesidebar.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
@@ -191,3 +208,5 @@ ENDIF(BUILD_STATIC)
 IF (INSTALL_DEV)
     INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/uise DESTINATION include)
 ENDIF(INSTALL_DEV)
+
+INCLUDE(thirdparty/thirdparty.cmake)

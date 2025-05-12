@@ -47,6 +47,11 @@ UISE_DESKTOP_NAMESPACE_END
 
 #define UISE_DESKTOP_NAMESPACE uise
 
+#define UISE_THIRDPARTY_NAMESPACE_BEGIN namespace uise { namespace thirdparty {
+#define UISE_THIRDPARTY_NAMESPACE_END }}
+
+#define UISE_THIRDPARTY_NAMESPACE uise::thirdparty
+
 #ifdef WIN32
 
 #ifndef NOMINMAX
