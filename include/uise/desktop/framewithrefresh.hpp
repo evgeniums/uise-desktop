@@ -58,6 +58,38 @@ class UISE_DESKTOP_EXPORT FrameWithRefresh : public QFrame
 
 };
 
+/**
+ * @brief Class with refreshRequested() callback.
+ */
+class WithRefreshRequested
+{
+    public:
+
+        /**
+         * @brief Invoke callback.
+         */
+        void refreshRequested()
+        {
+            if (m_refreshRequestedCb)
+            {
+                m_refreshRequestedCb();
+            }
+        }
+
+        /**
+         * @brief Set callback.
+         * @param cb Callabck to invoke when refresh is requested.
+         */
+        void setRefreshRequestedCb(std::function<void()> cb)
+        {
+            m_refreshRequestedCb=cb;
+        }
+
+    private:
+
+        std::function<void()> m_refreshRequestedCb;
+};
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FRAME_WITH_REFRESH_HPP
