@@ -40,6 +40,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class HTreeNode;
 class HTreeTab;
 class HTreeNodeFactory;
+class HTreeSideBar;
 class HTree_p;
 
 class UISE_DESKTOP_EXPORT HTree : public QFrame
@@ -87,6 +88,8 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         HTreeNode* showNode(const HTreePath& path);
         HTreeNode* node(const HTreePath& path) const;
+
+        HTreeSideBar* sidebar() const;
 
     private:
 

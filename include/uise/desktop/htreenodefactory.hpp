@@ -26,7 +26,6 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_NODE_FACTORY_HPP
 #define UISE_DESKTOP_HTREE_NODE_FACTORY_HPP
 
-#include <functional>
 #include <map>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -38,7 +37,20 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class HTreeTab;
 class HTreeNode;
 
-using HTreeNodeBuilder=std::function<HTreeNode* (const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab)>;
+class UISE_DESKTOP_EXPORT HTreeNodeBuilder
+{
+    public:
+
+        HTreeNodeBuilder()=default;
+        virtual ~HTreeNodeBuilder();
+
+        HTreeNodeBuilder(const HTreeNodeBuilder&)=default;
+        HTreeNodeBuilder(HTreeNodeBuilder&&)=default;
+        HTreeNodeBuilder& operator= (const HTreeNodeBuilder&)=default;
+        HTreeNodeBuilder& operator= (HTreeNodeBuilder&&)=default;
+
+        virtual HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const=0;
+};
 
 class UISE_DESKTOP_EXPORT HTreeNodeFactory
 {
@@ -54,19 +66,19 @@ class UISE_DESKTOP_EXPORT HTreeNodeFactory
 
         HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const;
 
-        void registerBuilder(std::string type, HTreeNodeBuilder builder)
+        void registerBuilder(std::string type, std::shared_ptr<HTreeNodeBuilder> builder)
         {
             m_builders.emplace(std::move(type),std::move(builder));
         }
 
-        HTreeNodeBuilder builder(const std::string& type) const
+        const HTreeNodeBuilder* builder(const std::string& type) const
         {
             auto it=m_builders.find(type);
             if (it!=m_builders.end())
             {
-                return it->second;
+                return it->second.get();
             }
-            return HTreeNodeBuilder{};
+            return nullptr;
         }
 
     protected:
@@ -75,7 +87,7 @@ class UISE_DESKTOP_EXPORT HTreeNodeFactory
 
     private:
 
-        std::map<std::string,HTreeNodeBuilder> m_builders;
+        std::map<std::string,std::shared_ptr<HTreeNodeBuilder>> m_builders;
 };
 
 UISE_DESKTOP_NAMESPACE_END

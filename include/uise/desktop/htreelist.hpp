@@ -38,15 +38,30 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class HTreeList;
 class HTreeList_p;
 
-template <typename ItemT, typename BaseT>
+template <typename ItemT, typename BaseT=QFrame>
 class HTreeListView : public WithFlyweightListView<ItemT,BaseT>,
                       public WithRefreshRequested
 {
     public:
 
         using WithFlyweightListView<ItemT,BaseT>::WithFlyweightListView;
+
+        void setHTreeList(HTreeList* list) noexcept
+        {
+            m_list=list;
+        }
+
+        HTreeList* hTreeList() const noexcept
+        {
+            return m_list;
+        }
+
+    private:
+
+        HTreeList* m_list=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
@@ -81,16 +96,18 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
         template <typename ItemT, typename BaseT>
         void setView(HTreeListView<ItemT,BaseT>* view)
         {
+            view->setHTreeList(this);
+
             view->listView()->setInsertItemCb(
                 [this](auto item)
                 {
-                    itemInserted(item);
+                    onItemInsert(item);
                 }
             );
             view->listView()->setRemoveItemCb(
                 [this](auto item)
                 {
-                    itemRemoved(item);
+                    onItemRemove(item);
                 }
             );
             setViewWidget(view);

@@ -87,14 +87,29 @@ class HTreePathElement
             return m_type;
         }
 
+        void setType(std::string type)
+        {
+            m_type=std::move(type);
+        }
+
         std::string id() const noexcept
         {
             return m_id;
         }
 
+        void setId(std::string id)
+        {
+            m_type=std::move(id);
+        }
+
         std::string name() const noexcept
         {
             return m_name;
+        }
+
+        void setName(std::string name)
+        {
+            m_type=std::move(name);
         }
 
         const HTreePathElementConfig& config() const noexcept
@@ -154,6 +169,11 @@ class HTreePath
 
         HTreePath(HTreePathElement element) : m_elements({std::move(element)})
         {}
+
+        HTreePath(const HTreePath& parent, HTreePathElement element) : m_elements(parent.elements())
+        {
+            m_elements.emplace_back(std::move(element));
+        }
 
         const std::vector<HTreePathElement>& elements() const noexcept
         {

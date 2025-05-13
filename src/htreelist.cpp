@@ -44,14 +44,14 @@ HTreeList::HTreeList(HTreeTab* treeTab, QWidget* parent)
     : HTreeBranch(treeTab,parent),
       pimpl(std::make_unique<HTreeList_p>())
 {
+    pimpl->layout=Layout::horizontal(this);
 }
 
 //--------------------------------------------------------------------------
 
 HTreeList::HTreeList(QWidget* parent)
     : HTreeList(nullptr,parent)
-{
-    pimpl->layout=Layout::horizontal(this);
+{    
 }
 
 //--------------------------------------------------------------------------

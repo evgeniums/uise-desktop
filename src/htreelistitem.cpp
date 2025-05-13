@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QLabel>
 #include <QMenu>
+#include <QMouseEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 
@@ -48,7 +49,7 @@ class HTreeListItem_p
 
 //--------------------------------------------------------------------------
 
-void HTreeListItem::showMenu(const QPoint& pos)
+void HTreeListItem::showMenu(const QPoint&)
 {
     auto menu=new QMenu(this);
 
@@ -71,7 +72,7 @@ void HTreeListItem::showMenu(const QPoint& pos)
     fillContextMenu(menu);
 
     menu->setDefaultAction(open);
-    menu->exec(pos);
+    menu->exec(QCursor::pos());
 }
 
 //--------------------------------------------------------------------------
@@ -83,6 +84,7 @@ HTreeListItem::HTreeListItem(QWidget* parent)
     pimpl->self=this;
     pimpl->layout=Layout::vertical(this);
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+    setContextMenuPolicy(Qt::CustomContextMenu);
 
     connect(
         this,
@@ -137,8 +139,12 @@ void HTreeListItem::leaveEvent(QEvent *event)
 //--------------------------------------------------------------------------
 
 void HTreeListItem::mousePressEvent(QMouseEvent *event)
-{
+{        
     QFrame::mousePressEvent(event);
+    if (event->buttons()&Qt::RightButton)
+    {
+        return;
+    }
     emit openRequested(pathElement());
 }
 
@@ -172,7 +178,8 @@ class HTreeStansardListItem_p
         HTreeStansardListItem* self=nullptr;
         QHBoxLayout* layout=nullptr;
         QLabel* pixmap=nullptr;
-        UISE_THIRDPARTY_NAMESPACE::ElidedLabel* text=nullptr;
+        // UISE_THIRDPARTY_NAMESPACE::ElidedLabel* text=nullptr;
+        QLabel* text=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -188,14 +195,13 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* paren
     pimpl->pixmap->setObjectName("hTreeItemPixmap");
     pimpl->layout->addWidget(pimpl->pixmap,0,Qt::AlignLeft);
 
-    pimpl->text=new UISE_THIRDPARTY_NAMESPACE::ElidedLabel(this);
+    // pimpl->text=new UISE_THIRDPARTY_NAMESPACE::ElidedLabel(this);
+    pimpl->text=new QLabel(this);
     pimpl->text->setObjectName("hTreeItemText");
     pimpl->layout->addWidget(pimpl->text,0,Qt::AlignLeft);
     setTextElideMode(Qt::ElideMiddle);
 
-    pimpl->layout->addSpacing(1);
-
-    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -207,6 +213,7 @@ HTreeStansardListItem::~HTreeStansardListItem()
 
 void HTreeStansardListItem::setText(const QString& text)
 {
+    qDebug() << "Set list item text=" << text;
     pimpl->text->setText(text);
 }
 
@@ -235,14 +242,15 @@ QPixmap HTreeStansardListItem::pixmap() const
 
 void HTreeStansardListItem::setTextElideMode(Qt::TextElideMode mode)
 {
-    pimpl->text->setElideMode(mode);
+    // pimpl->text->setElideMode(mode);
 }
 
 //--------------------------------------------------------------------------
 
 Qt::TextElideMode HTreeStansardListItem::textElideMode() const
 {
-    return pimpl->text->elideMode();
+    // return pimpl->text->elideMode();
+    return Qt::ElideNone;
 }
 
 //--------------------------------------------------------------------------

@@ -119,9 +119,9 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
             nodeDestroyedMapper->removeMappings(node);
             node->disconnect(
                 node,
-                SIGNAL(destroyed),
+                SIGNAL(destroyed()),
                 nodeDestroyedMapper,
-                SLOT(map)
+                SLOT(map())
             );
         }
     }
@@ -136,7 +136,7 @@ void HTreeTab_p::truncate(int index, bool onDestroy)
         return;
     }
 
-    auto lastIndex=nodes.size()-index-1;
+    auto lastIndex=nodes.size()-1;
     for (auto i=lastIndex;i>=index;i--)
     {
         if (!onDestroy || i!=index)
@@ -150,7 +150,7 @@ void HTreeTab_p::truncate(int index, bool onDestroy)
             destroyWidget(w);
         }
     }
-    nodes.resize(lastIndex);
+    nodes.resize(index);
 
     navbar->blockSignals(true);
     navbar->truncate(index);
@@ -206,9 +206,9 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // watch node destroying
     node->connect(
         node,
-        SIGNAL(destroyed),
+        SIGNAL(destroyed()),
         nodeDestroyedMapper,
-        SLOT(map)
+        SLOT(map())
     );
     nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
 }
@@ -269,6 +269,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     pimpl->scArea=new ScrollArea(this);
     pimpl->scArea->setObjectName("hTreaTabScArea");
     pimpl->scArea->setWidgetResizable(true);
+    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     l->addWidget(pimpl->scArea);
 
     pimpl->splitter=new QSplitter(pimpl->scArea);
@@ -299,12 +300,22 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
             scrollToNode(node);
         }
     );
+
+    // setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    // pimpl->splitter->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    // pimpl->scArea->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
+    // if (pimpl->scArea->viewport())
+    // {
+    //     pimpl->scArea->viewport()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    // }
 }
 
 //--------------------------------------------------------------------------
 
 HTreeTab::~HTreeTab()
-{}
+{
+    pimpl->nodeDestroyedMapper->blockSignals(true);
+}
 
 //--------------------------------------------------------------------------
 
@@ -363,8 +374,9 @@ bool HTreeTab::openPath(HTreePath path)
         {
             auto branch=qobject_cast<HTreeBranch*>(lastNode);
             UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
+            auto prevNode=branch->nextNode();
             auto node=branch->loadNextNode(el);
-            if (node==nullptr)
+            if (node==nullptr || node==prevNode)
             {
                 return false;
             }
@@ -384,7 +396,8 @@ bool HTreeTab::openPath(HTreePath path)
         splitterSizes.push_back(el.config().width());
     }
 
-    pimpl->splitter->setSizes(splitterSizes);
+    //! @todo Set sizes only if they were saved
+    // pimpl->splitter->setSizes(splitterSizes);
     return true;
 }
 

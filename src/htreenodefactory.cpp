@@ -35,6 +35,11 @@ HTreeNodeFactory::~HTreeNodeFactory()
 
 //--------------------------------------------------------------------------
 
+HTreeNodeBuilder::~HTreeNodeBuilder()
+{}
+
+//--------------------------------------------------------------------------
+
 HTreeNode* HTreeNodeFactory::makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab) const
 {
     auto node=doMakeNode(pathElement,parentNode,treeTab);
@@ -42,6 +47,16 @@ HTreeNode* HTreeNodeFactory::makeNode(const HTreePathElement& pathElement, HTree
     {
         node->setParentNode(parentNode);
         node->setTreeTab(treeTab);
+        HTreePath path;
+        if (parentNode!=nullptr)
+        {
+            path=HTreePath{parentNode->path(),pathElement};
+        }
+        else
+        {
+            path=HTreePath{pathElement};
+        }
+        node->setPath(path);
         return node;
     }
 
@@ -53,9 +68,9 @@ HTreeNode* HTreeNodeFactory::makeNode(const HTreePathElement& pathElement, HTree
 HTreeNode* HTreeNodeFactory::doMakeNode(const HTreePathElement& pathElement, HTreeNode* parentNode, HTreeTab* treeTab) const
 {
     auto b=builder(pathElement.type());
-    if (b)
+    if (b!=nullptr)
     {
-        return b(pathElement,parentNode,treeTab);
+        return b->makeNode(pathElement,parentNode,treeTab);
     }
 
     return nullptr;

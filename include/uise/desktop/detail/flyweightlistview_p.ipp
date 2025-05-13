@@ -860,6 +860,11 @@ void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
 
    scroll(-scrollMain);
 
+   if (isVertical() && !m_scrollWheelHorizontal)
+   {
+       scrollOther=0;
+   }
+
    if (
            m_scrollWheelHorizontal
            &&
@@ -1126,6 +1131,7 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
 
     if (m_firstItem!=first || m_lastItem!=last)
     {
+#ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
         QString log("Item range changed: ");
         if (m_firstItem)
         {
@@ -1144,7 +1150,6 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
             log+=QString("no last item");
         }
         std::ignore=log;
-#ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
         qDebug() << log;
 #endif
 

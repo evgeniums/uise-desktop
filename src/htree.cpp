@@ -59,7 +59,7 @@ class HTree_p
 std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
 {
     auto tab=new HTreeTab(self,splitter);
-    auto index=tabs->addTab(tab,QString::fromStdString(path.elements().back().name()));
+    auto index=tabs->addTab(tab,QString::fromStdString(path.name()));
 
     tab->connect(
         tab,
@@ -246,7 +246,9 @@ void HTree::openPath(HTreePath path, int tabIndex)
     {
         auto r=pimpl->addTab(path);
         t=r.first;
+        tabIndex=r.second;
     }
+    setCurrentTab(tabIndex);
     t->openPath(std::move(path));
 }
 
@@ -320,6 +322,13 @@ HTreeNode* HTree::showNode(const HTreePath& path)
     n->treeTab()->raise();
     n->treeTab()->scrollToNode(n);
     return n;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeSideBar* HTree::sidebar() const
+{
+    return pimpl->sidebar;
 }
 
 //--------------------------------------------------------------------------

@@ -84,11 +84,23 @@ void HTreeBranch::setExpanded(bool enable)
 
 HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
 {
+    auto next=nextNode();
+    if (next!=nullptr)
+    {
+        if (next->path().id()==pathElement.id())
+        {
+            return next;
+        }
+    }
+
     closeNextNode();
 
     pimpl->nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
-    treeTab()->appendNode(pimpl->nextNode);
-    pimpl->nextNode->refresh();
+    if (pimpl->nextNode!=nullptr)
+    {
+        treeTab()->appendNode(pimpl->nextNode);
+        pimpl->nextNode->refresh();
+    }
 
     return pimpl->nextNode;
 }
