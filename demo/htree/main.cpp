@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     l->addWidget(htree,1);
     auto rootPath=std::filesystem::current_path().root_path();
     auto rootPathName=rootPath.string();
-    HTreePathElement root{DirListItem::Folder,rootPath,rootPathName};
+    HTreePathElement root{DirListItem::Folder,rootPath.string(),rootPathName};
     htree->openPath(root);
     htree->sidebar()->setVisible(false);
 

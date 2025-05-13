@@ -71,7 +71,7 @@ class DirListItem : public HTreeStansardListItem
             if (!entry.is_directory())
             {
                 QString extIconsRoot{":/uise/icons/ext"};
-                std::string ext=entry.path().extension();
+                std::string ext=entry.path().extension().string();
                 if (!ext.empty())
                 {
                     ext=ext.substr(1);
@@ -111,7 +111,7 @@ class DirListItem : public HTreeStansardListItem
 
         std::string name() const noexcept
         {
-            return entry.path().filename();
+            return entry.path().filename().string();
         }
 
         std::string sortValue() const noexcept
@@ -215,10 +215,10 @@ class DirList : public HTreeListView<DirItemWrapper>
                     {
                         type=DirListItem::Folder;
                     }
-                    HTreePathElement pathEl{type,std::filesystem::absolute(entry.path()),entry.path().filename()};
+                    HTreePathElement pathEl{type,std::filesystem::absolute(entry.path()).string(),entry.path().filename().string()};
                     item.item()->setPathElement(std::move(pathEl));
 
-                    items.push_back(std::move(item));
+                    items.push_back(item);
                 }
                 listView()->loadItems(items);
             }
