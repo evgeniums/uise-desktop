@@ -406,4 +406,35 @@
         <file alias="zip.svg">file-icon-vectors/dist/icons/classic/zip.svg</file>
         <file alias="zsh.svg">file-icon-vectors/dist/icons/classic/zsh.svg</file>
     </qresource>
+    <qresource prefix="/uise/icons/folder">
+        <file alias="catalog.json">file-icon-vectors/dist/icons/extra/catalog.json</file>
+        <file alias="folder-archive.svg">file-icon-vectors/dist/icons/extra/folder-archive.svg</file>
+        <file alias="folder-classic-open.svg">file-icon-vectors/dist/icons/extra/folder-classic-open.svg</file>
+        <file alias="folder-classic.svg">file-icon-vectors/dist/icons/extra/folder-classic.svg</file>
+        <file alias="folder-favorite.svg">file-icon-vectors/dist/icons/extra/folder-favorite.svg</file>
+        <file alias="folder-flat.svg">file-icon-vectors/dist/icons/extra/folder-flat.svg</file>
+        <file alias="folder-git.svg">file-icon-vectors/dist/icons/extra/folder-git.svg</file>
+        <file alias="folder-hidden-open.svg">file-icon-vectors/dist/icons/extra/folder-hidden-open.svg</file>
+        <file alias="folder-hidden.svg">file-icon-vectors/dist/icons/extra/folder-hidden.svg</file>
+        <file alias="folder-idea.svg">file-icon-vectors/dist/icons/extra/folder-idea.svg</file>
+        <file alias="folder-image.svg">file-icon-vectors/dist/icons/extra/folder-image.svg</file>
+        <file alias="folder-lock.svg">file-icon-vectors/dist/icons/extra/folder-lock.svg</file>
+        <file alias="folder-music.svg">file-icon-vectors/dist/icons/extra/folder-music.svg</file>
+        <file alias="folder-neon-open.svg">file-icon-vectors/dist/icons/extra/folder-neon-open.svg</file>
+        <file alias="folder-neon.svg">file-icon-vectors/dist/icons/extra/folder-neon.svg</file>
+        <file alias="folder-network-open.svg">file-icon-vectors/dist/icons/extra/folder-network-open.svg</file>
+        <file alias="folder-network.svg">file-icon-vectors/dist/icons/extra/folder-network.svg</file>
+        <file alias="folder-open.svg">file-icon-vectors/dist/icons/extra/folder-open.svg</file>
+        <file alias="folder-photo.svg">file-icon-vectors/dist/icons/extra/folder-photo.svg</file>
+        <file alias="folder-plain-open.svg">file-icon-vectors/dist/icons/extra/folder-plain-open.svg</file>
+        <file alias="folder-plain.svg">file-icon-vectors/dist/icons/extra/folder-plain.svg</file>
+        <file alias="folder-svn.svg">file-icon-vectors/dist/icons/extra/folder-svn.svg</file>
+        <file alias="folder-trash.svg">file-icon-vectors/dist/icons/extra/folder-trash.svg</file>
+        <file alias="folder-tree.svg">file-icon-vectors/dist/icons/extra/folder-tree.svg</file>
+        <file alias="folder-video.svg">file-icon-vectors/dist/icons/extra/folder-video.svg</file>
+        <file alias="folder.svg">file-icon-vectors/dist/icons/extra/folder.svg</file>
+    </qresource>
+    <qresource prefix="/uise/icons/ext/fallback">
+        <file alias="hpp.svg">file-icon-vectors/dist/icons/fallback/hpp.svg</file>
+    </qresource>
 </RCC>

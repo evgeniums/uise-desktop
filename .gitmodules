@@ -1,0 +1,3 @@
+[submodule "thirdparty/file-icon-vectors"]
+	path = thirdparty/file-icon-vectors
+	url = https://github.com/evgeniums/file-icon-vectors.git
