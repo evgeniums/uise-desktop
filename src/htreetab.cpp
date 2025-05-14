@@ -23,6 +23,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QPushButton>
+#include <QTextBrowser>
+
 #include <QScrollBar>
 #include <QSplitter>
 #include <QSignalMapper>
@@ -38,7 +41,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreebranch.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 #include <uise/desktop/htree.hpp>
+#include <uise/desktop/htreesplitter.hpp>
 #include <uise/desktop/htreetab.hpp>
+
+#include <uise/desktop/detail/htreesplitter_p.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -53,8 +59,7 @@ class HTreeTab_p
 
         NavigationBar* navbar=nullptr;
 
-        QScrollArea* scArea=nullptr;
-        QSplitter* splitter=nullptr;
+        HTreeSplitter* splitter=nullptr;
 
         QSignalMapper* nodeDestroyedMapper;
 
@@ -65,7 +70,7 @@ class HTreeTab_p
 
         void updateLastNode();
         void disconnectNode(HTreeNode* node, bool beforeDestroy=true);
-        void truncate(int index, bool onDestroy=false);
+        void truncate(int index);
         void scrollToNode(HTreeNode* node);
         void scrollToEnd();
 };
@@ -79,7 +84,7 @@ void HTreeTab_p::scrollToEnd()
     {
         if (!nodes.empty())
         {
-            scArea->ensureWidgetVisible(nodes.back());
+            splitter->scrollToWidget(nodes.back(),0);
         }
 
         timer->deleteLater();
@@ -96,7 +101,7 @@ void HTreeTab_p::scrollToNode(HTreeNode* node)
     }
     else
     {
-        scArea->ensureWidgetVisible(node);
+        splitter->scrollToWidget(node);
     }
 }
 
@@ -140,7 +145,7 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
 
 //--------------------------------------------------------------------------
 
-void HTreeTab_p::truncate(int index, bool onDestroy)
+void HTreeTab_p::truncate(int index)
 {
     if (index<0 || index>=nodes.size())
     {
@@ -150,16 +155,13 @@ void HTreeTab_p::truncate(int index, bool onDestroy)
     auto lastIndex=nodes.size()-1;
     for (auto i=lastIndex;i>=index;i--)
     {
-        if (!onDestroy || i!=index)
+        auto w=splitter->widget(i);
+        auto n=qobject_cast<HTreeNode*>(w);
+        if (n!=nullptr)
         {
-            auto w=splitter->widget(i);
-            auto n=qobject_cast<HTreeNode*>(w);
-            if (n!=nullptr)
-            {
-                disconnectNode(n,true);
-            }
-            destroyWidget(w);
+            disconnectNode(n,true);
         }
+        destroyWidget(w);
     }
     nodes.resize(index);
 
@@ -174,21 +176,6 @@ void HTreeTab_p::truncate(int index, bool onDestroy)
 
 void HTreeTab_p::appendNode(HTreeNode* node)
 {
-    int prevWidth=0;
-    auto sizes=splitter->sizes();
-    if (!loadingPath)
-    {
-        for (int i=0;i<sizes.count();i++)
-        {
-            // prevWidth+=sizes[i];
-            auto w=splitter->widget(i);
-            // prevWidth+=std::max(w->sizeHint().width(),w->minimumWidth());
-            auto pw=std::max(w->sizeHint().width(),w->minimumWidth());
-            prevWidth+=pw;
-            sizes[i]=pw;
-        }
-    }
-
     if (!nodes.empty())
     {
         auto lastNode=nodes.back();
@@ -234,22 +221,6 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         SLOT(map())
     );
     nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
-
-    if (!loadingPath)
-    {
-        auto w=std::max(splitter->width(),splitter->minimumWidth());
-        w=std::max(w,prevWidth+std::max(node->sizeHint().width(),node->minimumWidth()));
-
-        // splitter->resize(w+100,splitter->size().height());
-
-        splitter->setMinimumWidth(std::max(splitter->width(),w+200));
-
-        sizes.push_back(std::max(node->sizeHint().width(),node->minimumWidth())+200);
-        splitter->setSizes(sizes);
-
-        // scroll to end
-        scrollToEnd();
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -305,22 +276,14 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     pimpl->navbar->setExclusive(false);
     l->addWidget(pimpl->navbar);
 
-    pimpl->scArea=new ScrollArea(this);
-    pimpl->scArea->setObjectName("hTreaTabScArea");
-    pimpl->scArea->setWidgetResizable(true);
-    l->addWidget(pimpl->scArea);
-
-    pimpl->splitter=new QSplitter(pimpl->scArea);
-    pimpl->splitter->setOrientation(Qt::Horizontal);
-    pimpl->splitter->setObjectName("hTreeTabSplitter");
-    pimpl->splitter->setChildrenCollapsible(false);
-    pimpl->scArea->setWidget(pimpl->splitter);
+    pimpl->splitter=new HTreeSplitter(this);
+    l->addWidget(pimpl->splitter);
 
     pimpl->nodeDestroyedMapper=new QSignalMapper(this);
     connect(pimpl->nodeDestroyedMapper,&QSignalMapper::mappedInt,this,
         [this](int index)
         {
-            pimpl->truncate(index,true);
+            pimpl->truncate(index+1);
         }
     );
 
@@ -395,6 +358,19 @@ HTreeNode* HTreeTab::node(const HTreePath& path, bool exact) const
 
 bool HTreeTab::openPath(HTreePath path)
 {
+    // auto w=new QFrame();
+    // w->setObjectName("tf");
+    // w->setMinimumHeight(500);
+    // w->setMinimumWidth(600);
+    // w->setMaximumWidth(900);
+    // w->setStyleSheet("#tf {background-color:green;}");
+    // auto s=new HTreeSplitter();
+    // s->resize(800,600);
+    // s->addWidget(w);
+    // s->show();
+
+    // return false;
+
     truncate(0);
 
     pimpl->loadingPath=true;
@@ -444,11 +420,13 @@ HTreePath HTreeTab::path() const
 {
     HTreePath p;
 
-    auto splitterSizes=pimpl->splitter->sizes();
     auto n=node();
     if (n!=nullptr)
     {
         p=n->path();
+
+        //! @todo Save width in configuration
+#if 0
         for (int j=0;j<p.elements().size();j++)
         {
             auto& el=p.elements().at(j);
@@ -458,9 +436,11 @@ HTreePath HTreeTab::path() const
             {
                 expanded=branch->isExpanded();
             }
+
             HTreePathElementConfig cfg{expanded,splitterSizes[j]};
             el.setConfig(std::move(cfg));
         }
+#endif
     }
 
     return p;

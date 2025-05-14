@@ -82,6 +82,7 @@ SET (HEADERS
     include/uise/desktop/htreelist.hpp
     include/uise/desktop/htreesidebar.hpp
     include/uise/desktop/htreetab.hpp
+    include/uise/desktop/htreesplitter.hpp
     include/uise/desktop/htree.hpp
 )
 
@@ -90,6 +91,8 @@ SET (HEADERS ${HEADERS}
     include/uise/desktop/detail/flyweightlistview_p.ipp
 
     include/uise/desktop/detail/spinnersection_p.hpp
+
+    include/uise/desktop/detail/htreesplitter_p.hpp
 )
 
 SET (SOURCES
@@ -118,6 +121,7 @@ SET (SOURCES
     src/htreelistitem.cpp
     src/htreelist.cpp
     src/htreetab.cpp
+    src/htreesplitter.cpp
     src/htreesidebar.cpp
 )
 
