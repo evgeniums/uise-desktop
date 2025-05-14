@@ -110,7 +110,6 @@ void HTreeSplitterSection::setWidget(QWidget* widget)
         SLOT(onWidgetDestroyed())
     );
 
-    //! @todo Update minimum width when destroying widget
     setMinimumWidth(minimumWidth()+widget->minimumWidth()+m_line->minimumWidth());
 }
 
@@ -243,11 +242,8 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                     section->resize(sectionDx,section->height());
                     if (expected!=section->width())
                     {
-                        qDebug() << " newPos.x()="<<newPos.x() << " actual x="<<(section->width()+sectionX);
                         QCursor::setPos(section->width()+sectionX,newPos.y());
                     }
-
-                    qDebug() << " section->width()="<<section->width() << " section->minimumWidth()="<<section->minimumWidth();
                 }
 #endif
                 break;
@@ -287,13 +283,23 @@ void HTreeSplitterInternal::onSectionDestroyed(QObject* obj)
 
 //--------------------------------------------------------------------------
 
-void HTreeSplitterInternal::addWidget(QWidget* widget)
+void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
 {
     auto section=new HTreeSplitterSection(this);
     section->setWidget(widget);
     Section s{section->minimumWidth(),section};
     m_sections.push_back(s);
-    m_layout->addWidget(section);
+
+    // update stretches for the last section
+    for (int i=0;i<m_layout->count();i++)
+    {
+        if (m_layout->stretch(i)<=1)
+        {
+            m_layout->setStretch(i,0);
+        }
+    }
+    stretch=std::max(stretch,1);
+    m_layout->addWidget(section,stretch);
 
     connect(
         section,
@@ -386,9 +392,9 @@ int HTreeSplitter::count() const
 
 //--------------------------------------------------------------------------
 
-void HTreeSplitter::addWidget(QWidget* widget)
+void HTreeSplitter::addWidget(QWidget* widget, int stretch)
 {
-    pimpl->content->addWidget(widget);
+    pimpl->content->addWidget(widget,stretch);
 
     //! @todo Implement smooth scrolling
     scrollToEnd();

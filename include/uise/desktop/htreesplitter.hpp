@@ -60,7 +60,7 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
         HTreeSplitter& operator=(const HTreeSplitter&)=delete;
         HTreeSplitter& operator=(HTreeSplitter&&)=delete;
 
-        void addWidget(QWidget* widget);
+        void addWidget(QWidget* widget, int stretch=0);
         QWidget* widget(int index) const;
 
         int count() const;
