@@ -46,12 +46,12 @@ void SingleShotTimer::onTimeout()
 }
 
 //--------------------------------------------------------------------------
-void SingleShotTimer::shot(size_t milliseconds, HandlerT handler)
+void SingleShotTimer::shot(size_t milliseconds, HandlerT handler, bool restart)
 {
     m_handler=std::move(handler);
 
     // in case of successive calls activate timer as fast as possible
-    if (!m_timer.isActive() || m_timer.interval()>milliseconds)
+    if (restart || !m_timer.isActive() || m_timer.interval()>milliseconds)
     {
         m_timer.setInterval(milliseconds);
         m_timer.start();

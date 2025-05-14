@@ -57,12 +57,14 @@ class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
          * @brief Run timer.
          * @param milliseconds Timer interval.
          * @param handler Handler to invoke after timeout.
+         * @param restart If true then restart timer with given interval, if false then invoke as fast as possible.
          *
-         * Successive calls to shot() method before timer is invoked will result in invoking the handler of the last call at the time point set with the first call.
+         * If restart is false (default) then successive calls to shot() method before timer is invoked will result in invoking the handler of the last call at the time point set with the first call.
          */
         void shot(
             size_t milliseconds,
-            HandlerT handler
+            HandlerT handler,
+            bool restart=false
         );
 
         /**
