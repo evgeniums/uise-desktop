@@ -131,11 +131,18 @@ void HTreeBranch::openNextNode(const HTreePathElement& pathElement)
 
 //--------------------------------------------------------------------------
 
-void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement)
+void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
 {
-    auto p=path();
-    p.elements().push_back(pathElement);
-    treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+    if (!residentPath.isNull())
+    {
+        treeTab()->tree()->openPath(residentPath,HTree::NewTabIndex);
+    }
+    else
+    {
+        auto p=path();
+        p.elements().push_back(pathElement);
+        treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+    }
 }
 
 //--------------------------------------------------------------------------

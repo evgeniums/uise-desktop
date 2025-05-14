@@ -79,7 +79,7 @@ class UISE_DESKTOP_EXPORT HTreeBranch : public HTreeNode
         void setExpanded(bool enable);
 
         void openNextNode(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement);
-        void openNextNodeInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement);
+        void openNextNodeInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
 
         virtual void setNextNodeId(const std::string& id);
 

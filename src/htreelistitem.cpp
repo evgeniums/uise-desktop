@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMenu>
 #include <QMouseEvent>
 #include <QStyle>
+#include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 
@@ -46,6 +47,7 @@ class HTreeListItem_p
         QWidget* widget=nullptr;
 
         HTreePathElement pathElement;
+        HTreePath residentPath;
         bool selected=false;
 };
 
@@ -67,7 +69,7 @@ void HTreeListItem::showMenu(const QPoint&)
     connect(openInTab,&QAction::triggered,this,
         [this]()
         {
-            emit openInNewTabRequested(pathElement());
+            emit openInNewTabRequested(pathElement(),residentPath());
         }
     );
 
@@ -174,6 +176,11 @@ void HTreeListItem::mousePressEvent(QMouseEvent *event)
     {
         return;
     }
+    if (QApplication::keyboardModifiers() & Qt::ControlModifier)
+    {
+        emit openInNewTabRequested(pathElement(),residentPath());
+        return;
+    }
     setSelected(true);
     emit openRequested(pathElement());
 }
@@ -194,9 +201,23 @@ void HTreeListItem::setPathElement(HTreePathElement pathElement)
 
 //--------------------------------------------------------------------------
 
-const HTreePathElement& HTreeListItem::pathElement() const
+const HTreePathElement& HTreeListItem::pathElement() const noexcept
 {
     return pimpl->pathElement;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::setResidentPath(HTreePath path)
+{
+    pimpl->residentPath=std::move(path);
+}
+
+//--------------------------------------------------------------------------
+
+const HTreePath& HTreeListItem::residentPath() const noexcept
+{
+    return pimpl->residentPath;
 }
 
 /************************* HTreeStandardListItem ******************************/

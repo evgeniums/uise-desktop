@@ -127,6 +127,11 @@ class HTreePathElement
             return m_type==other.m_type && m_id==other.m_id;
         }
 
+        bool isNull() const noexcept
+        {
+            return m_id.empty();
+        }
+
     private:
 
         std::string m_type;
@@ -241,6 +246,16 @@ class HTreePath
         bool operator== (const HTreePath& other) const noexcept
         {
             return m_elements==other.m_elements;
+        }
+
+        bool isNull() const noexcept
+        {
+            return m_elements.empty();
+        }
+
+        void append(HTreePathElement el)
+        {
+            m_elements.emplace_back(std::move(el));
         }
 
     private:

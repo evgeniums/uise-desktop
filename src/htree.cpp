@@ -114,7 +114,16 @@ HTree::HTree(QWidget* parent)
 
     pimpl->tabs=new QTabWidget(pimpl->splitter);
     pimpl->tabs->setObjectName("hTreeTabs");
+    pimpl->tabs->setTabBarAutoHide(true);
+    pimpl->tabs->setTabsClosable(true);
     pimpl->splitter->addWidget(pimpl->tabs);
+
+    connect(
+        pimpl->tabs,
+        &QTabWidget::tabCloseRequested,
+        this,
+        &HTree::closeTab
+    );
 }
 
 //--------------------------------------------------------------------------

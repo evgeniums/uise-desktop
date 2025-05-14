@@ -78,8 +78,6 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         int tabCount() const;
         int currentTabIndex() const;
-        void setCurrentTab(int tabIndex);
-        void closeTab(int tabIndex);
 
         HTreeTab* tab(int tabIndex=0) const;
         HTreeTab* currentTab() const;
@@ -90,6 +88,11 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         HTreeNode* node(const HTreePath& path) const;
 
         HTreeSideBar* sidebar() const;
+
+    public slots:
+
+        void setCurrentTab(int tabIndex);
+        void closeTab(int tabIndex);
 
     private:
 

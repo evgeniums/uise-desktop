@@ -63,7 +63,10 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void setWidget(QWidget* widget);
 
         void setPathElement(HTreePathElement pathElement);
-        const HTreePathElement& pathElement() const;
+        const HTreePathElement& pathElement() const noexcept;
+
+        void setResidentPath(HTreePath setResidentPath);
+        const HTreePath& residentPath() const noexcept;
 
         void setSelected(bool enable);
         bool isSelected() const;
@@ -72,7 +75,7 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
 
         void selectionChanged(bool);
         void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
-        void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
+        void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
     protected:
 

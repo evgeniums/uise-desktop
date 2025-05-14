@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_TEST_HTREE_DIRLIST_HPP
 #define UISE_DESKTOP_TEST_HTREE_DIRLIST_HPP
 
+#include <boost/algorithm/string.hpp>
+
 #include <filesystem>
 
 #include <QApplication>
@@ -98,13 +100,27 @@ class DirListItem : public HTreeStansardListItem
                 else
                 {
                     QString folderIconsRoot{":/uise/icons/folder"};
-                    if (selected)
+                    if (entry.is_symlink())
                     {
-                        iconName=QString("%1/folder-open.svg").arg(folderIconsRoot);
+                        if (selected)
+                        {
+                            iconName=QString("%1/folder-plain-open.svg").arg(folderIconsRoot);
+                        }
+                        else
+                        {
+                            iconName=QString("%1/folder-plain.svg").arg(folderIconsRoot);
+                        }
                     }
                     else
                     {
-                        iconName=QString("%1/folder.svg").arg(folderIconsRoot);
+                        if (selected)
+                        {
+                            iconName=QString("%1/folder-open.svg").arg(folderIconsRoot);
+                        }
+                        else
+                        {
+                            iconName=QString("%1/folder.svg").arg(folderIconsRoot);
+                        }
                     }
 
                     // qDebug() << "folder, iconName=" << iconName;
@@ -229,7 +245,20 @@ class DirList : public HTreeListView<DirItemWrapper>
                 {
                     entries.push_back(entry);
                 }
-                std::sort(entries.begin(),entries.end());
+
+                std::sort(entries.begin(),entries.end(),[](const auto& l, const auto& r)
+                {
+                    if (!l.is_directory() && r.is_directory())
+                    {
+                        return false;
+                    }
+                    if (l.is_directory() && !r.is_directory())
+                    {
+                        return true;
+                    }
+                    return l<r;
+                });
+
                 for (const auto& entry : entries)
                 {
                     auto item=DirItemWrapper(new DirListItem(entry));
@@ -241,6 +270,31 @@ class DirList : public HTreeListView<DirItemWrapper>
                     }
                     HTreePathElement pathEl{type,std::filesystem::absolute(entry.path()).string(),entry.path().filename().string()};
                     item.item()->setPathElement(std::move(pathEl));
+
+                    if (entry.is_symlink())
+                    {
+                        std::error_code ec;
+                        auto residentPath=std::filesystem::read_symlink(entry.path(),ec);
+                        if (!ec)
+                        {
+                            residentPath=std::filesystem::absolute(residentPath);
+                            HTreePath p;
+                            for (auto it=residentPath.begin();it!=residentPath.end();++it)
+                            {
+                                auto name=it->string();
+                                std::string id=p.id();
+                                if (!id.empty() && !boost::algorithm::ends_with(id,"/"))
+                                {
+                                    id+="/";
+                                }
+                                id+=name;
+                                HTreePathElement pathEl{entry.is_directory()?DirListItem::Folder:DirListItem::File,id,name};
+                                p.append(std::move(pathEl));
+                            }
+                            item.item()->setResidentPath(std::move(p));
+                            item.item()->setToolTip(QString::fromStdString(item.item()->residentPath().id()));
+                        }
+                    }
 
                     items.push_back(item);
                 }
