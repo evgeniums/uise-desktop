@@ -111,6 +111,7 @@ class AlignedStretchingWidgetDemo : public QTabWidget
             {
                 connect(
                     slider,&QSlider::valueChanged,
+                    this,
                     [this,slider](int value)
                     {
                         sliderUpdated(slider,value);
