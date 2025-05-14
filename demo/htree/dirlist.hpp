@@ -322,7 +322,7 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             auto node=new HTreeList(treeTab);
             node->setNodeTooltip(QString::fromStdString(pathElement.id()));
             node->setView(dirList);
-            node->setMinimumWidth(200);
+            node->setMinimumWidth(100);
             return node;
         }
 };

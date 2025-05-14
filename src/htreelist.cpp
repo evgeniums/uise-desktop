@@ -105,7 +105,7 @@ void HTreeList::onItemInsert(HTreeListItem* item)
 
     pimpl->items[item->pathElement().id()]=item;
 
-    pimpl->maxItemWidth=std::max(pimpl->maxItemWidth,item->sizeHint().width());
+    pimpl->maxItemWidth=std::max(pimpl->maxItemWidth,item->sizeHint().width()+ItemExtraWidth);
 
     for (auto& it:pimpl->items)
     {

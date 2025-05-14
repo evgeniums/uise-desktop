@@ -266,11 +266,11 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* paren
 
     pimpl->pixmap=new QLabel(this);
     pimpl->pixmap->setObjectName("hTreeItemPixmap");
-    pimpl->layout->addWidget(pimpl->pixmap,0,Qt::AlignLeft);
+    pimpl->layout->addWidget(pimpl->pixmap);
 
     pimpl->text=new ElidedLabel(this);
     pimpl->text->setObjectName("hTreeItemText");
-    pimpl->layout->addWidget(pimpl->text,0,Qt::AlignLeft);
+    pimpl->layout->addWidget(pimpl->text);
     pimpl->layout->addStretch(1);
     setTextElideMode(Qt::ElideMiddle);
 

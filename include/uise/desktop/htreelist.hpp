@@ -79,6 +79,7 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
     public:
 
         constexpr static const int DefaultMaxItemWidth=170;
+        constexpr static const int ItemExtraWidth=30;
 
         /**
          * @brief Constructor.

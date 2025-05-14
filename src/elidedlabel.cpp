@@ -42,7 +42,7 @@ ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     m_hiddenLabel->hide();
 
     m_label=new QLabel(this);
-    l->addWidget(m_label);
+    l->addWidget(m_label,1);
 
     m_label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed);
 
@@ -75,7 +75,8 @@ void ElidedLabel::resizeEvent(QResizeEvent *event)
 
 void ElidedLabel::updateText()
 {
-    QString elidedText = fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, width());
+    auto margins=contentsMargins();
+    QString elidedText = fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, width()-1);
     m_label->setText(elidedText);
 }
 
