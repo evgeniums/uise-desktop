@@ -60,6 +60,8 @@ SET (HEADERS
     include/uise/desktop/editablelabel.hpp
     include/uise/desktop/style.hpp
 
+    include/uise/desktop/elidedlabel.hpp
+
     include/uise/desktop/spinner.hpp
     include/uise/desktop/spinnersection.hpp
 
@@ -113,6 +115,7 @@ SET (SOURCES
     src/framewithrefresh.cpp
     src/navigationbar.cpp
     src/stackwithnavigationbar.cpp
+    src/elidedlabel.cpp
 
     src/htree.cpp
     src/htreenode.cpp

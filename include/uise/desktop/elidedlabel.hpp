@@ -48,60 +48,57 @@
 **
 ****************************************************************************/
 
-#ifndef ELIDEDLABEL_H
-#define ELIDEDLABEL_H
+#ifndef UISE_DESKTOP_ELIDED_LABEL_HPP
+#define UISE_DESKTOP_ELIDED_LABEL_HPP
 
-#include <QtWidgets/QFrame>
-#include <QtCore/QRect>
-#include <QtGui/QResizeEvent>
-#include <QtCore/QString>
-#include <QtWidgets/QWidget>
+#include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
 
-UISE_THIRDPARTY_NAMESPACE_BEGIN
+class QLabel;
 
-//! [0]
+UISE_DESKTOP_NAMESPACE_BEGIN
+
 class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 {
     Q_OBJECT
-    Q_PROPERTY(QString text READ text WRITE setText)
-    Q_PROPERTY(bool isElided READ isElided)
 
-public:
+    public:
 
-    explicit ElidedLabel(QWidget *parent = 0) : ElidedLabel("",parent)
-    {}
+        explicit ElidedLabel(QWidget *parent = 0) : ElidedLabel("",parent)
+        {}
 
-    explicit ElidedLabel(const QString &text, QWidget *parent = 0);
+        explicit ElidedLabel(const QString &text, QWidget *parent = 0);
 
-    void setText(const QString &text);
-    const QString & text() const { return content; }
-    bool isElided() const { return elided; }
+        void setText(const QString &text);
+        QString text() const;
 
-    void setElideMode(Qt::TextElideMode elideMode)
-    {
-        mode=elideMode;
-    }
+        void setElideMode(Qt::TextElideMode elideMode) noexcept
+        {
+            m_mode=elideMode;
+        }
 
-    Qt::TextElideMode elideMode() const
-    {
-        return mode;
-    }
+        Qt::TextElideMode elideMode() const noexcept
+        {
+            return m_mode;
+        }
 
-protected:
-    void paintEvent(QPaintEvent *event) override;
+        QSize sizeHint() const override;
 
-signals:
-    void elisionChanged(bool elided);
+    protected:
 
-private:
-    bool elided;
-    QString content;
-    Qt::TextElideMode mode;
+        void resizeEvent(QResizeEvent *event) override;
+
+    private:
+
+        void updateText();
+
+        QString m_content;
+        Qt::TextElideMode m_mode;
+        QLabel* m_label;
+        QLabel* m_hiddenLabel;
 };
-//! [0]
 
-UISE_THIRDPARTY_NAMESPACE_END
+UISE_DESKTOP_NAMESPACE_END
 
-#endif // TEXTWRAPPINGWIDGET_H
+#endif // UISE_DESKTOP_ELIDED_LABEL_HPP

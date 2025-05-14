@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
                   "uise--NavigationBar QToolButton:hover:!checked {color: #ffdb39;}\n"
                   "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
+                  // "uise--thirdparty--ElidedLabel {background-color:blue;}\n"
                   "#hTreeItemText {margin: 8px;}\n"
                   // "uise--HTreeSplitterLine {background-color:green;padding:4px;}\n"
                   // "uise--HTreeSplitterInternal {background-color:green;margin:16px;}\n"

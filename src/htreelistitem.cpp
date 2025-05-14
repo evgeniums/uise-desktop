@@ -30,8 +30,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/elidedlabel.hpp>
 
-#include <uise/thirdparty/elidedlabel.h>
 #include <uise/desktop/htreelistitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -252,8 +252,7 @@ class HTreeStansardListItem_p
         HTreeStansardListItem* self=nullptr;
         QHBoxLayout* layout=nullptr;
         QLabel* pixmap=nullptr;
-        // UISE_THIRDPARTY_NAMESPACE::ElidedLabel* text=nullptr;
-        QLabel* text=nullptr;
+        ElidedLabel* text=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -269,14 +268,13 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* paren
     pimpl->pixmap->setObjectName("hTreeItemPixmap");
     pimpl->layout->addWidget(pimpl->pixmap,0,Qt::AlignLeft);
 
-    // pimpl->text=new UISE_THIRDPARTY_NAMESPACE::ElidedLabel(this);
-    pimpl->text=new QLabel(this);
+    pimpl->text=new ElidedLabel(this);
     pimpl->text->setObjectName("hTreeItemText");
     pimpl->layout->addWidget(pimpl->text,0,Qt::AlignLeft);
     pimpl->layout->addStretch(1);
     setTextElideMode(Qt::ElideMiddle);
 
-    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -316,16 +314,14 @@ QPixmap HTreeStansardListItem::pixmap() const
 
 void HTreeStansardListItem::setTextElideMode(Qt::TextElideMode mode)
 {
-    // pimpl->text->setElideMode(mode);
+    pimpl->text->setElideMode(mode);
 }
 
 //--------------------------------------------------------------------------
 
 Qt::TextElideMode HTreeStansardListItem::textElideMode() const
 {
-    //! @todo Fix elide mode
-    // return pimpl->text->elideMode();
-    return Qt::ElideNone;
+    return pimpl->text->elideMode();
 }
 
 //--------------------------------------------------------------------------
