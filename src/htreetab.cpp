@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/navigationbar.hpp>
 
@@ -57,9 +58,10 @@ class HTreeTab_p
 
         QSignalMapper* nodeDestroyedMapper;
 
-        std::vector<HTreeNode*> nodes;                
+        std::vector<HTreeNode*> nodes;
 
         void appendNode(HTreeNode* node);
+        bool loadingPath=false;
 
         void updateLastNode();
         void disconnectNode(HTreeNode* node, bool beforeDestroy=true);
@@ -72,7 +74,16 @@ class HTreeTab_p
 
 void HTreeTab_p::scrollToEnd()
 {
-    scArea->horizontalScrollBar()->setValue(scArea->horizontalScrollBar()->maximum());
+    auto timer=new SingleShotTimer(self);
+    timer->shot(50,[this,timer]()
+    {
+        if (!nodes.empty())
+        {
+            scArea->ensureWidgetVisible(nodes.back());
+        }
+
+        timer->deleteLater();
+    });
 }
 
 //--------------------------------------------------------------------------
@@ -162,7 +173,22 @@ void HTreeTab_p::truncate(int index, bool onDestroy)
 //--------------------------------------------------------------------------
 
 void HTreeTab_p::appendNode(HTreeNode* node)
-{    
+{
+    int prevWidth=0;
+    auto sizes=splitter->sizes();
+    if (!loadingPath)
+    {
+        for (int i=0;i<sizes.count();i++)
+        {
+            // prevWidth+=sizes[i];
+            auto w=splitter->widget(i);
+            // prevWidth+=std::max(w->sizeHint().width(),w->minimumWidth());
+            auto pw=std::max(w->sizeHint().width(),w->minimumWidth());
+            prevWidth+=pw;
+            sizes[i]=pw;
+        }
+    }
+
     if (!nodes.empty())
     {
         auto lastNode=nodes.back();
@@ -177,7 +203,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     splitter->addWidget(node);
 
     // add item to navigation bar
-    navbar->addItem(node->name(),node->tooltip(),node->id());
+    navbar->addItem(node->name(),node->nodeTooltip(),node->id());
     self->connect(
         node,
         &HTreeNode::nameUpdated,
@@ -200,9 +226,6 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // update last node
     updateLastNode();
 
-    // scroll to end
-    scrollToNode(node);
-
     // watch node destroying
     node->connect(
         node,
@@ -211,6 +234,22 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         SLOT(map())
     );
     nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
+
+    if (!loadingPath)
+    {
+        auto w=std::max(splitter->width(),splitter->minimumWidth());
+        w=std::max(w,prevWidth+std::max(node->sizeHint().width(),node->minimumWidth()));
+
+        // splitter->resize(w+100,splitter->size().height());
+
+        splitter->setMinimumWidth(std::max(splitter->width(),w+200));
+
+        sizes.push_back(std::max(node->sizeHint().width(),node->minimumWidth())+200);
+        splitter->setSizes(sizes);
+
+        // scroll to end
+        scrollToEnd();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -226,7 +265,7 @@ void HTreeTab_p::updateLastNode()
     // signal that last node is updated
     emit self->nodeUpdated(lastNode->path());
     emit self->nameUpdated(lastNode->name());
-    emit self->tooltipUpdated(lastNode->tooltip());
+    emit self->tooltipUpdated(lastNode->nodeTooltip());
     emit self->iconUpdated(lastNode->icon());
 
     // connect last node
@@ -269,12 +308,12 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     pimpl->scArea=new ScrollArea(this);
     pimpl->scArea->setObjectName("hTreaTabScArea");
     pimpl->scArea->setWidgetResizable(true);
-    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     l->addWidget(pimpl->scArea);
 
     pimpl->splitter=new QSplitter(pimpl->scArea);
     pimpl->splitter->setOrientation(Qt::Horizontal);
     pimpl->splitter->setObjectName("hTreeTabSplitter");
+    pimpl->splitter->setChildrenCollapsible(false);
     pimpl->scArea->setWidget(pimpl->splitter);
 
     pimpl->nodeDestroyedMapper=new QSignalMapper(this);
@@ -301,13 +340,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
         }
     );
 
-    // setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
-    // pimpl->splitter->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    // pimpl->scArea->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Expanding);
-    // if (pimpl->scArea->viewport())
-    // {
-    //     pimpl->scArea->viewport()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    // }
+    pimpl->splitter->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 }
 
 //--------------------------------------------------------------------------
@@ -364,6 +397,7 @@ bool HTreeTab::openPath(HTreePath path)
 {
     truncate(0);
 
+    pimpl->loadingPath=true;
     QList<int> splitterSizes;    
 
     for (size_t i=0;i<path.elements().size();i++)
@@ -398,6 +432,9 @@ bool HTreeTab::openPath(HTreePath path)
 
     //! @todo Set sizes only if they were saved
     // pimpl->splitter->setSizes(splitterSizes);
+
+    pimpl->loadingPath=false;
+    pimpl->scrollToEnd();
     return true;
 }
 

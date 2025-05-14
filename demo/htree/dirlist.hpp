@@ -64,49 +64,73 @@ class DirListItem : public HTreeStansardListItem
             ) : HTreeStansardListItem(entry.is_directory()?Folder:File, parent),
                 entry(entry)
         {
-            QString iconName;
-
-            qDebug() << "name=" << name().c_str() << ", id=" << id().c_str();
-
-            if (!entry.is_directory())
+            auto drawIcon=[this](bool selected)
             {
-                QString extIconsRoot{":/uise/icons/ext"};
-                std::string ext=entry.path().extension().string();
-                if (!ext.empty())
-                {
-                    ext=ext.substr(1);
-                }
-                auto iconNameTemplate=QString("%1/%2/%3.svg");
-                iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
-                if (!QFile::exists(iconName))
-                {
-                    qDebug() << "Icon does not exists ext="<<ext.c_str() << ", iconName=" << iconName;
+                const auto& entry=this->entry;
+                QString iconName;
 
-                    iconName=iconNameTemplate.arg(extIconsRoot,QString("fallback"),QString(ext.c_str()));
+                // qDebug() << "name=" << name().c_str() << ", id=" << id().c_str();
+
+                if (!entry.is_directory())
+                {
+                    QString extIconsRoot{":/uise/icons/ext"};
+                    std::string ext=entry.path().extension().string();
+                    if (!ext.empty())
+                    {
+                        ext=ext.substr(1);
+                    }
+                    auto iconNameTemplate=QString("%1/%2/%3.svg");
+                    iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
                     if (!QFile::exists(iconName))
                     {
-                        qDebug() << "Fallback not exists, using blank: ext="<<ext.c_str() << ", iconName=" << iconName;
+                        // qDebug() << "Icon does not exists ext="<<ext.c_str() << ", iconName=" << iconName;
 
-                        ext="blank";
-                        iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
+                        iconName=iconNameTemplate.arg(extIconsRoot,QString("fallback"),QString(ext.c_str()));
+                        if (!QFile::exists(iconName))
+                        {
+                            // qDebug() << "Fallback not exists, using blank: ext="<<ext.c_str() << ", iconName=" << iconName;
+
+                            ext="blank";
+                            iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
+                        }
                     }
                 }
-            }
-            else
-            {
-                QString folderIconsRoot{":/uise/icons/folder"};
-                iconName=QString("%1/folder.svg").arg(folderIconsRoot);
+                else
+                {
+                    QString folderIconsRoot{":/uise/icons/folder"};
+                    if (selected)
+                    {
+                        iconName=QString("%1/folder-open.svg").arg(folderIconsRoot);
+                    }
+                    else
+                    {
+                        iconName=QString("%1/folder.svg").arg(folderIconsRoot);
+                    }
 
-                qDebug() << "folder, iconName=" << iconName;
-            }
+                    // qDebug() << "folder, iconName=" << iconName;
+                }
+
+                QPixmap pix=QPixmap(iconName).scaledToHeight(24);
+                setPixmap(pix);
+            };
+            drawIcon(false);
 
             setText(QString::fromStdString(name()));
             setToolTip(QString::fromStdString(id()));
-
-            QPixmap pix=QPixmap(iconName).scaledToHeight(24);
-            setPixmap(pix);
-
             setObjectName("DirListItem");
+
+            connect(
+                this,
+                &DirListItem::selectionChanged,
+                [this,drawIcon](bool selected)
+                {
+                    if (!this->entry.is_directory())
+                    {
+                        return;
+                    }
+                    drawIcon(selected);
+                }
+            );
         }
 
         std::string name() const noexcept
@@ -224,7 +248,6 @@ class DirList : public HTreeListView<DirItemWrapper>
             }
             catch (...)
             {
-
             }
         }
 };
@@ -243,7 +266,9 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             auto dirList=new DirList();
 
             auto node=new HTreeList(treeTab);
+            node->setNodeTooltip(QString::fromStdString(pathElement.id()));
             node->setView(dirList);
+            node->setMinimumWidth(200);
             return node;
         }
 };

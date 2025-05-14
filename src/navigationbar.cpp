@@ -151,15 +151,17 @@ void NavigationBar_p::updateScrollArea(int addWidth)
     {
         w=newWidth;
     }
+    auto h=panel->height();
     if (w>self->width())
     {
-        scArea->setMinimumHeight(panel->height()+scArea->horizontalScrollBar()->height());
-    }
-    else
-    {
-        scArea->setMinimumHeight(panel->height());
+        h+=scArea->horizontalScrollBar()->height();
     }
     prevWidth=w;
+
+    if (h>0)
+    {
+        scArea->setMinimumHeight(h);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -222,6 +224,8 @@ NavigationBar::NavigationBar(QWidget* parent)
     {
         pimpl->scArea->viewport()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     }
+
+    pimpl->layout->addStretch(1);
 }
 
 //--------------------------------------------------------------------------
@@ -239,9 +243,17 @@ void  NavigationBar::resizeEvent(QResizeEvent* event)
 
 //--------------------------------------------------------------------------
 
+void  NavigationBar::showEvent(QShowEvent* event)
+{
+    QFrame::showEvent(event);
+    pimpl->updateScrollArea();
+}
+
+//--------------------------------------------------------------------------
+
 void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id)
 {
-    if (pimpl->layout->count()!=0)
+    if (pimpl->layout->count()>1)
     {
         delete pimpl->layout->takeAt(pimpl->layout->count()-1);
     }
@@ -286,7 +298,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         }
     }
 
-    pimpl->layout->addWidget(button,0,Qt::AlignLeft);
+    pimpl->layout->addWidget(button,0,Qt::AlignCenter);
     pimpl->layout->addStretch(1);
     w+=button->sizeHint().width();
 

@@ -75,23 +75,24 @@ int main(int argc, char *argv[])
                   // "QFrame#mainFrame {margin:0;padding:0;}\n"
                   // "QFrame#topFrame {margin:0;}\n"
                   "uise--NavigationBarPanel {padding:0;margin:0;}"
-                  "uise--NavigationBar {padding:0;margin:0;}\n"
+                  "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
                   "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;}\n"
-                  "uise--NavigationBar QToolButton {padding:0;margin:0;border:none;font-size:12px;text-decoration:underline;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color:#999999;}\n"
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:16px;color: #ffca28;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: #ffdb39;}\n"
                   "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemText {margin: 8px;}\n"
                   // "uise--HTree {background-color:green;}\n"
                   // "#DirList {background-color:blue;}\n"
                   // "#DirListView {background-color:white;}\n"
-                  // "#DirListItem {background-color:orange;}\n"
+                  "#DirListItem[hover=\"true\"] {background-color:#707070;}\n"
+                  "#DirListItem[selected=\"true\"] {background-color:#505050;}\n"
                   // "uise--HTreeList {background-color:grey;}\n"
         ;
     qApp->setStyleSheet(qss);
 
     w.setCentralWidget(mainFrame);
-    w.resize(300,400);
+    w.resize(800,600);
     w.setWindowTitle("HTree filesystem Demo");
     w.show();
     auto ret=app.exec();

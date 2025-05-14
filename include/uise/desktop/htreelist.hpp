@@ -49,6 +49,14 @@ class HTreeListView : public WithFlyweightListView<ItemT,BaseT>,
 
         using WithFlyweightListView<ItemT,BaseT>::WithFlyweightListView;
 
+        ~HTreeListView()
+        {
+            if (this->listView()!=nullptr)
+            {
+                this->listView()->resetCallbacks();
+            }
+        }
+
         void setHTreeList(HTreeList* list) noexcept
         {
             m_list=list;
@@ -129,6 +137,10 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
                 }
             );
         }
+
+    public slots:
+
+        void setNextNodeId(const std::string& id) override;
 
     private:
 

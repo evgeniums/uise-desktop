@@ -125,7 +125,7 @@ QString HTreeNode::name() const
 
 //--------------------------------------------------------------------------
 
-QString HTreeNode::tooltip() const
+QString HTreeNode::nodeTooltip() const
 {
     if (pimpl->tooltip.isEmpty())
     {
@@ -139,6 +139,30 @@ QString HTreeNode::tooltip() const
 QIcon HTreeNode::icon() const
 {
     return pimpl->icon;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNodeName(const QString& val)
+{
+    pimpl->path.elements().back().setName(val.toStdString());
+    emit nameUpdated(val);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNodeTooltip(const QString& val)
+{
+    pimpl->tooltip=val;
+    emit tooltipUpdated(val);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNodeIcon(const QIcon& val)
+{
+    pimpl->icon=val;
+    emit iconUpdated(val);
 }
 
 //--------------------------------------------------------------------------

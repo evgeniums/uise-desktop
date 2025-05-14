@@ -81,6 +81,8 @@ class UISE_DESKTOP_EXPORT HTreeBranch : public HTreeNode
         void openNextNode(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement);
         void openNextNodeInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement);
 
+        virtual void setNextNodeId(const std::string& id);
+
     private:
 
         std::unique_ptr<HTreeBranch_p> pimpl;

@@ -58,6 +58,13 @@ FlyweightListView<ItemT>::~FlyweightListView()
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::resetCallbacks()
+{
+    pimpl->resetCallbacks();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 FlyweightListView<ItemT>::FlyweightListView(
         size_t prefetchItemCount
     ) : FlyweightListView(nullptr,prefetchItemCount)

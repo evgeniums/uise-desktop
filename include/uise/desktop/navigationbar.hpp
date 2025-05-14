@@ -256,6 +256,7 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+        void showEvent(QShowEvent* event) override;
 
     private:
 

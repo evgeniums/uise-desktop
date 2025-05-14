@@ -82,7 +82,11 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         QString id() const;
         QString name() const;
         QIcon icon() const;
-        QString tooltip() const;
+        QString nodeTooltip() const;
+
+        void setNodeName(const QString& val);
+        void setNodeTooltip(const QString& val);
+        void setNodeIcon(const QIcon& val);
 
     signals:
 

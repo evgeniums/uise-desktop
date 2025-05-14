@@ -36,6 +36,8 @@ class HTreeList_p
 
         QBoxLayout* layout=nullptr;
         QWidget* view=nullptr;
+
+        std::map<std::string,HTreeListItem*> items;
 };
 
 //--------------------------------------------------------------------------
@@ -75,6 +77,8 @@ void HTreeList::onItemInsert(HTreeListItem* item)
         this,
         &HTreeList::openNextNodeInNewTab
     );
+
+    pimpl->items[item->pathElement().id()]=item;
 }
 
 //--------------------------------------------------------------------------
@@ -93,6 +97,12 @@ void HTreeList::onItemRemove(HTreeListItem* item)
         this,
         &HTreeList::openNextNodeInNewTab
     );
+
+    if (item!=nullptr)
+    {
+        auto id=item->pathElement().id();
+        pimpl->items.erase(id);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -101,6 +111,17 @@ void HTreeList::setViewWidget(QWidget* widget)
 {
     pimpl->view=widget;
     pimpl->layout->addWidget(widget);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeList::setNextNodeId(const std::string& id)
+{
+    for (auto& it:pimpl->items)
+    {
+        auto item=it.second;
+        item->setSelected(item->pathElement().id()==id);
+    }
 }
 
 //--------------------------------------------------------------------------

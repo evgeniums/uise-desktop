@@ -496,6 +496,8 @@ class FlyweightListView : public QFrame
          */
         QSize viewportSize() const noexcept;
 
+        void resetCallbacks();
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;

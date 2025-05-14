@@ -95,6 +95,7 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
 
     closeNextNode();
 
+    setNextNodeId(pathElement.id());
     pimpl->nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
     if (pimpl->nextNode!=nullptr)
     {
@@ -118,6 +119,7 @@ void HTreeBranch::closeNextNode()
 {
     treeTab()->closeNode(nextNode());
     pimpl->nextNode=nullptr;
+    setNextNodeId(std::string{});
 }
 
 //--------------------------------------------------------------------------
@@ -134,6 +136,12 @@ void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement)
     auto p=path();
     p.elements().push_back(pathElement);
     treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeBranch::setNextNodeId(const std::string&)
+{
 }
 
 //--------------------------------------------------------------------------

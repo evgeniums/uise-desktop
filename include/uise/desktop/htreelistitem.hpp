@@ -65,8 +65,12 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void setPathElement(HTreePathElement pathElement);
         const HTreePathElement& pathElement() const;
 
+        void setSelected(bool enable);
+        bool isSelected() const;
+
     signals:
 
+        void selectionChanged(bool);
         void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
 

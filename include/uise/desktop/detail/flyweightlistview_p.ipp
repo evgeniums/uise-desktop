@@ -85,6 +85,26 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+FlyweightListView_p<ItemT>::~FlyweightListView_p()
+{
+    resetCallbacks();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::resetCallbacks()
+{
+    m_removeItemCb=decltype(m_removeItemCb){};
+    m_requestItemsCb=decltype(m_requestItemsCb){};
+    m_viewportChangedCb=decltype(m_viewportChangedCb){};
+    m_itemRangeChangedCb=decltype(m_itemRangeChangedCb){};
+    m_homeRequestCb=decltype(m_homeRequestCb){};
+    m_endRequestCb=decltype(m_endRequestCb){};
+    m_insertItemCb=decltype(m_insertItemCb){};
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView_p<ItemT>::setupUi()
 {
     auto vlayout=Layout::vertical(m_obj);

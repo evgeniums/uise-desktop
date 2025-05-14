@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QStyle>
 
 #include <uise/desktop/utils/layout.hpp>
 
@@ -45,6 +46,7 @@ class HTreeListItem_p
         QWidget* widget=nullptr;
 
         HTreePathElement pathElement;
+        bool selected=false;
 };
 
 //--------------------------------------------------------------------------
@@ -83,7 +85,7 @@ HTreeListItem::HTreeListItem(QWidget* parent)
 {
     pimpl->self=this;
     pimpl->layout=Layout::vertical(this);
-    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     setContextMenuPolicy(Qt::CustomContextMenu);
 
     connect(
@@ -114,6 +116,29 @@ void HTreeListItem::setWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+void HTreeListItem::setSelected(bool enable)
+{
+    setProperty("selected",enable);
+    if (pimpl->widget!=nullptr)
+    {
+        pimpl->widget->setProperty("selected",enable);
+    }
+    style()->unpolish(this);
+    style()->polish(this);
+    pimpl->selected=true;
+
+    emit selectionChanged(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeListItem::isSelected() const
+{
+    return pimpl->selected;
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeListItem::enterEvent(QEnterEvent *event)
 {
     QFrame::enterEvent(event);
@@ -122,6 +147,8 @@ void HTreeListItem::enterEvent(QEnterEvent *event)
     {
         pimpl->widget->setProperty("hover",true);
     }
+    style()->unpolish(this);
+    style()->polish(this);
 }
 
 //--------------------------------------------------------------------------
@@ -134,6 +161,8 @@ void HTreeListItem::leaveEvent(QEvent *event)
     {
         pimpl->widget->setProperty("hover",false);
     }
+    style()->unpolish(this);
+    style()->polish(this);
 }
 
 //--------------------------------------------------------------------------
@@ -145,6 +174,7 @@ void HTreeListItem::mousePressEvent(QMouseEvent *event)
     {
         return;
     }
+    setSelected(true);
     emit openRequested(pathElement());
 }
 
@@ -199,9 +229,10 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* paren
     pimpl->text=new QLabel(this);
     pimpl->text->setObjectName("hTreeItemText");
     pimpl->layout->addWidget(pimpl->text,0,Qt::AlignLeft);
+    pimpl->layout->addStretch(1);
     setTextElideMode(Qt::ElideMiddle);
 
-    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -213,7 +244,6 @@ HTreeStansardListItem::~HTreeStansardListItem()
 
 void HTreeStansardListItem::setText(const QString& text)
 {
-    qDebug() << "Set list item text=" << text;
     pimpl->text->setText(text);
 }
 
@@ -249,6 +279,7 @@ void HTreeStansardListItem::setTextElideMode(Qt::TextElideMode mode)
 
 Qt::TextElideMode HTreeStansardListItem::textElideMode() const
 {
+    //! @todo Fix elide mode
     // return pimpl->text->elideMode();
     return Qt::ElideNone;
 }

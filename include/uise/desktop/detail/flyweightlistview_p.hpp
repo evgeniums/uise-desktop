@@ -118,6 +118,10 @@ class FlyweightListView_p : public OrientationInvariant
             size_t prefetchItemCountHint
         );
 
+        ~FlyweightListView_p();
+
+        void resetCallbacks();
+
         void setupUi();
 
         void beginUpdate();
