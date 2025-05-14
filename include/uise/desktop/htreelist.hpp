@@ -78,6 +78,8 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
     public:
 
+        constexpr static const int DefaultMaxItemWidth=170;
+
         /**
          * @brief Constructor.
          * @param tree The tree this node belongs to.
@@ -137,6 +139,12 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
                 }
             );
         }
+
+        QSize sizeHint() const override;
+
+        void setDefaultMaxItemWith(int val);
+
+        int defaultMaxItemWidth() const noexcept;
 
     public slots:
 
