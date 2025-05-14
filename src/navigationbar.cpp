@@ -28,9 +28,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <QButtonGroup>
 #include <QEnterEvent>
 #include <QCursor>
+#include <QTimer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/navigationbar.hpp>
 
@@ -139,6 +141,8 @@ class NavigationBar_p
         Qt::CursorShape hoveringCursor=NavigationBar::DefaultHoveringCursor;
 
         bool checkable=true;
+
+        SingleShotTimer* scrollTimer;
 };
 
 //--------------------------------------------------------------------------
@@ -226,6 +230,8 @@ NavigationBar::NavigationBar(QWidget* parent)
     }
 
     pimpl->layout->addStretch(1);
+
+    pimpl->scrollTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -303,6 +309,14 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
     w+=button->sizeHint().width();
 
     pimpl->updateScrollArea(w);
+
+    pimpl->scrollTimer->shot(70,
+         [this]()
+         {
+            pimpl->scArea->horizontalScrollBar()->setValue(pimpl->scArea->horizontalScrollBar()->maximum());
+         },
+         true
+    );
 }
 
 //--------------------------------------------------------------------------
