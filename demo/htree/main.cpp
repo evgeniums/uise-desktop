@@ -57,7 +57,6 @@ int main(int argc, char *argv[])
     auto topFrame=new QFrame();
     topFrame->setObjectName("topFrame");
     l->addWidget(topFrame,0);
-    // auto tl=Layout::horizontal(topFrame);
 
     HTreeNodeFactory factory;
     factory.registerBuilder(DirListItem::Folder,std::make_shared<FolderNodeBuilder>());
@@ -65,6 +64,25 @@ int main(int argc, char *argv[])
     auto htree=new HTree(mainFrame);
     htree->setNodeFactory(&factory);
     l->addWidget(htree,1);
+
+    QObject::connect(
+        htree,
+        &HTree::newTreeRequested,
+        htree,
+        [&factory,&w](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
+        {
+            auto htree=new HTree();
+            htree->setNodeFactory(&factory);
+            htree->openPath(path);
+            htree->sidebar()->setVisible(false);
+            htree->resize(800,600);
+            htree->show();
+            htree->raise();
+            htree->move(w.pos().x()+50,w.pos().y()-50);
+            htree->setWindowTitle("HTree filesystem Demo");
+        }
+    );
+
     auto rootPath=std::filesystem::current_path().root_path();
     auto rootPathName=rootPath.string();
     HTreePathElement root{DirListItem::Folder,rootPath.string(),rootPathName};

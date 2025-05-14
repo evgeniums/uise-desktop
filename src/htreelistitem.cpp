@@ -73,6 +73,14 @@ void HTreeListItem::showMenu(const QPoint&)
         }
     );
 
+    auto openInNewWindow=menu->addAction(tr("Open in new window"));
+    connect(openInNewWindow,&QAction::triggered,this,
+        [this]()
+        {
+            emit openInNewTreeRequested(pathElement(),residentPath());
+        }
+    );
+
     fillContextMenu(menu);
 
     menu->setDefaultAction(open);
@@ -174,6 +182,21 @@ void HTreeListItem::mousePressEvent(QMouseEvent *event)
     QFrame::mousePressEvent(event);
     if (event->buttons()&Qt::RightButton)
     {
+        return;
+    }
+
+    if (QApplication::keyboardModifiers() & Qt::ShiftModifier
+#ifdef Q_OS_MAC
+        ||
+        (
+        QApplication::keyboardModifiers() & Qt::AltModifier
+        &&
+        QApplication::keyboardModifiers() & Qt::ControlModifier
+        )
+#endif
+        )
+    {
+        emit openInNewTreeRequested(pathElement(),residentPath());
         return;
     }
     if (QApplication::keyboardModifiers() & Qt::ControlModifier)

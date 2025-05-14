@@ -89,6 +89,10 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         HTreeSideBar* sidebar() const;
 
+    signals:
+
+        void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
+
     public slots:
 
         void setCurrentTab(int tabIndex);

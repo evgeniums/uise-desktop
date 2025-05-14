@@ -77,6 +77,12 @@ void HTreeList::onItemInsert(HTreeListItem* item)
         this,
         &HTreeList::openNextNodeInNewTab
     );
+    connect(
+        item,
+        &HTreeListItem::openInNewTreeRequested,
+        this,
+        &HTreeList::openNextNodeInNewTree
+    );
 
     pimpl->items[item->pathElement().id()]=item;
 }
@@ -96,6 +102,12 @@ void HTreeList::onItemRemove(HTreeListItem* item)
         &HTreeListItem::openInNewTabRequested,
         this,
         &HTreeList::openNextNodeInNewTab
+    );
+    disconnect(
+        item,
+        &HTreeListItem::openInNewTreeRequested,
+        this,
+        &HTreeList::openNextNodeInNewTree
     );
 
     if (item!=nullptr)

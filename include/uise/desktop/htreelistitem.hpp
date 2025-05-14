@@ -76,6 +76,7 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void selectionChanged(bool);
         void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
+        void openInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
     protected:
 

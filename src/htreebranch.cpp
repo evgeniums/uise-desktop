@@ -147,8 +147,25 @@ void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement, cons
 
 //--------------------------------------------------------------------------
 
+void HTreeBranch::openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
+{
+    if (!residentPath.isNull())
+    {
+        emit treeTab()->tree()->newTreeRequested(residentPath);
+    }
+    else
+    {
+        auto p=path();
+        p.elements().push_back(pathElement);
+        emit treeTab()->tree()->newTreeRequested(p);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeBranch::setNextNodeId(const std::string&)
 {
+    // intentionally empty
 }
 
 //--------------------------------------------------------------------------
