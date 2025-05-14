@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
                   // "#DirList {background-color:blue;}\n"
                   // "#DirListView {background-color:white;}\n"
                   // "#DirListItem {padding:0;margin:0;background:#a0a0a0;}\n"
-                  "#DirListItem[hover=\"true\"] {background-color:#D0D0D0;}\n"
+                  "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#C0C0C0;}\n"
                   // "uise--HTreeList {background-color:grey;}\n"
         ;
