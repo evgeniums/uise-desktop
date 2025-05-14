@@ -34,7 +34,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 AlignedStretchingWidget::AlignedStretchingWidget(QWidget *parent)
-    : m_widget(parent),
+    : QFrame(parent),
       m_orientation(Qt::Vertical),
       m_alignment(Qt::Alignment())
 {
