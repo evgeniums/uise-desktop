@@ -455,6 +455,7 @@ template <typename ItemT>
 void FlyweightListView<ItemT>::wheelEvent(QWheelEvent *event)
 {
     pimpl->wheelEvent(event);
+    QFrame::wheelEvent(event);
 }
 
 //--------------------------------------------------------------------------
