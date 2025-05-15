@@ -66,11 +66,12 @@ int main(int argc, char *argv[])
     htree->setNodeFactory(&factory);
     l->addWidget(htree,1);
 
+    int winCount=1;
     QObject::connect(
         htree,
         &HTree::newTreeRequested,
         htree,
-        [&factory,&w](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
+        [&factory,&w,&winCount](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
         {
             auto htree=new HTree();
             htree->setNodeFactory(&factory);
@@ -80,7 +81,7 @@ int main(int argc, char *argv[])
             htree->show();
             htree->raise();
             htree->move(w.pos().x()+50,w.pos().y()-50);
-            htree->setWindowTitle("HTree filesystem Demo");
+            htree->setWindowTitle(QString("HTree Filesystem Demo (%1)").arg(winCount));
         }
     );
 
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
 
     w.setCentralWidget(mainFrame);
     w.resize(800,600);
-    w.setWindowTitle("HTree filesystem Demo");
+    w.setWindowTitle("HTree Filesystem Demo");
     w.show();
     auto ret=app.exec();
     return ret;
