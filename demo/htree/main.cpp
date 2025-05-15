@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
                   // "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:16px;color: #ff8828;}\n"
                   // "uise--NavigationBar QToolButton:hover:!checked {color: #ff9939;}\n"
 
+                  "uise--NavigationBarSeparator {color:#888888;}\n"
                   "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;}\n"
                   "uise--NavigationBar QToolButton:hover:!checked {color: #aaaaaa;}\n"
 
