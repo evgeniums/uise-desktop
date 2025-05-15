@@ -75,8 +75,7 @@ void ElidedLabel::resizeEvent(QResizeEvent *event)
 
 void ElidedLabel::updateText()
 {
-    auto margins=contentsMargins();
-    QString elidedText = fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, width()-1);
+    QString elidedText = fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, width()-contentsMargins().left()-contentsMargins().right());
     m_label->setText(elidedText);
 }
 
