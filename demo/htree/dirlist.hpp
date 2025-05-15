@@ -212,6 +212,7 @@ class DirListView : public FlyweightListView<DirItemWrapper>
         DirListView(QWidget* parent=nullptr) : FlyweightListView<DirItemWrapper>(parent)
         {
             setObjectName("DirListView");
+            setSingleScrollStep(10);
         }
 };
 
