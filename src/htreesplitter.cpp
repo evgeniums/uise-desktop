@@ -360,8 +360,6 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
 
     pimpl->scArea=new QScrollArea(this);
     pimpl->scArea->setWidgetResizable(true);
-    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    pimpl->scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     l->addWidget(pimpl->scArea);
 
     pimpl->wrapper=new AlignedStretchingWidget(pimpl->scArea);

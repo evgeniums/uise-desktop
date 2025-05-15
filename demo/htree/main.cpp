@@ -96,8 +96,12 @@ int main(int argc, char *argv[])
                   "uise--NavigationBarPanel {padding:0;margin:0;}"
                   "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
                   "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:16px;color: #ff8828;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: #ff9939;}\n"
+                  // "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:16px;color: #ff8828;}\n"
+                  // "uise--NavigationBar QToolButton:hover:!checked {color: #ff9939;}\n"
+
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: #aaaaaa;}\n"
+
                   "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   // "uise--ElidedLabel {background-color:#CC9988;}\n"
