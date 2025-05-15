@@ -27,16 +27,9 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <filesystem>
 
-#include <QApplication>
-#include <QMainWindow>
-#include <QLabel>
-#include <QTimer>
-#include <QPushButton>
-#include <QTextBrowser>
-#include <QSpinBox>
-#include <QComboBox>
-#include <QLineEdit>
 #include <QFile>
+#include <QDesktopServices>
+#include <QTextBrowser>
 
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistview.ipp>
@@ -70,9 +63,6 @@ class DirListItem : public HTreeStansardListItem
             {
                 const auto& entry=this->entry;
                 QString iconName;
-
-                // qDebug() << "name=" << name().c_str() << ", id=" << id().c_str();
-
                 if (!entry.is_directory())
                 {
                     QString extIconsRoot{":/uise/icons/ext"};
@@ -85,13 +75,9 @@ class DirListItem : public HTreeStansardListItem
                     iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
                     if (!QFile::exists(iconName))
                     {
-                        // qDebug() << "Icon does not exists ext="<<ext.c_str() << ", iconName=" << iconName;
-
                         iconName=iconNameTemplate.arg(extIconsRoot,QString("fallback"),QString(ext.c_str()));
                         if (!QFile::exists(iconName))
                         {
-                            // qDebug() << "Fallback not exists, using blank: ext="<<ext.c_str() << ", iconName=" << iconName;
-
                             ext="blank";
                             iconName=iconNameTemplate.arg(extIconsRoot,QString("classic"),QString(ext.c_str()));
                         }
@@ -122,8 +108,6 @@ class DirListItem : public HTreeStansardListItem
                             iconName=QString("%1/folder.svg").arg(folderIconsRoot);
                         }
                     }
-
-                    // qDebug() << "folder, iconName=" << iconName;
                 }
 
                 QPixmap pix=QPixmap(iconName).scaledToHeight(24);
@@ -134,6 +118,15 @@ class DirListItem : public HTreeStansardListItem
             setText(QString::fromStdString(name()));
             setToolTip(QString::fromStdString(id()));
             setObjectName("DirListItem");
+
+            bool isTextFile=entry.path().extension().string()==".txt" ||
+                            entry.path().extension().string()==".md" ||
+                            entry.path().extension().string()==".cpp" ||
+                            entry.path().extension().string()==".hpp" ||
+                            entry.path().extension().string()==".h";
+
+            setOpenInTabEnabled(entry.is_directory() || isTextFile);
+            setOpenInWindowEnabled(entry.is_directory() || isTextFile);
 
             connect(
                 this,
@@ -146,6 +139,13 @@ class DirListItem : public HTreeStansardListItem
                     }
                     drawIcon(selected);
                 }
+            );
+
+            connect(
+                this,
+                &DirListItem::activateRequested,
+                this,
+                &DirListItem::onActivateRequested
             );
         }
 
@@ -162,6 +162,20 @@ class DirListItem : public HTreeStansardListItem
         std::string id() const
         {
             return std::filesystem::absolute(entry.path()).string();
+        }
+
+    public slots:
+
+        void onActivateRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement& el)
+        {
+            if (entry.is_directory())
+            {
+                emit openRequested(el);
+                return;
+            }
+
+            QString path=QString::fromStdString(entry.path().string());
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
         }
 
     private:
@@ -324,6 +338,85 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             node->setView(dirList);
             node->setMinimumWidth(100);
             return node;
+        }
+};
+
+class TextFileBrowserNode : public HTreeNode
+{
+    public:
+
+        TextFileBrowserNode(const QString& filename, HTreeTab* treeTab, QWidget* parent=nullptr)
+            : HTreeNode(treeTab,parent),
+              m_fileName(filename)
+        {
+            auto l=Layout::vertical(this);
+            m_browser=new QTextBrowser(this);
+            l->addWidget(m_browser);
+
+            setNodeTooltip(m_fileName);
+
+            setMinimumWidth(500);
+        }
+
+    protected:
+
+        void doRefresh() override
+        {
+            setNodeName(QString::fromStdString(path().name()));
+
+            QFile f(m_fileName);
+            if (f.open(QFile::ReadOnly))
+            {
+                auto text=f.readAll();
+                m_browser->setText(text);
+                f.close();
+            }
+            else
+            {
+                m_browser->setText(f.errorString());
+            }
+        }
+
+    private:
+
+        QTextBrowser* m_browser;
+        QString m_fileName;
+};
+
+class FileNodeBuilder : public HTreeNodeBuilder
+{
+    public:
+
+        HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const override
+        {
+            HTreePath path;
+            if (parentNode!=nullptr)
+            {
+                path=HTreePath{parentNode->path(),pathElement};
+            }
+            else
+            {
+                path=HTreePath{pathElement};
+            }
+
+            std::filesystem::path p;
+            for (const auto& el: path.elements())
+            {
+                p.append(el.name());
+            }
+
+            QString pathStr=QString::fromStdString(p.string());
+            if (p.extension().string()==".txt"
+                || p.extension().string()==".md"
+                || p.extension().string()==".cpp"
+                || p.extension().string()==".hpp"
+                || p.extension().string()==".h"
+                )
+            {
+                auto node=new TextFileBrowserNode(pathStr,treeTab);
+                return node;
+            }
+            return nullptr;
         }
 };
 

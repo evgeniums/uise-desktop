@@ -71,6 +71,12 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void setSelected(bool enable);
         bool isSelected() const;
 
+        void setOpenInTabEnabled(bool val);
+        bool isOpenInTabEnabled() const noexcept;
+
+        void setOpenInWindowEnabled(bool val);
+        bool isOpenInWindowEnabled() const noexcept;
+
     signals:
 
         void selectionChanged(bool);
@@ -78,11 +84,14 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
+        void activateRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
+
     protected:
 
         void enterEvent(QEnterEvent *event) override;
         void leaveEvent(QEvent *event) override;
         void mousePressEvent(QMouseEvent *event) override;
+        void mouseDoubleClickEvent(QMouseEvent *event) override;
 
         virtual void fillContextMenu(QMenu* menu);
 

@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
 
     HTreeNodeFactory factory;
     factory.registerBuilder(DirListItem::Folder,std::make_shared<FolderNodeBuilder>());
+    factory.registerBuilder(DirListItem::File,std::make_shared<FileNodeBuilder>());
 
     auto htree=new HTree(mainFrame);
     htree->setNodeFactory(&factory);
@@ -109,7 +110,7 @@ int main(int argc, char *argv[])
                   // "#DirListView {background-color:white;}\n"
                   // "#DirListItem {padding:0;margin:0;background:#a0a0a0;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
-                  "#DirListItem[selected=\"true\"] {background-color:#C0C0C0;}\n"
+                  "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
                   // "uise--HTreeList {background-color:grey;}\n"
         ;
     qApp->setStyleSheet(qss);

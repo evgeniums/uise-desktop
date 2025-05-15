@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/elidedlabel.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 
 #include <uise/desktop/htreelistitem.hpp>
 
@@ -49,6 +50,14 @@ class HTreeListItem_p
         HTreePathElement pathElement;
         HTreePath residentPath;
         bool selected=false;
+
+        bool doubleClickActivation=false;
+        bool ignoreMousePress=false;
+
+        SingleShotTimer* mousePressTimer=nullptr;
+
+        bool openInTabEnabled=true;
+        bool openInWindowEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -61,25 +70,31 @@ void HTreeListItem::showMenu(const QPoint&)
     connect(open,&QAction::triggered,this,
         [this]()
         {
-            emit openRequested(pathElement());
+            emit activateRequested(pathElement());
         }
     );
 
-    auto openInTab=menu->addAction(tr("Open in new tab"));
-    connect(openInTab,&QAction::triggered,this,
-        [this]()
-        {
-            emit openInNewTabRequested(pathElement(),residentPath());
-        }
-    );
+    if (pimpl->openInTabEnabled)
+    {
+        auto openInTab=menu->addAction(tr("Open in new tab"));
+        connect(openInTab,&QAction::triggered,this,
+            [this]()
+            {
+                emit openInNewTabRequested(pathElement(),residentPath());
+            }
+        );
+    }
 
-    auto openInNewWindow=menu->addAction(tr("Open in new window"));
-    connect(openInNewWindow,&QAction::triggered,this,
-        [this]()
-        {
-            emit openInNewTreeRequested(pathElement(),residentPath());
-        }
-    );
+    if (pimpl->openInWindowEnabled)
+    {
+        auto openInNewWindow=menu->addAction(tr("Open in new window"));
+        connect(openInNewWindow,&QAction::triggered,this,
+                [this]()
+                {
+                    emit openInNewTreeRequested(pathElement(),residentPath());
+                }
+        );
+    }
 
     fillContextMenu(menu);
 
@@ -97,6 +112,8 @@ HTreeListItem::HTreeListItem(QWidget* parent)
     pimpl->layout=Layout::vertical(this);
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     setContextMenuPolicy(Qt::CustomContextMenu);
+
+    pimpl->mousePressTimer=new SingleShotTimer(this);
 
     connect(
         this,
@@ -178,8 +195,13 @@ void HTreeListItem::leaveEvent(QEvent *event)
 //--------------------------------------------------------------------------
 
 void HTreeListItem::mousePressEvent(QMouseEvent *event)
-{        
+{
     QFrame::mousePressEvent(event);
+    if (pimpl->ignoreMousePress)
+    {
+        return;
+    }
+
     if (event->buttons()&Qt::RightButton)
     {
         return;
@@ -206,6 +228,23 @@ void HTreeListItem::mousePressEvent(QMouseEvent *event)
     }
     setSelected(true);
     emit openRequested(pathElement());
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    pimpl->ignoreMousePress=true;
+    pimpl->mousePressTimer->shot(
+        QApplication::doubleClickInterval(),
+        [this]()
+        {
+            pimpl->ignoreMousePress=false;
+        }
+    );
+
+    QFrame::mouseDoubleClickEvent(event);
+    emit activateRequested(pathElement());
 }
 
 //--------------------------------------------------------------------------
@@ -241,6 +280,34 @@ void HTreeListItem::setResidentPath(HTreePath path)
 const HTreePath& HTreeListItem::residentPath() const noexcept
 {
     return pimpl->residentPath;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::setOpenInTabEnabled(bool val)
+{
+    pimpl->openInTabEnabled=val;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeListItem::isOpenInTabEnabled() const noexcept
+{
+    return pimpl->openInTabEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::setOpenInWindowEnabled(bool val)
+{
+    pimpl->openInWindowEnabled=val;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeListItem::isOpenInWindowEnabled() const noexcept
+{
+    return pimpl->openInWindowEnabled;
 }
 
 /************************* HTreeStandardListItem ******************************/
