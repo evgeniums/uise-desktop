@@ -496,6 +496,15 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     std::vector<int> precalculatedWidths;
     int precalculateWidth=0;
 
+    auto notDestroyedCount=0;
+    for (auto& section: m_sections)
+    {
+        if (!section->destroyed)
+        {
+            notDestroyedCount++;
+        }
+    }
+
     for (auto& section: m_sections)
     {
         auto w=qobject_cast<QWidget*>(section->obj);
@@ -522,8 +531,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
                 }
                 else
                 {
-                    //! @todo section without destroyed
-                    width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(m_sections.size()));
+                    width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(notDestroyedCount));
                     if (width<minWidth)
                     {
                         width=minWidth;
@@ -779,6 +787,8 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
     m_sections.push_back(std::move(s));
 
     auto newWidth=recalculateWidths(width());
+    setMinimumWidth(newWidth);
+    emit minMaxSizeUpdated();
     resize(newWidth,height());
     updatePositions();
     updateWidths();
@@ -790,11 +800,9 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
         SLOT(onSectionDestroyed(QObject*))
     );
 
-    setMinimumWidth(minimumWidth()+section->minimumWidth());
+    // setMinimumWidth(minimumWidth()+section->minimumWidth());
 
     // qDebug() << "minwidth=" << minimumWidth();
-
-    emit minMaxSizeUpdated();
 }
 
 //--------------------------------------------------------------------------

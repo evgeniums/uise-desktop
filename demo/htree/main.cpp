@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
                   // "#hTreeItemText {padding-left: 8px;}\n"
                   // "uise--HTreeStansardListItem {background-color:green;padding:0;margin:10;border: 1px solid black;}\n"
                   "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
-                  "uise--HTreeSplitterLine {background-color:#404040;}"
+                  "uise--HTreeSplitterLine {background-color:#B0B0B0;}"
                   // "uise--HTreeSplitterInternal {background-color:#FFFF88;}\n"
                   // "#DirList {background-color:blue;}\n"
                   // "#DirListView {background-color:white;}\n"
