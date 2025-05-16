@@ -37,6 +37,8 @@ class QHBoxLayout;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SingleShotTimer;
+
 class HTreeSplitterLine : public QFrame
 {
     Q_OBJECT
@@ -62,20 +64,28 @@ class HTreeSplitterSection : public QFrame
         ~HTreeSplitterSection();
 
         void setWidget(QWidget* widget);
+        QWidget* widget() const;
 
         bool isLineUnderMouse() const;
 
+    public slots:
+
+        void setLineVisible(bool enable);
+
     private slots:
 
-        void onWidgetDestroyed();
+        void onWidgetDestroyed();        
 
     private:
 
         QWidget* m_content=nullptr;
         QHBoxLayout* m_layout=nullptr;
         HTreeSplitterLine* m_line=nullptr;
+        QFrame* m_stubLine=nullptr;
         QWidget* m_widget=nullptr;
 };
+
+class HTreeSplitter;
 
 class HTreeSplitterInternal : public QFrame
 {
@@ -83,14 +93,17 @@ class HTreeSplitterInternal : public QFrame
 
     public:
 
-        HTreeSplitterInternal(QWidget* parent=nullptr);
+        HTreeSplitterInternal(HTreeSplitter* splitter, QWidget* parent=nullptr);
 
         ~HTreeSplitterInternal();
 
         void addWidget(QWidget* widget, int stretch=0);
         QWidget* widget(int index) const;
+        void removeWidget(int index);
 
         int count() const;
+
+        QSize sizeHint() const override;
 
     signals:
 
@@ -104,19 +117,46 @@ class HTreeSplitterInternal : public QFrame
 
         void mousePressEvent(QMouseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+
+        void resizeEvent(QResizeEvent* event) override;
 
     private:
 
+        int recalculateWidths(int totalWidth);
+        void updatePositions();
+        void updateWidths();
+
+        void recalculateSectionStretch();
+
         struct Section
         {
-            int minWidth=0;
+            Section(
+                    QObject* obj=nullptr,
+                    int width=0,
+                    int minWidth=0,
+                    int stretch=0
+                ) : obj(obj),width(width),minWidth(minWidth),stretch(stretch)
+            {}
+
             QObject* obj=nullptr;
+            int width=0;
+            int minWidth=0;
+            int stretch=0;
+            bool destroyed=false;
         };
 
+        Section* section(int index) const;
+
         QHBoxLayout* m_layout;
-        std::vector<Section> m_sections;
+        std::vector<std::unique_ptr<Section>> m_sections;
 
         QPoint m_prevMousePos;
+        bool m_blockResizeEvent;
+        SingleShotTimer* m_blockResizeTimer;
+        int m_resizingIndex;
+
+        HTreeSplitter* m_splitter;
 };
 
 UISE_DESKTOP_NAMESPACE_END

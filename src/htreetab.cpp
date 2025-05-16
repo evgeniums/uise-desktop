@@ -161,7 +161,7 @@ void HTreeTab_p::truncate(int index)
         {
             disconnectNode(n,true);
         }
-        destroyWidget(w);
+        splitter->removeWidget(i);
     }
     nodes.resize(index);
 
@@ -358,19 +358,29 @@ HTreeNode* HTreeTab::node(const HTreePath& path, bool exact) const
 
 bool HTreeTab::openPath(HTreePath path)
 {
-    // auto w=new QFrame();
-    // w->setObjectName("tf");
+#if 0
+    auto w=new QFrame();
+    w->setObjectName("tf");
     // w->setMinimumHeight(500);
-    // w->setMinimumWidth(600);
+    w->setMinimumWidth(150);
     // w->setMaximumWidth(900);
-    // w->setStyleSheet("#tf {background-color:green;}");
-    // auto s=new HTreeSplitter();
-    // s->resize(800,600);
-    // s->addWidget(w);
-    // s->show();
+    w->setStyleSheet("#tf {background-color:green;}");
 
-    // return false;
+    auto w1=new QFrame();
+    w1->setObjectName("tf1");
+    // w1->setMinimumHeight(500);
+    w1->setMinimumWidth(50);
+    // w1->setMaximumWidth(800);
+    w1->setStyleSheet("#tf1 {background-color:blue;}");
 
+    auto s=new HTreeSplitter();
+    s->resize(800,600);
+    s->addWidget(w,2);
+    s->addWidget(w1,4);
+    s->show();
+
+    return false;
+#endif
     truncate(0);
 
     pimpl->loadingPath=true;

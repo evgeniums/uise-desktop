@@ -75,7 +75,7 @@ class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
 
     public:
 
-        constexpr static const char* DefaultCharacter="–";
+        constexpr static const char* DefaultCharacter=">";//"–";
 
         NavigationBarSeparator(QWidget* parent=nullptr);
 

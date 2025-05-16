@@ -34,6 +34,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreepath.hpp>
 
+class QScrollBar;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeSplitter_p;
@@ -43,6 +45,8 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
     Q_OBJECT
 
     public:
+
+        constexpr static const int DefaultMinWidth=100;
 
         /**
          * @brief Constructor.
@@ -62,8 +66,11 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
         void addWidget(QWidget* widget, int stretch=0);
         QWidget* widget(int index) const;
+        void removeWidget(int index);
 
         int count() const;
+
+        QWidget* viewPort() const;
 
     public slots:
 
