@@ -161,11 +161,6 @@ HTreeSplitterInternal::HTreeSplitterInternal(HTreeSplitter* splitter, QWidget* p
       m_splitter(splitter)
 {
     m_blockResizeTimer=new SingleShotTimer(this);
-
-    // m_layout=Layout::horizontal(this);
-    // resize(800,600);
-
-    // setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------

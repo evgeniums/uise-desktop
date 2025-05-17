@@ -97,8 +97,9 @@ int main(int argc, char *argv[])
                   // "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
 
                   "uise--NavigationBarSeparator {color:#888888;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;background-color:transparent;}\n"
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;background-color:transparent;text-decoration:underline;}\n"
                   "uise--NavigationBar QToolButton:hover:!checked {color: #BBBBBB;}\n"
+                  "uise--NavigationBar QToolButton:checked {color: #BBBBBB;text-decoration:none;}\n"
 
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"

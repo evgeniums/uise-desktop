@@ -422,12 +422,12 @@ void NavigationBar::setCurrentIndex(int index)
 
 //--------------------------------------------------------------------------
 
-void NavigationBar::setItemChecked(int index)
+void NavigationBar::setItemChecked(int index, bool checked)
 {
     auto button=pimpl->buttons->button(index);
     if (button!=nullptr)
     {
-        button->setChecked(true);
+        button->setChecked(checked);
     }
 
     pimpl->updateScrollArea();

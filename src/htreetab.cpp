@@ -188,9 +188,13 @@ void HTreeTab_p::appendNode(HTreeNode* node)
 
     // add widget to splitter
     splitter->addWidget(node);
+    auto index=splitter->count()-1;
 
     // add item to navigation bar
     navbar->addItem(node->name(),node->nodeTooltip(),node->id());
+    navbar->blockSignals(true);
+    navbar->setItemChecked(index,node->isExpanded());
+    navbar->blockSignals(false);
     self->connect(
         node,
         &HTreeNode::nameUpdated,
@@ -199,7 +203,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         {
             navbar->setItemName(nodes.size(),val);
         }
-        );
+    );
     self->connect(
         node,
         &HTreeNode::tooltipUpdated,
@@ -209,9 +213,19 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             navbar->setItemTooltip(nodes.size(),val);
         }
     );
+    self->connect(
+        node,
+        &HTreeNode::toggleExpanded,
+        self,
+        [this,index](bool enable)
+        {
+            navbar->blockSignals(true);
+            navbar->setItemChecked(index,enable);
+            navbar->blockSignals(false);
+        }
+    );
 
     // watch if node is expanded
-    auto index=splitter->count()-1;
     qDebug() << "added nodw index=" <<index;
     node->connect(
         node,
@@ -295,7 +309,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     auto l=Layout::vertical(this);
 
     pimpl->navbar=new NavigationBar(this);
-    pimpl->navbar->setCheckable(false);
+    // pimpl->navbar->setCheckable(false);
     pimpl->navbar->setExclusive(false);
     l->addWidget(pimpl->navbar);
 
@@ -312,15 +326,24 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 
     connect(
         pimpl->navbar,
-        &NavigationBar::indexClicked,
+        &NavigationBar::indexToggled,
         this,
-        [this](int index)
+        [this](int index, bool checked)
         {
             auto node=pimpl->nodes[index];
             auto branch=qobject_cast<HTreeBranch*>(node);
             if (branch!=nullptr)
             {
-                branch->setExpanded(true);
+                if (!checked && !node->isCollapsable())
+                {
+                    pimpl->navbar->blockSignals(true);
+                    pimpl->navbar->setItemChecked(index,true);
+                    pimpl->navbar->blockSignals(false);
+                }
+                else
+                {
+                    branch->setExpanded(checked);
+                }
             }
             scrollToNode(node);
         }

@@ -159,8 +159,9 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         /**
          * @brief Check the item by index.
          * @param index Index of the item to check.
+         * @parem checked If true then item is checked,
          */
-        void setItemChecked(int index);
+        void setItemChecked(int index, bool checked=true);
 
         /**
          * @brief Check if the item is checked.
