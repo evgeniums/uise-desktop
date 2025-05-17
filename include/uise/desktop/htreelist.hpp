@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
+#include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
@@ -72,7 +73,8 @@ class HTreeListView : public WithFlyweightListView<ItemT,BaseT>,
         HTreeList* m_list=nullptr;
 };
 
-class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
+class HTreeListWidget_p;
+class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
 {
     Q_OBJECT
 
@@ -81,34 +83,21 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
         constexpr static const int DefaultMaxItemWidth=170;
         constexpr static const int ItemExtraWidth=30;
 
-        /**
-         * @brief Constructor.
-         * @param tree The tree this node belongs to.
-         * @param parent Parent widget.
-         */
-        HTreeList(HTreeTab* treeTab, QWidget* parent=nullptr);
+        HTreeListWidget(HTreeList* node);
 
         /**
-         * @brief Constructor.
-         * @param parent Parent widget.
-         */
-        HTreeList(QWidget* parent=nullptr);
+                 * @brief Destructor.
+                 */
+        ~HTreeListWidget();
 
-        /**
-         * @brief Destructor.
-         */
-        ~HTreeList();
-
-        HTreeList(const HTreeList&)=delete;
-        HTreeList(HTreeList&&)=delete;
-        HTreeList& operator=(const HTreeList&)=delete;
-        HTreeList& operator=(HTreeList&&)=delete;
-
+        HTreeListWidget(const HTreeListWidget&)=delete;
+        HTreeListWidget(HTreeListWidget&&)=delete;
+        HTreeListWidget& operator=(const HTreeListWidget&)=delete;
+        HTreeListWidget& operator=(HTreeListWidget&&)=delete;
+#if 0
         template <typename ItemT, typename BaseT>
         void setView(HTreeListView<ItemT,BaseT>* view)
         {
-            view->setHTreeList(this);
-
             view->listView()->setInsertItemCb(
                 [this](auto item)
                 {
@@ -126,13 +115,13 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
             view->setRefreshRequestedCb(
                 [this]()
                 {
-                    refresh();
+                    m_node->refresh();
                 }
             );
 
             connect(
-                this,
-                &HTreeList::refreshRequested,
+                m_node,
+                &HTreeNode::refreshRequested,
                 this,
                 [view]()
                 {
@@ -140,16 +129,21 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
                 }
             );
         }
-
+#endif
         QSize sizeHint() const override;
 
         void setDefaultMaxItemWith(int val);
 
         int defaultMaxItemWidth() const noexcept;
 
+        HTreeList* node() const
+        {
+            return m_node;
+        }
+
     public slots:
 
-        void setNextNodeId(const std::string& id) override;
+        void setNextNodeId(const std::string& id);
 
     private:
 
@@ -158,7 +152,118 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
         void setViewWidget(QWidget* widget);
 
-        std::unique_ptr<HTreeList_p> pimpl;
+        std::unique_ptr<HTreeListWidget_p> pimpl;
+        HTreeList* m_node;
+
+        friend class HTreeListViewBuilder;
+};
+
+class HTreeListViewBuilder;
+
+class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
+{
+    Q_OBJECT
+
+    public:
+
+        constexpr static const int DefaultMaxItemWidth=170;
+        constexpr static const int ItemExtraWidth=30;
+
+        /**
+         * @brief Constructor.
+         * @param tree The tree this node belongs to.
+         * @param parent Parent widget.
+         */
+        HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* treeTab, QWidget* parent=nullptr);
+
+#if 0
+        template <typename ItemT, typename BaseT>
+        void setView(HTreeListView<ItemT,BaseT>* view)
+        {
+            view->setHTreeList(this);
+            m_widget->setView(view);
+        }
+#endif
+
+        std::shared_ptr<HTreeListViewBuilder> listViewBuilder() const
+        {
+            return m_builder;
+        }
+
+    public slots:
+
+        void setNextNodeId(const std::string& id) override;
+
+    protected:
+
+        QWidget* createContentWidget() override;
+
+    private:
+
+        QWidget* doCreateContentWidget();
+
+        QPointer<HTreeListWidget> m_widget;
+        std::shared_ptr<HTreeListViewBuilder> m_builder;
+};
+
+class UISE_DESKTOP_EXPORT HTreeListViewBuilder
+{
+    public:
+
+        HTreeListViewBuilder()=default;
+
+        virtual ~HTreeListViewBuilder();
+
+        HTreeListViewBuilder(const HTreeListViewBuilder&)=default;
+        HTreeListViewBuilder(HTreeListViewBuilder&&)=default;
+        HTreeListViewBuilder& operator=(const HTreeListViewBuilder&)=default;
+        HTreeListViewBuilder& operator=(HTreeListViewBuilder&&)=default;
+
+        virtual void createView(HTreeListWidget* listWidget) const=0;
+
+        template <typename BuilderT>
+        void createViewT(HTreeListWidget* listWidget, BuilderT&& builder) const
+        {
+            auto v=builder();
+            setView(v,listWidget);
+        }
+
+        template <typename ItemT, typename BaseT>
+        void setView(HTreeListView<ItemT,BaseT>* view, HTreeListWidget* listWidget) const
+        {
+            view->setHTreeList(listWidget->node());
+
+            view->listView()->setInsertItemCb(
+                [listWidget](auto item)
+                {
+                    listWidget->onItemInsert(item);
+                }
+            );
+            view->listView()->setRemoveItemCb(
+                [listWidget](auto item)
+                {
+                    listWidget->onItemRemove(item);
+                }
+            );
+            listWidget->setViewWidget(view);
+
+            view->setRefreshRequestedCb(
+                [listWidget]()
+                {
+                    listWidget->node()->refresh();
+                }
+            );
+
+            QObject::connect(
+                listWidget->node(),
+                &HTreeNode::refreshRequested,
+                view,
+                [view]()
+                {
+                    view->reload();
+                }
+            );
+        }
 };
 
 UISE_DESKTOP_NAMESPACE_END

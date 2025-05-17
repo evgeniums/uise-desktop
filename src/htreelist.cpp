@@ -30,7 +30,9 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class HTreeList_p
+/************************* HTreeListWidget ***********************************/
+
+class HTreeListWidget_p
 {
     public:
 
@@ -46,7 +48,7 @@ class HTreeList_p
 
 //--------------------------------------------------------------------------
 
-void HTreeList_p::updateMaxWidth()
+void HTreeListWidget_p::updateMaxWidth()
 {
     for (auto& it:items)
     {
@@ -61,45 +63,39 @@ void HTreeList_p::updateMaxWidth()
 
 //--------------------------------------------------------------------------
 
-HTreeList::HTreeList(HTreeTab* treeTab, QWidget* parent)
-    : HTreeBranch(treeTab,parent),
-      pimpl(std::make_unique<HTreeList_p>())
+HTreeListWidget::HTreeListWidget(HTreeList* node)
+    : QFrame(node),
+      pimpl(std::make_unique<HTreeListWidget_p>()),
+      m_node(node)
 {
     pimpl->layout=Layout::horizontal(this);
 }
 
 //--------------------------------------------------------------------------
 
-HTreeList::HTreeList(QWidget* parent)
-    : HTreeList(nullptr,parent)
-{    
-}
-
-//--------------------------------------------------------------------------
-
-HTreeList::~HTreeList()
+HTreeListWidget::~HTreeListWidget()
 {}
 
 //--------------------------------------------------------------------------
 
-void HTreeList::onItemInsert(HTreeListItem* item)
+void HTreeListWidget::onItemInsert(HTreeListItem* item)
 {
     connect(
         item,
         &HTreeListItem::openRequested,
-        this,
+        m_node,
         &HTreeList::openNextNode
     );
     connect(
         item,
         &HTreeListItem::openInNewTabRequested,
-        this,
+        m_node,
         &HTreeList::openNextNodeInNewTab
     );
     connect(
         item,
         &HTreeListItem::openInNewTreeRequested,
-        this,
+        m_node,
         &HTreeList::openNextNodeInNewTree
     );
 
@@ -115,24 +111,24 @@ void HTreeList::onItemInsert(HTreeListItem* item)
 
 //--------------------------------------------------------------------------
 
-void HTreeList::onItemRemove(HTreeListItem* item)
+void HTreeListWidget::onItemRemove(HTreeListItem* item)
 {
     disconnect(
         item,
         &HTreeListItem::openRequested,
-        this,
+        m_node,
         &HTreeList::openNextNode
     );
     disconnect(
         item,
         &HTreeListItem::openInNewTabRequested,
-        this,
+        m_node,
         &HTreeList::openNextNodeInNewTab
     );
     disconnect(
         item,
         &HTreeListItem::openInNewTreeRequested,
-        this,
+        m_node,
         &HTreeList::openNextNodeInNewTree
     );
 
@@ -145,7 +141,7 @@ void HTreeList::onItemRemove(HTreeListItem* item)
 
 //--------------------------------------------------------------------------
 
-void HTreeList::setViewWidget(QWidget* widget)
+void HTreeListWidget::setViewWidget(QWidget* widget)
 {
     pimpl->view=widget;
     pimpl->layout->addWidget(widget);
@@ -153,7 +149,7 @@ void HTreeList::setViewWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
-void HTreeList::setNextNodeId(const std::string& id)
+void HTreeListWidget::setNextNodeId(const std::string& id)
 {
     for (auto& it:pimpl->items)
     {
@@ -164,9 +160,9 @@ void HTreeList::setNextNodeId(const std::string& id)
 
 //--------------------------------------------------------------------------
 
-QSize HTreeList::sizeHint() const
+QSize HTreeListWidget::sizeHint() const
 {
-    auto sz=HTreeBranch::sizeHint();
+    auto sz=QFrame::sizeHint();
 
     auto margins=contentsMargins();
     sz.setWidth(pimpl->maxItemWidth+margins.left()+margins.right());
@@ -175,7 +171,7 @@ QSize HTreeList::sizeHint() const
 
 //--------------------------------------------------------------------------
 
-void HTreeList::setDefaultMaxItemWith(int val)
+void HTreeListWidget::setDefaultMaxItemWith(int val)
 {
     pimpl->maxItemWidth=val;
     pimpl->updateMaxWidth();
@@ -183,10 +179,60 @@ void HTreeList::setDefaultMaxItemWith(int val)
 
 //--------------------------------------------------------------------------
 
-int HTreeList::defaultMaxItemWidth() const noexcept
+int HTreeListWidget::defaultMaxItemWidth() const noexcept
 {
     return pimpl->maxItemWidth;
 }
+
+/************************* HTreeList ***********************************/
+
+//--------------------------------------------------------------------------
+
+HTreeList::HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* treeTab, QWidget* parent)
+    : HTreeBranch(treeTab,parent),
+      m_builder(std::move(builder))
+{
+    setContentWidget(doCreateContentWidget());
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeList::doCreateContentWidget()
+{
+    auto w=new HTreeListWidget(this);
+    m_builder->createView(w);
+    auto next=nextNode();
+    if (next!=nullptr)
+    {
+        w->setNextNodeId(next->path().id());
+    }
+    m_widget=w;
+    return w;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeList::createContentWidget()
+{
+    return doCreateContentWidget();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeList::setNextNodeId(const std::string& id)
+{
+    if (m_widget)
+    {
+        m_widget->setNextNodeId(id);
+    }
+}
+
+/************************* HTreeListViewBuilder ****************************/
+
+//--------------------------------------------------------------------------
+
+HTreeListViewBuilder::~HTreeListViewBuilder()
+{}
 
 //--------------------------------------------------------------------------
 

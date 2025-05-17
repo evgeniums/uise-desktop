@@ -321,6 +321,16 @@ class DirList : public HTreeListView<DirItemWrapper>
         }
 };
 
+class FolderListViewBuilder : public HTreeListViewBuilder
+{
+    public:
+
+        void createView(HTreeListWidget* listWidget) const override
+        {
+            createViewT(listWidget,[](){return new DirList();});
+        }
+};
+
 class FolderNodeBuilder : public HTreeNodeBuilder
 {
     public:
@@ -332,11 +342,9 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             {
                 path=HTreePath{parentNode->path(),pathElement};
             }
-            auto dirList=new DirList();
 
-            auto node=new HTreeList(treeTab);
+            auto node=new HTreeList(std::make_shared<FolderListViewBuilder>(),treeTab);
             node->setNodeTooltip(QString::fromStdString(pathElement.id()));
-            node->setView(dirList);
             node->setMinimumWidth(300);
             return node;
         }
@@ -350,9 +358,7 @@ class TextFileBrowserNode : public HTreeNode
             : HTreeNode(treeTab,parent),
               m_fileName(filename)
         {
-            auto l=Layout::vertical(this);
-            m_browser=new QTextBrowser(this);
-            l->addWidget(m_browser);
+            setContentWidget(doCreateContentWidget());
 
             setNodeTooltip(m_fileName);
 
@@ -363,6 +369,11 @@ class TextFileBrowserNode : public HTreeNode
 
         void doRefresh() override
         {
+            if (!m_browser)
+            {
+                return;
+            }
+
             setNodeName(QString::fromStdString(path().name()));
 
             QFile f(m_fileName);
@@ -378,9 +389,20 @@ class TextFileBrowserNode : public HTreeNode
             }
         }
 
+        QWidget* createContentWidget() override
+        {
+            return doCreateContentWidget();
+        }
+
+        QWidget* doCreateContentWidget()
+        {
+            m_browser=new QTextBrowser(this);
+            return m_browser;
+        }
+
     private:
 
-        QTextBrowser* m_browser;
+        QPointer<QTextBrowser> m_browser;
         QString m_fileName;
 };
 
