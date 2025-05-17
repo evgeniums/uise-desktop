@@ -164,6 +164,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setClosable(bool enable);
         bool isClosable() const;
 
+        void setTitleBarVisible(bool enable);
+        bool isTitleBarVisible() const;
+
     public slots:
 
         void closeNode();

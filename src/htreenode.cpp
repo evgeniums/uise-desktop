@@ -620,6 +620,19 @@ bool HTreeNode::isClosable() const
     return pimpl->closable;
 }
 
+//--------------------------------------------------------------------------
+
+void HTreeNode::setTitleBarVisible(bool enable)
+{
+    pimpl->titleBar->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isTitleBarVisible() const
+{
+    return pimpl->titleBar->isVisible();
+}
 
 //--------------------------------------------------------------------------
 
