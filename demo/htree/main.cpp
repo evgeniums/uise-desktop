@@ -120,6 +120,7 @@ int main(int argc, char *argv[])
 
                   "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;}\n"
                   "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0; margin-left: 8px;}\n"
+                  "uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:white;}\n"
                   "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
         ;
     qApp->setStyleSheet(qss);
