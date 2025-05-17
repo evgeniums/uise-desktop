@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/uise">
+        <file>tabler-icons/outline/dots-vertical.svg</file>
+        <file>tabler-icons/outline/exclamation-circle.svg</file>
+        <file>tabler-icons/outline/layout-sidebar.svg</file>
+        <file>tabler-icons/outline/minus.svg</file>
+        <file>tabler-icons/outline/refresh.svg</file>
+        <file>tabler-icons/outline/reload.svg</file>
+        <file>tabler-icons/outline/x.svg</file>
+    </qresource>
+</RCC>
