@@ -94,29 +94,24 @@ int main(int argc, char *argv[])
     QString qss=""
                   "uise--NavigationBarPanel {padding:0;margin:0;background-color:transparent;}"
                   "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
-                  "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
+                  // "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
 
-                  "uise--NavigationBarSeparator {color:#BBBB44;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#BBBB44;background-color:transparent;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: #DDDD88;}\n"
+                  "uise--NavigationBarSeparator {color:#888888;}\n"
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;background-color:transparent;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: #888888;}\n"
 
-                  "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"
-                  "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;color: white;}\n"
+                  // "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;color: white;}\n"
                   "uise--HTreeSplitterLine {background-color:#B0B0B0;}"
 
-                  "#DirList {background-color:blue;}\n"
+                  // "#DirList {background-color:blue;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
-                  "uise--HTree {background-color:blue;}\n"
+                  // "uise--HTree {background-color:blue;}\n"
 
-                  "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
-                  // "uise--HTreeSplitter {border:none;background-color: orange; padding:0; margin:0;}\n"
+                  // "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
                   "#hTreeSplitterScArea {border:none;}\n"
-                  // "#hTreeSplitterWrapper {border:none;background-color: yellow; margin:0;padding:0;}\n"
-
-                  // "#hTreeTabs:pane,#hTreeTabs {background-color: green;}\n"
         ;
     qApp->setStyleSheet(qss);
 
