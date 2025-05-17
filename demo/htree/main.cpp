@@ -98,11 +98,11 @@ int main(int argc, char *argv[])
 
                   "uise--NavigationBarSeparator {color:#888888;}\n"
                   "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;background-color:transparent;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: #888888;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: #BBBBBB;}\n"
 
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"
-                  // "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;color: white;}\n"
+                  "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
                   "uise--HTreeSplitterLine {background-color:#B0B0B0;}"
 
                   // "#DirList {background-color:blue;}\n"
