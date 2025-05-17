@@ -85,6 +85,9 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 
         QSize sizeHint() const override;
 
+        void setAlignment(Qt::Alignment alignment);
+        Qt::Alignment alignment() const;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;

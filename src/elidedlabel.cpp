@@ -57,6 +57,17 @@ void ElidedLabel::setText(const QString& text)
     updateText();
 }
 
+void ElidedLabel::setAlignment(Qt::Alignment alignment)
+{
+    m_hiddenLabel->setAlignment(alignment);
+    m_label->setAlignment(alignment);
+}
+
+Qt::Alignment ElidedLabel::alignment() const
+{
+    return m_label->alignment();
+}
+
 QString ElidedLabel::text() const
 {
     return m_hiddenLabel->text();
