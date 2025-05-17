@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
                   "uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:white;}\n"
                   "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
 
-                  "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;}"
-                  "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color:/*#fff8b5*/#C8C8C0;}"
+                  "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right: 1px; background-color: #C8C8C0;}"
+                  "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;}"
         ;
     qApp->setStyleSheet(qss);
 
