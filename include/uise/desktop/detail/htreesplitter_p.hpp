@@ -155,6 +155,7 @@ class HTreeSplitterInternal : public QFrame
         bool m_blockResizeEvent;
         SingleShotTimer* m_blockResizeTimer;
         int m_resizingIndex;
+        int m_prevViewportWidth;
 
         HTreeSplitter* m_splitter;
 };
