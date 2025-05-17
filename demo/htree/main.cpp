@@ -92,33 +92,31 @@ int main(int argc, char *argv[])
     htree->sidebar()->setVisible(false);
 
     QString qss=""
-                  // "QFrame#mainFrame {margin:0;padding:0;}\n"
-                  // "QFrame#topFrame {margin:0;}\n"
-                  "uise--NavigationBarPanel {padding:0;margin:0;}"
+                  "uise--NavigationBarPanel {padding:0;margin:0;background-color:transparent;}"
                   "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
-                  "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;}\n"
-                  // "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:16px;color: #ff8828;}\n"
-                  // "uise--NavigationBar QToolButton:hover:!checked {color: #ff9939;}\n"
+                  "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
 
-                  "uise--NavigationBarSeparator {color:#888888;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: #aaaaaa;}\n"
+                  "uise--NavigationBarSeparator {color:#BBBB44;}\n"
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#BBBB44;background-color:transparent;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: #DDDD88;}\n"
 
                   "uise--NavigationBar QToolButton:checked {text-decoration:none;}\n"
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
-                  // "uise--ElidedLabel {background-color:#CC9988;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"
-                  // "#hTreeItemText {padding-left: 8px;}\n"
-                  // "uise--HTreeStansardListItem {background-color:green;padding:0;margin:10;border: 1px solid black;}\n"
-                  "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
+                  "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;color: white;}\n"
                   "uise--HTreeSplitterLine {background-color:#B0B0B0;}"
-                  // "uise--HTreeSplitterInternal {background-color:#FFFF88;}\n"
-                  // "#DirList {background-color:blue;}\n"
-                  // "#DirListView {background-color:white;}\n"
-                  // "#DirListItem {padding:0;margin:0;background:#a0a0a0;}\n"
+
+                  "#DirList {background-color:blue;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
-                  // "uise--HTreeList {background-color:grey;}\n"
+                  "uise--HTree {background-color:blue;}\n"
+
+                  "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
+                  // "uise--HTreeSplitter {border:none;background-color: orange; padding:0; margin:0;}\n"
+                  "#hTreeSplitterScArea {border:none;}\n"
+                  // "#hTreeSplitterWrapper {border:none;background-color: yellow; margin:0;padding:0;}\n"
+
+                  // "#hTreeTabs:pane,#hTreeTabs {background-color: green;}\n"
         ;
     qApp->setStyleSheet(qss);
 

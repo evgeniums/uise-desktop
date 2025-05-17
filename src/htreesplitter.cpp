@@ -929,9 +929,11 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
 
     pimpl->scArea=new QScrollArea(this);
     pimpl->scArea->setWidgetResizable(true);
+    pimpl->scArea->setObjectName("hTreeSplitterScArea");
     l->addWidget(pimpl->scArea);
 
     pimpl->wrapper=new AlignedStretchingWidget(pimpl->scArea);
+    pimpl->wrapper->setObjectName("hTreeSplitterWrapper");
     pimpl->scArea->setWidget(pimpl->wrapper);
 
     pimpl->content=new HTreeSplitterInternal(this);
