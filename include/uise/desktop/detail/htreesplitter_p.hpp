@@ -105,6 +105,10 @@ class HTreeSplitterInternal : public QFrame
 
         QSize sizeHint() const override;
 
+    public slots:
+
+        void toggleSectionExpanded(int index, bool expanded);
+
     signals:
 
         void minMaxSizeUpdated();
@@ -127,7 +131,7 @@ class HTreeSplitterInternal : public QFrame
         void updatePositions();
         void updateWidths();
 
-        void recalculateSectionStretch();
+        void recalculateSectionStretch();        
 
         struct Section
         {
@@ -146,6 +150,7 @@ class HTreeSplitterInternal : public QFrame
             bool destroyed=false;
         };
 
+        void updateStretches(Section* section, int stretch=0);
         Section* section(int index) const;
 
         QHBoxLayout* m_layout;

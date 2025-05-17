@@ -147,7 +147,7 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
 
 void HTreeTab_p::truncate(int index)
 {
-    if (index<0 || index>=nodes.size())
+    if (index<1 || index>=nodes.size())
     {
         return;
     }
@@ -210,6 +210,27 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         }
     );
 
+    // watch if node is expanded
+    auto index=splitter->count()-1;
+    qDebug() << "added nodw index=" <<index;
+    node->connect(
+        node,
+        &HTreeNode::toggleExpanded,
+        self,
+        [this,index,node](bool enable)
+        {
+            qDebug() << "on HTreeNode::toggleExpanded index=" <<index << " enable="<<enable;
+            auto w=splitter->widget(index);
+            if (w!=nullptr)
+            {
+                //! @todo take into account section extras
+                w->setMinimumWidth(node->minimumWidth());
+                w->setMaximumWidth(node->maximumWidth());
+                splitter->toggleSectionExpanded(index,enable);
+            }
+        }
+    );
+
     // update last node
     updateLastNode();
 
@@ -220,7 +241,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         nodeDestroyedMapper,
         SLOT(map())
     );
-    nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
+    nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));    
 }
 
 //--------------------------------------------------------------------------
@@ -295,7 +316,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
         {
             auto node=pimpl->nodes[index];
             auto branch=qobject_cast<HTreeBranch*>(node);
-            if (branch!=nullptr && !branch->isExpanded())
+            if (branch!=nullptr)
             {
                 branch->setExpanded(true);
             }
@@ -396,9 +417,13 @@ bool HTreeTab::openPath(HTreePath path)
             UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
             auto prevNode=branch->nextNode();
             auto node=branch->loadNextNode(el);
-            if (node==nullptr || node==prevNode)
+            if (node==nullptr)
             {
                 return false;
+            }
+            if (node==prevNode)
+            {
+                node->setExpanded(true);
             }
         }
         else

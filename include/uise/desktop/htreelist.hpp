@@ -225,12 +225,12 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
         void createViewT(HTreeListWidget* listWidget, BuilderT&& builder) const
         {
             auto v=builder();
-            setView(v,listWidget);
+            setView(v,listWidget);            
         }
 
         template <typename ItemT, typename BaseT>
         void setView(HTreeListView<ItemT,BaseT>* view, HTreeListWidget* listWidget) const
-        {
+        {            
             view->setHTreeList(listWidget->node());
 
             view->listView()->setInsertItemCb(

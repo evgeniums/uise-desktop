@@ -78,6 +78,10 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
         void scrollToHome();
         void scrollToWidget(QWidget* widget, int xmargin = 50);
 
+    public slots:
+
+        void toggleSectionExpanded(int index, bool expanded);
+
     private:
 
         std::unique_ptr<HTreeSplitter_p> pimpl;

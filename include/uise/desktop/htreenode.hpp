@@ -69,6 +69,8 @@ class UISE_DESKTOP_EXPORT HTreeNodeTitleBar : public QFrame
     private:
 
         std::unique_ptr<HTreeNodeTitleBar_p> pimpl;
+
+        friend class HTreeNode;
 };
 
 class HTreeNodePlaceHolder_p;
@@ -153,6 +155,15 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         bool isExpanded() const;
 
+        void setNextNode(HTreeNode* node);
+        HTreeNode* nextNode() const;
+
+        void setCollapsable(bool enable);
+        bool isCollapsable() const;
+
+        void setClosable(bool enable);
+        bool isClosable() const;
+
     public slots:
 
         void closeNode();
@@ -167,9 +178,16 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void tooltipUpdated(const QString&);
         void iconUpdated(const QIcon&);
 
+        void toggleExpanded(bool enable);
+
     protected:
 
         virtual QWidget* createContentWidget()=0;
+
+    private slots:
+
+        void nextNodeDestroyed(QObject*);
+        void otherNodeExpanded(bool);
 
     private:
 

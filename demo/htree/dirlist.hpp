@@ -236,6 +236,8 @@ class DirList : public HTreeListView<DirItemWrapper>
 
             setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
             setObjectName("DirList");
+
+            setMinimumWidth(300);
         }
 
     protected:
@@ -344,8 +346,7 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             }
 
             auto node=new HTreeList(std::make_shared<FolderListViewBuilder>(),treeTab);
-            node->setNodeTooltip(QString::fromStdString(pathElement.id()));
-            node->setMinimumWidth(300);
+            node->setNodeTooltip(QString::fromStdString(pathElement.id()));            
             return node;
         }
 };

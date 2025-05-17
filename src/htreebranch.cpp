@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QPointer>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
@@ -40,7 +42,6 @@ class HTreeBranch_p
 {
     public:
 
-        HTreeNode* nextNode=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -72,6 +73,8 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     {
         if (next->path().id()==pathElement.id())
         {
+            //! @todo Take into account expanding mode
+            next->setExpanded(true);
             return next;
         }
     }
@@ -79,21 +82,15 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     closeNextNode();
 
     setNextNodeId(pathElement.id());
-    pimpl->nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
-    if (pimpl->nextNode!=nullptr)
+    auto nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
+    if (nextNode!=nullptr)
     {
-        treeTab()->appendNode(pimpl->nextNode);
-        pimpl->nextNode->refresh();
+        setNextNode(nextNode);
+        treeTab()->appendNode(nextNode);
+        nextNode->refresh();
     }
 
-    return pimpl->nextNode;
-}
-
-//--------------------------------------------------------------------------
-
-HTreeNode* HTreeBranch::nextNode() const
-{
-    return pimpl->nextNode;
+    return nextNode;
 }
 
 //--------------------------------------------------------------------------
@@ -101,7 +98,7 @@ HTreeNode* HTreeBranch::nextNode() const
 void HTreeBranch::closeNextNode()
 {
     treeTab()->closeNode(nextNode());
-    pimpl->nextNode=nullptr;
+    setNextNode(nullptr);
     setNextNodeId(std::string{});
 }
 

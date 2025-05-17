@@ -145,6 +145,8 @@ void HTreeListWidget::setViewWidget(QWidget* widget)
 {
     pimpl->view=widget;
     pimpl->layout->addWidget(widget);
+
+    setMinimumWidth(widget->minimumWidth());
 }
 
 //--------------------------------------------------------------------------
@@ -207,6 +209,7 @@ QWidget* HTreeList::doCreateContentWidget()
         w->setNextNodeId(next->path().id());
     }
     m_widget=w;
+    setMinimumWidth(w->minimumWidth());
     return w;
 }
 

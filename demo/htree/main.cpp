@@ -103,15 +103,24 @@ int main(int argc, char *argv[])
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"
                   "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
-                  "uise--HTreeSplitterLine {background-color:#B0B0B0;}"
+                  "uise--HTreeSplitterLine {background-color:#888888;border:none;}"
 
-                  // "#DirList {background-color:blue;}\n"
+                  "uise--HTreeSplitterSection {padding:0;}"
+                  "uise--HTreeList {padding:0;margin:0;}"
+                  "uise--HTreeNode {padding:0;margin:0;}"
+                  "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
+
+                  "#DirList {padding-left:4px;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
                   // "uise--HTree {background-color:blue;}\n"
 
                   // "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
                   "#hTreeSplitterScArea {border:none;}\n"
+
+                  "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;}\n"
+                  "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0; margin-left: 8px;}\n"
+                  "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
         ;
     qApp->setStyleSheet(qss);
 
