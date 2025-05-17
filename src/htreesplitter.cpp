@@ -47,7 +47,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 HTreeSplitterLine::HTreeSplitterLine(QWidget* parent)
     : QFrame(parent)
 {
-    setMinimumWidth(4);
+    setFixedWidth(HTreeSplitter::SectionLineWidth);
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 }
 
@@ -74,15 +74,7 @@ void HTreeSplitterLine::leaveEvent(QEvent* event)
 HTreeSplitterSection::HTreeSplitterSection(QWidget* parent)
     : QFrame(parent)
 {
-    // m_content=new QFrame();
-    // m_layout=Layout::horizontal(m_content);
-
-    // auto l=Layout::vertical(this);
-    // l->addWidget(m_content);
-
     m_layout=Layout::horizontal(this);
-
-    // AlignedStretchingWidget::setWidget(m_content,Qt::Horizontal,Qt::AlignLeft);
 }
 
 //--------------------------------------------------------------------------
@@ -897,11 +889,14 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     auto prevMinWidth=s->minWidth;
     auto prevWidth=s->width;
     s->minWidth=w->minimumWidth();
-    w->setMinimumWidth(s->minWidth);
-    s->width=w->width();
     if (!expanded)
     {
         s->stretch=0;
+        s->width=s->minWidth;
+    }
+    else
+    {
+        s->width=w->width();
     }
 
     if (index==m_sections.size()-1)

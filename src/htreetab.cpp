@@ -223,9 +223,11 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             auto w=splitter->widget(index);
             if (w!=nullptr)
             {
-                //! @todo take into account section extras
-                w->setMinimumWidth(node->minimumWidth());
-                w->setMaximumWidth(node->maximumWidth());
+                w->setMinimumWidth(node->minimumWidth()+splitter->sectionLineWidth());
+                w->setMaximumWidth(node->maximumWidth()+splitter->sectionLineWidth());
+
+                qDebug() << "minimum width=" << w->minimumWidth() << " maximum width=" << w->maximumWidth();
+
                 splitter->toggleSectionExpanded(index,enable);
             }
         }

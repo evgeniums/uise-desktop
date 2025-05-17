@@ -47,6 +47,7 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
     public:
 
         constexpr static const int DefaultMinWidth=100;
+        constexpr static const int SectionLineWidth=2;
 
         /**
          * @brief Constructor.
@@ -71,6 +72,11 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
         int count() const;
 
         QWidget* viewPort() const;
+
+        int sectionLineWidth() const
+        {
+            return SectionLineWidth;
+        }
 
     public slots:
 

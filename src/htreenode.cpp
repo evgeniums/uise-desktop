@@ -43,7 +43,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 namespace{
 
 //! @todo Implemet buttons
-QPushButton* iconButton(const QString& iconName, QWidget* parent=nullptr)
+QPushButton* iconButton(const QString& iconName, QWidget* parent=nullptr, const QString color="#CCCCCC", int sizeX=12, int sizeY=12)
 {
     QString name;
     if (iconName=="close.svg")
@@ -58,24 +58,27 @@ QPushButton* iconButton(const QString& iconName, QWidget* parent=nullptr)
     {
         name=":/uise/tabler-icons/outline/refresh.svg";
     }
-
-    QFile file(name);
-    bool ok=file.open(QIODevice::ReadOnly);
-    qDebug() << "file " << name << " opened " << ok;
-    QByteArray baData = file.readAll();
-    // if (Style::instance().isDarkTheme())
+    else if (iconName=="dots-vertical.svg")
     {
-        baData.replace("currentColor","#CCCCCC");
+        name=":/uise/tabler-icons/outline/dots-vertical.svg";
     }
 
-    QPixmap px{14,14};
-    ok=px.loadFromData(baData,"svg");
-    qDebug() << "svg loaded " << ok;
+    QFile file(name);
+    file.open(QIODevice::ReadOnly);
+    QByteArray baData = file.readAll();
+    if (!color.isEmpty())
+    {
+        auto clr=color.toStdString();
+        baData.replace("currentColor",clr.c_str());
+    }
+
+    QPixmap px{sizeX,sizeY};
+    px.loadFromData(baData,"svg");
 
     QIcon icon{px};
 
     QPushButton* bt=new QPushButton(parent);
-    bt->setIconSize(QSize(12,12));
+    bt->setIconSize(QSize(sizeX,sizeY));
     bt->setIcon(icon);
     bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
@@ -176,6 +179,9 @@ class HTreeNodePlaceHolder_p
     public:
 
         HTreeNode* node=nullptr;
+
+        QBoxLayout* layout=nullptr;
+        QPushButton* expand=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -185,8 +191,18 @@ HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
       pimpl(std::make_unique<HTreeNodePlaceHolder_p>())
 {
     pimpl->node=node;
-    setMaximumWidth(4);
-    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+
+    pimpl->layout=Layout::vertical(this);
+    pimpl->expand=iconButton("dots-vertical.svg",this,"#555555",16,50);
+    pimpl->expand->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    pimpl->layout->addWidget(pimpl->expand,1);
+
+    connect(
+        pimpl->expand,
+        &QPushButton::clicked,
+        this,
+        &HTreeNodePlaceHolder::expandRequested
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -381,6 +397,7 @@ void HTreeNode::setNodeTooltip(const QString& val)
 {
     pimpl->tooltip=val;
     pimpl->titleBar->pimpl->title->setToolTip(val);
+    pimpl->placeHolder->pimpl->expand->setToolTip(val);
     emit tooltipUpdated(val);
 }
 
@@ -432,10 +449,9 @@ void HTreeNode::collapseNode()
     pimpl->placeHolder->setVisible(true);
     pimpl->mainFrame->setVisible(false);
     destroyWidget(pimpl->widget);
-    setMinimumWidth(pimpl->placeHolder->minimumWidth());
-    setMaximumWidth(pimpl->placeHolder->maximumWidth());
 
-    qDebug() << "Node minimum width =" << minimumWidth() << " max width " << maximumWidth();
+    setFixedWidth(pimpl->placeHolder->maximumWidth());
+    qDebug() << "collapseNode() minimumWidth=" << minimumWidth() << " minimumWidth="<<minimumWidth();
 
     emit toggleExpanded(false);
 }

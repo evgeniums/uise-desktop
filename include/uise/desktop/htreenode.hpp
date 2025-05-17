@@ -99,6 +99,8 @@ class UISE_DESKTOP_EXPORT HTreeNodePlaceHolder : public QFrame
     private:
 
         std::unique_ptr<HTreeNodePlaceHolder_p> pimpl;
+
+        friend class HTreeNode;
 };
 
 class HTreeNode_p;
