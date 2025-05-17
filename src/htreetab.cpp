@@ -84,7 +84,7 @@ void HTreeTab_p::scrollToEnd()
     {
         if (!nodes.empty())
         {
-            splitter->scrollToWidget(nodes.back(),0);
+            splitter->scrollToIndex(nodes.size()-1);
         }
 
         timer->deleteLater();
@@ -95,14 +95,16 @@ void HTreeTab_p::scrollToEnd()
 
 void HTreeTab_p::scrollToNode(HTreeNode* node)
 {
-    if (node->path().elements().size()==nodes.size())
-    {
-        scrollToEnd();
-    }
-    else
-    {
-        splitter->scrollToWidget(node);
-    }
+    // if (node->path().elements().size()==nodes.size())
+    // {
+    //     scrollToEnd();
+    // }
+    // else
+    // {
+        // splitter->scrollToWidget(node);
+    // }
+
+    splitter->scrollToIndex(node->path().elements().size()-1);
 }
 
 //--------------------------------------------------------------------------
@@ -189,6 +191,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // add widget to splitter
     splitter->addWidget(node);
     auto index=splitter->count()-1;
+    splitter->scrollToIndex(index);
 
     // add item to navigation bar
     navbar->addItem(node->name(),node->nodeTooltip(),node->id());
@@ -334,7 +337,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
             auto branch=qobject_cast<HTreeBranch*>(node);
             if (branch!=nullptr)
             {
-                if (!checked && !node->isCollapsable())
+                if (!checked && !node->isCollapsible())
                 {
                     pimpl->navbar->blockSignals(true);
                     pimpl->navbar->setItemChecked(index,true);
@@ -430,8 +433,9 @@ bool HTreeTab::openPath(HTreePath path)
     truncate(0);
 
     pimpl->loadingPath=true;
-    QList<int> splitterSizes;    
+    QList<int> splitterSizes;
 
+    HTreeNode* nod=nullptr;
     for (size_t i=0;i<path.elements().size();i++)
     {
         const auto& el=path.elements().at(i);
@@ -441,26 +445,26 @@ bool HTreeTab::openPath(HTreePath path)
             auto branch=qobject_cast<HTreeBranch*>(lastNode);
             UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
             auto prevNode=branch->nextNode();
-            auto node=branch->loadNextNode(el);
-            if (node==nullptr)
+            nod=branch->loadNextNode(el);
+            if (nod==nullptr)
             {
                 return false;
             }
-            if (node==prevNode)
+            if (nod==prevNode)
             {
-                node->setExpanded(true);
+                nod->setExpanded(true);
             }
         }
         else
         {
             UiseAssert(i==0,"Previous last node must exist for all path elements except for the first");
-            auto node=pimpl->tree->nodeFactory()->makeNode(el,nullptr,this);
-            if (node==nullptr)
+            nod=pimpl->tree->nodeFactory()->makeNode(el,nullptr,this);
+            if (nod==nullptr)
             {
                 return false;
             }
-            appendNode(node);
-            node->refresh();
+            appendNode(nod);
+            nod->refresh();
         }
 
         splitterSizes.push_back(el.config().width());
@@ -470,7 +474,10 @@ bool HTreeTab::openPath(HTreePath path)
     // pimpl->splitter->setSizes(splitterSizes);
 
     pimpl->loadingPath=false;
-    pimpl->scrollToEnd();
+    if (nod!=nullptr)
+    {
+        pimpl->scrollToNode(nod);
+    }
     return true;
 }
 

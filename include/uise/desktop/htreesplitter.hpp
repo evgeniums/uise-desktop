@@ -65,7 +65,7 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
         HTreeSplitter& operator=(const HTreeSplitter&)=delete;
         HTreeSplitter& operator=(HTreeSplitter&&)=delete;
 
-        void addWidget(QWidget* widget, int stretch=0);
+        void addWidget(QWidget* widget, int stretch=0, bool scrollTo=true);
         QWidget* widget(int index) const;
         void removeWidget(int index);
 
@@ -83,6 +83,7 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
         void scrollToEnd();
         void scrollToHome();
         void scrollToWidget(QWidget* widget, int xmargin = 50);
+        void scrollToIndex(int index, int xmargin = 50);
 
     public slots:
 

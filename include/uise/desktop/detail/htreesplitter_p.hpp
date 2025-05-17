@@ -83,6 +83,8 @@ class HTreeSplitterSection : public QFrame
         HTreeSplitterLine* m_line=nullptr;
         QFrame* m_stubLine=nullptr;
         QWidget* m_widget=nullptr;
+
+        friend class HTreeSplitter;
 };
 
 class HTreeSplitter;
@@ -163,6 +165,8 @@ class HTreeSplitterInternal : public QFrame
         int m_prevViewportWidth;
 
         HTreeSplitter* m_splitter;
+
+        friend class HTreeSplitter;
 };
 
 UISE_DESKTOP_NAMESPACE_END

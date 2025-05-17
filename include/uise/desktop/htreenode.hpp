@@ -160,8 +160,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setNextNode(HTreeNode* node);
         HTreeNode* nextNode() const;
 
-        void setCollapsable(bool enable);
-        bool isCollapsable() const;
+        void setCollapsible(bool enable);
+        bool isCollapsible() const;
 
         void setClosable(bool enable);
         bool isClosable() const;

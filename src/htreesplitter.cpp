@@ -988,12 +988,14 @@ int HTreeSplitter::count() const
 
 //--------------------------------------------------------------------------
 
-void HTreeSplitter::addWidget(QWidget* widget, int stretch)
+void HTreeSplitter::addWidget(QWidget* widget, int stretch, bool scrollTo)
 {
     pimpl->content->addWidget(widget,stretch);
 
-    //! @todo Implement smooth scrolling
-    scrollToEnd();
+    if (scrollTo)
+    {
+        scrollToIndex(count()-1);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1043,6 +1045,36 @@ QWidget* HTreeSplitter::viewPort() const
 void HTreeSplitter::toggleSectionExpanded(int index, bool expanded)
 {
     pimpl->content->toggleSectionExpanded(index,expanded);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::scrollToIndex(int index, int xmargin)
+{
+    if (index>=pimpl->content->count())
+    {
+        scrollToEnd();
+        return;
+    }
+
+    int pos=0;
+    for (int i=0;i<index;i++)
+    {
+        auto s=pimpl->content->section(i);
+        if (s==nullptr || s->destroyed)
+        {
+            continue;
+        }
+        pos+=s->width;
+    }
+
+    pos-=xmargin;
+    if (pos<0)
+    {
+        pos=0;
+    }
+
+    pimpl->scArea->horizontalScrollBar()->setValue(pos);
 }
 
 //--------------------------------------------------------------------------

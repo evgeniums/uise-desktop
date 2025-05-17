@@ -234,7 +234,7 @@ class HTreeNode_p
         QPointer<QWidget> widget;
 
         bool expanded=true;
-        bool collapsable=true;
+        bool Collapsible=true;
         bool closable=true;
 
         QPointer<HTreeNode> nextNode;
@@ -290,7 +290,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         &HTreeNode::expandNode
     );
 
-    setCollapsable(false);
+    setCollapsible(false);
     setClosable(false);
 }
 
@@ -501,7 +501,7 @@ void HTreeNode::setNextNode(HTreeNode* node)
     pimpl->nextNode=node;
     if (node!=nullptr)
     {
-        setCollapsable(true);
+        setCollapsible(true);
         connect(
             node,
             SIGNAL(destroyed(QObject*)),
@@ -514,22 +514,22 @@ void HTreeNode::setNextNode(HTreeNode* node)
         {
             connect(
                 node,
-                &HTreeNode::toggleExpanded,
+                SIGNAL(toggleExpanded()),
                 n,
-                &HTreeNode::otherNodeExpanded
+                SLOT(otherNodeExpanded())
             );
             connect(
                 n,
-                &HTreeNode::toggleExpanded,
+                SIGNAL(toggleExpanded()),
                 node,
-                &HTreeNode::otherNodeExpanded
+                SLOT(otherNodeExpanded())
             );
             n=n->parentNode();
         }
     }
     else
     {
-        setCollapsable(false);
+        setCollapsible(false);
         disconnect(
             node,
             SIGNAL(destroyed(QObject*)),
@@ -552,7 +552,17 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
 {
     if (!pimpl->nextNode || obj==pimpl->nextNode)
     {
-        setCollapsable(false);
+        pimpl->nextNode =nullptr;
+
+        disconnect(
+            this,
+            SIGNAL(toggleExpanded()),
+            obj,
+            SLOT(otherNodeExpanded())
+        );
+
+        setExpanded(true);
+        setCollapsible(false);
     }
 }
 
@@ -590,11 +600,11 @@ void HTreeNode::otherNodeExpanded(bool enable)
 
     if (nextNode()!=nullptr)
     {
-        setCollapsable(atLeastOneVisible);
+        setCollapsible(atLeastOneVisible);
     }
     else
     {
-        setCollapsable(false);
+        setCollapsible(false);
     }
     if (parentNode()!=nullptr)
     {
@@ -608,17 +618,17 @@ void HTreeNode::otherNodeExpanded(bool enable)
 
 //--------------------------------------------------------------------------
 
-void HTreeNode::setCollapsable(bool enable)
+void HTreeNode::setCollapsible(bool enable)
 {
-    pimpl->collapsable=enable;
+    pimpl->Collapsible=enable;
     pimpl->titleBar->pimpl->collapse->setVisible(enable);
 }
 
 //--------------------------------------------------------------------------
 
-bool HTreeNode::isCollapsable() const
+bool HTreeNode::isCollapsible() const
 {
-    return pimpl->collapsable;
+    return pimpl->Collapsible;
 }
 
 //--------------------------------------------------------------------------
