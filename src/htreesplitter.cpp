@@ -270,11 +270,12 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
 
             if (section->isLineUnderMouse())
             {
-                qDebug() << "Under mouse " << i;
-
                 auto sectionDx=newPos.x()-m_prevMousePos.x();
                 if (sectionDx!=0)
                 {
+                    m_blockResizeEvent=true;
+                    m_blockResizeTimer->shot(300,[this](){m_blockResizeEvent=false;},true);
+
                     // update section before cursor
                     auto prevW=it->width;
                     it->width=prevW+sectionDx;
@@ -371,12 +372,10 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                                 // auto newWidth=minimumWidth()-qAbs(sectionDx);
                                 // if (newWidth==totalWidth)
                                 {
-                                    m_blockResizeEvent=true;
                                     qDebug() << "resizing from " << width() << " to " << totalWidth;
                                     setMinimumWidth(totalWidth);
                                     resize(totalWidth,height());
                                     emit minMaxSizeUpdated();
-                                    m_blockResizeTimer->shot(300,[this](){m_blockResizeEvent=false;},true);
                                 }
                             }
                             else
