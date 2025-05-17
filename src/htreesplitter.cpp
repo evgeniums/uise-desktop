@@ -198,7 +198,7 @@ void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
 
-    qDebug() << " resize event size="<<event->size();
+    qDebug() << " resize event size="<<event->size() << " m_blockResizeEvent="<<m_blockResizeEvent;
 
     if (!m_blockResizeEvent)
     {
@@ -339,14 +339,10 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                             }
                             if (dW!=0)
                             {
-                                m_blockResizeEvent=true;
-
                                 qDebug() << " resizing from " << width() << " to " << width()+dW;
-
                                 auto newW=width()+dW;
                                 setMinimumWidth(newW);
                                 emit minMaxSizeUpdated();
-                                m_blockResizeEvent=false;
                             }
                         }
                         else
@@ -468,6 +464,8 @@ void HTreeSplitterInternal::onSectionDestroyed(QObject* obj)
 
 int HTreeSplitterInternal::recalculateWidths(int totalWidth)
 {
+    qDebug() << "HTreeSplitterInternal::recalculateWidths";
+
     int minTotalWidth=0;
     int hintTotalWidth=0;
     int totalStretch=0;
