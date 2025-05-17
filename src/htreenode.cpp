@@ -32,6 +32,58 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+/********************* HTreeNodeTitleBar *********************************/
+
+//--------------------------------------------------------------------------
+
+class HTreeNodeTitleBar_p
+{
+    public:
+
+        HTreeNode* node=nullptr;
+};
+
+//--------------------------------------------------------------------------
+
+HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
+    : QFrame(node),
+      pimpl(std::make_unique<HTreeNodeTitleBar_p>())
+{
+    pimpl->node=node;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNodeTitleBar::~HTreeNodeTitleBar()
+{}
+
+/********************* HTreeNodePlaceHolder *********************************/
+
+//--------------------------------------------------------------------------
+
+class HTreeNodePlaceHolder_p
+{
+    public:
+
+        HTreeNode* node=nullptr;
+};
+
+//--------------------------------------------------------------------------
+
+HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
+    : QFrame(node),
+      pimpl(std::make_unique<HTreeNodePlaceHolder_p>())
+{
+    pimpl->node=node;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNodePlaceHolder::~HTreeNodePlaceHolder()
+{}
+
+/****************************** HTreeNode_p *********************************/
+
 //--------------------------------------------------------------------------
 
 class HTreeNode_p
@@ -45,6 +97,14 @@ class HTreeNode_p
 
         QIcon icon;
         QString tooltip;
+
+        QFrame* content=nullptr;
+        QBoxLayout* layout=nullptr;
+        HTreeNodeTitleBar* titleBar=nullptr;
+        HTreeNodePlaceHolder* placeHolder=nullptr;
+        QWidget* widget=nullptr;
+
+        bool expanded=true;
 };
 
 //--------------------------------------------------------------------------
@@ -54,6 +114,45 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
       pimpl(std::make_unique<HTreeNode_p>())
 {
     pimpl->treeTab=treeTab;
+
+    auto l=Layout::vertical(this);
+
+    pimpl->titleBar=new HTreeNodeTitleBar(this);
+    l->addWidget(pimpl->titleBar);
+
+    pimpl->content=new QFrame(this);
+    l->addWidget(pimpl->content);
+
+    pimpl->layout=Layout::horizontal(pimpl->content);
+
+    pimpl->placeHolder=new HTreeNodePlaceHolder(this);
+    pimpl->layout->addWidget(pimpl->placeHolder);
+
+    connect(
+        pimpl->titleBar,
+        &HTreeNodeTitleBar::closeRequested,
+        this,
+        &HTreeNode::closeNode
+    );
+    connect(
+        pimpl->titleBar,
+        &HTreeNodeTitleBar::collapseRequested,
+        this,
+        &HTreeNode::collapseNode
+    );
+    connect(
+        pimpl->titleBar,
+        &HTreeNodeTitleBar::refreshRequested,
+        this,
+        &HTreeNode::refresh
+    );
+
+    connect(
+        pimpl->placeHolder,
+        &HTreeNodePlaceHolder::expandRequested,
+        this,
+        &HTreeNode::expandNode
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -163,6 +262,68 @@ void HTreeNode::setNodeIcon(const QIcon& val)
 {
     pimpl->icon=val;
     emit iconUpdated(val);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setContentWidget(QWidget* widget)
+{
+    pimpl->placeHolder->setVisible(false);
+
+    pimpl->widget=widget;
+    pimpl->layout->addWidget(widget);
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeNode::contentWidget() const
+{
+    return pimpl->widget;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::closeNode()
+{
+    treeTab()->closeNode(this);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::collapseNode()
+{
+    pimpl->placeHolder->setVisible(true);
+    destroyWidget(pimpl->widget);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::expandNode()
+{
+    setContentWidget(createContentWidget());
+    refresh();
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isExpanded() const
+{
+    return pimpl->expanded;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setExpanded(bool enable)
+{
+    pimpl->expanded=enable;
+    if (enable)
+    {
+        expandNode();
+    }
+    else
+    {
+        collapseNode();
+    }
 }
 
 //--------------------------------------------------------------------------

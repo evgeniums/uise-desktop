@@ -40,8 +40,6 @@ class HTreeBranch_p
 {
     public:
 
-        bool expanded=true;
-
         HTreeNode* nextNode=nullptr;
 };
 
@@ -64,21 +62,6 @@ HTreeBranch::HTreeBranch(QWidget* parent)
 
 HTreeBranch::~HTreeBranch()
 {}
-
-//--------------------------------------------------------------------------
-
-bool HTreeBranch::isExpanded() const
-{
-    return pimpl->expanded;
-}
-
-//--------------------------------------------------------------------------
-
-void HTreeBranch::setExpanded(bool enable)
-{
-    pimpl->expanded=enable;
-    //! @todo Implement expand/collapse tree branch
-}
 
 //--------------------------------------------------------------------------
 

@@ -39,6 +39,66 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeTab;
 
+class HTreeNode;
+class HTreeNodeTitleBar_p;
+
+class UISE_DESKTOP_EXPORT HTreeNodeTitleBar : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        HTreeNodeTitleBar(HTreeNode* node);
+
+        /**
+         * @brief Destructor.
+         */
+        ~HTreeNodeTitleBar();
+
+        HTreeNodeTitleBar(const HTreeNodeTitleBar&)=delete;
+        HTreeNodeTitleBar(HTreeNodeTitleBar&&)=delete;
+        HTreeNodeTitleBar& operator=(const HTreeNodeTitleBar&)=delete;
+        HTreeNodeTitleBar& operator=(HTreeNodeTitleBar&&)=delete;
+
+    signals:
+
+        void refreshRequested();
+        void closeRequested();
+        void collapseRequested();
+
+    private:
+
+        std::unique_ptr<HTreeNodeTitleBar_p> pimpl;
+};
+
+class HTreeNodePlaceHolder_p;
+class UISE_DESKTOP_EXPORT HTreeNodePlaceHolder : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        HTreeNodePlaceHolder(HTreeNode* node);
+
+        /**
+             * @brief Destructor.
+             */
+        ~HTreeNodePlaceHolder();
+
+        HTreeNodePlaceHolder(const HTreeNodePlaceHolder&)=delete;
+        HTreeNodePlaceHolder(HTreeNodePlaceHolder&&)=delete;
+        HTreeNodePlaceHolder& operator=(const HTreeNodePlaceHolder&)=delete;
+        HTreeNodePlaceHolder& operator=(HTreeNodePlaceHolder&&)=delete;
+
+    signals:
+
+        void expandRequested();
+
+    private:
+
+        std::unique_ptr<HTreeNodePlaceHolder_p> pimpl;
+};
+
 class HTreeNode_p;
 
 class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
@@ -88,11 +148,28 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setNodeTooltip(const QString& val);
         void setNodeIcon(const QIcon& val);
 
+        void setContentWidget(QWidget* widget);
+        QWidget* contentWidget() const;
+
+        bool isExpanded() const;
+
+    public slots:
+
+        void closeNode();
+        void collapseNode();
+        void expandNode();
+
+        void setExpanded(bool enable);
+
     signals:
 
         void nameUpdated(const QString&);
         void tooltipUpdated(const QString&);
         void iconUpdated(const QIcon&);
+
+    protected:
+
+        virtual QWidget* createContentWidget()=0;
 
     private:
 
