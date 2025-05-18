@@ -86,6 +86,8 @@ SET (HEADERS
     include/uise/desktop/htreetab.hpp
     include/uise/desktop/htreesplitter.hpp
     include/uise/desktop/htree.hpp
+
+    include/uise/desktop/icon.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -126,6 +128,8 @@ SET (SOURCES
     src/htreetab.cpp
     src/htreesplitter.cpp
     src/htreesidebar.cpp
+
+    src/icon.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
