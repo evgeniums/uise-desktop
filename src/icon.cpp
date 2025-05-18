@@ -32,14 +32,12 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-Icon Icon::fromSvg(
+bool Icon::loadSvg(
         const QString& filename,
-        const std::set<QSize>& sizes,
+        const SizeSet& sizes,
         const std::map<IconState,std::map<QString,QString>>& colorMaps
     )
 {
-    Icon icon;
-
     QFile file(filename);
     if (file.open(QIODevice::ReadOnly))
     {
@@ -57,25 +55,32 @@ Icon Icon::fromSvg(
                 QPixmap px{size};
                 if (px.loadFromData(stateBuf,"svg"))
                 {
-                    icon.add(px,state.first);
+                    add(px,state.first);
+                }
+                else
+                {
+                    reset();
+                    return false;
                 }
             }
         }
     }
+    else
+    {
+        return false;
+    }
 
-    return icon;
+    return true;
 }
 
 //--------------------------------------------------------------------------
 
-Icon Icon::multistateFromSvg(
+bool Icon::loadMultistateSvg(
         const QString& filename,
         const std::map<IconState,std::map<QString,QString>>& colorMaps,
-        const std::set<QSize>& sizes
+        const SizeSet& sizes
     )
 {
-    Icon icon;
-
     QFile file(filename);
     if (file.open(QIODevice::ReadOnly))
     {
@@ -93,13 +98,22 @@ Icon Icon::multistateFromSvg(
                 QPixmap px{size};
                 if (px.loadFromData(stateBuf,"svg"))
                 {
-                    icon.addMultistate(px,state.first);
+                    addMultistate(px,state.first);
+                }
+                else
+                {
+                    reset();
+                    return false;
                 }
             }
         }
     }
+    else
+    {
+        return false;
+    }
 
-    return icon;
+    return true;
 }
 
 //--------------------------------------------------------------------------

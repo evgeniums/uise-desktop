@@ -7,5 +7,6 @@
         <file>tabler-icons/outline/refresh.svg</file>
         <file>tabler-icons/outline/reload.svg</file>
         <file>tabler-icons/outline/x.svg</file>
+        <file>tabler-icons/outline/file-alert.svg</file>
     </qresource>
 </RCC>

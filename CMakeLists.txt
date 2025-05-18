@@ -88,6 +88,7 @@ SET (HEADERS
     include/uise/desktop/htree.hpp
 
     include/uise/desktop/icon.hpp
+    include/uise/desktop/icontheme.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -130,6 +131,7 @@ SET (SOURCES
     src/htreesidebar.cpp
 
     src/icon.cpp
+    src/icontheme.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

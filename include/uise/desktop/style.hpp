@@ -51,14 +51,6 @@ class UISE_DESKTOP_EXPORT Style final
             Dark //!< Dark theme.
         };
 
-        enum class IconState : int
-        {
-            Normal,
-            Hovered,
-            Checked,
-            Disabled
-        };
-
         /**
          * @brief Constructor.
          */

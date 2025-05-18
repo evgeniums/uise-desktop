@@ -70,6 +70,8 @@ struct compareQSize
     }
 };
 
+using SizeSet=std::set<QSize,compareQSize>;
+
 class IconSet
 {
     public:
@@ -211,29 +213,7 @@ class UISE_DESKTOP_EXPORT Icon
 {
     public:
 
-        static Icon fromSvg(
-            const QString& filename,
-            const std::set<QSize>& sizes=std::set<QSize>{},
-            const std::map<IconState,std::map<QString,QString>>& colorMaps={}
-        );
-
-        static Icon fromSvg(
-            const QString& filename,
-            const std::map<QString,QString>& colorMap,
-            const std::set<QSize>& sizes=std::set<QSize>{},
-            IconState state=IconMode::Normal
-        )
-        {
-            return fromSvg(filename,sizes,{{state,colorMap}});
-        }
-
-        static Icon multistateFromSvg(
-            const QString& filename,
-            const std::map<IconState,std::map<QString,QString>>& colorMaps,
-            const std::set<QSize>& sizes=std::set<QSize>{}
-        );
-
-        Icon()=default;
+        Icon() =default;
 
         Icon(QIcon icon, IconState state=IconMode::Normal, const QSize& size=QSize())
         {
@@ -393,6 +373,35 @@ class UISE_DESKTOP_EXPORT Icon
                 return &it->second;
             }
             return nullptr;
+        }
+
+        bool loadSvg(
+            const QString& filename,
+            const SizeSet& sizes=SizeSet{},
+            const std::map<IconState,std::map<QString,QString>>& colorMaps={}
+        );
+
+        bool loadSvg(
+            const QString& filename,
+            const std::map<QString,QString>& colorMap,
+            const SizeSet& sizes=SizeSet{},
+            IconState state=IconMode::Normal
+            )
+        {
+            return loadSvg(filename,sizes,{{state,colorMap}});
+        }
+
+        bool loadMultistateSvg(
+            const QString& filename,
+            const std::map<IconState,std::map<QString,QString>>& colorMaps,
+            const SizeSet& sizes=SizeSet{}
+            );
+
+        void reset()
+        {
+            m_iconSets.clear();
+            m_multistate.reset();
+            m_fallbackIcon=QIcon();
         }
 
     private:
