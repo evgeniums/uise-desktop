@@ -76,20 +76,54 @@ class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
     public:
 
         constexpr static const char* DefaultCharacter=">";
+        constexpr static const char* DefaultHoverCharacter="<";
 
         NavigationBarSeparator(QWidget* parent=nullptr);
 
         NavigationBarSeparator* clone() const;
 
+        void setHoverCharacterEnabled(bool enable)
+        {
+            m_hoverCharacterEnabled=enable;
+        }
+
+        bool isHoverCharacterEnabled() const
+        {
+            return m_hoverCharacterEnabled;
+        }
+
+        void setHoverCharacter(QString val)
+        {
+            m_hoverCharacter=std::move(val);
+        }
+
+        QString hoverCharacter() const
+        {
+            return m_hoverCharacter;
+        }
+
+        void setText(const QString& text)
+        {
+            m_fallbackCharacter=text;
+            QLabel::setText(text);
+        }
+
     signals:
 
         void clicked();
+        void hovered(bool enable);
 
     protected:
 
         void mousePressEvent(QMouseEvent* event) override;
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
+
+    private:
+
+        bool m_hoverCharacterEnabled;
+        QString m_hoverCharacter;
+        QString m_fallbackCharacter;
 };
 
 /**
@@ -205,6 +239,9 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setSeparatorsVisible(bool enable) noexcept;
         bool isSeparatorsVisible() const noexcept;
 
+        void setSeparatorTooltip(int index, const QString& val);
+        QString separatorTooltip(int index) const;
+
         /**
          * @brief Set/unset exclusive mode.
          * @param enable If true (default) then items can be exclusivly selected.
@@ -260,11 +297,13 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void indexSelected(int index);
         void indexToggled(int index, bool checked);        
         void indexSeparatorClicked(int index);
+        void indexSeparatorHovered(int index, bool enable);
 
         void idClicked(const QString& id);
         void idSelected(const QString& id);
         void idToggled(const QString& id, bool checked);
         void idSeparatorClicked(const QString& id);
+        void idSeparatorHovered(const QString& id, bool enable);
 
     protected:
 

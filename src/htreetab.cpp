@@ -95,15 +95,6 @@ void HTreeTab_p::scrollToEnd()
 
 void HTreeTab_p::scrollToNode(HTreeNode* node)
 {
-    // if (node->path().elements().size()==nodes.size())
-    // {
-    //     scrollToEnd();
-    // }
-    // else
-    // {
-        // splitter->scrollToWidget(node);
-    // }
-
     splitter->scrollToIndex(node->path().elements().size()-1);
 }
 
@@ -154,19 +145,6 @@ void HTreeTab_p::truncate(int index)
         return;
     }
 
-#if 0
-    auto lastIndex=nodes.size()-1;
-    for (auto i=lastIndex;i>=index;i--)
-    {
-        auto w=splitter->widget(i);
-        auto n=qobject_cast<HTreeNode*>(w);
-        if (n!=nullptr)
-        {
-            disconnectNode(n,true);
-        }
-        splitter->removeWidget(i);
-    }
-#else
     auto lastIndex=nodes.size()-1;
     for (auto i=lastIndex;i>=index;i--)
     {
@@ -178,7 +156,6 @@ void HTreeTab_p::truncate(int index)
         }
     }
     splitter->truncate(index);
-#endif
     nodes.resize(index);
 
     navbar->blockSignals(true);
@@ -325,9 +302,11 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 
     auto l=Layout::vertical(this);
 
+    auto sep=new NavigationBarSeparator(this);
+    sep->setHoverCharacterEnabled(true);
     pimpl->navbar=new NavigationBar(this);
-    // pimpl->navbar->setCheckable(false);
     pimpl->navbar->setExclusive(false);
+    pimpl->navbar->setSeparatorSample(sep);
     l->addWidget(pimpl->navbar);
 
     pimpl->splitter=new HTreeSplitter(this);
@@ -348,22 +327,12 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
         [this](int index, bool checked)
         {
             auto node=pimpl->nodes[index];
-            auto branch=qobject_cast<HTreeBranch*>(node);
-            if (branch!=nullptr)
+            if (node!=nullptr)
             {
-                if (!checked && !node->isCollapsible())
-                {
-                    pimpl->navbar->blockSignals(true);
-                    pimpl->navbar->setItemChecked(index,true);
-                    pimpl->navbar->blockSignals(false);
-                }
-                else
-                {
-                    branch->setExpanded(checked);
-                }
-            }
-            if (node->isExpanded())
-            {
+                pimpl->navbar->blockSignals(true);
+                pimpl->navbar->setItemChecked(index,true);
+                pimpl->navbar->blockSignals(false);
+                node->setExpanded(true);
                 scrollToNode(node);
             }
         }
@@ -376,7 +345,52 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
         [this](int index)
         {
             auto node=pimpl->nodes[index];
-            scrollToNode(node);
+            auto branch=qobject_cast<HTreeBranch*>(node);
+            if (branch!=nullptr)
+            {
+                if (node->isCollapsible())
+                {
+                    branch->setExpanded(!node->isExpanded());
+                    pimpl->navbar->blockSignals(true);
+                    pimpl->navbar->setItemChecked(index,node->isExpanded());
+                    pimpl->navbar->blockSignals(false);
+                }
+            }
+            if (node->isExpanded())
+            {
+                scrollToNode(node);
+            }
+        }
+    );
+
+    connect(
+        pimpl->navbar,
+        &NavigationBar::indexSeparatorHovered,
+        this,
+        [this](int index, bool enable)
+        {
+            auto node=pimpl->nodes[index];
+            auto branch=qobject_cast<HTreeBranch*>(node);
+            if (branch!=nullptr)
+            {
+                if (node->isCollapsible())
+                {
+                    auto check=enable?!node->isExpanded():node->isExpanded();
+                    pimpl->navbar->blockSignals(true);
+                    pimpl->navbar->setItemChecked(index,check);
+
+                    if (node->isExpanded())
+                    {
+                        pimpl->navbar->setSeparatorTooltip(index,tr("Collapse"));
+                    }
+                    else
+                    {
+                        pimpl->navbar->setSeparatorTooltip(index,tr("Expand"));
+                    }
+
+                    pimpl->navbar->blockSignals(false);
+                }
+            }
         }
     );
 

@@ -83,6 +83,8 @@ void NavigationBarItem::enterEvent(QEnterEvent * event)
 /********************************NavigationBarSeparator**********************/
 
 NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
+    : m_hoverCharacterEnabled(false),
+      m_hoverCharacter(DefaultHoverCharacter)
 {
     setText(DefaultCharacter);
 }
@@ -92,6 +94,8 @@ NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
 NavigationBarSeparator* NavigationBarSeparator::clone() const
 {
     auto sep=new NavigationBarSeparator();
+    sep->setHoverCharacterEnabled(isHoverCharacterEnabled());
+    sep->setHoverCharacter(hoverCharacter());
 
     auto txt=text();
     if (!txt.isEmpty())
@@ -133,22 +137,36 @@ void NavigationBarSeparator::mousePressEvent(QMouseEvent* event)
 
 void NavigationBarSeparator::enterEvent(QEnterEvent* event)
 {
-    QLabel::enterEvent(event);
-
     setProperty("hover",true);
     style()->unpolish(this);
     style()->polish(this);
+
+    if (m_hoverCharacterEnabled)
+    {
+        QLabel::setText(m_hoverCharacter);
+    }
+
+    emit hovered(true);
+
+    QLabel::enterEvent(event);
 }
 
 //--------------------------------------------------------------------------
 
 void NavigationBarSeparator::leaveEvent(QEvent* event)
 {
-    QLabel::leaveEvent(event);
-
     setProperty("hover",false);
     style()->unpolish(this);
     style()->polish(this);
+
+    if (m_hoverCharacterEnabled)
+    {
+        QLabel::setText(m_fallbackCharacter);
+    }
+
+    emit hovered(false);
+
+    QLabel::leaveEvent(event);
 }
 
 /********************************NavigationBar*******************************/
@@ -179,7 +197,10 @@ class NavigationBar_p
 
         bool checkable=true;
 
-        SingleShotTimer* scrollTimer;
+        SingleShotTimer* scrollTimer=nullptr;
+
+        QString checkedSepTooltip;
+        QString uncheckedSepTooltip;
 };
 
 //--------------------------------------------------------------------------
@@ -326,7 +347,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         }
         else
         {
-            sep=new NavigationBarSeparator(pimpl->panel);
+            sep=new NavigationBarSeparator(pimpl->panel);            
         }
         sep->setBuddy(button);
         pimpl->layout->addWidget(sep);
@@ -339,7 +360,6 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         {
             sep->hide();
         }
-        sep->setToolTip(prevButtons.back()->toolTip());
         int index=static_cast<int>(pimpl->separators.size())-1;
         connect(
             sep,
@@ -351,6 +371,18 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
                 emit idSeparatorClicked(id);
             }
         );
+        connect(
+            sep,
+            &NavigationBarSeparator::hovered,
+            this,
+            [this,index,id](bool enable)
+            {
+                emit indexSeparatorHovered(index,enable);
+                emit idSeparatorHovered(id,enable);
+            }
+        );
+
+        setSeparatorTooltip(index,pimpl->checkedSepTooltip);
     }
 
     pimpl->layout->addWidget(button,0,Qt::AlignCenter);
@@ -365,7 +397,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
             pimpl->scArea->horizontalScrollBar()->setValue(pimpl->scArea->horizontalScrollBar()->maximum());
          },
          true
-    );
+    );        
 }
 
 //--------------------------------------------------------------------------
@@ -389,12 +421,6 @@ void NavigationBar::setItemTooltip(int index, const QString& tooltip)
     if (button!=nullptr)
     {
         button->setToolTip(tooltip);
-    }
-
-    if (index < pimpl->separators.size() && index>=0)
-    {
-        auto sep=pimpl->separators[index];
-        sep->setToolTip(tooltip);
     }
 }
 
@@ -499,6 +525,29 @@ bool NavigationBar::isItemChecked(int index) const
     }
 
     return false;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setSeparatorTooltip(int index, const QString& val)
+{
+    if (index < pimpl->separators.size() && index>=0)
+    {
+        auto sep=pimpl->separators[index];
+        sep->setToolTip(val);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QString NavigationBar::separatorTooltip(int index) const
+{
+    if (index < pimpl->separators.size() && index>=0)
+    {
+        auto sep=pimpl->separators[index];
+        return sep->toolTip();
+    }
+    return QString{};
 }
 
 //--------------------------------------------------------------------------
