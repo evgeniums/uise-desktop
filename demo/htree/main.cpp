@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     QString colorBBB="#BBBBBB";
     QString color888="#888888";
     QString colorSplitterLine="#888888";
-    if (!Style::instance().isDarkTheme())
+    if (!Style::instance().checkDarkTheme())
     {
         colorBBB="#444444";
         color888="#888888";
