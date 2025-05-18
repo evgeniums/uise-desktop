@@ -68,6 +68,16 @@ class HTreeSplitterSection : public QFrame
 
         bool isLineUnderMouse() const;
 
+        void setExpanded(bool enable)
+        {
+            m_expanded=enable;
+        }
+
+        bool isExpanded() const
+        {
+            return m_expanded;
+        }
+
     public slots:
 
         void setLineVisible(bool enable);
@@ -83,6 +93,8 @@ class HTreeSplitterSection : public QFrame
         HTreeSplitterLine* m_line=nullptr;
         QFrame* m_stubLine=nullptr;
         QWidget* m_widget=nullptr;
+
+        bool m_expanded=true;
 
         friend class HTreeSplitter;
 };

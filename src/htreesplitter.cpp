@@ -273,7 +273,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
 
         for (size_t i=0;i<m_sections.size()-1;i++)
         {
-            auto& it=m_sections.at(i);
+            auto* it=m_sections.at(i).get();
             auto* section=qobject_cast<HTreeSplitterSection*>(it->obj);
             if (section==nullptr || it->destroyed)
             {
@@ -282,6 +282,23 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
 
             if (section->isLineUnderMouse())
             {
+                while (!section->isExpanded())
+                {
+                    if (i==0)
+                    {
+                        QFrame::mouseMoveEvent(event);
+                        return;
+                    }
+
+                    i--;
+                    it=m_sections.at(i).get();
+                    section=qobject_cast<HTreeSplitterSection*>(it->obj);
+                    if (section==nullptr || it->destroyed)
+                    {
+                        continue;
+                    }
+                }
+
                 auto sectionDx=newPos.x()-m_prevMousePos.x();
                 if (sectionDx!=0)
                 {
@@ -315,7 +332,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                     // update last section
                     auto& last=m_sections.back();
                     auto lastSection=qobject_cast<HTreeSplitterSection*>(last->obj);
-                    if (last.get()!=it.get())
+                    if (last.get()!=it)
                     {
                         auto prevLastW=last->width;
                         if (sectionDx>0)
@@ -832,11 +849,12 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     {
         return;
     }
-    auto w=qobject_cast<QWidget*>(s->obj);
+    auto w=qobject_cast<HTreeSplitterSection*>(s->obj);
     if (w==nullptr)
     {
         return;
     }
+    w->setExpanded(expanded);
 
     auto prevMinWidth=s->minWidth;
     auto prevWidth=s->width;
@@ -844,7 +862,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     if (!expanded)
     {
         s->stretch=0;
-        s->width=s->minWidth;
+        s->width=s->minWidth;        
     }
     else
     {
