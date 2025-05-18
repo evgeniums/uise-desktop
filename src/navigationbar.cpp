@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEnterEvent>
 #include <QCursor>
 #include <QTimer>
+#include <QMouseEvent>
+#include <QStyle>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -86,6 +88,7 @@ NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
 }
 
 //--------------------------------------------------------------------------
+
 NavigationBarSeparator* NavigationBarSeparator::clone() const
 {
     auto sep=new NavigationBarSeparator();
@@ -112,6 +115,40 @@ NavigationBarSeparator* NavigationBarSeparator::clone() const
         }
     }
     return sep;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBarSeparator::mousePressEvent(QMouseEvent* event)
+{
+    QLabel::mousePressEvent(event);
+
+    if (event->button()==Qt::LeftButton)
+    {
+        emit clicked();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBarSeparator::enterEvent(QEnterEvent* event)
+{
+    QLabel::enterEvent(event);
+
+    setProperty("hover",true);
+    style()->unpolish(this);
+    style()->polish(this);
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBarSeparator::leaveEvent(QEvent* event)
+{
+    QLabel::leaveEvent(event);
+
+    setProperty("hover",false);
+    style()->unpolish(this);
+    style()->polish(this);
 }
 
 /********************************NavigationBar*******************************/
@@ -302,6 +339,18 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         {
             sep->hide();
         }
+        sep->setToolTip(prevButtons.back()->toolTip());
+        int index=static_cast<int>(pimpl->separators.size())-1;
+        connect(
+            sep,
+            &NavigationBarSeparator::clicked,
+            this,
+            [this,index,id]()
+            {
+                emit indexSeparatorClicked(index);
+                emit idSeparatorClicked(id);
+            }
+        );
     }
 
     pimpl->layout->addWidget(button,0,Qt::AlignCenter);
@@ -340,6 +389,12 @@ void NavigationBar::setItemTooltip(int index, const QString& tooltip)
     if (button!=nullptr)
     {
         button->setToolTip(tooltip);
+    }
+
+    if (index < pimpl->separators.size() && index>=0)
+    {
+        auto sep=pimpl->separators[index];
+        sep->setToolTip(tooltip);
     }
 }
 

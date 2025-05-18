@@ -348,6 +348,20 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
                     branch->setExpanded(checked);
                 }
             }
+            if (node->isExpanded())
+            {
+                scrollToNode(node);
+            }
+        }
+    );
+
+    connect(
+        pimpl->navbar,
+        &NavigationBar::indexSeparatorClicked,
+        this,
+        [this](int index)
+        {
+            auto node=pimpl->nodes[index];
             scrollToNode(node);
         }
     );

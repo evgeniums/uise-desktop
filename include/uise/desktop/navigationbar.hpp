@@ -75,11 +75,21 @@ class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
 
     public:
 
-        constexpr static const char* DefaultCharacter=">";//"–";
+        constexpr static const char* DefaultCharacter=">";
 
         NavigationBarSeparator(QWidget* parent=nullptr);
 
         NavigationBarSeparator* clone() const;
+
+    signals:
+
+        void clicked();
+
+    protected:
+
+        void mousePressEvent(QMouseEvent* event) override;
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
 };
 
 /**
@@ -248,11 +258,13 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
 
         void indexClicked(int index);
         void indexSelected(int index);
-        void indexToggled(int index, bool checked);
+        void indexToggled(int index, bool checked);        
+        void indexSeparatorClicked(int index);
 
         void idClicked(const QString& id);
         void idSelected(const QString& id);
         void idToggled(const QString& id, bool checked);
+        void idSeparatorClicked(const QString& id);
 
     protected:
 

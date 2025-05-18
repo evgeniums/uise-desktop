@@ -514,15 +514,15 @@ void HTreeNode::setNextNode(HTreeNode* node)
         {
             connect(
                 node,
-                SIGNAL(toggleExpanded()),
+                SIGNAL(toggleExpanded(bool)),
                 n,
-                SLOT(otherNodeExpanded())
+                SLOT(otherNodeExpanded(bool))
             );
             connect(
                 n,
-                SIGNAL(toggleExpanded()),
+                SIGNAL(toggleExpanded(bool)),
                 node,
-                SLOT(otherNodeExpanded())
+                SLOT(otherNodeExpanded(bool))
             );
             n=n->parentNode();
         }
