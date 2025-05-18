@@ -143,11 +143,4 @@ void HTreeBranch::openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathE
 
 //--------------------------------------------------------------------------
 
-void HTreeBranch::setNextNodeId(const std::string&)
-{
-    // intentionally empty
-}
-
-//--------------------------------------------------------------------------
-
 UISE_DESKTOP_NAMESPACE_END

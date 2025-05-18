@@ -208,6 +208,10 @@ QWidget* HTreeList::doCreateContentWidget()
     {
         w->setNextNodeId(next->path().id());
     }
+    else
+    {
+        w->setNextNodeId(std::string());
+    }
     m_widget=w;
     setMinimumWidth(w->minimumWidth());
     return w;

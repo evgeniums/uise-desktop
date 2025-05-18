@@ -498,6 +498,16 @@ void HTreeNode::setExpanded(bool enable)
 
 void HTreeNode::setNextNode(HTreeNode* node)
 {
+    if (pimpl->nextNode!=nullptr)
+    {
+        disconnect(
+            pimpl->nextNode,
+            SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(nextNodeDestroyed(QObject*))
+        );
+    }
+
     pimpl->nextNode=node;
     if (node!=nullptr)
     {
@@ -530,12 +540,6 @@ void HTreeNode::setNextNode(HTreeNode* node)
     else
     {
         setCollapsible(false);
-        disconnect(
-            node,
-            SIGNAL(destroyed(QObject*)),
-            this,
-            SLOT(nextNodeDestroyed(QObject*))
-        );
     }
 }
 
@@ -554,16 +558,10 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
     {
         pimpl->nextNode =nullptr;
 
-        disconnect(
-            this,
-            SIGNAL(toggleExpanded()),
-            obj,
-            SLOT(otherNodeExpanded())
-        );
-
         setExpanded(true);
         setCollapsible(false);
     }
+    setNextNodeId(std::string{});
 }
 
 //--------------------------------------------------------------------------
@@ -658,6 +656,13 @@ void HTreeNode::setTitleBarVisible(bool enable)
 bool HTreeNode::isTitleBarVisible() const
 {
     return pimpl->titleBar->isVisible();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNextNodeId(const std::string&)
+{
+    // intentionally empty
 }
 
 //--------------------------------------------------------------------------

@@ -107,6 +107,8 @@ class HTreeSplitterInternal : public QFrame
 
         QSize sizeHint() const override;
 
+        void truncate(int index);
+
     public slots:
 
         void toggleSectionExpanded(int index, bool expanded);
@@ -114,6 +116,7 @@ class HTreeSplitterInternal : public QFrame
     signals:
 
         void minMaxSizeUpdated();
+        void adjustViewPortRequested(int width);
 
     private slots:
 

@@ -78,6 +78,8 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
             return SectionLineWidth;
         }
 
+        void truncate(int index);
+
     public slots:
 
         void scrollToEnd();

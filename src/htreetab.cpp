@@ -154,6 +154,7 @@ void HTreeTab_p::truncate(int index)
         return;
     }
 
+#if 0
     auto lastIndex=nodes.size()-1;
     for (auto i=lastIndex;i>=index;i--)
     {
@@ -165,6 +166,19 @@ void HTreeTab_p::truncate(int index)
         }
         splitter->removeWidget(i);
     }
+#else
+    auto lastIndex=nodes.size()-1;
+    for (auto i=lastIndex;i>=index;i--)
+    {
+        auto w=splitter->widget(i);
+        auto n=qobject_cast<HTreeNode*>(w);
+        if (n!=nullptr)
+        {
+            disconnectNode(n,true);
+        }
+    }
+    splitter->truncate(index);
+#endif
     nodes.resize(index);
 
     navbar->blockSignals(true);

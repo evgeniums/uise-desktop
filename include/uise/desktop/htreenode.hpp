@@ -177,6 +177,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void setExpanded(bool enable);
 
+        virtual void setNextNodeId(const std::string& id);
+
     signals:
 
         void nameUpdated(const QString&);

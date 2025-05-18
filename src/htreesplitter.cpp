@@ -169,12 +169,15 @@ HTreeSplitterInternal::~HTreeSplitterInternal()
 {
     for (auto& section: m_sections)
     {
-        disconnect(
-            section->obj,
-            SIGNAL(destroyed(QObject*)),
-            this,
-            SLOT(onSectionDestroyed(QObject*))
-        );
+        if (section->obj!=nullptr)
+        {
+            disconnect(
+                section->obj,
+                SIGNAL(destroyed(QObject*)),
+                this,
+                SLOT(onSectionDestroyed(QObject*))
+            );
+        }
     }
 }
 
@@ -356,7 +359,6 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                         }
                         else
                         {
-#if 1
                             int totalWidth=0;
                             for (const auto& section : m_sections)
                             {
@@ -390,18 +392,6 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                                 last->width+=qAbs(sectionDx);
                                 lastSection->resize(last->width,lastSection->height());
                             }
-#endif
-#if 0
-                            if (dW!=0)
-                            {
-                                auto ww=width();
-                                qDebug() << "resizing panel to " << ww-dW << " from " << ww;
-                                m_blockResizeEvent=true;
-                                setMinimumWidth(width()-dW);
-                                emit minMaxSizeUpdated();
-                                m_blockResizeTimer->shot(300,[this](){m_blockResizeEvent=false;},true);
-                            }
-#endif
                         }
 
                         if (prevLastW!=last->width && last->stretch==0)
@@ -427,51 +417,15 @@ void HTreeSplitterInternal::onSectionDestroyed(QObject* obj)
 {
     qDebug() << "onSectionDestroyed begin count=" << m_sections.size();
 
-    auto it=std::find_if(m_sections.begin(),m_sections.end(),
-    [obj](const auto& s)
+    for (size_t i=0;i<m_sections.size();i++)
     {
-        return s->obj==obj;
-    });
-    if (it==m_sections.end())
-    {
-        qDebug() << "onSectionDestroyed not found";
-        return;
-    }
-    const auto& section=*it;
-
-    auto minW=minimumWidth();
-    minW-=section->minWidth;
-    if (minW<0)
-    {
-        minW=0;
-    }
-
-    setMinimumWidth(minW);    
-    auto w=width();
-    w-=section->width;
-    if (w<0)
-    {
-        w=0;
-    }
-    m_sections.erase(it);
-
-    if (!m_sections.empty())
-    {
-        auto s=qobject_cast<HTreeSplitterSection*>(m_sections.back()->obj);
-        if (s)
+        auto& s=m_sections[i];
+        if (s->obj==obj)
         {
-            s->setLineVisible(false);
+            m_splitter->truncate(i);
+            break;
         }
     }
-
-    w=recalculateWidths(w);
-    resize(w,height());
-    updatePositions();
-    updateWidths();
-
-    emit minMaxSizeUpdated();
-
-    qDebug() << "onSectionDestroyed end count=" << m_sections.size();
 }
 
 //--------------------------------------------------------------------------
@@ -845,12 +799,15 @@ void HTreeSplitterInternal::removeWidget(int index)
     auto& s=m_sections.at(idx);
     s->destroyed=true;
     auto obj=s->obj;
-    disconnect(
-        obj,
-        SIGNAL(destroyed(QObject*)),
-        this,
-        SLOT(onSectionDestroyed(QObject*))
-    );
+    if (obj!=nullptr)
+    {
+        disconnect(
+            obj,
+            SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(onSectionDestroyed(QObject*))
+        );
+    }
     onSectionDestroyed(obj);
 
     qDebug() << "destroying widget " << index << " w="<<obj;
@@ -926,6 +883,69 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     emit minMaxSizeUpdated();
 }
 
+//--------------------------------------------------------------------------
+
+void HTreeSplitterInternal::truncate(int index)
+{
+    qDebug() << "HTreeSplitterInternal::truncate";
+
+    auto minW=minimumWidth();
+    auto w=width();
+
+    for (size_t i=m_sections.size()-1;i>=static_cast<size_t>(index);i--)
+    {
+        const auto& section=m_sections[i];
+
+        minW-=section->minWidth;
+        if (minW<0)
+        {
+            minW=0;
+        }
+        w-=section->width;
+        if (w<0)
+        {
+            w=0;
+        }
+        section->destroyed=true;
+
+        auto obj=section->obj;
+        if (obj!=nullptr)
+        {
+            disconnect(
+                obj,
+                SIGNAL(destroyed(QObject*)),
+                this,
+                SLOT(onSectionDestroyed(QObject*))
+            );
+            destroyWidget(qobject_cast<QWidget*>(obj));
+        }
+    }
+
+    m_sections.resize(index);
+    if (!m_sections.empty())
+    {
+        auto s=qobject_cast<HTreeSplitterSection*>(m_sections.back()->obj);
+        if (s)
+        {
+            s->setLineVisible(false);
+        }
+    }
+
+    // m_blockResizeEvent=true;
+
+    qDebug() << "truncate minW="<<minW <<" w="<<w;
+
+    setMinimumWidth(minW);
+    w=recalculateWidths(w);
+    resize(w,height());
+    updatePositions();
+    updateWidths();
+    emit adjustViewPortRequested(m_splitter->viewPort()->width());
+    emit minMaxSizeUpdated();
+
+    // m_blockResizeEvent=false;
+}
+
 /**************************** HTreeSplitter *******************************/
 
 //--------------------------------------------------------------------------
@@ -972,6 +992,17 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
         pimpl->wrapper,
         &AlignedStretchingWidget::updateMinMaxSize
     );
+
+    connect(
+        pimpl->content,
+        &HTreeSplitterInternal::adjustViewPortRequested,
+        pimpl->wrapper,
+        [this](int width)
+        {
+            pimpl->wrapper->setMinimumWidth(0);
+            pimpl->wrapper->resize(width,pimpl->wrapper->height());
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -1016,6 +1047,7 @@ void HTreeSplitter::removeWidget(int index)
 
 void HTreeSplitter::scrollToEnd()
 {
+    qDebug() << "HTreeSplitter::scrollToEnd()";
     pimpl->scArea->horizontalScrollBar()->setValue(pimpl->scArea->horizontalScrollBar()->maximum());
 }
 
@@ -1023,6 +1055,7 @@ void HTreeSplitter::scrollToEnd()
 
 void HTreeSplitter::scrollToHome()
 {
+    qDebug() << "HTreeSplitter::scrollToHome()";
     pimpl->scArea->horizontalScrollBar()->setValue(0);
 }
 
@@ -1030,6 +1063,7 @@ void HTreeSplitter::scrollToHome()
 
 void HTreeSplitter::scrollToWidget(QWidget* widget, int xmargin)
 {
+    qDebug() << "HTreeSplitter::scrollToWidget()";
     pimpl->scArea->ensureWidgetVisible(widget,xmargin,0);
 }
 
@@ -1051,6 +1085,8 @@ void HTreeSplitter::toggleSectionExpanded(int index, bool expanded)
 
 void HTreeSplitter::scrollToIndex(int index, int xmargin)
 {
+    qDebug() << "HTreeSplitter::scrollToIndex() index=" << index << " count="<<pimpl->content->count();
+
     if (index>=pimpl->content->count())
     {
         scrollToEnd();
@@ -1068,6 +1104,8 @@ void HTreeSplitter::scrollToIndex(int index, int xmargin)
         pos+=s->width;
     }
 
+    qDebug() << "Scroll to index="<<index<<" margin="<<xmargin << " pos="<<pos;
+
     pos-=xmargin;
     if (pos<0)
     {
@@ -1075,6 +1113,17 @@ void HTreeSplitter::scrollToIndex(int index, int xmargin)
     }
 
     pimpl->scArea->horizontalScrollBar()->setValue(pos);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::truncate(int index)
+{
+    pimpl->content->truncate(index);
+    if (count()>0)
+    {
+        scrollToIndex(count()-1);
+    }
 }
 
 //--------------------------------------------------------------------------

@@ -86,50 +86,15 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
         HTreeListWidget(HTreeList* node);
 
         /**
-                 * @brief Destructor.
-                 */
+         * @brief Destructor.
+         */
         ~HTreeListWidget();
 
         HTreeListWidget(const HTreeListWidget&)=delete;
         HTreeListWidget(HTreeListWidget&&)=delete;
         HTreeListWidget& operator=(const HTreeListWidget&)=delete;
         HTreeListWidget& operator=(HTreeListWidget&&)=delete;
-#if 0
-        template <typename ItemT, typename BaseT>
-        void setView(HTreeListView<ItemT,BaseT>* view)
-        {
-            view->listView()->setInsertItemCb(
-                [this](auto item)
-                {
-                    onItemInsert(item);
-                }
-            );
-            view->listView()->setRemoveItemCb(
-                [this](auto item)
-                {
-                    onItemRemove(item);
-                }
-            );
-            setViewWidget(view);
 
-            view->setRefreshRequestedCb(
-                [this]()
-                {
-                    m_node->refresh();
-                }
-            );
-
-            connect(
-                m_node,
-                &HTreeNode::refreshRequested,
-                this,
-                [view]()
-                {
-                    view->reload();
-                }
-            );
-        }
-#endif
         QSize sizeHint() const override;
 
         void setDefaultMaxItemWith(int val);
@@ -175,15 +140,6 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
          * @param parent Parent widget.
          */
         HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* treeTab, QWidget* parent=nullptr);
-
-#if 0
-        template <typename ItemT, typename BaseT>
-        void setView(HTreeListView<ItemT,BaseT>* view)
-        {
-            view->setHTreeList(this);
-            m_widget->setView(view);
-        }
-#endif
 
         std::shared_ptr<HTreeListViewBuilder> listViewBuilder() const
         {
