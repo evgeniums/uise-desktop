@@ -193,7 +193,7 @@ HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
     pimpl->node=node;
 
     pimpl->layout=Layout::vertical(this);
-    pimpl->expand=iconButton("dots-vertical.svg",this,"#555555",16,50);
+    pimpl->expand=iconButton("dots-vertical.svg",this,"#777777",16,50);
     pimpl->expand->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     pimpl->layout->addWidget(pimpl->expand,1);
 

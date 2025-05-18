@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDoubleSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/htree.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 #include <uise/desktop/htreesidebar.hpp>
@@ -91,28 +92,39 @@ int main(int argc, char *argv[])
     htree->openPath(root);
     htree->sidebar()->setVisible(false);
 
+    QString colorBBB="#BBBBBB";
+    QString color888="#888888";
+    QString colorSplitterLine="#888888";
+    if (!Style::instance().isDarkTheme())
+    {
+        colorBBB="#444444";
+        color888="#888888";
+        colorSplitterLine="#DDDDDD";
+    }
+
     QString qss=""
                   "uise--NavigationBarPanel {padding:0;margin:0;background-color:transparent;}"
                   "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
                   // "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
 
-                  "uise--NavigationBarSeparator {color:#888888;}\n"
-                  "uise--NavigationBarSeparator[hover=\"true\"] {color:#BBBBBB;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:#888888;background-color:transparent;text-decoration:underline;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: #BBBBBB;}\n"
-                  "uise--NavigationBar QToolButton:checked {color: #BBBBBB;text-decoration:none;}\n"
+                  "uise--NavigationBarSeparator {color:%2;}\n"
+                  "uise--NavigationBarSeparator[hover=\"true\"] {color:%1;}\n"
+                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:%2;background-color:transparent;text-decoration:underline;}\n"
+                  "uise--NavigationBar QToolButton:hover:!checked {color: %1;}\n"
+                  "uise--NavigationBar QToolButton:checked {color: %1;text-decoration:none;}\n"
 
                   "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
                   "#hTreeItemPixmap {margin-right: 8px;}\n"
+                  "uise--HTreeStansardListItem {padding-left:4px;}\n"
                   "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
-                  "uise--HTreeSplitterLine {background-color:#888888;border:none;}"
+                  "uise--HTreeSplitterLine {background-color:%3;border:none;}"
 
                   "uise--HTreeSplitterSection {padding:0;}"
                   "uise--HTreeList {padding:0;margin:0;}"
                   "uise--HTreeNode {padding:0;margin:0;}"
                   "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
 
-                  "#DirList {padding-left:4px;}\n"
+                  // "#DirList {padding-left:4px;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
                   // "uise--HTree {background-color:blue;}\n"
@@ -127,7 +139,8 @@ int main(int argc, char *argv[])
 
                   "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right: 1px; background-color: #C8C8C0;}"
                   "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;}"
-        ;
+        ;    
+    qss=qss.arg(colorBBB,color888,colorSplitterLine);
     qApp->setStyleSheet(qss);
 
     w.setCentralWidget(mainFrame);
