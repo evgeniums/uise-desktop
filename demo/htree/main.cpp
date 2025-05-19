@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
                   // "#DirList {padding-left:4px;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
                   "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
-                  // "uise--HTree {background-color:blue;}\n"
+                  // "uise--ElidedLabel {background-color:blue;}\n"
 
                   // "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
                   "#hTreeSplitterScArea {border:none;}\n"
