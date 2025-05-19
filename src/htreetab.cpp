@@ -220,22 +220,17 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     );
 
     // watch if node is expanded
-    qDebug() << "added nodw index=" <<index;
     node->connect(
         node,
         &HTreeNode::toggleExpanded,
         self,
         [this,index,node](bool enable)
         {
-            qDebug() << "on HTreeNode::toggleExpanded index=" <<index << " enable="<<enable;
             auto w=splitter->widget(index);
             if (w!=nullptr)
             {
                 w->setMinimumWidth(node->minimumWidth()+splitter->sectionLineWidth());
-                w->setMaximumWidth(node->maximumWidth()+splitter->sectionLineWidth());
-
-                qDebug() << "minimum width=" << w->minimumWidth() << " maximum width=" << w->maximumWidth();
-
+                w->setMaximumWidth(std::min(QWIDGETSIZE_MAX,(node->maximumWidth()+splitter->sectionLineWidth())));
                 splitter->toggleSectionExpanded(index,enable);
             }
         }
