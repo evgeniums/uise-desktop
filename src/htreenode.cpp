@@ -23,7 +23,6 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <QPushButton>
 #include <QFile>
 #include <QPointer>
 
@@ -33,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/pushbutton.hpp>
 
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreenode.hpp>
@@ -47,7 +47,7 @@ auto* iconButton(const QString& iconName, QWidget* parent=nullptr)
 {
     auto icon=Style::instance().svgIconTheme().icon(iconName,parent);
     UiseAssert(icon,"SVG icon must be set in icon theme");
-    auto* bt=new QPushButton(parent);
+    auto* bt=new PushButton(icon,parent);
     bt->setIcon(icon->icon());
     bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     return bt;
@@ -65,9 +65,9 @@ class HTreeNodeTitleBar_p
 
         QBoxLayout* layout=nullptr;
 
-        QPushButton* close=nullptr;
-        QPushButton* collapse=nullptr;
-        QPushButton* refresh=nullptr;
+        PushButton* close=nullptr;
+        PushButton* collapse=nullptr;
+        PushButton* refresh=nullptr;
 
         ElidedLabel* title=nullptr;
 };
@@ -116,19 +116,19 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
     connect(
         pimpl->close,
-        &QPushButton::clicked,
+        &PushButton::clicked,
         this,
         &HTreeNodeTitleBar::closeRequested
     );
     connect(
         pimpl->collapse,
-        &QPushButton::clicked,
+        &PushButton::clicked,
         this,
         &HTreeNodeTitleBar::collapseRequested
     );
     connect(
         pimpl->refresh,
-        &QPushButton::clicked,
+        &PushButton::clicked,
         this,
         &HTreeNodeTitleBar::refreshRequested
     );
@@ -150,7 +150,7 @@ class HTreeNodePlaceHolder_p
         HTreeNode* node=nullptr;
 
         QBoxLayout* layout=nullptr;
-        QPushButton* expand=nullptr;
+        PushButton* expand=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -168,7 +168,7 @@ HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
 
     connect(
         pimpl->expand,
-        &QPushButton::clicked,
+        &PushButton::clicked,
         this,
         &HTreeNodePlaceHolder::expandRequested
     );

@@ -109,9 +109,6 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
 
             auto it=m_pixmapSets.emplace(mode,IconPixmapSet{});
             set=&it.first->second;
-
-            auto set1=pixmapSet(mode);
-            // qDebug() << "makePixmap set1="<<set1;
         }
         // qDebug() << "makePixmap adding pixmap to set="<<set;
         set->addPixmap(px,state);
@@ -229,6 +226,13 @@ bool SvgIcon::addFile(
 QIcon SvgIcon::icon()
 {
     return QIcon(new SvgIconEngine(shared_from_this()));
+}
+
+//--------------------------------------------------------------------------
+
+QIcon SvgIcon::hoverIcon()
+{
+    return QIcon(new SvgIconEngine(shared_from_this(),true));
 }
 
 //--------------------------------------------------------------------------

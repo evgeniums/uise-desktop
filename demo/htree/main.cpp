@@ -65,18 +65,25 @@ int main(int argc, char *argv[])
 
     Style::instance().svgIconTheme().addColorMap(
         SvgIcon::ColorMap{
-            {{"currentColor","#EEEEEE"}}
+            {{"currentColor","#FFFFFF"}}
         },
-        "",
-        IconMode::Disabled
+        "HTreeNodeTitleBar",
+        IconMode::Hovered
     );
 
     Style::instance().svgIconTheme().loadIcons(
         {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
-                                  {{IconMode::Normal,SvgIcon::ColorMap{
+                                  {
+                                    {IconMode::Normal,SvgIcon::ColorMap{
                                                           {{"currentColor","#777777"}}
-                                                      }}}
-                                  }}
+                                                      }
+                                    },
+                                    {IconMode::Hovered,SvgIcon::ColorMap{
+                                                             {{"currentColor","#444444"}}
+                                                         }
+                                   }
+                                  }
+                                }}
     );
 
     QMainWindow w;

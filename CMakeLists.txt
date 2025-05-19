@@ -91,6 +91,8 @@ SET (HEADERS
     include/uise/desktop/svgicontheme.hpp
 
     include/uise/desktop/stylecontext.hpp
+
+    include/uise/desktop/pushbutton.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -134,6 +136,8 @@ SET (SOURCES
 
     src/svgicon.cpp
     src/svgicontheme.cpp
+
+    src/pushbutton.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

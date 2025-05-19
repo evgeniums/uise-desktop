@@ -362,6 +362,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
         }
 
         QIcon icon();
+        QIcon hoverIcon();
 
         void reload(
             const std::map<IconVariant,ColorMap>& colorMaps
@@ -470,17 +471,37 @@ class SvgIconEngine : public QIconEngine
 {
     public:
 
-        SvgIconEngine(std::shared_ptr<SvgIcon> icon) : m_icon(std::move(icon))
+        SvgIconEngine(std::shared_ptr<SvgIcon> icon, bool hovered=false)
+            : m_icon(std::move(icon)),
+              m_hovered(hovered)
         {}
 
         virtual void paint(QPainter *painter, const QRect &rect, QIcon::Mode mode, QIcon::State state) override
         {
-            m_icon->paint(painter,rect,mode,state);
+            // qDebug() << "paint mode=" << mode << " state=" << state;
+
+            if (m_hovered  && IconVariant(mode)!=IconMode::Disabled)
+            {
+                m_icon->paint(painter,rect,IconMode::Hovered,state);
+            }
+            else
+            {
+                m_icon->paint(painter,rect,mode,state);
+            }
         }
 
         virtual QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override
         {
-            return m_icon->pixmap(size,mode,state);
+            // qDebug() << "pixmap mode=" << mode << " state=" << state;
+
+            if (m_hovered && IconVariant(mode)!=IconMode::Disabled)
+            {
+                return m_icon->pixmap(size,IconMode::Hovered,state);
+            }
+            else
+            {
+                return m_icon->pixmap(size,mode,state);
+            }
         }
 
         virtual QIconEngine* clone() const override
@@ -491,6 +512,7 @@ class SvgIconEngine : public QIconEngine
     private:
 
         std::shared_ptr<SvgIcon> m_icon;
+        bool m_hovered;
 };
 
 UISE_DESKTOP_NAMESPACE_END
