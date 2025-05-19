@@ -386,8 +386,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                             }
                             auto splitterWidth=m_splitter->viewPort()->width();
 
-                            qDebug() << " totalWidth " << totalWidth
-                                     << " splitterWidth " << splitterWidth;
+                            // qDebug() << " totalWidth " << totalWidth << " splitterWidth " << splitterWidth;
 
                             if (/*(QApplication::keyboardModifiers() & Qt::ControlModifier) &&*/
                                 totalWidth > splitterWidth
