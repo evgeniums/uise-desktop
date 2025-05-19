@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <map>
 #include <set>
 
+#include <QDebug>
 #include <QIcon>
 #include <QIconEngine>
 
@@ -41,8 +42,10 @@ enum class IconMode : int
 {
     Normal=QIcon::Normal,
     Disabled=QIcon::Disabled,
-    Hovered=QIcon::Active,
+    Active=QIcon::Active,
     Checked=QIcon::Selected,
+
+    Hovered,
 
     User=0x100
 };
@@ -94,21 +97,28 @@ class IconPixmapSet
 
         void addPixmap(QPixmap px,QIcon::State state=QIcon::On)
         {
+            // qDebug() << "IconPixmapSet::addPixmap state=" << state << " size="<<px.size() << " "<<this;
+
             pixmaps(state)->emplace(px.size(),std::move(px));
         }
 
         QPixmap pixmap(const QSize& size, QIcon::State state=QIcon::On) const
         {
+            // qDebug() << "IconPixmapSet::pixmap size=" << size << " state=" << state << " "<<this;
+
             if (size.isNull())
             {
+                // qDebug()<<"null size";
                 return pixmap(state);
             }
 
             auto it=pixmaps(state)->find(size);
             if (it!=pixmaps(state)->end())
             {
+                // qDebug()<<"IconPixmapSet::pixmap found";
                 return it->second;
             }
+            // qDebug()<<"IconPixmapSet::pixmap not found "<< this;
             return pixmap(state);
         }
 
@@ -295,15 +305,19 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         void paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache=true);
 
-        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On)
+        QPixmap pixmap(const QSize &size, IconVariant mode,  QIcon::State state)
         {
-            auto* set=pixmapSet(state);
+            // qDebug() << "pixmap state="<<state << " mode="<<mode<< " name="<<m_name;
+
+            auto* set=pixmapSet(mode);
             if (set==nullptr || set->isNull())
             {
+                // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
+
                 return makePixmap(size,mode,state);
             }
 
-            auto px=set->pixmap(size);
+            auto px=set->pixmap(size,state);
             if (px.isNull() || px.size()!=size)
             {
                 return makePixmap(size,mode,state);
@@ -311,7 +325,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             return px;
         }
 
-        QPixmap pixmap(int size, IconVariant mode=IconMode::Normal, QIcon::State state=QIcon::On)
+        QPixmap pixmap(int size, IconVariant mode, QIcon::State state)
         {
             return pixmap(QSize(size,size),mode,state);
         }        
@@ -353,12 +367,24 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             const std::map<IconVariant,ColorMap>& colorMaps
         );
 
+        void setName(QString name)
+        {
+            m_name=std::move(name);
+        }
+
+        QString name() const
+        {
+            return m_name;
+        }
+
     private:
 
+        QString m_name;
+
         template <typename T>
-        const IconPixmapSet* pixmapSet(T state) const
+        const IconPixmapSet* pixmapSet(T mode) const
         {
-            IconVariant st(state);
+            IconVariant st(mode);
             auto it=m_pixmapSets.find(st);
             if (it!=m_pixmapSets.end())
             {
@@ -368,9 +394,9 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
         }
 
         template <typename T>
-        IconPixmapSet* pixmapSet(T state)
+        IconPixmapSet* pixmapSet(T mode)
         {
-            IconVariant st(state);
+            IconVariant st(mode);
             auto it=m_pixmapSets.find(st);
             if (it!=m_pixmapSets.end())
             {
@@ -383,6 +409,8 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         QByteArray offContent(IconVariant mode) const
         {
+            // qDebug() << "looking for offContent " << mode << " name="<<m_name;
+
             auto it=m_offContent.find(mode);
             if (it!=m_offContent.end())
             {
@@ -397,15 +425,23 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         QByteArray onContent(IconVariant mode) const
         {
+            // qDebug() << "looking for onContent " << mode << " name="<<m_name;
+
             auto it=m_onContent.find(mode);
             if (it!=m_onContent.end())
             {
+                // qDebug() << "on content found mode="<<mode;
+
                 return it->second;
             }
             if (mode!=IconMode::Normal)
             {
+                // qDebug() << "on content not found mode="<<mode;
+
                 return onContent(IconMode::Normal);
             }
+
+            // qDebug() << "on content fallback to initial mode="<<mode;
             return initialContent(mode);
         }
 

@@ -15,9 +15,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/editablelabel.hpp
+/** @file uise/desktop/style.hpp
 *
-*  Declares EditableLabel.
+*  Declares Style.
 *
 */
 

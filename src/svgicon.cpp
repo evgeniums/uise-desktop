@@ -38,12 +38,12 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache)
 {
-    qDebug() << "paint mode=" << mode << " state=" << state;
+    // qDebug() << "paint mode=" << mode << " state=" << state;
 
     if (cache)
     {
         // try to find pixmap of requested size
-        auto px=pixmap(mode);
+        auto px=pixmap(rect.size(),mode,state);
         if (!px.isNull() && px.size()==rect.size())
         {
             painter->drawPixmap(rect,px);
@@ -73,10 +73,14 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
     QByteArray content;
     if (state==QIcon::Off)
     {
+        // qDebug() << "makePixmap for off mode="<<mode<< " name="<<m_name << " cache="<<cache;
+
         content=offContent(mode);
     }
     else
     {
+        // qDebug() << "makePixmap for on mode="<<mode<< " name="<<m_name<< " cache="<<cache;
+
         content=onContent(mode);
     }
 
@@ -90,15 +94,26 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
         paint(&painter, r, mode, state, false);
     }
 
+    // qDebug() << "SvgIcon::makePixmap 1";
+
     // put pixmap to cache
     if (cache)
     {
+        // qDebug() << "SvgIcon::makePixmap 2";
+
         auto set=pixmapSet(mode);
         if (set==nullptr)
         {
+            // qDebug() << "makePixmap set not found mode="<<mode<< " name="<<m_name;
+            // qDebug() << "makePixmap set added mode=" << mode << " name="<<m_name;
+
             auto it=m_pixmapSets.emplace(mode,IconPixmapSet{});
             set=&it.first->second;
+
+            auto set1=pixmapSet(mode);
+            // qDebug() << "makePixmap set1="<<set1;
         }
+        // qDebug() << "makePixmap adding pixmap to set="<<set;
         set->addPixmap(px,state);
     }
 
@@ -114,6 +129,8 @@ bool SvgIcon::addFile(
         const SizeSet& sizes
     )
 {
+    // qDebug() << "SvgIcon::addFile name=" << m_name;
+
     // load content from file
     QFile file(filename);
     if (!file.open(QFile::ReadOnly))
@@ -138,22 +155,38 @@ bool SvgIcon::addFile(
 
             if (!colorMap.second.on.empty())
             {
+                // qDebug() << "SvgIcon::addFile color map on not empty";
+
                 auto on=content;
                 for (const auto& colorMapping : colorMap.second.on)
                 {
                     on.replace(colorMapping.first.toLocal8Bit().data(),colorMapping.second.toLocal8Bit().data());
                 }
                 m_onContent.emplace(colorMap.first,on);
+
+                // qDebug() << "m_onContent " << QString::fromUtf8(on) << " for mode " << colorMap.first;
+            }
+            else
+            {
+                // qDebug() << "SvgIcon::addFile color map on empty";
             }
 
             if (!colorMap.second.off.empty())
             {
+                // qDebug() << "SvgIcon::addFile color map off not empty";
+
                 auto off=content;
-                for (const auto& colorMapping : colorMap.second.on)
+                for (const auto& colorMapping : colorMap.second.off)
                 {
                     off.replace(colorMapping.first.toLocal8Bit().data(),colorMapping.second.toLocal8Bit().data());
                 }
                 m_offContent.emplace(colorMap.first,off);
+
+                // qDebug() << "m_offContent " << QString::fromUtf8(off) << " for mode " << colorMap.first;
+            }
+            else
+            {
+                // qDebug() << "SvgIcon::addFile color map off empty";
             }
 
             // fill cache of pixmaps for all sizes
@@ -171,8 +204,11 @@ bool SvgIcon::addFile(
         }
     };
 
+    // qDebug() << "m_initialContent " << QString::fromUtf8(content);
+
     if (colorMaps.empty())
     {
+        // qDebug() << "SvgIcon::addFile color maps empty";
         std::map<IconVariant,ColorMap> colorMaps{
             {IconMode::Normal,{}}
         };
@@ -180,6 +216,7 @@ bool SvgIcon::addFile(
     }
     else
     {
+        // qDebug() << "SvgIcon::addFile color maps not empty";
         exec(colorMaps);
     }
 

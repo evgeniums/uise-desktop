@@ -54,29 +54,64 @@ QString existingFileName(const QString& name, const QString& extension, const st
     return QString{};
 }
 
+QString nameContext(const QString& name)
+{
+    QString context;
+    if (name.contains("::"))
+    {
+        auto parts=name.split("::");
+        if (parts.count()>1)
+        {
+            context=parts[0];
+        }
+    }
+    return context;
+}
+
+QString plainName(const QString& name)
+{
+    QString context;
+    if (name.contains("::"))
+    {
+        auto parts=name.split("::");
+        if (parts.count()>0)
+        {
+            context=parts.back();
+        }
+    }
+    return context;
+}
+
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, const StyleContext&) const
+{
+    //! @todo Implement processing of style context
+    return icon(name,true);
 }
 
 //-------------------------------------------------------------------------- 
 
 std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, bool autocreate) const
 {
-    // find actual name
-    auto actualName=nameMapping(name);
-
     // find icon in cache
-    auto it=m_icons.find(actualName);
+    auto it=m_icons.find(name);
     if (it!=m_icons.end())
     {
-        qDebug() << "Icon found " << name;
+        // qDebug() << "Icon found " << name;
 
         return it->second;
     }
-    qDebug() << "Icon not found " << name;
-
+    // qDebug() << "Icon not found " << name;
     if (!autocreate)
     {
         return std::shared_ptr<SvgIcon>{};
     }
+
+    // find actual name
+    auto actualName=nameMapping(name);
 
     // create new icon if not found in cache
 
@@ -87,14 +122,30 @@ std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, bool autocreate
         path=existingFileName(actualName,extension(),m_iconDirs);
         if (path.isEmpty())
         {
-            qWarning() << "Failed to find icon file " << path;
-            return m_fallbackIcon;
+            // try to split hierarchical name and find path again
+            auto pName=plainName(name);
+            if (pName!=name)
+            {
+                path=namePath(pName);
+            }
+            if (path.isEmpty())
+            {
+                path=existingFileName(pName,extension(),m_iconDirs);
+            }
+            if (path.isEmpty())
+            {
+                qWarning() << "Failed to find icon file " << path;
+                return m_fallbackIcon;
+            }
         }
     }
 
+    const colorMapsT* maps=contextColorMaps(nameContext(name));
+
     // make icon
     auto icon=std::make_shared<SvgIcon>();
-    auto ok=icon->addFile(path,m_defaultColorMaps,m_defaultSizes);
+    icon->setName(name);
+    auto ok=icon->addFile(path,*maps,m_defaultSizes);
     if (!ok)
     {
         return m_fallbackIcon;
@@ -119,6 +170,7 @@ void SvgIconTheme::loadIcons(const std::vector<IconConfig>& iconConfigs)
         {
             insert=true;
             icon=std::make_shared<SvgIcon>();
+            icon->setName(iconConfig.name);
         }
 
         // prepare sizes
@@ -139,7 +191,8 @@ void SvgIconTheme::loadIcons(const std::vector<IconConfig>& iconConfigs)
         auto colorMaps=iconConfig.colorMaps;
         if (colorMaps.empty())
         {
-            colorMaps=m_defaultColorMaps;
+            const colorMapsT* maps=contextColorMaps(nameContext(iconConfig.name));
+            colorMaps=*maps;
         }
 
         // add file for each alias

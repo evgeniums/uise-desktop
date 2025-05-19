@@ -89,6 +89,8 @@ SET (HEADERS
 
     include/uise/desktop/svgicon.hpp
     include/uise/desktop/svgicontheme.hpp
+
+    include/uise/desktop/stylecontext.hpp
 )
 
 SET (HEADERS ${HEADERS}

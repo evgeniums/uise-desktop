@@ -43,18 +43,18 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace{
 
-QPushButton* iconButton(const QString& iconName, QWidget* parent=nullptr, const QString color="#CCCCCC", int sizeX=12, int sizeY=12)
+auto* iconButton(const QString& iconName, QWidget* parent=nullptr)
 {
-    auto icon=Style::instance().svgIconTheme().icon(iconName);
+    auto icon=Style::instance().svgIconTheme().icon(iconName,parent);
     UiseAssert(icon,"SVG icon must be set in icon theme");
-    QPushButton* bt=new QPushButton(parent);
+    auto* bt=new QPushButton(parent);
     bt->setIcon(icon->icon());
     bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-
     return bt;
 }
 
 }
+
 //--------------------------------------------------------------------------
 
 class HTreeNodeTitleBar_p
@@ -80,13 +80,13 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 {
     pimpl->node=node;
 
-    pimpl->close=iconButton("close",this);
+    pimpl->close=iconButton("HTreeNodeTitleBar::close",this);
     pimpl->close->setToolTip(tr("Close this section with all subsequent sections"));
 
-    pimpl->collapse=iconButton("collapse",this);
+    pimpl->collapse=iconButton("HTreeNodeTitleBar::collapse",this);
     pimpl->collapse->setToolTip(tr("Collapse section"));
 
-    pimpl->refresh=iconButton("refresh",this);
+    pimpl->refresh=iconButton("HTreeNodeTitleBar::refresh",this);
     pimpl->refresh->setToolTip(tr("Refresh"));
 
     pimpl->title=new ElidedLabel(this);
@@ -162,7 +162,7 @@ HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
     pimpl->node=node;
 
     pimpl->layout=Layout::vertical(this);
-    pimpl->expand=iconButton("dots-vertical",this);
+    pimpl->expand=iconButton("HTreeNodePlaceHolder::dots",this);
     pimpl->expand->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     pimpl->layout->addWidget(pimpl->expand,1);
 
@@ -420,7 +420,7 @@ void HTreeNode::collapseNode()
     destroyWidget(pimpl->widget);
 
     setFixedWidth(pimpl->placeHolder->maximumWidth());
-    qDebug() << "collapseNode() minimumWidth=" << minimumWidth() << " minimumWidth="<<minimumWidth();
+    // qDebug() << "collapseNode() minimumWidth=" << minimumWidth() << " minimumWidth="<<minimumWidth();
 
     emit toggleExpanded(false);
 }
@@ -526,7 +526,6 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
     if (!pimpl->nextNode || obj==pimpl->nextNode)
     {
         pimpl->nextNode =nullptr;
-
         setExpanded(true);
         setCollapsible(false);
     }

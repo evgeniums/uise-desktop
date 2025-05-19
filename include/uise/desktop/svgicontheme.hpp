@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_SVG_ICON_THEME_HPP
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/stylecontext.hpp>
 #include <uise/desktop/svgicon.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -54,7 +55,9 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
             {}
         };
 
-        std::shared_ptr<SvgIcon> icon(const QString& name, bool autocreate=true) const;
+        std::shared_ptr<SvgIcon> icon(const QString& name, bool autocreate) const;
+
+        std::shared_ptr<SvgIcon> icon(const QString& name, const StyleContext& ={}) const;
 
         void loadIcons(const std::vector<IconConfig>& iconConfigs);
 
@@ -77,8 +80,8 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
         }
 
         void addNamePath(
-            QString name,
-            QString path
+                QString name,
+                QString path
             )
         {
             m_namePaths.emplace(std::move(name),std::move(path));
@@ -94,27 +97,85 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
             return QString{};
         }
 
-        void addIconPath(QString path)
+        void addIconDir(QString path)
         {
             m_iconDirs.emplace_back(std::move(path));
         }
 
-        const std::vector<QString>& iconPaths() const
+        const std::vector<QString>& iconDirss() const
         {
             return m_iconDirs;
         }        
 
-        void addColorMap(SvgIcon::ColorMap map, IconVariant mode=IconMode::Normal)
+        void addColorMap(SvgIcon::ColorMap map, const QString& context={}, IconVariant mode=IconMode::Normal)
         {
-            m_defaultColorMaps.emplace(mode,std::move(map));
+            if (context.isEmpty())
+            {
+                m_defaultColorMaps.emplace(mode,std::move(map));
+            }
+            else
+            {
+                colorMapsT* maps=nullptr;
+                auto it=m_contextColorMaps.find(context);
+                if (it!=m_contextColorMaps.end())
+                {
+                    maps=&it->second;
+                }
+                else
+                {
+                    auto it1=m_contextColorMaps.emplace(context,colorMapsT{});
+                    maps=&it1.first->second;
+                }
+                maps->emplace(mode,std::move(map));
+            }
         }
 
-        const SvgIcon::ColorMap* colorMaps(IconVariant mode=IconMode::Normal) const
+        const SvgIcon::ColorMap* colorMaps(IconVariant mode=IconMode::Normal, const QString& context={}) const
         {
-            auto it=m_defaultColorMaps.find(mode);
-            if (it!=m_defaultColorMaps.end())
+            auto maps=contextColorMaps(context);
+            if (maps==nullptr)
+            {
+                return nullptr;
+            }
+
+            auto it=maps->find(mode);
+            if (it!=maps->end())
             {
                 return &it->second;
+            }
+            return nullptr;
+        }
+
+        const colorMapsT* contextColorMaps(const QString& context={}) const
+        {
+            if (context.isNull())
+            {
+                return &m_defaultColorMaps;
+            }
+            else
+            {
+                auto it=m_contextColorMaps.find(context);
+                if (it!=m_contextColorMaps.end())
+                {
+                    return &it->second;
+                }
+            }
+            return contextColorMaps();
+        }
+
+        colorMapsT* contextColorMaps(const QString& context={})
+        {
+            if (context.isNull())
+            {
+                return &m_defaultColorMaps;
+            }
+            else
+            {
+                auto it=m_contextColorMaps.find(context);
+                if (it!=m_contextColorMaps.end())
+                {
+                    return &it->second;
+                }
             }
             return nullptr;
         }
@@ -131,7 +192,7 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
 
         void setFallbackIcon(const QString& name)
         {
-            m_fallbackIcon=icon(name);
+            m_fallbackIcon=icon(name,true);
         }
 
         void setFallbackIcon(std::shared_ptr<SvgIcon> icon)
@@ -168,6 +229,7 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
         std::map<QString,colorMapsT> m_colorMaps;
 
         colorMapsT m_defaultColorMaps;
+        std::map<QString,colorMapsT> m_contextColorMaps;
         SizeSet m_defaultSizes;
 
         std::shared_ptr<SvgIcon> m_fallbackIcon;

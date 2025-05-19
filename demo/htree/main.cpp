@@ -49,25 +49,30 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
 
-    Style::instance().svgIconTheme().addNameMapping("close","x");
-    Style::instance().svgIconTheme().addNameMapping("collapse","minus");
-    Style::instance().svgIconTheme().addIconPath(":/uise/tabler-icons/outline");
+    Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::close","x");
+    Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::collapse","minus");
+    // Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::refresh","refresh");
+    Style::instance().svgIconTheme().addNamePath("HTreeNodePlaceHolder::dots",":/uise/tabler-icons/outline/dots-vertical.svg");
+    Style::instance().svgIconTheme().addIconDir(":/uise/tabler-icons/outline");
+
     Style::instance().svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
-                {{"currentColor","#444444"}},
-                {{"currentColor","#CCCCCC"}}
-            }
+                {{"currentColor","#CCCCCC"}},
+                {{"currentColor","#999999"}}
+            },
+            "HTreeNodeTitleBar"
         );
 
     Style::instance().svgIconTheme().addColorMap(
         SvgIcon::ColorMap{
-            {{"currentColor","#999999"}}
+            {{"currentColor","#EEEEEE"}}
         },
-        IconMode::Hovered
+        "",
+        IconMode::Disabled
     );
 
     Style::instance().svgIconTheme().loadIcons(
-        {SvgIconTheme::IconConfig{"dots-vertical",
+        {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
                                   {{IconMode::Normal,SvgIcon::ColorMap{
                                                           {{"currentColor","#777777"}}
                                                       }}}
@@ -147,8 +152,6 @@ int main(int argc, char *argv[])
                   "uise--HTreeSplitterSection {padding:0;}"
                   "uise--HTreeList {padding:0;margin:0;}"
                   "uise--HTreeNode {padding:0;margin:0;}"
-                  "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
-                  "uise--HTreeNodeTitleBar QPushButton {icon-size:12px;}"
 
                   // "#DirList {padding-left:4px;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
@@ -158,10 +161,11 @@ int main(int argc, char *argv[])
                   // "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
                   "#hTreeSplitterScArea {border:none;}\n"
 
-                  "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;}\n"
+                  "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:12px;}\n"
                   "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0; margin-left: 8px;}\n"
                   "uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:white;}\n"
                   "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
+                  "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
 
                   "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right: 1px; background-color: #C8C8C0;}"
                   "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;icon-size: 20px 8px;}"
