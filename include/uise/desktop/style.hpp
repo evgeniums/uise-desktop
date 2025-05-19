@@ -29,8 +29,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <map>
 #include <QString>
 #include <QIcon>
+#include <QStyle>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/svgicontheme.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -335,6 +337,11 @@ class UISE_DESKTOP_EXPORT Style final
          */
         void resetFallbackIconPaths();
 
+        SvgIconTheme& svgIconTheme()
+        {
+            return m_svgIconTheme;
+        }
+
     private:
 
         QString m_styleSheet;
@@ -347,6 +354,8 @@ class UISE_DESKTOP_EXPORT Style final
         StyleSheetMode m_darkStyleSheetMode;
 
         std::map<QString,QString> m_colorMap;
+
+        SvgIconTheme m_svgIconTheme;
 };
 
 UISE_DESKTOP_NAMESPACE_END

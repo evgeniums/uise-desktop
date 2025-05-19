@@ -1,0 +1,462 @@
+/**
+@copyright Evgeny Sidorov 2021
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+    
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/desktop/svgicon.hpp
+*
+*  Declares SvgIcon class.
+*
+*/
+
+/****************************************************************************/
+
+#ifndef UISE_DESKTOP_SVG_ICON_HPP
+#define UISE_DESKTOP_SVG_ICON_HPP
+
+#include <memory>
+#include <map>
+#include <set>
+
+#include <QIcon>
+#include <QIconEngine>
+
+#include <uise/desktop/uisedesktop.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+enum class IconMode : int
+{
+    Normal=QIcon::Normal,
+    Disabled=QIcon::Disabled,
+    Hovered=QIcon::Active,
+    Checked=QIcon::Selected,
+
+    User=0x100
+};
+
+struct compareQSize
+{
+    template <typename T>
+    bool operator () (const T& l, const T& r) const noexcept
+    {
+        if (l.width()<r.width())
+        {
+            return true;
+        }
+        if (l.width()>r.width())
+        {
+            return false;
+        }
+        if (l.height()<r.height())
+        {
+            return true;
+        }
+        if (l.height()>r.height())
+        {
+            return false;
+        }
+        return false;
+    }
+};
+
+using SizeSet=std::set<QSize,compareQSize>;
+
+class IconPixmapSet
+{
+    public:
+
+        QPixmap pixmap(QIcon::State state=QIcon::On) const
+        {
+            if (fallback(state)->isNull() && !pixmaps(state)->empty())
+            {
+                return pixmaps(state)->begin()->second;
+            }
+            return *fallback(state);
+        }
+
+        void setPixmap(QPixmap icon, QIcon::State state=QIcon::On)
+        {
+            *fallback(state)=std::move(icon);
+        }
+
+        void addPixmap(QPixmap px,QIcon::State state=QIcon::On)
+        {
+            pixmaps(state)->emplace(px.size(),std::move(px));
+        }
+
+        QPixmap pixmap(const QSize& size, QIcon::State state=QIcon::On) const
+        {
+            if (size.isNull())
+            {
+                return pixmap(state);
+            }
+
+            auto it=pixmaps(state)->find(size);
+            if (it!=pixmaps(state)->end())
+            {
+                return it->second;
+            }
+            return pixmap(state);
+        }
+
+        QPixmap pixmap(int size, QIcon::State state=QIcon::On) const
+        {
+            return pixmap(QSize(size,size),state);
+        }
+
+        void clear()
+        {
+            m_pixmaps.clear();
+            m_offPixmaps.clear();
+        }
+
+        void reset()
+        {
+            clear();
+            m_fallback=QPixmap{};
+            m_fallbackOff=QPixmap{};
+        }
+
+        bool isNull() const
+        {
+            return m_fallback.isNull() && m_pixmaps.empty();
+        }
+
+        bool isEmpty() const
+        {
+            return m_pixmaps.empty();
+        }
+
+    private:
+
+        const QPixmap* fallback(QIcon::State state) const
+        {
+            if (state==QIcon::Off)
+            {
+                return &m_fallbackOff;
+            }
+            return &m_fallback;
+        }
+
+        const std::map<QSize,QPixmap,compareQSize>* pixmaps(QIcon::State state) const
+        {
+            if (state==QIcon::Off)
+            {
+                return &m_pixmaps;
+            }
+            return &m_offPixmaps;
+        }
+
+        QPixmap* fallback(QIcon::State state)
+        {
+            if (state==QIcon::Off)
+            {
+                return &m_fallbackOff;
+            }
+            return &m_fallback;
+        }
+
+        std::map<QSize,QPixmap,compareQSize>* pixmaps(QIcon::State state)
+        {
+            if (state==QIcon::Off)
+            {
+                return &m_pixmaps;
+            }
+            return &m_offPixmaps;
+        }
+
+        std::map<QSize,QPixmap,compareQSize> m_pixmaps;
+        QPixmap m_fallback;
+
+        std::map<QSize,QPixmap,compareQSize> m_offPixmaps;
+        QPixmap m_fallbackOff;
+};
+
+class IconVariant
+{
+    public:
+
+        IconVariant(IconMode mode=IconMode::Normal) : m_mode(static_cast<int>(mode))
+        {}
+
+        template <typename T>
+        IconVariant(T val) : m_mode(static_cast<int>(val))
+        {}
+
+        IconMode mode() const noexcept
+        {
+            return static_cast<IconMode>(m_mode);
+        }
+
+        QIcon::Mode qIconMode() const noexcept
+        {
+            return mode<QIcon::Mode>();
+        }
+
+        template <typename T>
+        T mode() const noexcept
+        {
+            return static_cast<T>(m_mode);
+        }
+
+        template <typename T>
+        void  set(T val) noexcept
+        {
+            m_mode=static_cast<int>(val);
+        }
+
+        template <typename T>
+        void  setMode(T val) noexcept
+        {
+            m_mode=static_cast<int>(val);
+        }
+
+        void  setState(QIcon::State state) noexcept
+        {
+            m_mode=state;
+        }
+
+        operator int() const noexcept
+        {
+            return m_mode;
+        }
+
+        operator IconMode() const noexcept
+        {
+            return static_cast<IconMode>(m_mode);
+        }
+
+        template <typename T>
+        bool operator== (T other) const noexcept
+        {
+            return m_mode==static_cast<int>(other);
+        }
+
+        template <typename T>
+        bool operator< (T other) const noexcept
+        {
+            return m_mode<static_cast<int>(other);
+        }
+
+        bool operator== (IconVariant other) const noexcept
+        {
+            return m_mode==other.m_mode;
+        }
+
+        bool operator< (IconVariant other) const noexcept
+        {
+            return m_mode<other.m_mode;
+        }
+
+    private:
+
+        int m_mode;
+};
+
+class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
+{
+    public:
+
+        struct ColorMap
+        {
+            std::map<QString,QString> off;
+            std::map<QString,QString> on;
+
+            ColorMap()=default;
+
+            ColorMap(
+                    std::map<QString,QString> off,
+                    std::map<QString,QString> on
+                ) : off(std::move(off)),
+                    on(std::move(on))
+            {}
+
+            ColorMap(
+                std::map<QString,QString> off
+                ) : off(off),
+                    on(off)
+            {}
+        };
+
+        SvgIcon() =default;
+
+        void paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache=true);
+
+        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On)
+        {
+            auto* set=pixmapSet(state);
+            if (set==nullptr || set->isNull())
+            {
+                return makePixmap(size,mode,state);
+            }
+
+            auto px=set->pixmap(size);
+            if (px.isNull() || px.size()!=size)
+            {
+                return makePixmap(size,mode,state);
+            }
+            return px;
+        }
+
+        QPixmap pixmap(int size, IconVariant mode=IconMode::Normal, QIcon::State state=QIcon::On)
+        {
+            return pixmap(QSize(size,size),mode,state);
+        }        
+
+        bool addFile(
+            const QString& filename,
+            const std::map<IconVariant,ColorMap>& colorMaps,
+            const SizeSet& sizes=SizeSet{}
+        );
+
+        bool addFile(
+            const QString& filename,
+            IconVariant state=IconMode::Normal,
+            const SizeSet& sizes=SizeSet{}
+        )
+        {
+            return addFile(filename,{{state,ColorMap{}}},sizes);
+        }
+
+        bool addFile(
+                const QString& filename,
+                const SizeSet& sizes=SizeSet{}
+            )
+        {
+            return addFile(filename,IconMode::Normal,sizes);
+        }
+
+        void reset()
+        {
+            m_pixmapSets.clear();
+            m_initialContent.clear();
+            m_onContent.clear();
+            m_offContent.clear();
+        }
+
+        QIcon icon();
+
+        void reload(
+            const std::map<IconVariant,ColorMap>& colorMaps
+        );
+
+    private:
+
+        template <typename T>
+        const IconPixmapSet* pixmapSet(T state) const
+        {
+            IconVariant st(state);
+            auto it=m_pixmapSets.find(st);
+            if (it!=m_pixmapSets.end())
+            {
+                return &it->second;
+            }
+            return nullptr;
+        }
+
+        template <typename T>
+        IconPixmapSet* pixmapSet(T state)
+        {
+            IconVariant st(state);
+            auto it=m_pixmapSets.find(st);
+            if (it!=m_pixmapSets.end())
+            {
+                return &it->second;
+            }
+            return nullptr;
+        }
+
+        QPixmap makePixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On, bool cache=true);
+
+        QByteArray offContent(IconVariant mode) const
+        {
+            auto it=m_offContent.find(mode);
+            if (it!=m_offContent.end())
+            {
+                return it->second;
+            }
+            if (mode!=IconMode::Normal)
+            {
+                return offContent(IconMode::Normal);
+            }
+            return initialContent(mode);
+        }
+
+        QByteArray onContent(IconVariant mode) const
+        {
+            auto it=m_onContent.find(mode);
+            if (it!=m_onContent.end())
+            {
+                return it->second;
+            }
+            if (mode!=IconMode::Normal)
+            {
+                return onContent(IconMode::Normal);
+            }
+            return initialContent(mode);
+        }
+
+        QByteArray initialContent(IconVariant mode) const
+        {
+            auto it=m_initialContent.find(mode);
+            if (it!=m_initialContent.end())
+            {
+                return it->second;
+            }
+            if (mode!=IconMode::Normal)
+            {
+                return initialContent(IconMode::Normal);
+            }
+            return QByteArray{};
+        }
+
+        std::map<IconVariant,QByteArray> m_initialContent;
+        std::map<IconVariant,QByteArray> m_onContent;
+        std::map<IconVariant,QByteArray> m_offContent;
+
+        std::map<IconVariant,IconPixmapSet> m_pixmapSets;
+};
+
+class SvgIconEngine : public QIconEngine
+{
+    public:
+
+        SvgIconEngine(std::shared_ptr<SvgIcon> icon) : m_icon(std::move(icon))
+        {}
+
+        virtual void paint(QPainter *painter, const QRect &rect, QIcon::Mode mode, QIcon::State state) override
+        {
+            m_icon->paint(painter,rect,mode,state);
+        }
+
+        virtual QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override
+        {
+            return m_icon->pixmap(size,mode,state);
+        }
+
+        virtual QIconEngine* clone() const override
+        {
+            return new SvgIconEngine(m_icon);
+        }
+
+    private:
+
+        std::shared_ptr<SvgIcon> m_icon;
+};
+
+UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_SVG_ICON_HPP

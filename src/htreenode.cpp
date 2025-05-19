@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFile>
 #include <QPointer>
 
+#include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
@@ -42,44 +43,12 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace{
 
-//! @todo Implemet buttons
 QPushButton* iconButton(const QString& iconName, QWidget* parent=nullptr, const QString color="#CCCCCC", int sizeX=12, int sizeY=12)
 {
-    QString name;
-    if (iconName=="close.svg")
-    {
-        name=":/uise/tabler-icons/outline/x.svg";
-    }
-    else if (iconName=="collapse.svg")
-    {
-        name=":/uise/tabler-icons/outline/minus.svg";
-    }
-    else if (iconName=="refresh.svg")
-    {
-        name=":/uise/tabler-icons/outline/refresh.svg";
-    }
-    else if (iconName=="dots-vertical.svg")
-    {
-        name=":/uise/tabler-icons/outline/dots-vertical.svg";
-    }
-
-    QFile file(name);
-    file.open(QIODevice::ReadOnly);
-    QByteArray baData = file.readAll();
-    if (!color.isEmpty())
-    {
-        auto clr=color.toStdString();
-        baData.replace("currentColor",clr.c_str());
-    }
-
-    QPixmap px{sizeX,sizeY};
-    px.loadFromData(baData,"svg");
-
-    QIcon icon{px};
-
+    auto icon=Style::instance().svgIconTheme().icon(iconName);
+    UiseAssert(icon,"SVG icon must be set in icon theme");
     QPushButton* bt=new QPushButton(parent);
-    bt->setIconSize(QSize(sizeX,sizeY));
-    bt->setIcon(icon);
+    bt->setIcon(icon->icon());
     bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     return bt;
@@ -111,13 +80,13 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 {
     pimpl->node=node;
 
-    pimpl->close=iconButton("close.svg",this);
+    pimpl->close=iconButton("close",this);
     pimpl->close->setToolTip(tr("Close this section with all subsequent sections"));
 
-    pimpl->collapse=iconButton("collapse.svg",this);
+    pimpl->collapse=iconButton("collapse",this);
     pimpl->collapse->setToolTip(tr("Collapse section"));
 
-    pimpl->refresh=iconButton("refresh.svg",this);
+    pimpl->refresh=iconButton("refresh",this);
     pimpl->refresh->setToolTip(tr("Refresh"));
 
     pimpl->title=new ElidedLabel(this);
@@ -193,7 +162,7 @@ HTreeNodePlaceHolder::HTreeNodePlaceHolder(HTreeNode* node)
     pimpl->node=node;
 
     pimpl->layout=Layout::vertical(this);
-    pimpl->expand=iconButton("dots-vertical.svg",this,"#777777",16,50);
+    pimpl->expand=iconButton("dots-vertical",this);
     pimpl->expand->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     pimpl->layout->addWidget(pimpl->expand,1);
 

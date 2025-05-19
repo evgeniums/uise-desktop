@@ -49,6 +49,31 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
 
+    Style::instance().svgIconTheme().addNameMapping("close","x");
+    Style::instance().svgIconTheme().addNameMapping("collapse","minus");
+    Style::instance().svgIconTheme().addIconPath(":/uise/tabler-icons/outline");
+    Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#444444"}},
+                {{"currentColor","#CCCCCC"}}
+            }
+        );
+
+    Style::instance().svgIconTheme().addColorMap(
+        SvgIcon::ColorMap{
+            {{"currentColor","#999999"}}
+        },
+        IconMode::Hovered
+    );
+
+    Style::instance().svgIconTheme().loadIcons(
+        {SvgIconTheme::IconConfig{"dots-vertical",
+                                  {{IconMode::Normal,SvgIcon::ColorMap{
+                                                          {{"currentColor","#777777"}}
+                                                      }}}
+                                  }}
+    );
+
     QMainWindow w;
     auto mainFrame=new QFrame();
     mainFrame->setObjectName("mainFrame");
@@ -123,6 +148,7 @@ int main(int argc, char *argv[])
                   "uise--HTreeList {padding:0;margin:0;}"
                   "uise--HTreeNode {padding:0;margin:0;}"
                   "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
+                  "uise--HTreeNodeTitleBar QPushButton {icon-size:12px;}"
 
                   // "#DirList {padding-left:4px;}\n"
                   "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
@@ -138,7 +164,7 @@ int main(int argc, char *argv[])
                   "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
 
                   "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right: 1px; background-color: #C8C8C0;}"
-                  "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;}"
+                  "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;icon-size: 20px 8px;}"
         ;    
     qss=qss.arg(colorBBB,color888,colorSplitterLine);
     qApp->setStyleSheet(qss);

@@ -17,7 +17,7 @@ ELSE()
     SET (Qt6WidgetsTools_DIR ${QT_HOME}/lib/cmake/Qt6WidgetsTools)
 ENDIF()
 
-FIND_PACKAGE(Qt6 COMPONENTS Widgets REQUIRED)
+FIND_PACKAGE(Qt6 COMPONENTS Widgets Svg REQUIRED)
 
 SET(UISE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -87,8 +87,8 @@ SET (HEADERS
     include/uise/desktop/htreesplitter.hpp
     include/uise/desktop/htree.hpp
 
-    include/uise/desktop/icon.hpp
-    include/uise/desktop/icontheme.hpp
+    include/uise/desktop/svgicon.hpp
+    include/uise/desktop/svgicontheme.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -130,8 +130,8 @@ SET (SOURCES
     src/htreesplitter.cpp
     src/htreesidebar.cpp
 
-    src/icon.cpp
-    src/icontheme.cpp
+    src/svgicon.cpp
+    src/svgicontheme.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
@@ -174,7 +174,7 @@ ENDIF()
 
 FIND_PACKAGE(Boost CONFIG 1.65 REQUIRED)
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Widgets)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Widgets Qt6::Svg)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 
 IF (UISE_DESKTOP_DEMO)
