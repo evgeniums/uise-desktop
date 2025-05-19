@@ -98,10 +98,10 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 #ifdef Q_OS_MACOS
 
-    pimpl->layout->addWidget(pimpl->close,0,Qt::AlignLeft);
-    pimpl->layout->addWidget(pimpl->collapse,0,Qt::AlignLeft);
-    pimpl->layout->addWidget(pimpl->refresh,0,Qt::AlignLeft);
-    pimpl->layout->addWidget(pimpl->title,1,Qt::AlignLeft);
+    pimpl->layout->addWidget(pimpl->close,0);
+    pimpl->layout->addWidget(pimpl->collapse,0);
+    pimpl->layout->addWidget(pimpl->refresh,0);
+    pimpl->layout->addWidget(pimpl->title,1);
 
 #else
 
