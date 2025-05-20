@@ -49,7 +49,7 @@ class HTree_p
 
         QTabWidget* tabs=nullptr;
 
-        const HTreeNodeFactory* factory=nullptr;
+        HTreeNodeLocator* locator=nullptr;
 
         std::pair<HTreeTab*,int> addTab(const HTreePath& path);
 };
@@ -96,11 +96,12 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
 
 //--------------------------------------------------------------------------
 
-HTree::HTree(QWidget* parent)
+HTree::HTree(HTreeNodeLocator* locator, QWidget* parent)
     : QFrame(parent),
     pimpl(std::make_unique<HTree_p>())
 {
     pimpl->self=this;
+    pimpl->locator=locator;
 
     auto l=Layout::vertical(this);
 
@@ -133,16 +134,16 @@ HTree::~HTree()
 
 //--------------------------------------------------------------------------
 
-void HTree::setNodeFactory(const HTreeNodeFactory* factory) noexcept
+void HTree::setNodeLocator(HTreeNodeLocator* locator) noexcept
 {
-    pimpl->factory=factory;
+    pimpl->locator=locator;
 }
 
 //--------------------------------------------------------------------------
 
-const HTreeNodeFactory* HTree::nodeFactory() const noexcept
+HTreeNodeLocator* HTree::nodeLocator() const noexcept
 {
-    return pimpl->factory;
+    return pimpl->locator;
 }
 
 //--------------------------------------------------------------------------

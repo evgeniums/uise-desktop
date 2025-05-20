@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/htree.hpp>
+#include <uise/desktop/htreenodelocator.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 #include <uise/desktop/htreesidebar.hpp>
 #include "dirlist.hpp"
@@ -96,12 +97,13 @@ int main(int argc, char *argv[])
     topFrame->setObjectName("topFrame");
     l->addWidget(topFrame,0);
 
-    HTreeNodeFactory factory;
-    factory.registerBuilder(DirListItem::Folder,std::make_shared<FolderNodeBuilder>());
-    factory.registerBuilder(DirListItem::File,std::make_shared<FileNodeBuilder>());
+    auto factory=std::make_shared<HTreeNodeFactory>();
+    factory->registerBuilder(DirListItem::Folder,std::make_shared<FolderNodeBuilder>());
+    factory->registerBuilder(DirListItem::File,std::make_shared<FileNodeBuilder>());
 
-    auto htree=new HTree(mainFrame);
-    htree->setNodeFactory(&factory);
+    auto nodeLocator=std::make_shared<HTreeNodeLocator>(factory);
+
+    auto htree=new HTree(nodeLocator.get(),mainFrame);
     l->addWidget(htree,1);
 
     int winCount=1;
@@ -109,10 +111,9 @@ int main(int argc, char *argv[])
         htree,
         &HTree::newTreeRequested,
         htree,
-        [&factory,&w,&winCount](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
+        [nodeLocator,&w,&winCount](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
         {
-            auto htree=new HTree();
-            htree->setNodeFactory(&factory);
+            auto htree=new HTree(nodeLocator.get());
             htree->openPath(path);
             htree->sidebar()->setVisible(false);
             htree->resize(800,600);

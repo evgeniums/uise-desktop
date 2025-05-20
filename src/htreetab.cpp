@@ -39,7 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreenode.hpp>
 #include <uise/desktop/htreebranch.hpp>
-#include <uise/desktop/htreenodefactory.hpp>
+#include <uise/desktop/htreenodelocator.hpp>
 #include <uise/desktop/htree.hpp>
 #include <uise/desktop/htreesplitter.hpp>
 #include <uise/desktop/htreetab.hpp>
@@ -66,8 +66,6 @@ class HTreeTab_p
         std::vector<HTreeNode*> nodes;
 
         void appendNode(HTreeNode* node);
-        bool loadingPath=false;
-
         void updateLastNode();
         void disconnectNode(HTreeNode* node, bool beforeDestroy=true);
         void truncate(int index);
@@ -469,9 +467,6 @@ bool HTreeTab::openPath(HTreePath path)
 #endif
     truncate(0);
 
-    pimpl->loadingPath=true;
-    QList<int> splitterSizes;
-
     HTreeNode* nod=nullptr;
     for (size_t i=0;i<path.elements().size();i++)
     {
@@ -495,7 +490,19 @@ bool HTreeTab::openPath(HTreePath path)
         else
         {
             UiseAssert(i==0,"Previous last node must exist for all path elements except for the first");
-            nod=pimpl->tree->nodeFactory()->makeNode(el,nullptr,this);
+
+            auto nodeResult=pimpl->tree->nodeLocator()->findOrCreateNode(el,nullptr,this);
+            if (nodeResult.first==nullptr)
+            {
+                return false;
+            }
+            if (!nodeResult.second && nodeResult.first->isUnique())
+            {
+                nodeResult.first->activate();
+                return false;
+            }
+
+            nod=nodeResult.first;
             if (nod==nullptr)
             {
                 return false;
@@ -503,14 +510,10 @@ bool HTreeTab::openPath(HTreePath path)
             appendNode(nod);
             nod->refresh();
         }
-
-        splitterSizes.push_back(el.config().width());
     }
 
-    //! @todo Set sizes only if they were saved
-    // pimpl->splitter->setSizes(splitterSizes);
+    //! @todo Restore splitter configuration
 
-    pimpl->loadingPath=false;
     if (nod!=nullptr)
     {
         pimpl->scrollToNode(nod);

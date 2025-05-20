@@ -103,6 +103,7 @@ class UISE_DESKTOP_EXPORT HTreeNodePlaceHolder : public QFrame
         friend class HTreeNode;
 };
 
+class HTreeNodeLocator;
 class HTreeNode_p;
 
 class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
@@ -168,6 +169,12 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void setTitleBarVisible(bool enable);
         bool isTitleBarVisible() const;
+
+        void setUnique(bool enable);
+        bool isUnique() const;
+
+        void setNextNodeLocator(HTreeNodeLocator* locator);
+        HTreeNodeLocator* nextNodeLocator() const;
 
     public slots:
 

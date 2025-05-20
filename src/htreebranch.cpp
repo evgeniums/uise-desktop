@@ -29,7 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
 
-#include <uise/desktop/htreenodefactory.hpp>
+#include <uise/desktop/htreenodelocator.hpp>
 #include <uise/desktop/htree.hpp>
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreebranch.hpp>
@@ -73,22 +73,35 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     {
         if (next->path().id()==pathElement.id())
         {
-            //! @todo Take into account expanding mode
             next->setExpanded(true);
             return next;
         }
     }
 
-    closeNextNode();
-
-    setNextNodeId(pathElement.id());
-    auto nextNode=treeTab()->tree()->nodeFactory()->makeNode(pathElement,this,treeTab());
-    if (nextNode!=nullptr)
+    HTreeNode* nextNode=nullptr;
+    auto locator=nextNodeLocator();
+    if (locator==nullptr)
     {
-        setNextNode(nextNode);
-        treeTab()->appendNode(nextNode);
-        nextNode->refresh();
+        locator=treeTab()->tree()->nodeLocator();
     }
+
+    auto nodeResult=locator->findOrCreateNode(pathElement,this,treeTab());
+    if (nodeResult.first==nullptr)
+    {
+        return nullptr;
+    }
+    if (!nodeResult.second && nodeResult.first->isUnique())
+    {
+        nodeResult.first->activate();
+        return nullptr;
+    }
+
+    closeNextNode();
+    nextNode=nodeResult.first;
+    setNextNodeId(pathElement.id());
+    setNextNode(nextNode);
+    treeTab()->appendNode(nextNode);
+    nextNode->refresh();
 
     return nextNode;
 }

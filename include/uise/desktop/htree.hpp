@@ -39,7 +39,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeNode;
 class HTreeTab;
-class HTreeNodeFactory;
+class HTreeNodeLocator;
 class HTreeSideBar;
 class HTree_p;
 
@@ -56,7 +56,7 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
          * @brief Constructor.
          * @param parent Parent widget.
          */
-        HTree(QWidget* parent=nullptr);
+        HTree(HTreeNodeLocator* locator=nullptr, QWidget* parent=nullptr);
 
         /**
          * @brief Destructor.
@@ -68,8 +68,8 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         HTree& operator=(const HTree&)=delete;
         HTree& operator=(HTree&&)=delete;
 
-        void setNodeFactory(const HTreeNodeFactory* factory) noexcept;
-        const HTreeNodeFactory* nodeFactory() const noexcept;
+        void setNodeLocator(HTreeNodeLocator* locator) noexcept;
+        HTreeNodeLocator* nodeLocator() const noexcept;
 
         void openPath(HTreePath path, int tabIndex=CurrentTabIndex);
 

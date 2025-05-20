@@ -78,6 +78,7 @@ SET (HEADERS
 
     include/uise/desktop/htreepath.hpp
     include/uise/desktop/htreenode.hpp
+    include/uise/desktop/htreenodelocator.hpp
     include/uise/desktop/htreenodefactory.hpp
     include/uise/desktop/htreelistitem.hpp
     include/uise/desktop/htreebranch.hpp
@@ -127,6 +128,7 @@ SET (SOURCES
     src/htree.cpp
     src/htreenode.cpp
     src/htreenodefactory.cpp
+    src/htreenodelocator.cpp
     src/htreebranch.cpp
     src/htreelistitem.cpp
     src/htreelist.cpp

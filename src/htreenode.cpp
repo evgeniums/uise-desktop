@@ -207,7 +207,11 @@ class HTreeNode_p
         bool Collapsible=true;
         bool closable=true;
 
+        bool unique=false;
+
         QPointer<HTreeNode> nextNode;
+
+        HTreeNodeLocator* nextNodeLocator=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -641,6 +645,34 @@ void HTreeNode::activate()
     treeTab()->activate();
     setExpanded(true);
     treeTab()->scrollToNode(this);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setUnique(bool enable)
+{
+    pimpl->unique=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isUnique() const
+{
+    return pimpl->unique;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNextNodeLocator(HTreeNodeLocator* locator)
+{
+    pimpl->nextNodeLocator=locator;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNodeLocator* HTreeNode::nextNodeLocator() const
+{
+    return pimpl->nextNodeLocator;
 }
 
 //--------------------------------------------------------------------------
