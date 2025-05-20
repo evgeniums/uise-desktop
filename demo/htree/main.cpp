@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
                   "#hTreeSplitterScArea {border:none;}\n"
 
                   "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:12px;}\n"
-                  "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0; margin-left: 8px;}\n"
+                  "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0;}\n"
                   "uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:white;}\n"
                   "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
                   "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
