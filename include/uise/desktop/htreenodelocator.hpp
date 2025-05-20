@@ -58,7 +58,12 @@ class UISE_DESKTOP_EXPORT HTreeNodeLocator : public QObject
             m_factory=std::move(factory);
         }
 
-        std::shared_ptr<HTreeNodeFactory> factory() const noexcept
+        const std::shared_ptr<HTreeNodeFactory>& factory() const noexcept
+        {
+            return m_factory;
+        }
+
+        std::shared_ptr<HTreeNodeFactory>& factory() noexcept
         {
             return m_factory;
         }
