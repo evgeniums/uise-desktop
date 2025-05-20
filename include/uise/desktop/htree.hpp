@@ -96,7 +96,10 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
     public slots:
 
         void setCurrentTab(int tabIndex);
+        void setCurrentTab(HTreeTab* tab);
         void closeTab(int tabIndex);
+
+        void activate();
 
     private:
 

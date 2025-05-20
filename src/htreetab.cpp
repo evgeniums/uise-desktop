@@ -607,4 +607,12 @@ void HTreeTab::scrollToNode(HTreeNode* node)
 
 //--------------------------------------------------------------------------
 
+void HTreeTab::activate()
+{
+    tree()->activate();
+    tree()->setCurrentTab(this);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

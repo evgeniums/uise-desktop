@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
+#include <uise/desktop/htree.hpp>
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreenode.hpp>
 
@@ -631,6 +632,15 @@ bool HTreeNode::isTitleBarVisible() const
 void HTreeNode::setNextNodeId(const std::string&)
 {
     // intentionally empty
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::activate()
+{
+    treeTab()->activate();
+    setExpanded(true);
+    treeTab()->scrollToNode(this);
 }
 
 //--------------------------------------------------------------------------

@@ -85,6 +85,10 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         void scrollToNode(HTreeNode* node);
 
+    public slots:
+
+        void activate();
+
     signals:
 
         void nameUpdated(const QString&);

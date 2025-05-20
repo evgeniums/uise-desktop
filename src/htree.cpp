@@ -168,6 +168,13 @@ void HTree::setCurrentTab(int tabIndex)
 
 //--------------------------------------------------------------------------
 
+void HTree::setCurrentTab(HTreeTab* tab)
+{
+    pimpl->tabs->setCurrentWidget(tab);
+}
+
+//--------------------------------------------------------------------------
+
 void HTree::closeTab(int tabIndex)
 {
     auto w=pimpl->tabs->widget(tabIndex);
@@ -338,6 +345,20 @@ HTreeNode* HTree::showNode(const HTreePath& path)
 HTreeSideBar* HTree::sidebar() const
 {
     return pimpl->sidebar;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::activate()
+{
+    show();
+    auto w=window();
+    if (w!=nullptr)
+    {
+        w->show();
+        w->setWindowState(w->windowState() & ~Qt::WindowMinimized | Qt::WindowActive);
+        w->raise();
+    }
 }
 
 //--------------------------------------------------------------------------
