@@ -13,9 +13,9 @@ uise--HTreeNodeTitleBar {
 uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right:1px;}
 uise--HTreeNodePlaceHolder QPushButton {border:none;icon-size: 20px 8px;}
 
-uise--HTreeStansardListItem #hTreeItemPixmap {margin-right: 8px;}
-uise--HTreeStansardListItem {padding-left:4px;}
-uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}
+uise--HTreeStansardListItem #hTreeItemPixmap {margin-right:8px;icon-size:24px;border:none;background-color:transparent;}
+uise--HTreeStansardListItem {padding:4px;}
+uise--HTreeStansardListItem QLabel{padding:0;margin:0;}
 
 uise--HTreeSplitterSection {padding:0;}
 uise--HTreeSplitterLine {border:none;}

@@ -30,8 +30,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
-#include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/elidedlabel.hpp>
+#include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/pushbutton.hpp>
 
 #include <uise/desktop/htreelistitem.hpp>
 
@@ -194,27 +196,16 @@ void HTreeListItem::leaveEvent(QEvent *event)
 
 //--------------------------------------------------------------------------
 
-void HTreeListItem::mousePressEvent(QMouseEvent *event)
+void HTreeListItem::click()
 {
-    QFrame::mousePressEvent(event);
-    if (pimpl->ignoreMousePress)
-    {
-        return;
-    }
-
-    if (event->buttons()&Qt::RightButton)
-    {
-        return;
-    }
-
     if (QApplication::keyboardModifiers() & Qt::ShiftModifier
 #ifdef Q_OS_MAC
         ||
         (
-        QApplication::keyboardModifiers() & Qt::AltModifier
-        &&
-        QApplication::keyboardModifiers() & Qt::ControlModifier
-        )
+            QApplication::keyboardModifiers() & Qt::AltModifier
+            &&
+            QApplication::keyboardModifiers() & Qt::ControlModifier
+            )
 #endif
         )
     {
@@ -228,6 +219,24 @@ void HTreeListItem::mousePressEvent(QMouseEvent *event)
     }
     setSelected(true);
     emit openRequested(pathElement());
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::mousePressEvent(QMouseEvent *event)
+{
+    QFrame::mousePressEvent(event);
+    if (pimpl->ignoreMousePress)
+    {
+        return;
+    }
+
+    if (event->buttons()&Qt::RightButton)
+    {
+        return;
+    }
+
+    click();
 }
 
 //--------------------------------------------------------------------------
@@ -310,6 +319,8 @@ bool HTreeListItem::isOpenInWindowEnabled() const noexcept
     return pimpl->openInWindowEnabled;
 }
 
+
+
 /************************* HTreeStandardListItem ******************************/
 
 class HTreeStansardListItem_p
@@ -318,22 +329,24 @@ class HTreeStansardListItem_p
 
         HTreeStansardListItem* self=nullptr;
         QHBoxLayout* layout=nullptr;
-        QLabel* pixmap=nullptr;
+        PushButton* icon=nullptr;
         ElidedLabel* text=nullptr;
+        bool propagateIconClick=true;
 };
 
 //--------------------------------------------------------------------------
 
-HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* parent)
+HTreeStansardListItem::HTreeStansardListItem(const QString& type, std::shared_ptr<SvgIcon> icon, QWidget* parent)
     : HTreeListItem(parent),
-        pimpl(std::make_unique<HTreeStansardListItem_p>())
+      pimpl(std::make_unique<HTreeStansardListItem_p>())
 {
     pimpl->self=this;
     pimpl->layout=Layout::horizontal(this);
 
-    pimpl->pixmap=new QLabel(this);
-    pimpl->pixmap->setObjectName("hTreeItemPixmap");
-    pimpl->layout->addWidget(pimpl->pixmap);
+    pimpl->icon=new PushButton(this);
+    pimpl->icon->setObjectName("hTreeItemPixmap");
+    pimpl->icon->setSvgIcon(icon);
+    pimpl->layout->addWidget(pimpl->icon);
 
     pimpl->text=new ElidedLabel(this);
     pimpl->text->setObjectName("hTreeItemText");
@@ -342,6 +355,30 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* paren
     setTextElideMode(Qt::ElideMiddle);
 
     setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+
+    connect(
+        pimpl->icon,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            if (pimpl->propagateIconClick)
+            {
+                click();
+            }
+            else
+            {
+                emit iconClicked();
+            }
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* parent)
+    : HTreeStansardListItem(type,{},parent)
+{
 }
 
 //--------------------------------------------------------------------------
@@ -360,7 +397,7 @@ void HTreeStansardListItem::setText(const QString& text)
 
 void HTreeStansardListItem::setPixmap(const QPixmap& pixmap)
 {
-    pimpl->pixmap->setPixmap(pixmap);
+    pimpl->icon->setIcon(pixmap);
 }
 
 //--------------------------------------------------------------------------
@@ -374,7 +411,7 @@ QString HTreeStansardListItem::text() const
 
 QPixmap HTreeStansardListItem::pixmap() const
 {
-    return pimpl->pixmap->pixmap();
+    return pimpl->icon->icon().pixmap(pimpl->icon->size());
 }
 
 //--------------------------------------------------------------------------
@@ -389,6 +426,34 @@ void HTreeStansardListItem::setTextElideMode(Qt::TextElideMode mode)
 Qt::TextElideMode HTreeStansardListItem::textElideMode() const
 {
     return pimpl->text->elideMode();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStansardListItem::setIcon(std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->icon->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> HTreeStansardListItem::icon() const
+{
+    return pimpl->icon->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStansardListItem::setPropagateIconClick(bool enable)
+{
+    pimpl->propagateIconClick=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeStansardListItem::isPropagateIconClick() const
+{
+    return pimpl->propagateIconClick;
 }
 
 //--------------------------------------------------------------------------

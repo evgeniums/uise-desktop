@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SvgIcon;
 class HTreeListItem_p;
 
 class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
@@ -76,6 +77,10 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
 
         void setOpenInWindowEnabled(bool val);
         bool isOpenInWindowEnabled() const noexcept;
+
+    public slots:
+
+        void click();
 
     signals:
 
@@ -118,6 +123,8 @@ class UISE_DESKTOP_EXPORT HTreeStansardListItem : public HTreeListItem
          */
         HTreeStansardListItem(const QString& type, QWidget* parent=nullptr);
 
+        HTreeStansardListItem(const QString& type, std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr);
+
         /**
          * @brief Destructor.
          */
@@ -133,8 +140,18 @@ class UISE_DESKTOP_EXPORT HTreeStansardListItem : public HTreeListItem
         QString text() const;
         QPixmap pixmap() const;
 
+        void setIcon(std::shared_ptr<SvgIcon> icon);
+        std::shared_ptr<SvgIcon> icon() const;
+
         void setTextElideMode(Qt::TextElideMode mode);
         Qt::TextElideMode textElideMode() const;
+
+        void setPropagateIconClick(bool enable);
+        bool isPropagateIconClick() const;
+
+    signals:
+
+        void iconClicked();
 
     public slots:
 
