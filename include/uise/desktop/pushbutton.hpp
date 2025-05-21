@@ -42,7 +42,22 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
               m_icon(std::move(icon))
         {}
 
-        PushButton() = default;
+        PushButton(QWidget* parent=nullptr) : QPushButton(parent)
+        {}
+
+        PushButton(const QString text, QWidget* parent=nullptr) : QPushButton(text,parent)
+        {}
+
+        void setSvgIcon(std::shared_ptr<SvgIcon> icon)
+        {
+            m_icon=std::move(icon);
+            update();
+        }
+
+        std::shared_ptr<SvgIcon> svgIcon() const
+        {
+            return m_icon;
+        }
 
     protected:
 
