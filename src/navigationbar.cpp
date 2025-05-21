@@ -237,7 +237,7 @@ NavigationBar::NavigationBar(QWidget* parent)
 
     pimpl->scArea=new ScrollArea(this);
     vl->addWidget(pimpl->scArea);
-    pimpl->scArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    pimpl->scArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     pimpl->scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     pimpl->scArea->setWidgetResizable(true);

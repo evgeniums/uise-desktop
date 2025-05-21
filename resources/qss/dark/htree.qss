@@ -12,3 +12,5 @@ uise--HTreeStansardListItem[hover="true"] {background-color:#C4C4C4;}
 uise--HTreeStansardListItem[selected="true"] {background-color:#B0B0B0;}
 
 uise--HTreeSplitterLine {background-color:#888888;}
+
+QTabWidget::pane {padding:0;}

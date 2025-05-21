@@ -303,7 +303,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     l->addWidget(pimpl->navbar);
 
     pimpl->splitter=new HTreeSplitter(this);
-    l->addWidget(pimpl->splitter);
+    l->addWidget(pimpl->splitter,1);
 
     pimpl->nodeDestroyedMapper=new QSignalMapper(this);
     connect(pimpl->nodeDestroyedMapper,&QSignalMapper::mappedInt,this,
