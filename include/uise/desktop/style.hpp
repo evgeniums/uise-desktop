@@ -352,6 +352,8 @@ class UISE_DESKTOP_EXPORT Style final
             return m_svgIconTheme;
         }
 
+        void resetSvgIconTheme();
+
     private:
 
         QString m_styleSheet;

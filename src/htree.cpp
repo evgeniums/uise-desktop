@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
+#include <uise/desktop/svgicontheme.hpp>
 
 #include <uise/desktop/htreesidebar.hpp>
 #include <uise/desktop/htreetab.hpp>
@@ -360,6 +361,43 @@ void HTree::activate()
         w->setWindowState(w->windowState() & ~Qt::WindowMinimized | Qt::WindowActive);
         w->raise();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::resetSvgIconTheme(SvgIconTheme& theme)
+{
+    theme.addNameMapping("HTreeNodeTitleBar::close","x");
+    theme.addNameMapping("HTreeNodeTitleBar::collapse","minus");
+    theme.addNameMapping("HTreeNodePlaceHolder::dots","dots-vertical");
+    theme.addColorMap(
+        SvgIcon::ColorMap{
+            {{"currentColor","#CCCCCC"}},
+            {{"currentColor","#999999"}}
+        },
+        "HTreeNodeTitleBar"
+    );
+    theme.addColorMap(
+        SvgIcon::ColorMap{
+            {{"currentColor","#FFFFFF"}}
+        },
+        "HTreeNodeTitleBar",
+        IconMode::Hovered
+        );
+    theme.loadIcons(
+        {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
+            {
+                {IconMode::Normal,SvgIcon::ColorMap{
+                                          {{"currentColor","#777777"}}
+                                      }
+                },
+                {IconMode::Hovered,SvgIcon::ColorMap{
+                                           {{"currentColor","#444444"}}
+                                       }
+                }
+            }
+        }}
+    );
 }
 
 //--------------------------------------------------------------------------

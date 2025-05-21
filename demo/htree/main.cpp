@@ -49,12 +49,10 @@ using namespace UISE_DESKTOP_NAMESPACE;
 int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
-
+#if 0
     Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::close","x");
     Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::collapse","minus");
-    // Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::refresh","refresh");
-    Style::instance().svgIconTheme().addNamePath("HTreeNodePlaceHolder::dots",":/uise/tabler-icons/outline/dots-vertical.svg");
-    Style::instance().svgIconTheme().addIconDir(":/uise/tabler-icons/outline");
+    Style::instance().svgIconTheme().addNamePath("HTreeNodePlaceHolder::dots",":/uise/tabler-icons/outline/dots-vertical.svg");    
 
     Style::instance().svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
@@ -86,7 +84,7 @@ int main(int argc, char *argv[])
                                   }
                                 }}
     );
-
+#endif
     QMainWindow w;
     auto mainFrame=new QFrame();
     mainFrame->setObjectName("mainFrame");

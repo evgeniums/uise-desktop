@@ -32,8 +32,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include <uise/desktop/utils/substitutecolors.hpp>
+#include <uise/desktop/htree.hpp>
 
+#include <uise/desktop/utils/substitutecolors.hpp>
 #include <uise/desktop/style.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -52,6 +53,7 @@ Style::Style(
 {
     resetFallbackIconPaths();
     resetStyleSheetPaths();
+    resetSvgIconTheme();
 }
 
 //--------------------------------------------------------------------------
@@ -328,6 +330,7 @@ void Style::reset()
     m_colorMap.clear();
     resetFallbackIconPaths();
     resetStyleSheetPaths();
+    resetSvgIconTheme();
 }
 
 //--------------------------------------------------------------------------
@@ -341,7 +344,15 @@ void Style::resetFallbackIconPaths()
 void Style::resetStyleSheetPaths()
 {
     m_styleSheetPaths.clear();
-    m_styleSheetPaths.push_back(UiseQssPath);
+    m_styleSheetPaths.push_back(UiseQssPath);    
+}
+
+//--------------------------------------------------------------------------
+void Style::resetSvgIconTheme()
+{
+    m_svgIconTheme.addIconDir(":/uise/tabler-icons/outline");
+
+    HTree::resetSvgIconTheme(m_svgIconTheme);
 }
 
 //--------------------------------------------------------------------------
