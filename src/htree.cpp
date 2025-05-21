@@ -366,26 +366,26 @@ void HTree::activate()
 
 //--------------------------------------------------------------------------
 
-void HTree::resetSvgIconTheme(SvgIconTheme& theme)
+void HTree::resetSvgIconTheme(Style& style)
 {
-    theme.addNameMapping("HTreeNodeTitleBar::close","x");
-    theme.addNameMapping("HTreeNodeTitleBar::collapse","minus");
-    theme.addNameMapping("HTreeNodePlaceHolder::dots","dots-vertical");
-    theme.addColorMap(
+    style.svgIconTheme().addNameMapping("HTreeNodeTitleBar::close","x");
+    style.svgIconTheme().addNameMapping("HTreeNodeTitleBar::collapse","minus");
+    style.svgIconTheme().addNameMapping("HTreeNodePlaceHolder::dots","dots-vertical");
+    style.svgIconTheme().addColorMap(
         SvgIcon::ColorMap{
             {{"currentColor","#CCCCCC"}},
             {{"currentColor","#999999"}}
         },
         "HTreeNodeTitleBar"
     );
-    theme.addColorMap(
+    style.svgIconTheme().addColorMap(
         SvgIcon::ColorMap{
             {{"currentColor","#FFFFFF"}}
         },
         "HTreeNodeTitleBar",
         IconMode::Hovered
         );
-    theme.loadIcons(
+    style.svgIconTheme().loadIcons(
         {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
             {
                 {IconMode::Normal,SvgIcon::ColorMap{
@@ -400,22 +400,22 @@ void HTree::resetSvgIconTheme(SvgIconTheme& theme)
         }}
     );
 
-    if (Style::instance().isDarkTheme())
+    if (style.isDarkTheme())
     {
-        Style::instance().svgIconTheme().addColorMap(
+        style.svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#CCCCCC"}}
             },
             "HTreeStandardListItem"
         );
-        Style::instance().svgIconTheme().addColorMap(
+        style.svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#FFFFFF"}}
             },
             "HTreeStandardListItem",
             IconMode::Hovered
         );
-        Style::instance().svgIconTheme().addColorMap(
+        style.svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#FFFFFF"}}
             },
@@ -425,25 +425,11 @@ void HTree::resetSvgIconTheme(SvgIconTheme& theme)
     }
     else
     {
-        Style::instance().svgIconTheme().addColorMap(
+        style.svgIconTheme().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#444444"}}
             },
             "HTreeStandardListItem"
-        );
-        Style::instance().svgIconTheme().addColorMap(
-            SvgIcon::ColorMap{
-                {{"currentColor","#FFFFFF"}}
-            },
-            "HTreeStandardListItem",
-            IconMode::Hovered
-        );
-        Style::instance().svgIconTheme().addColorMap(
-            SvgIcon::ColorMap{
-                {{"currentColor","#FFFFFF"}}
-            },
-            "HTreeStandardListItem",
-            IconMode::Checked
         );
     }
 }

@@ -53,6 +53,7 @@ Style::Style(
 {
     resetFallbackIconPaths();
     resetStyleSheetPaths();
+    resetSvgIconTheme();
 }
 
 //--------------------------------------------------------------------------
@@ -226,8 +227,7 @@ void Style::applyStyleSheet(QWidget *widget)
     {
         widget->setStyleSheet(m_styleSheet);
         checkDarkTheme();
-    }
-    resetSvgIconTheme();
+    }    
 }
 
 //--------------------------------------------------------------------------
@@ -352,7 +352,7 @@ void Style::resetSvgIconTheme()
 {
     m_svgIconTheme.addIconDir(":/uise/tabler-icons/outline");
 
-    HTree::resetSvgIconTheme(m_svgIconTheme);
+    HTree::resetSvgIconTheme(*this);
 }
 
 //--------------------------------------------------------------------------

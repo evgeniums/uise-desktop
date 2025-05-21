@@ -37,7 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class SvgIconTheme;
+class Style;
 
 class HTreeNode;
 class HTreeTab;
@@ -91,7 +91,7 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         HTreeSideBar* sidebar() const;
 
-        static void resetSvgIconTheme(SvgIconTheme& theme);
+        static void resetSvgIconTheme(Style& style);
 
     signals:
 
