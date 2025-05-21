@@ -8,5 +8,14 @@
         <file>tabler-icons/outline/reload.svg</file>
         <file>tabler-icons/outline/x.svg</file>
         <file>tabler-icons/outline/file-alert.svg</file>
+        <file>tabler-icons/outline/server-2.svg</file>
+        <file>tabler-icons/outline/server.svg</file>
+        <file>tabler-icons/outline/settings.svg</file>
+        <file>tabler-icons/outline/subtask.svg</file>
+        <file>tabler-icons/outline/user-off.svg</file>
+        <file>tabler-icons/outline/user-plus.svg</file>
+        <file>tabler-icons/outline/user-x.svg</file>
+        <file>tabler-icons/outline/users-group.svg</file>
+        <file>tabler-icons/outline/users.svg</file>
     </qresource>
 </RCC>
