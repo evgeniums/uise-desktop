@@ -1,0 +1,5 @@
+uise--NavigationBarSeparator {color:#888888;}
+uise--NavigationBarSeparator[hover="true"] {color:#BBBBBB;}
+uise--NavigationBar QToolButton {color:#888888;}
+uise--NavigationBar QToolButton:hover:!checked {color: #BBBBBB;}
+uise--NavigationBar QToolButton:checked {color: #BBBBBB;}

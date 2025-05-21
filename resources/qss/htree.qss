@@ -1,0 +1,35 @@
+uise--HTree uise--NavigationBarPanel {padding:0;margin:0;}
+uise--HTree uise--NavigationBar {padding:12px 0;margin:0px;}
+uise--HTree uise--NavigationBar QToolButton{
+    padding:4px;
+    margin:4px;
+    border:none;
+    font-size:12px;
+    text-decoration:underline;
+}
+uise--HTree uise--NavigationBar QToolButton:checked {text-decoration:none;}
+uise--HTree uise--NavigationBar QScrollBar {margin:0;padding:0;}
+
+uise--HTree #hTreeSplitterScArea {border:none;}
+
+uise--HTreeNode {padding:0;margin:0;}
+uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:12px;}
+uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0;}
+uise--HTreeNodeTitleBar {
+    border-right:none;
+    border-left:none;
+    padding:0;
+    margin:0;
+}
+
+uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right:1px;}
+uise--HTreeNodePlaceHolder QPushButton {border:none;icon-size: 20px 8px;}
+
+uise--HTreeStansardListItem #hTreeItemPixmap {margin-right: 8px;}
+uise--HTreeStansardListItem {padding-left:4px;}
+uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}
+
+uise--HTreeSplitterSection {padding:0;}
+uise--HTreeSplitterLine {border:none;}
+
+uise--HTreeList {padding:0;margin:0;}

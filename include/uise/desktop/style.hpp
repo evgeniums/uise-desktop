@@ -207,6 +207,16 @@ class UISE_DESKTOP_EXPORT Style final
             return m_loadedStyleSheet;
         }
 
+        QString styleSheetColorTheme() const
+        {
+            return m_colorThemeName;
+        }
+
+        void setStyleSheetColorTheme(QString value)
+        {
+            m_colorThemeName=std::move(value);
+        }
+
         /**
          * @brief Get color map.
          * @return Query result.
@@ -356,6 +366,7 @@ class UISE_DESKTOP_EXPORT Style final
         std::map<QString,QString> m_colorMap;
 
         SvgIconTheme m_svgIconTheme;
+        QString m_colorThemeName;
 };
 
 UISE_DESKTOP_NAMESPACE_END

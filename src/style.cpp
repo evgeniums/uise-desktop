@@ -75,6 +75,8 @@ Style& Style::instance()
 //--------------------------------------------------------------------------
 void Style::reloadStyleSheet()
 {
+    m_loadedStyleSheet.clear();
+
     // check dark theme
     auto darkTheme=false;
     if (m_darkStyleSheetMode==StyleSheetMode::Auto)
@@ -86,21 +88,10 @@ void Style::reloadStyleSheet()
         darkTheme=true;
     }
 
-    // load style sheets from files at paths
+    // list non-color style files
+    QStringList files;
     for (auto&& folderPath:m_styleSheetPaths)
     {
-        // check if folder exists for dark theme
-        if (darkTheme)
-        {
-            auto tryDarkFolderPath=QString("%1/dark").arg(folderPath);
-            if (QFileInfo::exists(tryDarkFolderPath))
-            {
-                folderPath=tryDarkFolderPath;
-            }
-        }
-
-        // collect style sheets from files in folder
-        m_loadedStyleSheet.clear();
         QDir stylesDir(folderPath);
         QStringList filters;
         filters << "*.css" << "*.qss";
@@ -108,35 +99,85 @@ void Style::reloadStyleSheet()
         auto items=stylesDir.entryInfoList(QDir::Files);
         for (auto&& item:items)
         {
-            QFile file(item.canonicalFilePath());
-            if (file.open(QFile::ReadOnly))
+            files.append(item.canonicalFilePath());
+        }
+    }
+
+    // list color style files
+    for (auto&& folderPath:m_styleSheetPaths)
+    {
+        QString defaultColorTheme;
+        if (darkTheme)
+        {
+            defaultColorTheme="dark";
+        }
+        else
+        {
+            defaultColorTheme="light";
+        }
+        auto colorTheme=m_colorThemeName;
+        if (colorTheme.isEmpty())
+        {
+            colorTheme=defaultColorTheme;
+        }
+
+        auto defaultColorThemePath=QString("%1/%2").arg(folderPath,defaultColorTheme);
+        auto themePath=QString("%1/%2").arg(folderPath,colorTheme);
+
+        QStringList filters;
+        filters << "*.css" << "*.qss";
+
+        // list deafult color theme files for dark or light
+        QSet<QString> defaultFiles;
+        QDir defaultStylesDir(defaultColorThemePath);
+        defaultStylesDir.setNameFilters(filters);
+        auto items=defaultStylesDir.entryInfoList(QDir::Files);
+        for (auto&& item:items)
+        {
+            defaultFiles.insert(item.fileName());
+        }
+
+        // list current theme files
+        if (colorTheme!=defaultColorTheme)
+        {
+            QDir themeStylesDir(themePath);
+            themeStylesDir.setNameFilters(filters);
+            items=themeStylesDir.entryInfoList(QDir::Files);
+            for (auto&& item:items)
             {
-                auto data=file.readAll();
-                if (!data.isEmpty())
+                auto file=item.canonicalFilePath();
+                if (defaultFiles.contains(file))
                 {
-                    m_loadedStyleSheet+=QString("%1\n").arg(QString::fromUtf8(data));
+                    // override default file with file in current color theme
+                    auto fileName=item.fileName();
+                    defaultFiles.remove(fileName);
                 }
+                files.append(file);
+            }
+        }
+
+        // append default color theme files that were not overriden in current color theme
+        for (auto&& file:defaultFiles)
+        {
+            files.append(defaultColorThemePath+"/"+file);
+        }
+    }
+
+    // load style sheets
+    for (auto&& fileName:files)
+    {
+        QFile file(fileName);
+        if (file.open(QFile::ReadOnly))
+        {
+            auto data=file.readAll();
+            if (!data.isEmpty())
+            {
+                m_loadedStyleSheet+=QString("%1\n").arg(QString::fromUtf8(data));
             }
         }
     }
 
-    // apply color map
-    if (m_colorMap.empty())
-    {
-        setStyleSheet(m_loadedStyleSheet);
-    }
-    else
-    {
-        auto loadedStyleSheet=m_loadedStyleSheet;
-        loadedStyleSheet=loadedStyleSheet.toLower();
-        std::map<std::string,std::string> colorMap;
-        for (auto&& it:m_colorMap)
-        {
-            colorMap[it.first.toLower().toStdString()]=it.second.toLower().toStdString();
-        }
-        auto styleSheet=substituteColors(loadedStyleSheet.toStdString(),colorMap);
-        setStyleSheet(QString::fromStdString(styleSheet));
-    }
+    setStyleSheet(m_loadedStyleSheet);
 }
 
 //--------------------------------------------------------------------------

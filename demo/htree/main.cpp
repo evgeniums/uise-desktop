@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
     HTreePathElement root{DirListItem::Folder,rootPath.string(),rootPathName};
     htree->openPath(root);
     htree->sidebar()->setVisible(false);
-
+#if 0
     QString colorBBB="#BBBBBB";
     QString color888="#888888";
     QString colorSplitterLine="#888888";
@@ -180,6 +180,12 @@ int main(int argc, char *argv[])
         ;    
     qss=qss.arg(colorBBB,color888,colorSplitterLine);
     qApp->setStyleSheet(qss);
+#else
+
+    Style::instance().reloadStyleSheet();
+    Style::instance().applyStyleSheet();
+
+#endif
 
     w.setCentralWidget(mainFrame);
     w.resize(800,600);

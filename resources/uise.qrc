@@ -3,10 +3,16 @@
         <file>icons/dialog-cancel.svg</file>
         <file>icons/dialog-ok-apply.svg</file>
         <file>icons/document-edit.svg</file>
-        <file>qss/spinner.qss</file>
         <file>qss/dark/spinner.qss</file>
         <file>icons/dark/dialog-cancel.svg</file>
         <file>icons/dark/dialog-ok-apply.svg</file>
         <file>icons/dark/document-edit.svg</file>
+        <file>qss/htree.qss</file>
+        <file>qss/dark/htree.qss</file>
+        <file>qss/light/htree.qss</file>
+        <file>qss/light/spinner.qss</file>
+        <file>qss/navigationbar.qss</file>
+        <file>qss/dark/navigationbar.qss</file>
+        <file>qss/light/navigationbar.qss</file>
     </qresource>
 </RCC>
