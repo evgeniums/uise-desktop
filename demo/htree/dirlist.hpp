@@ -56,7 +56,7 @@ class DirListItem : public HTreeStansardListItem
         DirListItem(
                 const std::filesystem::directory_entry& entry,
                 QWidget* parent=nullptr
-            ) : HTreeStansardListItem(entry.is_directory()?Folder:File, parent),
+            ) : HTreeStansardListItem(entry.is_directory()?Folder:File, {}, {}, parent),
                 entry(entry)
         {
             auto drawIcon=[this](bool selected)
