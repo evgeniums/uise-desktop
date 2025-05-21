@@ -39,7 +39,8 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
 
         PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr)
             : QPushButton(parent),
-              m_icon(std::move(icon))
+              m_icon(std::move(icon)),
+              m_parentHovered(false)
         {}
 
         PushButton(QWidget* parent=nullptr) : QPushButton(parent)
@@ -51,12 +52,22 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
         void setSvgIcon(std::shared_ptr<SvgIcon> icon)
         {
             m_icon=std::move(icon);
-            update();
+            if (m_icon)
+            {
+                setIcon(m_icon->icon());
+            }
         }
 
         std::shared_ptr<SvgIcon> svgIcon() const
         {
             return m_icon;
+        }
+
+        void setParentHovered(bool enable);
+
+        bool isParentHovered() const
+        {
+            return m_parentHovered;
         }
 
     protected:
@@ -67,6 +78,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
     private:
 
         std::shared_ptr<SvgIcon> m_icon;
+        bool m_parentHovered;
 };
 
 UISE_DESKTOP_NAMESPACE_END

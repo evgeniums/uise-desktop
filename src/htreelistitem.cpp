@@ -140,6 +140,7 @@ void HTreeListItem::setWidget(QWidget* widget)
     if (underMouse())
     {
         pimpl->widget->setProperty("hover",true);
+        doSetHovered(true);
     }
 }
 
@@ -148,13 +149,14 @@ void HTreeListItem::setWidget(QWidget* widget)
 void HTreeListItem::setSelected(bool enable)
 {
     setProperty("selected",enable);
+    doSetSelected(enable);
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("selected",enable);
     }
     style()->unpolish(this);
     style()->polish(this);
-    pimpl->selected=true;
+    pimpl->selected=enable;
 
     emit selectionChanged(enable);
 }
@@ -176,8 +178,9 @@ void HTreeListItem::enterEvent(QEnterEvent *event)
     {
         pimpl->widget->setProperty("hover",true);
     }
+    doSetHovered(true);
     style()->unpolish(this);
-    style()->polish(this);
+    style()->polish(this);    
 }
 
 //--------------------------------------------------------------------------
@@ -190,14 +193,21 @@ void HTreeListItem::leaveEvent(QEvent *event)
     {
         pimpl->widget->setProperty("hover",false);
     }
+    doSetHovered(false);
     style()->unpolish(this);
-    style()->polish(this);
+    style()->polish(this);    
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeListItem::click()
 {
+    if (isSelected())
+    {
+        setSelected(false);
+        return;
+    }
+
     if (QApplication::keyboardModifiers() & Qt::ShiftModifier
 #ifdef Q_OS_MAC
         ||
@@ -319,7 +329,17 @@ bool HTreeListItem::isOpenInWindowEnabled() const noexcept
     return pimpl->openInWindowEnabled;
 }
 
+//--------------------------------------------------------------------------
 
+void HTreeListItem::doSetHovered(bool)
+{
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListItem::doSetSelected(bool)
+{
+}
 
 /************************* HTreeStandardListItem ******************************/
 
@@ -336,7 +356,7 @@ class HTreeStansardListItem_p
 
 //--------------------------------------------------------------------------
 
-HTreeStansardListItem::HTreeStansardListItem(const QString& type, std::shared_ptr<SvgIcon> icon, QWidget* parent)
+HTreeStansardListItem::HTreeStansardListItem(const QString& type, const QString& text, std::shared_ptr<SvgIcon> icon, QWidget* parent)
     : HTreeListItem(parent),
       pimpl(std::make_unique<HTreeStansardListItem_p>())
 {
@@ -346,6 +366,7 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, std::shared_pt
     pimpl->icon=new PushButton(this);
     pimpl->icon->setObjectName("hTreeItemPixmap");
     pimpl->icon->setSvgIcon(icon);
+    pimpl->icon->setCheckable(true);
     pimpl->layout->addWidget(pimpl->icon);
 
     pimpl->text=new ElidedLabel(this);
@@ -372,13 +393,7 @@ HTreeStansardListItem::HTreeStansardListItem(const QString& type, std::shared_pt
             }
         }
     );
-}
-
-//--------------------------------------------------------------------------
-
-HTreeStansardListItem::HTreeStansardListItem(const QString& type, QWidget* parent)
-    : HTreeStansardListItem(type,{},parent)
-{
+    pimpl->text->setText(text);
 }
 
 //--------------------------------------------------------------------------
@@ -454,6 +469,20 @@ void HTreeStansardListItem::setPropagateIconClick(bool enable)
 bool HTreeStansardListItem::isPropagateIconClick() const
 {
     return pimpl->propagateIconClick;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStansardListItem::doSetHovered(bool enable)
+{
+    pimpl->icon->setParentHovered(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStansardListItem::doSetSelected(bool enable)
+{
+    pimpl->icon->setChecked(enable);
 }
 
 //--------------------------------------------------------------------------

@@ -38,7 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache)
 {
-    // qDebug() << "paint mode=" << mode << " state=" << state;
+    // qDebug() << "SvgIcon::paint mode=" << mode << " state=" << state << " name="<<name();
 
     if (cache)
     {

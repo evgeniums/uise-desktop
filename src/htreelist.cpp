@@ -99,6 +99,34 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
         &HTreeList::openNextNodeInNewTree
     );
 
+    for (auto& otherItem: pimpl->items)
+    {
+        connect(
+            item,
+            &HTreeListItem::selectionChanged,
+            otherItem.second,
+            [other=otherItem.second](bool selected)
+            {
+                if (selected)
+                {
+                    other->setSelected(false);
+                }
+            }
+        );
+        connect(
+            otherItem.second,
+            &HTreeListItem::selectionChanged,
+            item,
+            [item](bool selected)
+            {
+                if (selected)
+                {
+                    item->setSelected(false);
+                }
+            }
+        );
+    }
+
     pimpl->items[item->pathElement().id()]=item;
 
     pimpl->maxItemWidth=std::max(pimpl->maxItemWidth,item->sizeHint().width()+ItemExtraWidth);

@@ -35,7 +35,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void PushButton::enterEvent(QEnterEvent* event)
 {
-    if (m_icon)
+    if (!m_parentHovered && !isChecked() && m_icon)
     {
         setIcon(m_icon->hoverIcon());
     }
@@ -46,11 +46,34 @@ void PushButton::enterEvent(QEnterEvent* event)
 
 void PushButton::leaveEvent(QEvent* event)
 {
-    if (m_icon)
+    if (m_parentHovered)
+    {
+        return;
+    }
+
+    if (!m_parentHovered && !isChecked() && m_icon)
     {
         setIcon(m_icon->icon());
     }
     QPushButton::leaveEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void PushButton::setParentHovered(bool enable)
+{
+    m_parentHovered=enable;
+    if (!isChecked() && m_icon)
+    {
+        if (enable)
+        {
+            setIcon(m_icon->hoverIcon());
+        }
+        else
+        {
+            setIcon(m_icon->icon());
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

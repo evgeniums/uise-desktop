@@ -53,7 +53,6 @@ Style::Style(
 {
     resetFallbackIconPaths();
     resetStyleSheetPaths();
-    resetSvgIconTheme();
 }
 
 //--------------------------------------------------------------------------
@@ -228,6 +227,7 @@ void Style::applyStyleSheet(QWidget *widget)
         widget->setStyleSheet(m_styleSheet);
         checkDarkTheme();
     }
+    resetSvgIconTheme();
 }
 
 //--------------------------------------------------------------------------

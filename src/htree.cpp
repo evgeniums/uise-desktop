@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/svgicontheme.hpp>
 
 #include <uise/desktop/htreesidebar.hpp>
@@ -398,6 +399,53 @@ void HTree::resetSvgIconTheme(SvgIconTheme& theme)
             }
         }}
     );
+
+    if (Style::instance().isDarkTheme())
+    {
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#CCCCCC"}}
+            },
+            "HTreeStandardListItem"
+        );
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#FFFFFF"}}
+            },
+            "HTreeStandardListItem",
+            IconMode::Hovered
+        );
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#FFFFFF"}}
+            },
+            "HTreeStandardListItem",
+            IconMode::Checked
+        );
+    }
+    else
+    {
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#444444"}}
+            },
+            "HTreeStandardListItem"
+        );
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#FFFFFF"}}
+            },
+            "HTreeStandardListItem",
+            IconMode::Hovered
+        );
+        Style::instance().svgIconTheme().addColorMap(
+            SvgIcon::ColorMap{
+                {{"currentColor","#FFFFFF"}}
+            },
+            "HTreeStandardListItem",
+            IconMode::Checked
+        );
+    }
 }
 
 //--------------------------------------------------------------------------

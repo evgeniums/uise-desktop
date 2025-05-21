@@ -102,6 +102,9 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
 
         void showMenu(const QPoint& pos);
 
+        virtual void doSetHovered(bool enable);
+        virtual void doSetSelected(bool enable);
+
     private:
 
         friend class HTreeListItem_p;
@@ -121,9 +124,7 @@ class UISE_DESKTOP_EXPORT HTreeStansardListItem : public HTreeListItem
          * @brief Constructor.
          * @param parent Parent widget.
          */
-        HTreeStansardListItem(const QString& type, QWidget* parent=nullptr);
-
-        HTreeStansardListItem(const QString& type, std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr);
+        HTreeStansardListItem(const QString& type, const QString& text, std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr);
 
         /**
          * @brief Destructor.
@@ -149,6 +150,21 @@ class UISE_DESKTOP_EXPORT HTreeStansardListItem : public HTreeListItem
         void setPropagateIconClick(bool enable);
         bool isPropagateIconClick() const;
 
+        std::string name() const
+        {
+            return pathElement().name();
+        }
+
+        std::string sortValue() const noexcept
+        {
+            return name();
+        }
+
+        std::string id() const
+        {
+            return pathElement().id();
+        }
+
     signals:
 
         void iconClicked();
@@ -157,6 +173,11 @@ class UISE_DESKTOP_EXPORT HTreeStansardListItem : public HTreeListItem
 
         void setText(const QString& text);
         void setPixmap(const QPixmap& pixmap);
+
+    protected:
+
+        void doSetHovered(bool enable) override;
+        void doSetSelected(bool enable) override;
 
     private:
 

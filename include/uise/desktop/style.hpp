@@ -77,6 +77,11 @@ class UISE_DESKTOP_EXPORT Style final
          */
         bool isDarkTheme() const noexcept
         {
+            if (m_darkStyleSheetMode==StyleSheetMode::Auto)
+            {
+                return const_cast<Style*>(this)->checkDarkTheme();
+            }
+
             return m_darkTheme;
         }
 
