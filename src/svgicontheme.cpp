@@ -89,12 +89,12 @@ QString plainName(const QString& name)
 std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, const StyleContext&) const
 {
     //! @todo Implement processing of style context
-    return icon(name,true);
+    return iconPriv(name,true);
 }
 
 //-------------------------------------------------------------------------- 
 
-std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, bool autocreate) const
+std::shared_ptr<SvgIcon> SvgIconTheme::iconPriv(const QString& name, bool autocreate) const
 {
     // find icon in cache
     auto it=m_icons.find(name);
@@ -165,7 +165,7 @@ void SvgIconTheme::loadIcons(const std::vector<IconConfig>& iconConfigs)
     for (const auto& iconConfig: iconConfigs)
     {
         bool insert=false;
-        auto icon=this->icon(iconConfig.name,false);
+        auto icon=this->iconPriv(iconConfig.name,false);
         if (!icon)
         {
             insert=true;

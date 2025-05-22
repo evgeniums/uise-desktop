@@ -53,9 +53,7 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
                   aliasModes(std::move(aliasModes)),
                   sizes(std::move(sizes))
             {}
-        };
-
-        std::shared_ptr<SvgIcon> icon(const QString& name, bool autocreate) const;
+        };        
 
         std::shared_ptr<SvgIcon> icon(const QString& name, const StyleContext& ={}) const;
 
@@ -192,7 +190,7 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
 
         void setFallbackIcon(const QString& name)
         {
-            m_fallbackIcon=icon(name,true);
+            m_fallbackIcon=iconPriv(name,true);
         }
 
         void setFallbackIcon(std::shared_ptr<SvgIcon> icon)
@@ -219,6 +217,8 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
         }
 
     private:
+
+        std::shared_ptr<SvgIcon> iconPriv(const QString& name, bool autocreate) const;
 
         mutable std::map<QString,std::shared_ptr<SvgIcon>> m_icons;
 
