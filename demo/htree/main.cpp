@@ -49,42 +49,6 @@ using namespace UISE_DESKTOP_NAMESPACE;
 int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
-#if 0
-    Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::close","x");
-    Style::instance().svgIconTheme().addNameMapping("HTreeNodeTitleBar::collapse","minus");
-    Style::instance().svgIconTheme().addNamePath("HTreeNodePlaceHolder::dots",":/uise/tabler-icons/outline/dots-vertical.svg");    
-
-    Style::instance().svgIconTheme().addColorMap(
-            SvgIcon::ColorMap{
-                {{"currentColor","#CCCCCC"}},
-                {{"currentColor","#999999"}}
-            },
-            "HTreeNodeTitleBar"
-        );
-
-    Style::instance().svgIconTheme().addColorMap(
-        SvgIcon::ColorMap{
-            {{"currentColor","#FFFFFF"}}
-        },
-        "HTreeNodeTitleBar",
-        IconMode::Hovered
-    );
-
-    Style::instance().svgIconTheme().loadIcons(
-        {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
-                                  {
-                                    {IconMode::Normal,SvgIcon::ColorMap{
-                                                          {{"currentColor","#777777"}}
-                                                      }
-                                    },
-                                    {IconMode::Hovered,SvgIcon::ColorMap{
-                                                             {{"currentColor","#444444"}}
-                                                         }
-                                   }
-                                  }
-                                }}
-    );
-#endif
     QMainWindow w;
     auto mainFrame=new QFrame();
     mainFrame->setObjectName("mainFrame");
@@ -127,63 +91,9 @@ int main(int argc, char *argv[])
     HTreePathElement root{DirListItem::Folder,rootPath.string(),rootPathName};
     htree->openPath(root);
     htree->sidebar()->setVisible(false);
-#if 0
-    QString colorBBB="#BBBBBB";
-    QString color888="#888888";
-    QString colorSplitterLine="#888888";
-    if (!Style::instance().checkDarkTheme())
-    {
-        colorBBB="#444444";
-        color888="#888888";
-        colorSplitterLine="#DDDDDD";
-    }
-
-    QString qss=""
-                  "uise--NavigationBarPanel {padding:0;margin:0;background-color:transparent;}"
-                  "uise--NavigationBar {padding:12px 0;margin:0px;}\n"
-                  // "uise--NavigationBar QScrollArea {padding:0;margin:0;border:none;background-color:blue;}\n"
-
-                  "uise--NavigationBarSeparator {color:%2;}\n"
-                  "uise--NavigationBarSeparator[hover=\"true\"] {color:%1;}\n"
-                  "uise--NavigationBar QToolButton {padding:4;margin:4;border:none;font-size:12px;color:%2;background-color:transparent;text-decoration:underline;}\n"
-                  "uise--NavigationBar QToolButton:hover:!checked {color: %1;}\n"
-                  "uise--NavigationBar QToolButton:checked {color: %1;text-decoration:none;}\n"
-
-                  "uise--NavigationBar QScrollBar {margin:0;padding:0;}\n"
-                  "#hTreeItemPixmap {margin-right: 8px;}\n"
-                  "uise--HTreeStansardListItem {padding-left:4px;}\n"
-                  "uise--HTreeStansardListItem QLabel{padding:0;margin:4px 0;}\n"
-                  "uise--HTreeSplitterLine {background-color:%3;border:none;}"
-
-                  "uise--HTreeSplitterSection {padding:0;}"
-                  "uise--HTreeList {padding:0;margin:0;}"
-                  "uise--HTreeNode {padding:0;margin:0;}"
-
-                  // "#DirList {padding-left:4px;}\n"
-                  "#DirListItem[hover=\"true\"] {background-color:#C4C4C4;}\n"
-                  "#DirListItem[selected=\"true\"] {background-color:#B0B0B0;}\n"
-                  // "uise--ElidedLabel {background-color:blue;}\n"
-
-                  // "uise--HTreeSplitterInternal {border:none;padding: 0px; margin: 0px; background-color: blue;}"
-                  "#hTreeSplitterScArea {border:none;}\n"
-
-                  "uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:12px;}\n"
-                  "uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0;}\n"
-                  "uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:white;}\n"
-                  "uise--HTreeNodeTitleBar {border: 1px solid #999999; border-right:none; border-left:none; background-color: #888888; padding:0;}\n"
-                  "uise--HTreeNodeTitleBar {padding:0;margin:0;}"
-
-                  "uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right: 1px; background-color: #C8C8C0;}"
-                  "uise--HTreeNodePlaceHolder QPushButton {border:none;background-color: #C8C8C0;icon-size: 20px 8px;}"
-        ;    
-    qss=qss.arg(colorBBB,color888,colorSplitterLine);
-    qApp->setStyleSheet(qss);
-#else
 
     Style::instance().reloadStyleSheet();
     Style::instance().applyStyleSheet();
-
-#endif
 
     w.setCentralWidget(mainFrame);
     w.resize(800,600);
