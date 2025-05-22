@@ -672,7 +672,18 @@ void HTreeNode::setNextNodeLocator(HTreeNodeLocator* locator)
 
 HTreeNodeLocator* HTreeNode::nextNodeLocator() const
 {
-    return pimpl->nextNodeLocator;
+    if (pimpl->nextNodeLocator!=nullptr)
+    {
+        return pimpl->nextNodeLocator;
+    }
+
+    auto prevNode=parentNode();
+    if (prevNode!=nullptr)
+    {
+        return prevNode->nextNodeLocator();
+    }
+
+    return pimpl->treeTab->tree()->nodeLocator();
 }
 
 //--------------------------------------------------------------------------

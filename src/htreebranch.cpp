@@ -80,11 +80,6 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
 
     HTreeNode* nextNode=nullptr;
     auto locator=nextNodeLocator();
-    if (locator==nullptr)
-    {
-        locator=treeTab()->tree()->nodeLocator();
-    }
-
     auto nodeResult=locator->findOrCreateNode(pathElement,this,treeTab());
     if (nodeResult.first==nullptr)
     {
