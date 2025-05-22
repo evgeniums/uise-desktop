@@ -38,6 +38,13 @@ You may select, at your option, one of the above-listed licenses.
 
 //#define UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
 
+#ifdef _MSC_VER
+
+#pragma warning(push)
+#pragma warning(disable : 4267) // disable size_t to int warnings
+
+#endif
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
@@ -1414,6 +1421,12 @@ void FlyweightListView_p<ItemT>::onOtherSbarChanged(int value)
 } // namespace detail
 
 //--------------------------------------------------------------------------
+
+#ifdef _MSC_VER
+
+#pragma warning(pop) // size_t to int warnings
+
+#endif
 
 UISE_DESKTOP_NAMESPACE_END
 
