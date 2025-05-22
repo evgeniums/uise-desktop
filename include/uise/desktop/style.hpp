@@ -32,7 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStyle>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/svgicontheme.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -352,12 +352,12 @@ class UISE_DESKTOP_EXPORT Style final
          */
         void resetFallbackIconPaths();
 
-        SvgIconTheme& svgIconTheme()
+        SvgIconLocator& svgIconLocator()
         {
-            return m_svgIconTheme;
+            return m_svgIconLocator;
         }
 
-        void resetSvgIconTheme();
+        void resetSvgIconLocator();
 
     private:
 
@@ -372,7 +372,7 @@ class UISE_DESKTOP_EXPORT Style final
 
         std::map<QString,QString> m_colorMap;
 
-        SvgIconTheme m_svgIconTheme;
+        SvgIconLocator m_svgIconLocator;
         QString m_colorThemeName;
 };
 

@@ -17,7 +17,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /** @file uise/desktop/icontheme.hpp
 *
-*  Defines SvgIconTheme.
+*  Defines SvgIconLocator.
 *
 */
 
@@ -28,7 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDebug>
 #include <QFile>
 
-#include <uise/desktop/svgicontheme.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -86,7 +86,7 @@ QString plainName(const QString& name)
 
 //--------------------------------------------------------------------------
 
-std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, const StyleContext&) const
+std::shared_ptr<SvgIcon> SvgIconLocator::icon(const QString& name, const StyleContext&) const
 {
     //! @todo Implement processing of style context
     return iconPriv(name,true);
@@ -94,7 +94,7 @@ std::shared_ptr<SvgIcon> SvgIconTheme::icon(const QString& name, const StyleCont
 
 //-------------------------------------------------------------------------- 
 
-std::shared_ptr<SvgIcon> SvgIconTheme::iconPriv(const QString& name, bool autocreate) const
+std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool autocreate) const
 {
     // find icon in cache
     auto it=m_icons.find(name);
@@ -160,7 +160,7 @@ std::shared_ptr<SvgIcon> SvgIconTheme::iconPriv(const QString& name, bool autocr
 
 //--------------------------------------------------------------------------
 
-void SvgIconTheme::loadIcons(const std::vector<IconConfig>& iconConfigs)
+void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs)
 {
     for (const auto& iconConfig: iconConfigs)
     {

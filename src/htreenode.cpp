@@ -46,7 +46,7 @@ namespace{
 
 auto* iconButton(const QString& iconName, QWidget* parent=nullptr)
 {
-    auto icon=Style::instance().svgIconTheme().icon(iconName,parent);
+    auto icon=Style::instance().svgIconLocator().icon(iconName,parent);
     UiseAssert(icon,"SVG icon must be set in icon theme");
     auto* bt=new PushButton(icon,parent);
     bt->setIcon(icon->icon());

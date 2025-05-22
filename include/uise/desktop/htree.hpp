@@ -91,7 +91,7 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         HTreeSideBar* sidebar() const;
 
-        static void resetSvgIconTheme(Style& style);
+        static void resetSvgIconLocator(Style& style);
 
     signals:
 

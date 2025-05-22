@@ -89,7 +89,7 @@ SET (HEADERS
     include/uise/desktop/htree.hpp
 
     include/uise/desktop/svgicon.hpp
-    include/uise/desktop/svgicontheme.hpp
+    include/uise/desktop/svgiconlocator.hpp
 
     include/uise/desktop/stylecontext.hpp
 
@@ -137,7 +137,7 @@ SET (SOURCES
     src/htreesidebar.cpp
 
     src/svgicon.cpp
-    src/svgicontheme.cpp
+    src/svgiconlocator.cpp
 
     src/pushbutton.cpp
 )

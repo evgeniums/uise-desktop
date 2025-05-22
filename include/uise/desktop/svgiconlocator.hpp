@@ -15,16 +15,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/svgicontheme.hpp
+/** @file uise/desktop/svgiconlocator.hpp
 *
-*  Declares SVG icon theme class.
+*  Declares SVG icon locator class.
 *
 */
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_SVG_ICON_THEME_HPP
-#define UISE_DESKTOP_SVG_ICON_THEME_HPP
+#ifndef UISE_DESKTOP_SVG_ICON_LOCATOR_HPP
+#define UISE_DESKTOP_SVG_ICON_LOCATOR_HPP
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/stylecontext.hpp>
@@ -32,7 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT SvgIconTheme
+class UISE_DESKTOP_EXPORT SvgIconLocator
 {
     using colorMapsT=std::map<IconVariant,SvgIcon::ColorMap>;
 
@@ -237,4 +237,4 @@ class UISE_DESKTOP_EXPORT SvgIconTheme
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_SVG_ICON_THEME_HPP
+#endif // UISE_DESKTOP_SVG_ICON_LOCATOR_HPP

@@ -53,7 +53,7 @@ Style::Style(
 {
     resetFallbackIconPaths();
     resetStyleSheetPaths();
-    resetSvgIconTheme();
+    resetSvgIconLocator();
 }
 
 //--------------------------------------------------------------------------
@@ -330,7 +330,7 @@ void Style::reset()
     m_colorMap.clear();
     resetFallbackIconPaths();
     resetStyleSheetPaths();
-    resetSvgIconTheme();
+    resetSvgIconLocator();
 }
 
 //--------------------------------------------------------------------------
@@ -348,11 +348,11 @@ void Style::resetStyleSheetPaths()
 }
 
 //--------------------------------------------------------------------------
-void Style::resetSvgIconTheme()
+void Style::resetSvgIconLocator()
 {
-    m_svgIconTheme.addIconDir(":/uise/tabler-icons/outline");
+    m_svgIconLocator.addIconDir(":/uise/tabler-icons/outline");
 
-    HTree::resetSvgIconTheme(*this);
+    HTree::resetSvgIconLocator(*this);
 }
 
 //--------------------------------------------------------------------------

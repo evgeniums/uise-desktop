@@ -30,7 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/style.hpp>
-#include <uise/desktop/svgicontheme.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 
 #include <uise/desktop/htreesidebar.hpp>
 #include <uise/desktop/htreetab.hpp>
@@ -366,27 +366,27 @@ void HTree::activate()
 
 //--------------------------------------------------------------------------
 
-void HTree::resetSvgIconTheme(Style& style)
+void HTree::resetSvgIconLocator(Style& style)
 {
-    style.svgIconTheme().addNameMapping("HTreeNodeTitleBar::close","x");
-    style.svgIconTheme().addNameMapping("HTreeNodeTitleBar::collapse","minus");
-    style.svgIconTheme().addNameMapping("HTreeNodePlaceHolder::dots","dots-vertical");
-    style.svgIconTheme().addColorMap(
+    style.svgIconLocator().addNameMapping("HTreeNodeTitleBar::close","x");
+    style.svgIconLocator().addNameMapping("HTreeNodeTitleBar::collapse","minus");
+    style.svgIconLocator().addNameMapping("HTreeNodePlaceHolder::dots","dots-vertical");
+    style.svgIconLocator().addColorMap(
         SvgIcon::ColorMap{
             {{"currentColor","#CCCCCC"}},
             {{"currentColor","#999999"}}
         },
         "HTreeNodeTitleBar"
     );
-    style.svgIconTheme().addColorMap(
+    style.svgIconLocator().addColorMap(
         SvgIcon::ColorMap{
             {{"currentColor","#FFFFFF"}}
         },
         "HTreeNodeTitleBar",
         IconMode::Hovered
         );
-    style.svgIconTheme().loadIcons(
-        {SvgIconTheme::IconConfig{"HTreeNodePlaceHolder::dots",
+    style.svgIconLocator().loadIcons(
+        {SvgIconLocator::IconConfig{"HTreeNodePlaceHolder::dots",
             {
                 {IconMode::Normal,SvgIcon::ColorMap{
                                           {{"currentColor","#777777"}}
@@ -402,20 +402,20 @@ void HTree::resetSvgIconTheme(Style& style)
 
     if (style.isDarkTheme())
     {
-        style.svgIconTheme().addColorMap(
+        style.svgIconLocator().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#CCCCCC"}}
             },
             "HTreeStandardListItem"
         );
-        style.svgIconTheme().addColorMap(
+        style.svgIconLocator().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#FFFFFF"}}
             },
             "HTreeStandardListItem",
             IconMode::Hovered
         );
-        style.svgIconTheme().addColorMap(
+        style.svgIconLocator().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#FFFFFF"}}
             },
@@ -425,7 +425,7 @@ void HTree::resetSvgIconTheme(Style& style)
     }
     else
     {
-        style.svgIconTheme().addColorMap(
+        style.svgIconLocator().addColorMap(
             SvgIcon::ColorMap{
                 {{"currentColor","#444444"}}
             },
