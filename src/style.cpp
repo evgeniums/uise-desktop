@@ -193,7 +193,7 @@ void Style::reloadStyleSheet()
                     if (ok)
                     {
                         auto name=iconTheme.name();
-                        if (name==defaultColorTheme || name==colorTheme)
+                        if (name==defaultColorTheme || name==colorTheme || name==AnyColorTheme)
                         {
                             auto& inserted=m_iconThemes.emplace_back(std::move(iconTheme));
                             inserted.setModesMap(modeMap());

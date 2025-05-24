@@ -44,6 +44,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
     public:
 
         constexpr static const char* UiseStylePath=":/uise/desktop/style";
+        constexpr static const char* AnyColorTheme="any";
 
         /**
          * @brief Modes of style sheet theme.

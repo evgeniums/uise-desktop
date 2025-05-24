@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QJsonObject>
 #include <QJsonArray>
 
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconcontext.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -93,12 +94,20 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
     auto obj=doc.object();
 
     // extract theme name
-    auto nameEl=obj.value("name");
-    if (!nameEl.isString())
+    QString themeField{"theme"};
+    if (obj.contains(themeField))
     {
-        return mustBeString(QStringList("name"));
+        auto nameEl=obj.value(themeField);
+        if (!nameEl.isString())
+        {
+            return mustBeString(QStringList(themeField));
+        }
+        m_name=nameEl.toString();
     }
-    m_name=nameEl.toString();
+    else
+    {
+        m_name=Style::AnyColorTheme;
+    }
 
     // extract theme contexts
     auto contexts=obj.value("contexts");

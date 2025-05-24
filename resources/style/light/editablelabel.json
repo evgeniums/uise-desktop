@@ -1,5 +1,5 @@
 {
-    "name" : "light",
+    "theme" : "light",
     "contexts" : [
         {
             "name" : "EditableLabel",

@@ -1,5 +1,4 @@
 {
-    "name" : "dark",
     "contexts" : [
         {
             "name" : "HTreeNodeTitleBar",
