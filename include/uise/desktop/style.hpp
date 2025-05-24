@@ -39,7 +39,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Helper class to work with Qt style sheets and icons.
  */
-class UISE_DESKTOP_EXPORT Style final
+class UISE_DESKTOP_EXPORT Style : public WithModesMap
 {
     public:
 
@@ -118,43 +118,43 @@ class UISE_DESKTOP_EXPORT Style final
          * @brief Get style sheet paths.
          * @return Query result.
          *
-         * See also setStyleSheetPaths().
+         * See also setStyleSheetDirs().
          */
-        QStringList styleSheetPaths() const
+        QStringList styleSheetDirs() const
         {
-            return m_styleSheetPaths;
+            return m_styleSheetDirs;
         }
 
         /**
          * @brief Set style sheet path.
-         * @param paths Paths to folders with files containing style sheets.
+         * @param dirs Directories to folders with files containing style sheets.
          *
          * Path of the folder for dark theme is automatically constructed by adding "/dark" to the style sheet path.
          * Thus, the style sheet path points to folder with style sheet files for light theme and subfolder "/dark" with style sheet files for dark theme.
          * Style sheet files must have *.qss or *.css extensions.
          */
-        void setStyleSheetPaths(QStringList paths)
+        void setStyleSheetDirs(QStringList dirs)
         {
-            m_styleSheetPaths=std::move(paths);
+            m_styleSheetDirs=std::move(dirs);
         }
 
         /**
          * @brief Append path to list of style sheet paths.
-         * @param path New path.
+         * @param dir New directory.
          *
-         * See also setStyleSheetPaths().
+         * See also setStyleSheetDirs().
          */
-        void appendStyleSheetPath(QString path)
+        void appendStyleSheetDir(QString dir)
         {
-            m_styleSheetPaths.push_back(std::move(path));
+            m_styleSheetDirs.push_back(std::move(dir));
         }
 
         /**
          * @brief Reset paths of style sheets.
          *
-         * See also setStyleSheetPaths().
+         * See also setStyleSheetDirs().
          */
-        void resetStyleSheetPaths();
+        void resetStyleSheetDirs();
 
         /**
          * @brief Get actual style sheet.
@@ -162,9 +162,9 @@ class UISE_DESKTOP_EXPORT Style final
          *
          * Actual style sheet must be either set with setStyleSheet() or automatically constructed with reloadStyleSheet() in advance.
          */
-        QString styleSheet() const
+        QString qss() const
         {
-            return m_styleSheet;
+            return m_qss;
         }
 
         /**
@@ -175,30 +175,30 @@ class UISE_DESKTOP_EXPORT Style final
          */
         void setStyleSheet(const QString& styleSheet)
         {
-            m_styleSheet=QString("%1\n%2").arg(m_baseStyleSheet,styleSheet);
+            m_qss=QString("%1\n%2").arg(m_baseQss,styleSheet);
         }
 
         /**
          * @brief Get base style sheet.
          * @return Query result.
          *
-         * See also setBaseStyleSheet().
+         * See also setBaseQss().
          */
-        QString baseStyleSheet() const
+        QString baseQss() const
         {
-            return m_baseStyleSheet;
+            return m_baseQss;
         }
 
         /**
          * @brief Set base style sheet.
-         * @param baseStyleSheet New base style sheet.
+         * @param baseQss New base style sheet.
          *
          * Base style sheet is an immutable part of automatically constructed actual style sheet.
          * Base style sheet is prepended to the automatically constructed style sheet in reloadStyleSheet().
          */
-        void setBaseStyleSheet(QString baseStyleSheet)
+        void setBaseQss(QString baseQss)
         {
-            m_baseStyleSheet=std::move(baseStyleSheet);
+            m_baseQss=std::move(baseQss);
         }
 
         /**
@@ -207,9 +207,9 @@ class UISE_DESKTOP_EXPORT Style final
          *
          * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read from folder at styleSheetPath().
          */
-        QString loadedStyleSheet() const
+        QString loadedQss() const
         {
-            return m_loadedStyleSheet;
+            return m_loadedQss;
         }
 
         QString styleSheetColorTheme() const
@@ -296,62 +296,6 @@ class UISE_DESKTOP_EXPORT Style final
          */
         void applyStyleSheet(QWidget* widget=nullptr);
 
-        /**
-         * @brief Create icon.
-         * @param name Name of the icon.
-         * @param ext Extension to use for construction of filename of fallback icon.
-         * @return Requested icon if file for the icon is found.
-         *
-         * Search for the icon is performed in the following order:
-         * <pre>
-         * 1. Look up at QIcon::themeName() of QIcon::themeSearchPaths().
-         * 2. Look up at QIcon::fallbackThemeName() of QIcon::fallbackThemePaths().
-         * 3. Look up at fallbackIconPaths() or fallbackIconPaths()/dark one by one depending on the dark/light state of current theme.
-         * </pre>
-         */
-        QIcon icon(const QString& name, const QString& ext="svg") const;
-
-        /**
-         * @brief Get paths of fallback icons.
-         * @return Query result.
-         *
-         * See also icon().
-         */
-        QStringList fallbacktIconPaths() const
-        {
-            return m_fallbackIconPaths;
-        }
-
-        /**
-         * @brief Set paths of fallback icons.
-         * @param path New list of paths.
-         *
-         * See also icon().
-         */
-        void setFallbackIconPaths(QStringList paths)
-        {
-            m_fallbackIconPaths=std::move(paths);
-        }
-
-        /**
-         * @brief Prepend path to list of paths of fallback icons.
-         * @param path New default path.
-         *
-         * See also icon().
-         */
-        void prependFallbackIconPath(QString path)
-        {
-            m_fallbackIconPaths.push_front(std::move(path));
-        }
-
-        /**
-         * @brief Reset paths of fallback icons.
-         * @param path New list of paths.
-         *
-         * See also icon().
-         */
-        void resetFallbackIconPaths();
-
         SvgIconLocator& svgIconLocator()
         {
             return m_svgIconLocator;
@@ -361,10 +305,10 @@ class UISE_DESKTOP_EXPORT Style final
 
     private:
 
-        QString m_styleSheet;
-        QString m_baseStyleSheet;
-        QString m_loadedStyleSheet;
-        QStringList m_styleSheetPaths;
+        QString m_qss;
+        QString m_baseQss;
+        QString m_loadedQss;
+        QStringList m_styleSheetDirs;
         QStringList m_fallbackIconPaths;
 
         bool m_darkTheme;
@@ -374,6 +318,8 @@ class UISE_DESKTOP_EXPORT Style final
 
         SvgIconLocator m_svgIconLocator;
         QString m_colorThemeName;
+
+        std::multimap<QString,SvgIconTheme> m_iconThemes;
 };
 
 UISE_DESKTOP_NAMESPACE_END

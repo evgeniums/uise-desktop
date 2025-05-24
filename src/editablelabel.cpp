@@ -52,8 +52,8 @@ EditableLabel::EditableLabel(
     m_layout->addWidget(m_label);
 
     m_editButton = new QPushButton(this);
-    auto editIcon = Style::instance().icon("document-edit");
-    m_editButton->setIcon(editIcon);
+    auto editIcon = Style::instance().svgIconLocator().icon("EditableLabel::edit",this);
+    m_editButton->setIcon(editIcon->icon());
     m_editButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_editButton->setFlat(true);
     m_editButton->setProperty("labelButton",true);
@@ -64,8 +64,8 @@ EditableLabel::EditableLabel(
     m_editButton->setVisible(!m_inGroup);
 
     m_applyButton = new QPushButton(this);
-    auto applyIcon = Style::instance().icon("dialog-ok-apply");
-    m_applyButton->setIcon(applyIcon);
+    auto applyIcon = Style::instance().svgIconLocator().icon("EditableLabel::apply",this);
+    m_applyButton->setIcon(applyIcon->icon());
     m_applyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_applyButton->setFlat(true);
     m_applyButton->setProperty("labelButton",true);
@@ -76,8 +76,8 @@ EditableLabel::EditableLabel(
     m_applyButton->setVisible(false);
 
     m_cancelButton = new QPushButton(this);
-    auto cancelIcon = Style::instance().icon("dialog-cancel");
-    m_cancelButton->setIcon(cancelIcon);
+    auto cancelIcon = Style::instance().svgIconLocator().icon("EditableLabel::cancel",this);
+    m_cancelButton->setIcon(cancelIcon->icon());
     m_cancelButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_cancelButton->setFlat(true);
     m_cancelButton->setProperty("labelButton",true);

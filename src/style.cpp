@@ -44,6 +44,11 @@ namespace {
 const char* UiseIconPath=":/uise/desktop/icons";
 const char* UiseQssPath=":/uise/desktop/qss";
 
+QStringList filters()
+{
+    return QStringList{"*.qss","*.css","*.json"};
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -51,8 +56,7 @@ Style::Style(
     ) : m_darkTheme(false),
         m_darkStyleSheetMode(StyleSheetMode::Auto)
 {
-    resetFallbackIconPaths();
-    resetStyleSheetPaths();
+    resetStyleSheetDirs();
     resetSvgIconLocator();
 }
 
@@ -77,7 +81,7 @@ Style& Style::instance()
 //--------------------------------------------------------------------------
 void Style::reloadStyleSheet()
 {
-    m_loadedStyleSheet.clear();
+    m_loadedQss.clear();
 
     // check dark theme
     auto darkTheme=false;
@@ -92,12 +96,10 @@ void Style::reloadStyleSheet()
 
     // list non-color style files
     QStringList files;
-    for (auto&& folderPath:m_styleSheetPaths)
+    for (auto&& folderPath:m_styleSheetDirs)
     {
         QDir stylesDir(folderPath);
-        QStringList filters;
-        filters << "*.css" << "*.qss";
-        stylesDir.setNameFilters(filters);
+        stylesDir.setNameFilters(filters());
         auto items=stylesDir.entryInfoList(QDir::Files);
         for (auto&& item:items)
         {
@@ -106,7 +108,7 @@ void Style::reloadStyleSheet()
     }
 
     // list color style files
-    for (auto&& folderPath:m_styleSheetPaths)
+    for (auto&& folderPath:m_styleSheetDirs)
     {
         QString defaultColorTheme;
         if (darkTheme)
@@ -126,13 +128,10 @@ void Style::reloadStyleSheet()
         auto defaultColorThemePath=QString("%1/%2").arg(folderPath,defaultColorTheme);
         auto themePath=QString("%1/%2").arg(folderPath,colorTheme);
 
-        QStringList filters;
-        filters << "*.css" << "*.qss";
-
         // list deafult color theme files for dark or light
         QSet<QString> defaultFiles;
         QDir defaultStylesDir(defaultColorThemePath);
-        defaultStylesDir.setNameFilters(filters);
+        defaultStylesDir.setNameFilters(filters());
         auto items=defaultStylesDir.entryInfoList(QDir::Files);
         for (auto&& item:items)
         {
@@ -143,7 +142,7 @@ void Style::reloadStyleSheet()
         if (colorTheme!=defaultColorTheme)
         {
             QDir themeStylesDir(themePath);
-            themeStylesDir.setNameFilters(filters);
+            themeStylesDir.setNameFilters(filters());
             items=themeStylesDir.entryInfoList(QDir::Files);
             for (auto&& item:items)
             {
@@ -174,46 +173,12 @@ void Style::reloadStyleSheet()
             auto data=file.readAll();
             if (!data.isEmpty())
             {
-                m_loadedStyleSheet+=QString("%1\n").arg(QString::fromUtf8(data));
+                m_loadedQss+=QString("%1\n").arg(QString::fromUtf8(data));
             }
         }
     }
 
-    setStyleSheet(m_loadedStyleSheet);
-}
-
-//--------------------------------------------------------------------------
-QIcon Style::icon(const QString &name, const QString &ext) const
-{
-    auto findPath=[this,&name,&ext](const QString withDark)
-    {
-        for (auto&& path:m_fallbackIconPaths)
-        {
-            auto iconPath=QString("%1%2/%3.%4").arg(path,withDark,name,ext);
-            if (QFile::exists(iconPath))
-            {
-                return iconPath;
-            }
-        }
-        return QString();
-    };
-
-    QString fallbackPath;
-    if (m_darkTheme)
-    {
-        fallbackPath=findPath("/dark");
-    }
-    if (fallbackPath.isEmpty())
-    {
-        fallbackPath=findPath("");
-    }
-
-    if (!fallbackPath.isEmpty())
-    {
-        return QIcon::fromTheme(name,QIcon(fallbackPath));
-    }
-
-    return QIcon::fromTheme(name);
+    setStyleSheet(m_loadedQss);
 }
 
 //--------------------------------------------------------------------------
@@ -221,11 +186,11 @@ void Style::applyStyleSheet(QWidget *widget)
 {
     if (widget==nullptr)
     {
-        qApp->setStyleSheet(m_styleSheet);
+        qApp->setStyleSheet(m_qss);
     }
     else
     {
-        widget->setStyleSheet(m_styleSheet);
+        widget->setStyleSheet(m_qss);
         checkDarkTheme();
     }    
 }
@@ -320,39 +285,33 @@ bool Style::loadColorMap(const QString &fileName, QString* errMsg)
 //--------------------------------------------------------------------------
 void Style::reset()
 {
-    m_styleSheet.clear();
-    m_baseStyleSheet.clear();
-    m_loadedStyleSheet.clear();
+    m_qss.clear();
+    m_baseQss.clear();
+    m_loadedQss.clear();
 
     m_darkTheme=false;
     m_darkStyleSheetMode=StyleSheetMode::Auto;
 
     m_colorMap.clear();
-    resetFallbackIconPaths();
-    resetStyleSheetPaths();
+    resetStyleSheetDirs();
     resetSvgIconLocator();
 }
 
 //--------------------------------------------------------------------------
-void Style::resetFallbackIconPaths()
+void Style::resetStyleSheetDirs()
 {
-    m_fallbackIconPaths.clear();
-    m_fallbackIconPaths.push_back(UiseIconPath);
-}
-
-//--------------------------------------------------------------------------
-void Style::resetStyleSheetPaths()
-{
-    m_styleSheetPaths.clear();
-    m_styleSheetPaths.push_back(UiseQssPath);    
+    m_styleSheetDirs.clear();
+    m_styleSheetDirs.push_back(UiseQssPath);
 }
 
 //--------------------------------------------------------------------------
 void Style::resetSvgIconLocator()
 {
-    m_svgIconLocator.addIconDir(":/uise/tabler-icons/outline");
+    m_svgIconLocator.reset();
 
+#if 0
     HTree::resetSvgIconLocator(*this);
+#endif
 }
 
 //--------------------------------------------------------------------------
