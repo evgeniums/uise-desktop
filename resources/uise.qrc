@@ -13,5 +13,8 @@
         <file>style/light/htree.json</file>
         <file>style/editablelabel.qss</file>
         <file>style/global.qss</file>
+        <file>style/editablelabel.json</file>
+        <file>style/htree.json</file>
+        <file>style/light/editablelabel.json</file>
     </qresource>
 </RCC>

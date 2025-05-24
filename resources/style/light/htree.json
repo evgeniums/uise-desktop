@@ -3,10 +3,6 @@
     "contexts" : [
         {
             "name" : "HTreeNodeTitleBar",
-            "aliases" : {
-                "collapse" : "minus",
-                "close" : "x"
-            },
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#CCCCCC" },
@@ -19,9 +15,6 @@
         },
         {
             "name" : "HTreeNodePlaceHolder",
-            "aliases" : {
-                "dots" : "dots-vertical"
-            },
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#777777" }

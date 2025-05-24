@@ -1,14 +1,14 @@
 {
-    "name" : "dark",
+    "name" : "light",
     "contexts" : [
         {
             "name" : "EditableLabel",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#BBBBBB" }
+                    "off" : { "currentColor" : "#777777" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#FFFFFF" }
+                    "off" : { "currentColor" : "#444444" }
                 }
             }
         }

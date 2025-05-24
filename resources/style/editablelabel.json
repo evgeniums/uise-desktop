@@ -1,0 +1,12 @@
+{
+    "name" : "dark",
+    "contexts" : [
+        {
+            "name" : "EditableLabel",
+            "aliases" : {
+                "apply" : "check",
+                "edit" : "edit"
+            }
+        }
+    ]
+}
