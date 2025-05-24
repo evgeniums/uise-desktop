@@ -42,9 +42,6 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
 
-const char* UiseIconPath=":/uise/desktop/icons";
-const char* UiseQssPath=":/uise/desktop/qss";
-
 QStringList filters()
 {
     return QStringList{"*.qss","*.css","*.json"};
@@ -356,7 +353,7 @@ void Style::reset()
 void Style::resetStyleSheetDirs()
 {
     m_styleSheetDirs.clear();
-    m_styleSheetDirs.push_back(UiseQssPath);
+    m_styleSheetDirs.push_back(UiseStylePath);
 }
 
 //--------------------------------------------------------------------------

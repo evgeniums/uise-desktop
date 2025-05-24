@@ -43,6 +43,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 {
     public:
 
+        constexpr static const char* UiseStylePath=":/uise/desktop/style";
+
         /**
          * @brief Modes of style sheet theme.
          */
@@ -211,10 +213,6 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         {
             return m_loadedQss;
         }
-
-
-
-
 
         /**
          * @brief Get actual web style sheet.

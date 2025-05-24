@@ -3,17 +3,17 @@
         <file>icons/dialog-cancel.svg</file>
         <file>icons/dialog-ok-apply.svg</file>
         <file>icons/document-edit.svg</file>
-        <file>qss/dark/spinner.qss</file>
+        <file>style/dark/spinner.qss</file>
         <file>icons/dark/dialog-cancel.svg</file>
         <file>icons/dark/dialog-ok-apply.svg</file>
         <file>icons/dark/document-edit.svg</file>
-        <file>qss/htree.qss</file>
-        <file>qss/dark/htree.qss</file>
-        <file>qss/light/htree.qss</file>
-        <file>qss/light/spinner.qss</file>
-        <file>qss/navigationbar.qss</file>
-        <file>qss/dark/navigationbar.qss</file>
-        <file>qss/light/navigationbar.qss</file>
-        <file>qss/dark/htree.json</file>
+        <file>style/htree.qss</file>
+        <file>style/dark/htree.qss</file>
+        <file>style/light/htree.qss</file>
+        <file>style/light/spinner.qss</file>
+        <file>style/navigationbar.qss</file>
+        <file>style/dark/navigationbar.qss</file>
+        <file>style/light/navigationbar.qss</file>
+        <file>style/dark/htree.json</file>
     </qresource>
 </RCC>
