@@ -50,6 +50,18 @@ enum class IconMode : int
     User=0x100
 };
 
+inline std::map<QString,IconMode> defaultModeMap()
+{
+    std::map<QString,IconMode> m{
+        {"normal",IconMode::Normal},
+        {"disabled",IconMode::Disabled},
+        {"active",IconMode::Active},
+        {"checked",IconMode::Checked},
+        {"hovered",IconMode::Hovered}
+    };
+    return m;
+}
+
 struct compareQSize
 {
     template <typename T>
@@ -369,18 +381,29 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
         );
 
         void setName(QString name)
-        {
+        {            
+            auto parts=name.split("::");
+            if (parts.size()>1)
+            {
+                m_context=parts.at(parts.count()-2);
+            }
             m_name=std::move(name);
         }
 
         QString name() const
-        {
+        {            
             return m_name;
+        }
+
+        QString context() const
+        {
+            return m_context;
         }
 
     private:
 
         QString m_name;
+        QString m_context;
 
         template <typename T>
         const IconPixmapSet* pixmapSet(T mode) const

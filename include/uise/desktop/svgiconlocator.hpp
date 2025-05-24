@@ -29,108 +29,99 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/stylecontext.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/svgiconcontext.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class UISE_DESKTOP_EXPORT SvgIconLocator
 {
-    using colorMapsT=std::map<IconVariant,SvgIcon::ColorMap>;
+    private:
 
-    public:
+        using colorMapsT=SvgIconColorMaps;
 
-        struct IconConfig
+        struct TagsContext
         {
-            using aliasModesT=std::map<QString,std::set<IconVariant>>;
+            QSet<QString> m_tags;
 
-            QString name;
-            aliasModesT aliasModes;
-            colorMapsT colorMaps;
-            SizeSet sizes;
+            std::map<QString,std::shared_ptr<SvgIcon>> m_icons;
 
-            IconConfig(QString name, colorMapsT colorMaps=colorMapsT{}, aliasModesT aliasModes={}, SizeSet sizes={})
-                : name(std::move(name)),
-                  colorMaps(std::move(colorMaps)),
-                  aliasModes(std::move(aliasModes)),
-                  sizes(std::move(sizes))
-            {}
-        };        
+            std::map<QString,QString> m_namesMap;
+            std::map<QString,QString> m_namePaths;
+            std::map<QString,colorMapsT> m_contextColorMaps;
 
-        std::shared_ptr<SvgIcon> icon(const QString& name, const StyleContext& ={}) const;
+            colorMapsT* m_defaultColorMapsPtr=nullptr;
+        };
 
-        void loadIcons(const std::vector<IconConfig>& iconConfigs);
-
+        template <typename ContextT>
         void addNameMapping(
+            ContextT* ctx,
             QString alias,
             QString name
-        )
+            )
         {
-            m_namesMap.emplace(std::move(alias),std::move(name));
+            ctx->m_namesMap.emplace(std::move(alias),std::move(name));
         }
 
-        QString nameMapping(const QString& alias) const
+        template <typename ContextT>
+        QString nameMapping(const ContextT* ctx, const QString& alias) const
         {
-            auto it=m_namesMap.find(alias);
-            if (it!=m_namesMap.end())
+            auto it=ctx->m_namesMap.find(alias);
+            if (it!=ctx->m_namesMap.end())
             {
                 return it->second;
             }
             return alias;
         }
 
+        template <typename ContextT>
         void addNamePath(
-                QString name,
-                QString path
+            ContextT* ctx,
+            QString name,
+            QString path
             )
         {
-            m_namePaths.emplace(std::move(name),std::move(path));
+            ctx->m_namePaths.emplace(std::move(name),std::move(path));
         }
 
-        QString namePath(const QString& name) const
+        template <typename ContextT>
+        QString namePath(ContextT* ctx, const QString& name) const
         {
-            auto it=m_namePaths.find(name);
-            if (it!=m_namePaths.end())
+            auto it=ctx->m_namePaths.find(name);
+            if (it!=ctx->m_namePaths.end())
             {
                 return it->second;
             }
             return QString{};
         }
 
-        void addIconDir(QString path)
-        {
-            m_iconDirs.emplace_back(std::move(path));
-        }
-
-        const std::vector<QString>& iconDirss() const
-        {
-            return m_iconDirs;
-        }        
-
-        void addColorMap(SvgIcon::ColorMap map, const QString& context={}, IconVariant mode=IconMode::Normal)
+        template <typename ContextT>
+        void addColorMap(ContextT* ctx, SvgIcon::ColorMap map, const QString& context={}, IconVariant mode=IconMode::Normal)
         {
             if (context.isEmpty())
             {
-                m_defaultColorMaps.emplace(mode,std::move(map));
+                ctx->m_defaultColorMaps.emplace(mode,std::move(map));
             }
             else
             {
                 colorMapsT* maps=nullptr;
-                auto it=m_contextColorMaps.find(context);
-                if (it!=m_contextColorMaps.end())
+                auto it=ctx->m_contextColorMaps.find(context);
+                if (it!=ctx->m_contextColorMaps.end())
                 {
                     maps=&it->second;
                 }
                 else
                 {
-                    auto it1=m_contextColorMaps.emplace(context,colorMapsT{});
+                    auto it1=ctx->m_contextColorMaps.emplace(context,colorMapsT{});
                     maps=&it1.first->second;
                 }
                 maps->emplace(mode,std::move(map));
             }
         }
 
-        const SvgIcon::ColorMap* colorMaps(IconVariant mode=IconMode::Normal, const QString& context={}) const
+        template <typename ContextT>
+        const SvgIcon::ColorMap* colorMaps(const ContextT* ctx, IconVariant mode=IconMode::Normal, const QString& context={}) const
         {
-            auto maps=contextColorMaps(context);
+            auto maps=contextColorMaps(ctx,context);
             if (maps==nullptr)
             {
                 return nullptr;
@@ -144,16 +135,17 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             return nullptr;
         }
 
-        const colorMapsT* contextColorMaps(const QString& context={}) const
+        template <typename ContextT>
+        const colorMapsT* contextColorMaps(const ContextT* ctx, const QString& context={}) const
         {
             if (context.isNull())
             {
-                return &m_defaultColorMaps;
+                return ctx->m_defaultColorMapsPtr;
             }
             else
             {
-                auto it=m_contextColorMaps.find(context);
-                if (it!=m_contextColorMaps.end())
+                auto it=ctx->m_contextColorMaps.find(context);
+                if (it!=ctx->m_contextColorMaps.end())
                 {
                     return &it->second;
                 }
@@ -161,21 +153,111 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             return contextColorMaps();
         }
 
-        colorMapsT* contextColorMaps(const QString& context={})
+        template <typename ContextT>
+        colorMapsT* contextColorMaps(ContextT* ctx, const QString& context={})
         {
             if (context.isNull())
             {
-                return &m_defaultColorMaps;
+                return ctx->m_defaultColorMapsPtr;
             }
             else
             {
-                auto it=m_contextColorMaps.find(context);
-                if (it!=m_contextColorMaps.end())
+                auto it=ctx->m_contextColorMaps.find(context);
+                if (it!=ctx->m_contextColorMaps.end())
                 {
                     return &it->second;
                 }
             }
             return nullptr;
+        }
+
+        template <typename ContextT>
+        void reload(ContextT* ctx)
+        {
+            for (auto& it:ctx->m_icons)
+            {
+                auto maps=contextColorMaps(ctx,it.second->context());
+                if (maps!=nullptr)
+                {
+                    it.second->reload(*maps);
+                }
+            }
+        }
+
+    public:
+
+        using IconConfig=SvgIconConfig;
+
+        SvgIconLocator() : m_defaultColorMapsPtr(&m_defaultColorMaps)
+        {}
+
+        std::shared_ptr<SvgIcon> icon(const QString& name, const StyleContext& ={}) const;
+
+        void loadIcons(const std::vector<IconConfig>& iconConfigs, const QSet<QString> tags={});
+
+        void addNameMapping(
+            QString alias,
+            QString name
+        )
+        {
+            return addNameMapping(this,std::move(alias),std::move(name));
+        }
+
+        QString nameMapping(const QString& alias) const
+        {
+            return nameMapping(this,alias);
+        }
+
+        void addNamePath(
+                QString name,
+                QString path
+            )
+        {
+            addNamePath(this,std::move(name),std::move(path));
+        }
+
+        QString namePath(const QString& name) const
+        {
+            return namePath(this,name);
+        }
+
+        void addColorMap(SvgIcon::ColorMap map, const QString& context={}, IconVariant mode=IconMode::Normal)
+        {
+            addColorMap(this,std::move(map),context,mode);
+        }
+
+        const SvgIcon::ColorMap* colorMaps(IconVariant mode=IconMode::Normal, const QString& context={}) const
+        {
+            return colorMaps(this,mode,context);
+        }
+
+        const colorMapsT* contextColorMaps(const QString& context={}) const
+        {
+            return contextColorMaps(this,context);
+        }
+
+        colorMapsT* contextColorMaps(const QString& context={})
+        {
+            return contextColorMaps(this,context);
+        }
+
+        void reset();
+
+        bool loadIconTheme(QString* errorMessage=nullptr);
+
+        void clearIconDirs()
+        {
+            m_iconDirs.clear();
+        }
+
+        void addIconDir(QString path)
+        {
+            m_iconDirs.emplace_back(std::move(path));
+        }
+
+        const std::vector<QString>& iconDirss() const
+        {
+            return m_iconDirs;
         }
 
         void setDefaultSizes(SizeSet defaultSizes)
@@ -210,26 +292,53 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void reload()
         {
-            for (auto& it:m_icons)
+            reload(this);
+
+            for (auto& it:m_tagContexts)
             {
-                it.second->reload(m_defaultColorMaps);
+                reload(&it);
             }
+        }
+
+        void clearCache()
+        {
+            m_tagsIconCache.clear();
         }
 
     private:
 
         std::shared_ptr<SvgIcon> iconPriv(const QString& name, bool autocreate) const;
+        std::shared_ptr<SvgIcon> iconForTags(const QString& name, const QSet<QString>& tags, bool autocreate) const;
+
+        std::vector<QString> m_iconDirs;
+
+        struct IconTagsCacheItem
+        {
+            QString name;
+            QSet<QString> tags;
+            std::shared_ptr<SvgIcon> icon;
+
+            IconTagsCacheItem(
+                    QString name,
+                    QSet<QString> tags,
+                    std::shared_ptr<SvgIcon> icon
+                ) : name(std::move(name)),
+                    tags(std::move(tags)),
+                    icon(std::move(icon))
+            {}
+        };
+
+        mutable std::vector<TagsContext> m_tagContexts;
+        mutable std::map<size_t,IconTagsCacheItem> m_tagsIconCache;
 
         mutable std::map<QString,std::shared_ptr<SvgIcon>> m_icons;
 
-        std::vector<QString> m_iconDirs;
         std::map<QString,QString> m_namesMap;
         std::map<QString,QString> m_namePaths;
-
-        std::map<QString,colorMapsT> m_colorMaps;
+        std::map<QString,colorMapsT> m_contextColorMaps;
 
         colorMapsT m_defaultColorMaps;
-        std::map<QString,colorMapsT> m_contextColorMaps;
+        colorMapsT* m_defaultColorMapsPtr=nullptr;
         SizeSet m_defaultSizes;
 
         std::shared_ptr<SvgIcon> m_fallbackIcon;

@@ -82,14 +82,28 @@ QString plainName(const QString& name)
     return context;
 }
 
+size_t nameAndTagsHash(const QString& name, const QSet<QString>& tags)
+{
+    QString acc=name;
+    for (const auto& tag: tags)
+    {
+        acc+=tag;
+    }
+    auto hash=qHash(acc);
+    return hash;
+}
+
 }
 
 //--------------------------------------------------------------------------
 
-std::shared_ptr<SvgIcon> SvgIconLocator::icon(const QString& name, const StyleContext&) const
+std::shared_ptr<SvgIcon> SvgIconLocator::icon(const QString& name, const StyleContext& context) const
 {
-    //! @todo Implement processing of style context
-    return iconPriv(name,true);
+    if (context.tags().empty())
+    {
+        return iconPriv(name,true);
+    }
+    return iconForTags(name,context.tags(),true);
 }
 
 //-------------------------------------------------------------------------- 
@@ -160,12 +174,138 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
 
 //--------------------------------------------------------------------------
 
-void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs)
+std::shared_ptr<SvgIcon> SvgIconLocator::iconForTags(const QString& name, const QSet<QString>& tags, bool autocreate) const
+{
+    // try to find icon in cache
+    auto hash=nameAndTagsHash(name,tags);
+    auto it1=m_tagsIconCache.find(hash);
+    if (it1!=m_tagsIconCache.end())
+    {
+        if (it1->second.name==name && it1->second.tags==tags)
+        {
+            return it1->second.icon;
+        }
+    }
+
+    // find tags context with the maximum number of matched tags
+    TagsContext* bestTagsContext=nullptr;
+    size_t bestMatchedTags=0;
+    for (auto& tagContext : m_tagContexts)
+    {
+        size_t matchedTags=0;
+        for (const auto& tag: tags)
+        {
+            if (tagContext.m_tags.contains(tag))
+            {
+                matchedTags++;
+            }
+        }
+        if (matchedTags>bestMatchedTags)
+        {
+            bestMatchedTags=matchedTags;
+            bestTagsContext=&tagContext;
+        }
+    }
+    if (!autocreate)
+    {
+        if (bestMatchedTags!=tags.count())
+        {
+            return std::shared_ptr<SvgIcon>{};
+        }
+    }
+    if (bestTagsContext==nullptr)
+    {
+        if (!autocreate)
+        {
+            return std::shared_ptr<SvgIcon>{};
+        }
+        else
+        {
+            auto icon=iconPriv(name,autocreate);
+            m_tagsIconCache.emplace(std::piecewise_construct,std::forward_as_tuple(hash),std::forward_as_tuple(name,tags,icon));
+            return icon;
+        }
+    }
+
+    // find icon in tags contexts
+    auto it=bestTagsContext->m_icons.find(name);
+    if (it!=bestTagsContext->m_icons.end())
+    {
+        // qDebug() << "Icon found " << name;
+
+        return it->second;
+    }
+    // qDebug() << "Icon not found " << name;
+    if (!autocreate)
+    {
+        return std::shared_ptr<SvgIcon>{};
+    }
+
+    // find actual name
+    auto actualName=nameMapping(bestTagsContext,name);
+
+    // create new icon if not found in cache
+
+    // find icon path
+    auto path=namePath(bestTagsContext,actualName);
+    if (path.isEmpty())
+    {
+        path=existingFileName(actualName,extension(),m_iconDirs);
+        if (path.isEmpty())
+        {
+            // try to split hierarchical name and find path again
+            auto pName=plainName(name);
+            if (pName!=name)
+            {
+                path=namePath(pName);
+            }
+            if (path.isEmpty())
+            {
+                path=existingFileName(pName,extension(),m_iconDirs);
+            }
+            if (path.isEmpty())
+            {
+                qWarning() << "Failed to find icon file " << path;
+                return m_fallbackIcon;
+            }
+        }
+    }
+
+    const colorMapsT* maps=contextColorMaps(bestTagsContext,nameContext(name));
+
+    // make icon
+    auto icon=std::make_shared<SvgIcon>();
+    icon->setName(name);
+    auto ok=icon->addFile(path,*maps,m_defaultSizes);
+    if (!ok)
+    {
+        return m_fallbackIcon;
+    }
+
+    // keep new icon in cache
+    bestTagsContext->m_icons[name]=icon;
+    m_tagsIconCache.emplace(std::piecewise_construct,std::forward_as_tuple(hash),std::forward_as_tuple(name,tags,icon));
+
+    // done
+    return icon;
+}
+
+//--------------------------------------------------------------------------
+
+void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const QSet<QString> tags)
 {
     for (const auto& iconConfig: iconConfigs)
     {
         bool insert=false;
-        auto icon=this->iconPriv(iconConfig.name,false);
+        std::shared_ptr<SvgIcon> icon;
+        if (tags.isEmpty())
+        {
+            icon=this->iconPriv(iconConfig.name,false);
+        }
+        else
+        {
+            icon=this->iconForTags(iconConfig.name,tags,false);
+        }
         if (!icon)
         {
             insert=true;
@@ -181,14 +321,14 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs)
         }
 
         // adjust if alias modes are empty
-        auto aliasModes=iconConfig.aliasModes;
+        auto aliasModes=iconConfig.aliases;
         if (aliasModes.empty())
         {
             aliasModes.emplace("",std::set<IconVariant>{});
         }
 
         // prepare color maps
-        auto colorMaps=iconConfig.colorMaps;
+        auto colorMaps=iconConfig.modes;
         if (colorMaps.empty())
         {
             const colorMapsT* maps=contextColorMaps(nameContext(iconConfig.name));
@@ -230,9 +370,54 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs)
         // insert icon if no error and this is a new icon
         if (icon && insert)
         {
-            m_icons[iconConfig.name]=icon;
+            if (tags.isEmpty())
+            {
+                m_icons[iconConfig.name]=icon;
+            }
+            else
+            {
+                // find tags context with all tags
+                TagsContext* tagsContext=nullptr;
+                for (auto& tagContext : m_tagContexts)
+                {
+                    size_t matchedTags=0;
+                    for (const auto& tag: tags)
+                    {
+                        if (tagContext.m_tags.contains(tag))
+                        {
+                            matchedTags++;
+                        }
+                    }
+                    if (matchedTags>tags.count())
+                    {
+                        tagsContext=&tagContext;
+                        break;
+                    }
+                }
+
+                // insert icon to tag context
+                if (tagsContext==nullptr)
+                {
+                    qWarning() << "Tags contexts should be initialized befor loading icon configurations";
+                    auto inserted=m_tagContexts.emplace_back(TagsContext{});
+                    tagsContext=&inserted;
+                    tagsContext->m_defaultColorMapsPtr=m_defaultColorMapsPtr;
+                }
+                tagsContext->m_icons.emplace(iconConfig.name,icon);
+                auto hash=nameAndTagsHash(iconConfig.name,tags);
+                m_tagsIconCache.emplace(std::piecewise_construct,std::forward_as_tuple(hash),std::forward_as_tuple(iconConfig.name,tags,icon));
+            }
         }
     }
+}
+
+//--------------------------------------------------------------------------
+
+void SvgIconLocator::reset()
+{
+    clearIconDirs();
+    clearCache();
+    addIconDir(":/uise/tabler-icons/outline");
 }
 
 //--------------------------------------------------------------------------

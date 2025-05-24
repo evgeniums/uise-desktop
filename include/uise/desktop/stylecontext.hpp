@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_STYLE_CONTEXT_HPP
 
 #include <QObject>
+#include <QSet>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -38,6 +39,15 @@ class StyleContext
 
         StyleContext(QObject* = nullptr)
         {}
+
+        const QSet<QString>& tags() const
+        {
+            return m_tags;
+        }
+
+    private:
+
+        QSet<QString> m_tags;
 };
 
 UISE_DESKTOP_NAMESPACE_END
