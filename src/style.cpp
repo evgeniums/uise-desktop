@@ -82,6 +82,7 @@ Style& Style::instance()
 void Style::reloadStyleSheet()
 {
     m_loadedQss.clear();
+    m_loadedCss.clear();
 
     // check dark theme
     auto darkTheme=false;
@@ -167,22 +168,33 @@ void Style::reloadStyleSheet()
     // load style sheets
     for (auto&& fileName:files)
     {
+        QFileInfo finf{fileName};
+
         QFile file(fileName);
         if (file.open(QFile::ReadOnly))
         {
             auto data=file.readAll();
             if (!data.isEmpty())
             {
-                m_loadedQss+=QString("%1\n").arg(QString::fromUtf8(data));
+                if (finf.suffix()=="qss")
+                {
+                    m_loadedQss+=QString("%1\n").arg(QString::fromUtf8(data));
+                }
+                else if (finf.suffix()=="css")
+                {
+                    m_loadedCss+=QString("%1\n").arg(QString::fromUtf8(data));
+                }
             }
         }
     }
 
-    setStyleSheet(m_loadedQss);
+    //! @todo Apply color substitutions
+    setQss(m_loadedQss);
+    setCss(m_loadedCss);
 }
 
 //--------------------------------------------------------------------------
-void Style::applyStyleSheet(QWidget *widget)
+void Style::applyQss(QWidget *widget)
 {
     if (widget==nullptr)
     {
@@ -288,6 +300,10 @@ void Style::reset()
     m_qss.clear();
     m_baseQss.clear();
     m_loadedQss.clear();
+
+    m_css.clear();
+    m_baseCss.clear();
+    m_loadedCss.clear();
 
     m_darkTheme=false;
     m_darkStyleSheetMode=StyleSheetMode::Auto;

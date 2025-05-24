@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     htree->sidebar()->setVisible(false);
 
     Style::instance().reloadStyleSheet();
-    Style::instance().applyStyleSheet();
+    Style::instance().applyQss();
 
     w.setCentralWidget(mainFrame);
     w.resize(800,600);

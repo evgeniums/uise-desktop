@@ -157,7 +157,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         void resetStyleSheetDirs();
 
         /**
-         * @brief Get actual style sheet.
+         * @brief Get actual Qt style sheet.
          * @return Query result.
          *
          * Actual style sheet must be either set with setStyleSheet() or automatically constructed with reloadStyleSheet() in advance.
@@ -168,18 +168,18 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         }
 
         /**
-         * @brief Explicitly set actual style sheet.
+         * @brief Explicitly set actual Qt style sheet.
          * @param styleSheet New style sheet.
          *
          * Style sheet will be applied to widgets or application only after calling applyStyleSheet().
          */
-        void setStyleSheet(const QString& styleSheet)
+        void setQss(const QString& qss)
         {
-            m_qss=QString("%1\n%2").arg(m_baseQss,styleSheet);
+            m_qss=QString("%1\n%2").arg(m_baseQss,qss);
         }
 
         /**
-         * @brief Get base style sheet.
+         * @brief Get base Qt style sheet.
          * @return Query result.
          *
          * See also setBaseQss().
@@ -190,7 +190,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         }
 
         /**
-         * @brief Set base style sheet.
+         * @brief Set base Qt style sheet.
          * @param baseQss New base style sheet.
          *
          * Base style sheet is an immutable part of automatically constructed actual style sheet.
@@ -202,7 +202,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         }
 
         /**
-         * @brief Get loaded style sheet.
+         * @brief Get loaded Qt style sheet.
          * @return Loaded style sheet.
          *
          * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read from folder at styleSheetPath().
@@ -210,6 +210,66 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         QString loadedQss() const
         {
             return m_loadedQss;
+        }
+
+
+
+
+
+        /**
+         * @brief Get actual web style sheet.
+         * @return Query result.
+         *
+         * Actual style sheet must be either set with setStyleSheet() or automatically constructed with reloadStyleSheet() in advance.
+         */
+        QString css() const
+        {
+            return m_css;
+        }
+
+        /**
+         * @brief Explicitly set actual wb style sheet.
+         * @param styleSheet New style sheet.
+         *
+         * Style sheet will be applied to widgets or application only after calling applyStyleSheet().
+         */
+        void setCss(const QString& css)
+        {
+            m_qss=QString("%1\n%2").arg(m_baseCss,css);
+        }
+
+        /**
+         * @brief Get base Qt style sheet.
+         * @return Query result.
+         *
+         * See also setBaseQss().
+         */
+        QString baseCss() const
+        {
+            return m_baseCss;
+        }
+
+        /**
+         * @brief Set base Qt style sheet.
+         * @param baseQss New base style sheet.
+         *
+         * Base style sheet is an immutable part of automatically constructed actual style sheet.
+         * Base style sheet is prepended to the automatically constructed style sheet in reloadStyleSheet().
+         */
+        void setBaseCss(QString baseCss)
+        {
+            m_baseCss=std::move(baseCss);
+        }
+
+        /**
+         * @brief Get loaded web style sheet.
+         * @return Loaded style sheet.
+         *
+         * Loaded style sheet is constructed automatically in reloadStyleSheet() by joining contents style sheet files read from folder at styleSheetPath().
+         */
+        QString loadedCss() const
+        {
+            return m_loadedCss;
         }
 
         QString styleSheetColorTheme() const
@@ -291,10 +351,10 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         void reloadStyleSheet();
 
         /**
-         * @brief Apply style sheet to widget or application.
+         * @brief Apply Qt style sheet to widget or application.
          * @param widget Widget to apply style sheet to, if nullptr then the style will be applied to the entire application.
          */
-        void applyStyleSheet(QWidget* widget=nullptr);
+        void applyQss(QWidget* widget=nullptr);
 
         SvgIconLocator& svgIconLocator()
         {
@@ -308,6 +368,11 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         QString m_qss;
         QString m_baseQss;
         QString m_loadedQss;
+
+        QString m_css;
+        QString m_baseCss;
+        QString m_loadedCss;
+
         QStringList m_styleSheetDirs;
         QStringList m_fallbackIconPaths;
 
