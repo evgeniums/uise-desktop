@@ -50,6 +50,11 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
     QMainWindow w;
+
+    Style::instance().reloadStyleSheet();
+    Style::instance().applyQss();
+    Style::instance().applySvgIconTheme();
+
     auto mainFrame=new QFrame();
     mainFrame->setObjectName("mainFrame");
 
@@ -91,9 +96,6 @@ int main(int argc, char *argv[])
     HTreePathElement root{DirListItem::Folder,rootPath.string(),rootPathName};
     htree->openPath(root);
     htree->sidebar()->setVisible(false);
-
-    Style::instance().reloadStyleSheet();
-    Style::instance().applyQss();
 
     w.setCentralWidget(mainFrame);
     w.resize(800,600);

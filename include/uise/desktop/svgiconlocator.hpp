@@ -99,7 +99,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         {
             if (context.isEmpty())
             {
-                ctx->m_defaultColorMaps.emplace(mode,std::move(map));
+                ctx->m_defaultColorMapsPtr->emplace(mode,std::move(map));
             }
             else
             {
@@ -305,10 +305,35 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             m_tagsIconCache.clear();
         }
 
+        void loadIconTheme(const SvgIconTheme& theme);
+
     private:
 
         std::shared_ptr<SvgIcon> iconPriv(const QString& name, bool autocreate) const;
         std::shared_ptr<SvgIcon> iconForTags(const QString& name, const QSet<QString>& tags, bool autocreate) const;
+
+        TagsContext* findTagContext(const QSet<QString>& tags)
+        {
+            for (auto&& ctx: m_tagContexts)
+            {
+                if (ctx.m_tags==tags)
+                {
+                    return &ctx;
+                }
+            }
+            return nullptr;
+        }
+
+        TagsContext* addTagContext(const QSet<QString>& tags)
+        {
+            auto inserted=m_tagContexts.emplace_back(TagsContext{});
+            inserted.m_defaultColorMapsPtr=m_defaultColorMapsPtr;
+            inserted.m_tags=tags;
+            return &m_tagContexts.back();
+        }
+
+        template <typename T>
+        void loadSvgIconContext(T* tagCtx, const SvgIconContext& iconContext);
 
         std::vector<QString> m_iconDirs;
 

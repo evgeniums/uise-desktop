@@ -235,7 +235,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
          */
         void setCss(const QString& css)
         {
-            m_qss=QString("%1\n%2").arg(m_baseCss,css);
+            m_css=QString("%1\n%2").arg(m_baseCss,css);
         }
 
         /**
@@ -356,6 +356,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
          */
         void applyQss(QWidget* widget=nullptr);
 
+        void applySvgIconTheme();
+
         SvgIconLocator& svgIconLocator()
         {
             return m_svgIconLocator;
@@ -384,7 +386,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         SvgIconLocator m_svgIconLocator;
         QString m_colorThemeName;
 
-        std::multimap<QString,SvgIconTheme> m_iconThemes;
+        std::vector<SvgIconTheme> m_iconThemes;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -377,33 +377,15 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const
             else
             {
                 // find tags context with all tags
-                TagsContext* tagsContext=nullptr;
-                for (auto& tagContext : m_tagContexts)
-                {
-                    size_t matchedTags=0;
-                    for (const auto& tag: tags)
-                    {
-                        if (tagContext.m_tags.contains(tag))
-                        {
-                            matchedTags++;
-                        }
-                    }
-                    if (matchedTags>tags.count())
-                    {
-                        tagsContext=&tagContext;
-                        break;
-                    }
-                }
+                TagsContext* tagCtx=findTagContext(tags);
 
                 // insert icon to tag context
-                if (tagsContext==nullptr)
+                if (tagCtx==nullptr)
                 {
                     qWarning() << "Tags contexts should be initialized befor loading icon configurations";
-                    auto inserted=m_tagContexts.emplace_back(TagsContext{});
-                    tagsContext=&inserted;
-                    tagsContext->m_defaultColorMapsPtr=m_defaultColorMapsPtr;
+                    tagCtx=addTagContext(tags);
                 }
-                tagsContext->m_icons.emplace(iconConfig.name,icon);
+                tagCtx->m_icons.emplace(iconConfig.name,icon);
                 auto hash=nameAndTagsHash(iconConfig.name,tags);
                 m_tagsIconCache.emplace(std::piecewise_construct,std::forward_as_tuple(hash),std::forward_as_tuple(iconConfig.name,tags,icon));
             }
@@ -418,6 +400,48 @@ void SvgIconLocator::reset()
     clearIconDirs();
     clearCache();
     addIconDir(":/uise/tabler-icons/outline");
+}
+
+//--------------------------------------------------------------------------
+
+template <typename T>
+void SvgIconLocator::loadSvgIconContext(T* tagCtx, const SvgIconContext& iconContext)
+{
+    for (const auto& alias: iconContext.aliases)
+    {
+        addNameMapping(tagCtx,alias.first,alias.second);
+    }
+    for (const auto& namePath: iconContext.namePaths)
+    {
+        addNamePath(tagCtx,namePath.first,namePath.second);
+    }
+    for (const auto& mode: iconContext.modes)
+    {
+        addColorMap(tagCtx,mode.second,iconContext.name,mode.first);
+    }
+    loadIcons(iconContext.icons,iconContext.tags);
+}
+
+//--------------------------------------------------------------------------
+
+void SvgIconLocator::loadIconTheme(const SvgIconTheme& theme)
+{
+    for (const auto& context: theme.contexts())
+    {
+        if (context.second.tags.empty())
+        {
+            loadSvgIconContext(this,context.second);
+        }
+        else
+        {
+            auto tagCtx=findTagContext(context.second.tags);
+            if (tagCtx==nullptr)
+            {
+                tagCtx=addTagContext(context.second.tags);
+            }
+            loadSvgIconContext(tagCtx,context.second);
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

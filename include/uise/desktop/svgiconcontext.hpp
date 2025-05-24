@@ -97,11 +97,8 @@ class WithModesMap
         std::map<QString,IconMode> m_modeMap;
 };
 
-class SvgIconTheme : public QObject,
-                     public WithModesMap
+class SvgIconTheme : public WithModesMap
 {
-    Q_OBJECT
-
     public:
 
         bool loadFromJson(const QString& json, QString* errorMessage=nullptr);
@@ -111,10 +108,15 @@ class SvgIconTheme : public QObject,
             return m_name;
         }
 
+        const auto& contexts() const
+        {
+            return m_contexts;
+        }
+
     private:
 
         QString m_name;
-        std::multimap<QString,SvgIconContext> m_contexts;
+        std::map<QString,SvgIconContext> m_contexts;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -14,5 +14,6 @@
         <file>qss/navigationbar.qss</file>
         <file>qss/dark/navigationbar.qss</file>
         <file>qss/light/navigationbar.qss</file>
+        <file>qss/dark/htree.json</file>
     </qresource>
 </RCC>

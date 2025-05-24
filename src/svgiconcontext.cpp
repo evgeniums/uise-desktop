@@ -61,7 +61,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
     {
         if (errorMessage!=nullptr)
         {
-            *errorMessage=tr("json theme must be a JSON object");
+            *errorMessage=QObject::tr("json theme must be a JSON object","SvgIconTheme");
         }
         return false;
     }
@@ -70,24 +70,24 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
     {
         if (errorMessage!=nullptr)
         {
-            *errorMessage=QString(tr("%1 at path %2").arg(msg,path.join(".")));
+            *errorMessage=QString(QObject::tr("%1 at path %2","SvgIconTheme").arg(msg,path.join(".")));
         }
         return false;
     };
 
     auto mustBeArray=[&formatError](const QStringList& path)
     {
-        return formatError(tr("must be JSON array"),path);
+        return formatError(QObject::tr("must be JSON array","SvgIconTheme"),path);
     };
 
     auto mustBeObject=[&formatError](const QStringList& path)
     {
-        return formatError(tr("must be JSON object"),path);
+        return formatError(QObject::tr("must be JSON object","SvgIconTheme"),path);
     };
 
     auto mustBeString=[&formatError](const QStringList& path)
     {
-        return formatError(tr("must be string"),path);
+        return formatError(QObject::tr("must be string","SvgIconTheme"),path);
     };
 
     auto obj=doc.object();
@@ -212,7 +212,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
             return false;
         }
 
-        auto parseColorMaps=[this,&parseStringMap,&mustBeObject,&formatError](const QString& field, QStringList path, const QJsonObject& obj, SvgIconColorMaps modes)
+        auto parseColorMaps=[this,&parseStringMap,&mustBeObject,&formatError](const QString& field, QStringList path, const QJsonObject& obj, SvgIconColorMaps& modes)
         {
             if (obj.contains(field))
             {
@@ -233,7 +233,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                     auto mod=mode(key);
                     if (!mod)
                     {
-                        return formatError(tr("invalid icon mode"),mpath);
+                        return formatError(QObject::tr("invalid icon mode","SvgIconTheme"),mpath);
                     }
 
                     SvgIcon::ColorMap colorMaps;
@@ -241,7 +241,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                     auto val=it1.value();
                     if (!val.isObject())
                     {
-                        return formatError(tr("invalid value for icon mode"),mpath);
+                        return formatError(QObject::tr("invalid value for icon mode","SvgIconTheme"),mpath);
                     }
                     auto colorMapObj=val.toObject();
 
@@ -310,7 +310,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                 auto iconName=iconNameVal.toString();
                 if (!iconNameVal.isString())
                 {
-                    return formatError(tr("must be not empty"),iconPath+QStringList{iconNameField});
+                    return formatError(QObject::tr("must be not empty","SvgIconTheme"),iconPath+QStringList{iconNameField});
                 }
 
                 SvgIconConfig icon{nameWithContext(iconName,ctx.name)};
@@ -364,7 +364,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                                 auto aliasMode=mode(aliasModeStr);
                                 if (!aliasMode)
                                 {
-                                    return formatError(tr("invalid icon mode"),aliasModePath);
+                                    return formatError(QObject::tr("invalid icon mode","SvgIconTheme"),aliasModePath);
                                 }
                                 modes.insert(aliasMode.value_or(IconMode::Normal));
                             }
@@ -401,7 +401,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                             auto widthVal=sizeObj.value("width");
                             if (!widthVal.isDouble())
                             {
-                                return formatError(tr("invalid number"),sizesPath+QStringList{"width"});
+                                return formatError(QObject::tr("invalid number","SvgIconTheme"),sizesPath+QStringList{"width"});
                             }
                             width=widthVal.toInt();
                             height=width;
@@ -412,7 +412,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                             auto heightVal=sizeObj.value("height");
                             if (!heightVal.isDouble())
                             {
-                                return formatError(tr("invalid number"),sizesPath+QStringList{"height"});
+                                return formatError(QObject::tr("invalid number","SvgIconTheme"),sizesPath+QStringList{"height"});
                             }
                             height=heightVal.toInt();
                             if (!hasWidth)
@@ -426,6 +426,10 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                 }
             }
         }
+
+        // add to contexts
+        auto ctxName=ctx.name;
+        m_contexts.emplace(ctxName,std::move(ctx));
     }
 
     // done

@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htree.hpp>
 
 #include <uise/desktop/utils/substitutecolors.hpp>
+#include <uise/desktop/svgiconcontext.hpp>
 #include <uise/desktop/style.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -83,6 +84,7 @@ void Style::reloadStyleSheet()
 {
     m_loadedQss.clear();
     m_loadedCss.clear();
+    m_iconThemes.clear();
 
     // check dark theme
     auto darkTheme=false;
@@ -108,24 +110,25 @@ void Style::reloadStyleSheet()
         }
     }
 
-    // list color style files
-    for (auto&& folderPath:m_styleSheetDirs)
+    // setup color theme name
+    QString defaultColorTheme;
+    auto colorTheme=m_colorThemeName;
+    if (darkTheme)
     {
-        QString defaultColorTheme;
-        if (darkTheme)
-        {
-            defaultColorTheme="dark";
-        }
-        else
-        {
-            defaultColorTheme="light";
-        }
-        auto colorTheme=m_colorThemeName;
-        if (colorTheme.isEmpty())
-        {
-            colorTheme=defaultColorTheme;
-        }
+        defaultColorTheme="dark";
+    }
+    else
+    {
+        defaultColorTheme="light";
+    }
+    if (colorTheme.isEmpty())
+    {
+        colorTheme=defaultColorTheme;
+    }
 
+    // list color style files    
+    for (auto&& folderPath:m_styleSheetDirs)
+    {        
         auto defaultColorThemePath=QString("%1/%2").arg(folderPath,defaultColorTheme);
         auto themePath=QString("%1/%2").arg(folderPath,colorTheme);
 
@@ -176,13 +179,37 @@ void Style::reloadStyleSheet()
             auto data=file.readAll();
             if (!data.isEmpty())
             {
+                QString src=QString::fromUtf8(data);
                 if (finf.suffix()=="qss")
                 {
-                    m_loadedQss+=QString("%1\n").arg(QString::fromUtf8(data));
+                    m_loadedQss+=QString("%1\n").arg(src);
                 }
                 else if (finf.suffix()=="css")
                 {
-                    m_loadedCss+=QString("%1\n").arg(QString::fromUtf8(data));
+                    m_loadedCss+=QString("%1\n").arg(src);
+                }
+                else if (finf.suffix()=="json")
+                {
+                    SvgIconTheme iconTheme;
+                    QString errorMessage;
+                    auto ok=iconTheme.loadFromJson(src,&errorMessage);
+                    if (ok)
+                    {
+                        auto name=iconTheme.name();
+                        if (name==defaultColorTheme || name==colorTheme)
+                        {
+                            auto& inserted=m_iconThemes.emplace_back(std::move(iconTheme));
+                            inserted.setModesMap(modeMap());
+                        }
+                        else
+                        {
+                            qWarning() << "Invalid SVG icon theme \"" << name << "\" in " << fileName;
+                        }
+                    }
+                    else
+                    {
+                        qWarning() << "Failed to load SVG icon theme from " << fileName << ": " << errorMessage;
+                    }
                 }
             }
         }
@@ -205,6 +232,16 @@ void Style::applyQss(QWidget *widget)
         widget->setStyleSheet(m_qss);
         checkDarkTheme();
     }    
+}
+
+//--------------------------------------------------------------------------
+void Style::applySvgIconTheme()
+{
+    // configure contexts
+    for (const auto& iconTheme: m_iconThemes)
+    {
+        m_svgIconLocator.loadIconTheme(iconTheme);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -309,6 +346,8 @@ void Style::reset()
     m_darkStyleSheetMode=StyleSheetMode::Auto;
 
     m_colorMap.clear();
+    m_iconThemes.clear();
+
     resetStyleSheetDirs();
     resetSvgIconLocator();
 }
@@ -324,10 +363,6 @@ void Style::resetStyleSheetDirs()
 void Style::resetSvgIconLocator()
 {
     m_svgIconLocator.reset();
-
-#if 0
-    HTree::resetSvgIconLocator(*this);
-#endif
 }
 
 //--------------------------------------------------------------------------
