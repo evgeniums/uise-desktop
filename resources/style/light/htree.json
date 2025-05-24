@@ -1,0 +1,43 @@
+{
+    "name" : "light",
+    "contexts" : [
+        {
+            "name" : "HTreeNodeTitleBar",
+            "aliases" : {
+                "collapse" : "minus",
+                "close" : "x"
+            },
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#999999" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
+            "name" : "HTreeNodePlaceHolder",
+            "aliases" : {
+                "dots" : "dots-vertical"
+            },
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#444444" }
+                }
+            }
+        },
+        {
+            "name" : "HTreeStandardListItem",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#444444" }
+                }
+            }
+        }
+    ]
+}

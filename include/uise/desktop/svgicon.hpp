@@ -319,7 +319,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         QPixmap pixmap(const QSize &size, IconVariant mode,  QIcon::State state)
         {
-            // qDebug() << "pixmap state="<<state << " mode="<<mode<< " name="<<m_name;
+            // qDebug() << "pixmap state="<<state << " mode="<<mode<< " name="<<m_name << " size=" << size;
 
             auto* set=pixmapSet(mode);
             if (set==nullptr || set->isNull())

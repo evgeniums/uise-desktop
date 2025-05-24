@@ -42,6 +42,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/pushbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -235,9 +236,9 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         bool m_editable;
         bool m_inGroup;
 
-        QPushButton* m_editButton;
-        QPushButton* m_applyButton;
-        QPushButton* m_cancelButton;
+        PushButton* m_editButton;
+        PushButton* m_applyButton;
+        PushButton* m_cancelButton;
 };
 
 /**

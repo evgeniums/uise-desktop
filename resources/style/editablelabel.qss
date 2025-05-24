@@ -1,0 +1,12 @@
+uise--EditableLabel {
+    padding: 2px;
+}
+
+uise--EditableLabel QPushButton[PushButton="true"] {
+    icon-size: 14px;
+}
+
+uise--EditableLabel #label
+{
+    margin-right: 2px;
+}

@@ -1,0 +1,5 @@
+QPushButton[PushButton="true"] {
+    background-color: transparent;
+    border: none;
+    padding: 2px;
+}

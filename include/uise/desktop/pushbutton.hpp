@@ -41,7 +41,13 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
             : QPushButton(parent),
               m_icon(std::move(icon)),
               m_parentHovered(false)
-        {}
+        {
+            setProperty("PushButton",true);
+            if (m_icon)
+            {
+                setIcon(m_icon->icon());
+            }
+        }
 
         PushButton(QWidget* parent=nullptr) : QPushButton(parent)
         {}

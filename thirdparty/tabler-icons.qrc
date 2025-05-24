@@ -17,5 +17,9 @@
         <file>tabler-icons/outline/user-x.svg</file>
         <file>tabler-icons/outline/users-group.svg</file>
         <file>tabler-icons/outline/users.svg</file>
+        <file>tabler-icons/outline/cancel.svg</file>
+        <file>tabler-icons/outline/check.svg</file>
+        <file>tabler-icons/outline/edit.svg</file>
+        <file>tabler-icons/outline/pencil.svg</file>
     </qresource>
 </RCC>

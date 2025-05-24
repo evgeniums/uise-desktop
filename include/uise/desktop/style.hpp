@@ -363,6 +363,13 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         void resetSvgIconLocator();
 
+        void applyStyleSheet()
+        {
+            reloadStyleSheet();
+            applyQss();
+            applySvgIconTheme();
+        }
+
     private:
 
         QString m_qss;

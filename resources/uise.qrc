@@ -1,12 +1,6 @@
 <RCC>
     <qresource prefix="/uise/desktop">
-        <file>icons/dialog-cancel.svg</file>
-        <file>icons/dialog-ok-apply.svg</file>
-        <file>icons/document-edit.svg</file>
         <file>style/dark/spinner.qss</file>
-        <file>icons/dark/dialog-cancel.svg</file>
-        <file>icons/dark/dialog-ok-apply.svg</file>
-        <file>icons/dark/document-edit.svg</file>
         <file>style/htree.qss</file>
         <file>style/dark/htree.qss</file>
         <file>style/light/htree.qss</file>
@@ -15,5 +9,9 @@
         <file>style/dark/navigationbar.qss</file>
         <file>style/light/navigationbar.qss</file>
         <file>style/dark/htree.json</file>
+        <file>style/dark/editablelabel.json</file>
+        <file>style/light/htree.json</file>
+        <file>style/editablelabel.qss</file>
+        <file>style/global.qss</file>
     </qresource>
 </RCC>

@@ -51,40 +51,31 @@ EditableLabel::EditableLabel(
 
     m_layout->addWidget(m_label);
 
-    m_editButton = new QPushButton(this);
-    auto editIcon = Style::instance().svgIconLocator().icon("EditableLabel::edit",this);
-    m_editButton->setIcon(editIcon->icon());
+    m_editButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::edit",this),this);
     m_editButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    m_editButton->setFlat(true);
     m_editButton->setProperty("labelButton",true);
     m_editButton->setToolTip(tr("Edit"));
     m_editButton->setObjectName("editButton");
-    connect(m_editButton,&QPushButton::clicked,this,&EditableLabel::edit);
-    m_layout->addWidget(m_editButton);
+    connect(m_editButton,&PushButton::clicked,this,&EditableLabel::edit);
+    m_layout->addWidget(m_editButton,0,Qt::AlignTop);
     m_editButton->setVisible(!m_inGroup);
 
-    m_applyButton = new QPushButton(this);
-    auto applyIcon = Style::instance().svgIconLocator().icon("EditableLabel::apply",this);
-    m_applyButton->setIcon(applyIcon->icon());
+    m_applyButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::apply",this),this);
     m_applyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    m_applyButton->setFlat(true);
     m_applyButton->setProperty("labelButton",true);
     m_applyButton->setToolTip(tr("Apply"));
     m_applyButton->setObjectName("applyButton");
-    connect(m_applyButton,&QPushButton::clicked,this,&EditableLabel::apply);
+    connect(m_applyButton,&PushButton::clicked,this,&EditableLabel::apply);
     m_layout->addWidget(m_applyButton);
     m_applyButton->setVisible(false);
 
-    m_cancelButton = new QPushButton(this);
-    auto cancelIcon = Style::instance().svgIconLocator().icon("EditableLabel::cancel",this);
-    m_cancelButton->setIcon(cancelIcon->icon());
+    m_cancelButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::cancel",this),this);
     m_cancelButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    m_cancelButton->setFlat(true);
     m_cancelButton->setProperty("labelButton",true);
     m_cancelButton->setToolTip(tr("Cancel"));
     m_cancelButton->setObjectName("cancelButton");
     m_cancelButton->setVisible(false);
-    connect(m_cancelButton,&QPushButton::clicked,this,&EditableLabel::cancel);
+    connect(m_cancelButton,&PushButton::clicked,this,&EditableLabel::cancel);
     m_layout->addWidget(m_cancelButton);
 
     m_label->setObjectName("label");

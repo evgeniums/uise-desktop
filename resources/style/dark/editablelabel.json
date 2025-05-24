@@ -1,0 +1,20 @@
+{
+    "name" : "dark",
+    "contexts" : [
+        {
+            "name" : "EditableLabel",
+            "aliases" : {
+                "apply" : "check",
+                "edit" : "edit"
+            },
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#BBBBBB" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}

@@ -42,13 +42,15 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
 
+    Style::instance().applyStyleSheet();
+
     QMainWindow w;
     auto mainFrame=new QFrame();
 
     bool darkTheme=Style::instance().checkDarkTheme();
     std::cout << "Dark theme="<<darkTheme<<std::endl;
 
-    w.setStyleSheet("\n QPushButton {padding: 6px 2px;}");
+    // w.setStyleSheet("\n QPushButton {padding: 6px 2px;}");
 
     auto l = Layout::vertical(mainFrame);
 

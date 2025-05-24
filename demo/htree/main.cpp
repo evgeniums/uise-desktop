@@ -51,9 +51,7 @@ int main(int argc, char *argv[])
     QApplication app(argc,argv);
     QMainWindow w;
 
-    Style::instance().reloadStyleSheet();
-    Style::instance().applyQss();
-    Style::instance().applySvgIconTheme();
+    Style::instance().applyStyleSheet();
 
     auto mainFrame=new QFrame();
     mainFrame->setObjectName("mainFrame");
