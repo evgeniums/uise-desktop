@@ -3,3 +3,5 @@ uise--NavigationBarSeparator[hover="true"] {color:#444444;}
 uise--NavigationBar QToolButton {color:#888888;}
 uise--NavigationBar QToolButton:hover:!checked {color: #444444;}
 uise--NavigationBar QToolButton:checked {color: #444444;}
+
+uise--NavigationBarPanel {background-color: #DDDDDD;}

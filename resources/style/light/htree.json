@@ -28,7 +28,11 @@
             "name" : "HTreeStandardListItem",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" }
+                    "off" : { "currentColor" : "#444444" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
                 }
             }
         }
