@@ -112,6 +112,16 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
     public:
 
+        static QString topIconName(const QString& name)
+        {
+            return QString("HTreeNodeTop::%1").arg(name);
+        }
+
+        static QString bottomIconName(const QString& name)
+        {
+            return QString("HTreeNodeBottom::%1").arg(name);
+        }
+
         /**
          * @brief Constructor.
          * @param treeTab The tree tab this node belongs to.
