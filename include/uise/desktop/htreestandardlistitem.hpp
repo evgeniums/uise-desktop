@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
+#include <uise/desktop/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
 #include <uise/desktop/htreelist.hpp>
