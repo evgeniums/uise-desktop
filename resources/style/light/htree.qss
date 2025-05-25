@@ -12,3 +12,7 @@ uise--HTreeStandardListItem[hover="true"] {background-color:#C4C4C4;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#B0B0B0;}
 
 uise--HTreeSplitterLine {background-color:#DDDDDD;}
+
+uise--HTreeNode #nodeTopFrame {
+    background-color: #DDDDDD;
+}

@@ -16,5 +16,7 @@
         <file>style/editablelabel.json</file>
         <file>style/htree.json</file>
         <file>style/light/editablelabel.json</file>
+        <file>style/dark/global.qss</file>
+        <file>style/light/global.qss</file>
     </qresource>
 </RCC>

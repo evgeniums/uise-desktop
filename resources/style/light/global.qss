@@ -1,0 +1,9 @@
+uise--PushButton QPushButton {
+    background-color: transparent;
+    border: none;
+    color: #777777;
+}
+
+uise--PushButton[hovered="true"] QPushButton {
+    color: #444444;
+}

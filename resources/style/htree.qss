@@ -21,3 +21,9 @@ uise--HTreeSplitterSection {padding:0;}
 uise--HTreeSplitterLine {border:none;}
 
 uise--HTreeList {padding:0;margin:0;}
+
+uise--HTreeNode #nodeTopFrame {
+    padding: 8px;
+}
+
+uise--HTree QTabWidget::pane {padding:0;}

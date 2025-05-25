@@ -13,4 +13,7 @@ uise--HTreeStandardListItem[selected="true"] {background-color:#B0B0B0;}
 
 uise--HTreeSplitterLine {background-color:#888888;}
 
-QTabWidget::pane {padding:0;}
+uise--HTreeNode #nodeTopFrame {
+    background-color: #444444;
+}
+
