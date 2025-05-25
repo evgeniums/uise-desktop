@@ -67,6 +67,28 @@ void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIc
 
 //--------------------------------------------------------------------------
 
+QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state)
+{
+    // qDebug() << "SvgIcon::pixmap state="<<state << " mode="<<mode<< " name="<<m_name << " size=" << size;
+
+    auto* set=pixmapSet(mode);
+    if (set==nullptr || set->isNull())
+    {
+        // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
+
+        return makePixmap(size,mode,state);
+    }
+
+    auto px=set->pixmap(size,state);
+    if (px.isNull() || px.size()!=size)
+    {
+        return makePixmap(size,mode,state);
+    }
+    return px;
+}
+
+//--------------------------------------------------------------------------
+
 QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache)
 {
     // find content

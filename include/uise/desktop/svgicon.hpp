@@ -316,26 +316,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
         SvgIcon() =default;
 
         void paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache=true);
-
-        QPixmap pixmap(const QSize &size, IconVariant mode,  QIcon::State state)
-        {
-            // qDebug() << "SvgIcon::pixmap state="<<state << " mode="<<mode<< " name="<<m_name << " size=" << size;
-
-            auto* set=pixmapSet(mode);
-            if (set==nullptr || set->isNull())
-            {
-                // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
-
-                return makePixmap(size,mode,state);
-            }
-
-            auto px=set->pixmap(size,state);
-            if (px.isNull() || px.size()!=size)
-            {
-                return makePixmap(size,mode,state);
-            }
-            return px;
-        }
+        QPixmap pixmap(const QSize &size, IconVariant mode,  QIcon::State state);
 
         QPixmap pixmap(int size, IconVariant mode, QIcon::State state)
         {
