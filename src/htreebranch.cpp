@@ -76,6 +76,10 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
             next->setExpanded(true);
             return next;
         }
+        else
+        {
+            closeNextNode();
+        }
     }
 
     HTreeNode* nextNode=nullptr;
@@ -91,7 +95,6 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
         return nullptr;
     }
 
-    closeNextNode();
     nextNode=nodeResult.first;
     setNextNodeId(pathElement.id());
     setNextNode(nextNode);
