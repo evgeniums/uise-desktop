@@ -35,7 +35,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void PushButton::enterEvent(QEnterEvent* event)
 {
-    if (!m_parentHovered && !m_button->isChecked())
+    if (!m_parentHovered)
     {
         setProperty("hovered",true);
         if (m_icon)
@@ -44,9 +44,6 @@ void PushButton::enterEvent(QEnterEvent* event)
         }
     }
     QFrame::enterEvent(event);
-
-    style()->unpolish(this);
-    style()->polish(this);
 
     style()->unpolish(m_button);
     style()->polish(m_button);
@@ -61,19 +58,12 @@ void PushButton::leaveEvent(QEvent* event)
         return;
     }
 
-    if (!m_parentHovered && !m_button->isChecked())
+    setProperty("hovered",false);
+    if (m_icon)
     {
-        setProperty("hovered",false);
-
-        if (m_icon)
-        {
-            m_button->setIcon(m_icon->icon());
-        }
+        m_button->setIcon(m_icon->icon());
     }
     QFrame::leaveEvent(event);
-
-    style()->unpolish(this);
-    style()->polish(this);
 
     style()->unpolish(m_button);
     style()->polish(m_button);
@@ -84,9 +74,9 @@ void PushButton::leaveEvent(QEvent* event)
 void PushButton::setParentHovered(bool enable)
 {
     m_parentHovered=enable;
-    if (!m_button->isChecked() && m_icon)
-    {
-        setProperty("hovered",enable);
+    setProperty("hovered",enable);
+    if (m_icon)
+    {        
         if (enable)
         {            
             m_button->setIcon(m_icon->hoverIcon());
@@ -97,11 +87,15 @@ void PushButton::setParentHovered(bool enable)
         }
     }
 
-    style()->unpolish(this);
-    style()->polish(this);
-
     style()->unpolish(m_button);
     style()->polish(m_button);
+}
+
+//--------------------------------------------------------------------------
+
+void PushButton::setChecked(bool enable)
+{
+    m_button->setChecked(enable);
 }
 
 //--------------------------------------------------------------------------

@@ -87,10 +87,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             return m_parentHovered;
         }
 
-        void setChecked(bool enable)
-        {
-            m_button->setChecked(enable);
-        }
+        void setChecked(bool enable);
 
         bool isChecked() const
         {
