@@ -35,6 +35,30 @@
                     "off" : { "currentColor" : "#FFFFFF" }
                 }
             }
+        },
+        {
+            "name" : "HTreeNodeTop",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
+            "name" : "HTreeNodeBottom",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
         }
     ]
 }
