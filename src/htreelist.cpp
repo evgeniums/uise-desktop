@@ -278,6 +278,7 @@ QWidget* HTreeList::doCreateContentWidget()
     }
     m_widget=w;
     setMinimumWidth(w->minimumWidth());
+    w->setDefaultMaxItemWith(w->minimumWidth());
     return w;
 }
 
