@@ -49,7 +49,10 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
          * @brief Constructor.
          * @param parent Parent widget.
          */
-        HTreeListItem(QWidget* parent=nullptr);
+        HTreeListItem(HTreePathElement el, QWidget* parent=nullptr);
+
+        HTreeListItem(QWidget* parent=nullptr) : HTreeListItem(HTreePathElement{},parent)
+        {}
 
         /**
          * @brief Destructor.

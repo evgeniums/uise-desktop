@@ -106,11 +106,12 @@ void HTreeListItem::showMenu(const QPoint&)
 
 //--------------------------------------------------------------------------
 
-HTreeListItem::HTreeListItem(QWidget* parent)
+HTreeListItem::HTreeListItem(HTreePathElement el, QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<HTreeListItem_p>())
 {
     pimpl->self=this;
+    pimpl->pathElement=std::move(el);
     pimpl->layout=Layout::vertical(this);
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     setContextMenuPolicy(Qt::CustomContextMenu);

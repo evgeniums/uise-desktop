@@ -56,8 +56,8 @@ class HTreeStandardListItem_p
 
 //--------------------------------------------------------------------------
 
-HTreeStandardListItem::HTreeStandardListItem(const QString& type, const QString& text, std::shared_ptr<SvgIcon> icon, QWidget* parent)
-    : HTreeListItem(parent),
+HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString& text, std::shared_ptr<SvgIcon> icon, QWidget* parent)
+    : HTreeListItem(std::move(el),parent),
       pimpl(std::make_unique<HTreeStandardListItem_p>())
 {
     pimpl->self=this;

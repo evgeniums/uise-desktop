@@ -47,11 +47,11 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
 
     public:
 
-        /**
-         * @brief Constructor.
-         * @param parent Parent widget.
-         */
-        HTreeStandardListItem(const QString& type, const QString& text, std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr);
+        HTreeStandardListItem(const QString& text, std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr) :
+            HTreeStandardListItem(HTreePathElement{},text,std::move(icon),parent)
+        {}
+
+        HTreeStandardListItem(HTreePathElement el, const QString& text, std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr);
 
         /**
          * @brief Destructor.
@@ -62,8 +62,6 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
         HTreeStandardListItem(HTreeStandardListItem&&)=delete;
         HTreeStandardListItem& operator=(const HTreeStandardListItem&)=delete;
         HTreeStandardListItem& operator=(HTreeStandardListItem&&)=delete;
-
-        QString type() const;
 
         QString text() const;
         QPixmap pixmap() const;
@@ -85,6 +83,11 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
         std::string sortValue() const noexcept
         {
             return name();
+        }
+
+        std::string type() const
+        {
+            return pathElement().type();
         }
 
         std::string id() const
@@ -146,13 +149,11 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItemView : public FlyweightListView<H
 };
 
 inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>& items,
-                                    const char* type,
-                                    const QString& name,
+                                    HTreePathElement el,
                                     const QString& icon,
                                     QWidget* parent=nullptr)
 {
-    auto item=new HTreeStandardListItem(type,name,Style::instance().svgIconLocator().icon(icon,parent));
-    item->setPathElement(HTreePathElement{type,type,name.toStdString()});
+    auto item=new HTreeStandardListItem(el,QString::fromStdString(el.name()),Style::instance().svgIconLocator().icon(icon,parent));
     items.emplace_back(item);
 }
 
