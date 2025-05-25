@@ -35,7 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
-#include <uise/desktop/htreelistitem.hpp>
+#include <uise/desktop/htreestandardlistitem.hpp>
 #include <uise/desktop/htreelist.hpp>
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
@@ -44,7 +44,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-class DirListItem : public HTreeStansardListItem
+class DirListItem : public HTreeStandardListItem
 {
     Q_OBJECT
 
@@ -56,7 +56,7 @@ class DirListItem : public HTreeStansardListItem
         DirListItem(
                 const std::filesystem::directory_entry& entry,
                 QWidget* parent=nullptr
-            ) : HTreeStansardListItem(entry.is_directory()?Folder:File, {}, {}, parent),
+            ) : HTreeStandardListItem(parent),
                 entry(entry)
         {
             auto drawIcon=[this](bool selected)

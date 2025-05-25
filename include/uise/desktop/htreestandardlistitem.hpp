@@ -54,6 +54,10 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
 
         HTreeStandardListItem(HTreePathElement el, const QString& text, std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr);
 
+        HTreeStandardListItem(QWidget* parent=nullptr) :
+            HTreeStandardListItem({},{},{},parent)
+        {}
+
         /**
          * @brief Destructor.
          */

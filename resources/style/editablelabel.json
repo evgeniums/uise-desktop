@@ -3,8 +3,9 @@
         {
             "name" : "EditableLabel",
             "aliases" : {
-                "apply" : "tabler-icons/outline/check",
-                "edit" : "tabler-icons/outline/edit"
+                "apply"  : "tabler-icons/outline/check",
+                "edit"   : "tabler-icons/outline/edit",
+                "cancel" : "tabler-icons/outline/cancel"
             }
         }
     ]
