@@ -36,21 +36,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeTab;
 class HTreeNode;
-
-class UISE_DESKTOP_EXPORT HTreeNodeBuilder
-{
-    public:
-
-        HTreeNodeBuilder()=default;
-        virtual ~HTreeNodeBuilder();
-
-        HTreeNodeBuilder(const HTreeNodeBuilder&)=default;
-        HTreeNodeBuilder(HTreeNodeBuilder&&)=default;
-        HTreeNodeBuilder& operator= (const HTreeNodeBuilder&)=default;
-        HTreeNodeBuilder& operator= (HTreeNodeBuilder&&)=default;
-
-        virtual HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const=0;
-};
+class HTreeNodeBuilder;
 
 class UISE_DESKTOP_EXPORT HTreeNodeFactory
 {

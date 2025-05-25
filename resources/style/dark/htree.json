@@ -28,12 +28,10 @@
             "name" : "HTreeStandardListItem",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#CCCCCC" }
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" : { "currentColor" : "#FFFFFF" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#FFFFFF" }
-                },
-                "checked" : {
                     "off" : { "currentColor" : "#FFFFFF" }
                 }
             }

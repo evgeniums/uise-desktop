@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreelistitem.hpp>
 #include <uise/desktop/htreebranch.hpp>
+#include <uise/desktop/htreenodebuilder.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -106,6 +107,8 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
             return m_node;
         }
 
+        void setViewWidgets(QWidget* widget, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr);
+
     public slots:
 
         void setNextNodeId(const std::string& id);
@@ -113,9 +116,7 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
     private:
 
         void onItemInsert(HTreeListItem* item);
-        void onItemRemove(HTreeListItem* item);
-
-        void setViewWidget(QWidget* widget);
+        void onItemRemove(HTreeListItem* item);        
 
         std::unique_ptr<HTreeListWidget_p> pimpl;
         HTreeList* m_node;
@@ -180,12 +181,29 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
         template <typename BuilderT>
         void createViewT(HTreeListWidget* listWidget, BuilderT&& builder) const
         {
-            auto v=builder();
-            setView(v,listWidget);            
+            auto view=builder();
+            setView(view,listWidget);
+        }
+
+        template <typename ViewBuilderT, typename TopBuilderT, typename BottomBuilderT>
+        void createViewT(HTreeListWidget* listWidget, ViewBuilderT&& viewBuilder, TopBuilderT&& topBuilder, TopBuilderT&& bottomBuilder) const
+        {
+            auto view=viewBuilder();
+            QWidget* topWidget=nullptr;
+            if (topBuilder)
+            {
+                topWidget=topBuilder();
+            }
+            QWidget* bottomWidget=nullptr;
+            if (bottomBuilder)
+            {
+                bottomWidget=bottomBuilder();
+            }
+            setView(view,listWidget,topWidget,bottomWidget);
         }
 
         template <typename ItemT, typename BaseT>
-        void setView(HTreeListView<ItemT,BaseT>* view, HTreeListWidget* listWidget) const
+        void setView(HTreeListView<ItemT,BaseT>* view, HTreeListWidget* listWidget, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr) const
         {            
             view->setHTreeList(listWidget->node());
 
@@ -201,7 +219,7 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
                     listWidget->onItemRemove(item);
                 }
             );
-            listWidget->setViewWidget(view);
+            listWidget->setViewWidgets(view,topWidget,bottomWidget);
 
             view->setRefreshRequestedCb(
                 [listWidget]()
@@ -220,6 +238,25 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
                 }
             );
         }
+};
+
+template <typename T>
+class HTreeListBuilder : public HTreeNodeBuilder
+{
+public:
+
+    HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const override
+    {
+        HTreePath path;
+        if (parentNode!=nullptr)
+        {
+            path=HTreePath{parentNode->path(),pathElement};
+        }
+
+        auto node=new HTreeList(std::make_shared<T>(),treeTab);
+        node->setNodeTooltip(QString::fromStdString(pathElement.name()));
+        return node;
+    }
 };
 
 UISE_DESKTOP_NAMESPACE_END

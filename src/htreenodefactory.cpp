@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/htreenode.hpp>
+#include <uise/desktop/htreenodebuilder.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN

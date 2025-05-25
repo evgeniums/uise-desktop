@@ -37,6 +37,10 @@ class HTreeListWidget_p
     public:
 
         QBoxLayout* layout=nullptr;
+
+        QWidget* topWidget=nullptr;
+        QWidget* bottomWidget=nullptr;
+
         QWidget* view=nullptr;
 
         std::map<std::string,HTreeListItem*> items;
@@ -68,7 +72,7 @@ HTreeListWidget::HTreeListWidget(HTreeList* node)
       pimpl(std::make_unique<HTreeListWidget_p>()),
       m_node(node)
 {
-    pimpl->layout=Layout::horizontal(this);
+    pimpl->layout=Layout::vertical(this);
 }
 
 //--------------------------------------------------------------------------
@@ -169,12 +173,44 @@ void HTreeListWidget::onItemRemove(HTreeListItem* item)
 
 //--------------------------------------------------------------------------
 
-void HTreeListWidget::setViewWidget(QWidget* widget)
+void HTreeListWidget::setViewWidgets(QWidget* widget, QWidget* topWidget, QWidget* bottomWidget)
 {
-    pimpl->view=widget;
-    pimpl->layout->addWidget(widget);
+    int minWidth=0;
 
-    setMinimumWidth(widget->minimumWidth());
+    if (topWidget!=nullptr)
+    {
+        if (pimpl->topWidget!=nullptr)
+        {
+            destroyWidget(pimpl->topWidget);
+        }
+
+        pimpl->topWidget=topWidget;
+        pimpl->layout->addWidget(topWidget);
+        minWidth=topWidget->minimumWidth();
+    }
+
+    if (pimpl->view!=nullptr)
+    {
+        destroyWidget(pimpl->view);
+    }
+
+    pimpl->view=widget;
+    pimpl->layout->addWidget(widget,1);
+    minWidth=std::max(widget->minimumWidth(),minWidth);
+
+    if (bottomWidget!=nullptr)
+    {
+        if (pimpl->bottomWidget!=nullptr)
+        {
+            destroyWidget(pimpl->bottomWidget);
+        }
+
+        pimpl->bottomWidget=bottomWidget;
+        pimpl->layout->addWidget(bottomWidget);
+        minWidth=std::max(bottomWidget->minimumWidth(),minWidth);
+    }
+
+    setMinimumWidth(minWidth);
 }
 
 //--------------------------------------------------------------------------
