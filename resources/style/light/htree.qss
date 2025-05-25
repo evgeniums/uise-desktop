@@ -1,4 +1,4 @@
-uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:#FFFFFF;}
+uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:#EEEEEE;}
 
 uise--HTreeNodeTitleBar {
     border: 1px solid #999999;
@@ -8,6 +8,7 @@ uise--HTreeNodeTitleBar {
 uise--HTreeNodePlaceHolder {background-color: #C8C8C0;}
 uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C0;}
 
+uise--HTreeStandardListItem QLabel {color:#000000;}
 uise--HTreeStandardListItem[hover="true"] {background-color:#C4C4C4;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#B0B0B0;}
 

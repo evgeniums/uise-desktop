@@ -5,8 +5,7 @@
             "name" : "HTreeNodeTitleBar",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#CCCCCC" },
-                    "on" :  { "currentColor" : "#999999" }
+                    "off" : { "currentColor" : "#EEEEEE" }
                 },
                 "hovered" : {
                     "off" : { "currentColor" : "#FFFFFF" }
@@ -28,7 +27,7 @@
             "name" : "HTreeStandardListItem",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" },
+                    "off" : { "currentColor" : "#777777" },
                     "on" : { "currentColor" : "#000000" }
                 },
                 "hovered" : {
