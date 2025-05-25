@@ -163,6 +163,15 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
         std::shared_ptr<HTreeListViewBuilder> m_builder;
 };
 
+struct makeNullWidgetT
+{
+    QWidget* operator()(QWidget* parent=nullptr) const
+    {
+        return nullptr;
+    }
+};
+constexpr makeNullWidgetT makeNullWidget{};
+
 class UISE_DESKTOP_EXPORT HTreeListViewBuilder
 {
     public:
@@ -186,19 +195,11 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
         }
 
         template <typename ViewBuilderT, typename TopBuilderT, typename BottomBuilderT>
-        void createViewT(HTreeListWidget* listWidget, ViewBuilderT&& viewBuilder, TopBuilderT&& topBuilder, TopBuilderT&& bottomBuilder) const
+        void createViewT(HTreeListWidget* listWidget, ViewBuilderT&& viewBuilder, TopBuilderT&& topBuilder, BottomBuilderT&& bottomBuilder) const
         {
             auto view=viewBuilder();
-            QWidget* topWidget=nullptr;
-            if (topBuilder)
-            {
-                topWidget=topBuilder();
-            }
-            QWidget* bottomWidget=nullptr;
-            if (bottomBuilder)
-            {
-                bottomWidget=bottomBuilder();
-            }
+            QWidget* topWidget=topBuilder();
+            QWidget* bottomWidget=bottomBuilder();
             setView(view,listWidget,topWidget,bottomWidget);
         }
 
