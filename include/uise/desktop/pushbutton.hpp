@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/pushbutton.hpp
+/** @file uise/desktop/pushm_button.hpp
 *
 *  Declares PushButton.
 *
@@ -26,34 +26,45 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_PUSHBUTTON_HPP
 #define UISE_DESKTOP_PUSHBUTTON_HPP
 
+#include <QFrame>
 #include <QPushButton>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/svgicon.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT PushButton : public QPushButton
+class UISE_DESKTOP_EXPORT PushButton : public QFrame
 {
+    Q_OBJECT
+
     public:
 
         PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr)
-            : QPushButton(parent),
+            : QFrame(parent),
               m_icon(std::move(icon)),
               m_parentHovered(false)
         {
-            setProperty("PushButton",true);
+            auto l=Layout::vertical(this);
+            m_button=new QPushButton(this);
+            l->addWidget(m_button);
+
             if (m_icon)
             {
                 setIcon(m_icon->icon());
             }
+
+            connect(m_button,&QPushButton::clicked,this,&PushButton::clicked);
         }
 
-        PushButton(QWidget* parent=nullptr) : QPushButton(parent)
+        PushButton(QWidget* parent=nullptr) : PushButton(std::shared_ptr<SvgIcon>{},parent)
         {}
 
-        PushButton(const QString text, QWidget* parent=nullptr) : QPushButton(text,parent)
-        {}
+        PushButton(const QString text, QWidget* parent=nullptr) : PushButton(std::shared_ptr<SvgIcon>{},parent)
+        {
+            setText(text);
+        }
 
         void setSvgIcon(std::shared_ptr<SvgIcon> icon)
         {
@@ -76,6 +87,50 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
             return m_parentHovered;
         }
 
+        void setChecked(bool enable)
+        {
+            m_button->setChecked(enable);
+        }
+
+        bool isChecked() const
+        {
+            return m_button->isChecked();
+        }
+
+        void setCheckable(bool enable)
+        {
+            m_button->setCheckable(enable);
+        }
+
+        bool isCheckable() const
+        {
+            return m_button->isCheckable();
+        }
+
+        void setIcon(const QIcon& icon)
+        {
+            m_button->setIcon(icon);
+        }
+
+        QIcon icon() const
+        {
+            return m_button->icon();
+        }
+
+        void setText(const QString& text)
+        {
+            m_button->setText(text);
+        }
+
+        QString text() const
+        {
+            return m_button->text();
+        }
+
+    signals:
+
+        void clicked();
+
     protected:
 
         void enterEvent(QEnterEvent* event) override;
@@ -83,6 +138,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QPushButton
 
     private:
 
+        QPushButton* m_button;
         std::shared_ptr<SvgIcon> m_icon;
         bool m_parentHovered;
 };

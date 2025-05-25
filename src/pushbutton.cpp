@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/pushbutton.cpp
+/** @file uise/desktop/pushm_button.cpp
 *
 *  Defines PushButton.
 *
@@ -35,11 +35,21 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void PushButton::enterEvent(QEnterEvent* event)
 {
-    if (!m_parentHovered && !isChecked() && m_icon)
+    if (!m_parentHovered && !m_button->isChecked())
     {
-        setIcon(m_icon->hoverIcon());
+        setProperty("hovered",true);
+        if (m_icon)
+        {
+            m_button->setIcon(m_icon->hoverIcon());
+        }
     }
-    QPushButton::enterEvent(event);
+    QFrame::enterEvent(event);
+
+    style()->unpolish(this);
+    style()->polish(this);
+
+    style()->unpolish(m_button);
+    style()->polish(m_button);
 }
 
 //--------------------------------------------------------------------------
@@ -51,11 +61,22 @@ void PushButton::leaveEvent(QEvent* event)
         return;
     }
 
-    if (!m_parentHovered && !isChecked() && m_icon)
+    if (!m_parentHovered && !m_button->isChecked())
     {
-        setIcon(m_icon->icon());
+        setProperty("hovered",false);
+
+        if (m_icon)
+        {
+            m_button->setIcon(m_icon->icon());
+        }
     }
-    QPushButton::leaveEvent(event);
+    QFrame::leaveEvent(event);
+
+    style()->unpolish(this);
+    style()->polish(this);
+
+    style()->unpolish(m_button);
+    style()->polish(m_button);
 }
 
 //--------------------------------------------------------------------------
@@ -63,17 +84,24 @@ void PushButton::leaveEvent(QEvent* event)
 void PushButton::setParentHovered(bool enable)
 {
     m_parentHovered=enable;
-    if (!isChecked() && m_icon)
+    if (!m_button->isChecked() && m_icon)
     {
+        setProperty("hovered",enable);
         if (enable)
-        {
-            setIcon(m_icon->hoverIcon());
+        {            
+            m_button->setIcon(m_icon->hoverIcon());
         }
         else
         {
-            setIcon(m_icon->icon());
+            m_button->setIcon(m_icon->icon());
         }
     }
+
+    style()->unpolish(this);
+    style()->polish(this);
+
+    style()->unpolish(m_button);
+    style()->polish(m_button);
 }
 
 //--------------------------------------------------------------------------
