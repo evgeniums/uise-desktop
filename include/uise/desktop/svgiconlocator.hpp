@@ -248,6 +248,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         void clearIconDirs()
         {
             m_iconDirs.clear();
+            m_iconDirSubstitutions.clear();
         }
 
         void addIconDir(QString path)
@@ -258,6 +259,35 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         const std::vector<QString>& iconDirss() const
         {
             return m_iconDirs;
+        }
+
+        void addIconDirSubstitution(QString original, QString subst)
+        {
+            m_iconDirSubstitutions.emplace(std::move(original),std::move(subst));
+        }
+
+        QString iconDirSubstitution(const QString& original) const
+        {
+            auto it=m_iconDirSubstitutions.find(original);
+            if (it!=m_iconDirSubstitutions.end())
+            {
+                return it->second;
+            }
+            return original;
+        }
+
+        QString substituteIconDir(QString name) const
+        {
+            for (const auto& it: m_iconDirSubstitutions)
+            {
+                name.replace(it.first,it.second);
+            }
+            return name;
+        }
+
+        const std::map<QString,QString>& iconDirSubstitutions() const
+        {
+            return m_iconDirSubstitutions;
         }
 
         void setDefaultSizes(SizeSet defaultSizes)
@@ -336,6 +366,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         void loadSvgIconContext(T* tagCtx, const SvgIconContext& iconContext);
 
         std::vector<QString> m_iconDirs;
+        std::map<QString,QString> m_iconDirSubstitutions;
 
         struct IconTagsCacheItem
         {

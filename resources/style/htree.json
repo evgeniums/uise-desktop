@@ -3,15 +3,15 @@
         {
             "name" : "HTreeNodeTitleBar",
             "aliases" : {
-                "collapse" : "tabler-icons/outline/minus",
-                "close" : "tabler-icons/outline/x",
-                "refresh" : "tabler-icons/outline/refresh"
+                "collapse" : "${svg-icons}/minus",
+                "close" : "${svg-icons}/x",
+                "refresh" : "${svg-icons}/refresh"
             }
         },
         {
             "name" : "HTreeNodePlaceHolder",
             "aliases" : {
-                "dots" : "tabler-icons/outline/dots-vertical"
+                "dots" : "${svg-icons}/dots-vertical"
             }
         }
     ]

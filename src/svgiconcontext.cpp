@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QJsonArray>
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/svgiconcontext.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -38,6 +39,13 @@ QString nameWithContext(const QString& name, const QString& context)
 {
     return context + "::" + name;
 }
+
+enum class SubstitutionMode : uint8_t
+{
+    None,
+    IconDir,
+    Color
+};
 
 }
 
@@ -165,7 +173,12 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
             }
         }
 
-        auto parseStringMap=[i,&mustBeObject,&mustBeString](std::map<QString,QString>& map, const QString& field, QJsonObject& obj, QStringList path, const QString& keyContext={})
+        auto parseStringMap=[i,&mustBeObject,&mustBeString](std::map<QString,QString>& map,
+                                                                const QString& field, QJsonObject& obj,
+                                                                QStringList path,
+                                                                SubstitutionMode substMode,
+                                                                const QString& keyContext={}
+                                                            )
         {
             if (obj.contains(field))
             {
@@ -190,6 +203,15 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                     auto str=val.toString();
                     if (!str.isEmpty())
                     {
+                        if (substMode==SubstitutionMode::IconDir)
+                        {
+                            str=Style::instance().svgIconLocator().substituteIconDir(str);
+                        }
+                        else if (substMode==SubstitutionMode::Color)
+                        {
+                            //! @todo Implement color substitution
+                        }
+
                         if (keyContext.isEmpty())
                         {
                             map.emplace(key,str);
@@ -207,7 +229,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
 
         // aliases
         QString aliasesField{"aliases"};
-        auto ok=parseStringMap(ctx.aliases,aliasesField,ctxObj,path,ctx.name);
+        auto ok=parseStringMap(ctx.aliases,aliasesField,ctxObj,path,SubstitutionMode::IconDir,ctx.name);
         if (!ok)
         {
             return false;
@@ -215,7 +237,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
 
         // name paths
         QString pathsField{"paths"};
-        ok=parseStringMap(ctx.namePaths,pathsField,ctxObj,path,ctx.name);
+        ok=parseStringMap(ctx.namePaths,pathsField,ctxObj,path,SubstitutionMode::IconDir,ctx.name);
         if (!ok)
         {
             return false;
@@ -255,14 +277,14 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                     auto colorMapObj=val.toObject();
 
                     // on colors
-                    bool ok=parseStringMap(colorMaps.on,"on",colorMapObj,mpath);
+                    bool ok=parseStringMap(colorMaps.on,"on",colorMapObj,mpath,SubstitutionMode::Color);
                     if (!ok)
                     {
                         return false;
                     }
 
                     // off colors
-                    ok=parseStringMap(colorMaps.off,"off",colorMapObj,mpath);
+                    ok=parseStringMap(colorMaps.off,"off",colorMapObj,mpath,SubstitutionMode::Color);
                     if (!ok)
                     {
                         return false;

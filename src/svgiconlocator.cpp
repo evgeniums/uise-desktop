@@ -399,7 +399,8 @@ void SvgIconLocator::reset()
 {
     clearIconDirs();
     clearCache();
-    addIconDir(":/uise-icons");
+    addIconDir(":/icons");
+    addIconDirSubstitution("${svg-icons}","tabler-icons/outline");
 }
 
 //--------------------------------------------------------------------------

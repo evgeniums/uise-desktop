@@ -3,9 +3,9 @@
         {
             "name" : "EditableLabel",
             "aliases" : {
-                "apply"  : "tabler-icons/outline/check",
-                "edit"   : "tabler-icons/outline/edit",
-                "cancel" : "tabler-icons/outline/cancel"
+                "apply"  : "${svg-icons}/check",
+                "edit"   : "${svg-icons}/edit",
+                "cancel" : "${svg-icons}/cancel"
             }
         }
     ]

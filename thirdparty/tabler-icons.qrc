@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/uise-icons">
+    <qresource prefix="/icons">
         <file>tabler-icons/outline/dots-vertical.svg</file>
         <file>tabler-icons/outline/exclamation-circle.svg</file>
         <file>tabler-icons/outline/layout-sidebar.svg</file>

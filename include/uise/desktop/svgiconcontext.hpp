@@ -97,9 +97,14 @@ class WithModesMap
         std::map<QString,IconMode> m_modeMap;
 };
 
+class SvgIconLocator;
+
 class SvgIconTheme : public WithModesMap
 {
     public:
+
+        SvgIconTheme()
+        {}
 
         bool loadFromJson(const QString& json, QString* errorMessage=nullptr);
 
