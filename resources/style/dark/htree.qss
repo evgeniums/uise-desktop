@@ -8,8 +8,8 @@ uise--HTreeNodeTitleBar {
 uise--HTreeNodePlaceHolder {background-color: #C8C8C0;}
 uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C0;}
 
-uise--HTreeStandardListItem[hover="true"] {background-color:#C4C4C4;}
-uise--HTreeStandardListItem[selected="true"] {background-color:#B0B0B0;}
+uise--HTreeStandardListItem[hover="true"] {background-color:#404040;}
+uise--HTreeStandardListItem[selected="true"] {background-color:#606060;}
 
 uise--HTreeSplitterLine {background-color:#888888;}
 
