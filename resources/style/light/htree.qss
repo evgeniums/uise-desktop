@@ -5,12 +5,12 @@ uise--HTreeNodeTitleBar {
     background-color: #888888;
 }
 
-uise--HTreeNodePlaceHolder {background-color: #C8C8C0;}
-uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C0;}
+uise--HTreeNodePlaceHolder {background-color: #C8C8C8;}
+uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C8;}
 
 uise--HTreeStandardListItem QLabel {color:#000000;}
-uise--HTreeStandardListItem[hover="true"] {background-color:#C4C4C4;}
-uise--HTreeStandardListItem[selected="true"] {background-color:#B0B0B0;}
+uise--HTreeStandardListItem[hover="true"] {background-color:#ECECEC;}
+uise--HTreeStandardListItem[selected="true"] {background-color:#CCCCCC;}
 
 uise--HTreeSplitterLine {background-color:#DDDDDD;}
 
