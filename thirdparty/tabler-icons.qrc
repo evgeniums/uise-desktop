@@ -22,5 +22,7 @@
         <file>tabler-icons/outline/edit.svg</file>
         <file>tabler-icons/outline/pencil.svg</file>
         <file>tabler-icons/outline/plus.svg</file>
+        <file>tabler-icons/outline/user-circle.svg</file>
+        <file>tabler-icons/outline/user.svg</file>
     </qresource>
 </RCC>
