@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_PATH_HPP
 #define UISE_DESKTOP_HTREE_PATH_HPP
 
+#include <string>
 #include <vector>
 
 #include <uise/desktop/uisedesktop.hpp>
