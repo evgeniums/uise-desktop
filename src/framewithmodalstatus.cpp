@@ -46,6 +46,7 @@ class FrameWithModalStatus_p
 
         QFrame* popupWidget=nullptr;
         QPointer<BusyWaiting> busyWaiting;
+        QPointer<QFrame> busyWaitingFrame;
         QPointer<StatusDialog> statusDialog;
 
         PushButton* cancelButton=nullptr;
@@ -62,9 +63,22 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
     auto l=Layout::vertical(pimpl->popupWidget);
+    l->addStretch(1000);
 
-    pimpl->busyWaiting=new BusyWaiting(pimpl->popupWidget,true,false);
-    l->addWidget(pimpl->busyWaiting);
+    pimpl->busyWaitingFrame=new QFrame(pimpl->popupWidget);
+    pimpl->busyWaitingFrame->setObjectName("busyWaitingFrame");
+    pimpl->busyWaiting=new BusyWaiting(pimpl->busyWaitingFrame,true,false);
+    l->addWidget(pimpl->busyWaitingFrame,0,Qt::AlignCenter);
+    connect(
+        pimpl->busyWaiting,
+        &BusyWaiting::sizeUpdated,
+        this,
+        [this](QSize size)
+        {
+            pimpl->busyWaitingFrame->setFixedSize(size);
+        }
+    );
+    pimpl->busyWaitingFrame->setFixedSize(pimpl->busyWaiting->size());
 
     pimpl->statusDialog=new StatusDialog(pimpl->popupWidget);
     l->addWidget(pimpl->statusDialog);
@@ -78,6 +92,8 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     btL->addWidget(pimpl->cancelButton,0,buttonAlignment);
     pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
     l->addWidget(btFrame);
+
+    l->addStretch(1000);
 
     setPopupWidget(pimpl->popupWidget);
 

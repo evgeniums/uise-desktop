@@ -110,8 +110,32 @@ int main(int argc, char *argv[])
     bl->addWidget(hide);
     QObject::connect(hide,&QPushButton::clicked,testWidget,&FrameWithModalStatus::finish);
 
-    QString darkTheme="*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}";
-    QString lightTheme="*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: white;color:black;} \n uise--FrameWithModalPopup {background-color: lightgrey;}";
+    auto cancellableButton=new QPushButton();
+    cancellableButton->setText("Uncancellable");
+    cancellableButton->setCheckable(true);
+    QObject::connect(cancellableButton,&QPushButton::toggled,testWidget,[testWidget,cancellableButton](bool enable){
+        if (enable)
+        {
+            cancellableButton->setText("Cancellable");
+        }
+        else
+        {
+            cancellableButton->setText("Uncancellable");
+        }
+        testWidget->setCancellableBusyWaiting(enable);
+    });
+    bl->addWidget(cancellableButton);
+
+    QString darkTheme=""
+                        "*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}"
+                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #CCCCCC;border: 1px solid #999999; border-radius: 4px; margin:4px; padding: 4px 16px;}\n"
+                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover{color: #EEEEEE;border: 1px solid #EEEEEE;}\n"
+                    "";
+    QString lightTheme=""
+                         "*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: white;color:black;} \n uise--FrameWithModalPopup {background-color: lightgrey;}"
+                         "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #555555;border: 1px solid #999999; border-radius: 4px; margin:4px; padding: 4px 16px;}\n"
+                         "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover{color: #444444;border: 1px solid #444444;}\n"
+                         "";
     auto styleButton=new QPushButton();
     styleButton->setText("Dark theme");
     styleButton->setCheckable(true);
@@ -135,8 +159,6 @@ int main(int argc, char *argv[])
     testWidget->setPopupAlpha(alpha->value());
     testWidget->setMaxWidthPercent(width->value());
     testWidget->setMaxHeightPercent(height->value());
-
-    testWidget->setCancellableBusyWaiting(true);
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);
