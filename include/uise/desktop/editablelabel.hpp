@@ -57,6 +57,29 @@ class EditableLabelTime;
 class EditableLabelDateTime;
 
 /**
+ * @brief Type of label content.
+ */
+enum class EditableLabelType : int
+{
+    Text,
+    Int,
+    Double,
+    List,
+    Date,
+    Time,
+    DateTime,
+
+    Custom=0x100
+};
+
+struct EditableLabelConfig
+{
+    int type;
+    QString id;
+    QVariant value;
+};
+
+/**
  * @brief Base class for editable labels.
  */
 class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
@@ -65,20 +88,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 
     public:
 
-        /**
-         * @brief Type of label content.
-         */
-        enum class Type : int
-        {
-            Text,
-            Int,
-            Double,
-            List,
-            Date,
-            Time,
-            DateTime,
-            Custom
-        };
+        using Type=EditableLabelType;
 
         /**
          * @brief Constructor.
@@ -147,7 +157,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         void setInGroup(bool val)
         {
             m_inGroup=val;
-            setEditable(m_editable);
+            setEditing(m_editing);
         }
         /**
          * @brief Check if label is in a group.
@@ -162,10 +172,23 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          * @brief Check if label is in editing mode now.
          * @return Query result.
          */
-        bool isEditable() const noexcept
+        bool isEditing() const noexcept
         {
-            return m_editable;
+            return m_editing;
         }
+
+        void setId(QString id)
+        {
+            m_id=std::move(id);
+        }
+
+        QString id() const
+        {
+            return m_id;
+        }
+
+        virtual void setVariantValue(const QVariant& val)=0;
+        virtual QVariant variantValue() const=0;
 
     public slots:
 
@@ -173,9 +196,9 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          * @brief Set editing mode.
          * @param enable If trure then show editor, potherwise show text label.
          */
-        void setEditable(bool enable)
+        void setEditing(bool enable)
         {
-            m_editable=enable;
+            m_editing=enable;
             m_label->setVisible(!m_inGroup && !enable);
 
             m_editButton->setVisible(!m_inGroup && !enable);
@@ -197,7 +220,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          */
         void cancel()
         {
-            setEditable(false);
+            setEditing(false);
             restoreWidgetValue();
         }
 
@@ -206,7 +229,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          */
         void edit()
         {
-            setEditable(true);
+            setEditing(true);
         }
 
     signals:
@@ -214,7 +237,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         /**
          * @brief New value was set for the label.
          */
-        void valueSet();
+        void valueUpdated();
 
     protected:
 
@@ -233,8 +256,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         QLabel* m_label;
         QBoxLayout* m_layout;
         const EditableLabelFormatter* m_formatter;
-        bool m_editable;
+        bool m_editing;
         bool m_inGroup;
+
+        QString m_id;
 
         PushButton* m_editButton;
         PushButton* m_applyButton;
@@ -545,6 +570,7 @@ class EditableLabelTmpl : public EditableLabel
 
         using helper = EditableLabelHelper<TypeId>;
         using widgetType = typename helper::widgetType;
+        using valueType = typename helper::valueType;
 
         /**
          * @brief Constructor.
@@ -584,6 +610,16 @@ class EditableLabelTmpl : public EditableLabel
             m_editor->blockSignals(false);
         }
 
+        void setVariantValue(const QVariant& val) override
+        {
+            setValue(val.value<valueType>());
+        }
+
+        QVariant variantValue() const override
+        {
+            return QVariant::fromValue(value());
+        }
+
         /**
          * @brief Get editor widget.
          * @return Query result.
@@ -607,10 +643,10 @@ class EditableLabelTmpl : public EditableLabel
          */
         virtual void apply() override
         {
-            setEditable(false);
+            setEditing(false);
             m_backupValue=helper::value(m_editor);
             helper::loadLabel(label(),m_editor,formatter());
-            emit valueSet();
+            emit valueUpdated();
             notifyValueChanged();
         }
 

@@ -44,7 +44,7 @@ EditableLabel::EditableLabel(
         m_type(type),
         m_label(new QLabel(this)),
         m_formatter(nullptr),
-        m_editable(false),
+        m_editing(false),
         m_inGroup(inGroup)
 {
     m_layout=Layout::horizontal(this);
@@ -117,7 +117,7 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
                 return false;
             }
 
-            setEditable(true);
+            setEditing(true);
             return true;
         }
         if (event->type() == QEvent::ContextMenu)
@@ -126,7 +126,7 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 
             if (!m_inGroup)
             {
-                auto edit = menu->addAction(tr("Edit"),this,[this](){setEditable(true);});
+                auto edit = menu->addAction(tr("Edit"),this,[this](){setEditing(true);});
                 menu->setDefaultAction(edit);
             }
 

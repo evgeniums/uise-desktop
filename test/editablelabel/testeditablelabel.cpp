@@ -142,11 +142,11 @@ BOOST_AUTO_TEST_CASE(TestText)
         auto label = new EditableLabelText();
         label->setValue(initialValue);
 
-        QObject::connect(label,&EditableLabel::valueSet,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
+        QObject::connect(label,&EditableLabel::valueUpdated,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
 
         beginTestCase(container,label,"Test editable text label");
 
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
         UISE_TEST_CHECK(!container->label->isInGroup());
         UISE_TEST_CHECK(container->label->formatter()==nullptr);
         UISE_TEST_CHECK(container->label->type()==EditableLabel::Type::Text);
@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(TestText)
 
         // cancel editable mode
         container->label->cancel();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text didn't change
         UISE_TEST_CHECK_EQUAL_QSTR(prevValue,container->label->text());
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(TestText)
 
         // set editable mode
         container->label->edit();
-        UISE_TEST_CHECK(container->label->isEditable());
+        UISE_TEST_CHECK(container->label->isEditing());
 
         // set value
         updatedValue="New updated text";
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(TestText)
 
         // apply changes
         container->label->apply();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text changed
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
@@ -276,11 +276,11 @@ void testLabelWithValue(const ValueT& initialValue, const ValueT& setValue, cons
         configLabel(label);
         label->setValue(initialValue);
 
-        QObject::connect(label,&EditableLabel::valueSet,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
+        QObject::connect(label,&EditableLabel::valueUpdated,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
 
         beginTestCase(container,label,title);
 
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
         UISE_TEST_CHECK(!container->label->isInGroup());
         UISE_TEST_CHECK(container->label->formatter()==nullptr);
         UISE_TEST_CHECK(container->label->type()==TypeId);
@@ -339,7 +339,7 @@ void testLabelWithValue(const ValueT& initialValue, const ValueT& setValue, cons
 
         // cancel editable mode
         container->label->cancel();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text didn't change
         UISE_TEST_CHECK_EQUAL_QSTR(prevValueStr,container->label->text());
@@ -348,14 +348,14 @@ void testLabelWithValue(const ValueT& initialValue, const ValueT& setValue, cons
 
         // set editable mode
         container->label->edit();
-        UISE_TEST_CHECK(container->label->isEditable());
+        UISE_TEST_CHECK(container->label->isEditing());
 
         // set value
         EditableLabelHelper<TypeId>::setValue(actualLabel->editorWidget(),updatedValue);
 
         // apply changes
         container->label->apply();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text changed
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValueStr,container->label->text());
@@ -520,11 +520,11 @@ BOOST_AUTO_TEST_CASE(TestList)
         label->editorWidget()->addItems({"one","two","three","four","five"});
         label->setValue(initialValue);
 
-        QObject::connect(label,&EditableLabel::valueSet,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
+        QObject::connect(label,&EditableLabel::valueUpdated,[containerPtr,checkValueSet](){checkValueSet(containerPtr);});
 
         beginTestCase(container,label,"Test editable text label");
 
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
         UISE_TEST_CHECK(!container->label->isInGroup());
         UISE_TEST_CHECK(container->label->formatter()==nullptr);
         UISE_TEST_CHECK(container->label->type()==EditableLabel::Type::List);
@@ -579,7 +579,7 @@ BOOST_AUTO_TEST_CASE(TestList)
 
         // cancel editable mode
         container->label->cancel();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text didn't change
         UISE_TEST_CHECK_EQUAL_QSTR(prevValue,container->label->text());
@@ -588,14 +588,14 @@ BOOST_AUTO_TEST_CASE(TestList)
 
         // set editable mode
         container->label->edit();
-        UISE_TEST_CHECK(container->label->isEditable());
+        UISE_TEST_CHECK(container->label->isEditing());
 
         // set value
         actualLabel->editorWidget()->setCurrentText(updatedValue);
 
         // apply changes
         container->label->apply();
-        UISE_TEST_CHECK(!container->label->isEditable());
+        UISE_TEST_CHECK(!container->label->isEditing());
 
         // label text changed
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
