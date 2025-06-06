@@ -1,9 +1,23 @@
 /**
 
-Original Work Copyright (c) 2012-2014 Alexander Turkin
+@copyright Evgeny Sidorov 2022-2025
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+------------------------------------------------------------------------------
+
+Based on original Work Copyright (c) 2012-2014 Alexander Turkin
    Modified 2014 by William Hallatt
    Modified 2015 by Jacob Dawid
-   Modified 2022 by Evgeny Sidorov
+
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
 the Software without restriction, including without limitation the rights to
@@ -86,20 +100,6 @@ class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
         BusyWaiting(BusyWaiting&&)=delete;
         BusyWaiting& operator=(const BusyWaiting&)=delete;
         BusyWaiting& operator=(BusyWaiting&&)=delete;
-
-    public slots:
-
-        /**
-         * @brief Run widget.
-         */
-        void start();
-
-        /**
-         * @brief Stop widget.
-         */
-        void stop();
-
-    public:
 
         /**
          * @brief Set sample widget to be used as style reference.
@@ -228,6 +228,23 @@ class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
          * @return Query result.
          */
         bool isRunning() const noexcept;
+
+    signals:
+
+        void cancelled();
+        void sizeUpdated(QSize);
+
+    public slots:
+
+        /**
+         * @brief Run widget.
+         */
+        void start();
+
+        /**
+         * @brief Stop widget.
+         */
+        void stop();
 
     private slots:
 
