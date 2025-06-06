@@ -35,7 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDoubleSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
-#include <uise/desktop/modalpopup.hpp>
+#include <uise/desktop/framewithmodalstatus.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     testFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     tl->addWidget(testFrame);
     auto tfl=Layout::horizontal(testFrame,false);
-    auto testWidget=new FrameWithModalPopup(testFrame);
+    auto testWidget=new FrameWithModalStatus(testFrame);
     tfl->addWidget(testWidget);
     auto wl=Layout::vertical(testWidget,false);
     auto editor1=new QTextEdit();
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
     auto alpha=new QSpinBox();
     alpha->setRange(0,255);
-    alpha->setValue(150);
+    alpha->setValue(FrameWithModalPopup::DefaultPopupAlpha);
     confl->addWidget(new QLabel("Alpha"),i,0);
     confl->addWidget(alpha,i,1);
     QObject::connect(alpha,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setPopupAlpha);
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
     auto height=new QSpinBox();
     height->setRange(0,100);
-    height->setValue(50);
+    height->setValue(FrameWithModalPopup::DefaultMaxHeightPercent);
     confl->addWidget(new QLabel("Height percent"),i,0);
     confl->addWidget(height,i,1);
     QObject::connect(height,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setMaxHeightPercent);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
     auto width=new QSpinBox();
     width->setRange(0,100);
-    width->setValue(50);
+    width->setValue(FrameWithModalPopup::DefaultMaxWidthPercent);
     confl->addWidget(new QLabel("Width percent"),i,0);
     confl->addWidget(width,i,1);
     QObject::connect(width,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setMaxWidthPercent);
@@ -98,24 +98,20 @@ int main(int argc, char *argv[])
     l->addWidget(bottomFrame);
     auto bl=Layout::horizontal(bottomFrame,false);
 
-    auto start=new QPushButton("Show popup");
+    auto start=new QPushButton("Show busy waiting");
     bl->addWidget(start);
     QObject::connect(start,&QPushButton::clicked,testWidget,
     [testWidget](){
-            auto widget=new QPushButton("Hello");
-            widget->setMaximumHeight(100);
-            widget->setMaximumWidth(200);
-            testWidget->setPopupWidget(widget,true);
-            testWidget->popup();
+            testWidget->popupBusyWaiting();
         }
     );
 
-    auto hide=new QPushButton("Hide popup");
+    auto hide=new QPushButton("Finish");
     bl->addWidget(hide);
-    QObject::connect(hide,&QPushButton::clicked,testWidget,&FrameWithModalPopup::closePopup);
+    QObject::connect(hide,&QPushButton::clicked,testWidget,&FrameWithModalStatus::finish);
 
-    QString darkTheme="*{font-size: 20px;} \n *{color: white;background-color:black;} QPushButton{border: 1px solid white;}";
-    QString lightTheme="*{font-size: 20px;} \n *{color: black;background-color:lightgray;} QPushButton{border: 1px solid black;}";
+    QString darkTheme="*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}";
+    QString lightTheme="*{font-size: 20px;} \n QTextEdit,QLineEdit {background-color: white;color:black;} \n uise--FrameWithModalPopup {background-color: lightgrey;}";
     auto styleButton=new QPushButton();
     styleButton->setText("Dark theme");
     styleButton->setCheckable(true);
@@ -139,6 +135,8 @@ int main(int argc, char *argv[])
     testWidget->setPopupAlpha(alpha->value());
     testWidget->setMaxWidthPercent(width->value());
     testWidget->setMaxHeightPercent(height->value());
+
+    testWidget->setCancellableBusyWaiting(true);
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);

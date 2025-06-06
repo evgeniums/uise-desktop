@@ -371,6 +371,17 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             applySvgIconTheme();
         }
 
+        Qt::Alignment dialogButtonsAlignment(const StyleContext& ={}) const
+        {
+            //! @todo Implement configurable alignment depending on context
+            return m_defaultDialogButtonsAlignment;
+        }
+
+        void setDefaultDialogButtonsAlignment(Qt::Alignment alignment)
+        {
+            m_defaultDialogButtonsAlignment=alignment;
+        }
+
     private:
 
         QString m_qss;
@@ -393,6 +404,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         QString m_colorThemeName;
 
         std::vector<SvgIconTheme> m_iconThemes;
+
+        Qt::Alignment m_defaultDialogButtonsAlignment;
 };
 
 UISE_DESKTOP_NAMESPACE_END

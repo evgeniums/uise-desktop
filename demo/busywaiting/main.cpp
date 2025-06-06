@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     bl->addWidget(stop);
     QObject::connect(stop,&QPushButton::clicked,testWidget,&BusyWaiting::stop);
 
-    QString darkTheme="*{font-size: 20px;} \n *{color: white;background-color:black;}";
+    QString darkTheme="*{font-size: 20px;} \n *{color: white;background-color:black;} \n uise--BusyWaiting{background-color:blue;}";
     QString lightTheme="*{font-size: 20px;} \n *{color: black;background-color:lightgray;}";
     auto styleButton=new QPushButton();
     styleButton->setText("Dark theme");

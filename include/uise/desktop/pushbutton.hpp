@@ -66,12 +66,21 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             setText(text);
         }
 
+        PushButton(const QString text, std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr) : PushButton(std::move(icon),parent)
+        {
+            setText(text);
+        }
+
         void setSvgIcon(std::shared_ptr<SvgIcon> icon)
         {
             m_icon=std::move(icon);
             if (m_icon)
             {
                 setIcon(m_icon->icon());
+            }
+            else
+            {
+                setIcon(QIcon{});
             }
         }
 
@@ -127,6 +136,13 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
     signals:
 
         void clicked();
+
+    public slots:
+
+        void click()
+        {
+            m_button->click();
+        }
 
     protected:
 

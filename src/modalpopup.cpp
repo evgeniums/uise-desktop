@@ -43,6 +43,9 @@ class ModalPopup_p
         QWidget* widget=nullptr;
         FrameWithModalPopup* parent=nullptr;
         QShortcut* shortcut=nullptr;
+
+        bool shortcutEnabled=true;
+        bool autoDestroy=false;
 };
 
 //--------------------------------------------------------------------------
@@ -60,7 +63,7 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
         this,
         [this]()
         {
-            close();
+            close(pimpl->autoDestroy);
         }
     );
 }
@@ -72,32 +75,46 @@ ModalPopup::~ModalPopup()
 
 //--------------------------------------------------------------------------
 
-void ModalPopup::setWidget(QWidget* widget)
+void ModalPopup::setWidget(QWidget* widget, bool autoDestroy)
+{
+    pimpl->autoDestroy=autoDestroy;
+    pimpl->widget=widget;
+    pimpl->widget->setParent(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::popup()
 {
     QPalette pal = pimpl->parent->palette();
     auto background=pal.color(QPalette::Window);
 
     QString css("uise--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
-    css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->popupAlpha());
+    css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->getPopupAlpha());
     setStyleSheet(css);
 
-    pimpl->widget=widget;
-    pimpl->widget->setParent(this);
-    pimpl->widget->setVisible(true);
-    pimpl->widget->setFocus();
-    pimpl->shortcut->setEnabled(true);
+    pimpl->shortcut->setEnabled(pimpl->shortcutEnabled);
     updateWidgetGeometry();
+
+    show();
+    raise();
+    pimpl->widget->setVisible(true);
+    pimpl->widget->raise();
+    pimpl->widget->setFocus();
 }
 
 //--------------------------------------------------------------------------
 
-void ModalPopup::close()
+void ModalPopup::close(bool autoDestroy)
 {
     hide();
-    destroyWidget(pimpl->widget);
-    pimpl->widget=nullptr;
     pimpl->shortcut->setEnabled(false);
     pimpl->parent->setPopupHidden();
+    if (autoDestroy)
+    {
+        destroyWidget(pimpl->widget);
+        pimpl->widget=nullptr;
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -177,6 +194,21 @@ void ModalPopup::updateWidgetGeometry()
     setPos(newW,newH);
 }
 
+//--------------------------------------------------------------------------
+
+void ModalPopup::setShortcutEnabled(bool enable)
+{
+    pimpl->shortcutEnabled=enable;
+    pimpl->shortcut->setEnabled(pimpl->shortcutEnabled);
+}
+
+//--------------------------------------------------------------------------
+
+bool ModalPopup::isShortcutEnabled() const
+{
+    return pimpl->shortcutEnabled;
+}
+
 /****************************FrameWithModalPopup******************************/
 
 //--------------------------------------------------------------------------
@@ -187,6 +219,7 @@ class FrameWithModalPopup_p
 
         ModalPopup* popup;
         bool locked=false;
+        bool autoDestroy=true;
 
         int maxWidthPercent=FrameWithModalPopup::DefaultMaxWidthPercent;
         int maxHeightPercent=FrameWithModalPopup::DefaultMaxHeightPercent;
@@ -209,20 +242,26 @@ FrameWithModalPopup::~FrameWithModalPopup()
 
 //--------------------------------------------------------------------------
 
-void FrameWithModalPopup::popup(QWidget* widget)
+void FrameWithModalPopup::setPopupWidget(QWidget* widget, bool autoDestroy)
 {
     pimpl->popup->close();
+    pimpl->popup->setWidget(widget,autoDestroy);
+    pimpl->autoDestroy=autoDestroy;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::popup()
+{
     pimpl->locked=true;
-    pimpl->popup->setWidget(widget);
-    pimpl->popup->show();
-    pimpl->popup->raise();
+    pimpl->popup->popup();
 }
 
 //--------------------------------------------------------------------------
 
 void FrameWithModalPopup::closePopup()
 {
-    pimpl->popup->close();
+    pimpl->popup->close(pimpl->autoDestroy);
 }
 
 //--------------------------------------------------------------------------
@@ -237,6 +276,7 @@ bool FrameWithModalPopup::isPopupLocked() const
 void FrameWithModalPopup::setPopupHidden()
 {
     pimpl->locked=false;
+    emit popupHidden();
 }
 
 //--------------------------------------------------------------------------
@@ -287,9 +327,23 @@ void FrameWithModalPopup::setPopupAlpha(int val)
 
 //--------------------------------------------------------------------------
 
-int FrameWithModalPopup::popupAlpha() const
+int FrameWithModalPopup::getPopupAlpha() const
 {
     return pimpl->popupAlpha;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setShortcutEnabled(bool enable)
+{
+    pimpl->popup->setShortcutEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPopup::isShortcutEnabled() const
+{
+    return pimpl->popup->isShortcutEnabled();
 }
 
 //--------------------------------------------------------------------------

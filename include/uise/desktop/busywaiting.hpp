@@ -46,6 +46,8 @@ class BusyWaiting_p;
 
 /**
  * @brief Animated spinner showing busy/loading/wait state.
+ *
+ * @todo Implement configuration from Style.
  */
 class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
 {
@@ -57,7 +59,7 @@ class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
          * @brief Constructor.
          * @param parent Parent widget.
          * @param centerOnParent Center on parent widget.
-         * @param disableParentWhenSpinning DIsable parent widget when busy is enabled.
+         * @param disableParentWhenSpinning Disable parent widget when busy is enabled.
          */
         BusyWaiting(QWidget *parent = nullptr,
                     bool centerOnParent = true,
@@ -68,7 +70,7 @@ class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
          * @param modality Modality mode.
          * @param parent Parent widget.
          * @param centerOnParent Center on parent widget.
-         * @param disableParentWhenSpinning DIsable parent widget when busy is enabled.
+         * @param disableParentWhenSpinning Disable parent widget when busy is enabled.
          */
         BusyWaiting(Qt::WindowModality modality,
                     QWidget *parent = nullptr,

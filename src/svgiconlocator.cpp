@@ -148,7 +148,7 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
             }
             if (path.isEmpty())
             {
-                qWarning() << "Failed to find icon file " << path;
+                qWarning() << "Failed to find icon file for " << name;
                 return m_fallbackIcon;
             }
         }

@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QColor>
 #include <QLineEdit>
 
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/busywaiting.hpp>
 
 namespace
@@ -121,6 +122,8 @@ BusyWaiting::BusyWaiting(
     pimpl->centerOnParent=centerOnParent;
     pimpl->disableParentWhenSpinning=disableParentWhenSpinning;
     initialize();
+
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 }
 
 //--------------------------------------------------------------------------
@@ -417,6 +420,7 @@ void BusyWaiting::setStyleSample(
         QWidget *widget
     )
 {
+    destroyWidget(pimpl->styleSample);
     pimpl->styleSample=widget;
     if (pimpl->styleSample!=nullptr)
     {

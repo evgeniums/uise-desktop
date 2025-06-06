@@ -52,7 +52,8 @@ QStringList filters()
 //--------------------------------------------------------------------------
 Style::Style(
     ) : m_darkTheme(false),
-        m_darkStyleSheetMode(StyleSheetMode::Auto)
+        m_darkStyleSheetMode(StyleSheetMode::Auto),
+        m_defaultDialogButtonsAlignment(Qt::AlignHCenter)
 {
     resetStyleSheetDirs();
     resetSvgIconLocator();

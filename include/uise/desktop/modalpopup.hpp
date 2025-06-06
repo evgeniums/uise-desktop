@@ -57,9 +57,13 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
         ModalPopup& operator=(const ModalPopup&)=delete;
         ModalPopup& operator=(ModalPopup&&)=delete;
 
-        void setWidget(QWidget* widget);
+        void setWidget(QWidget* widget, bool autoDestroy=false);
+        void popup();
 
-        void close();
+        void close(bool autoDestroy=true);
+
+        void setShortcutEnabled(bool enable);
+        bool isShortcutEnabled() const;
 
     protected:
 
@@ -85,7 +89,7 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
 
         static const int DefaultMaxWidthPercent=50;
         static const int DefaultMaxHeightPercent=50;
-        static const int DefaultPopupAlpha=150;
+        static const int DefaultPopupAlpha=90;
 
         /**
              * @brief Constructor.
@@ -102,17 +106,6 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
         FrameWithModalPopup(FrameWithModalPopup&&)=delete;
         FrameWithModalPopup& operator=(const FrameWithModalPopup&)=delete;
         FrameWithModalPopup& operator=(FrameWithModalPopup&&)=delete;
-
-        /**
-         * @brief Popup modal widget.
-         * @param widget Widget to show in modal dialog.
-         */
-        void popup(QWidget* widget);
-
-        /**
-         * @brief Close popup widget.
-         */
-        void closePopup();
 
         /**
          * @brief Check if modal popup widget is shown.
@@ -154,7 +147,32 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
          * @brief Get alpha channel of modal background color.
          * @return Operation result.
          */
-        int popupAlpha() const;
+        int getPopupAlpha() const;
+
+        /**
+         * @brief Set popup widget.
+         * @param widget Widget to show in modal dialog.
+         */
+        void setPopupWidget(QWidget* widget, bool autoDestroy=false);
+
+        void setShortcutEnabled(bool enable);
+        bool isShortcutEnabled() const;
+
+    signals:
+
+        void popupHidden();
+
+    public slots:
+
+        /**
+         * @brief Show popup widget.
+         */
+        void popup();
+
+        /**
+         * @brief Close popup widget.
+         */
+        void closePopup();
 
     protected:
 

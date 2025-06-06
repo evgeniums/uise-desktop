@@ -70,6 +70,9 @@ SET (HEADERS
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
 
+    include/uise/desktop/statusdialog.hpp
+    include/uise/desktop/framewithmodalstatus.hpp
+
     include/uise/desktop/framewithrefresh.hpp
 
     include/uise/desktop/scrollarea.hpp
@@ -97,6 +100,8 @@ SET (HEADERS
     include/uise/desktop/stylecontext.hpp
 
     include/uise/desktop/pushbutton.hpp
+    include/uise/desktop/editablepanel.hpp
+    include/uise/desktop/editablelabelfactory.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -145,6 +150,12 @@ SET (SOURCES
     src/svgiconlocator.cpp
 
     src/pushbutton.cpp
+
+    src/editablepanel.cpp
+    src/editablelabelfactory.cpp
+
+    src/statusdialog.cpp
+    src/framewithmodalstatus.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
