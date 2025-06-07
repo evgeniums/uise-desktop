@@ -402,7 +402,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             return it->second;
         }
 
-        void setDefaultButtonsSyyle(ButtonsStyle val, const QString& contextName={})
+        void setDefaultButtonsStyle(ButtonsStyle val, const QString& contextName={})
         {
             if (contextName.isEmpty())
             {
