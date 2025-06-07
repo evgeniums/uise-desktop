@@ -114,8 +114,7 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
     auto it=m_icons.find(name);
     if (it!=m_icons.end())
     {
-        // qDebug() << "Icon found " << name;
-
+        // qDebug() << "Icon found " << name<< " " <<it->second.get();;
         return it->second;
     }
     // qDebug() << "Icon not found " << name;
@@ -167,6 +166,7 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
 
     // keep new icon in cache
     m_icons[name]=icon;
+    // qDebug() << "Icon added " << name << " " <<icon.get();
 
     // done
     return icon;
@@ -373,6 +373,7 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const
             if (tags.isEmpty())
             {
                 m_icons[iconConfig.name]=icon;
+                // qDebug() << "Icon loaded " << iconConfig.name << " " <<icon.get();
             }
             else
             {
@@ -441,6 +442,95 @@ void SvgIconLocator::loadIconTheme(const SvgIconTheme& theme)
                 tagCtx=addTagContext(context.second.tags);
             }
             loadSvgIconContext(tagCtx,context.second);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void SvgIconLocator::reloadIconThemes(const std::vector<SvgIconTheme>& themes)
+{
+    // collect existing icons
+
+    std::map<QString,std::shared_ptr<SvgIcon>> globalIcons=m_icons;
+    std::map<QString,std::map<QString,std::shared_ptr<SvgIcon>>> contextIcons;
+    std::map<QString,QSet<QString>> contextTags;
+
+    auto joinTags=[](const QSet<QString>& tags)
+    {
+        QString key;
+        for (const auto& tag: tags)
+        {
+            if (!key.isEmpty())
+            {
+                key+=".";
+            }
+            key+=tag;
+        }
+        return key;
+    };
+
+    for (const auto& theme: themes)
+    {
+        for (const auto& context: theme.contexts())
+        {
+            if (!context.second.tags.empty())
+            {
+                auto tagCtx=findTagContext(context.second.tags);
+                if (tagCtx!=nullptr)
+                {
+                    std::map<QString,std::shared_ptr<SvgIcon>>* icons=nullptr;
+                    auto key=joinTags(context.second.tags);
+                    auto it=contextIcons.find(key);
+                    if (it==contextIcons.end())
+                    {
+                        auto it1=contextIcons.emplace(key,std::map<QString,std::shared_ptr<SvgIcon>>{});
+                        icons=&it1.first->second;
+                        contextTags.emplace(key,context.second.tags);
+                    }
+                    else
+                    {
+                        icons=&it->second;
+                    }
+                    icons->merge(tagCtx->m_icons);
+                }
+            }
+        }
+    }
+
+    // load icon themes
+    clearBeforeReload();
+    for (const auto& theme: themes)
+    {
+        loadIconTheme(theme);
+    }
+
+    // reload previous global icons
+    for (auto&& existedIcon: globalIcons)
+    {
+        auto newIcon=iconPriv(existedIcon.first,true);
+        if (newIcon)
+        {
+            newIcon->reloadOtherFromThis(existedIcon.second);
+        }
+    }
+
+    // reload previous context icons
+    for (const auto& tags : contextTags)
+    {
+        auto icons=contextIcons.find(tags.first);
+        if (icons==contextIcons.end())
+        {
+            continue;
+        }
+
+        for (auto&& existedIcon : icons->second)
+        {
+            auto newIcon=iconForTags(existedIcon.first,tags.second,true);
+            if (newIcon)
+            {
+                newIcon->reloadOtherFromThis(existedIcon.second);
+            }
         }
     }
 }

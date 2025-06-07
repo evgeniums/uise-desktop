@@ -367,6 +367,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         void applySvgIconTheme();
 
+        void reloadSvgIconTheme();
+
         SvgIconLocator& svgIconLocator()
         {
             return m_svgIconLocator;
@@ -374,11 +376,18 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         void resetSvgIconLocator();
 
-        void applyStyleSheet()
+        void applyStyleSheet(bool reload=false)
         {
             reloadStyleSheet();
             applyQss();
-            applySvgIconTheme();
+            if (reload)
+            {
+                reloadSvgIconTheme();
+            }
+            else
+            {
+                applySvgIconTheme();
+            }
         }
 
         const ButtonsStyle& buttonsStyle(const QString& contextName, const StyleContext& ={}) const

@@ -320,6 +320,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void reload()
         {
+            clearCache();
             reload(this);
 
             for (auto& it:m_tagContexts)
@@ -335,10 +336,22 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void loadIconTheme(const SvgIconTheme& theme);
 
+        void reloadIconThemes(const std::vector<SvgIconTheme>& themes);
+
     private:
 
         std::shared_ptr<SvgIcon> iconPriv(const QString& name, bool autocreate) const;
         std::shared_ptr<SvgIcon> iconForTags(const QString& name, const QSet<QString>& tags, bool autocreate) const;
+
+        void clearBeforeReload()
+        {
+            m_icons.clear();
+            m_tagContexts.clear();
+            m_tagsIconCache.clear();
+            m_namesMap.clear();
+            m_namePaths.clear();
+            m_contextColorMaps.clear();
+        }
 
         TagsContext* findTagContext(const QSet<QString>& tags)
         {

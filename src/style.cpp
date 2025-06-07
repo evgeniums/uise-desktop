@@ -234,11 +234,16 @@ void Style::applyQss(QWidget *widget)
 //--------------------------------------------------------------------------
 void Style::applySvgIconTheme()
 {
-    // configure contexts
     for (const auto& iconTheme: m_iconThemes)
     {
         m_svgIconLocator.loadIconTheme(iconTheme);
     }
+}
+
+//--------------------------------------------------------------------------
+void Style::reloadSvgIconTheme()
+{
+    m_svgIconLocator.reloadIconThemes(m_iconThemes);
 }
 
 //--------------------------------------------------------------------------

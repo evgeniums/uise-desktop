@@ -381,6 +381,32 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             return m_context;
         }
 
+        void reload(std::shared_ptr<SvgIcon> other)
+        {
+            m_context=other->m_context;
+            m_initialContent=other->m_initialContent;
+            m_onContent=other->m_onContent;
+            m_offContent=other->m_offContent;
+            m_pixmapSets.clear();
+
+            for (auto&& it : m_refs)
+            {
+                auto refPtr=it.lock();
+                if (refPtr)
+                {
+                    refPtr->reload(other);
+                    other->m_refs.push_back(it);
+                }
+            }
+            m_refs.clear();
+        }
+
+        void reloadOtherFromThis(std::shared_ptr<SvgIcon> other)
+        {
+            other->reload(shared_from_this());
+            m_refs.emplace_back(other);
+        }
+
     private:
 
         QString m_name;
@@ -469,6 +495,8 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
         std::map<IconVariant,QByteArray> m_offContent;
 
         std::map<IconVariant,IconPixmapSet> m_pixmapSets;
+
+        std::vector<std::weak_ptr<SvgIcon>> m_refs;
 };
 
 class SvgIconEngine : public QIconEngine
