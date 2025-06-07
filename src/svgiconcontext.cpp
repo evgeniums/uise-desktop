@@ -455,6 +455,9 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                         icon.sizes.insert(QSize{width,height});
                     }
                 }
+
+                // add icon to context
+                ctx.icons.emplace_back(std::move(icon));
             }
         }
 
