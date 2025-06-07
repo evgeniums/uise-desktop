@@ -88,8 +88,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     auto btL=Layout::horizontal(btFrame);
     pimpl->cancelButton=new PushButton(tr("Cancel"),btFrame);
     pimpl->cancelButton->setObjectName("cancelButton");
-    auto buttonAlignment=Style::instance().dialogButtonsAlignment(this);
-    btL->addWidget(pimpl->cancelButton,0,buttonAlignment);
+    btL->addWidget(pimpl->cancelButton,0,Qt::AlignHCenter);
     pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
     l->addWidget(btFrame);
 
@@ -181,17 +180,17 @@ void FrameWithModalStatus::popupBusyWaiting()
 
 //--------------------------------------------------------------------------
 
-void FrameWithModalStatus::popupStatus(const QString& message, std::shared_ptr<SvgIcon> icon)
+void FrameWithModalStatus::popupStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
-    pimpl->statusDialog->setStatus(message,std::move(icon));
+    pimpl->statusDialog->setStatus(message,title,std::move(icon));
     showStatus();
 }
 
 //--------------------------------------------------------------------------
 
-void FrameWithModalStatus::popupStatus(const QString& message, StatusDialog::Type type)
+void FrameWithModalStatus::popupStatus(const QString& message, StatusDialog::Type type, const QString& title)
 {
-    pimpl->statusDialog->setStatus(message,type);
+    pimpl->statusDialog->setStatus(message,type,title);
     showStatus();
 }
 

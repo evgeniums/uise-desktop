@@ -77,8 +77,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup
     public slots:
 
         void popupBusyWaiting();
-        void popupStatus(const QString& message, std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon={});
-        void popupStatus(const QString& message, StatusDialog::Type type);
+        void popupStatus(const QString& message, const QString& title, std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon={});
+        void popupStatus(const QString& message, StatusDialog::Type type, const QString& title={});
 
         void cancel();
         void finish();

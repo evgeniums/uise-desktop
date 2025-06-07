@@ -24,5 +24,9 @@
         <file>tabler-icons/outline/plus.svg</file>
         <file>tabler-icons/outline/user-circle.svg</file>
         <file>tabler-icons/outline/user.svg</file>
+        <file>tabler-icons/outline/alert-hexagon.svg</file>
+        <file>tabler-icons/outline/alert-triangle.svg</file>
+        <file>tabler-icons/outline/help.svg</file>
+        <file>tabler-icons/outline/info-circle.svg</file>
     </qresource>
 </RCC>

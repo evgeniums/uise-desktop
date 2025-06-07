@@ -1,0 +1,20 @@
+{
+    "contexts" : [
+        {
+            "name" : "StatusDialog",
+            "aliases" : {
+                "close" : "${svg-icons}/x",
+                "error" : "${svg-icons}/alert-hexagon",
+                "warning" : "${svg-icons}/alert-triangle",
+                "info" : "${svg-icons}/info-circle",
+                "question" : "${svg-icons}/help"
+            }
+        },
+        {
+            "name" : "StatusDialogTitle",
+            "aliases" : {
+                "close" : "${svg-icons}/x"
+            }
+        }
+    ]
+}

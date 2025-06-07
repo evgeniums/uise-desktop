@@ -1,0 +1,42 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "StatusDialogTitle",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#EEEEEE" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
+            "name" : "StatusDialog",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            },
+            "icons" : [
+                {
+                    "name" : "error",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#BB4444" }
+                        }
+                    }
+                },
+                {
+                    "name" : "warning",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#FB8500" }
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

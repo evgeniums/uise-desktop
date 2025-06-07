@@ -43,6 +43,8 @@ class StatusDialog_p
 {
     public:
 
+        StatusDialog* widget;
+
         QFrame* titleFrame;
         QBoxLayout* titleLayout;
         QLabel* title;
@@ -58,15 +60,31 @@ class StatusDialog_p
         QSignalMapper* buttonGroup;
 
         std::map<int,PushButton*> buttons;
+
+        const auto& buttonsStyle() const
+        {
+            return Style::instance().buttonsStyle("StatusDialog",widget);
+        }
 };
 
 //--------------------------------------------------------------------------
 
 StatusDialog::ButtonConfig StatusDialog::standardButton(StandardButton button, QWidget* parent)
 {
-    auto make=[parent](auto id, QString text, QString iconName)
+    const auto& buttonsStyle=Style::instance().buttonsStyle("StatusDialog",parent);
+    auto make=[parent,&buttonsStyle](auto id, QString text, QString iconName)
     {
-        return ButtonConfig{static_cast<int>(id),std::move(text),Style::instance().svgIconLocator().icon("StatusDialog::"+iconName,parent)};
+        std::shared_ptr<SvgIcon> icon;
+        QString txt;
+        if (buttonsStyle.showIcon)
+        {
+            icon=Style::instance().svgIconLocator().icon("StatusDialog::"+iconName,parent);
+        }
+        if (buttonsStyle.showText)
+        {
+            txt=std::move(text);
+        }
+        return ButtonConfig{static_cast<int>(id),std::move(txt),std::move(icon)};
     };
 
     switch (button)
@@ -117,13 +135,15 @@ StatusDialog::StatusDialog(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<StatusDialog_p>())
 {
+    pimpl->widget=this;
+
     auto l=Layout::vertical(this);
 
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
     auto tl=Layout::horizontal(pimpl->titleFrame);
     l->addWidget(pimpl->titleFrame);
-    pimpl->titleClose=new PushButton(Style::instance().svgIconLocator().icon("StatusDialog::close",this),pimpl->titleFrame);
+    pimpl->titleClose=new PushButton(Style::instance().svgIconLocator().icon("StatusDialogTitle::close",this),pimpl->titleFrame);
     pimpl->titleClose->setToolTip(tr("Close"));
     pimpl->title=new QLabel(pimpl->titleFrame);
     pimpl->title->setAlignment(Qt::AlignCenter);
@@ -131,6 +151,9 @@ StatusDialog::StatusDialog(QWidget* parent)
 #ifdef Q_OS_MACOS
     tl->addWidget(pimpl->titleClose,0);
     tl->addWidget(pimpl->title,1);
+    auto placeHolder=new QLabel();
+    placeHolder->setObjectName("placeHolder");
+    tl->addWidget(placeHolder);
 #else
     tl->addWidget(pimpl->title,1);
     tl->addWidget(pimpl->titleClose);
@@ -145,7 +168,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     sl->addWidget(pimpl->icon);
     pimpl->icon->setVisible(false);
     pimpl->text=new QLabel(this);
-    sl->addWidget(pimpl->text);
+    sl->addWidget(pimpl->text,1);
     pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
@@ -153,6 +176,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("buttonsFrame");
     pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
+    l->addWidget(pimpl->buttonsFrame);
 
     pimpl->buttonGroup=new QSignalMapper(this);
     connect(
@@ -197,7 +221,7 @@ QLabel* StatusDialog::textWidget() const
 
 //--------------------------------------------------------------------------
 
-void StatusDialog::setStatus(const QString& message, std::shared_ptr<SvgIcon> icon)
+void StatusDialog::setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
     pimpl->text->setText(message);
     if (icon)
@@ -205,41 +229,62 @@ void StatusDialog::setStatus(const QString& message, std::shared_ptr<SvgIcon> ic
         pimpl->icon->setVisible(true);
     }
     pimpl->icon->setSvgIcon(std::move(icon));
+    pimpl->title->setText(title);
 }
 
 //--------------------------------------------------------------------------
 
-void StatusDialog::setStatus(const QString& message, Type type)
+void StatusDialog::setStatus(const QString& message, Type type, const QString& title)
 {
+    auto titleText=title;
+
     switch (type)
     {
         case(Type::Error):
         {
-            setStatus(message,Style::instance().svgIconLocator().icon("StatusDialog::error",this));
+            if (titleText.isEmpty())
+            {
+                titleText=tr("Error");
+            }
+
+            setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::error",this));
         }
         break;
 
         case(Type::Warning):
         {
-            setStatus(message,Style::instance().svgIconLocator().icon("StatusDialog::warning",this));
+            if (titleText.isEmpty())
+            {
+                titleText=tr("Warning");
+            }
+
+            setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::warning",this));
         }
         break;
 
         case(Type::Info):
         {
-            setStatus(message,Style::instance().svgIconLocator().icon("StatusDialog::info",this));
+            if (titleText.isEmpty())
+            {
+                titleText=tr("Information");
+            }
+            setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::info",this));
         }
         break;
 
         case(Type::Question):
         {
-            setStatus(message,Style::instance().svgIconLocator().icon("StatusDialog::question",this));
+            if (titleText.isEmpty())
+            {
+                titleText=tr("Question");
+            }
+            setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::question",this));
         }
         break;
 
         default:
         {
-            setStatus(message);
+            setStatus(message,tr("Notice"));
         }
         break;
     }
@@ -255,11 +300,11 @@ void StatusDialog::setButtons(std::vector<ButtonConfig> buttons)
     }
     pimpl->buttons.clear();
 
-    auto alignment=Style::instance().dialogButtonsAlignment(this);
+    const auto& buttonsStyle=pimpl->buttonsStyle();
     for (const auto& button: buttons)
     {
         auto bt=new PushButton(button.text,button.icon,pimpl->buttonsFrame);
-        pimpl->buttonLayout->addWidget(bt,0,alignment);
+        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle.alignment);
         pimpl->buttonGroup->setMapping(bt,button.id);
         connect(
             bt,

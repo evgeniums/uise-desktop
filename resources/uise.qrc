@@ -18,5 +18,12 @@
         <file>style/light/editablelabel.json</file>
         <file>style/dark/global.qss</file>
         <file>style/light/global.qss</file>
+        <file>style/light/statusdialog.json</file>
+        <file>style/statusdialog.json</file>
+        <file>style/dark/statusdialog.json</file>
+    </qresource>
+    <qresource prefix="/uise/deskto">
+        <file>style/statusdialog.json</file>
+        <file>style/light/statusdialog.json</file>
     </qresource>
 </RCC>

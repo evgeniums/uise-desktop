@@ -100,9 +100,9 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
 
         QLabel* textWidget() const;
 
-        void setStatus(const QString& message, std::shared_ptr<SvgIcon> icon={});
+        void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
 
-        void setStatus(const QString& message, Type type);
+        void setStatus(const QString& message, Type type, const QString& title={});
 
         void setButtons(std::vector<ButtonConfig> buttons);
 

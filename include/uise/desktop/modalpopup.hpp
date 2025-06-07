@@ -158,6 +158,9 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
         void setShortcutEnabled(bool enable);
         bool isShortcutEnabled() const;
 
+        void setAutoColor(bool enable);
+        bool isAutoColor() const;
+
     signals:
 
         void popupHidden();

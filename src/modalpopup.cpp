@@ -89,9 +89,12 @@ void ModalPopup::popup()
     QPalette pal = pimpl->parent->palette();
     auto background=pal.color(QPalette::Window);
 
-    QString css("uise--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
-    css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->getPopupAlpha());
-    setStyleSheet(css);
+    if (pimpl->parent->isAutoColor())
+    {
+        QString css("uise--ModalPopup {background-color: rgba(%1,%2,%3,%4);}");
+        css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->getPopupAlpha());
+        setStyleSheet(css);
+    }
 
     pimpl->shortcut->setEnabled(pimpl->shortcutEnabled);
     updateWidgetGeometry();
@@ -220,6 +223,7 @@ class FrameWithModalPopup_p
         ModalPopup* popup;
         bool locked=false;
         bool autoDestroy=true;
+        bool autoColor=true;
 
         int maxWidthPercent=FrameWithModalPopup::DefaultMaxWidthPercent;
         int maxHeightPercent=FrameWithModalPopup::DefaultMaxHeightPercent;
@@ -344,6 +348,20 @@ void FrameWithModalPopup::setShortcutEnabled(bool enable)
 bool FrameWithModalPopup::isShortcutEnabled() const
 {
     return pimpl->popup->isShortcutEnabled();
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setAutoColor(bool enable)
+{
+    pimpl->autoColor=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPopup::isAutoColor() const
+{
+    return pimpl->autoColor;
 }
 
 //--------------------------------------------------------------------------
