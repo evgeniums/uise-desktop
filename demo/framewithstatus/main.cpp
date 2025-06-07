@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
     QString darkTheme=""
                         "QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}"
-                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #CCCCCC;border: 1px solid #999999; background-color: #444444; border-radius: 4px; margin:4px; padding: 4px 16px;}\n"
+                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #CCCCCC;border: 1px solid #999999; background-color: #444444; border-radius: 4px; margin:4px; padding: 2px 12px;}\n"
                         "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover{color: #EEEEEE;border: 1px solid #EEEEEE;}\n"
                         "uise--ModalPopup {background-color: rgba(50,50,50,200);}"
                         "uise--StatusDialog {background-color: #222222; border: 1px solid #999999; border-radius: 2px;}"
@@ -135,14 +135,14 @@ int main(int argc, char *argv[])
         if (enable)
         {
             Style::instance().setColorTheme(Style::DarkTheme);
-            Style::instance().applyStyleSheet();
+            Style::instance().applyStyleSheet(true);
             testFrame->setStyleSheet(darkTheme);
             styleButton->setText("Light theme");
         }
         else
         {
             Style::instance().setColorTheme(Style::LightTheme);
-            Style::instance().applyStyleSheet();
+            Style::instance().applyStyleSheet(true);
             testFrame->setStyleSheet(lightTheme);
             styleButton->setText("Dark theme");
         }
