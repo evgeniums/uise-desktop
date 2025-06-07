@@ -243,8 +243,6 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void reset();
 
-        bool loadIconTheme(QString* errorMessage=nullptr);
-
         void clearIconDirs()
         {
             m_iconDirs.clear();
