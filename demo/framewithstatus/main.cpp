@@ -34,6 +34,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QComboBox>
+#include <QMenu>
+#include <QMessageBox>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -190,13 +192,87 @@ int main(int argc, char *argv[])
     auto message=new QLineEdit();
     message->setPlaceholderText("Enter status message");
     bl->addWidget(message);
+
+    auto dialogButtons=new QPushButton("Dialog buttons");
+    auto dialogButtonsMenu=new QMenu();
+    QAction* acceptButton=new QAction("Accept");acceptButton->setCheckable(true);
+    QAction* okButton=new QAction("OK");okButton->setCheckable(true);
+    QAction* ignoreButton=new QAction("Ignore");ignoreButton->setCheckable(true);
+    QAction* skipButton=new QAction("Skip");skipButton->setCheckable(true);
+    QAction* retryButton=new QAction("Retry");retryButton->setCheckable(true);
+    QAction* yesButton=new QAction("Yes");yesButton->setCheckable(true);
+    QAction* noButton=new QAction("No");noButton->setCheckable(true);
+    QAction* cancelButton=new QAction("Cancel");cancelButton->setCheckable(true);
+    QAction* closeButton=new QAction("Close");closeButton->setCheckable(true);closeButton->setChecked(true);
+    dialogButtonsMenu->addActions({okButton,acceptButton,yesButton,ignoreButton,skipButton,retryButton,noButton,cancelButton,closeButton});
+    dialogButtons->setMenu(dialogButtonsMenu);
+    bl->addWidget(dialogButtons);
+
+    auto buttonsAlignment=new QComboBox();
+    bl->addWidget(buttonsAlignment);
+    buttonsAlignment->addItems({"Center","Left","Right"});
+
     auto showStatus=new QPushButton("Show status");
     QObject::connect(
         showStatus,
         &QPushButton::clicked,
         testWidget,
-        [testWidget,message,statusType]()
+        [testWidget,message,statusType
+         ,acceptButton,okButton,ignoreButton,cancelButton,closeButton
+         ,skipButton,retryButton,yesButton,noButton,
+        buttonsAlignment
+        ]()
         {
+            ButtonsStyle buttonStyle;
+            if (buttonsAlignment->currentText()=="Left")
+            {
+                buttonStyle.alignment=Qt::AlignLeft;
+            } else if (buttonsAlignment->currentText()=="Right")
+            {
+                buttonStyle.alignment=Qt::AlignRight;
+            }
+            Style::instance().setDefaultButtonsStyle(buttonStyle);
+
+            auto statusDialog=testWidget->statusDialog();
+            std::vector<StatusDialog::ButtonConfig> buttons;
+            if (okButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::OK);
+            }
+            if (acceptButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Accept);
+            }
+            if (yesButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Yes);
+            }
+            if (ignoreButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Ignore);
+            }
+            if (skipButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Skip);
+            }
+            if (retryButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Retry);
+            }
+            if (noButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::No);
+            }
+            if (cancelButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Cancel);
+            }
+            if (closeButton->isChecked())
+            {
+                buttons.push_back(StatusDialog::StandardButton::Close);
+            }
+            statusDialog->setButtons(buttons);
+
             auto text=message->text();
 
             StatusDialog::Type type=StatusDialog::Type::Error;
@@ -242,6 +318,24 @@ int main(int argc, char *argv[])
     testWidget->setMaxWidthPercent(width->value());
     testWidget->setMaxHeightPercent(height->value());
     testWidget->setAutoColor(false);
+
+    QObject::connect(
+        testWidget->statusDialog(),
+        &StatusDialog::buttonClicked,
+        testFrame,
+        [testFrame](int id)
+        {
+            auto idT=static_cast<StatusDialog::StandardButton>(id);
+            auto button=StatusDialog::standardButton(idT);
+
+            if (idT!=StatusDialog::StandardButton::Close)
+            {
+                QString msg{"Clicked on button \"%1\""};
+                msg=msg.arg(button.name);
+                QMessageBox::information(testFrame,"Button clicked",msg);
+            }
+        }
+    );
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);

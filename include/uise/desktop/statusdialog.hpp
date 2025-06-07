@@ -63,7 +63,9 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
             Yes=3,
             Ignore=4,
             Cancel=5,
-            No=6
+            No=6,
+            Skip=7,
+            Retry=8
         };
 
         struct ButtonConfig
@@ -71,12 +73,15 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
             int id=0;
             QString text;
             std::shared_ptr<SvgIcon> icon;
+            QString name;
 
             ButtonConfig(int id, QString text, std::shared_ptr<SvgIcon> icon={})
                 : id(id),
                   text(std::move(text)),
                   icon(std::move(icon))
-            {}
+            {
+                name=text;
+            }
 
             ButtonConfig(StandardButton button, QWidget* parent=nullptr) : ButtonConfig(standardButton(button,parent))
             {}

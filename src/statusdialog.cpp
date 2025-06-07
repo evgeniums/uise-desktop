@@ -45,6 +45,8 @@ class StatusDialog_p
 
         StatusDialog* widget;
 
+        QBoxLayout* layout;
+
         QFrame* titleFrame;
         QBoxLayout* titleLayout;
         QLabel* title;
@@ -84,7 +86,9 @@ StatusDialog::ButtonConfig StatusDialog::standardButton(StandardButton button, Q
         {
             txt=std::move(text);
         }
-        return ButtonConfig{static_cast<int>(id),std::move(txt),std::move(icon)};
+        auto btn=ButtonConfig{static_cast<int>(id),std::move(txt),std::move(icon)};
+        btn.name=iconName;
+        return btn;
     };
 
     switch (button)
@@ -124,6 +128,16 @@ StatusDialog::ButtonConfig StatusDialog::standardButton(StandardButton button, Q
             return make(button,tr("No"),"no");
         }
         break;
+        case(StandardButton::Skip):
+        {
+            return make(button,tr("Skip"),"skip");
+        }
+        break;
+        case(StandardButton::Retry):
+        {
+            return make(button,tr("Retry"),"retry");
+        }
+        break;
     }
 
     return ButtonConfig{-1,tr("Unknown")};
@@ -137,12 +151,12 @@ StatusDialog::StatusDialog(QWidget* parent)
 {
     pimpl->widget=this;
 
-    auto l=Layout::vertical(this);
+    pimpl->layout=Layout::vertical(this);
 
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
     auto tl=Layout::horizontal(pimpl->titleFrame);
-    l->addWidget(pimpl->titleFrame);
+    pimpl->layout->addWidget(pimpl->titleFrame);
     pimpl->titleClose=new PushButton(Style::instance().svgIconLocator().icon("StatusDialogTitle::close",this),pimpl->titleFrame);
     pimpl->titleClose->setToolTip(tr("Close"));
     pimpl->title=new QLabel(pimpl->titleFrame);
@@ -162,7 +176,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->statusFrame=new QFrame(this);
     pimpl->statusFrame->setObjectName("statusFrame");
     auto sl=Layout::horizontal(pimpl->statusFrame);
-    l->addWidget(pimpl->statusFrame);
+    pimpl->layout->addWidget(pimpl->statusFrame);
 
     pimpl->icon=new PushButton(this);
     sl->addWidget(pimpl->icon);
@@ -172,11 +186,6 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
-
-    pimpl->buttonsFrame=new QFrame(this);
-    pimpl->buttonsFrame->setObjectName("buttonsFrame");
-    pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
-    l->addWidget(pimpl->buttonsFrame);
 
     pimpl->buttonGroup=new QSignalMapper(this);
     connect(
@@ -300,10 +309,19 @@ void StatusDialog::setButtons(std::vector<ButtonConfig> buttons)
     }
     pimpl->buttons.clear();
 
+    destroyWidget(pimpl->buttonsFrame);
+
     const auto& buttonsStyle=pimpl->buttonsStyle();
+    pimpl->buttonsFrame=new QFrame(this);
+    pimpl->buttonsFrame->setObjectName("buttonsFrame");
+    pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
+    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle.alignment);
+    pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+
     for (const auto& button: buttons)
     {
         auto bt=new PushButton(button.text,button.icon,pimpl->buttonsFrame);
+        bt->setObjectName(button.name);
         pimpl->buttonLayout->addWidget(bt,0,buttonsStyle.alignment);
         pimpl->buttonGroup->setMapping(bt,button.id);
         connect(
