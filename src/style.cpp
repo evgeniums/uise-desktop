@@ -52,8 +52,7 @@ QStringList filters()
 //--------------------------------------------------------------------------
 Style::Style(
     ) : m_darkTheme(false),
-        m_darkStyleSheetMode(StyleSheetMode::Auto),
-        m_defaultDialogButtonsAlignment(Qt::AlignHCenter)
+        m_darkStyleSheetMode(StyleSheetMode::Auto)
 {
     resetStyleSheetDirs();
     resetSvgIconLocator();
@@ -113,11 +112,11 @@ void Style::reloadStyleSheet()
     auto colorTheme=m_colorThemeName;
     if (darkTheme)
     {
-        defaultColorTheme="dark";
+        defaultColorTheme=DarkTheme;
     }
     else
     {
-        defaultColorTheme="light";
+        defaultColorTheme=LightTheme;
     }
     if (colorTheme.isEmpty())
     {
@@ -149,7 +148,7 @@ void Style::reloadStyleSheet()
             for (auto&& item:items)
             {
                 auto file=item.canonicalFilePath();
-                if (defaultFiles.contains(file))
+                if (defaultFiles.contains(item.fileName()))
                 {
                     // override default file with file in current color theme
                     auto fileName=item.fileName();

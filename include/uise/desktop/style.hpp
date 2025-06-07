@@ -36,6 +36,13 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+struct ButtonsStyle
+{
+    Qt::Alignment alignment=Qt::AlignHCenter;
+    bool showText=true;
+    bool showIcon=false;
+};
+
 /**
  * @brief Helper class to work with Qt style sheets and icons.
  */
@@ -45,6 +52,9 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         constexpr static const char* UiseStylePath=":/uise/desktop/style";
         constexpr static const char* AnyColorTheme="any";
+
+        constexpr static const char* LightTheme="light";
+        constexpr static const char* DarkTheme="dark";
 
         /**
          * @brief Modes of style sheet theme.
@@ -271,12 +281,12 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             return m_loadedCss;
         }
 
-        QString styleSheetColorTheme() const
+        QString colorTheme() const
         {
             return m_colorThemeName;
         }
 
-        void setStyleSheetColorTheme(QString value)
+        void setColorTheme(QString value)
         {
             m_colorThemeName=std::move(value);
         }
@@ -371,15 +381,28 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             applySvgIconTheme();
         }
 
-        Qt::Alignment dialogButtonsAlignment(const StyleContext& ={}) const
+        const ButtonsStyle& buttonsStyle(const QString& contextName, const StyleContext& ={}) const
         {
-            //! @todo Implement configurable alignment depending on context
-            return m_defaultDialogButtonsAlignment;
+            //! @todo Implement configurable style depending on context
+
+            auto it=m_buttonsStyle.find(contextName);
+            if (it==m_buttonsStyle.end())
+            {
+                return m_defaultButtonsStyle;
+            }
+            return it->second;
         }
 
-        void setDefaultDialogButtonsAlignment(Qt::Alignment alignment)
+        void setDefaultButtonsSyyle(ButtonsStyle val, const QString& contextName={})
         {
-            m_defaultDialogButtonsAlignment=alignment;
+            if (contextName.isEmpty())
+            {
+                m_defaultButtonsStyle=val;
+            }
+            else
+            {
+                m_buttonsStyle[contextName]=val;
+            }
         }
 
     private:
@@ -405,7 +428,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         std::vector<SvgIconTheme> m_iconThemes;
 
-        Qt::Alignment m_defaultDialogButtonsAlignment;
+        ButtonsStyle m_defaultButtonsStyle;
+        std::map<QString,ButtonsStyle> m_buttonsStyle;
 };
 
 UISE_DESKTOP_NAMESPACE_END
