@@ -87,7 +87,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     btFrame->setObjectName("buttonsFrame");
     auto btL=Layout::horizontal(btFrame);
     pimpl->cancelButton=new PushButton(tr("Cancel"),btFrame);
-    pimpl->cancelButton->setObjectName("cancelButton");
+    pimpl->cancelButton->setObjectName("cancelBusyButton");
     btL->addWidget(pimpl->cancelButton,0,Qt::AlignHCenter);
     pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
     l->addWidget(btFrame);
