@@ -21,9 +21,13 @@
         <file>style/light/statusdialog.json</file>
         <file>style/statusdialog.json</file>
         <file>style/dark/statusdialog.json</file>
-    </qresource>
-    <qresource prefix="/uise/deskto">
-        <file>style/statusdialog.json</file>
-        <file>style/light/statusdialog.json</file>
+        <file>style/framewithmodalstatus.qss</file>
+        <file>style/statusdialog.qss</file>
+        <file>style/light/statusdialog.qss</file>
+        <file>style/light/framewithmodalstatus.qss</file>
+        <file>style/light/modalpopup.qss</file>
+        <file>style/dark/framewithmodalstatus.qss</file>
+        <file>style/dark/modalpopup.qss</file>
+        <file>style/dark/statusdialog.qss</file>
     </qresource>
 </RCC>

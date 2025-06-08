@@ -1,0 +1,4 @@
+uise--StatusDialog {background-color: #222222; border: 1px solid #777777;}
+uise--StatusDialog #statusFrame QLabel {color: #F0F0F0;}
+uise--StatusDialog #titleFrame {background-color: #444444;}
+uise--StatusDialog #titleFrame QLabel {color:#FFFFFF;}

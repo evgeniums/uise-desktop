@@ -1,0 +1,9 @@
+uise--StatusDialog {border-radius: 8px;}
+uise--StatusDialog #statusFrame {padding: 8px 8px 0x 8px;}
+uise--StatusDialog #statusFrame uise--PushButton QPushButton {icon-size:32px;border:none;}
+uise--StatusDialog #statusFrame uise--PushButton {padding:12px;margin:0;}
+uise--StatusDialog #titleFrame {padding: 4px 0;border-top-left-radius:7px;border-top-right-radius:7px;}
+uise--StatusDialog #titleFrame uise--PushButton {margin:0;}
+uise--StatusDialog #titleFrame uise--PushButton QPushButton {icon-size:14px;padding:0;border:none;}
+uise--StatusDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}
+uise--StatusDialog #dialogButtonsFrame {padding: 4px;}

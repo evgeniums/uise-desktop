@@ -313,7 +313,7 @@ void StatusDialog::setButtons(std::vector<ButtonConfig> buttons)
 
     const auto& buttonsStyle=pimpl->buttonsStyle();
     pimpl->buttonsFrame=new QFrame(this);
-    pimpl->buttonsFrame->setObjectName("buttonsFrame");
+    pimpl->buttonsFrame->setObjectName("dialogButtonsFrame");
     pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
     pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle.alignment);
     pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);

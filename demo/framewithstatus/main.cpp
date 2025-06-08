@@ -52,7 +52,9 @@ int main(int argc, char *argv[])
     QMainWindow w;
     auto mainFrame=new QFrame();
 
-    Style::instance().setColorTheme(Style::LightTheme);
+    QString darkTheme="QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}";
+    QString lightTheme="QTextEdit,QLineEdit {background-color: white;color:black;} \n uise--FrameWithModalPopup {background-color: lightgrey;}";
+
     Style::instance().applyStyleSheet();
 
     auto l = Layout::vertical(mainFrame,false);
@@ -93,62 +95,28 @@ int main(int argc, char *argv[])
     QObject::connect(width,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setMaxWidthPercent);
     i++;
 
-    QString darkTheme=""
-                        "QTextEdit,QLineEdit {background-color: black;color:white;} \n uise--FrameWithModalPopup {background-color: black;}"
-                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #CCCCCC;border: 1px solid #999999; background-color: #444444; border-radius: 4px; margin:4px; padding: 2px 12px;}\n"
-                        "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover{color: #EEEEEE;border: 1px solid #EEEEEE;}\n"
-                        "uise--FrameWithModalStatus #buttonsFrame #cancelBusyButton {margin-top:8px;}"
-                        "uise--ModalPopup {background-color: rgba(50,50,50,200);}"
-                        "uise--StatusDialog {background-color: #222222; border: 1px solid #999999; border-radius: 2px;}"
-                        "uise--StatusDialog #statusFrame {padding: 8px 8px 0x 8px;}"
-                        "uise--StatusDialog #buttonsFrame {padding: 4px;}"
-                        "uise--StatusDialog #statusFrame QLabel {color: #F0F0F0;}"
-                        "uise--StatusDialog #statusFrame,#titleFrame uise--PushButton QPushButton {border:none;background-color:transparent;}"
-                        "uise--StatusDialog #statusFrame uise--PushButton QPushButton {icon-size:32px;}"
-                        "uise--StatusDialog #statusFrame uise--PushButton {padding: 12px;}"
-                        "uise--StatusDialog #buttonsFrame uise--PushButton QPushButton {background-color:transparent;}"
-                        "uise--StatusDialog #titleFrame {border-bottom: 1px solid #999999;background-color: #888888;padding: 4px 0;}"
-                        "uise--StatusDialog #titleFrame QLabel {color:#FFFFFF;}"
-                        "uise--StatusDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}"
-                        "uise--StatusDialog #titleFrame uise--PushButton QPushButton {padding:0; margin:0;icon-size:14px;}"
-                        "";
-    QString lightTheme=""
-                         "QTextEdit,QLineEdit {background-color: white;color:black;} \n uise--FrameWithModalPopup {background-color: lightgrey;}"
-                         "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton{color: #555555;background-color: #CCCCCC;border: 1px solid #999999; border-radius: 4px; margin:4px; padding: 2px 12px;}\n"
-                         "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover{color: #444444;border: 1px solid #444444;}\n"
-                         "uise--FrameWithModalStatus #buttonsFrame #cancelBusyButton {margin-top:8px;}"
-                         "uise--ModalPopup {background-color: rgba(200,200,200,200);}"
-                         "uise--StatusDialog {background-color: #F0F0F0; border: 1px solid #999999; border-radius: 2px;}"
-                         "uise--StatusDialog #statusFrame {padding: 8px 8px 0x 8px;}"
-                         "uise--StatusDialog #buttonsFrame {padding: 4px;}"
-                         "uise--StatusDialog #statusFrame QLabel {color: #444444;}"
-                         "uise--StatusDialog #statusFrame,#titleFrame uise--PushButton QPushButton {border:none;background-color:transparent;}"
-                         "uise--StatusDialog #statusFrame uise--PushButton QPushButton {icon-size:32px;}"
-                         "uise--StatusDialog #statusFrame uise--PushButton {padding: 12px;}"
-                         "uise--StatusDialog #buttonsFrame uise--PushButton QPushButton {background-color:transparent;}"
-                         "uise--StatusDialog #titleFrame {border-bottom: 1px solid #999999;background-color: #888888;padding: 4px 0;}"
-                         "uise--StatusDialog #titleFrame QLabel {color:#FFFFFF;}"
-                         "uise--StatusDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}"
-                         "uise--StatusDialog #titleFrame uise--PushButton QPushButton {padding:0; margin:0;icon-size:14px;}"
-                         "";
-
     auto styleButton=new QPushButton();
-    styleButton->setText("Dark theme");
+    styleButton->setText("Light theme");
     styleButton->setCheckable(true);
+    if (Style::instance().checkDarkTheme())
+    {
+        styleButton->setChecked(true);
+        styleButton->setText("Dark theme");
+    }
     QObject::connect(styleButton,&QPushButton::toggled,testFrame,[&darkTheme,&lightTheme,testFrame,styleButton](bool enable){
         if (enable)
         {
+            Style::instance().setBaseQss(darkTheme);
             Style::instance().setColorTheme(Style::DarkTheme);
             Style::instance().applyStyleSheet(true);
-            testFrame->setStyleSheet(darkTheme);
-            styleButton->setText("Light theme");
+            styleButton->setText("Dark theme");
         }
         else
         {
+            Style::instance().setBaseQss(lightTheme);
             Style::instance().setColorTheme(Style::LightTheme);
             Style::instance().applyStyleSheet(true);
-            testFrame->setStyleSheet(lightTheme);
-            styleButton->setText("Dark theme");
+            styleButton->setText("Light theme");
         }
         testFrame->style()->unpolish(testFrame);
         testFrame->style()->polish(testFrame);
@@ -315,8 +283,6 @@ int main(int argc, char *argv[])
     );
     bl->addWidget(showStatus);
 
-    testFrame->setStyleSheet(lightTheme);
-
     testWidget->setMaxWidthPercent(width->value());
     testWidget->setMaxHeightPercent(height->value());
     testWidget->setAutoColor(false);
@@ -341,7 +307,7 @@ int main(int argc, char *argv[])
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);
-    w.setWindowTitle("Modal popup Demo");
+    w.setWindowTitle("Frame With Modal Status Demo");
     w.show();
     auto ret=app.exec();
     return ret;
