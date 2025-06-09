@@ -23,14 +23,18 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <iostream>
-
+#include <QFrame>
+#include <QPushButton>
+#include <QTextEdit>
+#include <QScrollArea>
 #include <QApplication>
 #include <QMainWindow>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/editablepanel.hpp>
+
+#include "demopanel.hpp"
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -43,16 +47,49 @@ int main(int argc, char *argv[])
     Style::instance().applyStyleSheet();
 
     QMainWindow w;
+    auto scArea=new QScrollArea();
     auto mainFrame=new QFrame();
+    scArea->setWidget(mainFrame);
+    scArea->setWidgetResizable(true);
 
     auto l = Layout::vertical(mainFrame);
 
-    auto panel= new EditablePanel();
-    l->addWidget(panel);
+    auto panel1= new DemoPanel();
+    l->addWidget(panel1);
 
-    w.setCentralWidget(mainFrame);
-    w.resize(600,500);
-    w.setWindowTitle("EditableLabel Demo");
+    auto panel2= new DemoPanel();
+    l->addWidget(panel2);
+    panel2->setTitle("Panel 2");
+
+    auto panel3= new DemoPanel();
+    l->addWidget(panel3);
+    panel3->setTitle("Panel 3");
+    panel3->setButtonsMode(EditablePanel::ButtonsMode::BottomAlwaysVisible);
+    panel3->edit();
+
+    auto panel4= new DemoPanel();
+    l->addWidget(panel4);
+    panel4->setTitle("Panel 4");
+    panel4->setButtonsMode(EditablePanel::ButtonsMode::TopOnHoverVisible);
+
+    auto style=new QTextEdit();
+    style->setMinimumHeight(200);
+    l->addWidget(style);
+    auto applyStyle=new QPushButton("Apply style");
+    l->addWidget(applyStyle);
+    applyStyle->connect(
+        applyStyle,
+        &QPushButton::clicked,
+        mainFrame,
+        [mainFrame,style]()
+        {
+            mainFrame->setStyleSheet(style->toPlainText());
+        }
+    );
+
+    w.setCentralWidget(scArea);
+    w.resize(1000,600);
+    w.setWindowTitle("Editable Panel Demo");
     w.show();
     return app.exec();
 }

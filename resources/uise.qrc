@@ -29,5 +29,7 @@
         <file>style/dark/framewithmodalstatus.qss</file>
         <file>style/dark/modalpopup.qss</file>
         <file>style/dark/statusdialog.qss</file>
+        <file>style/editablepanel.qss</file>
+        <file>style/dark/editablepanel.qss</file>
     </qresource>
 </RCC>

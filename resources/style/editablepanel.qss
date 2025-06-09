@@ -1,0 +1,33 @@
+uise--EditablePanel {
+  margin:6px 8px 2px 8px;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel {
+  padding: 4px;
+  border-radius: 4px;
+}
+
+uise--EditablePanel uise--EditableLabel QLineEdit {
+padding: 2px;
+}
+
+uise--EditablePanel #titleFrame{
+padding: 4px;
+}
+
+uise--EditablePanel #panelTitle {
+font-size:16px;
+}
+
+uise--EditablePanel #topButtonsFrame #topButtonCancel QPushButton {
+font-size:16px;
+}
+uise--EditablePanel #topButtonsFrame #topButtonApply QPushButton {
+font-size:16px;
+}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton {margin:16px;}
+uise--EditablePanel #bottomButtonsFrame uise--PushButton QPushButton{border-radius: 8px; padding: 4px 20px;font-size:16px;}
+

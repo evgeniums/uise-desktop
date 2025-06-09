@@ -100,7 +100,10 @@ SET (HEADERS
     include/uise/desktop/stylecontext.hpp
 
     include/uise/desktop/pushbutton.hpp
+
     include/uise/desktop/editablepanel.hpp
+    include/uise/desktop/editablepanelgrid.hpp
+
     include/uise/desktop/editablelabelfactory.hpp
 )
 
@@ -152,6 +155,8 @@ SET (SOURCES
     src/pushbutton.cpp
 
     src/editablepanel.cpp
+    src/editablepanelgrid.cpp
+
     src/editablelabelfactory.cpp
 
     src/statusdialog.cpp

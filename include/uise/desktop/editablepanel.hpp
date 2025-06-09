@@ -28,41 +28,27 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <memory>
 
-#include <boost/hana.hpp>
-
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/modalpopup.hpp>
-#include <uise/desktop/editablelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SvgIcon;
+
 class EditablePanel_p;
 
-class UISE_DESKTOP_EXPORT EditablePanel : public FrameWithModalPopup
+class UISE_DESKTOP_EXPORT EditablePanel : public QFrame
 {
     Q_OBJECT
 
     public:
 
-        enum class Buttons : int
+        enum class ButtonsMode : int
         {
-            Edit,
-            Apply,
-            Cancel,
-            Save,
-            Connect,
-            Send,
-            Complete,
-
-            Custom=0x100
-        };
-
-        struct Row
-        {
-            QString name;
-            std::vector<EditableLabelConfig> data;
+            TopAlwaysVisible,
+            TopOnHoverVisible,
+            BottomAlwaysVisible
         };
 
         EditablePanel(QWidget* parent=nullptr);
@@ -74,78 +60,49 @@ class UISE_DESKTOP_EXPORT EditablePanel : public FrameWithModalPopup
         EditablePanel& operator=(const EditablePanel&)=delete;
         EditablePanel& operator=(EditablePanel&&)=delete;
 
+        void setEditable(bool enable);
         bool isEditable() const noexcept;
 
         bool isEditingMode() const noexcept;
 
-        void loadRows(const std::vector<Row>& rows);
+        void setTitle(const QString& title);
+        QString title() const;
 
-        QVariantMap data() const;
-        void loadData(const QVariantMap& data) const;
+        void setTitleVisible(bool enable);
+        bool isTitleVisible() const noexcept;
 
-        template <typename ...Buttons>
-        void setButtons(Buttons&& ... buttons)
-        {
-            auto ids=boost::hana::make_tuple(buttons...);
-            auto intIds=boost::hana::fold(
-                ids,
-                std::vector<int>{},
-                [](auto&& state, auto&& id)
-                {
-                    state.push_back(static_cast<int>(id));
-                    return state;
-                }
-            );
-            setButtons(std::move(intIds));
-        }
+        void setButtonsMode(ButtonsMode mode);
+        ButtonsMode buttonsMode() const noexcept;
 
-        void setButtons(std::vector<int> buttons);
+        void setBottomApplyText(const QString& text);
+        QString bottomApplyText() const;
 
-        template <typename T>
-        PushButton* button(T buttonId)
-        {
-            return button(static_cast<int>(buttonId));
-        }
+        void setBottomApplyIcon(std::shared_ptr<SvgIcon> icon);
+        std::shared_ptr<SvgIcon> bottomApplyIcon() const;
 
-        PushButton* button(int buttonId) const;
-
-        template <typename T>
-        void emitButtonActivated(T id)
-        {
-            emit buttonActivated(static_cast<int>(id));
-        }
+        void setWidget(QWidget* widget);
 
     signals:
 
-        void buttonActivated(int);
+        void editRequested();
+        void cancelRequested();
+        void applyRequested();
 
     public slots:
 
-        void setOperationStatus(
-            const QString& error={}
-        );
+        void edit();
+        void apply();
+        void cancel();
 
-        void setEditable(bool enable);
+    protected:
 
-        void setEditingMode(bool enable);
-
-        /**
-         * @brief Cancel editing.
-         */
-        void cancel()
-        {
-            setEditingMode(false);
-        }
-
-        /**
-         * @brief Enable editing.
-         */
-        void edit()
-        {
-            setEditingMode(true);
-        }
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
 
     private:
+
+        void setEditingMode(bool enable);
+        void updateState();
 
         std::unique_ptr<EditablePanel_p> pimpl;
 };

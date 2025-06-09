@@ -23,8 +23,12 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QLabel>
+
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/editablepanel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -35,22 +39,114 @@ class EditablePanel_p
 
         bool editable=true;
         bool editingMode=false;
+        bool hovered=false;
 
-        QGridLayout* layout=nullptr;
+        QBoxLayout* layout=nullptr;
 
-        QFrame buttonsFrame;
-        std::map<int,PushButton*> buttons;
+        QFrame* topButtonsFrame=nullptr;
+        QBoxLayout* topButtonsLayout=nullptr;
+        PushButton* topButtonEdit=nullptr;
+        PushButton* topButtonApply=nullptr;
+        PushButton* topButtonCancel=nullptr;
+        EditablePanel::ButtonsMode buttonsMode=EditablePanel::ButtonsMode::TopAlwaysVisible;
 
-        std::map<QString,EditableLabel*> labels;
+        QFrame* titleFrame=nullptr;
+        QBoxLayout* titleLayout=nullptr;
+        QLabel* title=nullptr;
+        bool titleVisible=false;
+
+        QFrame* contentFrame=nullptr;
+        QBoxLayout* contentLayout=nullptr;
+        QWidget* contenWidget=nullptr;
+
+        QFrame* bottomButtonsFrame=nullptr;
+        QBoxLayout* bottomButtonsLayout=nullptr;
+        PushButton* buttomButtonApply=nullptr;
+        bool bottomButtonsVisible=true;
 };
 
 //--------------------------------------------------------------------------
 
 EditablePanel::EditablePanel(
         QWidget* parent
-    ) : FrameWithModalPopup(parent),
+    ) : QFrame(parent),
         pimpl(std::make_unique<EditablePanel_p>())
 {
+    pimpl->layout=Layout::vertical(this);
+
+    pimpl->topButtonsFrame=new QFrame(this);
+    pimpl->topButtonsFrame->setObjectName("topButtonsFrame");
+    pimpl->topButtonsLayout=Layout::horizontal(pimpl->topButtonsFrame);
+    pimpl->layout->addWidget(pimpl->topButtonsFrame);
+    pimpl->topButtonEdit=new PushButton(tr("Edit"),pimpl->topButtonsFrame);
+    pimpl->topButtonEdit->setObjectName("topButtonEdit");
+    pimpl->topButtonsLayout->addWidget(pimpl->topButtonEdit,0,Qt::AlignRight);
+    pimpl->topButtonApply=new PushButton(tr("Apply"),pimpl->topButtonsFrame);
+    pimpl->topButtonApply->setObjectName("topButtonApply");
+    pimpl->topButtonsLayout->addWidget(pimpl->topButtonApply,0,Qt::AlignLeft);
+    pimpl->topButtonCancel=new PushButton(tr("Cancel"),pimpl->topButtonsFrame);
+    pimpl->topButtonCancel->setObjectName("topButtonCancel");
+    pimpl->topButtonsLayout->addWidget(pimpl->topButtonCancel,0,Qt::AlignRight);
+
+    pimpl->titleFrame=new QFrame(this);
+    pimpl->titleFrame->setObjectName("titleFrame");
+    pimpl->titleLayout=Layout::horizontal(pimpl->titleFrame);
+    pimpl->layout->addWidget(pimpl->titleFrame,0,Qt::AlignHCenter);
+    pimpl->title=new QLabel(pimpl->titleFrame);
+    pimpl->title->setObjectName("panelTitle");
+    pimpl->titleLayout->addWidget(pimpl->title,0,Qt::AlignHCenter);
+
+    pimpl->contentFrame=new QFrame(this);
+    pimpl->contentFrame->setObjectName("contentFrame");
+    pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
+    pimpl->layout->addWidget(pimpl->contentFrame,1,Qt::AlignLeft);
+
+    pimpl->bottomButtonsFrame=new QFrame(this);
+    pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
+    pimpl->bottomButtonsLayout=Layout::horizontal(pimpl->bottomButtonsFrame);
+    pimpl->layout->addWidget(pimpl->bottomButtonsFrame,0,Qt::AlignCenter);
+    pimpl->buttomButtonApply=new PushButton(tr("Apply"),pimpl->bottomButtonsFrame);
+    pimpl->buttomButtonApply->setObjectName("bottomButtonsApply");
+    pimpl->bottomButtonsLayout->addWidget(pimpl->buttomButtonApply);
+
+    connect(
+        pimpl->topButtonEdit,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            edit();
+        }
+    );
+    connect(
+        pimpl->topButtonApply,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            apply();
+        }
+    );
+    connect(
+        pimpl->topButtonCancel,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            cancel();
+        }
+    );
+    connect(
+        pimpl->buttomButtonApply,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            apply();
+        }
+    );
+
+    updateState();
 }
 
 //--------------------------------------------------------------------------
@@ -63,24 +159,7 @@ EditablePanel::~EditablePanel()
 void EditablePanel::setEditable(bool enable)
 {
     pimpl->editable=enable;
-    if (!enable && pimpl->editingMode)
-    {
-        setEditingMode(false);
-    }
-}
-
-//--------------------------------------------------------------------------
-
-void EditablePanel::setEditingMode(bool enable)
-{
-    pimpl->editingMode=enable;
-    //! @todo Update editing mode of editable labels
-    //! @todo update buttons
-    //!
-    if (!enable)
-    {
-        emitButtonActivated(Buttons::Cancel);
-    }
+    updateState();
 }
 
 //--------------------------------------------------------------------------
@@ -92,6 +171,14 @@ bool EditablePanel::isEditable() const noexcept
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::setEditingMode(bool enable)
+{
+    pimpl->editingMode=enable;
+    updateState();
+}
+
+//--------------------------------------------------------------------------
+
 bool EditablePanel::isEditingMode() const noexcept
 {
     return pimpl->editingMode;
@@ -99,32 +186,167 @@ bool EditablePanel::isEditingMode() const noexcept
 
 //--------------------------------------------------------------------------
 
-void EditablePanel::loadRows(const std::vector<Row>& rows)
+void EditablePanel::setTitle(const QString& title)
 {
-
+    pimpl->title->setText(title);
+    setTitleVisible(!title.isEmpty());
 }
 
 //--------------------------------------------------------------------------
 
-void EditablePanel::setButtons(std::vector<int> buttons)
+QString EditablePanel::title() const
 {
-
+    return pimpl->title->text();
 }
 
 //--------------------------------------------------------------------------
 
-PushButton* EditablePanel::button(int buttonId) const
+void EditablePanel::setTitleVisible(bool enable)
 {
-    //! @todo Implement button()
-    return nullptr;
+    pimpl->titleVisible=enable;
+    updateState();
 }
 
 //--------------------------------------------------------------------------
 
-void EditablePanel::setOperationStatus(const QString& error)
+bool EditablePanel::isTitleVisible() const noexcept
 {
-    std::ignore=error;
-    //! @todo Implement setOperationStatus
+    return pimpl->titleVisible;
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setButtonsMode(ButtonsMode mode)
+{
+    pimpl->buttonsMode=mode;
+    updateState();
+}
+
+//--------------------------------------------------------------------------
+
+EditablePanel::ButtonsMode EditablePanel::buttonsMode() const noexcept
+{
+    return pimpl->buttonsMode;
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setBottomApplyText(const QString& text)
+{
+    pimpl->buttomButtonApply->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+QString EditablePanel::bottomApplyText() const
+{
+    return pimpl->buttomButtonApply->text();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setBottomApplyIcon(std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->buttomButtonApply->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> EditablePanel::bottomApplyIcon() const
+{
+    return pimpl->buttomButtonApply->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setWidget(QWidget* widget)
+{
+    destroyWidget(pimpl->contenWidget);
+    pimpl->contenWidget=widget;
+    pimpl->contentLayout->addWidget(widget,1,Qt::AlignLeft);
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::edit()
+{
+    if (isEditingMode())
+    {
+        return;
+    }
+
+    setEditingMode(true);
+    emit editRequested();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::apply()
+{
+    if (!isEditingMode())
+    {
+        return;
+    }
+
+    setEditingMode(false);
+    emit applyRequested();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::cancel()
+{
+    if (!isEditingMode())
+    {
+        return;
+    }
+
+    setEditingMode(false);
+    emit cancelRequested();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::updateState()
+{
+    pimpl->titleFrame->setVisible(pimpl->titleVisible);
+    pimpl->bottomButtonsFrame->setVisible(isEditingMode() && buttonsMode()==ButtonsMode::BottomAlwaysVisible);
+
+    auto topButtonsVisible=
+                          pimpl->editable
+                          &&
+                          (
+                             buttonsMode()==ButtonsMode::TopAlwaysVisible ||
+                             (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || isEditingMode()))
+                          );
+    pimpl->topButtonsFrame->setVisible(topButtonsVisible);
+    pimpl->topButtonEdit->setVisible(!isEditingMode());
+    pimpl->topButtonApply->setVisible(isEditingMode());
+    pimpl->topButtonCancel->setVisible(isEditingMode());
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::enterEvent(QEnterEvent* event)
+{
+    pimpl->hovered=true;
+    QFrame::enterEvent(event);
+    if (buttonsMode()==ButtonsMode::TopOnHoverVisible)
+    {
+        updateState();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::leaveEvent(QEvent* event)
+{
+    pimpl->hovered=false;
+    QFrame::leaveEvent(event);
+    if (buttonsMode()==ButtonsMode::TopOnHoverVisible)
+    {
+        updateState();
+    }
 }
 
 //--------------------------------------------------------------------------
