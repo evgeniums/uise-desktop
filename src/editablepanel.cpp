@@ -99,7 +99,8 @@ EditablePanel::EditablePanel(
     pimpl->contentFrame=new QFrame(this);
     pimpl->contentFrame->setObjectName("contentFrame");
     pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
-    pimpl->layout->addWidget(pimpl->contentFrame,1,Qt::AlignLeft);
+    pimpl->layout->addWidget(pimpl->contentFrame,1);
+    pimpl->contentFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
     pimpl->bottomButtonsFrame=new QFrame(this);
     pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
@@ -263,7 +264,7 @@ void EditablePanel::setWidget(QWidget* widget)
 {
     destroyWidget(pimpl->contenWidget);
     pimpl->contenWidget=widget;
-    pimpl->contentLayout->addWidget(widget,1,Qt::AlignLeft);
+    pimpl->contentLayout->addWidget(widget,1);
 }
 
 //--------------------------------------------------------------------------

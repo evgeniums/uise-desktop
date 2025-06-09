@@ -47,7 +47,7 @@ class UISE_DESKTOP_EXPORT EditablePanelGrid : public EditablePanel
             return m_layout;
         }
 
-        void addWidget(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::AlignLeft|Qt::AlignVCenter);
+        void addWidget(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{});
 
     private:
 

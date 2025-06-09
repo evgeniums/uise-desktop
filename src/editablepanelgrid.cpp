@@ -38,6 +38,8 @@ EditablePanelGrid::EditablePanelGrid(
     ) : EditablePanel(parent)
 {
     m_gridFrame=new QFrame();
+    m_gridFrame->setObjectName("gridFrame");
+    m_gridFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_layout=Layout::grid(m_gridFrame,false);
     setWidget(m_gridFrame);
 }
