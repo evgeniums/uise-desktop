@@ -9,7 +9,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
 
-You may select, at your option, one of the above-listed licenses.
+You may select, at your option, one of the above-comboed licenses.
 
 */
 
@@ -482,7 +482,7 @@ BOOST_AUTO_TEST_CASE(TestDateTime)
     testLabelWithValue<EditableLabel::Type::DateTime>(initialValue,setValue,editValue,initialValueStr,setValueStr,editValueStr,"Test editable date time label", configLabel);
 }
 
-BOOST_AUTO_TEST_CASE(TestList)
+BOOST_AUTO_TEST_CASE(TestCombo)
 {
     QString initialValue("three");
     QString updatedValue("one");
@@ -493,7 +493,7 @@ BOOST_AUTO_TEST_CASE(TestList)
     auto checkValueSet=[&updatedValue,&checkCount](SampleContainer* container){
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
 
-        auto actualLabel = qobject_cast<EditableLabelList*>(container->label);
+        auto actualLabel = qobject_cast<EditableLabelCombo*>(container->label);
         UISE_TEST_REQUIRE(actualLabel!=nullptr);
         UISE_TEST_REQUIRE(actualLabel->editorWidget()!=nullptr);
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,actualLabel->text());
@@ -516,7 +516,7 @@ BOOST_AUTO_TEST_CASE(TestList)
 
     auto init=[&initialValue,checkValueSet,checkValueChanged,checkIndexChanged](std::shared_ptr<SampleContainer> container){
         auto containerPtr = container.get();
-        auto label = new EditableLabelList();
+        auto label = new EditableLabelCombo();
         label->editorWidget()->addItems({"one","two","three","four","five"});
         label->setValue(initialValue);
 
@@ -527,10 +527,10 @@ BOOST_AUTO_TEST_CASE(TestList)
         UISE_TEST_CHECK(!container->label->isEditing());
         UISE_TEST_CHECK(!container->label->isInGroup());
         UISE_TEST_CHECK(container->label->formatter()==nullptr);
-        UISE_TEST_CHECK(container->label->type()==EditableLabel::Type::List);
+        UISE_TEST_CHECK(container->label->type()==EditableLabel::Type::Combo);
 
-        QObject::connect(label,&EditableLabelList::textChanged,[containerPtr,checkValueChanged](const QString& value){checkValueChanged(containerPtr,value);});
-        QObject::connect(label,&EditableLabelList::indexChanged,[containerPtr,checkIndexChanged](int value){checkIndexChanged(containerPtr,value);});
+        QObject::connect(label,&EditableLabelCombo::textChanged,[containerPtr,checkValueChanged](const QString& value){checkValueChanged(containerPtr,value);});
+        QObject::connect(label,&EditableLabelCombo::indexChanged,[containerPtr,checkIndexChanged](int value){checkIndexChanged(containerPtr,value);});
     };
 
     auto setValueMethod=[&initialValue,&updatedValue](std::shared_ptr<SampleContainer> container){
@@ -538,7 +538,7 @@ BOOST_AUTO_TEST_CASE(TestList)
         // initial check
         UISE_TEST_CHECK_EQUAL_QSTR(initialValue,container->label->text());
 
-        auto actualLabel = qobject_cast<EditableLabelList*>(container->label);
+        auto actualLabel = qobject_cast<EditableLabelCombo*>(container->label);
         UISE_TEST_REQUIRE(actualLabel!=nullptr);
         UISE_TEST_REQUIRE(actualLabel->editorWidget()!=nullptr);
         UISE_TEST_CHECK_EQUAL_QSTR(initialValue,actualLabel->text());
@@ -558,7 +558,7 @@ BOOST_AUTO_TEST_CASE(TestList)
         // initial check
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,container->label->text());
 
-        auto actualLabel = qobject_cast<EditableLabelList*>(container->label);
+        auto actualLabel = qobject_cast<EditableLabelCombo*>(container->label);
         UISE_TEST_REQUIRE(actualLabel!=nullptr);
         UISE_TEST_REQUIRE(actualLabel->editorWidget()!=nullptr);
         UISE_TEST_CHECK_EQUAL_QSTR(updatedValue,actualLabel->editorWidget()->currentText());

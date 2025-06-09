@@ -9,7 +9,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
 
-You may select, at your option, one of the above-listed licenses.
+You may select, at your option, one of the above-comboed licenses.
 
 */
 
@@ -46,7 +46,7 @@ class UISE_DESKTOP_EXPORT EditableLabelFactory
             addBuilder(EditableLabelType::Text,[](QWidget* parent=nullptr){return new EditableLabelText(parent);});
             addBuilder(EditableLabelType::Int,[](QWidget* parent=nullptr){return new EditableLabelInt(parent);});
             addBuilder(EditableLabelType::Double,[](QWidget* parent=nullptr){return new EditableLabelDouble(parent);});
-            addBuilder(EditableLabelType::List,[](QWidget* parent=nullptr){return new EditableLabelList(parent);});
+            addBuilder(EditableLabelType::Combo,[](QWidget* parent=nullptr){return new EditableLabelCombo(parent);});
             addBuilder(EditableLabelType::Date,[](QWidget* parent=nullptr){return new EditableLabelDate(parent);});
             addBuilder(EditableLabelType::Time,[](QWidget* parent=nullptr){return new EditableLabelTime(parent);});
             addBuilder(EditableLabelType::DateTime,[](QWidget* parent=nullptr){return new EditableLabelDateTime(parent);});

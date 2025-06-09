@@ -9,7 +9,7 @@ frame software is dual-licensed. Choose the appropriate license for your project
 2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
 
-You may select, at your option, one of the above-listed licenses.
+You may select, at your option, one of the above-comboed licenses.
 
 */
 
@@ -74,10 +74,10 @@ class DemoPanel : public EditablePanelGrid
             time->setValue(QTime::currentTime());
             addWidget("Time",time);
 
-            auto list= new EditableLabelList(this);
-            list->editorWidget()->addItems({"one","two","three","four","five"});
-            list->setValue("three");
-            addWidget("List",list);
+            auto combo= new EditableLabelCombo(this);
+            combo->editorWidget()->addItems({"one","two","three","four","five"});
+            combo->setValue("three");
+            addWidget("Combo",combo);
 
             auto simpleLable1=new QLabel("Ordinary label");
             addWidget("Simple label",simpleLable1);

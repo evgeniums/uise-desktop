@@ -9,7 +9,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
 
-You may select, at your option, one of the above-listed licenses.
+You may select, at your option, one of the above-comboed licenses.
 
 */
 
@@ -52,7 +52,7 @@ class EditableLabelFormatter;
 class EditableLabelText;
 class EditableLabelInt;
 class EditableLabelDouble;
-class EditableLabelList;
+class EditableLabelCombo;
 class EditableLabelDate;
 class EditableLabelTime;
 class EditableLabelDateTime;
@@ -65,7 +65,7 @@ enum class EditableLabelType : int
     Text,
     Int,
     Double,
-    List,
+    Combo,
     Date,
     Time,
     DateTime,
@@ -426,9 +426,9 @@ struct EditableLabelTraits<EditableLabel::Type::Double>
 };
 
 /**
- * @brief Value of editable list.
+ * @brief Value of editable combo.
  */
-struct UISE_DESKTOP_EXPORT EditableLabelListValue
+struct UISE_DESKTOP_EXPORT EditableLabelComboValue
 {
     int index;
     QString text;
@@ -436,22 +436,22 @@ struct UISE_DESKTOP_EXPORT EditableLabelListValue
 };
 
 /**
- * @brief Traits of editable label of list type.
+ * @brief Traits of editable label of combo type.
  */
 template <>
-struct EditableLabelTraits<EditableLabel::Type::List>
+struct EditableLabelTraits<EditableLabel::Type::Combo>
 {
-    using type=EditableLabelList;
+    using type=EditableLabelCombo;
     using widgetType=QComboBox;
 
     static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::List,QString>(label,formatter,widget->currentText(),[](const QString& val){return val;});
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Combo,QString>(label,formatter,widget->currentText(),[](const QString& val){return val;});
     }
 
     static auto value(const widgetType* widget)
     {
-        return EditableLabelListValue{widget->currentIndex(),widget->currentText(),widget->currentData()};
+        return EditableLabelComboValue{widget->currentIndex(),widget->currentText(),widget->currentData()};
     }
 
     static void setValue(widgetType* widget, int value)
@@ -464,7 +464,7 @@ struct EditableLabelTraits<EditableLabel::Type::List>
         widget->setCurrentText(value);
     }
 
-    static void setValue(widgetType* widget, const EditableLabelListValue& value)
+    static void setValue(widgetType* widget, const EditableLabelComboValue& value)
     {
         widget->setCurrentIndex(value.index);
     }
@@ -877,28 +877,28 @@ class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmp
 };
 
 /**
- * @brief Editable list label.
+ * @brief Editable combo label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelList: public detail::EditableLabelTmpl<EditableLabel::Type::List>
+class UISE_DESKTOP_EXPORT EditableLabelCombo: public detail::EditableLabelTmpl<EditableLabel::Type::Combo>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::List>;
+        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Combo>;
 
         using baseType::baseType;
 
     signals:
 
         /**
-         * @brief Signal that current index of the list was changed.
+         * @brief Signal that current index of the combo was changed.
          * @param index Current index.
          */
         void indexChanged(int index);
 
         /**
-         * @brief Signal that current text of the list was changed.
+         * @brief Signal that current text of the combo was changed.
          * @param text Current text.
          */
         void textChanged(const QString& text);
