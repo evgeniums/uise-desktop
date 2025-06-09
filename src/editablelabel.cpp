@@ -31,11 +31,13 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/editablelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
+
 EditableLabel::EditableLabel(
         Type type,
         QWidget* parent,
@@ -45,57 +47,70 @@ EditableLabel::EditableLabel(
         m_label(new QLabel(this)),
         m_formatter(nullptr),
         m_editing(false),
-        m_inGroup(inGroup)
+        m_inGroup(inGroup),
+        m_panel(nullptr)
 {
     m_layout=Layout::horizontal(this);
+    m_layout->addWidget(m_label,1);
+    m_label->setObjectName("label");
+    m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
 
-    m_layout->addWidget(m_label);
+#if 1
+    m_label->installEventFilter(this);
+
+    m_editorFrame=new QFrame(this);
+    m_editorFrame->setObjectName("labelEditorFrame");
+    m_editorLayout=Layout::horizontal(m_editorFrame);
+    m_layout->addWidget(m_editorFrame);
+    m_editorFrame->setVisible(false);
+
+    m_buttonsFrame=new QFrame(this);
+    m_buttonsFrame->setObjectName("labelButtonsFrame");
+    m_buttonsLayout=Layout::horizontal(m_buttonsFrame);
+    m_layout->addWidget(m_buttonsFrame,Qt::AlignBaseline | Qt::AlignLeft);
+    m_buttonsFrame->setVisible(!m_inGroup);
 
     m_editButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::edit",this),this);
-    m_editButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_editButton->setProperty("labelButton",true);
     m_editButton->setToolTip(tr("Edit"));
     m_editButton->setObjectName("editButton");
     connect(m_editButton,&PushButton::clicked,this,&EditableLabel::edit);
-    m_layout->addWidget(m_editButton,0,Qt::AlignTop);
-    m_editButton->setVisible(!m_inGroup);
+    m_buttonsLayout->addWidget(m_editButton,Qt::AlignBaseline | Qt::AlignLeft);
 
     m_applyButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::apply",this),this);
-    m_applyButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_applyButton->setProperty("labelButton",true);
     m_applyButton->setToolTip(tr("Apply"));
     m_applyButton->setObjectName("applyButton");
     connect(m_applyButton,&PushButton::clicked,this,&EditableLabel::apply);
-    m_layout->addWidget(m_applyButton);
+    m_buttonsLayout->addWidget(m_applyButton,Qt::AlignBaseline | Qt::AlignLeft);
     m_applyButton->setVisible(false);
 
     m_cancelButton = new PushButton(Style::instance().svgIconLocator().icon("EditableLabel::cancel",this),this);
-    m_cancelButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     m_cancelButton->setProperty("labelButton",true);
     m_cancelButton->setToolTip(tr("Cancel"));
     m_cancelButton->setObjectName("cancelButton");
     m_cancelButton->setVisible(false);
     connect(m_cancelButton,&PushButton::clicked,this,&EditableLabel::cancel);
-    m_layout->addWidget(m_cancelButton);
-
-    m_label->setObjectName("label");
-    m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-
-    m_label->installEventFilter(this);
+    m_buttonsLayout->addWidget(m_cancelButton,Qt::AlignBaseline | Qt::AlignLeft);
+#endif
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------
+
+EditableLabel::EditableLabel(Type type, EditablePanel* panel)
+    : EditableLabel(type,panel,true)
+{
+    setEditablePanel(panel);
+}
+
+//--------------------------------------------------------------------------
+
 bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == editor() && event->type() == QEvent::KeyPress)
+    if (event->type() == QEvent::KeyPress && !m_inGroup && watched == editor())
     {
-        if (m_inGroup)
-        {
-            return false;
-        }
-
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->key()==Qt::Key_Escape)
         {
@@ -144,6 +159,32 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
     }
 
     return false;
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabel::setEditablePanel(EditablePanel* panel)
+{
+    m_panel=panel;
+    updateControls();
+    connect(
+        panel,
+        &EditablePanel::editRequested,
+        this,
+        &EditableLabel::edit
+    );
+    connect(
+        panel,
+        &EditablePanel::cancelRequested,
+        this,
+        &EditableLabel::cancel
+    );
+    connect(
+        panel,
+        &EditablePanel::applyRequested,
+        this,
+        &EditableLabel::apply
+    );
 }
 
 //--------------------------------------------------------------------------

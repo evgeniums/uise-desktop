@@ -46,6 +46,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class EditablePanel;
+
 class EditableLabelFormatter;
 
 class EditableLabelText;
@@ -97,6 +99,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          * @param inGroup Label is part of a group, see also setInGroup().
          */
         EditableLabel(Type type, QWidget* parent=nullptr, bool inGroup=false);
+
+        EditableLabel(Type type, EditablePanel* panel);
 
         /**
          * @brief Get type of label content.
@@ -187,6 +191,12 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             return m_id;
         }
 
+        void setEditablePanel(EditablePanel* panel);
+        EditablePanel* editablePanel() const
+        {
+            return m_panel;
+        }
+
         virtual void setVariantValue(const QVariant& val)=0;
         virtual QVariant variantValue() const=0;
 
@@ -199,15 +209,15 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         void setEditing(bool enable)
         {
             m_editing=enable;
-            m_label->setVisible(!m_inGroup && !enable);
-
-            m_editButton->setVisible(!m_inGroup && !enable);
-            m_cancelButton->setVisible(!m_inGroup && enable);
-            m_applyButton->setVisible(!m_inGroup && enable);
-
-            editor()->setMinimumWidth(m_label->width());
-            editor()->setVisible(enable);
-            editor()->setFocus();
+            updateControls();
+#if 1
+            m_editorFrame->setVisible(enable);
+            if (enable)
+            {
+                editor()->setMinimumWidth(m_label->width());
+                editor()->setFocus();
+            }
+#endif
         }
 
         /**
@@ -241,9 +251,9 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 
     protected:
 
-        QBoxLayout* boxLayout() const noexcept
+        QBoxLayout* editorLayout() const noexcept
         {
-            return m_layout;
+            return m_editorLayout;
         }
 
         virtual void restoreWidgetValue() =0;
@@ -252,9 +262,25 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
 
     private:
 
+        void updateControls()
+        {
+            m_label->setVisible(!m_editing);
+#if 1
+            m_buttonsFrame->setVisible(!m_inGroup);
+            m_editButton->setVisible(!m_editing);
+            m_cancelButton->setVisible(m_editing);
+            m_applyButton->setVisible(m_editing);
+#endif
+        }
+
         Type m_type;
         QLabel* m_label;
         QBoxLayout* m_layout;
+        QFrame* m_editorFrame;
+        QBoxLayout* m_editorLayout;
+        QFrame* m_buttonsFrame;
+        QBoxLayout* m_buttonsLayout;
+
         const EditableLabelFormatter* m_formatter;
         bool m_editing;
         bool m_inGroup;
@@ -264,6 +290,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         PushButton* m_editButton;
         PushButton* m_applyButton;
         PushButton* m_cancelButton;
+
+        EditablePanel* m_panel;
 };
 
 /**
@@ -579,13 +607,23 @@ class EditableLabelTmpl : public EditableLabel
          */
         EditableLabelTmpl(QWidget* parent=nullptr, bool inGroup=false)
             : EditableLabel(TypeId,parent,inGroup),
-              m_editor(helper::createWidget(parent))
+              m_editor(helper::createWidget(
+#if 1
+                    parent
+#endif
+                  ))
         {
-            boxLayout()->insertWidget(0,m_editor);
-            m_editor->setVisible(false);
+#if 1
+            editorLayout()->addWidget(m_editor);
 
             m_editor->setObjectName("editor");
             m_editor->installEventFilter(this);
+#endif
+        }
+
+        EditableLabelTmpl(EditablePanel* panel) : EditableLabelTmpl(panel,true)
+        {
+            setEditablePanel(panel);
         }
 
         /**

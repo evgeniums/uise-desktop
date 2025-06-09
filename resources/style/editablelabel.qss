@@ -1,8 +1,4 @@
-uise--EditableLabel {
-    padding: 2px;
-}
-
-uise--EditableLabel QPushButton[PushButton="true"] {
+uise--EditableLabel uise--PushButton QPushButton {
     icon-size: 14px;
 }
 
