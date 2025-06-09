@@ -509,7 +509,8 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     {
         using valueType=decltype(widget->time());
 
-        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,widget->time(),[](const valueType& val){return val.toString("HH:mm");});
+        auto timeFormat = QLocale().timeFormat(QLocale::ShortFormat);
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Time,valueType>(label,formatter,widget->time(),[timeFormat](const valueType& val){return val.toString(timeFormat);});
     }
 
     static auto value(const widgetType* widget)
