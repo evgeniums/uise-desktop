@@ -31,5 +31,6 @@
         <file>style/dark/statusdialog.qss</file>
         <file>style/editablepanel.qss</file>
         <file>style/dark/editablepanel.qss</file>
+        <file>style/light/editablepanel.qss</file>
     </qresource>
 </RCC>

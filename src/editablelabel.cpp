@@ -94,7 +94,7 @@ EditableLabel::EditableLabel(
     m_buttonsLayout->addWidget(m_cancelButton,Qt::AlignBaseline | Qt::AlignLeft);
 #endif
 
-    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------
