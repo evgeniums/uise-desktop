@@ -1,29 +1,29 @@
 uise--EditablePanel {
 border: 1px solid #CCCCCC;
-background-color: #EEEEEE;
-}
-
-uise--EditablePanel QLabel {
-color: #707070;
-}
-
-uise--EditablePanel uise--EditableLabel QLabel {
-background-color: #E4E4E4;
-color: #5C5C5C;
-}
-
-uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
-color: #444444;
-}
-
-uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton {
-color: #777777;
-}
-
-uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover,
-uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:hover {
-color: #000000;
+background-color: #F0F0F0;
 }
 
 uise--EditablePanel #bottomButtonsFrame QPushButton{color: #505050;border: 1px solid #909090; background-color: transparent;}
 uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #000000;border: 1px solid #000000;}
+
+uise--EditablePanel QLabel {
+color: #5C5C5C;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel {
+background-color: #E4E4E4;
+color: #000000;
+}
+
+uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
+color: #505050;
+font-weight: bold;
+}
+
+uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonEdit QPushButton {
+font-weight: normal;
+}
+
+uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {
+color: #000000;
+}
