@@ -13,17 +13,11 @@ uise--EditablePanel uise--EditableLabel QLineEdit {
 padding: 2px;
 }
 
-uise--EditablePanel #titleFrame{
-padding: 4px;
-}
-
 uise--EditablePanel #panelTitle {
 font-size:16px;
 }
 
-uise--EditablePanel #topButtonsFrame #topButtonCancel QPushButton {
-font-size:16px;
-}
+uise--EditablePanel #topButtonsFrame #topButtonCancel QPushButton,
 uise--EditablePanel #topButtonsFrame #topButtonApply QPushButton {
 font-size:16px;
 }
@@ -31,3 +25,6 @@ font-size:16px;
 uise--EditablePanel #bottomButtonsFrame uise--PushButton {margin:16px;}
 uise--EditablePanel #bottomButtonsFrame uise--PushButton QPushButton{border-radius: 8px; padding: 4px 20px;font-size:16px;}
 
+uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
+color:transparent;
+}

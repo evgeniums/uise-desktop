@@ -100,7 +100,6 @@ EditablePanel::EditablePanel(
     pimpl->contentFrame->setObjectName("contentFrame");
     pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
     pimpl->layout->addWidget(pimpl->contentFrame,1);
-    pimpl->contentFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
     pimpl->bottomButtonsFrame=new QFrame(this);
     pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
@@ -320,10 +319,11 @@ void EditablePanel::updateState()
                              buttonsMode()==ButtonsMode::TopAlwaysVisible ||
                              (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || isEditingMode()))
                           );
-    pimpl->topButtonsFrame->setVisible(topButtonsVisible);
+
+    pimpl->topButtonEdit->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!isEditingMode());
-    pimpl->topButtonApply->setVisible(isEditingMode());
-    pimpl->topButtonCancel->setVisible(isEditingMode());
+    pimpl->topButtonApply->setVisible(topButtonsVisible && isEditingMode());
+    pimpl->topButtonCancel->setVisible(topButtonsVisible && isEditingMode());
 }
 
 //--------------------------------------------------------------------------
