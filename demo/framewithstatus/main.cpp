@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
     auto buttonsAlignment=new QComboBox();
     bl->addWidget(buttonsAlignment);
-    buttonsAlignment->addItems({"Center","Left","Right"});
+    buttonsAlignment->addItems({"Right","Center","Left"});
 
     auto showStatus=new QPushButton("Show status");
     QObject::connect(
@@ -200,6 +200,10 @@ int main(int argc, char *argv[])
             } else if (buttonsAlignment->currentText()=="Right")
             {
                 buttonStyle.alignment=Qt::AlignRight;
+            }
+            else if (buttonsAlignment->currentText()=="Center")
+            {
+                buttonStyle.alignment=Qt::AlignCenter;
             }
             Style::instance().setDefaultButtonsStyle(buttonStyle);
 
