@@ -209,14 +209,14 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         {
             m_editing=enable;
             updateControls();
-#if 1
             m_editorFrame->setVisible(enable);
             if (enable)
             {
-                editor()->setMinimumWidth(m_label->width());
-                editor()->setFocus();
+                if (!m_inGroup)
+                {
+                    editor()->setFocus();
+                }
             }
-#endif
         }
 
         /**
@@ -264,12 +264,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         void updateControls()
         {
             m_label->setVisible(!m_editing);
-#if 1
             m_buttonsFrame->setVisible(!m_inGroup);
             m_editButton->setVisible(!m_editing);
             m_cancelButton->setVisible(m_editing);
             m_applyButton->setVisible(m_editing);
-#endif
         }
 
         Type m_type;
@@ -607,17 +605,13 @@ class EditableLabelTmpl : public EditableLabel
         EditableLabelTmpl(QWidget* parent=nullptr, bool inGroup=false)
             : EditableLabel(TypeId,parent,inGroup),
               m_editor(helper::createWidget(
-#if 1
                     parent
-#endif
                   ))
         {
-#if 1
             editorLayout()->addWidget(m_editor);
 
             m_editor->setObjectName("editor");
             m_editor->installEventFilter(this);
-#endif
         }
 
         EditableLabelTmpl(EditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)

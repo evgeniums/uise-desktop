@@ -55,7 +55,6 @@ EditableLabel::EditableLabel(
     m_label->setObjectName("label");
     m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
 
-#if 1
     m_label->installEventFilter(this);
 
     m_editorFrame=new QFrame(this);
@@ -92,9 +91,6 @@ EditableLabel::EditableLabel(
     m_cancelButton->setVisible(false);
     connect(m_cancelButton,&PushButton::clicked,this,&EditableLabel::cancel);
     m_buttonsLayout->addWidget(m_cancelButton,Qt::AlignBaseline | Qt::AlignLeft);
-#endif
-
-    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------
