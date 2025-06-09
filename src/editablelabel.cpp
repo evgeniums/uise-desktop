@@ -51,7 +51,7 @@ EditableLabel::EditableLabel(
         m_panel(nullptr)
 {
     m_layout=Layout::horizontal(this);
-    m_layout->addWidget(m_label,1);
+    m_layout->addWidget(m_label,100);
     m_label->setObjectName("label");
     m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
 
@@ -60,10 +60,11 @@ EditableLabel::EditableLabel(
     m_editorFrame=new QFrame(this);
     m_editorFrame->setObjectName("labelEditorFrame");
     m_editorLayout=Layout::horizontal(m_editorFrame);
-    m_layout->addWidget(m_editorFrame);
+    m_layout->addWidget(m_editorFrame,100);
     m_editorFrame->setVisible(false);
 
     m_buttonsFrame=new QFrame(this);
+    m_buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
     m_buttonsFrame->setObjectName("labelButtonsFrame");
     m_buttonsLayout=Layout::horizontal(m_buttonsFrame);
     m_layout->addWidget(m_buttonsFrame,Qt::AlignBaseline | Qt::AlignLeft);

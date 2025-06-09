@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
     auto combo= new EditableLabelCombo(mainFrame);
     combo->editorWidget()->addItems({"one","two","three","four","five"});
     combo->setValue("three");
+    combo->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
     l->addWidget(combo);
 
     l->addStretch(1);
