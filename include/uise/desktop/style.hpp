@@ -38,7 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 struct ButtonsStyle
 {
-    Qt::Alignment alignment=Qt::AlignHCenter;
+    Qt::Alignment alignment=Qt::AlignRight;
     bool showText=true;
     bool showIcon=false;
 };
