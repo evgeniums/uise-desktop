@@ -7,3 +7,73 @@ uise--PushButton QPushButton {
 uise--PushButton[hovered="true"] QPushButton {
     color: #FFFFFF;
 }
+
+QComboBox::drop-down {
+    width:0;
+    background-color:transparent;
+    border:none;
+}
+
+QDateTimeEdit::drop-down  {
+    border:1px solid #444444;
+    width:12px;
+    border-radius:3px;
+    background-color:#444444;
+    margin:1px;
+}
+
+QDateTimeEdit::drop-down:pressed,
+QSpinBox::down-button:pressed,
+QDoubleSpinBox::down-button:pressed,
+QDateTimeEdit::down-button:pressed,
+QSpinBox::up-button:pressed,
+QDoubleSpinBox::up-button:pressed,
+QDateTimeEdit::up-button:pressed {
+    background-color:#555555;
+    border-color:#777777;
+}
+
+QDateTimeEdit::drop-down:hover,
+QSpinBox::down-button:hover,
+QDoubleSpinBox::down-button:hover,
+QDateTimeEdit::down-button:hover,
+QSpinBox::up-button:hover,
+QDoubleSpinBox::up-button:hover,
+QDateTimeEdit::up-button:hover {
+    border-color:#777777;
+}
+
+QLineEdit,
+QComboBox,
+QDateTimeEdit,
+QSpinBox,
+QDoubleSpinBox {
+    padding:2px;
+    border:none;
+    border-radius:4px;
+}
+
+QSpinBox::down-button,
+QDoubleSpinBox::down-button,
+QDateTimeEdit::down-button {
+    subcontrol-origin:padding;
+    border:1px solid #444444;
+    width:12px;
+    border-bottom-left-radius:3px;
+    border-bottom-right-radius:3px;
+    background-color:#444444;
+    margin: 0 1px 1px 0;
+    border-top:1px solid #000000;
+}
+
+QSpinBox::up-button,
+QDoubleSpinBox::up-button,
+QDateTimeEdit::up-button {
+    border:1px solid #444444;
+    width:12px;
+    border-top-right-radius:3px;
+    border-top-left-radius:3px;
+    background-color:#444444;
+    border-bottom:1px solid transparent;
+    margin: 1px 1px 0 0;
+}
