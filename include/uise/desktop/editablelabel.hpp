@@ -43,10 +43,9 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/editablepanel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-class EditablePanel;
 
 class EditableLabelFormatter;
 
@@ -621,7 +620,7 @@ class EditableLabelTmpl : public EditableLabel
 #endif
         }
 
-        EditableLabelTmpl(EditablePanel* panel) : EditableLabelTmpl(panel,true)
+        EditableLabelTmpl(EditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)
         {
             setEditablePanel(panel);
         }
