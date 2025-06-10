@@ -51,7 +51,7 @@ QDoubleSpinBox {
 }
 
 QComboBox {padding-left:4px;}
-QComboBox:hover {border: 2px solid #D8D8D8;}
+QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus {border: 2px solid #D8D8D8;}
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button,
