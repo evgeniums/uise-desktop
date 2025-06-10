@@ -320,6 +320,7 @@ void EditablePanel::updateState()
                              (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || isEditingMode()))
                           );
 
+    pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
     pimpl->topButtonEdit->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!isEditingMode());
     pimpl->topButtonApply->setVisible(topButtonsVisible && isEditingMode());

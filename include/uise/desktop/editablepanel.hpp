@@ -48,7 +48,8 @@ class UISE_DESKTOP_EXPORT EditablePanel : public QFrame
         {
             TopAlwaysVisible,
             TopOnHoverVisible,
-            BottomAlwaysVisible
+            BottomAlwaysVisible,
+            ButtonsInvisible
         };
 
         EditablePanel(QWidget* parent=nullptr);
