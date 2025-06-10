@@ -15,15 +15,13 @@ background-color: #E4E4E4;
 color: #000000;
 }
 
-uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
-color: #505050;
-font-weight: bold;
+uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonApply QPushButton,
+uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonCancel QPushButton {
+color: #555555;
+font-size: 17px;
 }
-
-uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonEdit QPushButton {
-font-weight: normal;
-}
-
+uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonApply QPushButton:hover,
+uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonCancel QPushButton:hover,
 uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {
 color: #000000;
 }
