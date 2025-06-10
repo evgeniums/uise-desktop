@@ -435,11 +435,18 @@ void HTreeNode::collapseNode()
 void HTreeNode::expandNode()
 {
     pimpl->expanded=true;
-    pimpl->mainFrame->setVisible(true);
-    setContentWidget(createContentWidget());
-    refresh();
+    fillContent();
+    pimpl->mainFrame->setVisible(true);    
 
     emit toggleExpanded(true);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::fillContent()
+{
+    setContentWidget(createContentWidget());
+    refresh();
 }
 
 //--------------------------------------------------------------------------
@@ -658,7 +665,7 @@ void HTreeNode::setNextNodeId(const std::string&)
 void HTreeNode::activate()
 {
     treeTab()->activate();
-    expandNode();
+    setExpanded(true);
     treeTab()->scrollToNode(this);
 }
 

@@ -213,6 +213,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         virtual QWidget* createContentWidget()=0;
 
+        void fillContent();
+
     private slots:
 
         void nextNodeDestroyed(QObject*);
@@ -221,6 +223,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
     private:
 
         std::unique_ptr<HTreeNode_p> pimpl;
+
+        friend class HTreeBranch;
+        friend class HTreeTab;
 };
 
 UISE_DESKTOP_NAMESPACE_END

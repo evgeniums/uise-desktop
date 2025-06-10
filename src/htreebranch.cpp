@@ -98,8 +98,8 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     nextNode=nodeResult.first;
     setNextNodeId(pathElement.id());
     setNextNode(nextNode);
-    treeTab()->appendNode(nextNode);
-    nextNode->expandNode();
+    nextNode->fillContent();
+    treeTab()->appendNode(nextNode);    
 
     return nextNode;
 }

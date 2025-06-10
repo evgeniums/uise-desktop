@@ -507,7 +507,7 @@ bool HTreeTab::openPath(HTreePath path)
             {
                 return false;
             }
-            nod->expandNode();
+            nod->fillContent();
             appendNode(nod);
         }
     }
