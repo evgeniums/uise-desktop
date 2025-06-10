@@ -1,6 +1,6 @@
 uise--EditablePanel {
-border: 1px solid #777777;
-background-color: #333333;
+border: 2px solid #444444;
+background-color: #282828;
 }
 
 uise--EditablePanel QLabel {
@@ -14,6 +14,7 @@ color: #FFFFFF;
 
 uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
 color: #EEEEEE;
+border:none;
 }
 
 uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {

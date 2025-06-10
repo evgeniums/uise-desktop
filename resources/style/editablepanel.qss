@@ -1,5 +1,5 @@
 uise--EditablePanel {
-  margin:6px 8px 2px 8px;
+  margin: 6px 8px 2px 8px;
   border-radius: 8px;
   padding: 6px;
 }
