@@ -180,6 +180,7 @@ class HTreeSplitterInternal : public QFrame
         int m_prevViewportWidth;
 
         HTreeSplitter* m_splitter;
+        bool m_stretchLastSection;
 
         friend class HTreeSplitter;
 };

@@ -158,7 +158,8 @@ HTreeSplitterInternal::HTreeSplitterInternal(HTreeSplitter* splitter, QWidget* p
       m_blockResizeEvent(false),
       m_resizingIndex(-1),
       m_prevViewportWidth(0),
-      m_splitter(splitter)
+      m_splitter(splitter),
+      m_stretchLastSection(false)
 {
     m_blockResizeTimer=new SingleShotTimer(this);
 }
@@ -467,6 +468,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             totalStretch+=section->stretch;
         }
     }
+    bool stretchLastSection=m_stretchLastSection && (totalStretch<=1);
 
     if (hintTotalWidth<minTotalWidth)
     {
@@ -503,23 +505,30 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             }
             else
             {
-                if (totalStretch!=0)
+                if (stretchLastSection)
                 {
-                    if (section->stretch==0)
-                    {
-                        width=minWidth;
-                    }
-                    else
-                    {
-                        width=qFloor(static_cast<double>(hintTotalWidth) * static_cast<double>(section->stretch)/static_cast<double>(totalStretch));
-                    }
+                    width=section->width;
                 }
                 else
                 {
-                    width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(notDestroyedCount));
-                    if (width<minWidth)
+                    if (totalStretch!=0)
                     {
-                        width=minWidth;
+                        if (section->stretch==0)
+                        {
+                            width=minWidth;
+                        }
+                        else
+                        {
+                            width=qFloor(static_cast<double>(hintTotalWidth) * static_cast<double>(section->stretch)/static_cast<double>(totalStretch));
+                        }
+                    }
+                    else
+                    {
+                        width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(notDestroyedCount));
+                        if (width<minWidth)
+                        {
+                            width=minWidth;
+                        }
                     }
                 }
             }
@@ -538,6 +547,15 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             precalculatedWidths.push_back(0);
         }
     }
+
+    if (stretchLastSection)
+    {
+        if (precalculateWidth<hintTotalWidth)
+        {
+            precalculatedWidths.back()+=hintTotalWidth-precalculateWidth;
+        }
+    }
+
     int precalculatedExtraWidth=precalculateWidth-minTotalWidth;
     double wRatio=0.0;
     if (precalculatedExtraWidth!=0)
@@ -555,6 +573,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     //          << " ratio="<<wRatio
         ;
 
+    int accumulatedStretch=0;
     int accumulatedWidth=0;
     for (size_t i=0;i<m_sections.size();i++)
     {
@@ -584,6 +603,18 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             }
 
             accumulatedWidth+=section->width;
+
+            if (stretchLastSection)
+            {
+                if (i!=(m_sections.size()-1))
+                {
+                    section->stretch=0;
+                }
+                else
+                {
+                    section->stretch=1;
+                }
+            }
 
             // qDebug() << "i="<<i
             //          << "section->precalculated="<<precalculatedWidths[i]
@@ -946,13 +977,15 @@ void HTreeSplitterInternal::truncate(int index)
 
     // qDebug() << "truncate minW="<<minW <<" w="<<w;
 
-    setMinimumWidth(minW);
+    setMinimumWidth(minW);    
     w=recalculateWidths(w);
+    m_stretchLastSection=true;
     resize(w,height());
     updatePositions();
     updateWidths();
     emit adjustViewPortRequested(m_splitter->viewPort()->width());
     emit minMaxSizeUpdated();
+    m_stretchLastSection=false;
 }
 
 /**************************** HTreeSplitter *******************************/
