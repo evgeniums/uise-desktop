@@ -258,7 +258,6 @@ HTreeList::HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* tr
     : HTreeBranch(treeTab,parent),
       m_builder(std::move(builder))
 {
-    setContentWidget(doCreateContentWidget());
 }
 
 //--------------------------------------------------------------------------

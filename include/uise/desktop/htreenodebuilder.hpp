@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QString>
+
 #ifndef UISE_DESKTOP_HTREE_NODE_BUILDER_HPP
 #define UISE_DESKTOP_HTREE_NODE_BUILDER_HPP
 
@@ -47,6 +49,26 @@ class UISE_DESKTOP_EXPORT HTreeNodeBuilder
         HTreeNodeBuilder& operator= (HTreeNodeBuilder&&)=default;
 
         virtual HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const=0;
+
+        template <typename T, typename ParentT=HTreeNode>
+        HTreeNode* makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode=nullptr, HTreeTab* treeTab=nullptr) const
+        {
+            HTreePath path;
+            if (parentNode!=nullptr)
+            {
+                path=HTreePath{parentNode->path(),pathElement};
+            }
+
+            auto node=new T(treeTab);
+            node->setNodeTooltip(QString::fromStdString(pathElement.name()));
+            initNode(node);
+            return node;
+        }
+
+        virtual void initNode(HTreeNode* node) const
+        {
+            std::ignore=node;
+        }
 };
 
 UISE_DESKTOP_NAMESPACE_END

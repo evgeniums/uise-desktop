@@ -99,7 +99,7 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     setNextNodeId(pathElement.id());
     setNextNode(nextNode);
     treeTab()->appendNode(nextNode);
-    nextNode->refresh();
+    nextNode->expandNode();
 
     return nextNode;
 }

@@ -203,7 +203,8 @@ class HTreeNode_p
         QPointer<QWidget> widget;
 
         bool expanded=true;
-        bool Collapsible=true;
+        bool collapsible=true;
+        bool refreshable=true;
         bool closable=true;
 
         bool unique=false;
@@ -590,7 +591,7 @@ void HTreeNode::otherNodeExpanded(bool enable)
 
 void HTreeNode::setCollapsible(bool enable)
 {
-    pimpl->Collapsible=enable;
+    pimpl->collapsible=enable;
     pimpl->titleBar->pimpl->collapse->setVisible(enable);
 }
 
@@ -598,7 +599,7 @@ void HTreeNode::setCollapsible(bool enable)
 
 bool HTreeNode::isCollapsible() const
 {
-    return pimpl->Collapsible;
+    return pimpl->collapsible;
 }
 
 //--------------------------------------------------------------------------
@@ -614,6 +615,21 @@ void HTreeNode::setClosable(bool enable)
 bool HTreeNode::isClosable() const
 {
     return pimpl->closable;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setRefreshable(bool enable)
+{
+    pimpl->refreshable=enable;
+    pimpl->titleBar->pimpl->refresh->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isRefreshable() const
+{
+    return pimpl->refreshable;
 }
 
 //--------------------------------------------------------------------------
@@ -642,7 +658,7 @@ void HTreeNode::setNextNodeId(const std::string&)
 void HTreeNode::activate()
 {
     treeTab()->activate();
-    setExpanded(true);
+    expandNode();
     treeTab()->scrollToNode(this);
 }
 
