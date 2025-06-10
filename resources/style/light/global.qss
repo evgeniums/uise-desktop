@@ -46,12 +46,12 @@ QDateTimeEdit,
 QSpinBox,
 QDoubleSpinBox {
     padding:2px;
-    border:1px solid transparent;
+    border:2px solid transparent;
     border-radius:4px;
 }
 
-QComboBox {padding-left:8px;}
-QComboBox:hover {border: 1px solid #D0D0D0;}
+QComboBox {padding-left:4px;}
+QComboBox:hover {border: 2px solid #D8D8D8;}
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button,
