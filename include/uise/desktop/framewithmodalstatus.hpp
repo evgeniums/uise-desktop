@@ -48,6 +48,9 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup
 
     public:
 
+        constexpr static const int DefaultPopupMaxWidth=500;
+        constexpr static const int DefaultMaxWidthPercent=80;
+
         /**
              * @brief Constructor.
              * @param parent Parent widget.

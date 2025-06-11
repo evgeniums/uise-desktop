@@ -135,6 +135,9 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
             closePopup();
         }
     );
+
+    setMaxWidthPercent(DefaultMaxWidthPercent);
+    pimpl->popupWidget->setMaximumWidth(DefaultPopupMaxWidth);
 }
 
 //--------------------------------------------------------------------------

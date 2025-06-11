@@ -80,7 +80,7 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
                   text(std::move(text)),
                   icon(std::move(icon))
             {
-                name=text;
+                name=this->text;
             }
 
             ButtonConfig(StandardButton button, QWidget* parent=nullptr) : ButtonConfig(standardButton(button,parent))
