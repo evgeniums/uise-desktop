@@ -50,8 +50,8 @@ class UISE_DESKTOP_EXPORT HTreeNodeBuilder
 
         virtual HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const=0;
 
-        template <typename T, typename ParentT=HTreeNode>
-        HTreeNode* makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode=nullptr, HTreeTab* treeTab=nullptr) const
+        template <typename T, typename ParentT, typename ... Args>
+        HTreeNode* makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode, HTreeTab* treeTab, Args&& ...args) const
         {
             HTreePath path;
             if (parentNode!=nullptr)
@@ -59,7 +59,7 @@ class UISE_DESKTOP_EXPORT HTreeNodeBuilder
                 path=HTreePath{parentNode->path(),pathElement};
             }
 
-            auto node=new T(treeTab);
+            auto node=new T(treeTab,parentNode,std::forward<Args>(args)...);
             node->setNodeTooltip(QString::fromStdString(pathElement.name()));
             initNode(node);
             return node;
