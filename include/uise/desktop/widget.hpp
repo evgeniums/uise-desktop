@@ -15,49 +15,40 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/WidgetFactory.hpp
+/** @file uise/desktop/widget.hpp
 *
-*  Declares widget factory.
+*  Declares Widget.
 *
 */
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_WIDGET_FACTORY_HPP
-#define UISE_DESKTOP_WIDGET_FACTORY_HPP
+#ifndef UISE_DESKTOP_WIDGET_HPP
+#define UISE_DESKTOP_WIDGET_HPP
 
-#include <map>
-#include <QWidget>
+#include <memory>
+
+#include <QWIdget>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/stylecontext.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT WidgetFactory
+class WidgetFactory;
+
+class UISE_DESKTOP_EXPORT Widget
 {
     public:
 
-        using Builder=std::function<QWidget* (QWidget* parent)>;
-
-        struct BuilderContext
+        std::shared_ptr<WidgetFactory> widgetFactory() const
         {
-            ContextSelector context;
-            Builder builder;
+            return m_factory;
+        }
 
-            BuilderContext(
-                    ContextSelector context,
-                    Builder builder
-                ) : context(std::move(context)),
-                    builder(std::move(builder))
-            {}
-        };
-
-        struct WidgetBuilder
+        void setWidgetFactory(std::shared_ptr<WidgetFactory> factory)
         {
-            Builder defaultBuilder;
-            std::vector<BuilderContext> contextBuilders;
-        };
+            m_factory=std::move(factory);
+        }
 
         QWidget* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
 
@@ -67,7 +58,7 @@ class UISE_DESKTOP_EXPORT WidgetFactory
         }
 
         template <typename T>
-        T* makeWidget(QString name={}, QWidget* parent=nullptr) const
+        T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
         {
             auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject(),std::move(name),parent));
             if (w==nullptr)
@@ -78,15 +69,11 @@ class UISE_DESKTOP_EXPORT WidgetFactory
             return w;
         }
 
-        void registerBuilder(Builder builder, std::string className, ContextSelector context={});
-
-        Builder builder(const char* className, const StyleContext& context={}) const;
-
     private:
 
-        std::map<std::string,std::shared_ptr<WidgetBuilder>,std::less<>> m_builders;
+        std::shared_ptr<WidgetFactory> m_factory;
 };
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_WIDGET_FACTORY_HPP
+#endif // UISE_DESKTOP_WIDGET_HPP

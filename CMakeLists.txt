@@ -39,6 +39,9 @@ SET (HEADERS
     include/uise/desktop/uisedesktop.hpp
     include/uise/desktop/version.hpp
 
+    include/uise/desktop/widget.hpp
+    include/uise/desktop/widgetfactory.hpp
+
     include/uise/desktop/utils/assert.hpp
     include/uise/desktop/utils/layout.hpp
     include/uise/desktop/utils/destroywidget.hpp
@@ -161,6 +164,9 @@ SET (SOURCES
 
     src/statusdialog.cpp
     src/framewithmodalstatus.cpp
+
+    src/widget.cpp
+    src/widgetfactory.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
