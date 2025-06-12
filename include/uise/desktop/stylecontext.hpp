@@ -27,7 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_STYLE_CONTEXT_HPP
 
 #include <QObject>
-#include <QSet>
+#include <QVariant>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -38,6 +38,8 @@ using ContextSelector=QStringList;
 class StyleContext
 {
     public:
+
+        constexpr static const char* TypeProperty="uise_type";
 
         StyleContext(const QObject* obj=nullptr) : m_object(obj)
         {}
@@ -154,7 +156,7 @@ class StyleContext
                 }
             }
 
-            if (selector==m_object->metaObject()->className())
+            if (selector==typeName(m_object))
             {
                 return Mask>>(depth+2);
             }
@@ -166,14 +168,16 @@ class StyleContext
         {
             if (obj!=nullptr)
             {
+                auto type=typeName(obj);
+
                 auto name=obj->objectName();
                 if (!name.isEmpty())
                 {
-                    return QString("%1#%2").arg(obj->metaObject()->className(),name);
+                    return QString("%1#%2").arg(type,name);
                 }
                 if (orJustType)
                 {
-                    return obj->metaObject()->className();
+                    return type;
                 }
             }
             return QString{};
@@ -182,6 +186,16 @@ class StyleContext
         static QString joinSelector(const ContextSelector& selector)
         {
             return selector.join("");
+        }
+
+        static QString typeName(const QObject* obj)
+        {
+            auto type=obj->property(TypeProperty).toString();
+            if (!type.isEmpty())
+            {
+                return type;
+            }
+            return obj->metaObject()->className();
         }
 
     private:
