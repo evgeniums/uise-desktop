@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QObject>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/stylecontext.hpp>
 #include <uise/desktop/svgicon.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -58,7 +59,7 @@ struct UISE_DESKTOP_EXPORT SvgIconContext
 {
     QString name;
 
-    QSet<QString> tags;
+    ContextSelector selector;
     std::map<QString,QString> aliases;
     std::map<QString,QString> namePaths;
     SvgIconColorMaps modes;

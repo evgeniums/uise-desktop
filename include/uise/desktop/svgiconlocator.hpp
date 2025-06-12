@@ -39,9 +39,9 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         using colorMapsT=SvgIconColorMaps;
 
-        struct TagsContext
+        struct SelectorContext
         {
-            QSet<QString> m_tags;
+            ContextSelector m_selector;
 
             std::map<QString,std::shared_ptr<SvgIcon>> m_icons;
 
@@ -193,7 +193,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         std::shared_ptr<SvgIcon> icon(const QString& name, const StyleContext& ={}) const;
 
-        void loadIcons(const std::vector<IconConfig>& iconConfigs, const QSet<QString> tags={});
+        void loadIcons(const std::vector<IconConfig>& iconConfigs, const ContextSelector& selector={});
 
         void addNameMapping(
             QString alias,
@@ -323,7 +323,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             clearCache();
             reload(this);
 
-            for (auto& it:m_tagContexts)
+            for (auto& it:m_selectorContexts)
             {
                 reload(&it);
             }
@@ -331,7 +331,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void clearCache()
         {
-            m_tagsIconCache.clear();
+            m_contextIconCache.clear();
         }
 
         void loadIconTheme(const SvgIconTheme& theme);
@@ -340,24 +340,44 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
     private:
 
+        struct IconSelectorCacheItem
+        {
+            QString name;
+            QString path;
+            std::shared_ptr<SvgIcon> icon;
+            ContextSelector selector;
+
+            IconSelectorCacheItem(
+                QString name,
+                QString path,
+                std::shared_ptr<SvgIcon> icon,
+                ContextSelector selector
+                ) : name(std::move(name)),
+                path(std::move(path)),
+                icon(std::move(icon)),
+                selector(std::move(selector))
+            {}
+        };
+
         std::shared_ptr<SvgIcon> iconPriv(const QString& name, bool autocreate) const;
-        std::shared_ptr<SvgIcon> iconForTags(const QString& name, const QSet<QString>& tags, bool autocreate) const;
+        std::shared_ptr<SvgIcon> iconForContext(const QString& name, const StyleContext& context, bool autocreate) const;
+        std::shared_ptr<SvgIcon> recreateContextIcon(size_t hash, const IconSelectorCacheItem& prevIcon);
 
         void clearBeforeReload()
         {
             m_icons.clear();
-            m_tagContexts.clear();
-            m_tagsIconCache.clear();
+            m_selectorContexts.clear();
+            m_contextIconCache.clear();
             m_namesMap.clear();
             m_namePaths.clear();
             m_contextColorMaps.clear();
         }
 
-        TagsContext* findTagContext(const QSet<QString>& tags)
+        SelectorContext* findSelectorContext(const ContextSelector& selector)
         {
-            for (auto&& ctx: m_tagContexts)
+            for (auto&& ctx: m_selectorContexts)
             {
-                if (ctx.m_tags==tags)
+                if (ctx.m_selector==selector)
                 {
                     return &ctx;
                 }
@@ -365,12 +385,12 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             return nullptr;
         }
 
-        TagsContext* addTagContext(const QSet<QString>& tags)
+        SelectorContext* addSelectorContext(ContextSelector selector)
         {
-            auto inserted=m_tagContexts.emplace_back(TagsContext{});
+            auto inserted=m_selectorContexts.emplace_back(SelectorContext{});
             inserted.m_defaultColorMapsPtr=m_defaultColorMapsPtr;
-            inserted.m_tags=tags;
-            return &m_tagContexts.back();
+            inserted.m_selector=std::move(selector);
+            return &m_selectorContexts.back();
         }
 
         template <typename T>
@@ -379,24 +399,8 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         std::vector<QString> m_iconDirs;
         std::map<QString,QString> m_iconDirSubstitutions;
 
-        struct IconTagsCacheItem
-        {
-            QString name;
-            QSet<QString> tags;
-            std::shared_ptr<SvgIcon> icon;
-
-            IconTagsCacheItem(
-                    QString name,
-                    QSet<QString> tags,
-                    std::shared_ptr<SvgIcon> icon
-                ) : name(std::move(name)),
-                    tags(std::move(tags)),
-                    icon(std::move(icon))
-            {}
-        };
-
-        mutable std::vector<TagsContext> m_tagContexts;
-        mutable std::map<size_t,IconTagsCacheItem> m_tagsIconCache;
+        mutable std::vector<SelectorContext> m_selectorContexts;
+        mutable std::map<size_t,IconSelectorCacheItem> m_contextIconCache;
 
         mutable std::map<QString,std::shared_ptr<SvgIcon>> m_icons;
 

@@ -152,24 +152,24 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
         SvgIconContext ctx;
         ctx.name=nameEl.toString();
 
-        // tags
-        if (ctxObj.contains("tags"))
+        // selector
+        if (ctxObj.contains("selector"))
         {
-            auto tags=ctxObj.value("tags");
-            if (!tags.isArray())
+            auto selector=ctxObj.value("selector");
+            if (!selector.isArray())
             {
                 return mustBeArray(path);
             }
-            auto tagsArr=tags.toArray();
-            for (qsizetype j=0;i<tagsArr.count();j++)
+            auto selectorArr=selector.toArray();
+            for (qsizetype j=0;i<selectorArr.count();j++)
             {
-                auto tag=tagsArr.at(j);
-                if (!tag.isString())
+                auto selectorItem=selectorArr.at(j);
+                if (!selectorItem.isString())
                 {
                     return mustBeString(path + QStringList{QString::number(j)});
                 }
-                auto tagStr=tag.toString();
-                ctx.tags.insert(tagStr);
+                auto selectorItemStr=selectorItem.toString();
+                ctx.selector.push_back(selectorItemStr);
             }
         }
 
