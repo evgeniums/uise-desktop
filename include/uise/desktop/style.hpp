@@ -43,6 +43,8 @@ struct ButtonsStyle
     bool showIcon=false;
 };
 
+class WidgetFactory;
+
 /**
  * @brief Helper class to work with Qt style sheets and icons.
  */
@@ -414,6 +416,16 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             }
         }
 
+        const WidgetFactory* widgetFactory() const noexcept
+        {
+            return m_widgetFactory.get();
+        }
+
+        void setWidgetFactory(std::shared_ptr<WidgetFactory> factory)
+        {
+            m_widgetFactory=std::move(factory);
+        }
+
     private:
 
         QString m_qss;
@@ -439,6 +451,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         ButtonsStyle m_defaultButtonsStyle;
         std::map<QString,ButtonsStyle> m_buttonsStyle;
+
+        std::shared_ptr<WidgetFactory> m_widgetFactory;
 };
 
 UISE_DESKTOP_NAMESPACE_END
