@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/statusdialog.hpp>
+#include <uise/desktop/editablepanelgrid.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -36,6 +37,7 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     auto factory=std::make_shared<WidgetFactory>();
 
     factory->registerBuilder<AbstractStatusDialog>([](QWidget* parent){return new StatusDialog(parent);});
+    factory->registerBuilder<AbstractEditablePanel>([](QWidget* parent){return new EditablePanelGrid(parent);});
 
     return factory;
 }

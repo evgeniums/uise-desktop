@@ -45,6 +45,22 @@ EditablePanelGrid::EditablePanelGrid(
 
 //--------------------------------------------------------------------------
 
+void EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, const QString& comment)
+{
+    auto l=new QLabel(label,m_gridFrame);
+    l->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    auto count=m_layout->count();
+    m_layout->addWidget(l,count,0,Qt::AlignRight|Qt::AlignVCenter);
+    auto column=1;
+    for (auto&& item:items)
+    {
+        m_layout->addWidget(item.widget,count,column,item.rowSpan,item.columnSpan,item.alignment);
+        column+=item.columnSpan;
+    }
+    std::ignore=comment;
+}
+
+#if 0
 void EditablePanelGrid::addWidget(const QString& label, QWidget* widget, int columnSpan, Qt::Alignment alignment)
 {
     auto l=new QLabel(label,m_gridFrame);
@@ -53,7 +69,7 @@ void EditablePanelGrid::addWidget(const QString& label, QWidget* widget, int col
     m_layout->addWidget(l,count,0,Qt::AlignRight|Qt::AlignVCenter);
     m_layout->addWidget(widget,count,1,1,columnSpan,alignment);
 }
-
+#endif
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END

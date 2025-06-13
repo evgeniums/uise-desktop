@@ -69,7 +69,7 @@ class EditablePanel_p
 
 EditablePanel::EditablePanel(
         QWidget* parent
-    ) : QFrame(parent),
+    ) : AbstractEditablePanel(parent),
         pimpl(std::make_unique<EditablePanel_p>())
 {
     pimpl->layout=Layout::vertical(this);

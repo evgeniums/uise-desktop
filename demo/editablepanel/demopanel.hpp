@@ -15,7 +15,7 @@ You may select, at your option, one of the above-comboed licenses.
 
 /****************************************************************************/
 
-/** @file demo/editablepanel/demopanel.hpp
+/** @file demo/editablem_panel/demom_panel.hpp
 */
 
 /****************************************************************************/
@@ -32,58 +32,84 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-class DemoPanel : public EditablePanelGrid
+class DemoPanel : public QFrame,
+                  public Widget
 {
     Q_OBJECT
 
     public:
 
-        DemoPanel(QWidget* parent=nullptr) : EditablePanelGrid(parent)
+        DemoPanel(QWidget* parent=nullptr) : QFrame(parent)
         {
-            auto text = new EditableLabelText(this);
-            text->setValue("Hello world Hello world Hello world");
-            addWidget("HHHH",text);
+            auto l=Layout::vertical(this);
 
-            auto integer = new EditableLabelInt(this);
+            m_panel=makeWidget<AbstractEditablePanel>(this);
+            Q_ASSERT(m_panel);
+            l->addWidget(m_panel);
+
+            auto text = new EditableLabelText(m_panel);
+            text->setValue("Hello world Hello world Hello world");
+            m_panel->addRow("HHHH",text);
+
+            auto integer = new EditableLabelInt(m_panel);
             integer->editorWidget()->setMinimum(-100);
             integer->editorWidget()->setMaximum(100);
             integer->setValue(70);
-            addWidget("07",integer);
+            m_panel->addRow("07",integer);
 
-            auto dbl = new EditableLabelDouble(this);
+            auto dbl = new EditableLabelDouble(m_panel);
             dbl->editorWidget()->setMinimum(-100.00);
             dbl->editorWidget()->setMaximum(100.00);
             dbl->editorWidget()->setSingleStep(0.01);
             dbl->editorWidget()->setDecimals(4);
             dbl->setValue(50.00);
-            addWidget("05",dbl);
+            m_panel->addRow("05",dbl);
 
-            auto dateTime = new EditableLabelDateTime(this);
+            auto dateTime = new EditableLabelDateTime(m_panel);
             dateTime->setValue(QDateTime::currentDateTime());
             dateTime->editorWidget()->setCalendarPopup(true);
             dateTime->editorWidget()->setCalendarWidget(new QCalendarWidget());
-            addWidget("Date and time",dateTime);
+            m_panel->addRow("Date and time",dateTime);
 
-            auto date= new EditableLabelDate(this);
+            auto date= new EditableLabelDate(m_panel);
             date->setValue(QDate::currentDate());
             date->editorWidget()->setCalendarPopup(true);
             date->editorWidget()->setCalendarWidget(new QCalendarWidget());
-            addWidget("Date",date);
+            m_panel->addRow("Date",date);
 
-            auto time= new EditableLabelTime(this);
+            auto time= new EditableLabelTime(m_panel);
             time->setValue(QTime::currentTime());
-            addWidget("Time",time);
+            m_panel->addRow("Time",time);
 
-            auto combo= new EditableLabelCombo(this);
+            auto combo= new EditableLabelCombo(m_panel);
             combo->editorWidget()->addItems({"one","two","three","four","five"});
             combo->setValue("three");
-            addWidget("Combo",combo);
+            m_panel->addRow("Combo",combo);
 
             auto simpleLable1=new QLabel("Ordinary label");
-            addWidget("Simple label",simpleLable1);
+            m_panel->addRow("Simple label",simpleLable1);
             auto simpleLable2=new QLabel("label");
-            addWidget("Simple label",simpleLable2);
+            m_panel->addRow("Simple label",simpleLable2);
         }
+
+        void setTitle(const QString& title)
+        {
+            m_panel->setTitle(title);
+        }
+
+        void setButtonsMode(AbstractEditablePanel::ButtonsMode mode)
+        {
+            m_panel->setButtonsMode(mode);
+        }
+
+        void edit()
+        {
+            m_panel->edit();
+        }
+
+    private:
+
+        AbstractEditablePanel* m_panel;
 };
 
 UISE_DESKTOP_NAMESPACE_END

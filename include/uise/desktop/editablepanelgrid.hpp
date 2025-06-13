@@ -42,12 +42,9 @@ class UISE_DESKTOP_EXPORT EditablePanelGrid : public EditablePanel
 
         EditablePanelGrid(QWidget* parent=nullptr);
 
-        QGridLayout* panelLayout() const noexcept
-        {
-            return m_layout;
-        }
+        using EditablePanel::addRow;
 
-        void addWidget(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{});
+        virtual void addRow(const QString& label, std::vector<Item> items, const QString& comment={}) override;
 
     private:
 

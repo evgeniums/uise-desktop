@@ -96,10 +96,10 @@ EditableLabel::EditableLabel(
 
 //--------------------------------------------------------------------------
 
-EditableLabel::EditableLabel(Type type, EditablePanel* panel)
+EditableLabel::EditableLabel(Type type, AbstractEditablePanel* panel)
     : EditableLabel(type,panel,true)
 {
-    setEditablePanel(panel);
+    setAbstractEditablePanel(panel);
 }
 
 //--------------------------------------------------------------------------
@@ -160,25 +160,25 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 
 //--------------------------------------------------------------------------
 
-void EditableLabel::setEditablePanel(EditablePanel* panel)
+void EditableLabel::setAbstractEditablePanel(AbstractEditablePanel* panel)
 {
     m_panel=panel;
     updateControls();
     connect(
         panel,
-        &EditablePanel::editRequested,
+        &AbstractEditablePanel::editRequested,
         this,
         &EditableLabel::edit
     );
     connect(
         panel,
-        &EditablePanel::cancelRequested,
+        &AbstractEditablePanel::cancelRequested,
         this,
         &EditableLabel::cancel
     );
     connect(
         panel,
-        &EditablePanel::applyRequested,
+        &AbstractEditablePanel::applyRequested,
         this,
         &EditableLabel::apply
     );

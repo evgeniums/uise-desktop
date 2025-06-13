@@ -99,7 +99,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
          */
         EditableLabel(Type type, QWidget* parent=nullptr, bool inGroup=false);
 
-        EditableLabel(Type type, EditablePanel* panel);
+        EditableLabel(Type type, AbstractEditablePanel* panel);
 
         /**
          * @brief Get type of label content.
@@ -190,8 +190,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
             return m_id;
         }
 
-        void setEditablePanel(EditablePanel* panel);
-        EditablePanel* editablePanel() const
+        void setAbstractEditablePanel(AbstractEditablePanel* panel);
+        AbstractEditablePanel* editablePanel() const
         {
             return m_panel;
         }
@@ -288,7 +288,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         PushButton* m_applyButton;
         PushButton* m_cancelButton;
 
-        EditablePanel* m_panel;
+        AbstractEditablePanel* m_panel;
 };
 
 /**
@@ -615,9 +615,9 @@ class EditableLabelTmpl : public EditableLabel
             m_editor->installEventFilter(this);
         }
 
-        EditableLabelTmpl(EditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)
+        EditableLabelTmpl(AbstractEditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)
         {
-            setEditablePanel(panel);
+            setAbstractEditablePanel(panel);
         }
 
         /**
