@@ -120,4 +120,19 @@ std::vector<std::string> WidgetFactory::registeredTypes() const
 
 //--------------------------------------------------------------------------
 
+void WidgetFactory::merge(const WidgetFactory& other)
+{
+    for (const auto& it: other.m_builders)
+    {
+        const auto& wb=it.second;
+        registerBuilder(wb->defaultBuilder,it.first);
+        for (const auto& cb: wb->contextBuilders)
+        {
+            registerBuilder(cb.builder,it.first,cb.context);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

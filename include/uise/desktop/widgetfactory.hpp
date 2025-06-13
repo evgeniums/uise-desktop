@@ -98,6 +98,8 @@ class UISE_DESKTOP_EXPORT WidgetFactory
             return m_builders;
         }
 
+        void merge(const WidgetFactory& other);
+
     private:
 
         std::map<std::string,std::shared_ptr<WidgetBuilder>,std::less<>> m_builders;

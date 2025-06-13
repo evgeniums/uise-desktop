@@ -426,6 +426,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             m_widgetFactory=std::move(factory);
         }
 
+        void mergeWidgetFactory(std::shared_ptr<WidgetFactory> factory);
+
     private:
 
         QString m_qss;

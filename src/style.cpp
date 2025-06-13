@@ -371,4 +371,18 @@ void Style::resetSvgIconLocator()
 
 //--------------------------------------------------------------------------
 
+void Style::mergeWidgetFactory(std::shared_ptr<WidgetFactory> factory)
+{
+    if (!m_widgetFactory)
+    {
+        m_widgetFactory=std::move(factory);
+    }
+    else
+    {
+        m_widgetFactory->merge(*factory);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
