@@ -27,7 +27,9 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_EDITABLEPANELGRID_HPP
 
 #include <QFrame>
+#include <QPointer>
 #include <QGridLayout>
+#include <QLabel>
 
 #include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/uisedesktop.hpp>
@@ -44,12 +46,31 @@ class UISE_DESKTOP_EXPORT EditablePanelGrid : public EditablePanel
 
         using EditablePanel::addRow;
 
-        virtual void addRow(const QString& label, std::vector<Item> items, const QString& comment={}) override;
+        virtual int addRow(const QString& label, std::vector<Item> items, const QString& comment={}) override;
+
+        virtual void setRowVisible(int index, bool enable) override;
+        virtual bool isRowVisible(int index) const override;
+
+        virtual void setComment(int index, const QString& comment) override;
+        virtual void setLabel(int index, const QString& label) override;
 
     private:
 
         QFrame* m_gridFrame;
         QGridLayout* m_layout;
+
+        int m_rowIndex;
+
+        struct Row
+        {
+            std::vector<QPointer<QWidget>> widgets;
+            bool visible;
+
+            QPointer<QLabel> label;
+            QPointer<QLabel> comment;
+        };
+
+        std::map<int,Row> m_rows;
 };
 
 UISE_DESKTOP_NAMESPACE_END

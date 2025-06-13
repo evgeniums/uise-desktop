@@ -47,9 +47,20 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
         struct Item
         {
             QWidget* widget=nullptr;
-            int rowSpan=1;
-            int columnSpan=1;
             Qt::Alignment alignment;
+            int columnSpan=1;
+            int rowSpan=1;
+
+            Item(
+                    QWidget* widget,
+                    Qt::Alignment alignment=Qt::Alignment{},
+                    int columnSpan=1,
+                    int rowSpan=1
+                ) : widget(widget),
+                    alignment(alignment),
+                    columnSpan(columnSpan),
+                    rowSpan(rowSpan)
+            {}
         };
 
         enum class ButtonsMode : int
@@ -84,12 +95,23 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
 
         virtual void setWidget(QWidget* widget)=0;
 
-        void addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={})
+        int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={})
         {
-            addRow(label,{Item{widget,1,columnSpan,alignment}},comment);
+            return addRow(label,{Item{widget,alignment,columnSpan,1}},comment);
         }
 
-        virtual void addRow(const QString& label, std::vector<Item> items, const QString& comment={})=0;
+        int addRow(std::vector<Item> items, const QString& comment={})
+        {
+            return addRow("",std::move(items),comment);
+        }
+
+        virtual int addRow(const QString& label, std::vector<Item> items, const QString& comment={})=0;
+
+        virtual void setRowVisible(int index, bool enable)=0;
+        virtual bool isRowVisible(int index) const =0;
+
+        virtual void setComment(int index, const QString& comment)=0;
+        virtual void setLabel(int index, const QString& label)=0;
 
     signals:
 
