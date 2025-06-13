@@ -108,4 +108,16 @@ void WidgetFactory::registerBuilder(Builder builder, std::string className, Cont
 
 //--------------------------------------------------------------------------
 
+std::vector<std::string> WidgetFactory::registeredTypes() const
+{
+    std::vector<std::string> r;
+    for (auto&& it:m_builders)
+    {
+        r.push_back(it.first);
+    }
+    return r;
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

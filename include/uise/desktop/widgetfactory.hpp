@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/WidgetFactory.hpp
+/** @file uise/desktop/widgetfactory.hpp
 *
 *  Declares widget factory.
 *
@@ -69,18 +69,34 @@ class UISE_DESKTOP_EXPORT WidgetFactory
         template <typename T>
         T* makeWidget(QString name={}, QWidget* parent=nullptr) const
         {
-            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject(),std::move(name),parent));
+            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
             if (w==nullptr)
             {
-                w=new T(parent);
-                w->setObjectName(name);
+                if constexpr (std::is_constructible_v<T,QWidget*>)
+                {
+                    w=new T(parent);
+                    w->setObjectName(name);
+                }
             }
             return w;
         }
 
         void registerBuilder(Builder builder, std::string className, ContextSelector context={});
 
+        template <typename T>
+        void registerBuilder(Builder builder, ContextSelector context={})
+        {
+            registerBuilder(std::move(builder),T::staticMetaObject.className(),std::move(context));
+        }
+
         Builder builder(const char* className, const StyleContext& context={}) const;
+
+        std::vector<std::string> registeredTypes() const;
+
+        const std::map<std::string,std::shared_ptr<WidgetBuilder>,std::less<>>& builders() const
+        {
+            return m_builders;
+        }
 
     private:
 

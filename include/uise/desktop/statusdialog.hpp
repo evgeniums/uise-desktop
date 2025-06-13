@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/dialog.hpp>
 
 class QLabel;
 
@@ -39,11 +40,13 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class SvgIcon;
 class StatusDialog_p;
 
-class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
+class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog
 {
     Q_OBJECT
 
     public:
+
+        using AbstractDialog::AbstractDialog;
 
         enum class Type : int
         {
@@ -55,37 +58,20 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
             User=0x100
         };
 
-        enum class StandardButton : int
-        {
-            Close=0,
-            Accept=1,
-            OK=2,
-            Yes=3,
-            Ignore=4,
-            Cancel=5,
-            No=6,
-            Skip=7,
-            Retry=8
-        };
+        virtual QLabel* textWidget() const=0;
 
-        struct ButtonConfig
-        {
-            int id=0;
-            QString text;
-            std::shared_ptr<SvgIcon> icon;
-            QString name;
+        virtual void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={})=0;
 
-            ButtonConfig(int id, QString text, std::shared_ptr<SvgIcon> icon={})
-                : id(id),
-                  text(std::move(text)),
-                  icon(std::move(icon))
-            {
-                name=this->text;
-            }
+        virtual void setStatus(const QString& message, Type type, const QString& title={})=0;
+};
 
-            ButtonConfig(StandardButton button, QWidget* parent=nullptr) : ButtonConfig(standardButton(button,parent))
-            {}
-        };
+class UISE_DESKTOP_EXPORT StatusDialog : public Dialog<AbstractStatusDialog>
+{
+    Q_OBJECT
+
+    public:
+
+        using Base=Dialog<AbstractStatusDialog>;
 
         /**
          * @brief Constructor.
@@ -94,8 +80,8 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
         StatusDialog(QWidget* parent=nullptr);
 
         /**
-             * @brief Destructor.
-             */
+         * @brief Destructor.
+         */
         ~StatusDialog();
 
         StatusDialog(const StatusDialog&)=delete;
@@ -103,25 +89,11 @@ class UISE_DESKTOP_EXPORT StatusDialog : public QFrame
         StatusDialog& operator=(const StatusDialog&)=delete;
         StatusDialog& operator=(StatusDialog&&)=delete;
 
-        QLabel* textWidget() const;
+        QLabel* textWidget() const override;
 
-        void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
+        void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={}) override;
 
-        void setStatus(const QString& message, Type type, const QString& title={});
-
-        void setButtons(std::vector<ButtonConfig> buttons);
-
-        static ButtonConfig standardButton(StandardButton button, QWidget* parent=nullptr);
-
-    signals:
-
-        void buttonClicked(int id);
-
-        void closeRequested();
-
-    public slots:
-
-        void activateButton(int id);
+        void setStatus(const QString& message, Type type, const QString& title={}) override;
 
     private:
 

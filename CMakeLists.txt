@@ -73,7 +73,10 @@ SET (HEADERS
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
 
+    include/uise/desktop/abstractdialog.hpp
+    include/uise/desktop/dialog.hpp
     include/uise/desktop/statusdialog.hpp
+
     include/uise/desktop/framewithmodalstatus.hpp
 
     include/uise/desktop/framewithrefresh.hpp
@@ -108,6 +111,8 @@ SET (HEADERS
     include/uise/desktop/editablepanelgrid.hpp
 
     include/uise/desktop/editablelabelfactory.hpp
+
+    include/uise/desktop/defaultwidgetfactory.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -117,6 +122,10 @@ SET (HEADERS ${HEADERS}
     include/uise/desktop/detail/spinnersection_p.hpp
 
     include/uise/desktop/detail/htreesplitter_p.hpp
+)
+
+SET (HEADERS ${HEADERS}
+    include/uise/desktop/ipp/dialog.ipp
 )
 
 SET (SOURCES
@@ -162,11 +171,15 @@ SET (SOURCES
 
     src/editablelabelfactory.cpp
 
+    src/abstractdialog.cpp
     src/statusdialog.cpp
+
     src/framewithmodalstatus.cpp
 
     src/widget.cpp
     src/widgetfactory.cpp
+
+    src/defaultwidgetfactory.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

@@ -11,7 +11,7 @@
             }
         },
         {
-            "name" : "StatusDialogTitle",
+            "name" : "DialogTitle",
             "aliases" : {
                 "close" : "${svg-icons}/x"
             }

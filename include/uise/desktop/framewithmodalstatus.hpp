@@ -42,7 +42,8 @@ class FrameWithModalStatus_p;
 /**
  * @brief Base class for frames with modal busy/error status.
  */
-class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup
+class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
+                                                 public Widget
 {
     Q_OBJECT
 
@@ -71,7 +72,7 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup
         bool isCancellableBusyWaiting() const;
 
         BusyWaiting* busyWaitingWidget() const;
-        StatusDialog* statusDialog() const;
+        AbstractStatusDialog* statusDialog() const;
 
     signals:
 

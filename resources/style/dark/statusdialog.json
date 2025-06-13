@@ -2,7 +2,7 @@
     "theme" : "dark",
     "contexts" : [
         {
-            "name" : "StatusDialogTitle",
+            "name" : "DialogTitle",
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#EEEEEE" }

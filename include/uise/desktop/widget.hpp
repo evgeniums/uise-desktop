@@ -60,13 +60,22 @@ class UISE_DESKTOP_EXPORT Widget
         template <typename T>
         T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
         {
-            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject(),std::move(name),parent));
+            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
             if (w==nullptr)
             {
-                w=new T(parent);
-                w->setObjectName(name);
+                if constexpr (std::is_constructible_v<T,QWidget*>)
+                {
+                    w=new T(parent);
+                    w->setObjectName(name);
+                }
             }
             return w;
+        }
+
+        template <typename T>
+        T* makeWidget(QWidget* parent) const
+        {
+            return makeWidget<T>(QString{},parent);
         }
 
     private:

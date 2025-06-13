@@ -47,7 +47,7 @@ class FrameWithModalStatus_p
         QFrame* popupWidget=nullptr;
         QPointer<BusyWaiting> busyWaiting;
         QPointer<QFrame> busyWaitingFrame;
-        QPointer<StatusDialog> statusDialog;
+        QPointer<AbstractStatusDialog> statusDialog;
 
         PushButton* cancelButton=nullptr;
 
@@ -80,7 +80,8 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     );
     pimpl->busyWaitingFrame->setFixedSize(pimpl->busyWaiting->size());
 
-    pimpl->statusDialog=new StatusDialog(pimpl->popupWidget);
+    pimpl->statusDialog=makeWidget<AbstractStatusDialog>(pimpl->popupWidget);
+    Q_ASSERT(pimpl->statusDialog);
     l->addWidget(pimpl->statusDialog);
 
     auto btFrame=new QFrame(pimpl->popupWidget);
@@ -236,7 +237,7 @@ BusyWaiting* FrameWithModalStatus::busyWaitingWidget() const
 
 //--------------------------------------------------------------------------
 
-StatusDialog* FrameWithModalStatus::statusDialog() const
+AbstractStatusDialog* FrameWithModalStatus::statusDialog() const
 {
     return pimpl->statusDialog;
 }
