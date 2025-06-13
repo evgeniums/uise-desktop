@@ -46,6 +46,10 @@ class UISE_DESKTOP_EXPORT HTreeNodeLocator : public QObject
     public:
 
         HTreeNodeLocator(std::shared_ptr<HTreeNodeFactory> factory, QObject* parent=nullptr);
+
+        HTreeNodeLocator(QObject* parent=nullptr) : HTreeNodeLocator({},parent)
+        {}
+
         ~HTreeNodeLocator();
 
         HTreeNodeLocator(HTreeNodeLocator&)=delete;
