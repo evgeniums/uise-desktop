@@ -28,3 +28,7 @@ uise--EditablePanel #bottomButtonsFrame uise--PushButton QPushButton{border-radi
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
 color:transparent;
 }
+
+uise--EditablePanels {
+padding-bottom: 6px;
+}

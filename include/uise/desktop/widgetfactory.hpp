@@ -81,6 +81,12 @@ class UISE_DESKTOP_EXPORT WidgetFactory
             return w;
         }
 
+        template <typename T>
+        T* makeWidget(QWidget* parent) const
+        {
+            return makeWidget<T>({},parent);
+        }
+
         void registerBuilder(Builder builder, std::string className, ContextSelector context={});
 
         template <typename T>

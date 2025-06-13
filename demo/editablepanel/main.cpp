@@ -31,8 +31,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMainWindow>
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/widgetfactory.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/editablepanel.hpp>
+#include <uise/desktop/editablepanels.hpp>
 
 #include "demopanel.hpp"
 
@@ -54,21 +56,24 @@ int main(int argc, char *argv[])
 
     auto l = Layout::vertical(mainFrame);
 
+    auto panels=Style::instance().widgetFactory()->makeWidget<AbstractEditablePanels>(mainFrame);
+    l->addWidget(panels);
+
     auto panel1= new DemoPanel();
-    l->addWidget(panel1);
+    panels->addPanel(panel1);
 
     auto panel2= new DemoPanel();
-    l->addWidget(panel2);
+    panels->addPanel(panel2);
     panel2->setTitle("Panel 2");
 
     auto panel3= new DemoPanel();
-    l->addWidget(panel3);
+    panels->addPanel(panel3);
     panel3->setTitle("Panel 3");
     panel3->setButtonsMode(EditablePanel::ButtonsMode::BottomAlwaysVisible);
     panel3->edit();
 
     auto panel4= new DemoPanel();
-    l->addWidget(panel4);
+    panels->addPanel(panel4);
     panel4->setTitle("Panel 4");
     panel4->setButtonsMode(EditablePanel::ButtonsMode::TopOnHoverVisible);
 

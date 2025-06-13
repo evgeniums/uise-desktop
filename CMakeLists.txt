@@ -109,6 +109,7 @@ SET (HEADERS
 
     include/uise/desktop/editablepanel.hpp
     include/uise/desktop/editablepanelgrid.hpp
+    include/uise/desktop/editablepanels.hpp
 
     include/uise/desktop/editablelabelfactory.hpp
 
@@ -168,6 +169,7 @@ SET (SOURCES
 
     src/editablepanel.cpp
     src/editablepanelgrid.cpp
+    src/editablepanels.cpp
 
     src/editablelabelfactory.cpp
 

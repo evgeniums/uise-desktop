@@ -15,33 +15,34 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/defaultwidgetfactory.cpp
+/** @file uise/desktop/src/editablepanels.cpp
 *
-*  Defines defaultWidgetFactory().
+*  Defines EditablePanels.
 *
 */
 
 /****************************************************************************/
 
-#include <uise/desktop/statusdialog.hpp>
-#include <uise/desktop/editablepanelgrid.hpp>
-#include <uise/desktop/editablepanels.hpp>
+#include <uise/desktop/utils/layout.hpp>
 
-#include <uise/desktop/defaultwidgetfactory.hpp>
+#include <uise/desktop/editablepanels.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-std::shared_ptr<WidgetFactory> defaultWidgetFactory()
+EditablePanels::EditablePanels(
+        QWidget* parent
+    ) : AbstractEditablePanels(parent)
 {
-    auto factory=std::make_shared<WidgetFactory>();
+    m_layout=Layout::vertical(this);
+}
 
-    factory->registerBuilder<AbstractStatusDialog>([](QWidget* parent){return new StatusDialog(parent);});
-    factory->registerBuilder<AbstractEditablePanel>([](QWidget* parent){return new EditablePanelGrid(parent);});
-    factory->registerBuilder<AbstractEditablePanels>([](QWidget* parent){return new EditablePanels(parent);});
+//--------------------------------------------------------------------------
 
-    return factory;
+void EditablePanels::addPanel(QWidget* panel, int stretch, Qt::Alignment alignment)
+{
+    m_layout->addWidget(panel,stretch,alignment);
 }
 
 //--------------------------------------------------------------------------
