@@ -346,7 +346,8 @@ class FolderNodeBuilder : public HTreeNodeBuilder
             }
 
             auto node=new HTreeList(std::make_shared<FolderListViewBuilder>(),treeTab);
-            node->setNodeTooltip(QString::fromStdString(pathElement.id()));            
+            node->setNodeTooltip(QString::fromStdString(pathElement.id()));
+            node->setRefreshable(true);
             return node;
         }
 };
@@ -364,6 +365,7 @@ class TextFileBrowserNode : public HTreeNode
             setNodeTooltip(m_fileName);
 
             setMinimumWidth(500);
+            setRefreshable(true);
         }
 
     protected:
