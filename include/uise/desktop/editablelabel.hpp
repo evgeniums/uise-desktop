@@ -583,9 +583,6 @@ struct EditableLabelHelper
     }
 };
 
-namespace detail
-{
-
 /**
  * @brief Base template class for editable labels of various types.
  */
@@ -699,18 +696,16 @@ class EditableLabelTmpl : public EditableLabel
         typename helper::valueType m_backupValue;
 };
 
-}
-
 /**
  * @brief Editable text label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelText : public detail::EditableLabelTmpl<EditableLabel::Type::Text>
+class UISE_DESKTOP_EXPORT EditableLabelText : public EditableLabelTmpl<EditableLabel::Type::Text>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Text>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Text>;
 
         using baseType::baseType;
 
@@ -729,13 +724,13 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public detail::EditableLabelTmpl<E
 /**
  * @brief Editable integer label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<EditableLabel::Type::Int>
+class UISE_DESKTOP_EXPORT EditableLabelInt : public EditableLabelTmpl<EditableLabel::Type::Int>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Int>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Int>;
 
         using baseType::baseType;
 
@@ -758,13 +753,13 @@ class UISE_DESKTOP_EXPORT EditableLabelInt : public detail::EditableLabelTmpl<Ed
 /**
  * @brief Editable double label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelDouble : public detail::EditableLabelTmpl<EditableLabel::Type::Double>
+class UISE_DESKTOP_EXPORT EditableLabelDouble : public EditableLabelTmpl<EditableLabel::Type::Double>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Double>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Double>;
 
         using baseType::baseType;
 
@@ -787,13 +782,13 @@ class UISE_DESKTOP_EXPORT EditableLabelDouble : public detail::EditableLabelTmpl
 /**
  * @brief Editable date label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<EditableLabel::Type::Date>
+class UISE_DESKTOP_EXPORT EditableLabelDate : public EditableLabelTmpl<EditableLabel::Type::Date>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Date>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Date>;
 
         using baseType::baseType;
 
@@ -816,13 +811,13 @@ class UISE_DESKTOP_EXPORT EditableLabelDate : public detail::EditableLabelTmpl<E
 /**
  * @brief Editable time label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<EditableLabel::Type::Time>
+class UISE_DESKTOP_EXPORT EditableLabelTime: public EditableLabelTmpl<EditableLabel::Type::Time>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Time>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Time>;
 
         using baseType::baseType;
 
@@ -845,13 +840,13 @@ class UISE_DESKTOP_EXPORT EditableLabelTime: public detail::EditableLabelTmpl<Ed
 /**
  * @brief Editable datetime label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmpl<EditableLabel::Type::DateTime>
+class UISE_DESKTOP_EXPORT EditableLabelDateTime: public EditableLabelTmpl<EditableLabel::Type::DateTime>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::DateTime>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::DateTime>;
 
         using baseType::baseType;
 
@@ -874,13 +869,13 @@ class UISE_DESKTOP_EXPORT EditableLabelDateTime: public detail::EditableLabelTmp
 /**
  * @brief Editable combo label.
  */
-class UISE_DESKTOP_EXPORT EditableLabelCombo: public detail::EditableLabelTmpl<EditableLabel::Type::Combo>
+class UISE_DESKTOP_EXPORT EditableLabelCombo: public EditableLabelTmpl<EditableLabel::Type::Combo>
 {
     Q_OBJECT
 
     public:
 
-        using baseType = detail::EditableLabelTmpl<EditableLabel::Type::Combo>;
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Combo>;
 
         using baseType::baseType;
 
