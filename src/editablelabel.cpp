@@ -42,7 +42,7 @@ EditableLabel::EditableLabel(
         Type type,
         QWidget* parent,
         bool inGroup
-    ) : QFrame(parent),
+    ) : AbstractValueWidget(parent),
         m_type(type),
         m_label(new QLabel(this)),
         m_formatter(nullptr),

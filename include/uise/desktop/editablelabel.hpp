@@ -47,6 +47,92 @@ You may select, at your option, one of the above-comboed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class ValueWidgetConfig
+{
+    public:
+
+        ValueWidgetConfig()
+        {}
+
+        ValueWidgetConfig(std::map<int,QVariant> properties)
+            : m_properties(std::move(properties))
+        {}
+
+        QVariant property(int propertyId) const
+        {
+            auto it=m_properties.find(propertyId);
+            if (it!=m_properties.end())
+            {
+                return it->second;
+            }
+            return QVariant{};
+        }
+
+        template <typename T>
+        QVariant property(T propertyId) const
+        {
+            return property(static_cast<int>(propertyId));
+        }
+
+        void setProperty(int id, QVariant& value)
+        {
+            m_properties.emplace(id,std::move(value));
+        }
+
+    private:
+
+        std::map<int,QVariant> m_properties;
+};
+
+enum class ValueWidgetProperty : int
+{
+    Label,
+    Comment,
+    Alignment,
+    ColumnSpan,
+    RowSpan,
+    Min,
+    Max,
+    List,
+
+    User=0x1000
+};
+
+class AbstractValueWidget : public QWidget
+{
+    public:
+
+        using QWidget::QWidget;
+
+        virtual void setVariantValue(const QVariant& val)=0;
+        virtual QVariant variantValue() const=0;
+
+        void setConfig(ValueWidgetConfig config)
+        {
+            m_config=std::move(config);
+            updateConfig();
+        }
+
+        const ValueWidgetConfig& config() const
+        {
+            return m_config;
+        }
+
+        ValueWidgetConfig& config()
+        {
+            return m_config;
+        }
+
+    protected:
+
+        virtual void updateConfig()
+        {}
+
+    private:
+
+        ValueWidgetConfig m_config;
+};
+
 class EditableLabelFormatter;
 
 class EditableLabelText;
@@ -73,17 +159,10 @@ enum class EditableLabelType : int
     Custom=0x100
 };
 
-struct EditableLabelConfig
-{
-    int type;
-    QString id;
-    QVariant value;
-};
-
 /**
  * @brief Base class for editable labels.
  */
-class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
+class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 {
     Q_OBJECT
 
@@ -195,9 +274,6 @@ class UISE_DESKTOP_EXPORT EditableLabel : public QFrame
         {
             return m_panel;
         }
-
-        virtual void setVariantValue(const QVariant& val)=0;
-        virtual QVariant variantValue() const=0;
 
     public slots:
 
@@ -367,6 +443,12 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
     {
         widget->setText(value);
     }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
+    }
 };
 
 /**
@@ -394,6 +476,13 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
     {
         widget->setValue(value);
     }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        auto minInt=config.property(ValueWidgetProperty::Min).toInt();
+        auto maxInt=config.property(ValueWidgetProperty::Max).toInt();
+        widget->setRange(minInt,maxInt);
+    }
 };
 
 /**
@@ -420,6 +509,13 @@ struct EditableLabelTraits<EditableLabel::Type::Double>
     static void setValue(widgetType* widget, double value)
     {
         widget->setValue(value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        auto minDbl=config.property(ValueWidgetProperty::Min).toDouble();
+        auto maxDbl=config.property(ValueWidgetProperty::Max).toDouble();
+        widget->setRange(minDbl,maxDbl);
     }
 };
 
@@ -466,6 +562,27 @@ struct EditableLabelTraits<EditableLabel::Type::Combo>
     {
         widget->setCurrentIndex(value.index);
     }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        auto items=config.property(ValueWidgetProperty::Min).toList();
+        for (int i=0;i<items.count();i++)
+        {
+            const auto& item=items.at(i);
+            if (item.canConvert(QMetaType{QMetaType::QVariantMap}))
+            {
+                auto m=item.toMap();
+                widget->addItem(
+                    m.value("text").toString(),
+                    m.value("data")
+                );
+            }
+            else
+            {
+                widget->addItem(item.toString());
+            }
+        }
+    }
 };
 
 /**
@@ -493,6 +610,12 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     static void setValue(widgetType* widget, const QDate& value)
     {
         widget->setDate(value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
     }
 };
 
@@ -522,6 +645,12 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     {
         widget->setTime(value);
     }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
+    }
 };
 
 /**
@@ -549,6 +678,12 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     static void setValue(widgetType* widget, const QDateTime& value)
     {
         widget->setDateTime(value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
     }
 };
 
@@ -580,6 +715,11 @@ struct EditableLabelHelper
     static void setValue(widgetType* widget, const ValueType& value)
     {
         traits::setValue(widget,value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        traits::updateConfig(widget, config);
     }
 };
 
@@ -650,6 +790,11 @@ class EditableLabelTmpl : public EditableLabel
         QVariant variantValue() const override
         {
             return QVariant::fromValue(value());
+        }
+
+        void updateConfig() override
+        {
+
         }
 
         /**
