@@ -60,7 +60,10 @@ SET (HEADERS
     include/uise/desktop/flyweightlistview.ipp
 
     include/uise/desktop/alignedstretchingwidget.hpp
+
+    include/uise/desktop/valuewidget.hpp
     include/uise/desktop/editablelabel.hpp
+
     include/uise/desktop/style.hpp
 
     include/uise/desktop/elidedlabel.hpp
