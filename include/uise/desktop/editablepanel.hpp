@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/widget.hpp>
+#include <uise/desktop/valuewidget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -95,7 +96,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
 
         virtual void setWidget(QWidget* widget)=0;
 
-        int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={})
+        int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={}, int rowSpan=1)
         {
             return addRow(label,{Item{widget,alignment,columnSpan,1}},comment);
         }
@@ -105,7 +106,25 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
             return addRow("",std::move(items),comment);
         }
 
+        virtual int addRow(const QString& label, Item item, const QString& comment={})
+        {
+            return addRow(label,{std::move(item)},comment);
+        }
+
         virtual int addRow(const QString& label, std::vector<Item> items, const QString& comment={})=0;
+
+        virtual int addValueWidget(AbstractValueWidget* widget)
+        {
+            const auto& config=widget->config();
+            return addRow(
+                config.property(ValueWidgetProperty::Label).toString(),
+                widget,
+                config.property(ValueWidgetProperty::ColumnSpan,1).toInt(),
+                static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::ColumnSpan,static_cast<int>(Qt::Alignment{})).toInt()),
+                config.property(ValueWidgetProperty::Comment).toString(),
+                config.property(ValueWidgetProperty::RowSpan,1).toInt()
+            );
+        }
 
         virtual void setRowVisible(int index, bool enable)=0;
         virtual bool isRowVisible(int index) const =0;
