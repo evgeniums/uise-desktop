@@ -43,95 +43,10 @@ You may select, at your option, one of the above-comboed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/editablepanel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-class ValueWidgetConfig
-{
-    public:
-
-        ValueWidgetConfig()
-        {}
-
-        ValueWidgetConfig(std::map<int,QVariant> properties)
-            : m_properties(std::move(properties))
-        {}
-
-        QVariant property(int propertyId) const
-        {
-            auto it=m_properties.find(propertyId);
-            if (it!=m_properties.end())
-            {
-                return it->second;
-            }
-            return QVariant{};
-        }
-
-        template <typename T>
-        QVariant property(T propertyId) const
-        {
-            return property(static_cast<int>(propertyId));
-        }
-
-        void setProperty(int id, QVariant& value)
-        {
-            m_properties.emplace(id,std::move(value));
-        }
-
-    private:
-
-        std::map<int,QVariant> m_properties;
-};
-
-enum class ValueWidgetProperty : int
-{
-    Label,
-    Comment,
-    Alignment,
-    ColumnSpan,
-    RowSpan,
-    Min,
-    Max,
-    List,
-
-    User=0x1000
-};
-
-class AbstractValueWidget : public QWidget
-{
-    public:
-
-        using QWidget::QWidget;
-
-        virtual void setVariantValue(const QVariant& val)=0;
-        virtual QVariant variantValue() const=0;
-
-        void setConfig(ValueWidgetConfig config)
-        {
-            m_config=std::move(config);
-            updateConfig();
-        }
-
-        const ValueWidgetConfig& config() const
-        {
-            return m_config;
-        }
-
-        ValueWidgetConfig& config()
-        {
-            return m_config;
-        }
-
-    protected:
-
-        virtual void updateConfig()
-        {}
-
-    private:
-
-        ValueWidgetConfig m_config;
-};
 
 class EditableLabelFormatter;
 
