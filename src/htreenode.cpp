@@ -266,6 +266,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
 
     setCollapsible(false);
     setClosable(false);
+    setRefreshable(false);
 }
 
 //--------------------------------------------------------------------------
