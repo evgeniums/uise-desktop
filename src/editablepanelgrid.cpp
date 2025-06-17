@@ -54,9 +54,9 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
 
     if (!comment.isEmpty())
     {
-        auto c=new QLabel(tr("Enter passphrase to decrypt file"));
+        auto c=new QLabel(comment);
         c->setObjectName("panelComment");
-        m_layout->addWidget(c,count,0,1,items.size());
+        m_layout->addWidget(c,count,0,1,items.size()+static_cast<int>(!label.isEmpty()));
         ++count;
         widgets.push_back(c);
     }

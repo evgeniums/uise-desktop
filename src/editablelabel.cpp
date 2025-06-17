@@ -48,7 +48,8 @@ EditableLabel::EditableLabel(
         m_formatter(nullptr),
         m_editing(false),
         m_inGroup(inGroup),
-        m_panel(nullptr)
+        m_panel(nullptr),
+        m_editable(true)
 {
     m_layout=Layout::horizontal(this);
     m_layout->addWidget(m_label,100);
@@ -99,7 +100,7 @@ EditableLabel::EditableLabel(
 EditableLabel::EditableLabel(Type type, AbstractEditablePanel* panel)
     : EditableLabel(type,panel,true)
 {
-    setAbstractEditablePanel(panel);
+    setEditablePanel(panel);
 }
 
 //--------------------------------------------------------------------------
@@ -160,28 +161,32 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 
 //--------------------------------------------------------------------------
 
-void EditableLabel::setAbstractEditablePanel(AbstractEditablePanel* panel)
+void EditableLabel::setEditablePanel(AbstractEditablePanel* panel)
 {
+    setInGroup(config().property(ValueWidgetProperty::InGroup,true).toBool());
     m_panel=panel;
     updateControls();
-    connect(
-        panel,
-        &AbstractEditablePanel::editRequested,
-        this,
-        &EditableLabel::edit
-    );
-    connect(
-        panel,
-        &AbstractEditablePanel::cancelRequested,
-        this,
-        &EditableLabel::cancel
-    );
-    connect(
-        panel,
-        &AbstractEditablePanel::applyRequested,
-        this,
-        &EditableLabel::apply
-    );
+    if (m_inGroup)
+    {
+        connect(
+            panel,
+            &AbstractEditablePanel::editRequested,
+            this,
+            &EditableLabel::edit
+        );
+        connect(
+            panel,
+            &AbstractEditablePanel::cancelRequested,
+            this,
+            &EditableLabel::cancel
+        );
+        connect(
+            panel,
+            &AbstractEditablePanel::applyRequested,
+            this,
+            &EditableLabel::apply
+        );
+    }
 }
 
 //--------------------------------------------------------------------------

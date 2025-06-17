@@ -46,6 +46,20 @@ class ValueWidgetConfig
             : m_properties(std::move(properties))
         {}
 
+        ValueWidgetConfig(std::initializer_list<std::map<int,QVariant>::value_type> properties)
+            : m_properties(std::move(properties))
+        {}
+
+        bool hasProperty(int propertyId) const
+        {
+            auto it=m_properties.find(propertyId);
+            if (it!=m_properties.end())
+            {
+                return true;
+            }
+            return false;
+        }
+
         QVariant property(int propertyId, QVariant defaultValue={}) const
         {
             auto it=m_properties.find(propertyId);
@@ -54,6 +68,12 @@ class ValueWidgetConfig
                 return it->second;
             }
             return defaultValue;
+        }
+
+        template <typename T>
+        bool hasProperty(T propertyId) const
+        {
+            return hasProperty(static_cast<int>(propertyId));
         }
 
         template <typename T>
@@ -76,6 +96,8 @@ enum class ValueWidgetProperty : int
 {
     Label,
     Comment,
+    Editable,
+    InGroup,
     Alignment,
     ColumnSpan,
     RowSpan,
@@ -85,6 +107,8 @@ enum class ValueWidgetProperty : int
 
     User=0x1000
 };
+
+class AbstractEditablePanel;
 
 class AbstractValueWidget : public QWidget
 {
@@ -110,6 +134,9 @@ class AbstractValueWidget : public QWidget
         {
             return m_config;
         }
+
+        virtual void setEditablePanel(AbstractEditablePanel*)
+        {}
 
     protected:
 

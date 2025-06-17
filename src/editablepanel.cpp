@@ -353,4 +353,20 @@ void EditablePanel::leaveEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
+int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
+{
+    widget->setEditablePanel(this);
+    const auto& config=widget->config();
+    return addRow(
+        config.property(ValueWidgetProperty::Label).toString(),
+        widget,
+        config.property(ValueWidgetProperty::ColumnSpan,1).toInt(),
+        static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::ColumnSpan,static_cast<int>(Qt::Alignment{})).toInt()),
+        config.property(ValueWidgetProperty::Comment).toString(),
+        config.property(ValueWidgetProperty::RowSpan,1).toInt()
+    );
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

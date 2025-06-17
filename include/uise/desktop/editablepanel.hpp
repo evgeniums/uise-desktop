@@ -108,23 +108,12 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
 
         virtual int addRow(const QString& label, Item item, const QString& comment={})
         {
-            return addRow(label,{std::move(item)},comment);
+            return addRow(label,std::vector<Item>{std::move(item)},comment);
         }
 
         virtual int addRow(const QString& label, std::vector<Item> items, const QString& comment={})=0;
 
-        virtual int addValueWidget(AbstractValueWidget* widget)
-        {
-            const auto& config=widget->config();
-            return addRow(
-                config.property(ValueWidgetProperty::Label).toString(),
-                widget,
-                config.property(ValueWidgetProperty::ColumnSpan,1).toInt(),
-                static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::ColumnSpan,static_cast<int>(Qt::Alignment{})).toInt()),
-                config.property(ValueWidgetProperty::Comment).toString(),
-                config.property(ValueWidgetProperty::RowSpan,1).toInt()
-            );
-        }
+        virtual int addValueWidget(AbstractValueWidget* widget);
 
         virtual void setRowVisible(int index, bool enable)=0;
         virtual bool isRowVisible(int index) const =0;

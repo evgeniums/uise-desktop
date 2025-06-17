@@ -71,8 +71,14 @@ enum class EditableLabelType : int
     Time,
     DateTime,
 
+    Int64,
+    UInt32,
+    UInt64,
+
     Custom=0x100
 };
+
+//! @todo Implement Int64, UInt32, UInt64
 
 /**
  * @brief Base class for editable labels.
@@ -184,10 +190,22 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             return m_id;
         }
 
-        void setAbstractEditablePanel(AbstractEditablePanel* panel);
+        void setEditablePanel(AbstractEditablePanel*) override;
+
         AbstractEditablePanel* editablePanel() const
         {
             return m_panel;
+        }
+
+        void setEditable(bool enable)
+        {
+            m_editable=enable;
+            updateControls();
+        }
+
+        bool isEditable() const noexcept
+        {
+            return m_editable;
         }
 
     public slots:
@@ -198,10 +216,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
          */
         void setEditing(bool enable)
         {
-            m_editing=enable;
+            m_editing=m_editable && enable;
             updateControls();
-            m_editorFrame->setVisible(enable);
-            if (enable)
+            m_editorFrame->setVisible(m_editing);
+            if (m_editable)
             {
                 if (!m_inGroup)
                 {
@@ -254,11 +272,11 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         void updateControls()
         {
-            m_label->setVisible(!m_editing);
-            m_buttonsFrame->setVisible(!m_inGroup);
-            m_editButton->setVisible(!m_editing);
-            m_cancelButton->setVisible(m_editing);
-            m_applyButton->setVisible(m_editing);
+            m_label->setVisible(!m_editable || !m_editing);
+            m_buttonsFrame->setVisible(m_editable && !m_inGroup);
+            m_editButton->setVisible(m_editable && !m_editing);
+            m_cancelButton->setVisible(m_editable && m_editing);
+            m_applyButton->setVisible(m_editable && m_editing);
         }
 
         Type m_type;
@@ -280,6 +298,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         PushButton* m_cancelButton;
 
         AbstractEditablePanel* m_panel;
+        bool m_editable;
 };
 
 /**
@@ -394,9 +413,22 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
 
     static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
     {
-        auto minInt=config.property(ValueWidgetProperty::Min).toInt();
-        auto maxInt=config.property(ValueWidgetProperty::Max).toInt();
-        widget->setRange(minInt,maxInt);
+        if (config.hasProperty(ValueWidgetProperty::Min) && config.hasProperty(ValueWidgetProperty::Max))
+        {
+            auto minInt=config.property(ValueWidgetProperty::Min).toInt();
+            auto maxInt=config.property(ValueWidgetProperty::Max).toInt();
+            widget->setRange(minInt,maxInt);
+        }
+        else if (config.hasProperty(ValueWidgetProperty::Min))
+        {
+            auto minInt=config.property(ValueWidgetProperty::Min).toInt();
+            widget->setMinimum(minInt);
+        }
+        else if (config.hasProperty(ValueWidgetProperty::Max))
+        {
+            auto maxInt=config.property(ValueWidgetProperty::Max).toInt();
+            widget->setMaximum(maxInt);
+        }
     }
 };
 
@@ -669,7 +701,7 @@ class EditableLabelTmpl : public EditableLabel
 
         EditableLabelTmpl(AbstractEditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)
         {
-            setAbstractEditablePanel(panel);
+            setEditablePanel(panel);
         }
 
         /**
@@ -706,7 +738,9 @@ class EditableLabelTmpl : public EditableLabel
 
         void updateConfig() override
         {
-
+            helper::updateConfig(m_editor,config());
+            auto editable=config().property(ValueWidgetProperty::Editable,true).toBool();
+            setEditable(editable);
         }
 
         /**
