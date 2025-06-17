@@ -13,6 +13,21 @@ uise--EditablePanel uise--EditableLabel QLineEdit {
 padding: 2px;
 }
 
+uise--FrameWithModalStatus uise--EditableLabel uise--PushButton QPushButton {
+border:none;
+padding: 2px;
+margin:0;
+}
+
+uise--FrameWithModalStatus uise--EditableLabel uise--PushButton {
+padding:0;
+margin:0;
+}
+
+uise--FrameWithModalStatus uise--EditableLabel uise--PushButton QPushButton:hover {
+border:none;
+}
+
 uise--EditablePanel #panelTitle {
 font-size:16px;
 }

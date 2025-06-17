@@ -52,33 +52,42 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
 
     auto count=m_layout->count();
 
+    QLabel* commentWidget=nullptr;
     if (!comment.isEmpty())
     {
-        auto c=new QLabel(comment);
-        c->setObjectName("panelComment");
-        m_layout->addWidget(c,count,0,1,items.size()+static_cast<int>(!label.isEmpty()));
+        commentWidget=new QLabel(comment);
+        commentWidget->setObjectName("panelComment");
+        if (label.isEmpty())
+        {
+            m_layout->addWidget(commentWidget,count,0,1,items.size());
+        }
+        else
+        {
+            m_layout->addWidget(commentWidget,count,1,1,items.size());
+        }
         ++count;
-        widgets.push_back(c);
     }
 
     int column=0;
+    QLabel* labelWidget=nullptr;
     if (!label.isEmpty())
     {
-        auto l=new QLabel(label,m_gridFrame);
-        l->setObjectName("panellabel");
-        l->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-        m_layout->addWidget(l,count,column,Qt::AlignRight|Qt::AlignVCenter);
+        labelWidget=new QLabel(label,m_gridFrame);
+        labelWidget->setObjectName("panellabel");
+        labelWidget->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        m_layout->addWidget(labelWidget,count,column,Qt::AlignRight|Qt::AlignVCenter);
         ++column;
-        widgets.push_back(l);
     }
+
     for (auto&& item:items)
     {
         m_layout->addWidget(item.widget,count,column,item.rowSpan,item.columnSpan,item.alignment);
         column+=item.columnSpan;
-        widgets.push_back(item.widget);
+        widgets.push_back(item.widget);        
     }
+    ++count;
 
-    m_rows.emplace(m_rowIndex,Row{std::move(widgets),true});
+    m_rows.emplace(m_rowIndex,Row{std::move(widgets),true,labelWidget,commentWidget});
     auto index=m_rowIndex++;
     return index;
 }
@@ -100,6 +109,14 @@ void EditablePanelGrid::setRowVisible(int index, bool enable)
         {
             widget->setVisible(enable);
         }
+    }
+    if (it->second.label)
+    {
+        it->second.label->setVisible(enable);
+    }
+    if (it->second.comment)
+    {
+        it->second.comment->setVisible(enable);
     }
 }
 

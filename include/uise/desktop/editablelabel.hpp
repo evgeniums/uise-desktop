@@ -221,7 +221,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             m_editorFrame->setVisible(m_editing);
             if (m_editable)
             {
-                if (!m_inGroup)
+                if (!m_inGroup || config().property(ValueWidgetProperty::EditFocus).toBool())
                 {
                     editor()->setFocus();
                 }
