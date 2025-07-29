@@ -50,7 +50,7 @@ PasswordInput::PasswordInput(QWidget* parent)
     auto l=Layout::horizontal(this);
 
     pimpl->editor=new QLineEdit(this);
-    l->addWidget(pimpl->editor);
+    l->addWidget(pimpl->editor,1);
 
     pimpl->unmaskButton=new PushButton(Style::instance().svgIconLocator().icon("PasswordInput::unmask",this),this);
     pimpl->unmaskButton->setCheckable(true);

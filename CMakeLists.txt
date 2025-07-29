@@ -117,6 +117,7 @@ SET (HEADERS
     include/uise/desktop/defaultwidgetfactory.hpp
 
     include/uise/desktop/passwordinput.hpp
+    include/uise/desktop/passworddialog.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -185,6 +186,7 @@ SET (SOURCES
     src/defaultwidgetfactory.cpp
 
     src/passwordinput.cpp
+    src/passworddialog.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

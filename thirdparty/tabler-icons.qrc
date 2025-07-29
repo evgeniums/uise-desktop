@@ -37,5 +37,6 @@
         <file>tabler-icons/outline/rotate-clockwise-2.svg</file>
         <file>tabler-icons/outline/eye-closed.svg</file>
         <file>tabler-icons/outline/eye.svg</file>
+        <file>tabler-icons/outline/key.svg</file>
     </qresource>
 </RCC>

@@ -72,6 +72,11 @@ AbstractDialog::ButtonConfig AbstractDialog::standardButton(StandardButton butto
             return make(button,tr("Accept"),"accept");
         }
         break;
+        case(StandardButton::Apply):
+        {
+            return make(button,tr("Apply"),"apply");
+        }
+        break;
         case(StandardButton::Ignore):
         {
             return make(button,tr("Ignore"),"ignore");

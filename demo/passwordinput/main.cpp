@@ -33,8 +33,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/passwordinput.hpp>
+#include <uise/desktop/passworddialog.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -69,6 +71,55 @@ int main(int argc, char *argv[])
         }
     );
 
+    auto showDialog=new QPushButton("Show dialog");
+    mainL->addWidget(showDialog);
+    auto showError=new QPushButton("Show error");
+    showError->setVisible(false);
+    mainL->addWidget(showError);
+    QObject::connect(
+        showDialog,
+        &QPushButton::clicked,
+        mainFrame,
+        [mainL,mainFrame,displayLabel,showDialog,showError]()
+        {
+            showDialog->setEnabled(false);
+            AbstractPasswordDialog* dialog=new PasswordDialog();
+            mainL->insertWidget(mainL->count()-1,dialog);
+            QObject::connect(
+                dialog,
+                &PasswordDialog::passwordEntered,
+                mainFrame,
+                [displayLabel,dialog]()
+                {
+                    displayLabel->setText(dialog->password());
+                }
+            );
+            QObject::connect(
+                dialog,
+                &PasswordDialog::closeRequested,
+                mainFrame,
+                [dialog,showDialog,showError]()
+                {
+                    destroyWidget(dialog);
+                    showDialog->setEnabled(true);
+                    showError->setVisible(false);
+                }
+            );            
+
+            showError->setVisible(true);
+            QObject::connect(
+                showError,
+                &QPushButton::clicked,
+                dialog,
+                [dialog]()
+                {
+                    dialog->setError("Some error regarding entered password");
+                }
+            );
+
+            dialog->setPasswordFocus();
+        }
+    );    
     mainL->addStretch(1);
 
     w.setCentralWidget(mainFrame);

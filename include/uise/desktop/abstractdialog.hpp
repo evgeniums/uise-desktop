@@ -47,12 +47,13 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
             Close=0,
             Accept=1,
             OK=2,
-            Yes=3,
-            Ignore=4,
-            Cancel=5,
-            No=6,
-            Skip=7,
-            Retry=8
+            Apply=3,
+            Yes=4,
+            Ignore=5,
+            Cancel=6,
+            No=7,
+            Skip=8,
+            Retry=9
         };
 
         struct ButtonConfig
@@ -79,6 +80,11 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
         virtual void setButtons(std::vector<ButtonConfig> buttons)=0;
 
         static ButtonConfig standardButton(StandardButton button, QWidget* parent=nullptr);
+
+        static bool isButton(int id, StandardButton button)
+        {
+            return id==static_cast<int>(button);
+        }
 
     signals:
 

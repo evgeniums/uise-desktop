@@ -116,7 +116,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
         [this](int id)
         {
             emit AbstractDialog::buttonClicked(id);
-            if (id==static_cast<int>(AbstractDialog::StandardButton::Close))
+            if (AbstractDialog::isButton(id,AbstractDialog::StandardButton::Close) || AbstractDialog::isButton(id,AbstractDialog::StandardButton::Cancel))
             {
                 emit AbstractDialog::closeRequested();
             }
