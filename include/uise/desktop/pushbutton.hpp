@@ -56,6 +56,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             }
 
             connect(m_button,&QPushButton::clicked,this,&PushButton::clicked);
+            connect(m_button,&QPushButton::toggled,this,&PushButton::toggled);
         }
 
         PushButton(QWidget* parent=nullptr) : PushButton(std::shared_ptr<SvgIcon>{},parent)
@@ -136,12 +137,18 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
     signals:
 
         void clicked();
+        void toggled(bool enable);
 
     public slots:
 
         void click()
         {
             m_button->click();
+        }
+
+        void toggle()
+        {
+            m_button->toggle();
         }
 
     protected:

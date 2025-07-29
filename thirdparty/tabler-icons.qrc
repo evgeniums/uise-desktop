@@ -28,5 +28,14 @@
         <file>tabler-icons/outline/alert-triangle.svg</file>
         <file>tabler-icons/outline/help.svg</file>
         <file>tabler-icons/outline/info-circle.svg</file>
+        <file>tabler-icons/outline/copy.svg</file>
+        <file>tabler-icons/outline/lock-open-2.svg</file>
+        <file>tabler-icons/outline/lock-open.svg</file>
+        <file>tabler-icons/outline/lock-password.svg</file>
+        <file>tabler-icons/outline/lock.svg</file>
+        <file>tabler-icons/outline/password.svg</file>
+        <file>tabler-icons/outline/rotate-clockwise-2.svg</file>
+        <file>tabler-icons/outline/eye-closed.svg</file>
+        <file>tabler-icons/outline/eye.svg</file>
     </qresource>
 </RCC>

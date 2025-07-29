@@ -307,6 +307,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
             return false;
         }
 
+        //! @todo Implement icons with different files for different states
         // explicit icon configs
         QString iconsField="icons";
         if (ctxObj.contains(iconsField))
@@ -345,13 +346,6 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                 }
 
                 SvgIconConfig icon{nameWithContext(iconName,ctx.name)};
-
-                // icon color maps
-                ok=parseColorMaps(modesField,iconPath,iconObj,icon.modes);
-                if (!ok)
-                {
-                    return false;
-                }
 
                 // icon modes
                 ok=parseColorMaps(modesField,iconPath,iconObj,icon.modes);

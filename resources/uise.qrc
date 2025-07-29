@@ -32,5 +32,8 @@
         <file>style/editablepanel.qss</file>
         <file>style/dark/editablepanel.qss</file>
         <file>style/light/editablepanel.qss</file>
+        <file>style/passwordinput.json</file>
+        <file>style/dark/passwordinput.json</file>
+        <file>style/light/passwordinput.json</file>
     </qresource>
 </RCC>
