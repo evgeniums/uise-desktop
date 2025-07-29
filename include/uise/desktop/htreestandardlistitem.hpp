@@ -168,9 +168,9 @@ class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeListView<HTreeStan
 
     public:
 
-        constexpr static const int DefaultMinimumWIdth=300;
+        constexpr static const int DefaultMinimumWidth=300;
 
-        HTreeStandardListView(QWidget* parent=nullptr, int minimumWidth=DefaultMinimumWIdth);
+        HTreeStandardListView(QWidget* parent=nullptr, int minimumWidth=DefaultMinimumWidth);
 
         HTreeStandardListView(int minimumWidth) : HTreeStandardListView(nullptr,minimumWidth)
         {}
