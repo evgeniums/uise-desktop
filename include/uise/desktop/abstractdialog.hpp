@@ -53,7 +53,12 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
             Cancel=6,
             No=7,
             Skip=8,
-            Retry=9
+            Retry=9,
+            Next=10,
+            Back=11,
+            Start=12,
+            Finish=13,
+            Complete=14
         };
 
         struct ButtonConfig

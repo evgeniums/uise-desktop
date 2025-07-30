@@ -107,6 +107,31 @@ AbstractDialog::ButtonConfig AbstractDialog::standardButton(StandardButton butto
             return make(button,tr("Retry"),"retry");
         }
         break;
+        case(StandardButton::Next):
+        {
+            return make(button,tr("Next"),"mext");
+        }
+        break;
+        case(StandardButton::Back):
+        {
+            return make(button,tr("Back"),"back");
+        }
+        break;
+        case(StandardButton::Start):
+        {
+            return make(button,tr("Start"),"start");
+        }
+        break;
+        case(StandardButton::Finish):
+        {
+            return make(button,tr("Finish"),"finish");
+        }
+        break;
+        case(StandardButton::Complete):
+        {
+            return make(button,tr("Complete"),"complete");
+        }
+        break;
     }
 
     return ButtonConfig{-1,tr("Unknown")};
