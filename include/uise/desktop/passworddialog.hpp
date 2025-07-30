@@ -29,8 +29,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
+#include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/dialog.hpp>
 
 class QLabel;
@@ -97,6 +99,30 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         void setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
 
         std::unique_ptr<PasswordDialog_p> pimpl;
+};
+
+class UISE_DESKTOP_EXPORT FrameWithModalPasswordDialog : public FrameWithModalPopup
+{
+    Q_OBJECT
+
+    public:
+
+        FrameWithModalPasswordDialog(QWidget* parent=nullptr);
+
+        /**
+         * @brief Open password dialog.
+         * @return Returns true if new dialog is created, false if dialog already existed.
+         */
+        bool openDialog();
+
+        QPointer<PasswordDialog> dialog() const
+        {
+            return m_dialog;
+        }
+
+    private:
+
+        QPointer<PasswordDialog> m_dialog;
 };
 
 UISE_DESKTOP_NAMESPACE_END

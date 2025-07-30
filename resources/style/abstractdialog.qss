@@ -3,7 +3,7 @@ uise--AbstractDialog {border-radius: 8px;}
 uise--AbstractDialog #dialogInternal {padding: 8px 8px 0x 8px;}
 
 uise--AbstractDialog #dialogIcon QPushButton {icon-size:32px;border:none;}
-uise--AbstractDialog #dialogIcon {padding:0 12px;margin-bottom:-12px;}
+uise--AbstractDialog #dialogIcon {padding:0 12px;}
 
 uise--AbstractDialog #titleFrame {padding: 4px 0;border-top-left-radius:7px;border-top-right-radius:7px;}
 uise--AbstractDialog #titleFrame uise--PushButton {margin:0;}

@@ -91,7 +91,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->titleClose->setToolTip(AbstractDialog::tr("Close","dialog"));
     pimpl->title=new QLabel(pimpl->titleFrame);
     pimpl->title->setAlignment(Qt::AlignCenter);
-    pimpl->title->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    pimpl->title->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 #ifdef Q_OS_MACOS
     tl->addWidget(pimpl->titleClose,0);
     tl->addWidget(pimpl->title,1);
@@ -134,6 +134,8 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     );
 
     doSetButtons({AbstractDialog::standardButton(AbstractDialog::StandardButton::Close,this)});
+
+    this->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------

@@ -15,9 +15,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file demo/framewirhstatus/main.cpp
+/** @file demo/passworddialog/main.cpp
 *
-*  Demo application of FrameWithModalStatus.
+*  Demo application of modal PasswordDialog.
 *
 */
 
@@ -40,6 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
+#include <uise/desktop/passworddialog.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -68,7 +69,12 @@ int main(int argc, char *argv[])
     auto tfl=Layout::horizontal(testFrame,false);
     auto testWidget=new FrameWithModalStatus(testFrame);
     tfl->addWidget(testWidget);
-    auto wl=Layout::vertical(testWidget,false);
+    auto wl1=Layout::vertical(testWidget,false);
+
+    auto dialogFrame=new FrameWithModalPasswordDialog();
+    wl1->addWidget(dialogFrame);
+    auto wl=Layout::vertical(dialogFrame,false);
+
     auto editor1=new QTextEdit();
     wl->addWidget(editor1);
     editor1->setText("Lorem ipsum dolor sit amet. Id enim repudiandae quo nulla quia id quisquam tempore et nostrum illum. Ex inventore repellendus et nobis molestiae aut facere dolores eos quod totam qui galisum quaerat ex illo aspernatur in quaerat quaerat. Ex unde galisum est omnis iure et ducimus suscipit in maiores officiis aut voluptas molestiae et fuga quia?");
@@ -85,6 +91,7 @@ int main(int argc, char *argv[])
     confl->addWidget(new QLabel("Height percent"),i,0);
     confl->addWidget(height,i,1);
     QObject::connect(height,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setMaxHeightPercent);
+    QObject::connect(height,&QSpinBox::valueChanged,dialogFrame,&FrameWithModalPopup::setMaxHeightPercent);
     i++;
 
     auto width=new QSpinBox();
@@ -93,6 +100,7 @@ int main(int argc, char *argv[])
     confl->addWidget(new QLabel("Width percent"),i,0);
     confl->addWidget(width,i,1);
     QObject::connect(width,&QSpinBox::valueChanged,testWidget,&FrameWithModalPopup::setMaxWidthPercent);
+    QObject::connect(width,&QSpinBox::valueChanged,dialogFrame,&FrameWithModalPopup::setMaxWidthPercent);
     i++;
 
     auto styleButton=new QPushButton();
@@ -127,11 +135,21 @@ int main(int argc, char *argv[])
     l->addWidget(bottomFrame);
     auto bl=Layout::horizontal(bottomFrame,false);
 
-    auto start=new QPushButton("Show busy");
+    auto start=new QPushButton("Show dialog");
     bl->addWidget(start);
     QObject::connect(start,&QPushButton::clicked,testWidget,
-    [testWidget](){
-            testWidget->popupBusyWaiting();
+    [dialogFrame,testWidget](){
+
+            bool newDialog=dialogFrame->openDialog();
+            if (newDialog)
+            {
+                QObject::connect(
+                    dialogFrame->dialog(),
+                    &PasswordDialog::passwordEntered,
+                    testWidget,
+                    &FrameWithModalStatus::popupBusyWaiting
+                );
+            }
         }
     );
 
@@ -290,6 +308,10 @@ int main(int argc, char *argv[])
     testWidget->setMaxWidthPercent(width->value());
     testWidget->setMaxHeightPercent(height->value());
     testWidget->setAutoColor(false);
+
+    dialogFrame->setMaxHeightPercent(height->value());
+    testWidget->setMaxWidthPercent(width->value());
+    dialogFrame->setAutoColor(false);
 
     QObject::connect(
         testWidget->statusDialog(),

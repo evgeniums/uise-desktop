@@ -184,6 +184,9 @@ void PasswordDialog::setInformationImpl(const QString& message, const QString& t
         icon=Style::instance().svgIconLocator().icon("PasswordDialog::key",this);
     }
     pimpl->icon->setSvgIcon(std::move(icon));
+
+    setMinimumWidth(400);
+    setFixedHeight(sizeHint().height());
 }
 
 //--------------------------------------------------------------------------
@@ -198,6 +201,40 @@ void PasswordDialog::setPasswordFocus()
 void PasswordDialog::setError(const QString& message)
 {
     pimpl->error->setText(message);
+}
+
+/************************* FrameWithModalPasswordDialog ***********************/
+
+//--------------------------------------------------------------------------
+
+FrameWithModalPasswordDialog::FrameWithModalPasswordDialog(QWidget* parent) : FrameWithModalPopup(parent)
+{
+    setShortcutEnabled(false);
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPasswordDialog::openDialog()
+{
+    if (m_dialog)
+    {
+        popup();
+        return false;
+    }
+
+    m_dialog=new PasswordDialog();
+    setPopupWidget(m_dialog,true);
+    connect(
+        m_dialog,
+        &PasswordDialog::closeRequested,
+        this,
+        &FrameWithModalPopup::closePopup
+    );
+
+    popup();
+    m_dialog->setFocus();
+    m_dialog->setPasswordFocus();
+    return true;
 }
 
 //--------------------------------------------------------------------------
