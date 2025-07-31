@@ -72,6 +72,18 @@ class UISE_DESKTOP_EXPORT Widget
             return w;
         }
 
+        template <typename T, typename DefaultT>
+        T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
+        {
+            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
+            if (w==nullptr)
+            {
+                w=new DefaultT(parent);
+                w->setObjectName(name);
+            }
+            return w;
+        }
+
         template <typename T>
         T* makeWidget(QWidget* parent) const
         {
