@@ -41,5 +41,6 @@
         <file>style/dark/abstractdialog.qss</file>
         <file>style/dark/passworddialog.json</file>
         <file>style/dark/passworddialog.qss</file>
+        <file>style/wizarddialog.qss</file>
     </qresource>
 </RCC>

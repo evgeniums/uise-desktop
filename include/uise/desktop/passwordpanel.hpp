@@ -15,16 +15,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/passworddialog.hpp
+/** @file uise/desktop/passwordpanel.hpp
 *
-*  Declares PasswordDialog.
+*  Declares PasswordPanel.
 *
 */
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_PASSWORD_DIALOG_HPP
-#define UISE_DESKTOP_PASSWORD_DIALOG_HPP
+#ifndef UISE_DESKTOP_PASSWORD_PANEL_HPP
+#define UISE_DESKTOP_PASSWORD_PANEL_HPP
 
 #include <memory>
 
@@ -35,28 +35,30 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/dialog.hpp>
 #include <uise/desktop/widget.hpp>
-#include <uise/desktop/modaldialog.hpp>
 
 class QLabel;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class SvgIcon;
-class PasswordDialog_p;
+class PasswordPanel_p;
 
-class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
+class UISE_DESKTOP_EXPORT AbstractPasswordPanel : public QFrame,
+                                                  public Widget
 {
     Q_OBJECT
 
     public:
 
-        using AbstractDialog::AbstractDialog;
+        using QFrame::QFrame;
 
-        virtual void setInformation(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={})=0;
+        virtual void setDescription(const QString& message)=0;
 
         virtual QString password() const=0;
 
         virtual void setError(const QString& message)=0;
+
+        virtual void setPasswordFocus()=0;
 
         virtual void reset()=0;
 
@@ -65,41 +67,34 @@ class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
         void passwordEntered();
 };
 
-class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
+class UISE_DESKTOP_EXPORT PasswordPanel : public AbstractPasswordPanel
 {
     Q_OBJECT
 
     public:
 
-        using Base=Dialog<AbstractPasswordDialog>;
-
         /**
          * @brief Constructor.
          * @param parent Parent widget.
          */
-        PasswordDialog(QWidget* parent=nullptr);
+        PasswordPanel(QWidget* parent=nullptr);
 
         /**
          * @brief Destructor.
          */
-        ~PasswordDialog();
+        ~PasswordPanel();
 
-        PasswordDialog(const PasswordDialog&)=delete;
-        PasswordDialog(PasswordDialog&&)=delete;
-        PasswordDialog& operator=(const PasswordDialog&)=delete;
-        PasswordDialog& operator=(PasswordDialog&&)=delete;
+        PasswordPanel(const PasswordPanel&)=delete;
+        PasswordPanel(PasswordPanel&&)=delete;
+        PasswordPanel& operator=(const PasswordPanel&)=delete;
+        PasswordPanel& operator=(PasswordPanel&&)=delete;
 
-        virtual void setInformation(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={}) override;
+        virtual void setDescription(const QString& message) override;
         virtual QString password() const override;
 
         virtual void setError(const QString& message) override;
 
-        void setDialogFocus() override
-        {
-            setPasswordFocus();
-        }
-
-        void setPasswordFocus();
+        virtual void setPasswordFocus() override;
 
         virtual void reset() override;
 
@@ -107,13 +102,11 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
     private:
 
-        void setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
+        void setDescriptionImpl(const QString& message);
 
-        std::unique_ptr<PasswordDialog_p> pimpl;
+        std::unique_ptr<PasswordPanel_p> pimpl;
 };
-
-using ModalPasswordDialog=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_PASSWORD_DIALOG_HPP
+#endif // UISE_DESKTOP_PASSWORD_PANEL_HPP

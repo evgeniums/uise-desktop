@@ -91,6 +91,29 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
             return id==static_cast<int>(button);
         }
 
+        template <typename T>
+        void setButtonVisible(T id, bool enable)
+        {
+            setButtonVisible(static_cast<int>(id),enable);
+        }
+
+        template <typename T>
+        void setButtonEnabled(T id, bool enable)
+        {
+            setButtonEnabled(static_cast<int>(id),enable);
+        }
+
+        template <typename T>
+        void activateButton(T id)
+        {
+            activateButton(static_cast<int>(id));
+        }
+
+        virtual void setTitle(const QString& title)=0;
+
+        virtual void setDialogFocus()
+        {}
+
     signals:
 
         void buttonClicked(int id);
@@ -101,11 +124,14 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
 
         void activateButton(int id);
         void setButtonEnabled(int id, bool enable);
+        void setButtonVisible(int id, bool enable);
+        void closeDialog();
 
     protected:
 
         virtual void doActivateButton(int id)=0;
         virtual void doSetButtonEnabled(int id, bool enable)=0;
+        virtual void doSetButtonVisible(int id, bool enable)=0;
 };
 
 UISE_DESKTOP_NAMESPACE_END

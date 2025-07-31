@@ -116,6 +116,12 @@ class UISE_DESKTOP_EXPORT Widget
             return makeWidget<T>(QString{},parent);
         }
 
+        template <typename T, typename DefaultT>
+        T* makeWidget(QWidget* parent) const
+        {
+            return makeWidget<T,DefaultT>(QString{},parent);
+        }
+
         virtual void construct()
         {}
 

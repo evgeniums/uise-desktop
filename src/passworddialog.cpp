@@ -31,7 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
-#include <uise/desktop/passwordinput.hpp>
+#include <uise/desktop/passwordpanel.hpp>
 #include <uise/desktop/passworddialog.hpp>
 
 #include <uise/desktop/ipp/dialog.ipp>
@@ -46,12 +46,7 @@ class PasswordDialog_p
 {
     public:
 
-        QFrame* passwordFrame;
-
-        QLabel* text;
-        QLabel* error;
-
-        PasswordInput* password;
+        AbstractPasswordPanel* passwordPanel;
 };
 
 //--------------------------------------------------------------------------
@@ -66,35 +61,16 @@ PasswordDialog::PasswordDialog(QWidget* parent)
 
 void PasswordDialog::construct()
 {
-    pimpl->passwordFrame=new QFrame(this);
-    pimpl->passwordFrame->setObjectName("passwordFrame");
-    auto l=Layout::vertical(pimpl->passwordFrame);
-    l->addStretch(1);
+    pimpl->passwordPanel=makeWidget<AbstractPasswordPanel,PasswordPanel>();
 
-    pimpl->text=new QLabel(pimpl->passwordFrame);
-    l->addWidget(pimpl->text);
-    pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    pimpl->text->setWordWrap(true);
-
-    pimpl->password=new PasswordInput(pimpl->passwordFrame);
-    l->addWidget(pimpl->password);
-
-    pimpl->error=new QLabel(pimpl->passwordFrame);
-    l->addWidget(pimpl->error);
-    pimpl->error->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    pimpl->error->setWordWrap(true);
-    pimpl->error->setObjectName("error");
-
-    l->addStretch(1);
-
-    setWidget(pimpl->passwordFrame);
+    setWidget(pimpl->passwordPanel);
 
     setButtons(
         {
             AbstractDialog::standardButton(AbstractDialog::StandardButton::OK,this),
             AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this)
         }
-        );
+    );
 
     connect(
         this,
@@ -102,10 +78,9 @@ void PasswordDialog::construct()
         this,
         [this]()
         {
-            pimpl->password->editor()->clear();
-            setError(QString{});
+            pimpl->passwordPanel->reset();
         }
-        );
+    );
 
     connect(
         this,
@@ -121,24 +96,14 @@ void PasswordDialog::construct()
         );
 
     connect(
-        pimpl->password,
-        &PasswordInput::returnPressed,
+        pimpl->passwordPanel,
+        &AbstractPasswordPanel::passwordEntered,
         this,
         [this]()
         {
             emit passwordEntered();
         }
-        );
-
-    connect(
-        pimpl->password->editor(),
-        &QLineEdit::textChanged,
-        this,
-        [this](const QString&)
-        {
-            setError(QString{});
-        }
-        );
+    );
 
     setInformationImpl(tr("Enter password"),tr("Password required"));
 }
@@ -153,7 +118,7 @@ PasswordDialog::~PasswordDialog()
 
 QString PasswordDialog::password() const
 {
-    return pimpl->password->editor()->text();
+    return pimpl->passwordPanel->password();
 }
 
 //--------------------------------------------------------------------------
@@ -167,7 +132,7 @@ void PasswordDialog::setInformation(const QString& message, const QString& title
 
 void PasswordDialog::setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
-    pimpl->text->setText(message);
+    pimpl->passwordPanel->setDescription(message);
     setTitle(title);    
 
     if (!icon)
@@ -184,60 +149,22 @@ void PasswordDialog::setInformationImpl(const QString& message, const QString& t
 
 void PasswordDialog::setPasswordFocus()
 {
-    pimpl->password->editor()->setFocus(Qt::MouseFocusReason);
+    setFocus();
+    pimpl->passwordPanel->setPasswordFocus();
 }
 
 //--------------------------------------------------------------------------
 
 void PasswordDialog::reset()
 {
-    pimpl->password->editor()->clear();
-    pimpl->error->setText(QString{});
+    pimpl->passwordPanel->reset();
 }
 
 //--------------------------------------------------------------------------
 
 void PasswordDialog::setError(const QString& message)
 {
-    pimpl->error->setText(message);
-}
-
-/************************* FrameWithModalPasswordDialog ***********************/
-
-//--------------------------------------------------------------------------
-
-FrameWithModalPasswordDialog::FrameWithModalPasswordDialog(QWidget* parent) : FrameWithModalPopup(parent)
-{
-    setShortcutEnabled(false);
-}
-
-//--------------------------------------------------------------------------
-
-bool FrameWithModalPasswordDialog::openDialog(bool destroyOnCancel)
-{
-    if (m_dialog)
-    {
-        popup();
-        return false;
-    }
-
-    m_dialog=makeWidget<AbstractPasswordDialog,PasswordDialog>();
-
-    setMaxWidthPercent(DefaultMaxWidthPercent);
-    m_dialog->setMaximumWidth(DefaultPopupMaxWidth);
-
-    setPopupWidget(m_dialog,destroyOnCancel);
-    connect(
-        m_dialog,
-        &PasswordDialog::closeRequested,
-        this,
-        &FrameWithModalPopup::closePopup
-    );
-
-    popup();
-    m_dialog->setFocus();
-    m_dialog->setPasswordFocus();
-    return true;
+    pimpl->passwordPanel->setError(message);
 }
 
 //--------------------------------------------------------------------------

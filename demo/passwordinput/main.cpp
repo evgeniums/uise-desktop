@@ -84,6 +84,7 @@ int main(int argc, char *argv[])
         {
             showDialog->setEnabled(false);
             AbstractPasswordDialog* dialog=new PasswordDialog();
+            dialog->construct();
             mainL->insertWidget(mainL->count()-1,dialog);
             QObject::connect(
                 dialog,
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
                 }
             );
 
-            dialog->setPasswordFocus();
+            dialog->setDialogFocus();
         }
     );    
     mainL->addStretch(1);

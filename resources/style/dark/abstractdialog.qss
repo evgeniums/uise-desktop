@@ -1,5 +1,5 @@
 uise--AbstractDialog {background-color: #222222; border: 1px solid #777777;}
-uise--AbstractDialog #dialogInternal QLabel {color: #999999;}
+uise--AbstractDialog #dialogFrame QLabel {color: #999999;}
 uise--AbstractDialog #titleFrame {background-color: #444444;}
 uise--AbstractDialog #titleFrame QLabel {color:#FFFFFF;}
 

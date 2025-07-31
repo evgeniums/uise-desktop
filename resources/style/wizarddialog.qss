@@ -1,0 +1,3 @@
+uise--AbstractWizardDialog #dialogIcon QPushButton {icon-size:48px;}
+
+uise--AbstractWizardDialog QTextEdit {margin-bottom: 4px;border:none;}

@@ -119,7 +119,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
 
     pimpl->dialogFrame=new QFrame(this);
     pimpl->dialogFrame->setObjectName("dialogFrame");
-    pimpl->dialogLayout=Layout::horizontal(pimpl->dialogFrame);
+    pimpl->dialogLayout=Layout::vertical(pimpl->dialogFrame);
     pimpl->contentLayout->addWidget(pimpl->dialogFrame,1);
 
     pimpl->buttonGroup=new QSignalMapper(this);
@@ -132,7 +132,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
             emit AbstractDialog::buttonClicked(id);
             if (AbstractDialog::isButton(id,AbstractDialog::StandardButton::Close) || AbstractDialog::isButton(id,AbstractDialog::StandardButton::Cancel))
             {
-                emit AbstractDialog::closeRequested();
+                this->closeDialog();
             }
         }
     );
@@ -143,7 +143,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
         this,
         [this]()
         {
-            emit AbstractDialog::closeRequested();
+            this->closeDialog();
         }
     );
 
@@ -232,6 +232,18 @@ void Dialog<BaseT>::doSetButtonEnabled(int id, bool enable)
     if (it!=pimpl->buttons.end())
     {
         it->second->setEnabled(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::doSetButtonVisible(int id, bool enable)
+{
+    auto it=pimpl->buttons.find(id);
+    if (it!=pimpl->buttons.end())
+    {
+        it->second->setVisible(enable);
     }
 }
 

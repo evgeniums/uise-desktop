@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     tfl->addWidget(testWidget);
     auto wl1=Layout::vertical(testWidget,false);
 
-    auto dialogFrame=new FrameWithModalPasswordDialog();
+    auto dialogFrame=new ModalPasswordDialog();
     wl1->addWidget(dialogFrame);
     auto wl=Layout::vertical(dialogFrame,false);
 

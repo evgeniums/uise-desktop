@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
     tl->addWidget(testFrame);
     auto tfl=Layout::horizontal(testFrame,false);
     auto testWidget=new FrameWithModalStatus(testFrame);
+    testWidget->construct();
     tfl->addWidget(testWidget);
     auto wl=Layout::vertical(testWidget,false);
     auto editor1=new QTextEdit();

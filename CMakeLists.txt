@@ -78,6 +78,7 @@ SET (HEADERS
 
     include/uise/desktop/abstractdialog.hpp
     include/uise/desktop/dialog.hpp
+    include/uise/desktop/modaldialog.hpp
     include/uise/desktop/statusdialog.hpp
 
     include/uise/desktop/framewithmodalstatus.hpp
@@ -117,7 +118,12 @@ SET (HEADERS
     include/uise/desktop/defaultwidgetfactory.hpp
 
     include/uise/desktop/passwordinput.hpp
+    include/uise/desktop/passwordpanel.hpp
     include/uise/desktop/passworddialog.hpp
+
+    include/uise/desktop/wizarddialog.hpp
+
+    include/uise/desktop/newpasswordwizard.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -186,7 +192,12 @@ SET (SOURCES
     src/defaultwidgetfactory.cpp
 
     src/passwordinput.cpp
+    src/passwordpanel.cpp
     src/passworddialog.cpp
+
+    src/wizarddialog.cpp
+
+    src/newpasswordwizard.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

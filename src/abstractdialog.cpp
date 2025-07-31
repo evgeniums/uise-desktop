@@ -153,4 +153,18 @@ void AbstractDialog::setButtonEnabled(int id, bool enable)
 
 //--------------------------------------------------------------------------
 
+void AbstractDialog::setButtonVisible(int id, bool enable)
+{
+    doSetButtonVisible(id,enable);
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::closeDialog()
+{
+    emit closeRequested();
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

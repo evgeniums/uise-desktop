@@ -62,7 +62,7 @@ class Dialog : public BaseT
         virtual void setButtons(std::vector<AbstractDialog::ButtonConfig> buttons) override;
         virtual void setWidget(QWidget* widget);
 
-        void setTitle(const QString& title);
+        void setTitle(const QString& title) override;
 
         void setSvgIcon(std::shared_ptr<SvgIcon> icon);
         std::shared_ptr<SvgIcon> svgIcon() const;
@@ -71,6 +71,7 @@ class Dialog : public BaseT
 
         void doActivateButton(int id) override;
         void doSetButtonEnabled(int id, bool enable) override;
+        void doSetButtonVisible(int id, bool enable) override;
         void doSetButtons(std::vector<AbstractDialog::ButtonConfig> buttons);
 
     private:
