@@ -40,6 +40,14 @@ class UISE_DESKTOP_EXPORT Widget
 {
     public:
 
+        Widget()=default;
+
+        virtual ~Widget()=default;
+        Widget(const Widget&)=delete;
+        Widget(Widget&&)=delete;
+        Widget& operator=(const Widget&)=delete;
+        Widget& operator=(Widget&&)=delete;
+
         std::shared_ptr<WidgetFactory> widgetFactory() const
         {
             return m_factory;
@@ -69,6 +77,15 @@ class UISE_DESKTOP_EXPORT Widget
                     w->setObjectName(name);
                 }
             }
+            if constexpr (std::is_base_of_v<Widget,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(m_factory);
+                    w->construct();
+                }
+            }
+
             return w;
         }
 
@@ -81,6 +98,15 @@ class UISE_DESKTOP_EXPORT Widget
                 w=new DefaultT(parent);
                 w->setObjectName(name);
             }
+            if constexpr (std::is_base_of_v<Widget,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(m_factory);
+                    w->construct();
+                }
+            }
+
             return w;
         }
 
@@ -89,6 +115,9 @@ class UISE_DESKTOP_EXPORT Widget
         {
             return makeWidget<T>(QString{},parent);
         }
+
+        virtual void construct()
+        {}
 
     private:
 

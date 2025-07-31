@@ -1,7 +1,5 @@
 uise--AbstractDialog {border-radius: 8px;}
 
-uise--AbstractDialog #dialogInternal {padding: 8px 8px 0x 8px;}
-
 uise--AbstractDialog #dialogIcon QPushButton {icon-size:32px;border:none;}
 uise--AbstractDialog #dialogIcon {padding:0 12px;}
 
@@ -13,3 +11,6 @@ uise--AbstractDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}
 uise--AbstractDialog #dialogButtonsFrame {padding: 4px;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:4px;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 2px 12px;}
+
+uise--AbstractDialog #contentFrame {padding-top: 8px;}
+uise--AbstractDialog #dialogFrame {padding: 8px 8px 0x 8px;}

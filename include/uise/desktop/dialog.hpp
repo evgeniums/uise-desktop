@@ -64,6 +64,9 @@ class Dialog : public BaseT
 
         void setTitle(const QString& title);
 
+        void setSvgIcon(std::shared_ptr<SvgIcon> icon);
+        std::shared_ptr<SvgIcon> svgIcon() const;
+
     protected:
 
         void doActivateButton(int id) override;

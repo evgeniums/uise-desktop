@@ -74,6 +74,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
         BusyWaiting* busyWaitingWidget() const;
         AbstractStatusDialog* statusDialog() const;
 
+        virtual void construct() override;
+
     signals:
 
         void cancelled();

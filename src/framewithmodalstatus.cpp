@@ -60,8 +60,12 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     : FrameWithModalPopup(parent),
       pimpl(std::make_unique<FrameWithModalStatus_p>())
 {
-    //! @todo Move it to construct
+}
 
+//--------------------------------------------------------------------------
+
+void FrameWithModalStatus::construct()
+{
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
     auto l=Layout::vertical(pimpl->popupWidget);
@@ -79,7 +83,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
         {
             pimpl->busyWaitingFrame->setFixedSize(size);
         }
-    );
+        );
     pimpl->busyWaitingFrame->setFixedSize(pimpl->busyWaiting->size());
 
     pimpl->statusDialog=makeWidget<AbstractStatusDialog>(pimpl->popupWidget);
@@ -114,7 +118,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
                 closePopup();
             }
         }
-    );
+        );
 
     connect(
         this,
@@ -127,7 +131,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
                 cancel();
             }
         }
-    );
+        );
 
     connect(
         pimpl->statusDialog,
@@ -137,7 +141,7 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
         {
             closePopup();
         }
-    );
+        );
 
     setMaxWidthPercent(DefaultMaxWidthPercent);
     pimpl->popupWidget->setMaximumWidth(DefaultPopupMaxWidth);

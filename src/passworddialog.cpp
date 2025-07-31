@@ -46,10 +46,8 @@ class PasswordDialog_p
 {
     public:
 
-        QFrame* passwordDialogFrame;
         QFrame* passwordFrame;
 
-        PushButton* icon;
         QLabel* text;
         QLabel* error;
 
@@ -62,17 +60,14 @@ PasswordDialog::PasswordDialog(QWidget* parent)
     : Base(parent),
       pimpl(std::make_unique<PasswordDialog_p>())
 {
-    pimpl->passwordDialogFrame=new QFrame(this);
-    pimpl->passwordDialogFrame->setObjectName("dialogFrame");
-    auto sl=Layout::horizontal(pimpl->passwordDialogFrame);
+}
 
-    pimpl->icon=new PushButton(this);
-    sl->addWidget(pimpl->icon);
-    pimpl->icon->setObjectName("dialogIcon");
+//--------------------------------------------------------------------------
 
+void PasswordDialog::construct()
+{
     pimpl->passwordFrame=new QFrame(this);
-    pimpl->passwordFrame->setObjectName("dialogInternal");
-    sl->addWidget(pimpl->passwordFrame,1);
+    pimpl->passwordFrame->setObjectName("passwordFrame");
     auto l=Layout::vertical(pimpl->passwordFrame);
     l->addStretch(1);
 
@@ -92,14 +87,14 @@ PasswordDialog::PasswordDialog(QWidget* parent)
 
     l->addStretch(1);
 
-    setWidget(pimpl->passwordDialogFrame);
+    setWidget(pimpl->passwordFrame);
 
     setButtons(
         {
             AbstractDialog::standardButton(AbstractDialog::StandardButton::OK,this),
             AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this)
         }
-    );
+        );
 
     connect(
         this,
@@ -110,7 +105,7 @@ PasswordDialog::PasswordDialog(QWidget* parent)
             pimpl->password->editor()->clear();
             setError(QString{});
         }
-    );
+        );
 
     connect(
         this,
@@ -123,7 +118,7 @@ PasswordDialog::PasswordDialog(QWidget* parent)
                 emit passwordEntered();
             }
         }
-    );
+        );
 
     connect(
         pimpl->password,
@@ -133,7 +128,7 @@ PasswordDialog::PasswordDialog(QWidget* parent)
         {
             emit passwordEntered();
         }
-    );
+        );
 
     connect(
         pimpl->password->editor(),
@@ -143,7 +138,7 @@ PasswordDialog::PasswordDialog(QWidget* parent)
         {
             setError(QString{});
         }
-    );
+        );
 
     setInformationImpl(tr("Enter password"),tr("Password required"));
 }
@@ -173,17 +168,13 @@ void PasswordDialog::setInformation(const QString& message, const QString& title
 void PasswordDialog::setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
     pimpl->text->setText(message);
-    if (icon)
-    {
-        pimpl->icon->setVisible(true);
-    }    
-    setTitle(title);
+    setTitle(title);    
 
     if (!icon)
     {
         icon=Style::instance().svgIconLocator().icon("PasswordDialog::key",this);
     }
-    pimpl->icon->setSvgIcon(std::move(icon));
+    setSvgIcon(std::move(icon));
 
     setMinimumWidth(400);
     setFixedHeight(sizeHint().height());
@@ -231,6 +222,9 @@ bool FrameWithModalPasswordDialog::openDialog(bool destroyOnCancel)
     }
 
     m_dialog=makeWidget<AbstractPasswordDialog,PasswordDialog>();
+
+    setMaxWidthPercent(DefaultMaxWidthPercent);
+    m_dialog->setMaximumWidth(DefaultPopupMaxWidth);
 
     setPopupWidget(m_dialog,destroyOnCancel);
     connect(

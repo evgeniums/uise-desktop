@@ -99,6 +99,8 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
         virtual void reset() override;
 
+        virtual void construct() override;
+
     private:
 
         void setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
@@ -112,6 +114,9 @@ class UISE_DESKTOP_EXPORT FrameWithModalPasswordDialog : public FrameWithModalPo
     Q_OBJECT
 
     public:
+
+        constexpr static const int DefaultMaxWidthPercent=80;
+        constexpr static const int DefaultPopupMaxWidth=500;
 
         FrameWithModalPasswordDialog(QWidget* parent=nullptr);
 

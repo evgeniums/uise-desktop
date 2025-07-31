@@ -66,6 +66,10 @@ class Dialog_p
 
         std::map<int,PushButton*> buttons;
 
+        QFrame* dialogFrame;
+        PushButton* icon;
+        QBoxLayout* dialogLayout;
+
         const auto& buttonsStyle() const
         {
             return Style::instance().buttonsStyle("Dialog",widget);
@@ -107,6 +111,16 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->contentFrame->setObjectName("contentFrame");
     pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
     pimpl->layout->addWidget(pimpl->contentFrame);
+
+    pimpl->icon=new PushButton(this);
+    pimpl->contentLayout->addWidget(pimpl->icon);
+    pimpl->icon->setObjectName("dialogIcon");
+    pimpl->icon->setVisible(false);
+
+    pimpl->dialogFrame=new QFrame(this);
+    pimpl->dialogFrame->setObjectName("dialogFrame");
+    pimpl->dialogLayout=Layout::horizontal(pimpl->dialogFrame);
+    pimpl->contentLayout->addWidget(pimpl->dialogFrame,1);
 
     pimpl->buttonGroup=new QSignalMapper(this);
     QObject::connect(
@@ -150,7 +164,7 @@ Dialog<BaseT>::~Dialog()
 template <typename BaseT>
 void Dialog<BaseT>::setWidget(QWidget* widget)
 {
-    return pimpl->contentLayout->addWidget(widget);
+    return pimpl->dialogLayout->addWidget(widget);
 }
 
 //--------------------------------------------------------------------------
@@ -227,6 +241,23 @@ template <typename BaseT>
 void Dialog<BaseT>::setTitle(const QString& title)
 {
     pimpl->title->setText(title);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::setSvgIcon(std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->icon->setVisible(static_cast<bool>(icon));
+    pimpl->icon->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+std::shared_ptr<SvgIcon> Dialog<BaseT>::svgIcon() const
+{
+    return pimpl->icon->svgIcon();
 }
 
 //--------------------------------------------------------------------------

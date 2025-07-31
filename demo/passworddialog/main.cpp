@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
     tl->addWidget(testFrame);
     auto tfl=Layout::horizontal(testFrame,false);
     auto testWidget=new FrameWithModalStatus(testFrame);
+    testWidget->construct();
     tfl->addWidget(testWidget);
     auto wl1=Layout::vertical(testWidget,false);
 

@@ -45,8 +45,6 @@ class StatusDialog_p
 {
     public:
 
-        QFrame* statusFrame;
-        PushButton* icon;
         QLabel* text;
 };
 
@@ -56,20 +54,12 @@ StatusDialog::StatusDialog(QWidget* parent)
     : Base(parent),
       pimpl(std::make_unique<StatusDialog_p>())
 {
-    pimpl->statusFrame=new QFrame(this);
-    pimpl->statusFrame->setObjectName("statusFrame");
-    auto sl=Layout::horizontal(pimpl->statusFrame);
-
-    pimpl->icon=new PushButton(this);
-    sl->addWidget(pimpl->icon);
-    pimpl->icon->setVisible(false);
     pimpl->text=new QLabel(this);
-    sl->addWidget(pimpl->text,1);
     pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
 
-    setWidget(pimpl->statusFrame);
+    setWidget(pimpl->text);
 }
 
 //--------------------------------------------------------------------------
@@ -90,11 +80,7 @@ QLabel* StatusDialog::textWidget() const
 void StatusDialog::setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
     pimpl->text->setText(message);
-    if (icon)
-    {
-        pimpl->icon->setVisible(true);
-    }
-    pimpl->icon->setSvgIcon(std::move(icon));
+    setSvgIcon(std::move(icon));
     setTitle(title);
 }
 
