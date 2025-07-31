@@ -67,6 +67,7 @@ class Dialog : public BaseT
     protected:
 
         void doActivateButton(int id) override;
+        void doSetButtonEnabled(int id, bool enable) override;
         void doSetButtons(std::vector<AbstractDialog::ButtonConfig> buttons);
 
     private:

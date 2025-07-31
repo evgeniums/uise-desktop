@@ -146,4 +146,11 @@ void AbstractDialog::activateButton(int id)
 
 //--------------------------------------------------------------------------
 
+void AbstractDialog::setButtonEnabled(int id, bool enable)
+{
+    doSetButtonEnabled(id,enable);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

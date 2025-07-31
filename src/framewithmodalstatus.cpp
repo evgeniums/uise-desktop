@@ -60,6 +60,8 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
     : FrameWithModalPopup(parent),
       pimpl(std::make_unique<FrameWithModalStatus_p>())
 {
+    //! @todo Move it to construct
+
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
     auto l=Layout::vertical(pimpl->popupWidget);

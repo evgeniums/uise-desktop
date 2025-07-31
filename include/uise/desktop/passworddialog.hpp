@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/dialog.hpp>
+#include <uise/desktop/widget.hpp>
 
 class QLabel;
 
@@ -57,6 +58,8 @@ class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
         virtual void setError(const QString& message)=0;
 
         virtual void setPasswordFocus()=0;
+
+        virtual void reset()=0;
 
     signals:
 
@@ -94,6 +97,8 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
         virtual void setPasswordFocus() override;
 
+        virtual void reset() override;
+
     private:
 
         void setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
@@ -101,7 +106,8 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         std::unique_ptr<PasswordDialog_p> pimpl;
 };
 
-class UISE_DESKTOP_EXPORT FrameWithModalPasswordDialog : public FrameWithModalPopup
+class UISE_DESKTOP_EXPORT FrameWithModalPasswordDialog : public FrameWithModalPopup,
+                                                         public Widget
 {
     Q_OBJECT
 
@@ -111,18 +117,19 @@ class UISE_DESKTOP_EXPORT FrameWithModalPasswordDialog : public FrameWithModalPo
 
         /**
          * @brief Open password dialog.
+         * @parame destroyOnCancel Destroy dialog if cancelled
          * @return Returns true if new dialog is created, false if dialog already existed.
          */
-        bool openDialog();
+        bool openDialog(bool destroyOnCancel=true);
 
-        QPointer<PasswordDialog> dialog() const
+        QPointer<AbstractPasswordDialog> dialog() const
         {
             return m_dialog;
         }
 
     private:
 
-        QPointer<PasswordDialog> m_dialog;
+        QPointer<AbstractPasswordDialog> m_dialog;
 };
 
 UISE_DESKTOP_NAMESPACE_END

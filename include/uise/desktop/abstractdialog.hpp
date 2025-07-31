@@ -100,10 +100,12 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
     public slots:
 
         void activateButton(int id);
+        void setButtonEnabled(int id, bool enable);
 
     protected:
 
         virtual void doActivateButton(int id)=0;
+        virtual void doSetButtonEnabled(int id, bool enable)=0;
 };
 
 UISE_DESKTOP_NAMESPACE_END

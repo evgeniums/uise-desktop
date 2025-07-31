@@ -212,6 +212,18 @@ void Dialog<BaseT>::doActivateButton(int id)
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
+void Dialog<BaseT>::doSetButtonEnabled(int id, bool enable)
+{
+    auto it=pimpl->buttons.find(id);
+    if (it!=pimpl->buttons.end())
+    {
+        it->second->setEnabled(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
 void Dialog<BaseT>::setTitle(const QString& title)
 {
     pimpl->title->setText(title);

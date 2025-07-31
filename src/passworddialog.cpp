@@ -198,6 +198,14 @@ void PasswordDialog::setPasswordFocus()
 
 //--------------------------------------------------------------------------
 
+void PasswordDialog::reset()
+{
+    pimpl->password->editor()->clear();
+    pimpl->error->setText(QString{});
+}
+
+//--------------------------------------------------------------------------
+
 void PasswordDialog::setError(const QString& message)
 {
     pimpl->error->setText(message);
@@ -214,7 +222,7 @@ FrameWithModalPasswordDialog::FrameWithModalPasswordDialog(QWidget* parent) : Fr
 
 //--------------------------------------------------------------------------
 
-bool FrameWithModalPasswordDialog::openDialog()
+bool FrameWithModalPasswordDialog::openDialog(bool destroyOnCancel)
 {
     if (m_dialog)
     {
@@ -222,8 +230,9 @@ bool FrameWithModalPasswordDialog::openDialog()
         return false;
     }
 
-    m_dialog=new PasswordDialog();
-    setPopupWidget(m_dialog,true);
+    m_dialog=makeWidget<AbstractPasswordDialog,PasswordDialog>();
+
+    setPopupWidget(m_dialog,destroyOnCancel);
     connect(
         m_dialog,
         &PasswordDialog::closeRequested,
