@@ -156,7 +156,15 @@ struct NewPasswordWidgetExtractor
     }
 };
 
-using ModalNewPasswordWizard=ModalDialog<AbstractNewPasswordWizard,NewPasswordWizard,600,ModalDialogDefaultMaxWidthPercent,-1,ModalDialogDefaultMaxHeightPercent,NewPasswordWidgetExtractor>;
+class UISE_DESKTOP_EXPORT ModalNewPasswordWizard : public ModalDialog<AbstractNewPasswordWizard,NewPasswordWizard,600,ModalDialogDefaultMaxWidthPercent,-1,ModalDialogDefaultMaxHeightPercent,NewPasswordWidgetExtractor>
+{
+    Q_OBJECT
+
+    public:
+
+        using Base=ModalDialog<AbstractNewPasswordWizard,NewPasswordWizard,600,ModalDialogDefaultMaxWidthPercent,-1,ModalDialogDefaultMaxHeightPercent,NewPasswordWidgetExtractor>;;
+        using Base::Base;
+};
 
 UISE_DESKTOP_NAMESPACE_END
 
