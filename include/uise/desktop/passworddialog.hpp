@@ -52,7 +52,7 @@ class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
 
         using AbstractDialog::AbstractDialog;
 
-        virtual void setInformation(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={})=0;
+        virtual void setInformation(const QString& message, const QString& title={}, std::shared_ptr<SvgIcon> icon={})=0;
 
         virtual QString password() const=0;
 
@@ -89,7 +89,7 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         PasswordDialog& operator=(const PasswordDialog&)=delete;
         PasswordDialog& operator=(PasswordDialog&&)=delete;
 
-        virtual void setInformation(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={}) override;
+        virtual void setInformation(const QString& message, const QString& title={}, std::shared_ptr<SvgIcon> icon={}) override;
         virtual QString password() const override;
 
         virtual void setError(const QString& message) override;
@@ -112,7 +112,16 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         std::unique_ptr<PasswordDialog_p> pimpl;
 };
 
-using ModalPasswordDialog=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
+using ModalPasswordDialogType=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
+
+class ModalPasswordDialog : public ModalPasswordDialogType
+{
+    Q_OBJECT
+
+    public:
+
+        using ModalPasswordDialogType::ModalPasswordDialogType;
+};
 
 UISE_DESKTOP_NAMESPACE_END
 

@@ -133,7 +133,10 @@ void PasswordDialog::setInformation(const QString& message, const QString& title
 void PasswordDialog::setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
     pimpl->passwordPanel->setDescription(message);
-    setTitle(title);    
+    if (!title.isEmpty())
+    {
+        setTitle(title);
+    }
 
     if (!icon)
     {
