@@ -206,6 +206,7 @@ class HTreeNode_p
         bool collapsible=true;
         bool refreshable=true;
         bool closable=true;
+        bool closeEnabled=true;
 
         bool unique=false;
 
@@ -615,7 +616,7 @@ bool HTreeNode::isCollapsible() const
 void HTreeNode::setClosable(bool enable)
 {
     pimpl->closable=enable;
-    pimpl->titleBar->pimpl->close->setVisible(enable);
+    pimpl->titleBar->pimpl->close->setVisible(enable && pimpl->closeEnabled);
 }
 
 //--------------------------------------------------------------------------
@@ -707,6 +708,21 @@ HTreeNodeLocator* HTreeNode::nextNodeLocator() const
     }
 
     return pimpl->treeTab->tree()->nodeLocator();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setCloseEnabled(bool enable)
+{
+    pimpl->closeEnabled=enable;
+    setClosable(isClosable());
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isCloseEnabled() const
+{
+    return pimpl->closeEnabled;
 }
 
 //--------------------------------------------------------------------------
