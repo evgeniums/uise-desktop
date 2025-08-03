@@ -67,6 +67,11 @@ class Dialog : public BaseT
         void setSvgIcon(std::shared_ptr<SvgIcon> icon);
         std::shared_ptr<SvgIcon> svgIcon() const;
 
+        void setClosable(bool enable) override;
+
+        void setButtonsStyle(ButtonsStyle style) override;
+        void resetButtonsStyle() override;
+
     protected:
 
         void doActivateButton(int id) override;

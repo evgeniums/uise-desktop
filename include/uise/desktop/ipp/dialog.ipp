@@ -70,6 +70,8 @@ class Dialog_p
         PushButton* icon;
         QBoxLayout* dialogLayout;
 
+        std::optional<ButtonsStyle> forceButtonsStyle;
+
         const auto& buttonsStyle() const
         {
             return Style::instance().buttonsStyle("Dialog",widget);
@@ -188,18 +190,24 @@ void Dialog<BaseT>::doSetButtons(std::vector<AbstractDialog::ButtonConfig> butto
 
     destroyWidget(pimpl->buttonsFrame);
 
-    const auto& buttonsStyle=pimpl->buttonsStyle();
+    const auto* buttonsStyle=&pimpl->buttonsStyle();
+
+    if (pimpl->forceButtonsStyle)
+    {
+        buttonsStyle=&pimpl->forceButtonsStyle.value();
+    }
+
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("dialogButtonsFrame");
     pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
-    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle.alignment);
+    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment);
     pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     for (const auto& button: buttons)
     {
         auto bt=new PushButton(button.text,button.icon,pimpl->buttonsFrame);
         bt->setObjectName(button.name);
-        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle.alignment);
+        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle->alignment);
         pimpl->buttonGroup->setMapping(bt,button.id);
         QObject::connect(
             bt,
@@ -253,6 +261,30 @@ template <typename BaseT>
 void Dialog<BaseT>::setTitle(const QString& title)
 {
     pimpl->title->setText(title);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::setClosable(bool enable)
+{
+    pimpl->titleClose->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::setButtonsStyle(ButtonsStyle style)
+{
+    pimpl->forceButtonsStyle=std::move(style);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::resetButtonsStyle()
+{
+    pimpl->forceButtonsStyle.reset();
 }
 
 //--------------------------------------------------------------------------

@@ -152,6 +152,7 @@ void PasswordDialog::setInformationImpl(const QString& message, const QString& t
 
 void PasswordDialog::setPasswordFocus()
 {
+    raise();
     setFocus();
     pimpl->passwordPanel->setPasswordFocus();
 }

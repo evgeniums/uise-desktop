@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/widget.hpp>
+#include <uise/desktop/style.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -113,6 +114,14 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
 
         virtual void setDialogFocus()
         {}
+
+        virtual void setClosable(bool enable)
+        {
+            std::ignore=enable;
+        }
+
+        virtual void setButtonsStyle(ButtonsStyle style) =0;
+        virtual void resetButtonsStyle() =0;
 
     signals:
 
