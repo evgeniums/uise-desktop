@@ -155,6 +155,8 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
         QWidget* createContentWidget() override;
 
+        virtual HTreeListWidget* createHTreeListWidget();
+
     private:
 
         QWidget* doCreateContentWidget();
@@ -241,23 +243,48 @@ class UISE_DESKTOP_EXPORT HTreeListViewBuilder
         }
 };
 
-template <typename T>
-class HTreeListBuilder : public HTreeNodeBuilder
+class HTreeListBuilderPlaceholder
 {
-public:
+    public:
 
-    HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const override
-    {
-        HTreePath path;
-        if (parentNode!=nullptr)
+        template <typename T>
+        void initListNode(T* node) const
         {
-            path=HTreePath{parentNode->path(),pathElement};
+            std::ignore=node;
         }
 
-        auto node=new HTreeList(std::make_shared<T>(),treeTab);
-        node->setNodeTooltip(QString::fromStdString(pathElement.name()));
-        return node;
-    }
+        template <typename T>
+        void initListViewBuilder(T* builder) const
+        {
+            std::ignore=builder;
+        }
+};
+
+template <typename ListViewBuilderT, typename ListNodeT=HTreeList, typename BaseBuilderT=HTreeListBuilderPlaceholder>
+class HTreeListBuilder : public HTreeNodeBuilder,
+                         public BaseBuilderT
+{
+    public:
+
+        using BaseBuilderT::BaseBuilderT;
+
+        HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const override
+        {
+            HTreePath path;
+            if (parentNode!=nullptr)
+            {
+                path=HTreePath{parentNode->path(),pathElement};
+            }
+
+            auto viewBuilder=std::make_shared<ListViewBuilderT>();
+            this->initListViewBuilder(viewBuilder.get());
+
+            auto node=new ListNodeT(std::move(viewBuilder),treeTab);
+            this->initListNode(node);
+
+            node->setNodeTooltip(QString::fromStdString(pathElement.name()));
+            return node;
+        }
 };
 
 UISE_DESKTOP_NAMESPACE_END

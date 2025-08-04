@@ -264,7 +264,7 @@ HTreeList::HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* tr
 
 QWidget* HTreeList::doCreateContentWidget()
 {
-    auto w=new HTreeListWidget(this);
+    auto w=createHTreeListWidget();
     m_builder->createView(w);
     auto next=nextNode();
     if (next!=nullptr)
@@ -279,6 +279,13 @@ QWidget* HTreeList::doCreateContentWidget()
     setMinimumWidth(w->minimumWidth());
     w->setDefaultMaxItemWith(w->minimumWidth());
     return w;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeListWidget* HTreeList::createHTreeListWidget()
+{
+    return new HTreeListWidget(this);
 }
 
 //--------------------------------------------------------------------------
