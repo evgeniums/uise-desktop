@@ -60,6 +60,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->text->setWordWrap(true);
 
     setWidget(pimpl->text);
+    setMinimumWidth(400);
 }
 
 //--------------------------------------------------------------------------

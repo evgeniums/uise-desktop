@@ -107,6 +107,8 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
     private:
 
+        void updateMinimumHeight();
+
         void setInformationImpl(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={});
 
         std::unique_ptr<PasswordDialog_p> pimpl;

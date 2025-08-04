@@ -251,6 +251,7 @@ void FrameWithModalPopup::setPopupWidget(QWidget* widget, bool autoDestroy)
     pimpl->popup->close();
     pimpl->popup->setWidget(widget,autoDestroy);
     pimpl->autoDestroy=autoDestroy;
+    setMinimumWidth(widget->minimumWidth()+40);
 }
 
 //--------------------------------------------------------------------------

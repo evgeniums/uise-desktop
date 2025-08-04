@@ -144,8 +144,8 @@ void PasswordDialog::setInformationImpl(const QString& message, const QString& t
     }
     setSvgIcon(std::move(icon));
 
-    setMinimumWidth(400);
-    setFixedHeight(sizeHint().height());
+    setMinimumWidth(450);
+    updateMinimumHeight();
 }
 
 //--------------------------------------------------------------------------
@@ -169,6 +169,19 @@ void PasswordDialog::reset()
 void PasswordDialog::setError(const QString& message)
 {
     pimpl->passwordPanel->setError(message);
+    updateMinimumHeight();
+    setPasswordFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordDialog::updateMinimumHeight()
+{
+    auto newHeight=std::max(sizeHint().height(),150);
+    if (newHeight>height())
+    {
+        setFixedHeight(newHeight);
+    }
 }
 
 //--------------------------------------------------------------------------
