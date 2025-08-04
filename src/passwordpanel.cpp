@@ -85,9 +85,10 @@ void PasswordPanel::construct()
         this,
         [this]()
         {
+            setError(QString{});
             emit passwordEntered();
         }
-        );
+    );
 
     connect(
         pimpl->password->editor(),

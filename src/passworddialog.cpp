@@ -90,10 +90,11 @@ void PasswordDialog::construct()
         {
             if (isButton(id,StandardButton::OK) || isButton(id,StandardButton::Accept) || isButton(id,StandardButton::Apply))
             {
+                setError(QString{});
                 emit passwordEntered();
             }
         }
-        );
+    );
 
     connect(
         pimpl->passwordPanel,
