@@ -138,7 +138,7 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
 
 void HTreeTab_p::truncate(int index)
 {
-    if (index<1 || index>=nodes.size())
+    if (index<0 || index>=nodes.size())
     {
         return;
     }
@@ -465,10 +465,34 @@ bool HTreeTab::openPath(HTreePath path)
 
     return false;
 #endif
-    truncate(0);
+
+    int truncIndex=0;
+    auto truncCount=std::min(path.elements().size(),pimpl->nodes.size());
+    for (size_t i=0;i<truncCount;i++)
+    {
+        const auto& el=path.elements().at(i);
+        const auto* node=pimpl->nodes.at(i);
+        if (el.id()==node->id())
+        {
+            truncIndex=i+1;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (truncIndex>0)
+    {
+        truncate(truncIndex);
+    }
+    else
+    {
+        truncate(0);
+    }
 
     HTreeNode* nod=nullptr;
-    for (size_t i=0;i<path.elements().size();i++)
+    for (size_t i=static_cast<size_t>(truncIndex);i<path.elements().size();i++)
     {
         const auto& el=path.elements().at(i);
         auto lastNode=node();
