@@ -47,10 +47,19 @@ namespace{
 auto* iconButton(const QString& iconName, QWidget* parent=nullptr)
 {
     auto icon=Style::instance().svgIconLocator().icon(iconName,parent);
-    UiseAssert(icon,"SVG icon must be set in icon theme");
-    auto* bt=new PushButton(icon,parent);
-    bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    return bt;
+    if (icon)
+    {
+        UiseAssert(icon,"SVG icon must be set in icon theme");
+        auto* bt=new PushButton(icon,parent);
+        bt->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+        return bt;
+    }
+    return new PushButton(parent);
+}
+
+auto* placeholderButton(QWidget* parent=nullptr)
+{
+    return new PushButton(parent);
 }
 
 }
@@ -101,11 +110,14 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
     pimpl->layout->addWidget(pimpl->close,0);
     pimpl->layout->addWidget(pimpl->collapse,0);
     pimpl->layout->addWidget(pimpl->refresh,0);
+    pimpl->layout->addWidget(placeholderButton(this),0);
     pimpl->layout->addWidget(pimpl->title,1);
+    pimpl->layout->addWidget(placeholderButton(this),0);
 
 #else
 
     pimpl->layout->addWidget(pimpl->title,1);
+    pimpl->layout->addWidget(placeholderButton(this),0);
     pimpl->layout->addWidget(pimpl->refresh);
     pimpl->layout->addWidget(pimpl->collapse);
     pimpl->layout->addWidget(pimpl->close);
