@@ -164,6 +164,7 @@ class HTreeSplitterInternal : public QFrame
             int width=0;
             int minWidth=0;
             int stretch=0;
+            int manualWidth=0;
             bool destroyed=false;
         };
 

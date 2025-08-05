@@ -195,13 +195,31 @@ void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
     {
         auto w=event->size().width();
 
-        // if viewport was decreased more than by 20% than adjust to new viewport width
         bool needResize=false;
         if (m_prevViewportWidth!=0)
-        {
-            auto prevW=m_prevViewportWidth*0.8;
-            if (prevW>vw)
+        {            
+            // if viewport was changed more than by 20% than adjust to new viewport width
+            auto prevW1=m_prevViewportWidth*0.8;
+            auto prevW2=m_prevViewportWidth*1.2;
+            if (vw<prevW1 || vw>prevW2)
             {
+                // update manual widths
+                double ratio=double(vw)/double(m_prevViewportWidth);
+                for (auto& section: m_sections)
+                {
+                    auto w=qobject_cast<QWidget*>(section->obj);
+                    if (w!=nullptr && !section->destroyed)
+                    {
+                        if (section->manualWidth!=0)
+                        {
+                            auto prev=section->manualWidth;
+                            section->manualWidth=qFloor(static_cast<double>(prev) * ratio);
+                            // qDebug() << "Update manual width in resize was " << prev << " now "<<section->manualWidth
+                            //          << " prev viewPort " << m_prevViewportWidth << " now " << vw;
+                        }
+                    }
+                }
+
                 w=vw;
                 m_prevViewportWidth=vw;
                 needResize=true;
@@ -272,6 +290,8 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
     {
         auto newPos=event->pos();
 
+        int resizedSection=-1;
+
         for (size_t i=0;i<m_sections.size()-1;i++)
         {
             auto* it=m_sections.at(i).get();
@@ -329,6 +349,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                     {
                         it->stretch=100;
                     }
+                    resizedSection=i;
 
                     // update last section
                     auto& last=m_sections.back();
@@ -423,6 +444,20 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
             }
         }
         m_prevMousePos=newPos;
+
+        for (int i=0;i<=resizedSection;i++)
+        {
+            auto* it=m_sections.at(i).get();
+            auto* section=qobject_cast<HTreeSplitterSection*>(it->obj);
+            if (section==nullptr || it->destroyed)
+            {
+                continue;
+            }
+
+            it->manualWidth=it->width;
+
+            // qDebug() << "New manual width for " << i << " is " << it->manualWidth;
+        }
     }
 
     QFrame::mouseMoveEvent(event);
@@ -492,46 +527,62 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
         }
     }
 
+    i=0;
     for (auto& section: m_sections)
     {
-        auto w=qobject_cast<QWidget*>(section->obj);
+        auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr && !section->destroyed)
         {
             auto width=w->sizeHint().width();
             auto minWidth=w->minimumWidth();
-            if (width<minWidth)
+
+            if (w->isExpanded() && section->manualWidth!=0)
             {
-                width=minWidth;
+                width=section->manualWidth;
+                if (width<minWidth)
+                {
+                    width=minWidth;
+                }
+
+                // qDebug() << "Using manual width for " << i << " is " << width;
             }
             else
             {
-                if (stretchLastSection)
+                if (width<minWidth)
                 {
-                    width=section->width;
+                    width=minWidth;
                 }
                 else
                 {
-                    if (totalStretch!=0)
+                    if (stretchLastSection)
                     {
-                        if (section->stretch==0)
-                        {
-                            width=minWidth;
-                        }
-                        else
-                        {
-                            width=qFloor(static_cast<double>(hintTotalWidth) * static_cast<double>(section->stretch)/static_cast<double>(totalStretch));
-                        }
+                        width=section->width;
                     }
                     else
                     {
-                        width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(notDestroyedCount));
-                        if (width<minWidth)
+                        if (totalStretch!=0)
                         {
-                            width=minWidth;
+                            if (section->stretch==0)
+                            {
+                                width=minWidth;
+                            }
+                            else
+                            {
+                                width=qFloor(static_cast<double>(hintTotalWidth) * static_cast<double>(section->stretch)/static_cast<double>(totalStretch));
+                            }
+                        }
+                        else
+                        {
+                            width=qFloor(static_cast<double>(hintTotalWidth)/static_cast<double>(notDestroyedCount));
+                            if (width<minWidth)
+                            {
+                                width=minWidth;
+                            }
                         }
                     }
                 }
             }
+
             if (width > w->maximumWidth())
             {
                 width=w->maximumWidth();
@@ -546,6 +597,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
         {
             precalculatedWidths.push_back(0);
         }
+        i++;
     }
 
     if (stretchLastSection)
@@ -583,11 +635,16 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             continue;
         }
 
-        auto w=qobject_cast<QWidget*>(section->obj);
+        auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr)
         {
             auto minW=w->minimumWidth();
-            if (section->stretch==0 || precalculateWidth==hintTotalWidth)
+
+            if (w->isExpanded() && section->manualWidth!=0)
+            {
+                section->width=section->manualWidth;
+            }
+            else if (section->stretch==0 || precalculateWidth==hintTotalWidth)
             {
                 section->width=precalculatedWidths[i];
             }
@@ -613,6 +670,16 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
                 else
                 {
                     section->stretch=1;
+                }
+            }
+
+            if (i==(m_sections.size()-1))
+            {
+                if (hintTotalWidth>accumulatedWidth)
+                {
+                    auto diff=hintTotalWidth-accumulatedWidth;
+                    section->width+=diff;
+                    accumulatedWidth+=diff;
                 }
             }
 
