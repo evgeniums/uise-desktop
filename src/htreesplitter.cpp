@@ -980,7 +980,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
 
     auto wd=recalculateWidths(width() - prevWidth + s->width);
 
-    qDebug() << "recalculated width="<<wd<<" maxwidth " << maximumWidth();
+    // qDebug() << "recalculated width="<<wd<<" maxwidth " << maximumWidth();
 
     resize(wd,height());
     updatePositions();

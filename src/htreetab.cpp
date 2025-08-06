@@ -67,7 +67,7 @@ class HTreeTab_p
 
         void appendNode(HTreeNode* node);
         void updateLastNode();
-        void disconnectNode(HTreeNode* node, bool beforeDestroy=true);
+        void disconnectNode(HTreeNode* node, bool beforeDestroy);
         void truncate(int index);
         void scrollToNode(HTreeNode* node);
         void scrollToEnd();
@@ -177,7 +177,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     {
         auto lastNode=nodes.back();
         node->setParentNode(lastNode);
-        disconnectNode(lastNode);
+        disconnectNode(lastNode,false);
     }
 
     // add to nodes
