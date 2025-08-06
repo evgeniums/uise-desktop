@@ -77,6 +77,11 @@ class UISE_DESKTOP_EXPORT AbstractWizardDialog : public AbstractDialog
         std::shared_ptr<SvgIcon> m_defaultSvgIcon;
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4661)
+#endif
+
 class UISE_DESKTOP_EXPORT WizardDialog : public Dialog<AbstractWizardDialog>
 {
     Q_OBJECT
@@ -119,6 +124,10 @@ class UISE_DESKTOP_EXPORT WizardDialog : public Dialog<AbstractWizardDialog>
 };
 
 using ModalWizard=ModalDialog<AbstractWizardDialog,WizardDialog,-1>;
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 UISE_DESKTOP_NAMESPACE_END
 

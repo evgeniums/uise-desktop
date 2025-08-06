@@ -110,7 +110,7 @@ class StyleContext
             }
 
             // calculate matching mask for the rest selectors
-            for (size_t i=1;i<selector.size();i++)
+            for (qsizetype i=1;i<selector.size();i++)
             {
                 if (depth==0)
                 {

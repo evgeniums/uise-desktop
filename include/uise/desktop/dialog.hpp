@@ -29,11 +29,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/abstractdialog.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-class SvgIcon;
 
 template <typename BaseT>
 class Dialog_p;

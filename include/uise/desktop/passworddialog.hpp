@@ -65,6 +65,11 @@ class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
         void passwordEntered();
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4661)
+#endif
+
 class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 {
     Q_OBJECT
@@ -116,7 +121,7 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
 using ModalPasswordDialogType=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
 
-class ModalPasswordDialog : public ModalPasswordDialogType
+class UISE_DESKTOP_EXPORT ModalPasswordDialog : public ModalPasswordDialogType
 {
     Q_OBJECT
 
@@ -124,6 +129,10 @@ class ModalPasswordDialog : public ModalPasswordDialogType
 
         using ModalPasswordDialogType::ModalPasswordDialogType;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 UISE_DESKTOP_NAMESPACE_END
 
