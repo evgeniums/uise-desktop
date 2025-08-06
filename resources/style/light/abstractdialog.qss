@@ -1,0 +1,7 @@
+uise--AbstractDialog {background-color: #F0F0F0; border: 1px solid #999999;}
+uise--AbstractDialog #dialogFrame QLabel {color: #444444;}
+uise--AbstractDialog #titleFrame {background-color: #888888;}
+uise--AbstractDialog #titleFrame QLabel {color:#FFFFFF;}
+
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{color: #555555;border: 1px solid #999999; background-color: transparent;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:hover{color: #444444;border: 1px solid #444444;}

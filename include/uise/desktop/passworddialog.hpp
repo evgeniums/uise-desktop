@@ -116,7 +116,7 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
 
 using ModalPasswordDialogType=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
 
-class ModalPasswordDialog : public ModalPasswordDialogType
+class UISE_DESKTOP_EXPORT ModalPasswordDialog : public ModalPasswordDialogType
 {
     Q_OBJECT
 
