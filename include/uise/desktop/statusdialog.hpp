@@ -65,6 +65,11 @@ class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog
         virtual void setStatus(const QString& message, Type type, const QString& title={})=0;
 };
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4661)
+#endif
+
 class UISE_DESKTOP_EXPORT StatusDialog : public Dialog<AbstractStatusDialog>
 {
     Q_OBJECT
@@ -99,6 +104,10 @@ class UISE_DESKTOP_EXPORT StatusDialog : public Dialog<AbstractStatusDialog>
 
         std::unique_ptr<StatusDialog_p> pimpl;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 UISE_DESKTOP_NAMESPACE_END
 
