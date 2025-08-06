@@ -223,6 +223,7 @@ class HTreeNode_p
         bool unique=false;
 
         QPointer<HTreeNode> nextNode;
+        bool prepareForDestroy=false;
 
         HTreeNodeLocator* nextNodeLocator=nullptr;
 };
@@ -547,8 +548,29 @@ HTreeNode* HTreeNode::nextNode() const
 
 //--------------------------------------------------------------------------
 
+void HTreeNode::prepareForDestroy()
+{
+    pimpl->prepareForDestroy=true;
+    if (pimpl->nextNode!=nullptr)
+    {
+        disconnect(
+            pimpl->nextNode,
+            SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(nextNodeDestroyed(QObject*))
+            );
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeNode::nextNodeDestroyed(QObject* obj)
 {
+    if (pimpl->prepareForDestroy)
+    {
+        return;
+    }
+
     if (!pimpl->nextNode || obj==pimpl->nextNode)
     {
         pimpl->nextNode =nullptr;
@@ -562,6 +584,11 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
 
 void HTreeNode::otherNodeExpanded(bool enable)
 {
+    if (pimpl->prepareForDestroy)
+    {
+        return;
+    }
+
     bool atLeastOneVisible=false;
     bool atLeastOneParentVisible=false;
 

@@ -123,6 +123,8 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
 
         if (beforeDestroy)
         {
+            node->prepareForDestroy();
+
             nodeDestroyedMapper->removeMappings(node);
             node->disconnect(
                 node,
@@ -147,10 +149,14 @@ void HTreeTab_p::truncate(int index)
     for (auto i=lastIndex;i>=index;i--)
     {
         auto w=splitter->widget(i);
-        auto n=qobject_cast<HTreeNode*>(w);
-        if (n!=nullptr)
+        auto s=qobject_cast<HTreeSplitterSection*>(w);
+        if (s!=nullptr)
         {
-            disconnectNode(n,true);
+            auto n=qobject_cast<HTreeNode*>(s->widget());
+            if (n!=nullptr)
+            {
+                disconnectNode(n,true);
+            }
         }
     }
     splitter->truncate(index);

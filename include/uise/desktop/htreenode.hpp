@@ -192,6 +192,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setNextNodeLocator(HTreeNodeLocator* locator);
         HTreeNodeLocator* nextNodeLocator() const;
 
+        void prepareForDestroy();
+
     public slots:
 
         void closeNode();
