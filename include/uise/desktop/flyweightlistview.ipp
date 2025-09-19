@@ -328,7 +328,7 @@ void FlyweightListView<ItemT>::setWheelHorizontalScrollEnabled(bool enabled) noe
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
-bool FlyweightListView<ItemT>::islWheelHorizontaScrollEnabled() const noexcept
+bool FlyweightListView<ItemT>::isWheelHorizontaScrollEnabled() const noexcept
 {
     return pimpl->m_scrollWheelHorizontal;
 }

@@ -267,7 +267,7 @@ class FlyweightListView : public QFrame
          * @brief Check if horisontal scrolling with the mouse wheel is enabled.
          * @return Treu if enabled, false otherwise.
          */
-        bool islWheelHorizontaScrollEnabled() const noexcept;
+        bool isWheelHorizontaScrollEnabled() const noexcept;
 
         /**
          * @brief Clear the view.
@@ -426,7 +426,7 @@ class FlyweightListView : public QFrame
          * @param value Value to set.
          *
          * Item's sorting value ItemT::sortValue() is used for automatical items sorting after inserting to the view.
-         * For correct sorting the min and max sorting values must be set befor populating the view with items.
+         * For correct sorting the min and max sorting values must be set before populating the view with items.
          */
         void setMaxSortValue(const typename ItemT::SortValueType& value) noexcept;
 
