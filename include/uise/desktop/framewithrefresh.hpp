@@ -55,7 +55,6 @@ class UISE_DESKTOP_EXPORT FrameWithRefresh : public QFrame
     protected:
 
         virtual void doRefresh();
-
 };
 
 /**
