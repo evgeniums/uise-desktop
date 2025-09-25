@@ -32,6 +32,9 @@ uise--EditablePanel #panelTitle {
 font-size:16px;
 }
 
+uise--EditablePanel uise--PushButton QPushButton
+{border-radius: 4px; padding: 2px 12px;}
+
 uise--EditablePanel #topButtonsFrame #topButtonCancel QPushButton,
 uise--EditablePanel #topButtonsFrame #topButtonApply QPushButton {
 font-size:16px;

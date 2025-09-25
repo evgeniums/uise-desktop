@@ -1,3 +1,9 @@
-uise--FrameWithModalStatus uise--PushButton QPushButton{color: #CCCCCC;border: 1px solid #999999; background-color: transparent;}
-uise--FrameWithModalStatus uise--PushButton QPushButton:hover{color: #EEEEEE;border: 1px solid #EEEEEE;}
-uise--FrameWithModalStatus #cancelBusyButton {background-color: #444444;}
+uise--FrameWithModalStatus #busyWaitingFrame uise--PushButton QPushButton,
+uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton
+{color: #CCCCCC;border: 1px solid #999999; background-color: transparent;}
+
+uise--FrameWithModalStatus #busyWaitingFrame uise--PushButton QPushButton:hover,
+uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover
+{color: #EEEEEE;border: 1px solid #EEEEEE;}
+
+uise--FrameWithModalStatus #buttonsFrame #cancelBusyButton {background-color: #444444;}

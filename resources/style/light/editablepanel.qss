@@ -15,6 +15,12 @@ background-color: #E4E4E4;
 color: #000000;
 }
 
+uise--EditablePanel uise--PushButton QPushButton
+{color: #555555;background-color: transparent;border: 1px solid #999999;}
+
+uise--EditablePanel uise--PushButton QPushButton:hover
+{color: #444444;border: 1px solid #444444;}
+
 uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonApply QPushButton,
 uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonCancel QPushButton {
 color: #555555;
