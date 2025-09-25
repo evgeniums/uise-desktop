@@ -32,7 +32,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/widget.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
+#include <uise/desktop/statusdialog.hpp>
 
 #include <uise/desktop/htreelistitem.hpp>
 #include <uise/desktop/htreebranch.hpp>
@@ -75,7 +77,8 @@ class HTreeListView : public WithFlyweightListView<ItemT,BaseT>,
 };
 
 class HTreeListWidget_p;
-class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
+class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
+                                            public Widget
 {
     Q_OBJECT
 
@@ -108,6 +111,10 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame
         }
 
         void setViewWidgets(QWidget* widget, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr);
+
+        virtual void showError(const QString& message, const QString& title={});
+        virtual void popupStatus(const QString& message, StatusDialog::Type type, const QString& title={});
+        virtual void setBusyWaiting(bool enable);
 
     public slots:
 
@@ -145,6 +152,11 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
         std::shared_ptr<HTreeListViewBuilder> listViewBuilder() const
         {
             return m_builder;
+        }
+
+        HTreeListWidget* hTreeListWidget() const
+        {
+            return m_widget;
         }
 
     public slots:

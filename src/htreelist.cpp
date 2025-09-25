@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/framewithmodalstatus.hpp>
 
 #include <uise/desktop/htreelist.hpp>
 
@@ -36,6 +37,7 @@ class HTreeListWidget_p
 {
     public:
 
+        FrameWithModalStatus* statusFrame;
         QBoxLayout* layout=nullptr;
 
         QWidget* topWidget=nullptr;
@@ -72,7 +74,11 @@ HTreeListWidget::HTreeListWidget(HTreeList* node)
       pimpl(std::make_unique<HTreeListWidget_p>()),
       m_node(node)
 {
-    pimpl->layout=Layout::vertical(this);
+    auto l=Layout::vertical(this);
+    pimpl->statusFrame=makeWidget<FrameWithModalStatus>(this);
+    l->addWidget(pimpl->statusFrame);
+
+    pimpl->layout=Layout::vertical(pimpl->statusFrame);
 }
 
 //--------------------------------------------------------------------------
@@ -248,6 +254,34 @@ void HTreeListWidget::setDefaultMaxItemWith(int val)
 int HTreeListWidget::defaultMaxItemWidth() const noexcept
 {
     return pimpl->maxItemWidth;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListWidget::setBusyWaiting(bool enable)
+{
+    if (enable)
+    {
+        pimpl->statusFrame->popupBusyWaiting();
+    }
+    else
+    {
+        pimpl->statusFrame->finish();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListWidget::showError(const QString& message, const QString& title)
+{
+    popupStatus(message,StatusDialog::Type::Error,title);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListWidget::popupStatus(const QString& message, StatusDialog::Type type, const QString& title)
+{
+    pimpl->statusFrame->popupStatus(message,type,title);
 }
 
 /************************* HTreeList ***********************************/
