@@ -10,8 +10,8 @@ uise--HTreeNodeTitleBar {
     margin:0;
 }
 
-uise--HTreeNodePlaceHolder {min-width:7px;max-width:7px;padding-right:1px;}
-uise--HTreeNodePlaceHolder QPushButton {border:none;icon-size: 20px 8px;}
+uise--HTreeNodePlaceHolder {min-width:4px;max-width:4px;padding: 0 1px;}
+uise--HTreeNodePlaceHolder QPushButton {border:none;icon-size: 20px 2px;}
 
 uise--HTreeStandardListItem #hTreeItemPixmap QPushButton {
     margin-right:4px;
