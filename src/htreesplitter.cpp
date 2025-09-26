@@ -417,7 +417,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                                 // auto newWidth=minimumWidth()-qAbs(sectionDx);
                                 // if (newWidth==totalWidth)
                                 {
-                                    qDebug() << "resizing from " << width() << " to " << totalWidth;
+                                    // qDebug() << "resizing from " << width() << " to " << totalWidth;
                                     setMinimumWidth(totalWidth);
                                     resize(totalWidth,height());
                                     emit minMaxSizeUpdated();

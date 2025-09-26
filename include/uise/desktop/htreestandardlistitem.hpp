@@ -162,7 +162,7 @@ inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>
     items.emplace_back(item);
 }
 
-class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeListView<HTreeStansardListIemWrapper>
+class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeListFlyweightView<HTreeStansardListIemWrapper>
 {
     Q_OBJECT
 

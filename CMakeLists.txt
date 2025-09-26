@@ -51,6 +51,7 @@ SET (HEADERS
     include/uise/desktop/utils/directchildwidget.hpp
     include/uise/desktop/utils/substitutecolors.hpp
     include/uise/desktop/utils/wheeleventhandler.hpp
+    include/uise/desktop/utils/makenullwidget.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -94,14 +95,17 @@ SET (HEADERS
     include/uise/desktop/htreenodelocator.hpp
     include/uise/desktop/htreenodebuilder.hpp
     include/uise/desktop/htreenodefactory.hpp
-    include/uise/desktop/htreelistitem.hpp
-    include/uise/desktop/htreestandardlistitem.hpp
-    include/uise/desktop/htreebranch.hpp
-    include/uise/desktop/htreelist.hpp
+    include/uise/desktop/htreebranch.hpp    
     include/uise/desktop/htreesidebar.hpp
     include/uise/desktop/htreetab.hpp
     include/uise/desktop/htreesplitter.hpp
     include/uise/desktop/htree.hpp
+
+    include/uise/desktop/htreelist.hpp
+    include/uise/desktop/htreelistitem.hpp
+    include/uise/desktop/htreestandardlistitem.hpp
+    include/uise/desktop/htreelistwidget.hpp
+    include/uise/desktop/htreelistflyweightview.hpp
 
     include/uise/desktop/svgicon.hpp
     include/uise/desktop/svgiconcontext.hpp

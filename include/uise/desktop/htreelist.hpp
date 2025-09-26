@@ -32,105 +32,21 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/makenullwidget.hpp>
 #include <uise/desktop/widget.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/statusdialog.hpp>
 
-#include <uise/desktop/htreelistitem.hpp>
 #include <uise/desktop/htreebranch.hpp>
 #include <uise/desktop/htreenodebuilder.hpp>
 
+#include <uise/desktop/htreelistitem.hpp>
+#include <uise/desktop/htreelistwidget.hpp>
+#include <uise/desktop/htreelistflyweightview.hpp>
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class HTreeList;
 class HTreeList_p;
-
-template <typename ItemT, typename BaseT=QFrame>
-class HTreeListView : public WithFlyweightListView<ItemT,BaseT>,
-                      public WithRefreshRequested
-{
-    public:
-
-        using WithFlyweightListView<ItemT,BaseT>::WithFlyweightListView;
-
-        ~HTreeListView()
-        {
-            if (this->listView()!=nullptr)
-            {
-                this->listView()->resetCallbacks();
-            }
-        }
-
-        void setHTreeList(HTreeList* list) noexcept
-        {
-            m_list=list;
-        }
-
-        HTreeList* hTreeList() const noexcept
-        {
-            return m_list;
-        }
-
-    private:
-
-        HTreeList* m_list=nullptr;
-};
-
-class HTreeListWidget_p;
-class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
-                                            public Widget
-{
-    Q_OBJECT
-
-    public:
-
-        constexpr static const int DefaultMaxItemWidth=170;
-        constexpr static const int ItemExtraWidth=30;
-
-        HTreeListWidget(HTreeList* node);
-
-        /**
-         * @brief Destructor.
-         */
-        ~HTreeListWidget();
-
-        HTreeListWidget(const HTreeListWidget&)=delete;
-        HTreeListWidget(HTreeListWidget&&)=delete;
-        HTreeListWidget& operator=(const HTreeListWidget&)=delete;
-        HTreeListWidget& operator=(HTreeListWidget&&)=delete;
-
-        QSize sizeHint() const override;
-
-        void setDefaultMaxItemWith(int val);
-
-        int defaultMaxItemWidth() const noexcept;
-
-        HTreeList* node() const
-        {
-            return m_node;
-        }
-
-        void setViewWidgets(QWidget* widget, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr);
-
-        virtual void showError(const QString& message, const QString& title={});
-        virtual void popupStatus(const QString& message, StatusDialog::Type type, const QString& title={});
-        virtual void setBusyWaiting(bool enable);
-
-    public slots:
-
-        void setNextNodeId(const std::string& id);
-
-    private:
-
-        void onItemInsert(HTreeListItem* item);
-        void onItemRemove(HTreeListItem* item);        
-
-        std::unique_ptr<HTreeListWidget_p> pimpl;
-        HTreeList* m_node;
-
-        friend class HTreeListViewBuilder;
-};
-
 class HTreeListViewBuilder;
 
 class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
@@ -147,14 +63,9 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
          * @param tree The tree this node belongs to.
          * @param parent Parent widget.
          */
-        HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* treeTab, QWidget* parent=nullptr);
+        HTreeList(HTreeTab* treeTab, QWidget* parent=nullptr);
 
-        std::shared_ptr<HTreeListViewBuilder> listViewBuilder() const
-        {
-            return m_builder;
-        }
-
-        HTreeListWidget* hTreeListWidget() const
+        HTreeListWidget* listContentWidget() const
         {
             return m_widget;
         }
@@ -167,94 +78,117 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
         QWidget* createContentWidget() override;
 
-        virtual HTreeListWidget* createHTreeListWidget();
+        virtual void setupContentWidget() =0;
 
     private:
 
         QWidget* doCreateContentWidget();
 
         QPointer<HTreeListWidget> m_widget;
-        std::shared_ptr<HTreeListViewBuilder> m_builder;
 };
 
-struct makeNullWidgetT
-{
-    QWidget* operator()(QWidget* parent=nullptr) const
-    {
-        return nullptr;
-    }
-};
-constexpr makeNullWidgetT makeNullWidget{};
-
-class UISE_DESKTOP_EXPORT HTreeListViewBuilder
+class HTreeListUiHelper
 {
     public:
 
-        HTreeListViewBuilder()=default;
-
-        virtual ~HTreeListViewBuilder();
-
-        HTreeListViewBuilder(const HTreeListViewBuilder&)=default;
-        HTreeListViewBuilder(HTreeListViewBuilder&&)=default;
-        HTreeListViewBuilder& operator=(const HTreeListViewBuilder&)=default;
-        HTreeListViewBuilder& operator=(HTreeListViewBuilder&&)=default;
-
-        virtual void createView(HTreeListWidget* listWidget) const=0;
-
-        template <typename BuilderT>
-        void createViewT(HTreeListWidget* listWidget, BuilderT&& builder) const
+        template <typename ListViewBuilderT>
+        static auto createListView(HTreeList* node, HTreeListWidget* listWidget, ListViewBuilderT&& listViewBuilder)
         {
-            auto view=builder();
-            setView(view,listWidget);
+            auto listView=listViewBuilder();
+            setupView(node,listWidget,listView);
+            return listView;
         }
 
-        template <typename ViewBuilderT, typename TopBuilderT, typename BottomBuilderT>
-        void createViewT(HTreeListWidget* listWidget, ViewBuilderT&& viewBuilder, TopBuilderT&& topBuilder, BottomBuilderT&& bottomBuilder) const
+        template <typename ListViewBuilderT, typename TopBuilderT, typename BottomBuilderT>
+        static auto createUi(HTreeList* node, HTreeListWidget* listWidget, ListViewBuilderT&& listViewBuilder, TopBuilderT&& topBuilder, BottomBuilderT&& bottomBuilder)
         {
-            auto view=viewBuilder();
-            QWidget* topWidget=topBuilder();
-            QWidget* bottomWidget=bottomBuilder();
-            setView(view,listWidget,topWidget,bottomWidget);
+            auto listView=listViewBuilder();
+            auto topWidget=topBuilder();
+            auto bottomWidget=bottomBuilder();
+            setupView(node,listWidget,listView,topWidget,bottomWidget);
+            return std::make_tuple();
         }
 
-        template <typename ItemT, typename BaseT>
-        void setView(HTreeListView<ItemT,BaseT>* view, HTreeListWidget* listWidget, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr) const
-        {            
-            view->setHTreeList(listWidget->node());
+        // template <typename ItemT, typename BaseT>
+        // static void setupView(HTreeList* node,  HTreeListWidget* listWidget, HTreeListFlyweightView<ItemT,BaseT>* view, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr)
 
-            view->listView()->setInsertItemCb(
-                [listWidget](auto item)
+        template <typename ListViewT>
+        static void setupView(HTreeList* node,  HTreeListWidget* listWidget, ListViewT* listView, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr)
+        {
+            listView->setListNode(node);
+
+            listView->listView()->setInsertItemCb(
+                [listWidget,node](auto item)
                 {
+                    QObject::connect(
+                        item,
+                        &HTreeListItem::openRequested,
+                        node,
+                        &HTreeBranch::openNextNode
+                    );
+                    QObject::connect(
+                        item,
+                        &HTreeListItem::openInNewTabRequested,
+                        node,
+                        &HTreeBranch::openNextNodeInNewTab
+                    );
+                    QObject::connect(
+                        item,
+                        &HTreeListItem::openInNewTreeRequested,
+                        node,
+                        &HTreeBranch::openNextNodeInNewTree
+                    );
+
                     listWidget->onItemInsert(item);
                 }
             );
-            view->listView()->setRemoveItemCb(
-                [listWidget](auto item)
+
+            listView->listView()->setRemoveItemCb(
+                [listWidget,node](auto item)
                 {
+                    QObject::disconnect(
+                        item,
+                        &HTreeListItem::openRequested,
+                        node,
+                        &HTreeBranch::openNextNode
+                        );
+                    QObject::disconnect(
+                        item,
+                        &HTreeListItem::openInNewTabRequested,
+                        node,
+                        &HTreeBranch::openNextNodeInNewTab
+                        );
+                    QObject::disconnect(
+                        item,
+                        &HTreeListItem::openInNewTreeRequested,
+                        node,
+                        &HTreeBranch::openNextNodeInNewTree
+                    );
                     listWidget->onItemRemove(item);
                 }
             );
-            listWidget->setViewWidgets(view,topWidget,bottomWidget);
+            listWidget->setContentWidgets(listView,topWidget,bottomWidget);
 
-            view->setRefreshRequestedCb(
-                [listWidget]()
+            listView->setRefreshRequestedCb(
+                [node]()
                 {
-                    listWidget->node()->refresh();
+                    node->refresh();
                 }
             );
 
             QObject::connect(
-                listWidget->node(),
+                node,
                 &HTreeNode::refreshRequested,
-                view,
-                [view]()
+                listView,
+                [listView]()
                 {
-                    view->reload();
+                    listView->reload();
                 }
             );
         }
 };
 
+#if 0
 class HTreeListBuilderPlaceholder
 {
     public:
@@ -263,12 +197,6 @@ class HTreeListBuilderPlaceholder
         void initListNode(T* node) const
         {
             std::ignore=node;
-        }
-
-        template <typename T>
-        void initListViewBuilder(T* builder) const
-        {
-            std::ignore=builder;
         }
 };
 
@@ -288,16 +216,14 @@ class HTreeListBuilder : public HTreeNodeBuilder,
                 path=HTreePath{parentNode->path(),pathElement};
             }
 
-            auto viewBuilder=std::make_shared<ListViewBuilderT>();
-            this->initListViewBuilder(viewBuilder.get());
-
-            auto node=new ListNodeT(std::move(viewBuilder),treeTab);
+            auto node=new ListNodeT(treeTab,parentNode);
             this->initListNode(node);
 
             node->setNodeTooltip(QString::fromStdString(pathElement.name()));
             return node;
         }
 };
+#endif
 
 UISE_DESKTOP_NAMESPACE_END
 

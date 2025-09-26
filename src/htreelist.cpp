@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
 
+#include <uise/desktop/htreelistwidget.hpp>
 #include <uise/desktop/htreelist.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -43,7 +44,7 @@ class HTreeListWidget_p
         QWidget* topWidget=nullptr;
         QWidget* bottomWidget=nullptr;
 
-        QWidget* view=nullptr;
+        QWidget* listView=nullptr;
 
         std::map<std::string,HTreeListItem*> items;
 
@@ -69,10 +70,9 @@ void HTreeListWidget_p::updateMaxWidth()
 
 //--------------------------------------------------------------------------
 
-HTreeListWidget::HTreeListWidget(HTreeList* node)
-    : QFrame(node),
-      pimpl(std::make_unique<HTreeListWidget_p>()),
-      m_node(node)
+HTreeListWidget::HTreeListWidget(QWidget* parent)
+    : QFrame(parent),
+      pimpl(std::make_unique<HTreeListWidget_p>())
 {
     auto l=Layout::vertical(this);
     pimpl->statusFrame=makeWidget<FrameWithModalStatus>(this);
@@ -84,31 +84,13 @@ HTreeListWidget::HTreeListWidget(HTreeList* node)
 //--------------------------------------------------------------------------
 
 HTreeListWidget::~HTreeListWidget()
-{}
+{
+}
 
 //--------------------------------------------------------------------------
 
 void HTreeListWidget::onItemInsert(HTreeListItem* item)
 {
-    connect(
-        item,
-        &HTreeListItem::openRequested,
-        m_node,
-        &HTreeList::openNextNode
-    );
-    connect(
-        item,
-        &HTreeListItem::openInNewTabRequested,
-        m_node,
-        &HTreeList::openNextNodeInNewTab
-    );
-    connect(
-        item,
-        &HTreeListItem::openInNewTreeRequested,
-        m_node,
-        &HTreeList::openNextNodeInNewTree
-    );
-
     for (auto& otherItem: pimpl->items)
     {
         connect(
@@ -151,25 +133,6 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
 
 void HTreeListWidget::onItemRemove(HTreeListItem* item)
 {
-    disconnect(
-        item,
-        &HTreeListItem::openRequested,
-        m_node,
-        &HTreeList::openNextNode
-    );
-    disconnect(
-        item,
-        &HTreeListItem::openInNewTabRequested,
-        m_node,
-        &HTreeList::openNextNodeInNewTab
-    );
-    disconnect(
-        item,
-        &HTreeListItem::openInNewTreeRequested,
-        m_node,
-        &HTreeList::openNextNodeInNewTree
-    );
-
     if (item!=nullptr)
     {
         auto id=item->pathElement().id();
@@ -179,7 +142,7 @@ void HTreeListWidget::onItemRemove(HTreeListItem* item)
 
 //--------------------------------------------------------------------------
 
-void HTreeListWidget::setViewWidgets(QWidget* widget, QWidget* topWidget, QWidget* bottomWidget)
+void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, QWidget* bottomWidget)
 {
     int minWidth=0;
 
@@ -195,14 +158,14 @@ void HTreeListWidget::setViewWidgets(QWidget* widget, QWidget* topWidget, QWidge
         minWidth=topWidget->minimumWidth();
     }
 
-    if (pimpl->view!=nullptr)
+    if (pimpl->listView!=nullptr)
     {
-        destroyWidget(pimpl->view);
+        destroyWidget(pimpl->listView);
     }
 
-    pimpl->view=widget;
-    pimpl->layout->addWidget(widget);
-    minWidth=std::max(widget->minimumWidth(),minWidth);
+    pimpl->listView=listView;
+    pimpl->layout->addWidget(listView);
+    minWidth=std::max(listView->minimumWidth(),minWidth);
 
     if (bottomWidget!=nullptr)
     {
@@ -288,9 +251,8 @@ void HTreeListWidget::popupStatus(const QString& message, StatusDialog::Type typ
 
 //--------------------------------------------------------------------------
 
-HTreeList::HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* treeTab, QWidget* parent)
-    : HTreeBranch(treeTab,parent),
-      m_builder(std::move(builder))
+HTreeList::HTreeList(HTreeTab* treeTab, QWidget* parent)
+    : HTreeBranch(treeTab,parent)
 {
 }
 
@@ -298,28 +260,20 @@ HTreeList::HTreeList(std::shared_ptr<HTreeListViewBuilder> builder, HTreeTab* tr
 
 QWidget* HTreeList::doCreateContentWidget()
 {
-    auto w=createHTreeListWidget();
-    m_builder->createView(w);
+    m_widget=new HTreeListWidget(this);
+    setupContentWidget();
     auto next=nextNode();
     if (next!=nullptr)
     {
-        w->setNextNodeId(next->path().id());
+        m_widget->setNextNodeId(next->path().id());
     }
     else
     {
-        w->setNextNodeId(std::string());
-    }
-    m_widget=w;
-    setMinimumWidth(w->minimumWidth());
-    w->setDefaultMaxItemWith(w->minimumWidth());
-    return w;
-}
-
-//--------------------------------------------------------------------------
-
-HTreeListWidget* HTreeList::createHTreeListWidget()
-{
-    return new HTreeListWidget(this);
+        m_widget->setNextNodeId(std::string());
+    }    
+    setMinimumWidth(m_widget->minimumWidth());
+    m_widget->setDefaultMaxItemWith(m_widget->minimumWidth());
+    return m_widget;
 }
 
 //--------------------------------------------------------------------------
@@ -338,13 +292,6 @@ void HTreeList::setNextNodeId(const std::string& id)
         m_widget->setNextNodeId(id);
     }
 }
-
-/************************* HTreeListViewBuilder ****************************/
-
-//--------------------------------------------------------------------------
-
-HTreeListViewBuilder::~HTreeListViewBuilder()
-{}
 
 //--------------------------------------------------------------------------
 

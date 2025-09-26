@@ -195,7 +195,7 @@ HTreeStandardListItemView::HTreeStandardListItemView(QWidget* parent) : Flyweigh
 
 /************************* HTreeStandardListView ***********************/
 
-HTreeStandardListView::HTreeStandardListView(QWidget* parent, int minimumWidth) : HTreeListView<HTreeStansardListIemWrapper>(parent)
+HTreeStandardListView::HTreeStandardListView(QWidget* parent, int minimumWidth) : HTreeListFlyweightView<HTreeStansardListIemWrapper>(parent)
 {
     auto l=Layout::vertical(this);
     auto listView=new HTreeStandardListItemView(this);
