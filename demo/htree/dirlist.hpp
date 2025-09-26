@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreestandardlistitem.hpp>
 #include <uise/desktop/htreelist.hpp>
+#include <uise/desktop/htreelistflyweightview.hpp>
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreenodefactory.hpp>
 
@@ -216,13 +217,13 @@ class DirListView : public FlyweightListView<DirItemWrapper>
         }
 };
 
-class DirList : public HTreeListView<DirItemWrapper>
+class DirList : public HTreeListFlyweightView<DirItemWrapper>
 {
     Q_OBJECT
 
     public:
 
-        DirList(QWidget* parent=nullptr) : HTreeListView<DirItemWrapper>(parent)
+        DirList(QWidget* parent=nullptr) : HTreeListFlyweightView<DirItemWrapper>(parent)
         {
             auto l=Layout::vertical(this);
             auto listView=new DirListView(this);
@@ -248,7 +249,7 @@ class DirList : public HTreeListView<DirItemWrapper>
                 std::vector<DirItemWrapper> items;
 
                 std::filesystem::path path;
-                for (const auto& element: hTreeList()->path().elements())
+                for (const auto& element: listNode()->path().elements())
                 {
                     path.append(element.name());
                 }
@@ -323,13 +324,16 @@ class DirList : public HTreeListView<DirItemWrapper>
         }
 };
 
-class FolderListViewBuilder : public HTreeListViewBuilder
+class FolderNode : public HTreeList
 {
     public:
 
-        void createView(HTreeListWidget* listWidget) const override
+        using HTreeList::HTreeList;
+
+        void setupContentWidget() override
         {
-            createViewT(listWidget,[](){return new DirList();});
+            auto listView=new DirList();
+            HTreeListUiHelper::setupView(this,listContentWidget(),listView);
         }
 };
 
@@ -345,7 +349,7 @@ class FolderNodeBuilder : public HTreeNodeBuilder
                 path=HTreePath{parentNode->path(),pathElement};
             }
 
-            auto node=new HTreeList(std::make_shared<FolderListViewBuilder>(),treeTab);
+            auto node=new FolderNode(treeTab);
             node->setNodeTooltip(QString::fromStdString(pathElement.id()));
             node->setRefreshable(true);
             return node;

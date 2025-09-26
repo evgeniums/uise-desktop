@@ -88,9 +88,9 @@ void checkSettersGetters(FlwListType* view)
     UISE_TEST_CHECK_EQUAL(view->maxSortValue(),1000);
     UISE_TEST_CHECK_EQUAL(view->minSortValue(),100);
 
-    UISE_TEST_CHECK_EQUAL(view->islWheelHorizontaScrollEnabled(),true);
+    UISE_TEST_CHECK_EQUAL(view->isWheelHorizontaScrollEnabled(),true);
     view->setWheelHorizontalScrollEnabled(false);
-    UISE_TEST_CHECK_EQUAL(view->islWheelHorizontaScrollEnabled(),false);
+    UISE_TEST_CHECK_EQUAL(view->isWheelHorizontaScrollEnabled(),false);
 }
 }
 
