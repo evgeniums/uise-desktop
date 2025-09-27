@@ -65,6 +65,18 @@ class HTreeTab_p
 
         std::vector<HTreeNode*> nodes;
 
+        ~HTreeTab_p()
+        {
+            for (auto& node : nodes)
+            {
+                if (node)
+                {
+                    disconnectNode(node,true);
+                    node->disconnect();
+                }
+            }
+        }
+
         void appendNode(HTreeNode* node);
         void updateLastNode();
         void disconnectNode(HTreeNode* node, bool beforeDestroy);
@@ -235,7 +247,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             {
                 w->setMinimumWidth(node->minimumWidth()+splitter->sectionLineWidth());
                 w->setMaximumWidth(std::min(QWIDGETSIZE_MAX,(node->maximumWidth()+splitter->sectionLineWidth())));
-                splitter->toggleSectionExpanded(index,enable);
+                splitter->toggleSectionExpanded(index,enable,node->isNodeVisible());
             }
         }
     );
@@ -644,6 +656,13 @@ void HTreeTab::activate()
 {
     tree()->activate();
     tree()->setCurrentTab(this);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::isSingleCollapsePlaceholder() const noexcept
+{
+    return tree()->isSingleCollapsePlaceholder();
 }
 
 //--------------------------------------------------------------------------

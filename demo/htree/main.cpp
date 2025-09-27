@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     auto nodeLocator=std::make_shared<HTreeNodeLocator>(factory);
 
-    auto htree=new HTree(nodeLocator.get(),mainFrame);
+    auto htree=new HTree(nodeLocator.get(),mainFrame);    
     l->addWidget(htree,1);
 
     int winCount=1;
@@ -79,13 +79,14 @@ int main(int argc, char *argv[])
         [nodeLocator,&w,&winCount](const UISE_DESKTOP_NAMESPACE::HTreePath& path)
         {
             auto htree=new HTree(nodeLocator.get());
+            htree->setSingleCollapsePlaceholder(false);
             htree->openPath(path);
             htree->sidebar()->setVisible(false);
             htree->resize(800,600);
             htree->show();
             htree->raise();
             htree->move(w.pos().x()+50,w.pos().y()-50);
-            htree->setWindowTitle(QString("HTree Filesystem Demo (%1)").arg(winCount));
+            htree->setWindowTitle(QString("HTree Filesystem Demo (%1)").arg(winCount));            
         }
     );
 

@@ -85,6 +85,8 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         void scrollToNode(HTreeNode* node);
 
+        bool isSingleCollapsePlaceholder() const noexcept;
+
     public slots:
 
         void activate();

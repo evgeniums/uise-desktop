@@ -78,6 +78,21 @@ class HTreeSplitterSection : public QFrame
             return m_expanded;
         }
 
+        void setSectionVisible(bool enable)
+        {
+            setVisible(enable);
+            m_visible=enable;
+            if (!enable)
+            {
+                setMinimumWidth(0);
+            }
+        }
+
+        bool isSectionVisible() const
+        {
+            return m_visible;
+        }
+
     public slots:
 
         void setLineVisible(bool enable);
@@ -95,6 +110,7 @@ class HTreeSplitterSection : public QFrame
         QWidget* m_widget=nullptr;
 
         bool m_expanded=true;
+        bool m_visible=true;
 
         friend class HTreeSplitter;
 };
@@ -123,7 +139,7 @@ class HTreeSplitterInternal : public QFrame
 
     public slots:
 
-        void toggleSectionExpanded(int index, bool expanded);
+        void toggleSectionExpanded(int index, bool expanded, bool visible);
 
     signals:
 

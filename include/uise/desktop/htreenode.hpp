@@ -194,6 +194,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void prepareForDestroy();
 
+        bool isNodeVisible( ) const;
+
     public slots:
 
         void closeNode();
@@ -225,7 +227,11 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void nextNodeDestroyed(QObject*);
         void otherNodeExpanded(bool);
 
+        void onPlaceHolderExpandRequest();
+
     private:
+
+        bool updateCollapsePlaceholder();
 
         std::unique_ptr<HTreeNode_p> pimpl;
 

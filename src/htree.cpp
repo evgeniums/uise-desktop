@@ -54,6 +54,8 @@ class HTree_p
         HTreeNodeLocator* locator=nullptr;
 
         std::pair<HTreeTab*,int> addTab(const HTreePath& path);
+
+        bool singleCollapsePlaceholder=true;
 };
 
 //--------------------------------------------------------------------------
@@ -362,6 +364,20 @@ void HTree::activate()
         w->setWindowState(w->windowState() & ~Qt::WindowMinimized | Qt::WindowActive);
         w->raise();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setSingleCollapsePlaceholder(bool enable) noexcept
+{
+    pimpl->singleCollapsePlaceholder=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTree::isSingleCollapsePlaceholder() const noexcept
+{
+    return pimpl->singleCollapsePlaceholder;
 }
 
 //--------------------------------------------------------------------------

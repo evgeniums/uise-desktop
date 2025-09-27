@@ -89,7 +89,7 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
     public slots:
 
-        void toggleSectionExpanded(int index, bool expanded);
+        void toggleSectionExpanded(int index, bool expanded, bool visible);
 
     private:
 

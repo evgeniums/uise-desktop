@@ -718,25 +718,36 @@ void HTreeSplitterInternal::updatePositions()
 
 void HTreeSplitterInternal::updateWidths()
 {
+    size_t index=0;
+
     auto margins=contentsMargins();
     auto h=height()-margins.top()-margins.bottom();
     for (auto& section: m_sections)
     {
         if (section->destroyed)
         {
+            index++;
             continue;
         }
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr)
         {
-            w->show();
-            w->raise();
-            w->resize(section->width,h);
+            // qDebug() << "HTreeSplitterInternal::updateWidths() section " << index << " svisible " << w->isSectionVisible() << " visible " << w->isVisible() << " geometry " << w->geometry() << " w geometry " << w->widget()->geometry();
 
-            // // qDebug() << "Visible " << w->isVisible();
-            // // qDebug() << "Geometry " << w->geometry();
-            // // qDebug() << "W Geometry " << w->widget()->geometry();
+            if (w->isSectionVisible())
+            {
+                w->show();
+                w->raise();
+                w->resize(section->width,h);
+            }
+            else
+            {
+                w->resize(0,h);
+                w->setVisible(false);
+            }
         }
+
+        index++;
     }
 }
 
@@ -930,7 +941,7 @@ int HTreeSplitterInternal::count() const
 
 //--------------------------------------------------------------------------
 
-void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
+void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool visible)
 {
     auto s=section(index);
     if (s==nullptr)
@@ -942,7 +953,9 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     {
         return;
     }
+
     w->setExpanded(expanded);
+    w->setSectionVisible(visible);
 
     auto prevMinWidth=s->minWidth;
     auto prevWidth=s->width;
@@ -950,12 +963,14 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
     if (!expanded)
     {
         s->stretch=0;
-        s->width=s->minWidth;        
+        s->width=s->minWidth;
     }
     else
     {
         s->width=w->width();
     }
+
+    // qDebug() << "toggleSectionExpanded " << index << " expanded="<<expanded << " visible="<<visible << " minWidth="<<s->minWidth << " width="<<s->width;
 
     if (index==m_sections.size()-1)
     {
@@ -980,6 +995,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded)
 
     auto wd=recalculateWidths(width() - prevWidth + s->width);
 
+    // qDebug() << "toggleSectionExpanded recalculated section width" <<s->width;
     // qDebug() << "recalculated width="<<wd<<" maxwidth " << maximumWidth();
 
     resize(wd,height());
@@ -1183,9 +1199,9 @@ QWidget* HTreeSplitter::viewPort() const
 
 //--------------------------------------------------------------------------
 
-void HTreeSplitter::toggleSectionExpanded(int index, bool expanded)
+void HTreeSplitter::toggleSectionExpanded(int index, bool expanded, bool visible)
 {
-    pimpl->content->toggleSectionExpanded(index,expanded);
+    pimpl->content->toggleSectionExpanded(index,expanded,visible);
 }
 
 //--------------------------------------------------------------------------

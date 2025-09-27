@@ -25,6 +25,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QFile>
 #include <QPointer>
+#include <QMenu>
+#include <QCursor>
 
 #include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -199,6 +201,8 @@ class HTreeNode_p
 {
     public:
 
+        HTreeNode* node;
+
         HTreePath path;
 
         HTreeTab* treeTab=nullptr;
@@ -226,6 +230,24 @@ class HTreeNode_p
         bool prepareForDestroy=false;
 
         HTreeNodeLocator* nextNodeLocator=nullptr;
+
+        bool collapsiblePlaceholderVisible=true;
+
+        void setCollapsePlaceholderVisible(bool enable)
+        {
+            collapsiblePlaceholderVisible=enable;
+            if (enable)
+            {
+                node->setVisible(true);
+                placeHolder->setVisible(true);
+                node->setFixedWidth(placeHolder->maximumWidth());
+            }
+            else
+            {
+                node->setFixedWidth(0);
+                node->setVisible(false);
+            }
+        }
 };
 
 //--------------------------------------------------------------------------
@@ -234,6 +256,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
     : FrameWithRefresh(parent),
       pimpl(std::make_unique<HTreeNode_p>())
 {
+    pimpl->node=this;
     pimpl->treeTab=treeTab;
 
     auto l=Layout::horizontal(this);
@@ -275,7 +298,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         pimpl->placeHolder,
         &HTreeNodePlaceHolder::expandRequested,
         this,
-        &HTreeNode::expandNode
+        &HTreeNode::onPlaceHolderExpandRequest
     );
 
     setCollapsible(false);
@@ -402,6 +425,7 @@ void HTreeNode::setNodeIcon(const QIcon& val)
 
 void HTreeNode::setContentWidget(QWidget* widget)
 {
+    setVisible(true);
     pimpl->placeHolder->setVisible(false);
 
     pimpl->widget=widget;
@@ -434,15 +458,20 @@ void HTreeNode::collapseNode()
         return;
     }
 
-    pimpl->expanded=false;
-    pimpl->placeHolder->setVisible(true);
+    pimpl->expanded=false;    
     pimpl->mainFrame->setVisible(false);
     destroyWidget(pimpl->widget);
 
-    setFixedWidth(pimpl->placeHolder->maximumWidth());
-    // qDebug() << "collapseNode() minimumWidth=" << minimumWidth() << " minimumWidth="<<minimumWidth();
+    auto emitExpanded=updateCollapsePlaceholder();
+    if (emitExpanded)
+    {
+        emit toggleExpanded(false);
+    }
 
-    emit toggleExpanded(false);
+    if (nextNode())
+    {
+        nextNode()->updateCollapsePlaceholder();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -451,7 +480,12 @@ void HTreeNode::expandNode()
 {
     pimpl->expanded=true;
     fillContent();
-    pimpl->mainFrame->setVisible(true);    
+    pimpl->mainFrame->setVisible(true);
+
+    if (nextNode())
+    {
+        nextNode()->updateCollapsePlaceholder();
+    }
 
     emit toggleExpanded(true);
 }
@@ -762,6 +796,74 @@ void HTreeNode::setCloseEnabled(bool enable)
 bool HTreeNode::isCloseEnabled() const
 {
     return pimpl->closeEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::updateCollapsePlaceholder()
+{
+    if (!isExpanded())
+    {
+        if (treeTab()->isSingleCollapsePlaceholder())
+        {
+            bool visiblePlaceholder=true;
+            auto pNode=parentNode();
+            if (pNode)
+            {
+                if (!pNode->isExpanded())
+                {
+                    visiblePlaceholder=false;
+                }
+            }
+            pimpl->setCollapsePlaceholderVisible(visiblePlaceholder);
+            emit toggleExpanded(false);
+            return false;
+        }
+        pimpl->setCollapsePlaceholderVisible(true);
+    }
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isNodeVisible() const
+{
+    if (treeTab()->isSingleCollapsePlaceholder() && !isExpanded())
+    {
+        return pimpl->collapsiblePlaceholderVisible;
+    }
+
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::onPlaceHolderExpandRequest()
+{
+    // expand this node
+    if (!treeTab()->isSingleCollapsePlaceholder() || !nextNode() || nextNode()->isExpanded())
+    {
+        expandNode();
+        return;
+    }
+
+    // show menu with list of collapsed nodes
+    auto menu=new QMenu(this);
+    auto n=this;
+    while (n && !n->isExpanded())
+    {
+        auto action=menu->addAction(n->name());
+        action->setData(reinterpret_cast<quint64>(n));
+        n=n->nextNode();
+    }
+    auto action=menu->exec(QCursor::pos());
+
+    // expand selected node
+    if (action!=nullptr)
+    {
+        auto selectedNode=reinterpret_cast<HTreeNode*>(action->data().toULongLong());
+        selectedNode->setExpanded(true);
+    }
 }
 
 //--------------------------------------------------------------------------

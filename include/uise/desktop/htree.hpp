@@ -91,6 +91,9 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
 
         HTreeSideBar* sidebar() const;
 
+        void setSingleCollapsePlaceholder(bool enable) noexcept;
+        bool isSingleCollapsePlaceholder() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
