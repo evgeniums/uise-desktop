@@ -101,6 +101,7 @@ class UISE_DESKTOP_EXPORT HTreeNodePlaceHolder : public QFrame
         std::unique_ptr<HTreeNodePlaceHolder_p> pimpl;
 
         friend class HTreeNode;
+        friend class HTreeNode_p;
 };
 
 class HTreeNodeLocator;
@@ -232,6 +233,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
     private:
 
         bool updateCollapsePlaceholder();
+        void updateCollapsePlaceholderTooltip();
 
         std::unique_ptr<HTreeNode_p> pimpl;
 

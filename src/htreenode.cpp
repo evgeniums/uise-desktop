@@ -247,6 +247,19 @@ class HTreeNode_p
                 node->setFixedWidth(0);
                 node->setVisible(false);
             }
+            updatePlaceholderTooltip();
+        }
+
+        void updatePlaceholderTooltip()
+        {
+            if (node->treeTab()->isSingleCollapsePlaceholder() && node->nextNode() && !node->nextNode()->isExpanded())
+            {
+                placeHolder->pimpl->expand->setToolTip(QObject::tr("Expand","HTreeNode"));
+            }
+            else
+            {
+                placeHolder->pimpl->expand->setToolTip(tooltip);
+            }
         }
 };
 
@@ -409,7 +422,7 @@ void HTreeNode::setNodeTooltip(const QString& val)
 {
     pimpl->tooltip=val;
     pimpl->titleBar->pimpl->title->setToolTip(val);
-    pimpl->placeHolder->pimpl->expand->setToolTip(val);
+    pimpl->updatePlaceholderTooltip();
     emit tooltipUpdated(val);
 }
 
@@ -472,6 +485,10 @@ void HTreeNode::collapseNode()
     {
         nextNode()->updateCollapsePlaceholder();
     }
+    if (parentNode())
+    {
+        parentNode()->updateCollapsePlaceholderTooltip();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -485,6 +502,10 @@ void HTreeNode::expandNode()
     if (nextNode())
     {
         nextNode()->updateCollapsePlaceholder();
+    }
+    if (parentNode())
+    {
+        parentNode()->updateCollapsePlaceholderTooltip();
     }
 
     emit toggleExpanded(true);
@@ -819,6 +840,7 @@ bool HTreeNode::updateCollapsePlaceholder()
             emit toggleExpanded(false);
             return false;
         }
+
         pimpl->setCollapsePlaceholderVisible(true);
     }
     return true;
@@ -864,6 +886,13 @@ void HTreeNode::onPlaceHolderExpandRequest()
         auto selectedNode=reinterpret_cast<HTreeNode*>(action->data().toULongLong());
         selectedNode->setExpanded(true);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::updateCollapsePlaceholderTooltip()
+{
+    pimpl->updatePlaceholderTooltip();
 }
 
 //--------------------------------------------------------------------------
