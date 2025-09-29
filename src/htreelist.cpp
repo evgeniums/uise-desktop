@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QPointer>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
@@ -38,7 +40,11 @@ class HTreeListWidget_p
 {
     public:
 
-        FrameWithModalStatus* statusFrame;
+        QBoxLayout* mainLayout;
+
+        QPointer<QWidget> layoutFrame;
+
+        QPointer<FrameWithModalStatus> statusFrame;
         QBoxLayout* layout=nullptr;
 
         QWidget* topWidget=nullptr;
@@ -74,11 +80,7 @@ HTreeListWidget::HTreeListWidget(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<HTreeListWidget_p>())
 {
-    auto l=Layout::vertical(this);
-    pimpl->statusFrame=makeWidget<FrameWithModalStatus>(this);
-    l->addWidget(pimpl->statusFrame);
-
-    pimpl->layout=Layout::vertical(pimpl->statusFrame);
+    pimpl->mainLayout=Layout::vertical(this);
 }
 
 //--------------------------------------------------------------------------
@@ -142,8 +144,36 @@ void HTreeListWidget::onItemRemove(HTreeListItem* item)
 
 //--------------------------------------------------------------------------
 
+void HTreeListWidget::setLayoutFrame(QWidget* frame, QVBoxLayout* layout)
+{
+    if (pimpl->layoutFrame)
+    {
+        destroyWidget(pimpl->layoutFrame);
+    }
+
+    pimpl->layoutFrame=frame;
+    pimpl->mainLayout->addWidget(frame);
+
+    if (layout==nullptr)
+    {
+        pimpl->layout=Layout::vertical(frame);
+    }
+    else
+    {
+        pimpl->layout=layout;
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, QWidget* bottomWidget)
 {
+    if (!pimpl->layoutFrame)
+    {
+        pimpl->statusFrame=makeWidget<FrameWithModalStatus>(this);
+        setLayoutFrame(pimpl->statusFrame);
+    }
+
     int minWidth=0;
 
     if (topWidget!=nullptr)
@@ -223,6 +253,11 @@ int HTreeListWidget::defaultMaxItemWidth() const noexcept
 
 void HTreeListWidget::setBusyWaiting(bool enable)
 {
+    if (!pimpl->statusFrame)
+    {
+        return;
+    }
+
     if (enable)
     {
         pimpl->statusFrame->popupBusyWaiting();
@@ -244,6 +279,11 @@ void HTreeListWidget::showError(const QString& message, const QString& title)
 
 void HTreeListWidget::popupStatus(const QString& message, StatusDialog::Type type, const QString& title)
 {
+    if (!pimpl->statusFrame)
+    {
+        return;
+    }
+
     pimpl->statusFrame->popupStatus(message,type,title);
 }
 
