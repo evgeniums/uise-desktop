@@ -124,14 +124,14 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
         std::unique_ptr<HTreeStandardListItem_p> pimpl;
 };
 
-struct HTreeStandardListItemTraits : public FlyweightListItemTraits<HTreeStandardListItem*,HTreeListItem,std::string,std::string>
+struct HTreeStandardListItemTraits : public FlyweightListItemTraits<HTreeStandardListItem*,HTreeStandardListItem,std::string,std::string>
 {
     static auto sortValue(const HTreeStandardListItem* item) noexcept
     {
         return item->sortValue();
     }
 
-    static HTreeListItem* widget(HTreeStandardListItem* item) noexcept
+    static HTreeStandardListItem* widget(HTreeStandardListItem* item) noexcept
     {
         return item;
     }
