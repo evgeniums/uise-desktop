@@ -42,5 +42,10 @@
         <file>tabler-icons/outline/messages.svg</file>
         <file>tabler-icons/outline/address-book.svg</file>
         <file>tabler-icons/outline/news.svg</file>
+        <file>tabler-icons/outline/devices.svg</file>
+        <file>tabler-icons/outline/devices-2.svg</file>
+        <file>tabler-icons/outline/share.svg</file>
+        <file>tabler-icons/outline/share-2.svg</file>
+        <file>tabler-icons/outline/share-3.svg</file>
     </qresource>
 </RCC>
