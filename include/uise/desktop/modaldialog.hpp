@@ -74,8 +74,8 @@ class ModalDialog : public FrameWithModalPopup,
         }
 
         /**
-         * @brief Open password dialog.
-         * @parame destroyOnCancel Destroy dialog if cancelled
+         * @brief Open modal dialog.
+         * @parame destroyOnCancel Destroy dialog if cancelled.
          * @return Returns true if new dialog is created, false if dialog already existed.
          */
         bool openDialog(bool destroyOnCancel=true)
