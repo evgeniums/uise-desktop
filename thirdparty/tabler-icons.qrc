@@ -38,5 +38,9 @@
         <file>tabler-icons/outline/eye-closed.svg</file>
         <file>tabler-icons/outline/eye.svg</file>
         <file>tabler-icons/outline/key.svg</file>
+        <file>tabler-icons/outline/cookie-man.svg</file>
+        <file>tabler-icons/outline/messages.svg</file>
+        <file>tabler-icons/outline/address-book.svg</file>
+        <file>tabler-icons/outline/news.svg</file>
     </qresource>
 </RCC>
