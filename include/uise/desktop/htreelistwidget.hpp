@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QFrame>
 #include <QPointer>
+#include <QVBoxLayout>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/widget.hpp>
@@ -67,6 +68,7 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
 
         int defaultMaxItemWidth() const noexcept;
 
+        void setLayoutFrame(QWidget* frame, QVBoxLayout* layout=nullptr);
         void setContentWidgets(QWidget* listView, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr);
 
         void showError(const QString& message, const QString& title={});
