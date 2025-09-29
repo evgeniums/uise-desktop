@@ -27,7 +27,8 @@ uise--HTreeSplitterLine {border:none;}
 
 uise--HTreeList {padding:0;margin:0;}
 
-uise--HTreeNode #nodeTopFrame {
+uise--HTreeNode #nodeTopFrame,
+uise--HTreeNode #nodeBottomFrame {
     padding: 10px;
 }
 
