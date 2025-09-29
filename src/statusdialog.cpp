@@ -100,6 +100,11 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
                 titleText=tr("Error");
             }
 
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Close,this)
+                }
+            );
             setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::error",this));
         }
         break;
@@ -111,6 +116,11 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
                 titleText=tr("Warning");
             }
 
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Close,this)
+                }
+            );
             setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::warning",this));
         }
         break;
@@ -121,6 +131,12 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
             {
                 titleText=tr("Information");
             }
+
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Close,this)
+                }
+            );
             setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::info",this));
         }
         break;
@@ -131,12 +147,23 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
             {
                 titleText=tr("Question");
             }
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Yes,this),
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this)
+                }
+            );
             setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::question",this));
         }
         break;
 
         default:
         {
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Close,this)
+                }
+            );
             setStatus(message,tr("Notice"));
         }
         break;
