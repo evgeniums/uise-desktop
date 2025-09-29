@@ -897,4 +897,12 @@ void HTreeNode::updateCollapsePlaceholderTooltip()
 
 //--------------------------------------------------------------------------
 
+void HTreeNode::init()
+{
+    doInit();
+    emit initRequested();
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

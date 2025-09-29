@@ -58,6 +58,8 @@ HTreeNode* HTreeNodeFactory::makeNode(const HTreePathElement& pathElement, HTree
             path=HTreePath{pathElement};
         }
         node->setPath(path);
+        node->setNodeTooltip(QString::fromStdString(pathElement.name()));
+        node->init();
         return node;
     }
 

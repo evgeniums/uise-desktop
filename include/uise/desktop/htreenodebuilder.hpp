@@ -53,21 +53,8 @@ class UISE_DESKTOP_EXPORT HTreeNodeBuilder
         template <typename T, typename ParentT, typename ... Args>
         HTreeNode* makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode, HTreeTab* treeTab, Args&& ...args) const
         {
-            HTreePath path;
-            if (parentNode!=nullptr)
-            {
-                path=HTreePath{parentNode->path(),pathElement};
-            }
-
             auto node=new T(treeTab,parentNode,std::forward<Args>(args)...);
-            node->setNodeTooltip(QString::fromStdString(pathElement.name()));
-            initNode(node);
             return node;
-        }
-
-        virtual void initNode(HTreeNode* node) const
-        {
-            std::ignore=node;
         }
 };
 

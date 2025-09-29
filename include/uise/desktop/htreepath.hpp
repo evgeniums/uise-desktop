@@ -140,7 +140,7 @@ class HTreePathElement
             m_data=std::move(data);
         }
 
-        const QVariant& data() const
+        QVariant data() const
         {
             return m_data;
         }
@@ -255,6 +255,16 @@ class HTreePath
                 return std::string{};
             }
             return l->name();
+        }
+
+        QVariant data() const noexcept
+        {
+            auto l=last();
+            if (l==nullptr)
+            {
+                return QVariant{};
+            }
+            return l->data();
         }
 
         bool operator== (const HTreePath& other) const noexcept

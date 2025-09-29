@@ -193,6 +193,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         bool isNodeVisible( ) const;
 
+        void init();
+
     public slots:
 
         void setNodeName(const QString& val);
@@ -217,9 +219,14 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void toggleExpanded(bool enable);
 
+        void initRequested();
+
     protected:
 
         virtual QWidget* createContentWidget()=0;
+
+        virtual void doInit()
+        {}
 
         void fillContent();
 
