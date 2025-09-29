@@ -160,10 +160,6 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         QIcon icon() const;
         QString nodeTooltip() const;
 
-        void setNodeName(const QString& val);
-        void setNodeTooltip(const QString& val);
-        void setNodeIcon(const QIcon& val);
-
         void setContentWidget(QWidget* widget);
         QWidget* contentWidget() const;
 
@@ -198,6 +194,10 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         bool isNodeVisible( ) const;
 
     public slots:
+
+        void setNodeName(const QString& val);
+        void setNodeTooltip(const QString& val);
+        void setNodeIcon(const QIcon& val);
 
         void closeNode();
         void collapseNode();
