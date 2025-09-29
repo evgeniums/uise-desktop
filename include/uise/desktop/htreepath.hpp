@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_PATH_HPP
 #define UISE_DESKTOP_HTREE_PATH_HPP
 
+#include <QVariant>
+
 #include <string>
 #include <vector>
 
@@ -133,11 +135,22 @@ class HTreePathElement
             return m_id.empty();
         }
 
+        void setData(QVariant data)
+        {
+            m_data=std::move(data);
+        }
+
+        const QVariant& data() const
+        {
+            return m_data;
+        }
+
     private:
 
         std::string m_type;
         std::string m_id;
         std::string m_name;
+        QVariant m_data;
 
         HTreePathElementConfig m_config;
 };
