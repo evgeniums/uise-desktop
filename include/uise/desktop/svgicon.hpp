@@ -246,11 +246,6 @@ class IconVariant
             m_mode=static_cast<int>(val);
         }
 
-        void  setState(QIcon::State state) noexcept
-        {
-            m_mode=state;
-        }
-
         operator int() const noexcept
         {
             return m_mode;
