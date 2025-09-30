@@ -130,6 +130,7 @@ SET (HEADERS
     include/uise/desktop/newpasswordwizard.hpp
 
     include/uise/desktop/pixmapproducer.hpp
+    include/uise/desktop/roundpixmaplabel.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -206,6 +207,7 @@ SET (SOURCES
     src/newpasswordwizard.cpp
 
     src/pixmapproducer.cpp
+    src/roundpixmaplabel.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
