@@ -28,7 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <memory>
 
-#include <QWIdget>
+#include <QWidget>
 
 #include <uise/desktop/uisedesktop.hpp>
 
