@@ -66,7 +66,7 @@ void FwlvTestWidget::setup()
     QFrame* mainFrame=this;
     auto layout=new QGridLayout(mainFrame);
 
-    pimpl->view=new FlwListType();
+    pimpl->view=new FlwListType(FlwListType::PrefetchItemCountHint,UISE_DESKTOP_NAMESPACE::Order::ASC);
 
     int row=0;
     layout->addWidget(pimpl->view,row,0,1,4);

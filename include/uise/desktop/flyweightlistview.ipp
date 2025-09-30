@@ -36,12 +36,14 @@ You may select, at your option, one of the above-listed licenses.
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-FlyweightListView<ItemT>::FlyweightListView(
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListView<ItemT,OrderComparer,IdComparer>::FlyweightListView(
         QWidget* parent,
-        size_t prefetchItemCount
+        size_t prefetchItemCount,
+        OrderComparer orderComparer,
+        IdComparer idComparer
     ) : QFrame(parent),
-        pimpl(std::make_unique<detail::FlyweightListView_p<ItemT>>(this,prefetchItemCount))
+        pimpl(std::make_unique<detail::FlyweightListView_p<ItemT,OrderComparer,IdComparer>>(this,prefetchItemCount,std::move(orderComparer),std::move(idComparer)))
 {
     pimpl->setupUi();
 
@@ -49,136 +51,138 @@ FlyweightListView<ItemT>::FlyweightListView(
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-FlyweightListView<ItemT>::~FlyweightListView()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListView<ItemT,OrderComparer,IdComparer>::~FlyweightListView()
 {
     beginUpdate();
     pimpl->clear();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::resetCallbacks()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::resetCallbacks()
 {
     pimpl->resetCallbacks();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-FlyweightListView<ItemT>::FlyweightListView(
-        size_t prefetchItemCount
-    ) : FlyweightListView(nullptr,prefetchItemCount)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListView<ItemT,OrderComparer,IdComparer>::FlyweightListView(
+        size_t prefetchItemCount,
+        OrderComparer orderComparer,
+        IdComparer idComparer
+    ) : FlyweightListView(nullptr,prefetchItemCount,std::move(orderComparer),std::move(idComparer))
 {
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setPrefetchItemCountHint(size_t val) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setPrefetchItemCountHint(size_t val) noexcept
 {
     pimpl->m_prefetchItemCount=val;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::prefetchItemCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::prefetchItemCount() const noexcept
 {
     return pimpl->prefetchItemCount();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::prefetchItemCountHint() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::prefetchItemCountHint() const noexcept
 {
     return pimpl->m_prefetchItemCountHint;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::visibleItemCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::visibleItemCount() const noexcept
 {
     return pimpl->visibleCount();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::maxHiddenItemCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::maxHiddenItemCount() const noexcept
 {
     return pimpl->maxHiddenItemsBeyondEdge();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::itemCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::itemCount() const noexcept
 {
     return pimpl->m_items.size();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::beginUpdate()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::beginUpdate()
 {
     pimpl->beginUpdate();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::endUpdate()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::endUpdate()
 {
     pimpl->endUpdate();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setRequestItemsCb(RequestItemsCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setRequestItemsCb(RequestItemsCb cb) noexcept
 {
     pimpl->m_requestItemsCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setViewportChangedCb(ItemRangeCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setViewportChangedCb(ItemRangeCb cb) noexcept
 {
     pimpl->m_viewportChangedCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setItemRangeChangedCb(ItemRangeCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setItemRangeChangedCb(ItemRangeCb cb) noexcept
 {
     pimpl->m_itemRangeChangedCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setRequestHomeCb(RequestJumpCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setRequestHomeCb(RequestJumpCb cb) noexcept
 {
     pimpl->m_homeRequestCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setRequestEndCb(RequestJumpCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setRequestEndCb(RequestJumpCb cb) noexcept
 {
     pimpl->m_endRequestCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setInsertItemCb(InsertItemCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setInsertItemCb(InsertItemCb cb) noexcept
 {
     pimpl->m_insertItemCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setRemoveItemCb(RemoveItemCb cb) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setRemoveItemCb(RemoveItemCb cb) noexcept
 {
     pimpl->m_removeItemCb=std::move(cb);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::clear()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::clear()
 {
     beginUpdate();
     pimpl->clear();
@@ -186,22 +190,22 @@ void FlyweightListView<ItemT>::clear()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setOrientation(Qt::Orientation orientation)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setOrientation(Qt::Orientation orientation)
 {
     pimpl->setOrientation(orientation);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-Qt::Orientation FlyweightListView<ItemT>::orientation() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+Qt::Orientation FlyweightListView<ItemT,OrderComparer,IdComparer>::orientation() const noexcept
 {
     return pimpl->m_llist->orientation();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::loadItems(const std::vector<ItemT> &items)
 {
     beginUpdate();
     pimpl->clear();
@@ -210,8 +214,8 @@ void FlyweightListView<ItemT>::loadItems(const std::vector<ItemT> &items)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::vector<ItemT> &items)
 {
     beginUpdate();
     for (auto&& item:items)
@@ -222,8 +226,8 @@ void FlyweightListView<ItemT>::insertItems(const std::vector<ItemT> &items)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &items)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(const std::vector<ItemT> &items)
 {
     beginUpdate();
     pimpl->insertContinuousItems(items);
@@ -231,29 +235,29 @@ void FlyweightListView<ItemT>::insertContinuousItems(const std::vector<ItemT> &i
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::insertItem(const ItemT& item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item)
 {
     pimpl->insertItem(item);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::reorderItem(const ItemT& item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item)
 {
     pimpl->reorderItem(item);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::removeItem(const typename ItemT::IdType &id)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::removeItem(const typename ItemT::IdType &id)
 {
     pimpl->removeItem(id);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::removeItems(const std::vector<typename ItemT::IdType> &ids)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::removeItems(const std::vector<typename ItemT::IdType> &ids)
 {
     beginUpdate();
     for (auto&& id : ids)
@@ -264,164 +268,164 @@ void FlyweightListView<ItemT>::removeItems(const std::vector<typename ItemT::IdT
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::scrollToItem(const typename ItemT::IdType &id, int offset)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToItem(const typename ItemT::IdType &id, int offset)
 {
     return pimpl->scrollToItem(id,offset);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::hasItem(const typename ItemT::IdType &id) const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::hasItem(const typename ItemT::IdType &id) const noexcept
 {
     return pimpl->hasItem(id);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView<ItemT>::item(const typename ItemT::IdType &id) const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::item(const typename ItemT::IdType &id) const noexcept
 {
     return pimpl->item(id);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView<ItemT>::firstItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::firstItem() const noexcept
 {
     return pimpl->firstItem();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView<ItemT>::firstViewportItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::firstViewportItem() const noexcept
 {
     return pimpl->firstViewportItem();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView<ItemT>::lastItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::lastItem() const noexcept
 {
     return pimpl->lastItem();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView<ItemT>::lastViewportItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::lastViewportItem() const noexcept
 {
     return pimpl->lastViewportItem();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::isScrollAtEdge(Direction direction) const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isScrollAtEdge(Direction direction) const noexcept
 {
     return direction==Direction::END?pimpl->isAtEnd():pimpl->isAtBegin();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::scrollToEdge(Direction direction)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToEdge(Direction direction)
 {
     pimpl->scrollToEdge(direction);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setWheelHorizontalScrollEnabled(bool enabled) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setWheelHorizontalScrollEnabled(bool enabled) noexcept
 {
     pimpl->m_scrollWheelHorizontal=enabled;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::isWheelHorizontaScrollEnabled() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isWheelHorizontaScrollEnabled() const noexcept
 {
     return pimpl->m_scrollWheelHorizontal;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::resizeEvent(QResizeEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::resizeEvent(QResizeEvent *event)
 {
     QFrame::resizeEvent(event);
     pimpl->onResized();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setFlyweightEnabled(bool enable) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setFlyweightEnabled(bool enable) noexcept
 {
     return pimpl->setFlyweightEnabled(enable);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::isFlyweightEnabled() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isFlyweightEnabled() const noexcept
 {
     return pimpl->isFlyweightEnabled();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setStickMode(Direction mode) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setStickMode(Direction mode) noexcept
 {
     pimpl->m_stick=mode;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-Direction FlyweightListView<ItemT>::stickMode() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+Direction FlyweightListView<ItemT,OrderComparer,IdComparer>::stickMode() const noexcept
 {
     return pimpl->m_stick;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::scroll(int delta)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::scroll(int delta)
 {
     pimpl->scroll(delta);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setSingleScrollStep(size_t value) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setSingleScrollStep(size_t value) noexcept
 {
     pimpl->m_singleStep=value;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::singleScrollStep() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::singleScrollStep() const noexcept
 {
     return pimpl->m_singleStep;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setMinPageScrollStep(size_t value) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setMinPageScrollStep(size_t value) noexcept
 {
     pimpl->m_minPageStep=value;
     pimpl->updatePageStep();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::minPageScrollStep() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::minPageScrollStep() const noexcept
 {
     return pimpl->m_minPageStep;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView<ItemT>::pageScrollStep() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::pageScrollStep() const noexcept
 {
     return pimpl->m_pageStep;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::keyPressEvent(QKeyEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::keyPressEvent(QKeyEvent *event)
 {
     if (event->key()==(pimpl->isHorizontal()?Qt::Key_Left:Qt::Key_Up))
     {
@@ -458,16 +462,16 @@ void FlyweightListView<ItemT>::keyPressEvent(QKeyEvent *event)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::wheelEvent(QWheelEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent *event)
 {
     pimpl->wheelEvent(event);
     QFrame::wheelEvent(event);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched==pimpl->m_view && event->type()==QEvent::Resize)
     {
@@ -479,80 +483,80 @@ bool FlyweightListView<ItemT>::eventFilter(QObject *watched, QEvent *event)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setMaxSortValue(const typename ItemT::SortValueType &value) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setMaxSortValue(const typename ItemT::SortValueType &value) noexcept
 {
     pimpl->m_maxSortValue=value;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-typename ItemT::SortValueType FlyweightListView<ItemT>::maxSortValue() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+typename ItemT::SortValueType FlyweightListView<ItemT,OrderComparer,IdComparer>::maxSortValue() const noexcept
 {
     return pimpl->m_maxSortValue;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setMinSortValue(const typename ItemT::SortValueType &value) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setMinSortValue(const typename ItemT::SortValueType &value) noexcept
 {
     pimpl->m_minSortValue=value;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-typename ItemT::SortValueType FlyweightListView<ItemT>::minSortValue() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+typename ItemT::SortValueType FlyweightListView<ItemT,OrderComparer,IdComparer>::minSortValue() const noexcept
 {
     return pimpl->m_minSortValue;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QScrollBar* FlyweightListView<ItemT>::verticalScrollBar() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QScrollBar* FlyweightListView<ItemT,OrderComparer,IdComparer>::verticalScrollBar() const noexcept
 {
     return pimpl->m_vbar;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-Qt::ScrollBarPolicy FlyweightListView<ItemT>::verticalScrollBarPolicy() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+Qt::ScrollBarPolicy FlyweightListView<ItemT,OrderComparer,IdComparer>::verticalScrollBarPolicy() const noexcept
 {
     return pimpl->m_vbarPolicy;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy)
 {
     pimpl->m_vbarPolicy=policy;
     pimpl->updateScrollBars();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QScrollBar* FlyweightListView<ItemT>::horizontalScrollBar() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QScrollBar* FlyweightListView<ItemT,OrderComparer,IdComparer>::horizontalScrollBar() const noexcept
 {
     return pimpl->m_hbar;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-Qt::ScrollBarPolicy FlyweightListView<ItemT>::horizontalScrollBarPolicy() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+Qt::ScrollBarPolicy FlyweightListView<ItemT,OrderComparer,IdComparer>::horizontalScrollBarPolicy() const noexcept
 {
     return pimpl->m_hbarPolicy;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView<ItemT>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy)
 {
     pimpl->m_hbarPolicy=policy;
     pimpl->updateScrollBars();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QSize FlyweightListView<ItemT>::viewportSize() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QSize FlyweightListView<ItemT,OrderComparer,IdComparer>::viewportSize() const noexcept
 {
     return pimpl->m_view->size();
 }

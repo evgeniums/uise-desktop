@@ -45,11 +45,40 @@ enum class Direction : uint8_t
     END=2
 };
 
+enum class Order : uint8_t
+{
+    ASC=1,
+    DESC=2
+};
+
 namespace detail
 {
-template <typename ItemT>
-class FlyweightListView_p;
+    template <typename ItemT, typename OrderComparer, typename IdComparer>
+    class FlyweightListView_p;
 }
+
+struct ComparerWithOrder
+{
+    ComparerWithOrder(Order order=Order::ASC) : order(order)
+    {}
+
+    template <typename T1, typename T2>
+    bool operator()(const T1& l, const T2& r) const
+    {
+        if (order==Order::ASC)
+        {
+            return std::less<>{}(l,r);
+        }
+        if (order==Order::DESC)
+        {
+            return std::less<>{}(r,l);
+        }
+
+        return false;
+    }
+
+    Order order;
+};
 
 /**
  * @brief Flyweight list of widgets.
@@ -60,7 +89,7 @@ class FlyweightListView_p;
  *
  *  @note Widget items must be centered in layout.
  */
-template <typename ItemT>
+template <typename ItemT, typename OrderComparer=ComparerWithOrder, typename IdComparer=ComparerWithOrder>
 class FlyweightListView : public QFrame
 {
     public:
@@ -80,13 +109,13 @@ class FlyweightListView : public QFrame
          * @param parent Parent widget.
          * @param prefetchItemCountHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemCountHint().
          */
-        explicit FlyweightListView(QWidget* parent, size_t prefetchItemCountHint=PrefetchItemCountHint);
+        explicit FlyweightListView(QWidget* parent, size_t prefetchItemCountHint=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
         /**
          * @brief Default constructor.
          * @param prefetchItemCountHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemCountHint().
          */
-        explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint);
+        explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
         //! Destructor.
         ~FlyweightListView();
@@ -500,6 +529,9 @@ class FlyweightListView : public QFrame
 
         void resetCallbacks();
 
+        void setSortOrder(Order order) noexcept;
+        Order sortOrder() const noexcept;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
@@ -510,7 +542,7 @@ class FlyweightListView : public QFrame
 
     private:
 
-        std::unique_ptr<detail::FlyweightListView_p<ItemT>> pimpl;
+        std::unique_ptr<detail::FlyweightListView_p<ItemT,OrderComparer,IdComparer>> pimpl;
 };
 
 /**

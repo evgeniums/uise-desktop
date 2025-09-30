@@ -52,10 +52,12 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 namespace detail {
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-FlyweightListView_p<ItemT>::FlyweightListView_p(
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         FlyweightListView<ItemT>* view,
-        size_t prefetchItemCountHint
+        size_t prefetchItemCountHint,
+        OrderComparer orderComparer,
+        IdComparer idComparer
     ) : m_obj(view),
         m_vbar(nullptr),
         m_hbar(nullptr),
@@ -87,19 +89,26 @@ FlyweightListView_p<ItemT>::FlyweightListView_p(
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
         m_hbarPolicy(Qt::ScrollBarAsNeeded),
         m_scrollWheelHorizontal(true)
+    ,
+        m_items(
+          boost::make_tuple(
+            boost::make_tuple(OrderIdxFn{},orderComparer),
+            boost::make_tuple(IdIdxFn{},idComparer)
+          )
+        )
 {
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-FlyweightListView_p<ItemT>::~FlyweightListView_p()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListView_p<ItemT,OrderComparer,IdComparer>::~FlyweightListView_p()
 {
     resetCallbacks();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::resetCallbacks()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resetCallbacks()
 {
     m_removeItemCb=decltype(m_removeItemCb){};
     m_requestItemsCb=decltype(m_requestItemsCb){};
@@ -111,8 +120,8 @@ void FlyweightListView_p<ItemT>::resetCallbacks()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::setupUi()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
 {
     auto vlayout=Layout::vertical(m_obj);
 
@@ -162,16 +171,16 @@ void FlyweightListView_p<ItemT>::setupUi()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::beginUpdate()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::beginUpdate()
 {
     m_ignoreUpdates=true;
     beginItemRangeChange();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::endUpdate()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
 {
     resizeList();
     m_ignoreUpdates=false;
@@ -180,8 +189,8 @@ void FlyweightListView_p<ItemT>::endUpdate()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onListContentResized()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onListContentResized()
 {
     m_resizeListTimer.shot(0,
         [this]()
@@ -193,8 +202,8 @@ void FlyweightListView_p<ItemT>::onListContentResized()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const ItemT* item)
 {
     auto widget=item->widget();
 
@@ -211,44 +220,44 @@ void FlyweightListView_p<ItemT>::configureWidget(const ItemT* item)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::prefetchItemCount() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCount() noexcept
 {
     return autoPrefetchCount();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::autoPrefetchCount() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::autoPrefetchCount() noexcept
 {
     m_prefetchItemCount=std::max(m_prefetchItemCount,visibleCount()*2);
     return m_prefetchItemCount;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::maxHiddenItemsBeyondEdge() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::maxHiddenItemsBeyondEdge() noexcept
 {
     return prefetchItemCount()*2;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::prefetchThreshold() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchThreshold() noexcept
 {
     return prefetchItemCount()*0.75;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::itemsCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemsCount() const noexcept
 {
     return m_items.template get<1>().size();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-size_t FlyweightListView_p<ItemT>::visibleCount() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::visibleCount() const noexcept
 {
     size_t count=0;
 
@@ -273,8 +282,8 @@ size_t FlyweightListView_p<ItemT>::visibleCount() const noexcept
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::hasItem(const typename ItemT::IdType& id) const noexcept
 {
     const auto& idx=itemIdx();
     auto it=idx.find(id);
@@ -282,8 +291,8 @@ bool FlyweightListView_p<ItemT>::hasItem(const typename ItemT::IdType& id) const
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::item(const typename ItemT::IdType &id) const noexcept
 {
     const auto& idx=itemIdx();
     auto it=idx.find(id);
@@ -291,36 +300,36 @@ const ItemT* FlyweightListView_p<ItemT>::item(const typename ItemT::IdType &id) 
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const auto& FlyweightListView_p<ItemT>::itemOrder() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const auto& FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemOrder() const noexcept
 {
     return m_items.template get<0>();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-auto& FlyweightListView_p<ItemT>::itemOrder() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+auto& FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemOrder() noexcept
 {
     return m_items.template get<0>();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const auto& FlyweightListView_p<ItemT>::itemIdx() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const auto& FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemIdx() const noexcept
 {
     return m_items.template get<1>();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-auto& FlyweightListView_p<ItemT>::itemIdx() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+auto& FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemIdx() noexcept
 {
     return m_items.template get<1>();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::firstItem() const noexcept
 {
     const auto& order=itemOrder();
     auto it=order.begin();
@@ -328,8 +337,8 @@ const ItemT* FlyweightListView_p<ItemT>::firstItem() const noexcept
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::lastItem() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::lastItem() const noexcept
 {
     const auto& order=itemOrder();
     auto it=order.rbegin();
@@ -337,15 +346,15 @@ const ItemT* FlyweightListView_p<ItemT>::lastItem() const noexcept
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::isHorizontal() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isHorizontal() const noexcept
 {
     return m_llist->orientation()==Qt::Horizontal;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onWidgetDestroyed(QObject* obj)
 {
     //! @todo crash possible, especially if widget is the first or the last in the list
 
@@ -368,22 +377,22 @@ void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::setFlyweightEnabled(bool enable) noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setFlyweightEnabled(bool enable) noexcept
 {
     m_enableFlyweight=enable;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::isFlyweightEnabled() const noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isFlyweightEnabled() const noexcept
 {
     return m_enableFlyweight;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QPoint FlyweightListView_p<ItemT>::viewportBegin() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QPoint FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportBegin() const
 {
     //! @note Using middle point of the llist, so the items must be centered in the view!
 
@@ -394,8 +403,8 @@ QPoint FlyweightListView_p<ItemT>::viewportBegin() const
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QPoint FlyweightListView_p<ItemT>::listEndInViewport() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QPoint FlyweightListView_p<ItemT,OrderComparer,IdComparer>::listEndInViewport() const
 {
     auto pos=m_llist->pos();
     auto propSize=oprop(m_llist,OProp::size);
@@ -407,29 +416,29 @@ QPoint FlyweightListView_p<ItemT>::listEndInViewport() const
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::isAtBegin() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isAtBegin() const
 {
     return oprop(m_llist->pos(),OProp::pos)==0;
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::isAtEnd() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isAtEnd() const
 {
     return oprop(listEndInViewport(),OProp::pos)<=(oprop(m_view,OProp::size)-1);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-int FlyweightListView_p<ItemT>::endItemEdge() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endItemEdge() const
 {
     return oprop(m_llist,OProp::edge);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::updateStickingPositions()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateStickingPositions()
 {
     auto begin=oprop(m_llist->pos(),OProp::pos);
     auto end=oprop(listEndInViewport(),OProp::pos);
@@ -445,16 +454,16 @@ void FlyweightListView_p<ItemT>::updateStickingPositions()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onResized()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onResized()
 {
     auto margins=m_obj->contentsMargins();
     m_hbar->resize(m_obj->width()-m_vbar->width()-margins.left()-margins.right(),m_hbar->height());
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QResizeEvent *event)
 {
     m_viewSize=event->oldSize();
     if (!m_viewSize.isValid())
@@ -529,8 +538,8 @@ void FlyweightListView_p<ItemT>::onViewportResized(QResizeEvent *event)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::compensateSizeChange()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
 {
     if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
     {
@@ -554,7 +563,7 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
     {
         for (auto it=order.begin();it!=order.end();++it)
         {
-            if (it->sortValue()>=m_firstViewportSortValue)
+            if (m_orderComparer(m_firstViewportSortValue,it->sortValue()) || m_firstViewportSortValue==it->sortValue())
             {
                 oldItem=&(*it);
                 break;
@@ -590,8 +599,8 @@ void FlyweightListView_p<ItemT>::compensateSizeChange()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::updateScrollBarOrientation()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBarOrientation()
 {
     if (isHorizontal())
     {
@@ -618,8 +627,8 @@ void FlyweightListView_p<ItemT>::updateScrollBarOrientation()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::setOrientation(Qt::Orientation orientation)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setOrientation(Qt::Orientation orientation)
 {
     beginUpdate();
     clear();
@@ -630,8 +639,8 @@ void FlyweightListView_p<ItemT>::setOrientation(Qt::Orientation orientation)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::updatePageStep()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updatePageStep()
 {
     m_pageStep=std::max(
                 static_cast<size_t>(oprop(m_view,OProp::size)),
@@ -650,8 +659,8 @@ void FlyweightListView_p<ItemT>::updatePageStep()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::viewportUpdated()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
 {
     if (m_ignoreUpdates)
     {
@@ -670,8 +679,8 @@ void FlyweightListView_p<ItemT>::viewportUpdated()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::informViewportUpdated()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated()
 {
     auto l_firstViewportItemID=m_firstViewportItemID;
     auto l_firstViewportSortValue=m_firstViewportSortValue;
@@ -705,8 +714,8 @@ void FlyweightListView_p<ItemT>::informViewportUpdated()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bool findAfterWidget)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContainer(const ItemT& item, bool findAfterWidget)
 {
     auto& idx=itemIdx();
     auto result=idx.insert(item);
@@ -747,20 +756,20 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertItem(const ItemT& item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item)
 {
     m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::reorderItem(const ItemT& item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item)
 {
     auto first=firstItem();
     auto last=lastItem();
 
-    if (last!=nullptr && item.sortValue()>last->sortValue())
+    if (last!=nullptr && m_orderComparer(last->sortValue(),item.sortValue()))
     {
         if (m_stick==Direction::END && isAtEnd())
         {
@@ -773,7 +782,7 @@ void FlyweightListView_p<ItemT>::reorderItem(const ItemT& item)
 
         return;
     }
-    else if (first!=nullptr && item.sortValue()<first->sortValue())
+    else if (first!=nullptr && m_orderComparer(item.sortValue(),first->sortValue()))
     {
         if (m_stick==Direction::HOME && isAtBegin())
         {
@@ -792,8 +801,8 @@ void FlyweightListView_p<ItemT>::reorderItem(const ItemT& item)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>& items)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertContinuousItems(const std::vector<ItemT>& items)
 {
     if (items.empty())
     {
@@ -817,8 +826,8 @@ void FlyweightListView_p<ItemT>::insertContinuousItems(const std::vector<ItemT>&
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::resizeList()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList()
 {
     auto newSize=oprop(m_llist->sizeHint(),OProp::size);
     QSize listSize;
@@ -835,8 +844,8 @@ void FlyweightListView_p<ItemT>::resizeList()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::clear()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
 {
     const auto& order=itemOrder();
 
@@ -873,8 +882,8 @@ void FlyweightListView_p<ItemT>::clear()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::scroll(int delta)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scroll(int delta)
 {
     auto cb=[delta](int minPos, int maxPos, int oldPos)
     {
@@ -887,8 +896,8 @@ void FlyweightListView_p<ItemT>::scroll(int delta)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent *event)
 {
     auto numPixels = event->pixelDelta();
     auto angleDelta = event->angleDelta();
@@ -963,8 +972,8 @@ void FlyweightListView_p<ItemT>::wheelEvent(QWheelEvent *event)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int)> &cb)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::function<int (int, int, int)> &cb)
 {
     auto viewportSize=oprop(m_view,OProp::size);
     auto listSize=oprop(m_llist,OProp::size);
@@ -991,8 +1000,8 @@ void FlyweightListView_p<ItemT>::scrollTo(const std::function<int (int, int, int
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::scrollToEdge(Direction direction)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToEdge(Direction direction)
 {
     auto cb=[direction](int minPos, int maxPos, int oldPos)
     {
@@ -1018,8 +1027,8 @@ void FlyweightListView_p<ItemT>::scrollToEdge(Direction direction)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, int offset)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItem(const typename ItemT::IdType &id, int offset)
 {
 #if 0
     qDebug() << "Scroll to item "<<id<<" offset "<<offset;
@@ -1052,8 +1061,8 @@ bool FlyweightListView_p<ItemT>::scrollToItem(const typename ItemT::IdType &id, 
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfiguration()
 {
     m_listSize=m_llist->size();
     m_viewSize=m_view->size();
@@ -1091,23 +1100,23 @@ void FlyweightListView_p<ItemT>::keepCurrentConfiguration()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::itemAtPos(const QPoint &pos) const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemAtPos(const QPoint &pos) const
 {
     const auto* widget=directChildWidgetAt(m_llist,pos);
     return PointerHolder::getProperty<const ItemT*>(widget,ItemT::Property);
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::firstViewportItem() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::firstViewportItem() const
 {
     return itemAtPos(viewportBegin());
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::lastViewportItem() const
 {
     //! @note Looking for item in the center of view's end edge, so the items must be centered in the view!
 
@@ -1138,8 +1147,8 @@ const ItemT* FlyweightListView_p<ItemT>::lastViewportItem() const
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::clearWidget(typename ItemT::WidgetType* widget)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clearWidget(typename ItemT::WidgetType* widget)
 {
     if (!widget)
     {
@@ -1160,8 +1169,8 @@ void FlyweightListView_p<ItemT>::clearWidget(typename ItemT::WidgetType* widget)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeItem(const typename ItemT::IdType &id)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeItem(const typename ItemT::IdType &id)
 {
     const auto& idx=itemIdx();
     auto it=idx.find(id);
@@ -1173,8 +1182,8 @@ void FlyweightListView_p<ItemT>::removeItem(const typename ItemT::IdType &id)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeItem(ItemT* item)
 {
     clearWidget(item->widget());
 
@@ -1183,16 +1192,16 @@ void FlyweightListView_p<ItemT>::removeItem(ItemT* item)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::beginItemRangeChange() noexcept
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::beginItemRangeChange() noexcept
 {
     m_firstItem=firstItem();
     m_lastItem=lastItem();
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::endItemRangeChange()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endItemRangeChange()
 {
     const auto* first=m_firstItem;
     const auto* last=m_lastItem;
@@ -1231,8 +1240,8 @@ void FlyweightListView_p<ItemT>::endItemRangeChange()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::checkItemCount()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
 {
     if (!m_enableFlyweight)
     {
@@ -1263,7 +1272,7 @@ void FlyweightListView_p<ItemT>::checkItemCount()
              << " first->sortValue() "<<first->sortValue()
              << " m_minSortValue "<<m_minSortValue;
 #endif
-    if (hiddenBefore<minPrefetch && first->sortValue()>m_minSortValue)
+    if (hiddenBefore<minPrefetch && first && m_orderComparer(m_minSortValue,first->sortValue()))
     {
         if (m_requestItemsCb)
         {
@@ -1299,7 +1308,7 @@ void FlyweightListView_p<ItemT>::checkItemCount()
              << " last->sortValue() "<<last->sortValue()
              << " m_maxSortValue "<<m_maxSortValue;
 #endif
-    if (hiddenAfter<minPrefetch  && last->sortValue()<m_maxSortValue)
+    if (hiddenAfter<minPrefetch  && last && m_orderComparer(last->sortValue(),m_maxSortValue))
     {
         if (m_requestItemsCb)
         {
@@ -1316,8 +1325,8 @@ void FlyweightListView_p<ItemT>::checkItemCount()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromBegin(size_t count)
 {
     if (count==0)
     {
@@ -1344,8 +1353,8 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromBegin(size_t count)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromEnd(size_t count)
 {
     if (count==0)
     {
@@ -1374,8 +1383,8 @@ void FlyweightListView_p<ItemT>::removeExtraItemsFromEnd(size_t count)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::updateScrollBars()
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBars()
 {
     m_vbar->blockSignals(true);
     m_hbar->blockSignals(true);
@@ -1442,8 +1451,8 @@ void FlyweightListView_p<ItemT>::updateScrollBars()
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onMainSbarChanged(int value)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onMainSbarChanged(int value)
 {
     auto oldPos=oprop(m_llist,OProp::pos);
     auto diff=-value-oldPos;
@@ -1451,8 +1460,8 @@ void FlyweightListView_p<ItemT>::onMainSbarChanged(int value)
 }
 
 //--------------------------------------------------------------------------
-template <typename ItemT>
-void FlyweightListView_p<ItemT>::onOtherSbarChanged(int value)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onOtherSbarChanged(int value)
 {
     auto pos=m_llist->pos();
     setOProp(pos,OProp::pos,-value,true);

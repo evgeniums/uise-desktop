@@ -112,7 +112,7 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
         std::function<void ()> listResizeHandler;
 };
 
-template <typename ItemT>
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 class FlyweightListView_p : public OrientationInvariant
 {
     public:
@@ -121,7 +121,9 @@ class FlyweightListView_p : public OrientationInvariant
 
         FlyweightListView_p(
             FlyweightListView<ItemT>* view,
-            size_t prefetchItemCountHint
+            size_t prefetchItemCountHint,
+            OrderComparer orderComparer,
+            IdComparer idComparer
         );
 
         ~FlyweightListView_p();
@@ -236,21 +238,29 @@ class FlyweightListView_p : public OrientationInvariant
 
     public:
 
+        using OrderIdxFn=boost::multi_index::const_mem_fun<
+                        ItemT,
+                        typename ItemT::SortValueType,
+                        &ItemT::sortValue
+            >;
+        using IdIdxFn=boost::multi_index::const_mem_fun<
+                        ItemT,
+                        typename ItemT::IdType,
+                        &ItemT::id
+            >;
+
         using ItemsContainer=boost::multi_index::multi_index_container
             <
                 ItemT,
                 boost::multi_index::indexed_by<
-                    boost::multi_index::ordered_non_unique<boost::multi_index::const_mem_fun<
-                                        ItemT,
-                                        typename ItemT::SortValueType,
-                                        &ItemT::sortValue
-                                    >>
-                    ,
-                    boost::multi_index::ordered_unique<boost::multi_index::const_mem_fun<
-                                        ItemT,
-                                        typename ItemT::IdType,
-                                        &ItemT::id
-                                    >>
+                    boost::multi_index::ordered_non_unique<
+                                    OrderIdxFn,
+                                    OrderComparer
+                    >,
+                    boost::multi_index::ordered_unique<
+                                    IdIdxFn,
+                                    IdComparer
+                    >
                 >
             >;
 
@@ -260,9 +270,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         QFrame* m_view;
         size_t m_prefetchItemCount;
-        size_t m_prefetchItemCountHint;
-
-        ItemsContainer m_items;
+        size_t m_prefetchItemCountHint;        
 
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsCb;
         typename FlyweightListView<ItemT>::ItemRangeCb m_viewportChangedCb;
@@ -322,6 +330,9 @@ class FlyweightListView_p : public OrientationInvariant
         std::function<void (int)> m_hScrollCb;
 
         bool m_scrollWheelHorizontal;
+
+        ItemsContainer m_items;
+        OrderComparer m_orderComparer;
 };
 
 } // namespace detail
