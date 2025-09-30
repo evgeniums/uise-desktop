@@ -74,7 +74,10 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
 
         void onWidgetDestroyed(QObject* obj)
         {
-            widgetDestroyedHandler(obj);
+            if (widgetDestroyedHandler)
+            {
+                widgetDestroyedHandler(obj);
+            }
         }
 
     protected:
@@ -89,7 +92,10 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
                     case QEvent::Show: [[fallthrough]];
                     case QEvent::Hide:
                     {
-                        listResizeHandler();
+                        if (listResizeHandler)
+                        {
+                            listResizeHandler();
+                        }
                     }
                         break;
 
@@ -144,6 +150,8 @@ class FlyweightListView_p : public OrientationInvariant
 
         void insertItem(const ItemT& item);
         QWidget* insertItemToContainer(const ItemT& item, bool findAfterWidget=true);
+
+        void reorderItem(const ItemT& item);
 
         void setFlyweightEnabled(bool enable) noexcept;
 

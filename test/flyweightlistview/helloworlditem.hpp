@@ -62,8 +62,7 @@ class HelloWorldItem : public QFrame
             auto l=Layout::horizontal(this);
             l->addWidget(m_browser);
 
-            m_browser->setText(QString("Hello world %1, %2").arg(seqNum).arg(m_id));
-            setObjectName(QString("Item %1, %2").arg(seqNum).arg(m_id));
+            setSeqNum(seqNum);
             setFixedHeight(100);
         }
 
@@ -85,6 +84,9 @@ class HelloWorldItem : public QFrame
         void setSeqNum(size_t value)
         {
             m_seqNum=value;
+
+            m_browser->setText(QString("Hello world %1, %2").arg(m_seqNum).arg(m_id));
+            setObjectName(QString("Item %1, %2").arg(m_seqNum).arg(m_id));
         }
 
     private:

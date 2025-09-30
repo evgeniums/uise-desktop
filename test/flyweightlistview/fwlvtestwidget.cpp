@@ -105,6 +105,13 @@ void FwlvTestWidget::setup()
     {
         if (pimpl->delNum->value()==1)
         {
+            auto it=pimpl->itemSeqs.find(pimpl->delFrom->value());
+            if (it!=pimpl->itemSeqs.end())
+            {
+                pimpl->items.erase(it->second);
+                pimpl->itemSeqs.erase(it);
+            }
+
             pimpl->view->beginUpdate();
             pimpl->view->removeItem(pimpl->delFrom->value());
             pimpl->view->endUpdate();
@@ -114,6 +121,13 @@ void FwlvTestWidget::setup()
             std::vector<HelloWorldItemWrapper::IdType> ids;
             for (size_t i=pimpl->delFrom->value();i<pimpl->delFrom->value()+pimpl->delNum->value();i++)
             {
+                auto it=pimpl->itemSeqs.find(i);
+                if (it!=pimpl->itemSeqs.end())
+                {
+                    pimpl->items.erase(it->second);
+                    pimpl->itemSeqs.erase(it);
+                }
+
                 ids.emplace_back(i);
             }
             pimpl->view->removeItems(ids);
@@ -209,6 +223,57 @@ void FwlvTestWidget::setup()
     pimpl->jumpToButton=new QPushButton("Jump to",mainFrame);
     layout->addWidget(pimpl->jumpToButton,row,3);
 
+    pimpl->updateSeqNumId=new QSpinBox(mainFrame);
+    layout->addWidget(pimpl->updateSeqNumId,++row,0);
+    pimpl->updateSeqNumId->setMinimum(0);
+    pimpl->updateSeqNumId->setMaximum(HelloWorldItem::MaxHelloWorldItemId);
+    pimpl->updateSeqNumId->setValue(900004);
+    pimpl->updateNewSeqNum=new QSpinBox(mainFrame);
+    layout->addWidget(pimpl->updateNewSeqNum,row,1);
+    pimpl->updateNewSeqNum->setMinimum(0);
+    pimpl->updateNewSeqNum->setMaximum(HelloWorldItem::MaxHelloWorldItemId);
+    pimpl->updateNewSeqNum->setValue(99997);
+    pimpl->updateSeqNumButton=new QPushButton("Update seqnum",mainFrame);
+    layout->addWidget(pimpl->updateSeqNumButton,row,3);
+    QObject::connect(pimpl->updateSeqNumButton,&QPushButton::clicked,
+     [this]()
+     {
+         auto itemId=pimpl->updateSeqNumId->value();
+         auto newSeqNum=pimpl->updateNewSeqNum->value();
+         auto itOldSeq=pimpl->itemSeqs.find(itemId);
+         int oldId=0;
+         if (itOldSeq!=pimpl->itemSeqs.end())
+         {
+             auto oldSeqNum=itOldSeq->second;
+             if (oldSeqNum==newSeqNum)
+             {
+                 return;
+             }
+
+             pimpl->itemSeqs[itemId]=newSeqNum;
+             pimpl->items[newSeqNum]=itemId;
+             pimpl->items.erase(oldSeqNum);
+         }
+         else
+         {
+             return;
+         }
+
+         if (newSeqNum>pimpl->view->maxSortValue())
+         {
+             pimpl->view->setMaxSortValue(newSeqNum);
+         }
+
+         const auto* item=pimpl->view->item(itemId);
+         if (item)
+         {
+             pimpl->view->beginUpdate();
+             item->item()->setSeqNum(newSeqNum);
+             pimpl->view->reorderItem(*item);
+             pimpl->view->endUpdate();
+         }
+     });
+
     pimpl->clearButton=new QPushButton("Clear",mainFrame);
     layout->addWidget(pimpl->clearButton,++row,3);
 
@@ -256,6 +321,7 @@ void FwlvTestWidget::setup()
     for (size_t i=0;i<count;i++)
     {
         pimpl->items[i]=--HelloWorldItem::HelloWorldItemId;
+        pimpl->itemSeqs[HelloWorldItem::HelloWorldItemId]=i;
     }
 
     QObject::connect(pimpl->reloadButton,&QPushButton::clicked,
@@ -329,11 +395,14 @@ void FwlvTestWidget::setup()
         {
             for (size_t i=0;i<itemCount;i++)
             {
-                if (i>=pimpl->items.size())
+                // if (i>=pimpl->items.size())
+                // {
+                //     continue;
+                // }
+                if (pimpl->items.find(i)!=pimpl->items.end())
                 {
-                    continue;
+                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
                 }
-                newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
             }
         }
         else
@@ -342,11 +411,14 @@ void FwlvTestWidget::setup()
             {
                 for (size_t i=idx+1;i<=idx+itemCount;i++)
                 {
-                    if (i>=pimpl->items.size())
+                    // if (i>=pimpl->items.size())
+                    // {
+                    //     continue;
+                    // }
+                    if (pimpl->items.find(i)!=pimpl->items.end())
                     {
-                        continue;
+                        newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
                     }
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
                 }
             }
             else
@@ -357,11 +429,14 @@ void FwlvTestWidget::setup()
                 }
                 for (size_t i=idx-itemCount;i<idx;i++)
                 {
-                    if (i>=pimpl->items.size())
+                    // if (i>=pimpl->items.size())
+                    // {
+                    //     continue;
+                    // }
+                    if (pimpl->items.find(i)!=pimpl->items.end())
                     {
-                        continue;
+                        newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
                     }
-                    newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
                 }
             }
         }

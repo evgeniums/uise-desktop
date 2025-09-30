@@ -239,6 +239,13 @@ void FlyweightListView<ItemT>::insertItem(const ItemT& item)
 
 //--------------------------------------------------------------------------
 template <typename ItemT>
+void FlyweightListView<ItemT>::reorderItem(const ItemT& item)
+{
+    pimpl->reorderItem(item);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
 void FlyweightListView<ItemT>::removeItem(const typename ItemT::IdType &id)
 {
     pimpl->removeItem(id);

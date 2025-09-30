@@ -347,6 +347,8 @@ bool FlyweightListView_p<ItemT>::isHorizontal() const noexcept
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::onWidgetDestroyed(QObject* obj)
 {
+    //! @todo crash possible, especially if widget is the first or the last in the list
+
     auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
     if (item)
     {
@@ -719,7 +721,9 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
         }
         else
         {
+            m_llist->takeWidget(item.widget());
             Q_ASSERT(idx.replace(result.first,item));
+            result.first=idx.find(item.id());
         }
     }
     else
@@ -734,7 +738,8 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
         auto it=m_items.template project<0>(result.first);
         if (it!=order.begin())
         {
-            afterWidget=(--it)->widget();
+            --it;
+            afterWidget=it->widget();
         }
     }
 
@@ -745,6 +750,44 @@ QWidget* FlyweightListView_p<ItemT>::insertItemToContainer(const ItemT& item, bo
 template <typename ItemT>
 void FlyweightListView_p<ItemT>::insertItem(const ItemT& item)
 {
+    m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT>
+void FlyweightListView_p<ItemT>::reorderItem(const ItemT& item)
+{
+    auto first=firstItem();
+    auto last=lastItem();
+
+    if (last!=nullptr && item.sortValue()>last->sortValue())
+    {
+        if (m_stick==Direction::END && isAtEnd())
+        {
+            m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
+        }
+        else
+        {
+            removeItem(item.id());
+        }
+
+        return;
+    }
+    else if (first!=nullptr && item.sortValue()<first->sortValue())
+    {
+        if (m_stick==Direction::HOME && isAtBegin())
+        {
+            insertItemToContainer(item);
+            m_llist->insertWidgetAfter(item.widget(),nullptr);
+        }
+        else
+        {
+            removeItem(item.id());
+        }
+
+        return;
+    }
+
     m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
 }
 

@@ -113,6 +113,8 @@ class FlyweightListView : public QFrame
          */
         void insertItems(const std::vector<ItemT>& items);
 
+        void reorderItem(const ItemT& item);
+
         /**
          * @brief Insert continuous set of items into the list.
          * @param item Items to insert.

@@ -51,6 +51,7 @@ class FwlvTestWidget_p
     public:
 
         std::map<size_t,size_t> items;
+        std::map<size_t,size_t> itemSeqs;
 
         FlwListType* view=nullptr;
 
@@ -82,6 +83,10 @@ class FwlvTestWidget_p
         QPushButton* orientationButton=nullptr;
         QPushButton* flyweightButton=nullptr;
         QComboBox* stickMode=nullptr;
+
+        QSpinBox* updateSeqNumId=nullptr;
+        QSpinBox* updateNewSeqNum=nullptr;
+        QPushButton* updateSeqNumButton=nullptr;
 };
 
 //--------------------------------------------------------------------------
