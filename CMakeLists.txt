@@ -128,6 +128,8 @@ SET (HEADERS
     include/uise/desktop/wizarddialog.hpp
 
     include/uise/desktop/newpasswordwizard.hpp
+
+    include/uise/desktop/pixmapproducer.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -202,6 +204,8 @@ SET (SOURCES
     src/wizarddialog.cpp
 
     src/newpasswordwizard.cpp
+
+    src/pixmapproducer.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
