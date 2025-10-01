@@ -30,7 +30,10 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a86ff"};
+static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a86ff",
+                                    "#00a6fb", "#006494", "ef476f", "#006d77", "#e36414",
+                                    "#2a9d8f", "#fa9500", "#390099", "#ce4257", "#52796f"
+                                    };
 
 /************************** Avatar **********************************/
 
@@ -81,9 +84,9 @@ void Avatar::updateBackgroundColor()
     memcpy(&idx,result.constData(),sizeof(idx));
 
     size_t palletteLength = m_imageSource->backgroundPallette().size();
-    idx=idx%palletteLength;
+    auto colorIdx=idx%palletteLength;
 
-    m_backgroundColor=m_imageSource->backgroundPallette().at(idx);
+    m_backgroundColor=m_imageSource->backgroundPallette().at(colorIdx);
 }
 
 //--------------------------------------------------------------------------
@@ -94,7 +97,6 @@ QPixmap Avatar::generateLetterPixmap(const QSize& size) const
 
     QColor color{Qt::white};
     QString fontName{AvatarSource::DefaultFontName};
-    size_t fontSize=AvatarSource::DefaultFontSize;
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
     int xRadius=px.width()/2;
     int yRadius=px.height()/2;
@@ -103,7 +105,6 @@ QPixmap Avatar::generateLetterPixmap(const QSize& size) const
     {
         color=m_imageSource->fontColor();
         fontName=m_imageSource->fontName();
-        fontSize=m_imageSource->fontSize();
         maxLetters=m_imageSource->maxAvatarLetterCount();
         xRadius=m_imageSource->evalXRadius(px.width());
         yRadius=m_imageSource->evalXRadius(px.height());
@@ -112,16 +113,23 @@ QPixmap Avatar::generateLetterPixmap(const QSize& size) const
     QPainter painter(&px);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(m_backgroundColor);
+    painter.setPen(Qt::transparent);
     painter.drawRoundedRect(0, 0, px.width(), px.height(), xRadius, yRadius);
     painter.setPen(color);
-    QFont font(fontName,fontSize, QFont::Bold);
+    auto fontSize=px.height()*0.35;
+    QFont font(fontName,fontSize,QFont::Bold);
     painter.setFont(font);
 
     QString name=QString::fromUtf8(m_avatarName);
-    auto firstLetters=name.split(" ");
-    auto count=std::min(firstLetters.size(),qsizetype(maxLetters));
-    firstLetters.resize(count);
-    auto letters=firstLetters.join("");
+    auto words=name.split(" ");
+    auto count=std::min(words.size(),qsizetype(maxLetters));
+    words.resize(count);
+    QString letters;
+    for (size_t i=0;i<words.count();i++)
+    {
+        const auto& word=words.at(i);
+        letters+=word.front().toUpper();
+    }
 
     painter.drawText(px.rect(), Qt::AlignCenter, letters);
     painter.end();
@@ -161,11 +169,11 @@ void Avatar::updateGeneratedAvatar()
 
 AvatarSource::AvatarSource()
     : m_fontName(DefaultFontName),
-      m_fontSize(DefaultFontSize),
       m_fontColor(Qt::white),
       m_maxAvatarLetterCount(DefaultMaxAvatarLetterCount)
 {
-    for (size_t i=0;i<sizeof(ColorPallette);i++)
+    auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
+    for (size_t i=0;i<colorCount;i++)
     {
         auto color=QColor::fromString(ColorPallette[i]);
         if (color.isValid())

@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/uise/desktop/demo/avatar">
+        <file>assets/1.jpg</file>
+        <file>assets/2.jpg</file>
+        <file>assets/3.jpg</file>
+    </qresource>
+</RCC>

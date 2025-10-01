@@ -64,6 +64,11 @@ void RoundedImage::createPixmapConsumer(
 
     m_pixmapConsumer=new PixmapConsumer(std::move(name),size,this);
     m_pixmapConsumer->setPixmapSource(m_imageSource);
+
+    if (!size.isNull())
+    {
+        setFixedSize(size);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -93,6 +98,7 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(brush);
+    painter.setPen(Qt::transparent);
     painter.drawRoundedRect(0, 0, width(), height(), m_imageSource->evalXRadius(width()), m_imageSource->evalYRadius(height()));
     QLabel::paintEvent(event);
 }

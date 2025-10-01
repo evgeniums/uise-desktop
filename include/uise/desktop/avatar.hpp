@@ -89,6 +89,8 @@ class UISE_DESKTOP_EXPORT Avatar
         void setImageSource(AvatarSource* imageSource) noexcept
         {
             m_imageSource=imageSource;
+            updateBackgroundColor();
+            updateGeneratedAvatar();
         }
 
         AvatarSource* imageSource() const noexcept
@@ -142,7 +144,6 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
     public:
 
         constexpr static const char* DefaultFontName="Verdana";
-        constexpr static const int DefaultFontSize=24;
         constexpr static const size_t DefaultMaxAvatarLetterCount=2;
 
         using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const QString&)>;
@@ -159,16 +160,6 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         QString fontName() const
         {
             return m_fontName;
-        }
-
-        void setFontSize(int size)
-        {
-            m_fontSize=size;
-        }
-
-        int fontSize() const noexcept
-        {
-            return m_fontSize;
         }
 
         void setFontColor(const QColor& color)
@@ -203,6 +194,26 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
             return m_backgroundPallette;
         }
 
+        std::shared_ptr<Avatar> avatar(const QString& id) const
+        {
+            auto it=m_avatars.find(id);
+            if (it!=m_avatars.end())
+            {
+                return it->second;
+            }
+            return std::shared_ptr<Avatar>{};
+        }
+
+        void setAvatarBuilder(AvatarBuilderFn avatarBuilder)
+        {
+            m_avatarBuilder=avatarBuilder;
+        }
+
+        AvatarBuilderFn avatarBuilder() const
+        {
+            return m_avatarBuilder;
+        }
+
     protected:
 
         void doLoadProducer(const PixmapKey& key) override;
@@ -216,7 +227,6 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         std::map<QString,std::shared_ptr<Avatar>> m_avatars;
 
         QString m_fontName;
-        int m_fontSize;
         QColor m_fontColor;
         size_t m_maxAvatarLetterCount;
         std::vector<QColor> m_backgroundPallette;
