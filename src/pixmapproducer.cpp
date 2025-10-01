@@ -34,7 +34,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 PixmapProducer::PixmapProducer(QString name, const QSize& size)
     : WithNameAndSize(std::move(name),size),
-      m_destroyingTimer(new SingleShotTimer(this))
+      m_destroyingTimer(new SingleShotTimer(this)),
+      m_aspectRatioMode(DefaultAspectRatioMode)
 {
 }
 
@@ -96,7 +97,7 @@ void PixmapProducer::setPixmap(const QPixmap& pixmap, UISE_DESKTOP_NAMESPACE::Ic
 
     if (!px.isNull() && size().isValid() && px.size()!=size())
     {
-        px=px.scaled(size(),Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation);
+        px=px.scaled(size(),m_aspectRatioMode,Qt::SmoothTransformation);
     }
     if (state==QIcon::State::On)
     {
@@ -117,7 +118,7 @@ void PixmapProducer::setDefaultPixmap(const QPixmap& pixmap)
     m_defaultPixmap=pixmap;
     if (!m_defaultPixmap.isNull() && size().isValid() && m_defaultPixmap.size()!=size())
     {
-        m_defaultPixmap=m_defaultPixmap.scaled(size(),Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation);
+        m_defaultPixmap=m_defaultPixmap.scaled(size(),m_aspectRatioMode,Qt::SmoothTransformation);
     }
     emit pixmapUpdated();
 }
@@ -197,7 +198,8 @@ void PixmapConsumer::setPixmapSource(std::shared_ptr<PixmapSource> source)
 //--------------------------------------------------------------------------
 
 PixmapSource::PixmapSource()
-    : m_producerDestroyingDelayMs(DefaultProducerDestroyingDelayMs)
+    : m_producerDestroyingDelayMs(DefaultProducerDestroyingDelayMs),
+      m_aspectRatioMode(DefaultAspectRatioMode)
 {
 }
 
@@ -230,6 +232,7 @@ std::shared_ptr<PixmapProducer> PixmapSource::acquireProducer(PixmapConsumer* co
     producer->registerConsumer(consumer);
     m_producers.insert(producer);
 
+    doLoadProducer(key);
     doLoadPixmap(key);
 
     return producer;
@@ -266,6 +269,7 @@ void PixmapSource::removeProducer(PixmapKey key, PixmapProducer* producer)
 
     auto remove=[key=std::move(key),self]()
     {
+        self->doUnloadProducer(key);
         auto& kIdx=self->keyIdx();
         kIdx.erase(key);
     };
@@ -281,6 +285,60 @@ void PixmapSource::removeProducer(PixmapKey key, PixmapProducer* producer)
             std::move(remove)
         );
     }
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::updatePixmap(const PixmapKey& key, const QPixmap& pixmap)
+{
+    auto& kIdx=keyIdx();
+    auto it=kIdx.find(key);
+    if (it==kIdx.end())
+    {
+        return;
+    }
+
+    auto* producer=it->value();
+
+    if (pixmap.size()!=producer->size())
+    {
+        auto px=pixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
+        producer->setPixmap(px);
+    }
+    else
+    {
+        producer->setPixmap(pixmap);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::updateScaledPixmaps(const QString& name, const QPixmap& originalPixmap)
+{
+    auto& nIdx=nameIdx();
+    auto [from,to]=nIdx.equal_range(name);
+    for (auto it=from; it!=to; ++it)
+    {
+        auto* producer=it->value();
+        auto px=originalPixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
+        producer->setPixmap(px);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<std::shared_ptr<PixmapProducer>> PixmapSource::producers(const QString& name) const
+{
+    std::vector<std::shared_ptr<PixmapProducer>> result;
+
+    const auto& nIdx=nameIdx();
+    auto [from,to]=nIdx.equal_range(name);
+    for (auto it=from; it!=to; ++it)
+    {
+        result.emplace_back(it->sharedValue());
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------

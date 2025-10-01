@@ -34,19 +34,36 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
-    : QLabel(parent,f)
+    : QLabel(parent,f),
+      m_pixmapConsumer(nullptr)
 {}
 
 //--------------------------------------------------------------------------
 
-void RoundedImage::setPixmapSource(
-        std::shared_ptr<PixmapSource> source,
+void RoundedImage::setImageSource(
+        std::shared_ptr<RoundedImageSource> source,
         QString name,
         QSize size
     )
 {
+    m_imageSource=std::move(source);
+    createPixmapConsumer(std::move(name),size);
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::createPixmapConsumer(
+        QString name,
+        QSize size
+    )
+{
+    if (m_pixmapConsumer!=nullptr)
+    {
+        delete m_pixmapConsumer;
+    }
+
     m_pixmapConsumer=new PixmapConsumer(std::move(name),size,this);
-    m_pixmapConsumer->setPixmapSource(std::move(source));
+    m_pixmapConsumer->setPixmapSource(m_imageSource);
 }
 
 //--------------------------------------------------------------------------
@@ -65,11 +82,7 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     {
         if (m_pixmapConsumer!=nullptr)
         {
-            auto prevConsumer=m_pixmapConsumer;
-            auto source=prevConsumer->pixmapSource();
-            setPixmapSource(std::move(source),prevConsumer->name(),size());
-            delete prevConsumer;
-
+            createPixmapConsumer(m_pixmapConsumer->name(),size());
             px=m_pixmapConsumer->pixmapProducer()->pixmap();
         }
 
@@ -80,52 +93,10 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(brush);
-    painter.drawRoundedRect(0, 0, width(), height(), width()/2, height()/2);
+    painter.drawRoundedRect(0, 0, width(), height(), m_imageSource->evalXRadius(width()), m_imageSource->evalYRadius(height()));
     QLabel::paintEvent(event);
 }
 
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
-
-#if 0
-
-// name generation
-
-#include <QApplication>
-#include <QImage>
-#include <QPainter>
-#include <QLabel>
-#include <QPixmap>
-
-int main(int argc, char *argv[]) {
-    QApplication a(argc, argv);
-
-    // 1. Create a QImage
-    int width = 300;
-    int height = 100;
-    QImage image(width, height, QImage::Format_ARGB32);
-    image.fill(Qt::lightGray); // Fill with a background color
-
-    // 2. Draw the name on the image
-    QPainter painter(&image);
-    painter.setPen(Qt::darkBlue); // Set text color
-    QFont font("Verdana", 24, QFont::Bold); // Set font, size, and weight
-    painter.setFont(font);
-
-    QString nameToDisplay = "Qt C++ Image";
-    painter.drawText(image.rect(), Qt::AlignCenter, nameToDisplay); // Draw the name centered
-    painter.end(); // End painting
-
-    // 3. Display the image in a QLabel
-    QLabel *label = new QLabel();
-    label->setPixmap(QPixmap::fromImage(image));
-    label->setWindowTitle("Generated Image");
-    label->show();
-
-    // Optionally, save the image
-    image.save("generated_name_image.png", "PNG");
-
-    return a.exec();
-}
-#endif

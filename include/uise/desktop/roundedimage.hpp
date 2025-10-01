@@ -33,7 +33,57 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class RoundedImage : public QLabel
+class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
+{
+    public:
+
+        using PixmapSource::PixmapSource;
+
+        void setXRadius(int value) noexcept
+        {
+            m_xRadius=value;
+        }
+
+        int xRadius() const noexcept
+        {
+            return m_xRadius;
+        }
+
+        void setYRadius(int value) noexcept
+        {
+            m_yRadius=value;
+        }
+
+        int yRadius() const noexcept
+        {
+            return m_yRadius;
+        }
+
+        int evalXRadius(int width) const noexcept
+        {
+            if (m_xRadius==0)
+            {
+                return width/2;
+            }
+            return m_xRadius;
+        }
+
+        int evalYRadius(int height) const noexcept
+        {
+            if (m_yRadius==0)
+            {
+                return height/2;
+            }
+            return m_yRadius;
+        }
+
+    private:
+
+        int m_xRadius=0;
+        int m_yRadius=0;
+};
+
+class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
 {
     Q_OBJECT
 
@@ -41,8 +91,8 @@ class RoundedImage : public QLabel
 
         explicit RoundedImage(QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
 
-        void setPixmapSource(
-            std::shared_ptr<PixmapSource> source,
+        void setImageSource(
+            std::shared_ptr<RoundedImageSource> source,
             QString name,
             QSize size={}
         );
@@ -58,7 +108,13 @@ class RoundedImage : public QLabel
 
     private:
 
-        PixmapConsumer* m_pixmapConsumer=nullptr;
+        void createPixmapConsumer(
+            QString name,
+            QSize size
+        );
+
+        PixmapConsumer* m_pixmapConsumer;
+        std::shared_ptr<RoundedImageSource> m_imageSource;
 };
 
 UISE_DESKTOP_NAMESPACE_END

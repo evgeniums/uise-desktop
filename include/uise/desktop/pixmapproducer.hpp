@@ -184,6 +184,7 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
     public:
 
         constexpr static const QIcon::State DefaultIconState=QIcon::State::Off;
+        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
 
         PixmapProducer(QString name={}, const QSize& size={});
 
@@ -213,6 +214,16 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         void emitPixmapUpdated()
         {
             emit pixmapUpdated();
+        }
+
+        void setAspectRatioMode(Qt::AspectRatioMode mode) noexcept
+        {
+            m_aspectRatioMode=mode;
+        }
+
+        Qt::AspectRatioMode aspectRatioMode() const noexcept
+        {
+            return m_aspectRatioMode;
         }
 
     signals:
@@ -258,6 +269,8 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         std::set<PixmapConsumer*> m_consumers;
 
         SingleShotTimer* m_destroyingTimer;
+
+        Qt::AspectRatioMode m_aspectRatioMode;
 
         friend class PixmapSource;
 };
@@ -309,6 +322,7 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
     public:
 
         constexpr static const size_t DefaultProducerDestroyingDelayMs=15000;
+        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
 
         PixmapSource();
 
@@ -342,7 +356,33 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
             return m_producerDestroyingDelayMs;
         }
 
+        void updatePixmap(const PixmapKey& key, const QPixmap& pixmap);
+
+        void updateScaledPixmaps(const QString& name, const QPixmap& originalPixmap);
+
+        void setAspectRatioMode(Qt::AspectRatioMode mode) noexcept
+        {
+            m_aspectRatioMode=mode;
+        }
+
+        Qt::AspectRatioMode aspectRatioMode() const noexcept
+        {
+            return m_aspectRatioMode;
+        }
+
+        std::vector<std::shared_ptr<PixmapProducer>> producers(const QString& name) const;
+
     protected:
+
+        virtual void doLoadProducer(const PixmapKey& key)
+        {
+            std::ignore=key;
+        }
+
+        virtual void doUnloadProducer(const PixmapKey& key)
+        {
+            std::ignore=key;
+        }
 
         virtual void doLoadPixmap(const PixmapKey& key) =0;
 
@@ -386,7 +426,14 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
             return m_producers.get<0>();
         }
 
+        const auto& nameIdx() const noexcept
+        {
+            return m_producers.get<0>();
+        }
+
         size_t m_producerDestroyingDelayMs;
+
+        Qt::AspectRatioMode m_aspectRatioMode;
 };
 
 UISE_DESKTOP_NAMESPACE_END
