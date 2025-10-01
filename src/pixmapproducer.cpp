@@ -32,15 +32,6 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-PixmapProducer::PixmapProducer(QString name, const QSize& size)
-    : WithNameAndSize(std::move(name),size),
-      m_destroyingTimer(new SingleShotTimer(this)),
-      m_aspectRatioMode(DefaultAspectRatioMode)
-{
-}
-
-//--------------------------------------------------------------------------
-
 QPixmap PixmapProducer::pixmap(IconVariant mode, QIcon::State state)
 {
     if (m_svgIcon)
@@ -127,21 +118,6 @@ void PixmapProducer::setDefaultPixmap(const QPixmap& pixmap)
 
 //--------------------------------------------------------------------------
 
-PixmapConsumer::PixmapConsumer(QObject* parent)
-    : QObject(parent)
-{
-}
-
-//--------------------------------------------------------------------------
-
-PixmapConsumer::PixmapConsumer(QString name, const QSize& size, QObject* parent)
-    : QObject(parent),
-      WithNameAndSize(std::move(name),size)
-{
-}
-
-//--------------------------------------------------------------------------
-
 PixmapConsumer::~PixmapConsumer()
 {
     resetPixmapProducer();
@@ -213,10 +189,9 @@ PixmapSource::~PixmapSource()
 
 std::shared_ptr<PixmapProducer> PixmapSource::acquireProducer(PixmapConsumer* consumer)
 {
-    PixmapKey key{consumer->name(),consumer->size()};
     auto& kIdx=keyIdx();
 
-    auto it=kIdx.find(key);
+    auto it=kIdx.find(consumer->pixmapKey());
     if (it!=kIdx.end())
     {
         auto destroyingTimer=it->value()->destroyingTimer();
@@ -227,13 +202,13 @@ std::shared_ptr<PixmapProducer> PixmapSource::acquireProducer(PixmapConsumer* co
         return it->sharedValue();
     }
 
-    auto producer=std::make_shared<PixmapProducer>(consumer->name(),consumer->size());
+    auto producer=std::make_shared<PixmapProducer>(consumer->pixmapKey());
     producer->setDefaultPixmap(m_defaultPixmap);
     producer->registerConsumer(consumer);
     m_producers.insert(producer);
 
-    doLoadProducer(key);
-    doLoadPixmap(key);
+    doLoadProducer(consumer->pixmapKey());
+    doLoadPixmap(consumer->pixmapKey());
 
     return producer;
 }
@@ -242,10 +217,9 @@ std::shared_ptr<PixmapProducer> PixmapSource::acquireProducer(PixmapConsumer* co
 
 void PixmapSource::releaseProducer(PixmapConsumer* consumer)
 {
-    PixmapKey key{consumer->name(),consumer->size()};
     auto& kIdx=keyIdx();
 
-    auto it=kIdx.find(key);
+    auto it=kIdx.find(consumer->pixmapKey());
     if (it==kIdx.end())
     {
         return;
@@ -258,7 +232,7 @@ void PixmapSource::releaseProducer(PixmapConsumer* consumer)
         return;
     }
 
-    removeProducer(key,producer);
+    removeProducer(consumer->pixmapKey(),producer);
 }
 
 //--------------------------------------------------------------------------
@@ -313,10 +287,10 @@ void PixmapSource::updatePixmap(const PixmapKey& key, const QPixmap& pixmap)
 
 //--------------------------------------------------------------------------
 
-void PixmapSource::updateScaledPixmaps(const QString& name, const QPixmap& originalPixmap)
+void PixmapSource::updateScaledPixmaps(const WithPath& path, const QPixmap& originalPixmap)
 {
-    auto& nIdx=nameIdx();
-    auto [from,to]=nIdx.equal_range(name);
+    auto& pIdx=pathIdx();
+    auto [from,to]=pIdx.equal_range(path);
     for (auto it=from; it!=to; ++it)
     {
         auto* producer=it->value();
@@ -327,12 +301,12 @@ void PixmapSource::updateScaledPixmaps(const QString& name, const QPixmap& origi
 
 //--------------------------------------------------------------------------
 
-std::vector<std::shared_ptr<PixmapProducer>> PixmapSource::producers(const QString& name) const
+std::vector<std::shared_ptr<PixmapProducer>> PixmapSource::producers(const WithPath& path) const
 {
     std::vector<std::shared_ptr<PixmapProducer>> result;
 
-    const auto& nIdx=nameIdx();
-    auto [from,to]=nIdx.equal_range(name);
+    const auto& nIdx=pathIdx();
+    auto [from,to]=nIdx.equal_range(path);
     for (auto it=from; it!=to; ++it)
     {
         result.emplace_back(it->sharedValue());

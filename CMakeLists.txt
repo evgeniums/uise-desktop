@@ -52,6 +52,7 @@ SET (HEADERS
     include/uise/desktop/utils/substitutecolors.hpp
     include/uise/desktop/utils/wheeleventhandler.hpp
     include/uise/desktop/utils/makenullwidget.hpp
+    include/uise/desktop/utils/withpathandsize.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp

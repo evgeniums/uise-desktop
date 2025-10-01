@@ -93,7 +93,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
 
         void setImageSource(
             std::shared_ptr<RoundedImageSource> source,
-            QString name,
+            WithPath path,
             QSize size={}
         );
 
@@ -109,7 +109,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
     private:
 
         void createPixmapConsumer(
-            QString name,
+            WithPath path,
             QSize size
         );
 

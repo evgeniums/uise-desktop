@@ -39,100 +39,33 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/withpathandsize.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class PixmapProducer;
 class PixmapSource;
 
-class WithNameAndSize
-{
-    public:
-
-        WithNameAndSize(QString name={}, const QSize& size={})
-            : m_name(std::move(name)),
-              m_size(size)
-        {}
-
-        void setSize(const QSize& size)
-        {
-            m_size=size;
-        }
-
-        QSize size() const noexcept
-        {
-            return m_size;
-        }
-
-        void setName(QString name)
-        {
-            m_name=std::move(name);
-        }
-
-        QString name() const noexcept
-        {
-            return m_name;
-        }
-
-    private:
-
-        QString m_name;
-        QSize m_size;
-};
-
-struct PixmapKey
-{
-    QString name;
-    QSize size;
-
-    PixmapKey(QString name={}, QSize size={})
-        : name(std::move(name)),
-        size(size)
-    {}
-
-    PixmapKey(const WithNameAndSize& nmsz)
-        : PixmapKey(nmsz.name(),nmsz.size())
-    {}
-
-    bool operator <(const PixmapKey& other) const noexcept
-    {
-        if (name<other.name)
-        {
-            return true;
-        }
-        if (name>other.name)
-        {
-            return false;
-        }
-        if (size.width()<other.size.width())
-        {
-            return true;
-        }
-        if (size.width()>other.size.width())
-        {
-            return false;
-        }
-        if (size.height()<other.size.height())
-        {
-            return true;
-        }
-        if (size.height()>other.size.height())
-        {
-            return false;
-        }
-        return false;
-    }
-};
-
 class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
-                                           public WithNameAndSize
+                                           public PixmapKey
 {
     Q_OBJECT
 
     public:
 
-        PixmapConsumer(QString name, const QSize& size={}, QObject* parent=nullptr);
-        PixmapConsumer(QObject* parent=nullptr);
+        PixmapConsumer(PixmapKey pixmapKey, QObject* parent=nullptr)
+            : QObject(parent),
+              PixmapKey(std::move(pixmapKey))
+        {}
+
+        template <typename PathT>
+        PixmapConsumer(PathT path, const QSize& size={}, QObject* parent=nullptr)
+            : PixmapConsumer(PixmapKey{std::move(path),size},parent)
+        {}
+
+        PixmapConsumer(QObject* parent=nullptr) :
+            PixmapConsumer(std::vector<std::string>{},QSize{},parent)
+        {}
 
         virtual ~PixmapConsumer();
         PixmapConsumer(const PixmapConsumer&)=delete;
@@ -159,9 +92,9 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
 
         void resetPixmapProducer();
 
-        PixmapKey pixmapKey() const
+        const PixmapKey& pixmapKey() const
         {
-            return PixmapKey{name(),size()};
+            return *this;
         }
 
     signals:
@@ -177,7 +110,7 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
 };
 
 class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
-                                           public WithNameAndSize
+                                           public PixmapKey
 {
     Q_OBJECT
 
@@ -186,16 +119,28 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         constexpr static const QIcon::State DefaultIconState=QIcon::State::Off;
         constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
 
-        PixmapProducer(QString name={}, const QSize& size={});
+        PixmapProducer(PixmapKey pixmapKey)
+            : PixmapKey(std::move(pixmapKey)),
+              m_destroyingTimer(new SingleShotTimer(this)),
+              m_aspectRatioMode(DefaultAspectRatioMode)
+        {}
+
+        template <typename PathT>
+        PixmapProducer(PathT path, const QSize& size={})
+            : PixmapProducer(PixmapKey{std::move(path),size})
+        {}
+
+        PixmapProducer() : PixmapProducer(std::vector<std::string>{})
+        {}
 
         size_t consumerCount() const noexcept
         {
             return m_consumers.size();
         }
 
-        PixmapKey pixmapKey() const
+        const PixmapKey& pixmapKey() const
         {
-            return PixmapKey{name(),size()};
+            return *this;
         }
 
         QPixmap pixmap(IconVariant mode={}, QIcon::State state=DefaultIconState);
@@ -307,9 +252,9 @@ class PixmapProducerWrapper
             return m_value->pixmapKey();
         }
 
-        QString name() const
+        WithPath path() const
         {
-            return m_value->name();
+            return *m_value;
         }
 
     private:
@@ -358,7 +303,7 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
 
         void updatePixmap(const PixmapKey& key, const QPixmap& pixmap);
 
-        void updateScaledPixmaps(const QString& name, const QPixmap& originalPixmap);
+        void updateScaledPixmaps(const WithPath& path, const QPixmap& originalPixmap);
 
         void setAspectRatioMode(Qt::AspectRatioMode mode) noexcept
         {
@@ -370,7 +315,7 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
             return m_aspectRatioMode;
         }
 
-        std::vector<std::shared_ptr<PixmapProducer>> producers(const QString& name) const;
+        std::vector<std::shared_ptr<PixmapProducer>> producers(const WithPath& path) const;
 
     protected:
 
@@ -395,10 +340,10 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
             PixmapKey,
             &PixmapProducerWrapper::key
         >;
-        using PixmapNameIdxFn=boost::multi_index::const_mem_fun<
+        using PixmapPathIdxFn=boost::multi_index::const_mem_fun<
             PixmapProducerWrapper,
-            QString,
-            &PixmapProducerWrapper::name
+            WithPath,
+            &PixmapProducerWrapper::path
         >;
 
         using ProducersContainer=boost::multi_index::multi_index_container
@@ -406,7 +351,7 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
                 PixmapProducerWrapper,
                 boost::multi_index::indexed_by<
                     boost::multi_index::ordered_non_unique<
-                        PixmapNameIdxFn
+                        PixmapPathIdxFn
                         >,
                     boost::multi_index::ordered_unique<
                         PixmapKeyIdxFn
@@ -421,12 +366,12 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
             return m_producers.get<1>();
         }
 
-        auto& nameIdx() noexcept
+        auto& pathIdx() noexcept
         {
             return m_producers.get<0>();
         }
 
-        const auto& nameIdx() const noexcept
+        const auto& pathIdx() const noexcept
         {
             return m_producers.get<0>();
         }

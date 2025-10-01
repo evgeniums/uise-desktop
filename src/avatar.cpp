@@ -59,8 +59,7 @@ void Avatar::updateProducers()
         return;
     }
 
-    auto id=QString::fromUtf8(m_avatarId);
-    auto producers=m_imageSource->producers(id);
+    auto producers=m_imageSource->producers(avatarPath());
     for (auto& producer: producers)
     {
         producer->setPixmap(pixmap(producer->size()));
@@ -77,7 +76,10 @@ void Avatar::updateBackgroundColor()
     }
 
     QCryptographicHash hash{QCryptographicHash::Sha1};
-    hash.addData(m_avatarId);
+    for (const auto& el: avatarPath())
+    {
+        hash.addData(el);
+    }
     auto result=hash.result();
 
     size_t idx=0;
@@ -192,14 +194,14 @@ AvatarSource::AvatarSource()
 
 void AvatarSource::doLoadProducer(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key.name);
+    auto it=m_avatars.find(key);
     if (it==m_avatars.end())
     {
-        auto avatar=m_avatarBuilder(key.name);
-        avatar->setAvatarId(key.name.toStdString());
+        auto avatar=m_avatarBuilder(key);
+        avatar->setAvatarPath(key);
         avatar->setImageSource(this);
         avatar->incRefCount();
-        m_avatars.emplace(key.name,std::move(avatar));
+        m_avatars.emplace(key,std::move(avatar));
     }
     else
     {
@@ -211,7 +213,7 @@ void AvatarSource::doLoadProducer(const PixmapKey& key)
 
 void AvatarSource::doUnloadProducer(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key.name);
+    auto it=m_avatars.find(key);
     if (it!=m_avatars.end())
     {
         it->second->decRefCount();
@@ -226,10 +228,10 @@ void AvatarSource::doUnloadProducer(const PixmapKey& key)
 
 void AvatarSource::doLoadPixmap(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key.name);
+    auto it=m_avatars.find(key);
     if (it!=m_avatars.end())
     {
-        auto px=it->second->pixmap(key.size);
+        auto px=it->second->pixmap(key.size());
         updatePixmap(key,px);
     }
 }

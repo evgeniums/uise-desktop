@@ -35,7 +35,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class AvatarSource;
 
-class UISE_DESKTOP_EXPORT Avatar
+class UISE_DESKTOP_EXPORT Avatar : public WithPath
 {
     public:
 
@@ -54,9 +54,10 @@ class UISE_DESKTOP_EXPORT Avatar
             updateGeneratedAvatar();
         }
 
-        void setAvatarId(std::string id)
+        template <typename PathT>
+        void setAvatarPath(PathT path)
         {
-            m_avatarId=std::move(id);
+            setPath(std::move(path));
             updateBackgroundColor();
             updateGeneratedAvatar();
         }
@@ -66,9 +67,9 @@ class UISE_DESKTOP_EXPORT Avatar
             return m_avatarName;
         }
 
-        std::string avatarId() const
+        const auto& avatarPath() const noexcept
         {
-            return m_avatarId;
+            return path();
         }
 
         void setBasePixmap(const QPixmap& pixmap)
@@ -128,7 +129,6 @@ class UISE_DESKTOP_EXPORT Avatar
 
         void updateGeneratedAvatar();
 
-        std::string m_avatarId;
         std::string m_avatarName;
 
         QColor m_backgroundColor;
@@ -146,7 +146,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         constexpr static const char* DefaultFontName="Verdana";
         constexpr static const size_t DefaultMaxAvatarLetterCount=2;
 
-        using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const QString&)>;
+        using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const WithPath&)>;
 
         AvatarSource();
 
@@ -194,9 +194,9 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
             return m_backgroundPallette;
         }
 
-        std::shared_ptr<Avatar> avatar(const QString& id) const
+        std::shared_ptr<Avatar> avatar(const WithPath& path) const
         {
-            auto it=m_avatars.find(id);
+            auto it=m_avatars.find(path);
             if (it!=m_avatars.end())
             {
                 return it->second;
@@ -224,7 +224,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
     private:
 
-        std::map<QString,std::shared_ptr<Avatar>> m_avatars;
+        std::map<WithPath,std::shared_ptr<Avatar>> m_avatars;
 
         QString m_fontName;
         QColor m_fontColor;

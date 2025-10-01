@@ -42,18 +42,18 @@ RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
 
 void RoundedImage::setImageSource(
         std::shared_ptr<RoundedImageSource> source,
-        QString name,
+        WithPath path,
         QSize size
     )
 {
     m_imageSource=std::move(source);
-    createPixmapConsumer(std::move(name),size);
+    createPixmapConsumer(std::move(path),size);
 }
 
 //--------------------------------------------------------------------------
 
 void RoundedImage::createPixmapConsumer(
-        QString name,
+        WithPath path,
         QSize size
     )
 {
@@ -62,7 +62,7 @@ void RoundedImage::createPixmapConsumer(
         delete m_pixmapConsumer;
     }
 
-    m_pixmapConsumer=new PixmapConsumer(std::move(name),size,this);
+    m_pixmapConsumer=new PixmapConsumer(std::move(path),size,this);
     m_pixmapConsumer->setPixmapSource(m_imageSource);
 
     if (!size.isNull())
@@ -87,7 +87,7 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     {
         if (m_pixmapConsumer!=nullptr)
         {
-            createPixmapConsumer(m_pixmapConsumer->name(),size());
+            createPixmapConsumer(m_pixmapConsumer->path(),size());
             px=m_pixmapConsumer->pixmapProducer()->pixmap();
         }
 

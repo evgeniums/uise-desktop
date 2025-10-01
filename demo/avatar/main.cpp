@@ -37,9 +37,10 @@ using namespace UISE_DESKTOP_NAMESPACE;
 
 struct AvatarBuilder
 {
-    std::shared_ptr<Avatar> operator() (const QString& name) const
+    std::shared_ptr<Avatar> operator() (const WithPath& path) const
     {
         auto avatar=std::make_shared<Avatar>();
+        auto name=QString::fromUtf8(path.path().front());
 
         auto fileName=QString(":/uise/desktop/demo/avatar/assets/%1").arg(name);
 
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
     auto avatarSource=std::make_shared<AvatarSource>();
     avatarSource->setAvatarBuilder(AvatarBuilder{});
 
-    std::vector<QString> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","one more missing.png","александр сергеевич.png"};
+    std::vector<std::string> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","one more missing.png","александр сергеевич.png"};
     std::vector<QSize> sizes{QSize{64,64},QSize{128,128},QSize{150,150}};
 
     for (size_t i=0;i<names.size();i++)
