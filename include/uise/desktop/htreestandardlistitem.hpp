@@ -26,23 +26,17 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_STANDARD_LIST_ITEM_HPP
 #define UISE_DESKTOP_HTREE_STANDARD_LIST_ITEM_HPP
 
-#include <memory>
-#include <QFrame>
-
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/style.hpp>
-#include <uise/desktop/flyweightlistview.hpp>
-#include <uise/desktop/flyweightlistview.ipp>
-#include <uise/desktop/flyweightlistitem.hpp>
-
-#include <uise/desktop/htreelist.hpp>
-#include <uise/desktop/htreelistitem.hpp>
+#include <uise/desktop/htreeflyweightlistitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class PushButton;
+class ElidedLabel;
+
 class HTreeStandardListItem_p;
 
-class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
+class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem
 {
     Q_OBJECT
 
@@ -58,16 +52,6 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
             HTreeStandardListItem({},{},{},parent)
         {}
 
-        /**
-         * @brief Destructor.
-         */
-        ~HTreeStandardListItem();
-
-        HTreeStandardListItem(const HTreeStandardListItem&)=delete;
-        HTreeStandardListItem(HTreeStandardListItem&&)=delete;
-        HTreeStandardListItem& operator=(const HTreeStandardListItem&)=delete;
-        HTreeStandardListItem& operator=(HTreeStandardListItem&&)=delete;
-
         QString text() const;
         QPixmap pixmap() const;
 
@@ -79,26 +63,6 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
 
         void setPropagateIconClick(bool enable);
         bool isPropagateIconClick() const;
-
-        std::string name() const
-        {
-            return pathElement().name();
-        }
-
-        std::string sortValue() const noexcept
-        {
-            return name();
-        }
-
-        std::string type() const
-        {
-            return pathElement().type();
-        }
-
-        std::string id() const
-        {
-            return pathElement().id();
-        }
 
         static QString iconName(const QString& name)
         {
@@ -121,36 +85,21 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeListItem
 
     private:
 
-        std::unique_ptr<HTreeStandardListItem_p> pimpl;
+        PushButton* m_icon=nullptr;
+        ElidedLabel* m_text=nullptr;
+        bool m_propagateIconClick=true;
 };
 
-struct HTreeStandardListItemTraits : public FlyweightListItemTraits<HTreeStandardListItem*,HTreeStandardListItem,std::string,std::string>
-{
-    static auto sortValue(const HTreeStandardListItem* item) noexcept
-    {
-        return item->sortValue();
-    }
+using HTreeStandardListItemTraits=HTreeFlyweightListItemTraits<HTreeStandardListItem>;
+using HTreeStansardListIemWrapper=HTreeFlyweightListItemWrapper<HTreeStandardListItem>;
 
-    static HTreeStandardListItem* widget(HTreeStandardListItem* item) noexcept
-    {
-        return item;
-    }
-
-    static auto id(const HTreeStandardListItem* item)
-    {
-        return item->id();
-    }
-};
-
-using HTreeStansardListIemWrapper=FlyweightListItem<HTreeStandardListItemTraits>;
-
-class UISE_DESKTOP_EXPORT HTreeStandardListItemView : public FlyweightListView<HTreeStansardListIemWrapper>
+class UISE_DESKTOP_EXPORT HTreeStandardListItemView : public HTreeFlyweightListItemView<HTreeStandardListItem>
 {
     Q_OBJECT
 
     public:
 
-        HTreeStandardListItemView(QWidget* parent=nullptr);
+        using HTreeFlyweightListItemView<HTreeStandardListItem>::HTreeFlyweightListItemView;
 };
 
 inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>& items,
@@ -162,18 +111,13 @@ inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>
     items.emplace_back(item);
 }
 
-class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeListFlyweightView<HTreeStansardListIemWrapper>
+class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeFlyweightListView<HTreeStandardListItem>
 {
     Q_OBJECT
 
     public:
 
-        constexpr static const int DefaultMinimumWidth=300;
-
-        HTreeStandardListView(QWidget* parent=nullptr, int minimumWidth=DefaultMinimumWidth);
-
-        HTreeStandardListView(int minimumWidth) : HTreeStandardListView(nullptr,minimumWidth)
-        {}
+        using HTreeFlyweightListView<HTreeStandardListItem>::HTreeFlyweightListView;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -35,55 +35,38 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
-#include <uise/desktop/flyweightlistview.ipp>
-
 #include <uise/desktop/htreestandardlistitem.hpp>
+
+#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /************************* HTreeStandardListItem ******************************/
 
-class HTreeStandardListItem_p
-{
-    public:
-
-        HTreeStandardListItem* self=nullptr;
-        QHBoxLayout* layout=nullptr;
-        PushButton* icon=nullptr;
-        ElidedLabel* text=nullptr;
-        bool propagateIconClick=true;
-};
-
 //--------------------------------------------------------------------------
 
 HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString& text, std::shared_ptr<SvgIcon> icon, QWidget* parent)
-    : HTreeListItem(std::move(el),parent),
-      pimpl(std::make_unique<HTreeStandardListItem_p>())
+    : HTreeFlyweightListItem(std::move(el),parent)
 {
-    pimpl->self=this;
-    pimpl->layout=Layout::horizontal(this);
+    m_icon=new PushButton(this);
+    m_icon->setObjectName("hTreeItemPixmap");
+    m_icon->setSvgIcon(icon);
+    m_icon->setCheckable(true);
 
-    pimpl->icon=new PushButton(this);
-    pimpl->icon->setObjectName("hTreeItemPixmap");
-    pimpl->icon->setSvgIcon(icon);
-    pimpl->icon->setCheckable(true);
-    pimpl->layout->addWidget(pimpl->icon);
+    m_text=new ElidedLabel(this);
+    m_text->setObjectName("hTreeItemText");
 
-    pimpl->text=new ElidedLabel(this);
-    pimpl->text->setObjectName("hTreeItemText");
-    pimpl->layout->addWidget(pimpl->text);
-    pimpl->layout->addStretch(1);
-    setTextElideMode(Qt::ElideMiddle);
-
-    setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+    setItemWidgets(m_icon,m_text,0,1);
+    setTextElideMode(Qt::ElideMiddle);    
 
     connect(
-        pimpl->icon,
+        m_icon,
         &PushButton::clicked,
         this,
         [this]()
         {
-            if (pimpl->propagateIconClick)
+            if (m_propagateIconClick)
             {
                 click();
             }
@@ -93,123 +76,91 @@ HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString&
             }
         }
     );
-    pimpl->text->setText(text);
+    m_text->setText(text);
 }
-
-//--------------------------------------------------------------------------
-
-HTreeStandardListItem::~HTreeStandardListItem()
-{}
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::setText(const QString& text)
 {
-    pimpl->text->setText(text);
+    m_text->setText(text);
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::setPixmap(const QPixmap& pixmap)
 {
-    pimpl->icon->setIcon(pixmap);
+    m_icon->setIcon(pixmap);
 }
 
 //--------------------------------------------------------------------------
 
 QString HTreeStandardListItem::text() const
 {
-    return pimpl->text->text();
+    return m_text->text();
 }
 
 //--------------------------------------------------------------------------
 
 QPixmap HTreeStandardListItem::pixmap() const
 {
-    return pimpl->icon->icon().pixmap(pimpl->icon->size());
+    return m_icon->icon().pixmap(m_icon->size());
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::setTextElideMode(Qt::TextElideMode mode)
 {
-    pimpl->text->setElideMode(mode);
+    m_text->setElideMode(mode);
 }
 
 //--------------------------------------------------------------------------
 
 Qt::TextElideMode HTreeStandardListItem::textElideMode() const
 {
-    return pimpl->text->elideMode();
+    return m_text->elideMode();
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::setIcon(std::shared_ptr<SvgIcon> icon)
 {
-    pimpl->icon->setSvgIcon(std::move(icon));
+    m_icon->setSvgIcon(std::move(icon));
 }
 
 //--------------------------------------------------------------------------
 
 std::shared_ptr<SvgIcon> HTreeStandardListItem::icon() const
 {
-    return pimpl->icon->svgIcon();
+    return m_icon->svgIcon();
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::setPropagateIconClick(bool enable)
 {
-    pimpl->propagateIconClick=enable;
+    m_propagateIconClick=enable;
 }
 
 //--------------------------------------------------------------------------
 
 bool HTreeStandardListItem::isPropagateIconClick() const
 {
-    return pimpl->propagateIconClick;
+    return m_propagateIconClick;
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::doSetHovered(bool enable)
 {
-    pimpl->icon->setParentHovered(enable);
+    m_icon->setParentHovered(enable);
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeStandardListItem::doSetSelected(bool enable)
 {
-    pimpl->icon->setChecked(enable);
-}
-
-/************************* HTreeStandardListItemView ***********************/
-
-
-HTreeStandardListItemView::HTreeStandardListItemView(QWidget* parent) : FlyweightListView<HTreeStansardListIemWrapper>(parent)
-{
-    setSingleScrollStep(10);
-}
-
-/************************* HTreeStandardListView ***********************/
-
-HTreeStandardListView::HTreeStandardListView(QWidget* parent, int minimumWidth) : HTreeListFlyweightView<HTreeStansardListIemWrapper>(parent)
-{
-    auto l=Layout::vertical(this);
-    auto listView=new HTreeStandardListItemView(this);
-    l->addWidget(listView);
-
-    listView->setFlyweightEnabled(false);
-    listView->setStickMode(Direction::HOME);
-    listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    listView->setWheelHorizontalScrollEnabled(false);
-    setListView(listView);
-
-    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-
-    setMinimumWidth(minimumWidth);
+    m_icon->setChecked(enable);
 }
 
 //--------------------------------------------------------------------------
@@ -217,5 +168,8 @@ HTreeStandardListView::HTreeStandardListView(QWidget* parent, int minimumWidth) 
 template class UISE_DESKTOP_EXPORT FlyweightListItemTraits<HTreeStandardListItem*,HTreeListItem,std::string,std::string>;
 template class UISE_DESKTOP_EXPORT FlyweightListItem<HTreeStandardListItemTraits>;
 template class UISE_DESKTOP_EXPORT FlyweightListView<HTreeStansardListIemWrapper>;
+
+template class UISE_DESKTOP_EXPORT HTreeFlyweightListItemView<HTreeStandardListItem>;
+template class UISE_DESKTOP_EXPORT HTreeFlyweightListView<HTreeStandardListItem>;
 
 UISE_DESKTOP_NAMESPACE_END

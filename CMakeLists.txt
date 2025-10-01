@@ -103,6 +103,7 @@ SET (HEADERS
 
     include/uise/desktop/htreelist.hpp
     include/uise/desktop/htreelistitem.hpp
+    include/uise/desktop/htreeflyweightlistitem.hpp
     include/uise/desktop/htreestandardlistitem.hpp
     include/uise/desktop/htreelistwidget.hpp
     include/uise/desktop/htreelistflyweightview.hpp
@@ -145,6 +146,7 @@ SET (HEADERS ${HEADERS}
 
 SET (HEADERS ${HEADERS}
     include/uise/desktop/ipp/dialog.ipp
+    include/uise/desktop/ipp/htreeflyweightlistitem.ipp
 )
 
 SET (SOURCES
@@ -173,6 +175,7 @@ SET (SOURCES
     src/htreenodelocator.cpp
     src/htreebranch.cpp
     src/htreelistitem.cpp
+    src/htreeflyweightlistitem.cpp
     src/htreestandardlistitem.cpp
     src/htreelist.cpp
     src/htreetab.cpp
