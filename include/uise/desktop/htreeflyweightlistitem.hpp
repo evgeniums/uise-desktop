@@ -44,6 +44,9 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
 
         HTreeFlyweightListItem(HTreePathElement el, QWidget* parent=nullptr);
 
+        HTreeFlyweightListItem(QWidget* parent=nullptr) : HTreeFlyweightListItem(HTreePathElement{},parent)
+        {}
+
         void setItemWidgets(QWidget* icon, QWidget* content, int contentStretch=0, int nextStrech=0);
 
         virtual std::string itemName() const
