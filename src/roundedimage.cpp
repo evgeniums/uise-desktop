@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/roundpixmaplabel.cpp
+/** @file uise/desktop/roundedimagel.cpp
 *
 *  Defines round pixmap label.
 *
@@ -25,21 +25,21 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPainter>
 
-#include <uise/desktop/roundpixmaplabel.hpp>
+#include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-/************************** RoundPixmapLabel **********************************/
+/************************** RoundedImage **********************************/
 
 //--------------------------------------------------------------------------
 
-RoundPixmapLabel::RoundPixmapLabel(QWidget *parent, Qt::WindowFlags f)
+RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
     : QLabel(parent,f)
 {}
 
 //--------------------------------------------------------------------------
 
-void RoundPixmapLabel::setPixmapSource(
+void RoundedImage::setPixmapSource(
         std::shared_ptr<PixmapSource> source,
         QString name,
         QSize size
@@ -51,7 +51,7 @@ void RoundPixmapLabel::setPixmapSource(
 
 //--------------------------------------------------------------------------
 
-void RoundPixmapLabel::paintEvent(QPaintEvent *event)
+void RoundedImage::paintEvent(QPaintEvent *event)
 {
     auto px=pixmap();
     bool hasPixmap=!px.isNull();

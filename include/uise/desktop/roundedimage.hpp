@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/roundpixmaplabel.hpp
+/** @file uise/desktop/roundedimagelabel.hpp
 *
 *  Declares round label widget.
 *
@@ -23,8 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_ROUND_PIXMAP_LABEL_HPP
-#define UISE_DESKTOP_ROUND_PIXMAP_LABEL_HPP
+#ifndef UISE_DESKTOP_ROUNDED_IMAGE_HPP
+#define UISE_DESKTOP_ROUNDED_IMAGE_HPP
 
 #include <QLabel>
 
@@ -33,13 +33,13 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class RoundPixmapLabel : public QLabel
+class RoundedImage : public QLabel
 {
     Q_OBJECT
 
     public:
 
-        explicit RoundPixmapLabel(QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
+        explicit RoundedImage(QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
 
         void setPixmapSource(
             std::shared_ptr<PixmapSource> source,
@@ -63,4 +63,4 @@ class RoundPixmapLabel : public QLabel
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_ROUND_PIXMAP_LABEL_HPP
+#endif // UISE_DESKTOP_ROUNDED_IMAGE_HPP
