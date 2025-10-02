@@ -80,6 +80,16 @@ class WithPath
             return m_path<other;
         }
 
+        bool empty() const
+        {
+            return m_path.empty();
+        }
+
+        operator std::vector<std::string>() const
+        {
+            return m_path;
+        }
+
     private:
 
         std::vector<std::string> m_path;
