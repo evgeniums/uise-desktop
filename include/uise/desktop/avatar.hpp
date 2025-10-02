@@ -55,17 +55,17 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             updateGeneratedAvatar();
         }
 
+        std::string avatarName() const
+        {
+            return m_avatarName;
+        }
+
         template <typename PathT>
         void setAvatarPath(PathT path)
         {
             setPath(std::move(path));
             updateBackgroundColor();
             updateGeneratedAvatar();
-        }
-
-        std::string avatarName() const
-        {
-            return m_avatarName;
         }
 
         const auto& avatarPath() const noexcept
@@ -120,6 +120,16 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             return m_backgroundColor;
         }
 
+        void setAutoGenerate(bool enable)
+        {
+            m_autoGenerate=enable;
+        }
+
+        bool isAutogenerate() const noexcept
+        {
+            return m_autoGenerate;
+        }
+
     protected:
 
         virtual void updateBackgroundColor();
@@ -138,6 +148,8 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         AvatarSource* m_imageSource;
 
         int m_refCount;
+
+        bool m_autoGenerate;
 };
 
 class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
@@ -330,11 +342,55 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             return qRound(width() * m_cornerImageSizeRatio);
         }
 
+        void setAvatarName(std::string name)
+        {
+            m_avatarName=std::move(name);
+        }
+
+        std::string avatarName() const
+        {
+            return m_avatarName;
+        }
+
+        void setAvatarSize(QSize size)
+        {
+            setImageSize(size);
+        }
+
+        QSize avatarSize() const
+        {
+            return imageSize();
+        }
+
+        template <typename PathT>
+        void setAvatarPath(PathT path)
+        {
+            setImagePath(std::move(path));
+            updateBackgroundColor();
+        }
+
+        const auto& avatarPath() const noexcept
+        {
+            return path();
+        }
+
+        void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource)
+        {
+            m_avatarSource=avatarSource.get();
+            setImageSource(std::move(avatarSource));
+            updateBackgroundColor();
+        }
+
     protected:
 
         void doPaint(QPainter* painter) override;
+        void doFill(QPainter*, const QPixmap&) override;
+
+        virtual void updateBackgroundColor();
 
     private:
+
+        void generateLetters(QPainter* painter) const;
 
         bool m_rightBottomCircle=false;
         QPixmap m_rightBottomPixmap;
@@ -346,6 +402,11 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         int m_cornerImageYOffset=0;
 
         int m_rightBottomCircleRadius=0;
+
+        std::string m_avatarName;
+
+        AvatarSource* m_avatarSource=nullptr;
+        QColor m_backgroundColor=Qt::blue;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -274,7 +274,7 @@ void PixmapSource::updatePixmap(const PixmapKey& key, const QPixmap& pixmap)
 
     auto* producer=it->value();
 
-    if (pixmap.size()!=producer->size())
+    if (!pixmap.isNull() && pixmap.size()!=producer->size())
     {
         auto px=pixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
         producer->setPixmap(px);
@@ -294,8 +294,15 @@ void PixmapSource::updateScaledPixmaps(const WithPath& path, const QPixmap& orig
     for (auto it=from; it!=to; ++it)
     {
         auto* producer=it->value();
-        auto px=originalPixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
-        producer->setPixmap(px);
+        if (!originalPixmap.isNull())
+        {
+            auto px=originalPixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
+            producer->setPixmap(px);
+        }
+        else
+        {
+            producer->setPixmap(QPixmap{});
+        }
     }
 }
 

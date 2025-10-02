@@ -43,7 +43,8 @@ static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a
 Avatar::Avatar()
     : m_imageSource(nullptr),
       m_refCount(0),
-      m_backgroundColor(Qt::blue)
+      m_backgroundColor(Qt::blue),
+      m_autoGenerate(false)
 {}
 
 //--------------------------------------------------------------------------
@@ -138,7 +139,11 @@ QPixmap Avatar::pixmap(const QSize& size) const
 {
     if (m_basePixmap.isNull())
     {
-        return generateLetterPixmap(size);
+        if (m_autoGenerate)
+        {
+            return generateLetterPixmap(size);
+        }
+        return QPixmap{};
     }
 
     if (m_imageSource==nullptr)
@@ -242,8 +247,6 @@ void AvatarSource::clearAvatars()
 
 void AvatarWidget::doPaint(QPainter* painter)
 {
-    //! @todo Generate letter avatar here
-
     if (m_rightBottomCircle)
     {
         painter->setPen(Qt::NoPen);
@@ -255,11 +258,14 @@ void AvatarWidget::doPaint(QPainter* painter)
 
     int w=qRound(width() * m_cornerImageSizeRatio);
     int h=qRound(height() * m_cornerImageSizeRatio);
+    int x=width() - w - m_cornerImageXOffset;
+    int y=height() - h - m_cornerImageYOffset;
+    QRect rect{x,y,w,h};
 
     auto pixmap=m_rightBottomPixmap;
     if (pixmap.isNull() && m_rightBottomSvgIcon)
     {
-        pixmap=m_rightBottomSvgIcon->pixmap(QSize(w,h));
+        m_rightBottomSvgIcon->paint(painter,rect);
     }
     if (pixmap.isNull())
     {
@@ -271,12 +277,80 @@ void AvatarWidget::doPaint(QPainter* painter)
         pixmap=pixmap.scaled(QSize(w,h),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     }
 
-    int x=width() - w - m_cornerImageXOffset;
-    int y=height() - h - m_cornerImageYOffset;
     painter->setPen(Qt::NoPen);
-    painter->setBrush(pixmap);
-    QRect rect{x,y,w,h};
+    painter->setBrush(pixmap);    
     painter->drawPixmap(rect,pixmap);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::updateBackgroundColor()
+{
+    if (m_avatarSource==nullptr || m_avatarSource->backgroundPallette().empty())
+    {
+        return;
+    }
+
+    QCryptographicHash hash{QCryptographicHash::Sha1};
+    for (const auto& el: avatarPath())
+    {
+        hash.addData(el);
+    }
+    auto result=hash.result();
+
+    size_t idx=0;
+    memcpy(&idx,result.constData(),sizeof(idx));
+
+    size_t palletteLength = m_avatarSource->backgroundPallette().size();
+    auto colorIdx=idx%palletteLength;
+
+    m_backgroundColor=m_avatarSource->backgroundPallette().at(colorIdx);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
+{
+    if (!pixmap.isNull())
+    {
+        RoundedImage::doFill(painter,pixmap);
+        return;
+    }
+
+    painter->setBrush(m_backgroundColor);
+    painter->setPen(Qt::NoPen);
+    painter->drawRoundedRect(0, 0, imageSize().width(), imageSize().height(), xRadius(), yRadius());
+
+    generateLetters(painter);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::generateLetters(QPainter* painter) const
+{
+    QColor color{Qt::white};
+    QString fontName{AvatarSource::DefaultFontName};
+    size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
+
+    painter->setPen(color);
+    auto fontSize=imageSize().height()*0.45;
+    QFont font{fontName};
+    font.setPointSize(qRound(fontSize));
+    font.setStyleStrategy(QFont::PreferAntialias);
+    painter->setFont(font);
+
+    QString name=QString::fromUtf8(m_avatarName);
+    auto words=name.split(" ");
+    auto count=std::min(words.size(),qsizetype(maxLetters));
+    words.resize(count);
+    QString letters;
+    for (size_t i=0;i<words.count();i++)
+    {
+        const auto& word=words.at(i);
+        letters+=word.front().toUpper();
+    }
+
+    painter->drawText(rect(), Qt::AlignCenter, letters);
 }
 
 UISE_DESKTOP_NAMESPACE_END

@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
 
     for (size_t i=0;i<names.size();i++)
     {
+        const auto& name=names[i];
+
         for (size_t j=0;j<sizes.size();j++)
         {
             auto size=sizes.at(j);
@@ -95,11 +97,22 @@ int main(int argc, char *argv[])
             auto img=new AvatarWidget(avatarsFrame);
             if (i!=3)
             {
-                img->setImageSource(avatarSource,names[i],size);
+                img->setAvatarSource(avatarSource);
             }
             else
             {
-                img->setImageSource(avatarSourceRounded,names[i],size);
+                img->setAvatarSource(avatarSourceRounded);
+            }
+            img->setAvatarPath(name);
+            img->setAvatarSize(size);
+
+            if (name.size()<5)
+            {
+                img->setAvatarName(QString("Name %1").arg(QString::fromUtf8(name)).toStdString());
+            }
+            else
+            {
+                img->setAvatarName(name);
             }
 
             avatarsLayout->addWidget(img,i,j);

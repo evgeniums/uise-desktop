@@ -91,21 +91,6 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
 
 QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache)
 {
-    // find content
-    QByteArray content;
-    if (state==QIcon::Off)
-    {
-        // qDebug() << "makePixmap for off mode="<<mode<< " name="<<m_name << " cache="<<cache;
-
-        content=offContent(mode);
-    }
-    else
-    {
-        // qDebug() << "makePixmap for on mode="<<mode<< " name="<<m_name<< " cache="<<cache;
-
-        content=onContent(mode);
-    }
-
     // paint pixmap
     QImage img(size, QImage::Format_ARGB32);
     img.fill(qRgba(0, 0, 0, 0));

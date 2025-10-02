@@ -132,6 +132,11 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             const QSize& size
         );
 
+        QSize imageSize() const
+        {
+            return m_size;
+        }
+
         void setText(const QString&)=delete;
         QString text() const=delete;
 
@@ -153,6 +158,8 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
 
         virtual void doPaint(QPainter*)
         {}
+
+        virtual void doFill(QPainter* painter, const QPixmap& pixmap);
 
     private:
 

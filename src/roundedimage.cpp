@@ -156,15 +156,22 @@ void RoundedImage::paintEvent(QPaintEvent *event)
         px=px.scaled(m_size, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
     }
 
-    QBrush brush(px);
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setBrush(brush);
-    painter.setPen(Qt::NoPen);
-    painter.drawRoundedRect(0, 0, m_size.width(), m_size.height(), xRadius(), yRadius());
+    painter.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    doFill(&painter,px);
 
     doPaint(&painter);
     QLabel::paintEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::doFill(QPainter* painter, const QPixmap& pixmap)
+{
+    QBrush brush(pixmap);
+    painter->setBrush(brush);
+    painter->setPen(Qt::NoPen);
+    painter->drawRoundedRect(0, 0, m_size.width(), m_size.height(), xRadius(), yRadius());
 }
 
 //--------------------------------------------------------------------------
