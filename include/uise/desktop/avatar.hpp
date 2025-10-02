@@ -144,14 +144,14 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 {
     public:
 
-        constexpr static const char* DefaultFontName="Verdana";
+        constexpr static const char* DefaultFontName="Helvetica";
         constexpr static const size_t DefaultMaxAvatarLetterCount=2;
 
         using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const WithPath&)>;
 
         AvatarSource();
 
-        //! @todo Configure font and background color from Style
+        //! @todo Configure font and pallette from Style
 
         void setFontName(QString name)
         {
@@ -241,7 +241,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
     public:
 
-        constexpr static const double CornerWidgetSizeRatio=0.1;
+        constexpr static const double CornerImageSizeRatio=0.3;
 
         using RoundedImage::RoundedImage;
 
@@ -286,15 +286,15 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             update();
         }
 
-        void setCornerWidgetSizeRatio(double value)
+        void setCornerImageSizeRatio(double value)
         {
-            m_cornerWidgetSizeRatio=value;
+            m_cornerImageSizeRatio=value;
             update();
         }
 
-        double cornerWidgetSizeRatio() const noexcept
+        double cornerImageSizeRatio() const noexcept
         {
-            return m_cornerWidgetSizeRatio;
+            return m_cornerImageSizeRatio;
         }
 
         void setRightBottomCircleColor(QColor color)
@@ -308,6 +308,28 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             return m_rightBottomCircleColor;
         }
 
+        void setCornerImageOffsets(int x, int y)
+        {
+            m_cornerImageXOffset=x;
+            m_cornerImageYOffset=y;
+            update();
+        }
+
+        void setRightBottomCircleRadius(int r)
+        {
+            m_rightBottomCircleRadius=r;
+        }
+
+        int rightBottomCircleDiameter() const
+        {
+            if (m_rightBottomCircleRadius!=0)
+            {
+                return m_rightBottomCircleRadius*2;
+            }
+
+            return qRound(width() * m_cornerImageSizeRatio);
+        }
+
     protected:
 
         void doPaint(QPainter* painter) override;
@@ -317,8 +339,13 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         bool m_rightBottomCircle=false;
         QPixmap m_rightBottomPixmap;
         std::shared_ptr<SvgIcon> m_rightBottomSvgIcon;
-        double m_cornerWidgetSizeRatio=CornerWidgetSizeRatio;
+        double m_cornerImageSizeRatio=CornerImageSizeRatio;
         QColor m_rightBottomCircleColor=Qt::green;
+
+        int m_cornerImageXOffset=0;
+        int m_cornerImageYOffset=0;
+
+        int m_rightBottomCircleRadius=0;
 };
 
 UISE_DESKTOP_NAMESPACE_END

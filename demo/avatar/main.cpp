@@ -79,6 +79,10 @@ int main(int argc, char *argv[])
     auto avatarSource=std::make_shared<AvatarSource>();
     avatarSource->setAvatarBuilder(AvatarBuilder{});
 
+    auto avatarSourceRounded=std::make_shared<AvatarSource>();
+    avatarSourceRounded->setAvatarBuilder(AvatarBuilder{});
+    avatarSourceRounded->setRadiusRatio(0.2);
+
     std::vector<std::string> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","one more missing.png","александр сергеевич.png"};
     std::vector<QSize> sizes{QSize{64,64},QSize{128,128},QSize{150,150}};
 
@@ -88,10 +92,45 @@ int main(int argc, char *argv[])
         {
             auto size=sizes.at(j);
 
-            auto img=new RoundedImage(avatarsFrame);
-            img->setImageSource(avatarSource,names[i],size);
+            auto img=new AvatarWidget(avatarsFrame);
+            if (i!=3)
+            {
+                img->setImageSource(avatarSource,names[i],size);
+            }
+            else
+            {
+                img->setImageSource(avatarSourceRounded,names[i],size);
+            }
 
             avatarsLayout->addWidget(img,i,j);
+
+            if (i==2)
+            {
+                img->setRightBottomCircle(true);
+                img->setCornerImageSizeRatio(0.2);
+                if (size.width()==64)
+                {
+                    img->setCornerImageOffsets(4,4);
+                }
+                else if (size.width()==128)
+                {
+                    img->setRightBottomCircleRadius(10);
+                    img->setCornerImageOffsets(8,8);
+                }
+                else if (size.width()==150)
+                {
+                    img->setRightBottomCircleRadius(10);
+                    img->setCornerImageOffsets(9,9);
+                }
+
+                img->setRightBottomCircleColor("#38b000");
+            }
+            if (i==3)
+            {
+                auto svgIcon=std::make_shared<SvgIcon>();
+                svgIcon->addFile(":/uise/icons/ext/classic/cpp.svg");
+                img->setRightBottomSvgIcon(std::move(svgIcon));
+            }
         }
     }
 

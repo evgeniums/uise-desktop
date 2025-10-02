@@ -35,7 +35,9 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
     : QLabel(parent,f),
-      m_pixmapConsumer(nullptr)
+      m_pixmapConsumer(nullptr),
+      m_xRadius(0),
+      m_yRadius(0)
 {}
 
 //--------------------------------------------------------------------------
@@ -105,6 +107,40 @@ void RoundedImage::createPixmapConsumer()
 
 //--------------------------------------------------------------------------
 
+int RoundedImage::xRadius() const
+{
+    if (m_xRadius!=0)
+    {
+        return m_xRadius;
+    }
+
+    int val=width()/2;
+    if (m_imageSource)
+    {
+        val=m_imageSource->evalXRadius(width());
+    }
+    return val;
+}
+
+//--------------------------------------------------------------------------
+
+int RoundedImage::yRadius() const
+{
+    if (m_yRadius!=0)
+    {
+        return m_yRadius;
+    }
+
+    int val=height()/2;
+    if (m_imageSource)
+    {
+        val=m_imageSource->evalYRadius(height());
+    }
+    return val;
+}
+
+//--------------------------------------------------------------------------
+
 void RoundedImage::paintEvent(QPaintEvent *event)
 {
     auto px=pixmap();
@@ -115,32 +151,18 @@ void RoundedImage::paintEvent(QPaintEvent *event)
         px=m_pixmapConsumer->pixmapProducer()->pixmap();
     }
 
-    if (!px.isNull() && px.size()!=size())
+    if (!px.isNull() && px.size()!=m_size)
     {
-        if (m_pixmapConsumer!=nullptr)
-        {
-            setImageSize(size());
-            createPixmapConsumer();
-            px=m_pixmapConsumer->pixmapProducer()->pixmap();
-        }
-
-        px=px.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-    }
-
-    int xRadius=width()/2;
-    int yRadius=height()/2;
-    if (m_imageSource)
-    {
-        xRadius=m_imageSource->evalXRadius(width());
-        yRadius=m_imageSource->evalYRadius(height());
+        px=px.scaled(m_size, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
     }
 
     QBrush brush(px);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(brush);
-    painter.setPen(Qt::transparent);
-    painter.drawRoundedRect(0, 0, width(), height(), xRadius, yRadius);
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(0, 0, m_size.width(), m_size.height(), xRadius(), yRadius());
+
     doPaint(&painter);
     QLabel::paintEvent(event);
 }

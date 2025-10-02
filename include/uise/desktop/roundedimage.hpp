@@ -63,6 +63,11 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
         {
             if (m_xRadius==0)
             {
+                if (m_radiusRatio)
+                {
+                    return qRound(m_radiusRatio.value()*width);
+                }
+
                 return width/2;
             }
             return m_xRadius;
@@ -72,15 +77,32 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
         {
             if (m_yRadius==0)
             {
+                if (m_radiusRatio)
+                {
+                    return qRound(m_radiusRatio.value()*height);
+                }
+
                 return height/2;
             }
             return m_yRadius;
+        }
+
+        void setRadiusRatio(double ratio) noexcept
+        {
+            m_radiusRatio=ratio;
+        }
+
+        void resetradiusRatio() noexcept
+        {
+            m_radiusRatio.reset();
         }
 
     private:
 
         int m_xRadius=0;
         int m_yRadius=0;
+
+        std::optional<double> m_radiusRatio;
 };
 
 class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
@@ -115,6 +137,16 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
 
         //! @todo Implement configurable circle border
 
+        int xRadius() const;
+        int yRadius() const;
+
+        void setCornerRadius(int x, int y)
+        {
+            m_xRadius=x;
+            m_yRadius=y;
+            update();
+        }
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;
@@ -129,6 +161,9 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         PixmapConsumer* m_pixmapConsumer;
         std::shared_ptr<RoundedImageSource> m_imageSource;
         QSize m_size;
+
+        int m_xRadius;
+        int m_yRadius;
 };
 
 UISE_DESKTOP_NAMESPACE_END

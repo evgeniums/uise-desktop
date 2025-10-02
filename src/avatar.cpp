@@ -101,26 +101,18 @@ QPixmap Avatar::generateLetterPixmap(const QSize& size) const
     QColor color{Qt::white};
     QString fontName{AvatarSource::DefaultFontName};
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
-    int xRadius=px.width()/2;
-    int yRadius=px.height()/2;
-
-    if (m_imageSource!=nullptr)
-    {
-        color=m_imageSource->fontColor();
-        fontName=m_imageSource->fontName();
-        maxLetters=m_imageSource->maxAvatarLetterCount();
-        xRadius=m_imageSource->evalXRadius(px.width());
-        yRadius=m_imageSource->evalXRadius(px.height());
-    }
 
     QPainter painter(&px);
-    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::TextAntialiasing);
+
     painter.setBrush(m_backgroundColor);
-    painter.setPen(Qt::transparent);
-    painter.drawRoundedRect(0, 0, px.width(), px.height(), xRadius, yRadius);
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(0, 0, px.width(), px.height());
     painter.setPen(color);
-    auto fontSize=px.height()*0.35;
-    QFont font(fontName,fontSize,QFont::Bold);
+    auto fontSize=px.height()*0.45;
+    QFont font{fontName};
+    font.setPointSize(qRound(fontSize));
+    font.setStyleStrategy(QFont::PreferAntialias);
     painter.setFont(font);
 
     QString name=QString::fromUtf8(m_avatarName);
@@ -250,18 +242,19 @@ void AvatarSource::clearAvatars()
 
 void AvatarWidget::doPaint(QPainter* painter)
 {
-    int w=qRound(width() * m_cornerWidgetSizeRatio);
-    int h=qRound(height() * m_cornerWidgetSizeRatio);
-    int x=width() - w;
-    int y=height() - h;
+    //! @todo Generate letter avatar here
 
     if (m_rightBottomCircle)
     {
-        painter->setPen(Qt::transparent);
+        painter->setPen(Qt::NoPen);
+        auto d=rightBottomCircleDiameter();
         painter->setBrush(m_rightBottomCircleColor);
-        painter->drawEllipse(x, y, w, w);
+        painter->drawEllipse(width()-d-m_cornerImageXOffset, height()-d-m_cornerImageYOffset, d, d);
         return;
     }
+
+    int w=qRound(width() * m_cornerImageSizeRatio);
+    int h=qRound(height() * m_cornerImageSizeRatio);
 
     auto pixmap=m_rightBottomPixmap;
     if (pixmap.isNull() && m_rightBottomSvgIcon)
@@ -278,7 +271,9 @@ void AvatarWidget::doPaint(QPainter* painter)
         pixmap=pixmap.scaled(QSize(w,h),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
     }
 
-    painter->setPen(Qt::transparent);
+    int x=width() - w - m_cornerImageXOffset;
+    int y=height() - h - m_cornerImageYOffset;
+    painter->setPen(Qt::NoPen);
     painter->setBrush(pixmap);
     QRect rect{x,y,w,h};
     painter->drawPixmap(rect,pixmap);
