@@ -326,7 +326,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         bool addFile(
             const QString& filename,
-            IconVariant state=IconMode::Normal,
+            IconVariant state,
             const SizeSet& sizes=SizeSet{}
         )
         {
@@ -335,10 +335,17 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         bool addFile(
                 const QString& filename,
-                const SizeSet& sizes=SizeSet{}
+                const SizeSet& sizes
             )
         {
             return addFile(filename,IconMode::Normal,sizes);
+        }
+
+        bool addFile(
+                const QString& filename
+            )
+        {
+            return addFile(filename,IconMode::Normal,SizeSet{});
         }
 
         void reset()
