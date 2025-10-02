@@ -101,7 +101,7 @@ struct HasDefaultSortValue<T,
  * in TraitsT class. At leaset, the following static methods must be defined:
  *
  *  - WidgetType* TraitsT::widget(ItemType&);
- *  - SortValueType TraitsT::sortValue(const ItemType&);
+ *  - auto TraitsT::sortValue(const ItemType&);
  *  - IdType TraitsT::id(const ItemType&);
  */
 template <typename TraitsT>
@@ -159,7 +159,7 @@ class FlyweightListItem
          * @brief Get item's sort value to be used for items ordering in list view.
          * @return Item's sort value.
          */
-        SortValueType sortValue() const noexcept
+        auto sortValue() const noexcept -> decltype(auto)
         {
             return TraitsT::sortValue(m_item);
         }
@@ -168,7 +168,7 @@ class FlyweightListItem
          * @brief Get item's ID.
          * @return Item's ID.
          */
-        IdType id() const
+        auto id() const noexcept -> decltype(auto)
         {
             return TraitsT::id(m_item);
         }

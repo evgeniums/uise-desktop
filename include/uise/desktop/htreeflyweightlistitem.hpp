@@ -49,12 +49,12 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
 
         void setItemWidgets(QWidget* icon, QWidget* content, int contentStretch=0, int nextStrech=0);
 
-        virtual std::string itemName() const
+        std::string itemName() const
         {
             return pathElement().name();
         }
 
-        virtual std::string itemSortValue() const
+        auto itemSortValue() const
         {
             return pathElement().name();
         }
@@ -64,7 +64,7 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
             return pathElement().type();
         }
 
-        std::string itemId() const
+        auto itemId() const
         {
             return m_id;
         }
@@ -83,7 +83,7 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
 template <typename ItemT=HTreeFlyweightListItem>
 struct HTreeFlyweightListItemTraits : public FlyweightListItemTraits<ItemT*,ItemT,std::string,std::string>
 {
-    static auto sortValue(const ItemT* item) noexcept
+    static auto sortValue(const ItemT* item) noexcept -> decltype(auto)
     {
         return item->itemSortValue();
     }
@@ -93,7 +93,7 @@ struct HTreeFlyweightListItemTraits : public FlyweightListItemTraits<ItemT*,Item
         return item;
     }
 
-    static auto id(const HTreeFlyweightListItem* item)
+    static auto id(const HTreeFlyweightListItem* item) -> decltype(auto)
     {
         return item->itemId();
     }
