@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QColor>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -232,6 +233,92 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         std::vector<QColor> m_backgroundPallette;
 
         AvatarBuilderFn m_avatarBuilder;
+};
+
+class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
+{
+    Q_OBJECT
+
+    public:
+
+        constexpr static const double CornerWidgetSizeRatio=0.1;
+
+        using RoundedImage::RoundedImage;
+
+        void setRightBottomCircle(bool enable) noexcept
+        {
+            m_rightBottomCircle=enable;
+            update();
+        }
+
+        bool isRightBottomCircle() const noexcept
+        {
+            return m_rightBottomCircle;
+        }
+
+        void setRightBottomPixmap(QPixmap pixmap)
+        {
+            m_rightBottomPixmap=std::move(pixmap);
+            update();
+        }
+
+        QPixmap rightBottomWidget() const
+        {
+            return m_rightBottomPixmap;
+        }
+
+        void setRightBottomSvgIcon(std::shared_ptr<SvgIcon> icon)
+        {
+            m_rightBottomSvgIcon=std::move(icon);
+            update();
+        }
+
+        std::shared_ptr<SvgIcon> rightBottomSvgIcon() const
+        {
+            return m_rightBottomSvgIcon;
+        }
+
+        void clearRightBottomCorner()
+        {
+            m_rightBottomCircle=false;
+            m_rightBottomSvgIcon.reset();
+            m_rightBottomPixmap=QPixmap{};
+            update();
+        }
+
+        void setCornerWidgetSizeRatio(double value)
+        {
+            m_cornerWidgetSizeRatio=value;
+            update();
+        }
+
+        double cornerWidgetSizeRatio() const noexcept
+        {
+            return m_cornerWidgetSizeRatio;
+        }
+
+        void setRightBottomCircleColor(QColor color)
+        {
+            m_rightBottomCircleColor=color;
+            update();
+        }
+
+        QColor rightBottomCircleColor() const noexcept
+        {
+            return m_rightBottomCircleColor;
+        }
+
+    protected:
+
+        void doPaint(QPainter* painter) override;
+
+    private:
+
+        bool m_rightBottomCircle=false;
+        QPixmap m_rightBottomPixmap;
+        std::shared_ptr<SvgIcon> m_rightBottomSvgIcon;
+        double m_cornerWidgetSizeRatio=CornerWidgetSizeRatio;
+        QColor m_rightBottomCircleColor=Qt::green;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -83,7 +83,8 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
         int m_yRadius=0;
 };
 
-class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
+class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
+                                         public WithPath
 {
     Q_OBJECT
 
@@ -92,9 +93,21 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
         explicit RoundedImage(QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
 
         void setImageSource(
+            std::shared_ptr<RoundedImageSource> source
+        );
+
+        void setImageSource(
             std::shared_ptr<RoundedImageSource> source,
             WithPath path,
-            QSize size={}
+            const QSize& size={}
+        );
+
+        void setImagePath(
+            WithPath path
+        );
+
+        void setImageSize(
+            const QSize& size
         );
 
         void setText(const QString&)=delete;
@@ -106,15 +119,16 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel
 
         void paintEvent(QPaintEvent *event) override;
 
+        virtual void doPaint(QPainter*)
+        {}
+
     private:
 
-        void createPixmapConsumer(
-            WithPath path,
-            QSize size
-        );
+        void createPixmapConsumer();
 
         PixmapConsumer* m_pixmapConsumer;
         std::shared_ptr<RoundedImageSource> m_imageSource;
+        QSize m_size;
 };
 
 UISE_DESKTOP_NAMESPACE_END

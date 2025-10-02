@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QCryptographicHash>
 #include <QPainter>
+#include <QtNumeric>
 
 #include <uise/desktop/avatar.hpp>
 
@@ -243,6 +244,44 @@ void AvatarSource::clearAvatars()
     m_avatars.clear();
 }
 
+/************************** AvatarWidget *****************************/
+
 //--------------------------------------------------------------------------
+
+void AvatarWidget::doPaint(QPainter* painter)
+{
+    int w=qRound(width() * m_cornerWidgetSizeRatio);
+    int h=qRound(height() * m_cornerWidgetSizeRatio);
+    int x=width() - w;
+    int y=height() - h;
+
+    if (m_rightBottomCircle)
+    {
+        painter->setPen(Qt::transparent);
+        painter->setBrush(m_rightBottomCircleColor);
+        painter->drawEllipse(x, y, w, w);
+        return;
+    }
+
+    auto pixmap=m_rightBottomPixmap;
+    if (pixmap.isNull() && m_rightBottomSvgIcon)
+    {
+        pixmap=m_rightBottomSvgIcon->pixmap(QSize(w,h));
+    }
+    if (pixmap.isNull())
+    {
+        return;
+    }
+
+    if (pixmap.width()!=w || pixmap.height()!=h)
+    {
+        pixmap=pixmap.scaled(QSize(w,h),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+    }
+
+    painter->setPen(Qt::transparent);
+    painter->setBrush(pixmap);
+    QRect rect{x,y,w,h};
+    painter->drawPixmap(rect,pixmap);
+}
 
 UISE_DESKTOP_NAMESPACE_END

@@ -41,34 +41,66 @@ RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
 //--------------------------------------------------------------------------
 
 void RoundedImage::setImageSource(
-        std::shared_ptr<RoundedImageSource> source,
-        WithPath path,
-        QSize size
+        std::shared_ptr<RoundedImageSource> source
     )
 {
     m_imageSource=std::move(source);
-    createPixmapConsumer(std::move(path),size);
+    createPixmapConsumer();
 }
 
 //--------------------------------------------------------------------------
 
-void RoundedImage::createPixmapConsumer(
+void RoundedImage::setImageSource(
+        std::shared_ptr<RoundedImageSource> source,
         WithPath path,
-        QSize size
+        const QSize& size
     )
+{
+    setImagePath(std::move(path));
+    if (size.isValid())
+    {
+        setImageSize(size);
+    }
+    setImageSource(std::move(source));
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::setImagePath(
+        WithPath path
+    )
+{
+    setPath(std::move(path));
+    createPixmapConsumer();
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::setImageSize(
+        const QSize& size
+    )
+{
+    m_size=size;
+    setFixedSize(m_size);
+    createPixmapConsumer();
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::createPixmapConsumer()
 {
     if (m_pixmapConsumer!=nullptr)
     {
         delete m_pixmapConsumer;
+        m_pixmapConsumer=nullptr;
     }
-
-    m_pixmapConsumer=new PixmapConsumer(std::move(path),size,this);
-    m_pixmapConsumer->setPixmapSource(m_imageSource);
-
-    if (!size.isNull())
+    if (!m_imageSource || path().empty())
     {
-        setFixedSize(size);
+        return;
     }
+
+    m_pixmapConsumer=new PixmapConsumer(path(),m_size,this);
+    m_pixmapConsumer->setPixmapSource(m_imageSource);
 }
 
 //--------------------------------------------------------------------------
@@ -87,11 +119,20 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     {
         if (m_pixmapConsumer!=nullptr)
         {
-            createPixmapConsumer(m_pixmapConsumer->path(),size());
+            setImageSize(size());
+            createPixmapConsumer();
             px=m_pixmapConsumer->pixmapProducer()->pixmap();
         }
 
         px=px.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+    }
+
+    int xRadius=width()/2;
+    int yRadius=height()/2;
+    if (m_imageSource)
+    {
+        xRadius=m_imageSource->evalXRadius(width());
+        yRadius=m_imageSource->evalYRadius(height());
     }
 
     QBrush brush(px);
@@ -99,7 +140,8 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setBrush(brush);
     painter.setPen(Qt::transparent);
-    painter.drawRoundedRect(0, 0, width(), height(), m_imageSource->evalXRadius(width()), m_imageSource->evalYRadius(height()));
+    painter.drawRoundedRect(0, 0, width(), height(), xRadius, yRadius);
+    doPaint(&painter);
     QLabel::paintEvent(event);
 }
 
