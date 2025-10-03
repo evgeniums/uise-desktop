@@ -41,21 +41,27 @@ struct AvatarBuilder
     {
         auto avatar=std::make_shared<Avatar>();
         auto name=QString::fromUtf8(path.path().front());
-
-        auto fileName=QString(":/uise/desktop/demo/avatar/assets/%1").arg(name);
-
-        if (QFile::exists(fileName))
+        if (name=="noname")
         {
-            QPixmap px{fileName};
-            avatar->setBasePixmap(px);
+            name.clear();
         }
-        if (name.size()<5)
+
+        if (!name.isEmpty())
         {
-            avatar->setAvatarName(QString("Name %1").arg(name).toStdString());
-        }
-        else
-        {
-            avatar->setAvatarName(name.toStdString());
+            auto fileName=QString(":/uise/desktop/demo/avatar/assets/%1").arg(name);
+            if (QFile::exists(fileName))
+            {
+                QPixmap px{fileName};
+                avatar->setBasePixmap(px);
+            }
+            if (name.size()<5)
+            {
+                avatar->setAvatarName(QString("Name %1").arg(name).toStdString());
+            }
+            else
+            {
+                avatar->setAvatarName(name.toStdString());
+            }
         }
 
         return avatar;
@@ -78,17 +84,20 @@ int main(int argc, char *argv[])
 
     auto avatarSource=std::make_shared<AvatarSource>();
     avatarSource->setAvatarBuilder(AvatarBuilder{});
+    auto noNameSvgIcon=std::make_shared<SvgIcon>();
+    noNameSvgIcon->addFile(":/icons/tabler-icons/filled/user.svg");
+    avatarSource->setNoNameSvgIcon(std::move(noNameSvgIcon));
 
     auto avatarSourceRounded=std::make_shared<AvatarSource>();
     avatarSourceRounded->setAvatarBuilder(AvatarBuilder{});
     avatarSourceRounded->setRadiusRatio(0.2);
 
-    std::vector<std::string> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","one more missing.png","александр сергеевич.png"};
+    std::vector<std::string> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","noname","one more missing.png","александр сергеевич.png"};
     std::vector<QSize> sizes{QSize{64,64},QSize{128,128},QSize{150,150}};
 
     for (size_t i=0;i<names.size();i++)
     {
-        const auto& name=names[i];
+        auto name=names[i];
 
         for (size_t j=0;j<sizes.size();j++)
         {
@@ -106,13 +115,16 @@ int main(int argc, char *argv[])
             img->setAvatarPath(name);
             img->setAvatarSize(size);
 
-            if (name.size()<5)
+            if (name!="noname")
             {
-                img->setAvatarName(QString("Name %1").arg(QString::fromUtf8(name)).toStdString());
-            }
-            else
-            {
-                img->setAvatarName(name);
+                if (name.size()<5)
+                {
+                    img->setAvatarName(QString("Name %1").arg(QString::fromUtf8(name)).toStdString());
+                }
+                else
+                {
+                    img->setAvatarName(name);
+                }
             }
 
             avatarsLayout->addWidget(img,i,j);

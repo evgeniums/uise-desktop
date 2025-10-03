@@ -42,9 +42,7 @@ static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a
 
 Avatar::Avatar()
     : m_imageSource(nullptr),
-      m_refCount(0),
-      m_backgroundColor(Qt::blue),
-      m_autoGenerate(false)
+      m_refCount(0)
 {}
 
 //--------------------------------------------------------------------------
@@ -70,79 +68,10 @@ void Avatar::updateProducers()
 
 //--------------------------------------------------------------------------
 
-void Avatar::updateBackgroundColor()
-{
-    if (m_imageSource==nullptr || m_imageSource->backgroundPallette().empty())
-    {
-        return;
-    }
-
-    QCryptographicHash hash{QCryptographicHash::Sha1};
-    for (const auto& el: avatarPath())
-    {
-        hash.addData(el);
-    }
-    auto result=hash.result();
-
-    size_t idx=0;
-    memcpy(&idx,result.constData(),sizeof(idx));
-
-    size_t palletteLength = m_imageSource->backgroundPallette().size();
-    auto colorIdx=idx%palletteLength;
-
-    m_backgroundColor=m_imageSource->backgroundPallette().at(colorIdx);
-}
-
-//--------------------------------------------------------------------------
-
-QPixmap Avatar::generateLetterPixmap(const QSize& size) const
-{
-    QPixmap px(size);
-
-    QColor color{Qt::white};
-    QString fontName{AvatarSource::DefaultFontName};
-    size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
-
-    QPainter painter(&px);
-    painter.setRenderHint(QPainter::TextAntialiasing);
-
-    painter.setBrush(m_backgroundColor);
-    painter.setPen(Qt::NoPen);
-    painter.drawRect(0, 0, px.width(), px.height());
-    painter.setPen(color);
-    auto fontSize=px.height()*0.45;
-    QFont font{fontName};
-    font.setPointSize(qRound(fontSize));
-    font.setStyleStrategy(QFont::PreferAntialias);
-    painter.setFont(font);
-
-    QString name=QString::fromUtf8(m_avatarName);
-    auto words=name.split(" ");
-    auto count=std::min(words.size(),qsizetype(maxLetters));
-    words.resize(count);
-    QString letters;
-    for (size_t i=0;i<words.count();i++)
-    {
-        const auto& word=words.at(i);
-        letters+=word.front().toUpper();
-    }
-
-    painter.drawText(px.rect(), Qt::AlignCenter, letters);
-    painter.end();
-
-    return px;
-}
-
-//--------------------------------------------------------------------------
-
 QPixmap Avatar::pixmap(const QSize& size) const
 {
     if (m_basePixmap.isNull())
     {
-        if (m_autoGenerate)
-        {
-            return generateLetterPixmap(size);
-        }
         return QPixmap{};
     }
 
@@ -230,7 +159,11 @@ void AvatarSource::doLoadPixmap(const PixmapKey& key)
     if (it!=m_avatars.end())
     {
         auto px=it->second->pixmap(key.size());
-        updatePixmap(key,px);
+        if (!px.isNull())
+        {
+            updatePixmap(key,px);
+            return;
+        }
     }
 }
 
@@ -325,9 +258,11 @@ void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
     {
         generateLetters(painter);
     }
-    else if (m_avatarSource)
+    else if (m_avatarSource && m_avatarSource->noNameSvgIcon())
     {
-        RoundedImage::doFill(painter,m_avatarSource->defaultPixmap());
+        auto sz=imageSize() * 0.7;
+        QRect r{width()/2-sz.width()/2,height()/2-sz.height()/2,sz.width(),sz.height()};
+        m_avatarSource->noNameSvgIcon()->paint(painter,r);
     }
 }
 
@@ -347,6 +282,7 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     painter->setFont(font);
 
     QString name=QString::fromUtf8(m_avatarName);
+    name=name.trimmed();
     auto words=name.split(" ");
     auto count=std::min(words.size(),qsizetype(maxLetters));
     words.resize(count);
@@ -367,15 +303,6 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     auto y= height()/2 - qCeil(fh/2);
     auto bearing=metrics.leftBearing(letters[0]);
 
-    // qDebug() << " tight()=" << br << " bounding="<< bbr << " acsent=" << metrics.ascent() << " descent="
-    //          << metrics.descent() << " leading=" << metrics.leading() << " bearing=" << bearing;
-
-    // qDebug() << " fontwidth=" << fw << " fontheight="<<fh;
-
-    // painter->setPen(Qt::yellow);
-    // painter->drawRect(x,y,fw,fh);
-
-    // painter->setPen(Qt::white);
     painter->drawStaticText(x-bearing,y-dy-2,QStaticText{letters});
 }
 

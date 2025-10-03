@@ -47,5 +47,6 @@
         <file>tabler-icons/outline/share.svg</file>
         <file>tabler-icons/outline/share-2.svg</file>
         <file>tabler-icons/outline/share-3.svg</file>
+        <file>tabler-icons/filled/user.svg</file>
     </qresource>
 </RCC>

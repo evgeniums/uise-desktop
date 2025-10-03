@@ -64,7 +64,6 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         void setAvatarPath(PathT path)
         {
             setPath(std::move(path));
-            updateBackgroundColor();
             updateGeneratedAvatar();
         }
 
@@ -84,14 +83,11 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             return m_basePixmap;
         }
 
-        QPixmap generateLetterPixmap(const QSize& size) const;
-
         QPixmap pixmap(const QSize& size) const;
 
         void setImageSource(AvatarSource* imageSource) noexcept
         {
             m_imageSource=imageSource;
-            updateBackgroundColor();
             updateGeneratedAvatar();
         }
 
@@ -115,24 +111,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             return m_refCount;
         }
 
-        QColor backgroundColor() const noexcept
-        {
-            return m_backgroundColor;
-        }
-
-        void setAutoGenerate(bool enable)
-        {
-            m_autoGenerate=enable;
-        }
-
-        bool isAutogenerate() const noexcept
-        {
-            return m_autoGenerate;
-        }
-
     protected:
-
-        virtual void updateBackgroundColor();
 
         void updateProducers();
 
@@ -142,14 +121,11 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         std::string m_avatarName;
 
-        QColor m_backgroundColor;
         QPixmap m_basePixmap;
 
         AvatarSource* m_imageSource;
 
         int m_refCount;
-
-        bool m_autoGenerate;
 };
 
 class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
@@ -227,6 +203,16 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
             return m_avatarBuilder;
         }
 
+        void setNoNameSvgIcon(std::shared_ptr<SvgIcon> icon)
+        {
+            m_noNameSvgIcon=std::move(icon);
+        }
+
+        std::shared_ptr<SvgIcon> noNameSvgIcon() const
+        {
+            return m_noNameSvgIcon;
+        }
+
     protected:
 
         void doLoadProducer(const PixmapKey& key) override;
@@ -243,6 +229,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         QColor m_fontColor;
         size_t m_maxAvatarLetterCount;
         std::vector<QColor> m_backgroundPallette;
+        std::shared_ptr<SvgIcon> m_noNameSvgIcon;
 
         AvatarBuilderFn m_avatarBuilder;
 };
