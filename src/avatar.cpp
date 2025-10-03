@@ -25,7 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QCryptographicHash>
 #include <QPainter>
-#include <QtNumeric>
+#include <QStaticText>
 
 #include <uise/desktop/avatar.hpp>
 
@@ -321,7 +321,14 @@ void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(0, 0, imageSize().width(), imageSize().height(), xRadius(), yRadius());
 
-    generateLetters(painter);
+    if (!m_avatarName.empty())
+    {
+        generateLetters(painter);
+    }
+    else if (m_avatarSource)
+    {
+        RoundedImage::doFill(painter,m_avatarSource->defaultPixmap());
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -336,7 +343,7 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     auto fontSize=imageSize().height()*0.45;
     QFont font{fontName};
     font.setPointSize(qRound(fontSize));
-    font.setStyleStrategy(QFont::PreferAntialias);
+    font.setStyleStrategy(QFont::PreferAntialias);    
     painter->setFont(font);
 
     QString name=QString::fromUtf8(m_avatarName);
@@ -350,7 +357,26 @@ void AvatarWidget::generateLetters(QPainter* painter) const
         letters+=word.front().toUpper();
     }
 
-    painter->drawText(rect(), Qt::AlignCenter, letters);
+    QFontMetrics metrics(font);
+    auto br=metrics.tightBoundingRect(letters);
+    auto bbr=metrics.boundingRect(letters);
+    auto fw=std::min(br.width(),bbr.width());
+    auto fh=br.height();
+    auto dy=metrics.ascent()-br.height();
+    auto x= width()/2 - qCeil(fw/2);
+    auto y= height()/2 - qCeil(fh/2);
+    auto bearing=metrics.leftBearing(letters[0]);
+
+    // qDebug() << " tight()=" << br << " bounding="<< bbr << " acsent=" << metrics.ascent() << " descent="
+    //          << metrics.descent() << " leading=" << metrics.leading() << " bearing=" << bearing;
+
+    // qDebug() << " fontwidth=" << fw << " fontheight="<<fh;
+
+    // painter->setPen(Qt::yellow);
+    // painter->drawRect(x,y,fw,fh);
+
+    // painter->setPen(Qt::white);
+    painter->drawStaticText(x-bearing,y-dy-2,QStaticText{letters});
 }
 
 UISE_DESKTOP_NAMESPACE_END

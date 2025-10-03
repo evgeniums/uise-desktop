@@ -253,7 +253,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
     public:
 
-        constexpr static const double CornerImageSizeRatio=0.3;
+        constexpr static const double CornerImageSizeRatio=0.2;
 
         using RoundedImage::RoundedImage;
 
