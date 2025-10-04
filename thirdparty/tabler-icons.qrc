@@ -48,5 +48,10 @@
         <file>tabler-icons/outline/share-2.svg</file>
         <file>tabler-icons/outline/share-3.svg</file>
         <file>tabler-icons/filled/user.svg</file>
+        <file>tabler-icons/outline/checks.svg</file>
+        <file>tabler-icons/outline/message-circle-heart.svg</file>
+        <file>tabler-icons/outline/pin.svg</file>
+        <file>tabler-icons/filled/pin.svg</file>
+        <file>tabler-icons/outline/progress-check.svg</file>
     </qresource>
 </RCC>

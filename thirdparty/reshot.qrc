@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>reshot/mute.svg</file>
+    </qresource>
+</RCC>

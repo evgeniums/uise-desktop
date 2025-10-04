@@ -219,6 +219,7 @@ SET (SOURCES
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/file-icon-vectors.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/tabler-icons.qrc)
+QT6_ADD_RESOURCES(SOURCES thirdparty/reshot.qrc)
 
 IF (NOT UISE_DESKTOP_STATIC)
     IF (NOT "$ENV{UISE_DESKTOP_STATIC}" STREQUAL "")
