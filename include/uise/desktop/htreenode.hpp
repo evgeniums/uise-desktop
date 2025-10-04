@@ -218,7 +218,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void expandParentNode();
 
-        void expandExclusive();
+        void expandExclusive(int depth=0);
 
     signals:
 

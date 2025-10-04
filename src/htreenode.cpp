@@ -342,7 +342,10 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         pimpl->titleBar,
         &HTreeNodeTitleBar::exclusiveRequested,
         this,
-        &HTreeNode::expandExclusive
+        [this]()
+        {
+            expandExclusive();
+        }
     );
 
     connect(
@@ -940,13 +943,15 @@ void HTreeNode::setParentNodeTitle(const QString& title)
 
 //--------------------------------------------------------------------------
 
-void HTreeNode::expandExclusive()
-{
+void HTreeNode::expandExclusive(int depth)
+{    
     auto p=parentNode();
     while (p!=nullptr)
     {
-        p->setExpanded(false);
+        auto collapseParent=depth<=0;
+        p->setExpanded(!collapseParent);
         p=p->parentNode();
+        --depth;
     }
     auto n=nextNode();
     if (n!=nullptr)
