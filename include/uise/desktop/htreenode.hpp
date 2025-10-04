@@ -65,6 +65,7 @@ class UISE_DESKTOP_EXPORT HTreeNodeTitleBar : public QFrame
         void refreshRequested();
         void closeRequested();
         void collapseRequested();
+        void toParentRequested();
 
     private:
 
@@ -211,6 +212,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void activate();
 
+        void expandParentNode();
+
     signals:
 
         void nameUpdated(const QString&);
@@ -238,6 +241,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void onPlaceHolderExpandRequest();
 
     private:
+
+        void setParentNodeTitle(const QString& title);
 
         bool updateCollapsePlaceholder();
         void updateCollapsePlaceholderTooltip();

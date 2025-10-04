@@ -79,6 +79,7 @@ class HTreeNodeTitleBar_p
         PushButton* close=nullptr;
         PushButton* collapse=nullptr;
         PushButton* refresh=nullptr;
+        PushButton* toParentNode=nullptr;
 
         ElidedLabel* title=nullptr;
 };
@@ -90,6 +91,8 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
       pimpl(std::make_unique<HTreeNodeTitleBar_p>())
 {
     pimpl->node=node;
+
+    pimpl->toParentNode=iconButton("HTreeNodeTitleBar::arrow-left",this);
 
     pimpl->close=iconButton("HTreeNodeTitleBar::close",this);
     pimpl->close->setToolTip(tr("Close this section with all subsequent sections"));
@@ -109,6 +112,7 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 #ifdef Q_OS_MACOS
 
+    pimpl->layout->addWidget(pimpl->toParentNode,0);
     pimpl->layout->addWidget(pimpl->close,0);
     pimpl->layout->addWidget(pimpl->collapse,0);
     pimpl->layout->addWidget(pimpl->refresh,0);
@@ -118,6 +122,7 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 #else
 
+    pimpl->layout->addWidget(pimpl->toParentNode,0);
     pimpl->layout->addWidget(pimpl->title,1);
     pimpl->layout->addWidget(placeholderButton(this),0);
     pimpl->layout->addWidget(pimpl->refresh);
@@ -146,6 +151,14 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
         this,
         &HTreeNodeTitleBar::refreshRequested
     );
+    connect(
+        pimpl->toParentNode,
+        &PushButton::clicked,
+        this,
+        &HTreeNodeTitleBar::toParentRequested
+    );
+
+    pimpl->toParentNode->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -306,6 +319,12 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         this,
         &HTreeNode::refresh
     );
+    connect(
+        pimpl->titleBar,
+        &HTreeNodeTitleBar::toParentRequested,
+        this,
+        &HTreeNode::expandParentNode
+    );
 
     connect(
         pimpl->placeHolder,
@@ -366,6 +385,10 @@ const HTreePath& HTreeNode::path() const
 void HTreeNode::setParentNode(HTreeNode* node)
 {
     pimpl->parentNode=node;
+    if (pimpl->parentNode)
+    {
+        setParentNodeTitle(node->name());
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -413,6 +436,10 @@ void HTreeNode::setNodeName(const QString& val)
 {
     pimpl->titleBar->pimpl->title->setText(val);
     pimpl->path.elements().back().setName(val.toStdString());
+    if (nextNode())
+    {
+        nextNode()->setParentNodeTitle(val);
+    }
     emit nameUpdated(val);
 }
 
@@ -648,6 +675,10 @@ void HTreeNode::otherNodeExpanded(bool enable)
     bool atLeastOneParentVisible=false;
 
     auto p=parentNode();
+    if (p)
+    {
+        pimpl->titleBar->pimpl->toParentNode->setVisible(!p->isExpanded());
+    }
     while (p!=nullptr)
     {
         if (p->isExpanded())
@@ -901,6 +932,23 @@ void HTreeNode::init()
 {
     doInit();
     emit initRequested();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::expandParentNode()
+{
+    if (parentNode())
+    {
+        parentNode()->setExpanded(true);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setParentNodeTitle(const QString& title)
+{
+    pimpl->titleBar->pimpl->toParentNode->setToolTip(title);
 }
 
 //--------------------------------------------------------------------------

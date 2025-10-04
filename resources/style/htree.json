@@ -5,7 +5,8 @@
             "aliases" : {
                 "collapse" : "${uise-svg-icons-1}/minus",
                 "close" : "${uise-svg-icons-1}/x",
-                "refresh" : "${uise-svg-icons-1}/refresh"
+                "refresh" : "${uise-svg-icons-1}/refresh",
+                "arrow-left" : "${uise-svg-icons-1}/arrow-left"
             }
         },
         {
