@@ -188,7 +188,7 @@ void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
 
-    qDebug() << "HTreeSplitterInternal resize event oldsize=" << event->oldSize() << " newsize="<<event->size() << " m_blockResizeEvent="<<m_blockResizeEvent;
+    // qDebug() << "HTreeSplitterInternal resize event oldsize=" << event->oldSize() << " newsize="<<event->size() << " m_blockResizeEvent="<<m_blockResizeEvent;
 
     auto vw=m_splitter->viewPort()->width();
     if (!m_blockResizeEvent)
@@ -492,7 +492,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     int i=0;
     for (auto& section: m_sections)
     {
-        auto w=qobject_cast<QWidget*>(section->obj);
+        auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr && !section->destroyed)
         {
             minTotalWidth+=w->minimumWidth();
@@ -604,7 +604,9 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     {
         if (precalculateWidth<hintTotalWidth)
         {
-            precalculatedWidths.back()+=hintTotalWidth-precalculateWidth;
+            auto diff=hintTotalWidth-precalculateWidth;
+            precalculatedWidths.back()+=diff;
+            precalculateWidth+=diff;
         }
     }
 
@@ -622,8 +624,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     //          << ", totalStretch="<<totalStretch
     //          << ", precalculateWidth="<<precalculateWidth
     //          << ", precalculatedExtraWidth="<<precalculatedExtraWidth
-    //          << " ratio="<<wRatio
-        ;
+    //          << " ratio="<<wRatio;
 
     int accumulatedStretch=0;
     int accumulatedWidth=0;
@@ -638,19 +639,40 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr)
         {
+            // qDebug() << "HTreeSplitterInternal::recalculateWidths before i="<<i
+            //          << "section->precalculated="<<precalculatedWidths[i]
+            //          << "section->width="<<section->width
+            //          << "section->manualWidth="<<section->manualWidth
+            //          << "section->minWidth="<<section->minWidth
+            //          << "section->stretch="<<section->stretch
+            //          << "totalWidth="<<totalWidth
+            //          << "minTotalWidth="<<minTotalWidth
+            //          << "hintTotalWidth="<<hintTotalWidth
+            //          << "accumulatedWidth="<<accumulatedWidth
+            //          << "totalExtraWidth=" << totalExtraWidth
+            //          << "precalculatedExtraWidth=" << precalculatedExtraWidth
+            //          << "wRatio="<<wRatio;
+
             auto minW=w->minimumWidth();
 
             if (w->isExpanded() && section->manualWidth!=0)
             {
                 section->width=section->manualWidth;
+                // qDebug() << "set manual width " << section->manualWidth;
             }
             else if (section->stretch==0 || precalculateWidth==hintTotalWidth)
             {
                 section->width=precalculatedWidths[i];
+                // qDebug() << "set precalculated width " << precalculatedWidths[i];
             }
             else
             {
                 section->width=qFloor(wRatio*static_cast<double>(precalculatedWidths[i] - minW)) + minW;
+
+                // qDebug() << "calc with ratio " <<  wRatio
+                //          << " precalculatedWidths[i]="<<precalculatedWidths[i]
+                //          << " minW=" << minW
+                //          << " qFloor(wRatio*static_cast<double>(precalculatedWidths[i] - minW))="<<qFloor(wRatio*static_cast<double>(precalculatedWidths[i] - minW));
             }
 
             section->minWidth=minW;
@@ -676,18 +698,20 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             if (i==(m_sections.size()-1))
             {
                 if (hintTotalWidth>accumulatedWidth)
-                {
+                {                    
                     auto diff=hintTotalWidth-accumulatedWidth;
                     section->width+=diff;
+                    // qDebug() << "add diff " << diff << " accumulatedWidth="<<accumulatedWidth;
                     accumulatedWidth+=diff;
                 }
             }
 
-            // qDebug() << "i="<<i
+            // qDebug() << "HTreeSplitterInternal::recalculateWidths after i="<<i
             //          << "section->precalculated="<<precalculatedWidths[i]
-            //          << "section->width"<<section->width
-            //          << "section->stretch"<<section->stretch
-            //     ;
+            //          << "section->width="<<section->width
+            //          << "section->manualWidth="<<section->manualWidth
+            //          << "section->minWidth="<<section->minWidth
+            //          << "section->stretch="<<section->stretch;
         }
     }
 
@@ -732,7 +756,7 @@ void HTreeSplitterInternal::updateWidths()
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr)
         {
-            // qDebug() << "HTreeSplitterInternal::updateWidths() section " << index << " svisible " << w->isSectionVisible() << " visible " << w->isVisible() << " geometry " << w->geometry() << " w geometry " << w->widget()->geometry();
+            // qDebug() << "HTreeSplitterInternal::updateWidths() section " << index<< " section->width=" << section->width;
 
             if (w->isSectionVisible())
             {

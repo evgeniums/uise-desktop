@@ -102,7 +102,7 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
     pimpl->collapse->setToolTip(tr("Collapse section"));
 
     pimpl->expandExclusive=iconButton("HTreeNodeTitleBar::expand",this);
-    pimpl->expandExclusive->setToolTip(tr("Maximize"));
+    pimpl->expandExclusive->setToolTip(tr("Maximize section"));
 
     pimpl->refresh=iconButton("HTreeNodeTitleBar::refresh",this);
     pimpl->refresh->setToolTip(tr("Refresh"));
@@ -178,15 +178,6 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 HTreeNodeTitleBar::~HTreeNodeTitleBar()
 {}
-
-//--------------------------------------------------------------------------
-
-void HTreeNodeTitleBar::resizeEvent(QResizeEvent* event)
-{
-    qDebug() << "HTreeNodeTitleBar::resizeEvent oldsize=" << event->oldSize() << " new size="<<event->size() << " name=" << pimpl->title->text();
-
-    QFrame::resizeEvent(event);
-}
 
 /********************* HTreeNodePlaceHolder *********************************/
 
@@ -706,55 +697,14 @@ void HTreeNode::otherNodeExpanded(bool enable)
         return;
     }
 
-    bool atLeastOneVisible=false;
-    bool atLeastOneParentVisible=false;
-
     auto p=parentNode();
     if (p)
     {
         pimpl->titleBar->pimpl->toParentNode->setVisible(!p->isExpanded());
     }
-    while (p!=nullptr)
-    {
-        if (p->isExpanded())
-        {
-            atLeastOneParentVisible=true;
-            atLeastOneVisible=true;
-            break;
-        }
-        p=p->parentNode();
-    }
-    if (!atLeastOneVisible)
-    {
-        auto n=pimpl->nextNode.get();
-        while(n!=nullptr)
-        {
-            if (n->isExpanded())
-            {
-                atLeastOneVisible=true;
-                break;
-            }
-            n=n->nextNode();
-        }
-    }
 
-    if (nextNode()!=nullptr)
-    {
-        setCollapsible(atLeastOneVisible);
-    }
-    else
-    {
-        setCollapsible(false);
-    }
-    if (parentNode()!=nullptr)
-    {
-        setClosable(atLeastOneParentVisible);
-    }
-    else
-    {
-        setClosable(false);
-    }
-
+    setClosable(p!=nullptr);
+    setCollapsible(nextNode()!=nullptr && isAtListOneNodeExpanded());
     updateExclusivelyExpandable();
 }
 
@@ -1041,17 +991,8 @@ bool HTreeNode::isAtListOneNodeExpanded() const
 void HTreeNode::updateExclusivelyExpandable()
 {
     pimpl->titleBar->pimpl->expandExclusive->setVisible(
-        isAtListOneNodeExpanded()
+        parentNode() != nullptr && isAtListOneNodeExpanded()
     );
-}
-
-//--------------------------------------------------------------------------
-
-void HTreeNode::resizeEvent(QResizeEvent* event)
-{
-    qDebug() << "HTreeNode::resizeEvent oldsize=" << event->oldSize() << " new size="<<event->size() << " name=" << name();
-
-    QFrame::resizeEvent(event);
 }
 
 //--------------------------------------------------------------------------

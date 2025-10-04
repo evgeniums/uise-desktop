@@ -71,8 +71,6 @@ class UISE_DESKTOP_EXPORT HTreeNodeTitleBar : public QFrame
 
     private:
 
-        void resizeEvent(QResizeEvent* event) override;
-
         std::unique_ptr<HTreeNodeTitleBar_p> pimpl;
 
         friend class HTreeNode;
@@ -240,8 +238,6 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         {}
 
         void fillContent();
-
-        void resizeEvent(QResizeEvent* event) override;
 
     private slots:
 
