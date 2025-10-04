@@ -46,7 +46,12 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
 
         int xRadius() const noexcept
         {
-            return m_xRadius;
+            return m_xRadius.value_or(0);
+        }
+
+        void resetXRadius()
+        {
+            m_xRadius.reset();
         }
 
         void setYRadius(int value) noexcept
@@ -56,12 +61,17 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
 
         int yRadius() const noexcept
         {
-            return m_yRadius;
+            return m_yRadius.value_or(0);
+        }
+
+        void resetYRadius()
+        {
+            m_yRadius.reset();
         }
 
         int evalXRadius(int width) const noexcept
         {
-            if (m_xRadius==0)
+            if (!m_xRadius)
             {
                 if (m_radiusRatio)
                 {
@@ -70,12 +80,12 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
 
                 return width/2;
             }
-            return m_xRadius;
+            return m_xRadius.value();
         }
 
         int evalYRadius(int height) const noexcept
         {
-            if (m_yRadius==0)
+            if (!m_yRadius)
             {
                 if (m_radiusRatio)
                 {
@@ -84,7 +94,7 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
 
                 return height/2;
             }
-            return m_yRadius;
+            return m_yRadius.value();
         }
 
         void setRadiusRatio(double ratio) noexcept
@@ -92,15 +102,15 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
             m_radiusRatio=ratio;
         }
 
-        void resetradiusRatio() noexcept
+        void resetRadiusRatio() noexcept
         {
             m_radiusRatio.reset();
         }
 
     private:
 
-        int m_xRadius=0;
-        int m_yRadius=0;
+        std::optional<int> m_xRadius;
+        std::optional<int> m_yRadius;
 
         std::optional<double> m_radiusRatio;
 };
@@ -137,6 +147,16 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             return m_size;
         }
 
+        void setAutoSize(bool enable) noexcept
+        {
+            m_autoSize=enable;
+        }
+
+        bool autoSize() const noexcept
+        {
+            return m_autoSize;
+        }
+
         void setText(const QString&)=delete;
         QString text() const=delete;
 
@@ -145,16 +165,82 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         int xRadius() const;
         int yRadius() const;
 
-        void setCornerRadius(int x, int y)
+        void setCornersRadius(int x, int y)
         {
             m_xRadius=x;
             m_yRadius=y;
             update();
         }
 
+        void resetCornersRadius()
+        {
+            m_xRadius.reset();
+            m_yRadius.reset();
+        }
+
+
+        void setSvgIcon(std::shared_ptr<SvgIcon> svgIcon)
+        {
+            m_svgIcon=std::move(svgIcon);
+            update();
+        }
+
+        std::shared_ptr<SvgIcon> svgIcon() const
+        {
+            return m_svgIcon;
+        }
+
+        void setParentHovered(bool enable);
+
+        bool isParentHovered() const noexcept
+        {
+            return m_parentHovered;
+        }
+
+        void setSelected(bool enable)
+        {
+            m_selected=enable;
+            update();
+        }
+
+        bool isSelected() const noexcept
+        {
+            return m_selected;
+        }
+
+        void setCacheSvgPixmap(bool enable) noexcept
+        {
+            m_cacheSvgPixmap=enable;
+        }
+
+        bool isCacheSvgPixmap() const noexcept
+        {
+            return m_cacheSvgPixmap;
+        }
+
+        void setAutoFitEllipse(bool enable)
+        {
+            m_autoFitEllipse=enable;
+            update();
+        }
+
+        bool isAutoFitEllipse() const noexcept
+        {
+            return m_autoFitEllipse;
+        }
+
+        bool isEffectiveHovered() const
+        {
+            return m_parentHovered || m_hovered;
+        }
+
+        IconMode currentSvgIconMode() const;
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
 
         virtual void doPaint(QPainter*)
         {}
@@ -169,8 +255,17 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         std::shared_ptr<RoundedImageSource> m_imageSource;
         QSize m_size;
 
-        int m_xRadius;
-        int m_yRadius;
+        std::optional<int> m_xRadius;
+        std::optional<int> m_yRadius;
+
+        bool m_autoSize;
+
+        std::shared_ptr<SvgIcon> m_svgIcon;
+        bool m_hovered;
+        bool m_parentHovered;
+        bool m_selected;
+        bool m_cacheSvgPixmap;
+        bool m_autoFitEllipse;
 };
 
 UISE_DESKTOP_NAMESPACE_END

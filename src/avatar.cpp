@@ -124,6 +124,7 @@ void AvatarSource::doLoadProducer(const PixmapKey& key)
     auto it=m_avatars.find(key);
     if (it==m_avatars.end())
     {
+        Q_ASSERT(m_avatarBuilder);
         auto avatar=m_avatarBuilder(key);
         avatar->setAvatarPath(key);
         avatar->setImageSource(this);
@@ -198,7 +199,7 @@ void AvatarWidget::doPaint(QPainter* painter)
     auto pixmap=m_rightBottomPixmap;
     if (pixmap.isNull() && m_rightBottomSvgIcon)
     {
-        m_rightBottomSvgIcon->paint(painter,rect);
+        m_rightBottomSvgIcon->paint(painter,rect,currentSvgIconMode(),QIcon::Off,isCacheSvgPixmap());
     }
     if (pixmap.isNull())
     {
@@ -262,7 +263,7 @@ void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
     {
         auto sz=imageSize() * 0.7;
         QRect r{width()/2-sz.width()/2,height()/2-sz.height()/2,sz.width(),sz.height()};
-        m_avatarSource->noNameSvgIcon()->paint(painter,r);
+        m_avatarSource->noNameSvgIcon()->paint(painter,r,currentSvgIconMode(),QIcon::Off,isCacheSvgPixmap());
     }
 }
 

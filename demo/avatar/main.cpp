@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScrollArea>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
@@ -74,6 +75,8 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc,argv);
 
+    Style::instance().applyStyleSheet();
+
     QMainWindow w;
     auto mainFrame=new QScrollArea();
     mainFrame->setWidgetResizable(true);
@@ -92,7 +95,20 @@ int main(int argc, char *argv[])
     avatarSourceRounded->setAvatarBuilder(AvatarBuilder{});
     avatarSourceRounded->setRadiusRatio(0.2);
 
-    std::vector<std::string> names{"1.jpg","2.jpg","unknown.jpg","other unknown.jpg","3.jpg","noname","one more missing.png","александр сергеевич.png"};
+    auto avatarSourceRect=std::make_shared<AvatarSource>();
+    avatarSourceRect->setAvatarBuilder(AvatarBuilder{});
+    avatarSourceRect->setXRadius(0);
+    avatarSourceRect->setYRadius(0);
+
+    std::vector<std::string> names{"1.jpg",
+                                   "2.jpg",
+                                   "unknown.jpg",
+                                   "other unknown.jpg",
+                                   "3.jpg",
+                                   "noname",
+                                   "one more missing.png",
+                                   "александр сергеевич.png",
+                                   "noname"};
     std::vector<QSize> sizes{QSize{64,64},QSize{128,128},QSize{150,150}};
 
     for (size_t i=0;i<names.size();i++)
@@ -104,16 +120,28 @@ int main(int argc, char *argv[])
             auto size=sizes.at(j);
 
             auto img=new AvatarWidget(avatarsFrame);
-            if (i!=3)
+            QString style=QString("QLabel{min-width:%1;max-width:%1;min-height:%1;max-height:%1;}").arg(size.height());
+            img->setStyleSheet(style);
+            if (i!=3 && i!=4)
             {
-                img->setAvatarSource(avatarSource);
+                if (i==1)
+                {
+                    img->setAvatarSource(avatarSourceRect);
+                }
+                else if (i==8)
+                {
+                    img->setSvgIcon(Style::instance().svgIconLocator().icon("EditableLabel::edit",img));
+                }
+                else
+                {
+                    img->setAvatarSource(avatarSource);
+                }
             }
             else
             {
                 img->setAvatarSource(avatarSourceRounded);
             }
             img->setAvatarPath(name);
-            img->setAvatarSize(size);
 
             if (name!="noname")
             {
