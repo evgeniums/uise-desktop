@@ -133,7 +133,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
     public:
 
         constexpr static const char* DefaultFontName="Helvetica";
-        constexpr static const size_t DefaultMaxAvatarLetterCount=2;
+        constexpr static const size_t DefaultMaxAvatarLetterCount=2;        
 
         using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const WithPath&)>;
 
@@ -241,6 +241,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
     public:
 
         constexpr static const double CornerImageSizeRatio=0.2;
+        constexpr static QRgb DefaultCornerCircleColor=0x0038b000;
 
         using RoundedImage::RoundedImage;
 
@@ -383,7 +384,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         QPixmap m_rightBottomPixmap;
         std::shared_ptr<SvgIcon> m_rightBottomSvgIcon;
         double m_cornerImageSizeRatio=CornerImageSizeRatio;
-        QColor m_rightBottomCircleColor=Qt::green;
+        QColor m_rightBottomCircleColor=DefaultCornerCircleColor;
 
         int m_cornerImageXOffset=0;
         int m_cornerImageYOffset=0;

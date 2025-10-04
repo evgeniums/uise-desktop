@@ -3,17 +3,17 @@
         {
             "name" : "StatusDialog",
             "aliases" : {
-                "close" : "${svg-icons}/x",
-                "error" : "${svg-icons}/alert-hexagon",
-                "warning" : "${svg-icons}/alert-triangle",
-                "info" : "${svg-icons}/info-circle",
-                "question" : "${svg-icons}/help"
+                "close" : "${uise-svg-icons-1}/x",
+                "error" : "${uise-svg-icons-1}/alert-hexagon",
+                "warning" : "${uise-svg-icons-1}/alert-triangle",
+                "info" : "${uise-svg-icons-1}/info-circle",
+                "question" : "${uise-svg-icons-1}/help"
             }
         },
         {
             "name" : "DialogTitle",
             "aliases" : {
-                "close" : "${svg-icons}/x"
+                "close" : "${uise-svg-icons-1}/x"
             }
         }
     ]
