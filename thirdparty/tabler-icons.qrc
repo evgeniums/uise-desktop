@@ -54,5 +54,7 @@
         <file>tabler-icons/filled/pin.svg</file>
         <file>tabler-icons/outline/progress-check.svg</file>
         <file>tabler-icons/outline/arrow-left.svg</file>
+        <file>tabler-icons/outline/maximize.svg</file>
+        <file>tabler-icons/outline/square.svg</file>
     </qresource>
 </RCC>

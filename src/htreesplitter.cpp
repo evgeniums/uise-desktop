@@ -188,7 +188,7 @@ void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
 
-    // qDebug() << " resize event size="<<event->size() << " m_blockResizeEvent="<<m_blockResizeEvent;
+    qDebug() << "HTreeSplitterInternal resize event oldsize=" << event->oldSize() << " newsize="<<event->size() << " m_blockResizeEvent="<<m_blockResizeEvent;
 
     auto vw=m_splitter->viewPort()->width();
     if (!m_blockResizeEvent)

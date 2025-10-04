@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <filesystem>
 
+#include <QMenu>
 #include <QFile>
 #include <QDesktopServices>
 #include <QTextBrowser>
@@ -177,6 +178,26 @@ class DirListItem : public HTreeStandardListItem
 
             QString path=QString::fromStdString(entry.path().string());
             QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+        }
+
+    protected:
+
+        void fillContextMenu(QMenu* menu)
+        {
+            auto action=menu->addAction("Open exclusive");
+            connect(action,&QAction::triggered,this,
+                [this]()
+                {
+                    if (entry.is_directory())
+                    {
+                        emit openRequested(pathElement(),true);
+                        return;
+                    }
+
+                    QString path=QString::fromStdString(entry.path().string());
+                    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+                }
+            );
         }
 
     private:

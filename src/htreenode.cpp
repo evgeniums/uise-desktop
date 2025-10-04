@@ -80,6 +80,7 @@ class HTreeNodeTitleBar_p
         PushButton* collapse=nullptr;
         PushButton* refresh=nullptr;
         PushButton* toParentNode=nullptr;
+        PushButton* expandExclusive=nullptr;
 
         ElidedLabel* title=nullptr;
 };
@@ -100,6 +101,9 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
     pimpl->collapse=iconButton("HTreeNodeTitleBar::collapse",this);
     pimpl->collapse->setToolTip(tr("Collapse section"));
 
+    pimpl->expandExclusive=iconButton("HTreeNodeTitleBar::expand",this);
+    pimpl->expandExclusive->setToolTip(tr("Maximize"));
+
     pimpl->refresh=iconButton("HTreeNodeTitleBar::refresh",this);
     pimpl->refresh->setToolTip(tr("Refresh"));
 
@@ -112,21 +116,24 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 #ifdef Q_OS_MACOS
 
-    pimpl->layout->addWidget(pimpl->toParentNode,0);
-    pimpl->layout->addWidget(pimpl->close,0);
-    pimpl->layout->addWidget(pimpl->collapse,0);
-    pimpl->layout->addWidget(pimpl->refresh,0);
-    pimpl->layout->addWidget(placeholderButton(this),0);
+    pimpl->layout->addWidget(pimpl->toParentNode);
+    pimpl->layout->addWidget(pimpl->close);
+    pimpl->layout->addWidget(pimpl->collapse);
+    pimpl->layout->addWidget(pimpl->expandExclusive);
+    pimpl->layout->addWidget(pimpl->refresh);
+    pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->title,1);
-    pimpl->layout->addWidget(placeholderButton(this),0);
+    pimpl->layout->addWidget(placeholderButton(this));
 
 #else
 
-    pimpl->layout->addWidget(pimpl->toParentNode,0);
+    pimpl->layout->addWidget(pimpl->toParentNode);
+    pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->title,1);
-    pimpl->layout->addWidget(placeholderButton(this),0);
+    pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->refresh);
     pimpl->layout->addWidget(pimpl->collapse);
+    pimpl->layout->addWidget(pimpl->expandExclusive);
     pimpl->layout->addWidget(pimpl->close);
 
 #endif
@@ -157,6 +164,12 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
         this,
         &HTreeNodeTitleBar::toParentRequested
     );
+    connect(
+        pimpl->expandExclusive,
+        &PushButton::clicked,
+        this,
+        &HTreeNodeTitleBar::exclusiveRequested
+    );
 
     pimpl->toParentNode->setVisible(false);
 }
@@ -165,6 +178,15 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
 HTreeNodeTitleBar::~HTreeNodeTitleBar()
 {}
+
+//--------------------------------------------------------------------------
+
+void HTreeNodeTitleBar::resizeEvent(QResizeEvent* event)
+{
+    qDebug() << "HTreeNodeTitleBar::resizeEvent oldsize=" << event->oldSize() << " new size="<<event->size() << " name=" << pimpl->title->text();
+
+    QFrame::resizeEvent(event);
+}
 
 /********************* HTreeNodePlaceHolder *********************************/
 
@@ -325,6 +347,12 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         this,
         &HTreeNode::expandParentNode
     );
+    connect(
+        pimpl->titleBar,
+        &HTreeNodeTitleBar::exclusiveRequested,
+        this,
+        &HTreeNode::expandExclusive
+    );
 
     connect(
         pimpl->placeHolder,
@@ -336,6 +364,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
     setCollapsible(false);
     setClosable(false);
     setRefreshable(false);
+    pimpl->titleBar->pimpl->expandExclusive->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -389,6 +418,8 @@ void HTreeNode::setParentNode(HTreeNode* node)
     {
         setParentNodeTitle(node->name());
     }
+
+    updateExclusivelyExpandable();
 }
 
 //--------------------------------------------------------------------------
@@ -619,6 +650,8 @@ void HTreeNode::setNextNode(HTreeNode* node)
     {
         setCollapsible(false);
     }
+
+    updateExclusivelyExpandable();
 }
 
 //--------------------------------------------------------------------------
@@ -659,6 +692,8 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
         setExpanded(true);
         setCollapsible(false);
     }
+
+    updateExclusivelyExpandable();
     setNextNodeId(std::string{});
 }
 
@@ -719,6 +754,8 @@ void HTreeNode::otherNodeExpanded(bool enable)
     {
         setClosable(false);
     }
+
+    updateExclusivelyExpandable();
 }
 
 //--------------------------------------------------------------------------
@@ -949,6 +986,72 @@ void HTreeNode::expandParentNode()
 void HTreeNode::setParentNodeTitle(const QString& title)
 {
     pimpl->titleBar->pimpl->toParentNode->setToolTip(title);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::expandExclusive()
+{
+    auto p=parentNode();
+    while (p!=nullptr)
+    {
+        p->setExpanded(false);
+        p=p->parentNode();
+    }
+    auto n=nextNode();
+    if (n!=nullptr)
+    {
+        n->closeNode();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isAtListOneNodeExpanded() const
+{
+    bool atLeastOneExpanded=false;
+    auto p=parentNode();
+    while (p!=nullptr)
+    {
+        if (p->isExpanded())
+        {
+            atLeastOneExpanded=true;
+            break;
+        }
+        p=p->parentNode();
+    }
+    if (!atLeastOneExpanded)
+    {
+        auto n=pimpl->nextNode.get();
+        while(n!=nullptr)
+        {
+            if (n->isExpanded())
+            {
+                atLeastOneExpanded=true;
+                break;
+            }
+            n=n->nextNode();
+        }
+    }
+    return atLeastOneExpanded;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::updateExclusivelyExpandable()
+{
+    pimpl->titleBar->pimpl->expandExclusive->setVisible(
+        isAtListOneNodeExpanded()
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::resizeEvent(QResizeEvent* event)
+{
+    qDebug() << "HTreeNode::resizeEvent oldsize=" << event->oldSize() << " new size="<<event->size() << " name=" << name();
+
+    QFrame::resizeEvent(event);
 }
 
 //--------------------------------------------------------------------------

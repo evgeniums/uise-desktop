@@ -6,7 +6,8 @@
                 "collapse" : "${uise-svg-icons-1}/minus",
                 "close" : "${uise-svg-icons-1}/x",
                 "refresh" : "${uise-svg-icons-1}/refresh",
-                "arrow-left" : "${uise-svg-icons-1}/arrow-left"
+                "arrow-left" : "${uise-svg-icons-1}/arrow-left",
+                "expand" : "${uise-svg-icons-1}/square"
             }
         },
         {

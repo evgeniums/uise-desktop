@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
+#include <QResizeEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/framewithrefresh.hpp>
@@ -66,8 +67,11 @@ class UISE_DESKTOP_EXPORT HTreeNodeTitleBar : public QFrame
         void closeRequested();
         void collapseRequested();
         void toParentRequested();
+        void exclusiveRequested();
 
     private:
+
+        void resizeEvent(QResizeEvent* event) override;
 
         std::unique_ptr<HTreeNodeTitleBar_p> pimpl;
 
@@ -196,6 +200,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void init();
 
+        bool isAtListOneNodeExpanded() const;
+
     public slots:
 
         void setNodeName(const QString& val);
@@ -213,6 +219,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void activate();
 
         void expandParentNode();
+
+        void expandExclusive();
 
     signals:
 
@@ -233,6 +241,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void fillContent();
 
+        void resizeEvent(QResizeEvent* event) override;
+
     private slots:
 
         void nextNodeDestroyed(QObject*);
@@ -241,6 +251,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void onPlaceHolderExpandRequest();
 
     private:
+
+        void updateExclusivelyExpandable();
 
         void setParentNodeTitle(const QString& title);
 

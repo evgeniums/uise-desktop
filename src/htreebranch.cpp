@@ -115,9 +115,16 @@ void HTreeBranch::closeNextNode()
 
 //--------------------------------------------------------------------------
 
-void HTreeBranch::openNextNode(const HTreePathElement& pathElement)
+void HTreeBranch::openNextNode(const HTreePathElement& pathElement, bool exclusive)
 {
     loadNextNode(pathElement);
+    if (exclusive)
+    {
+        if (nextNode())
+        {
+            nextNode()->expandExclusive();
+        }
+    }
 }
 
 //--------------------------------------------------------------------------
