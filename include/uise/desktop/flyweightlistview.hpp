@@ -33,23 +33,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/enums.hpp>
 
 class QScrollBar;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-enum class Direction : uint8_t
-{
-    NONE=0,
-    HOME=1,
-    END=2
-};
-
-enum class Order : uint8_t
-{
-    ASC=1,
-    DESC=2
-};
 
 namespace detail
 {
