@@ -307,6 +307,13 @@ class HTreePath
             m_elements.emplace_back(std::move(el));
         }
 
+        HTreePath copyAppend(HTreePathElement el)
+        {
+            auto p=*this;
+            p.m_elements.emplace_back(std::move(el));
+            return p;
+        }
+
     private:
 
         std::vector<HTreePathElement> m_elements;
