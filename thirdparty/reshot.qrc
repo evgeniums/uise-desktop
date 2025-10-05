@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/icons">
         <file>reshot/mute.svg</file>
+        <file>reshot/megaphone.svg</file>
     </qresource>
 </RCC>

@@ -56,5 +56,7 @@
         <file>tabler-icons/outline/arrow-left.svg</file>
         <file>tabler-icons/outline/maximize.svg</file>
         <file>tabler-icons/outline/square.svg</file>
+        <file>tabler-icons/outline/message-chatbot.svg</file>
+        <file>tabler-icons/outline/note.svg</file>
     </qresource>
 </RCC>
