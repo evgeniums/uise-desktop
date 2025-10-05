@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QMenu>
 #include <QCursor>
+#include <QTimer>
 
 #include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -252,12 +253,16 @@ class HTreeNode_p
 
         bool unique=false;
 
+        int prevMinWidth=0;
+        int prevMaxWidth=0;
+
         QPointer<HTreeNode> nextNode;
         bool prepareForDestroy=false;
 
         HTreeNodeLocator* nextNodeLocator=nullptr;
 
         bool collapsiblePlaceholderVisible=true;
+        bool loaded=false;
 
         void setCollapsePlaceholderVisible(bool enable)
         {
@@ -490,9 +495,6 @@ void HTreeNode::setNodeIcon(const QIcon& val)
 
 void HTreeNode::setContentWidget(QWidget* widget)
 {
-    setVisible(true);
-    pimpl->placeHolder->setVisible(false);
-
     pimpl->widget=widget;
     pimpl->layout->addWidget(widget);
 
@@ -523,9 +525,15 @@ void HTreeNode::collapseNode()
         return;
     }
 
+    if (!isExclusivelyExpandable())
+    {
+        pimpl->prevMinWidth=minimumWidth();
+        destroyWidget(pimpl->widget);
+        pimpl->loaded=false;
+    }
+
     pimpl->expanded=false;    
     pimpl->mainFrame->setVisible(false);
-    destroyWidget(pimpl->widget);
 
     auto emitExpanded=updateCollapsePlaceholder();
     if (emitExpanded)
@@ -549,7 +557,6 @@ void HTreeNode::expandNode()
 {
     pimpl->expanded=true;
     fillContent();
-    pimpl->mainFrame->setVisible(true);
 
     if (nextNode())
     {
@@ -561,14 +568,43 @@ void HTreeNode::expandNode()
     }
 
     emit toggleExpanded(true);
+
+    if (isExclusivelyExpandable())
+    {
+        expandExclusive();
+    }
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeNode::fillContent()
 {
-    setContentWidget(createContentWidget());
-    refresh();
+    setVisible(true);
+    pimpl->placeHolder->setVisible(false);
+
+    if (!pimpl->widget)
+    {
+        setContentWidget(createContentWidget());
+        pimpl->mainFrame->setVisible(true);
+    }
+    else
+    {
+        pimpl->mainFrame->setVisible(true);
+        setMinimumWidth(pimpl->widget->minimumWidth());
+        setMaximumWidth(pimpl->widget->maximumWidth());
+    }
+
+    if (isExclusivelyExpandable())
+    {
+        expandExclusive();
+        QTimer::singleShot(0,this,[this](){treeTab()->adjustWidthsAndPositions();});
+    }
+
+    if (!pimpl->loaded)
+    {
+        pimpl->loaded=true;
+        refresh();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -715,8 +751,8 @@ void HTreeNode::otherNodeExpanded(bool enable)
 
 void HTreeNode::setCollapsible(bool enable)
 {
-    pimpl->collapsible=enable;
-    pimpl->titleBar->pimpl->collapse->setVisible(enable);
+    pimpl->collapsible=enable && !isExclusivelyExpandable();
+    pimpl->titleBar->pimpl->collapse->setVisible(pimpl->collapsible);
 }
 
 //--------------------------------------------------------------------------
@@ -730,8 +766,8 @@ bool HTreeNode::isCollapsible() const
 
 void HTreeNode::setClosable(bool enable)
 {
-    pimpl->closable=enable;
-    pimpl->titleBar->pimpl->close->setVisible(enable && pimpl->closeEnabled);
+    pimpl->closable=enable && !isExclusivelyExpandable();
+    pimpl->titleBar->pimpl->close->setVisible(pimpl->closable && pimpl->closeEnabled);
 }
 
 //--------------------------------------------------------------------------
@@ -996,8 +1032,15 @@ bool HTreeNode::isAtListOneNodeExpanded() const
 void HTreeNode::updateExclusivelyExpandable()
 {
     pimpl->titleBar->pimpl->expandExclusive->setVisible(
-        parentNode() != nullptr && isAtListOneNodeExpanded()
+        parentNode() != nullptr && isAtListOneNodeExpanded() && !isExclusivelyExpandable()
     );
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isExclusivelyExpandable() const
+{
+    return treeTab()->tree()->isExlusivelyExpandableNode();
 }
 
 //--------------------------------------------------------------------------

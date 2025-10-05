@@ -80,6 +80,8 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
         void truncate(int index);
 
+        void adjustWidthsAndPositions();
+
     public slots:
 
         void scrollToEnd();

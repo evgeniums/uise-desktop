@@ -1230,6 +1230,16 @@ void HTreeSplitter::toggleSectionExpanded(int index, bool expanded, bool visible
 
 //--------------------------------------------------------------------------
 
+void HTreeSplitter::adjustWidthsAndPositions()
+{
+    pimpl->content->recalculateWidths(width());
+    pimpl->content->updatePositions();
+    pimpl->content->updateWidths();
+    pimpl->wrapper->updateMinMaxSize();
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeSplitter::scrollToIndex(int index, int xmargin)
 {
     // qDebug() << "HTreeSplitter::scrollToIndex() index=" << index << " count="<<pimpl->content->count();

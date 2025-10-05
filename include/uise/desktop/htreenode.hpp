@@ -200,6 +200,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         bool isAtListOneNodeExpanded() const;
 
+        bool isExclusivelyExpandable() const;
+
     public slots:
 
         void setNodeName(const QString& val);

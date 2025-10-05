@@ -56,6 +56,7 @@ class HTree_p
         std::pair<HTreeTab*,int> addTab(const HTreePath& path);
 
         bool singleCollapsePlaceholder=true;
+        bool exlusivelyExpandableNode=false;
 };
 
 //--------------------------------------------------------------------------
@@ -378,6 +379,20 @@ void HTree::setSingleCollapsePlaceholder(bool enable) noexcept
 bool HTree::isSingleCollapsePlaceholder() const noexcept
 {
     return pimpl->singleCollapsePlaceholder;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setExlusivelyExpandableNode(bool enable) noexcept
+{
+    pimpl->exlusivelyExpandableNode=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTree::isExlusivelyExpandableNode() const noexcept
+{
+    return pimpl->exlusivelyExpandableNode;
 }
 
 //--------------------------------------------------------------------------

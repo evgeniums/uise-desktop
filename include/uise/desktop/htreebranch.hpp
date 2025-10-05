@@ -68,7 +68,7 @@ class UISE_DESKTOP_EXPORT HTreeBranch : public HTreeNode
         HTreeBranch& operator=(const HTreeBranch&)=delete;
         HTreeBranch& operator=(HTreeBranch&&)=delete;
 
-        HTreeNode* loadNextNode(const HTreePathElement& pathElement);
+        HTreeNode* loadNextNode(const HTreePathElement& pathElement, bool last=true);
         void closeNextNode();
 
     public slots:

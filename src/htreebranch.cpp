@@ -66,7 +66,7 @@ HTreeBranch::~HTreeBranch()
 
 //--------------------------------------------------------------------------
 
-HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
+HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement, bool last)
 {
     auto next=nextNode();
     if (next!=nullptr)
@@ -98,8 +98,11 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     nextNode=nodeResult.first;
     setNextNodeId(pathElement.uniqueId());
     setNextNode(nextNode);
-    nextNode->fillContent();
-    treeTab()->appendNode(nextNode);    
+    if (last || !isExclusivelyExpandable())
+    {
+        nextNode->fillContent();
+    }
+    treeTab()->appendNode(nextNode);
 
     return nextNode;
 }

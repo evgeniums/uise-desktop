@@ -64,6 +64,7 @@ class HTreeTab_p
         QSignalMapper* nodeDestroyedMapper;
 
         std::vector<HTreeNode*> nodes;
+        SingleShotTimer* scrolTimer;
 
         ~HTreeTab_p()
         {
@@ -310,6 +311,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 {
     pimpl->self=this;
     pimpl->tree=tree;
+    pimpl->scrolTimer=new SingleShotTimer(this);
 
     auto l=Layout::vertical(this);
 
@@ -413,6 +415,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 HTreeTab::~HTreeTab()
 {
     pimpl->nodeDestroyedMapper->blockSignals(true);
+    pimpl->scrolTimer->clear();
 }
 
 //--------------------------------------------------------------------------
@@ -512,14 +515,15 @@ bool HTreeTab::openPath(HTreePath path)
     HTreeNode* nod=nullptr;
     for (size_t i=static_cast<size_t>(truncIndex);i<path.elements().size();i++)
     {
+        auto lastInPath=i==path.elements().size()-1;
         const auto& el=path.elements().at(i);
         auto lastNode=node();
         if (lastNode!=nullptr)
-        {
+        {            
             auto branch=qobject_cast<HTreeBranch*>(lastNode);
             UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
             auto prevNode=branch->nextNode();
-            nod=branch->loadNextNode(el);
+            nod=branch->loadNextNode(el,lastInPath);
             if (nod==nullptr)
             {
                 return false;
@@ -527,6 +531,20 @@ bool HTreeTab::openPath(HTreePath path)
             if (nod==prevNode)
             {
                 nod->setExpanded(true);
+            }
+
+            if (lastInPath)
+            {
+                pimpl->scrolTimer->shot(50,
+                    [this,node=QPointer<HTreeNode>{nod}]
+                    {
+                        if (node)
+                        {
+                            pimpl->scrollToNode(node);
+                        }
+                    },
+                    true
+                );
             }
         }
         else
@@ -549,7 +567,10 @@ bool HTreeTab::openPath(HTreePath path)
             {
                 return false;
             }
-            nod->fillContent();
+            if (lastInPath || !tree()->isExlusivelyExpandableNode())
+            {
+                nod->fillContent();
+            }
             appendNode(nod);
         }
     }
@@ -663,6 +684,13 @@ void HTreeTab::activate()
 bool HTreeTab::isSingleCollapsePlaceholder() const noexcept
 {
     return tree()->isSingleCollapsePlaceholder();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::adjustWidthsAndPositions()
+{
+    pimpl->splitter->adjustWidthsAndPositions();
 }
 
 //--------------------------------------------------------------------------

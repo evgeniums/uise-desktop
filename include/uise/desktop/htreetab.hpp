@@ -101,7 +101,10 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
     private:
 
+        void adjustWidthsAndPositions();
+
         friend class HTree;
+        friend class HTreeNode;
 
         std::unique_ptr<HTreeTab_p> pimpl;
 };

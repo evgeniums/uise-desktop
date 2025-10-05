@@ -94,6 +94,9 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setSingleCollapsePlaceholder(bool enable) noexcept;
         bool isSingleCollapsePlaceholder() const noexcept;
 
+        void setExlusivelyExpandableNode(bool enable) noexcept;
+        bool isExlusivelyExpandableNode() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
