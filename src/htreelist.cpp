@@ -94,40 +94,6 @@ HTreeListWidget::~HTreeListWidget()
 
 void HTreeListWidget::onItemInsert(HTreeListItem* item)
 {
-#if 0
-    for (auto& otherItem: pimpl->items)
-    {
-        connect(
-            item,
-            &HTreeListItem::selectionChanged,
-            otherItem.second,
-            [other=otherItem.second](bool selected)
-            {
-                other->blockSignals(true);
-                if (selected)
-                {
-                    other->setSelected(false);
-                }
-                other->blockSignals(false);
-            }
-        );
-        connect(
-            otherItem.second,
-            &HTreeListItem::selectionChanged,
-            item,
-            [item](bool selected)
-            {
-                item->blockSignals(true);
-                if (selected)
-                {
-                    item->setSelected(false);
-                }
-                item->blockSignals(false);
-            }
-        );
-    }
-#endif
-
     connect(
         item,
         &HTreeListItem::selectionChanged,

@@ -26,8 +26,6 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_LIST_HPP
 #define UISE_DESKTOP_HTREE_LIST_HPP
 
-#include <memory>
-
 #include <QFrame>
 #include <QPointer>
 
@@ -187,43 +185,6 @@ class HTreeListUiHelper
             );
         }
 };
-
-#if 0
-class HTreeListBuilderPlaceholder
-{
-    public:
-
-        template <typename T>
-        void initListNode(T* node) const
-        {
-            std::ignore=node;
-        }
-};
-
-template <typename ListViewBuilderT, typename ListNodeT=HTreeList, typename BaseBuilderT=HTreeListBuilderPlaceholder>
-class HTreeListBuilder : public HTreeNodeBuilder,
-                         public BaseBuilderT
-{
-    public:
-
-        using BaseBuilderT::BaseBuilderT;
-
-        HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const override
-        {
-            HTreePath path;
-            if (parentNode!=nullptr)
-            {
-                path=HTreePath{parentNode->path(),pathElement};
-            }
-
-            auto node=new ListNodeT(treeTab,parentNode);
-            this->initListNode(node);
-
-            node->setNodeTooltip(QString::fromStdString(pathElement.name()));
-            return node;
-        }
-};
-#endif
 
 UISE_DESKTOP_NAMESPACE_END
 
