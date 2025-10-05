@@ -81,6 +81,8 @@ class UISE_DESKTOP_EXPORT HTreeListItem : public QFrame
         void setOpenInWindowEnabled(bool val);
         bool isOpenInWindowEnabled() const noexcept;
 
+        std::string uniqueId() const;
+
     public slots:
 
         void click();

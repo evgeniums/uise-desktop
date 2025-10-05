@@ -83,7 +83,9 @@ class HTreePathElement
         ) : m_type(std::move(type)),
             m_id(std::move(id)),
             m_name(std::move(name))
-        {}
+        {
+            updateUniqueId();
+        }
 
         std::string type() const noexcept
         {
@@ -103,6 +105,7 @@ class HTreePathElement
         void setId(std::string id)
         {
             m_type=std::move(id);
+            updateUniqueId();
         }
 
         std::string name() const noexcept
@@ -145,11 +148,23 @@ class HTreePathElement
             return m_data;
         }
 
+        std::string uniqueId() const
+        {
+            return m_uniqueId;
+        }
+
     private:
+
+        void updateUniqueId()
+        {
+            m_uniqueId.append(m_id).append(m_type);
+        }
 
         std::string m_type;
         std::string m_id;
         std::string m_name;
+        std::string m_uniqueId;
+
         QVariant m_data;
 
         HTreePathElementConfig m_config;
@@ -245,6 +260,16 @@ class HTreePath
                 return std::string{};
             }
             return l->id();
+        }
+
+        std::string uniqueId() const noexcept
+        {
+            auto l=last();
+            if (l==nullptr)
+            {
+                return std::string{};
+            }
+            return l->uniqueId();
         }
 
         std::string name() const noexcept

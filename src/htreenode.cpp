@@ -427,7 +427,7 @@ HTreeNode* HTreeNode::parentNode() const
 
 QString HTreeNode::id() const
 {
-    return QString::fromStdString(pimpl->path.id());
+    return QString::fromStdString(pimpl->path.uniqueId());
 }
 
 //--------------------------------------------------------------------------

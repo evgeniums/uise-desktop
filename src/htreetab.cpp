@@ -490,7 +490,7 @@ bool HTreeTab::openPath(HTreePath path)
     {
         const auto& el=path.elements().at(i);
         const auto* node=pimpl->nodes.at(i);
-        if (el.id()==node->id())
+        if (el.uniqueId()==node->id())
         {
             truncIndex=i+1;
         }

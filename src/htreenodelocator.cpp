@@ -67,7 +67,7 @@ std::pair<HTreeNode*,bool> HTreeNodeLocator::findOrCreateNode(
         HTreeTab* treeTab
     )
 {
-    auto node=findUniqueNode(pathElement.id());
+    auto node=findUniqueNode(pathElement.uniqueId());
     if (node!=nullptr)
     {
         return std::make_pair(node,false);
@@ -78,7 +78,7 @@ std::pair<HTreeNode*,bool> HTreeNodeLocator::findOrCreateNode(
     {
         if (node->isUnique())
         {
-            m_uniqueNodes.emplace(pathElement.id(),node);
+            m_uniqueNodes.emplace(pathElement.uniqueId(),node);
         }
         return std::make_pair(node,true);
     }

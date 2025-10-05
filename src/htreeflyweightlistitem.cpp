@@ -39,7 +39,6 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 HTreeFlyweightListItem::HTreeFlyweightListItem(HTreePathElement el, QWidget* parent)
     : HTreeListItem(std::move(el),parent)
 {
-    m_id.append(pathElement().id()).append("_").append(itemType());
     m_layout=Layout::horizontal(this);
     setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
 }

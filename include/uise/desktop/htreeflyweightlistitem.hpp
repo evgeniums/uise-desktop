@@ -66,17 +66,11 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
 
         auto itemId() const
         {
-            return m_id;
-        }
-
-        void setItemId(std::string id)
-        {
-            m_id=std::move(id);
+            return uniqueId();
         }
 
     private:
 
-        std::string m_id;
         QHBoxLayout* m_layout;
 };
 

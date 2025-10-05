@@ -71,7 +71,7 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     auto next=nextNode();
     if (next!=nullptr)
     {
-        if (next->path().id()==pathElement.id())
+        if (next->path().uniqueId()==pathElement.uniqueId())
         {
             next->setExpanded(true);
             return next;
@@ -96,7 +96,7 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement)
     }
 
     nextNode=nodeResult.first;
-    setNextNodeId(pathElement.id());
+    setNextNodeId(pathElement.uniqueId());
     setNextNode(nextNode);
     nextNode->fillContent();
     treeTab()->appendNode(nextNode);    

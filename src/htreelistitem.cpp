@@ -171,6 +171,13 @@ bool HTreeListItem::isSelected() const
 
 //--------------------------------------------------------------------------
 
+std::string HTreeListItem::uniqueId() const
+{
+    return pimpl->pathElement.uniqueId();
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeListItem::enterEvent(QEnterEvent *event)
 {
     QFrame::enterEvent(event);

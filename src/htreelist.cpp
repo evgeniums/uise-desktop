@@ -87,12 +87,14 @@ HTreeListWidget::HTreeListWidget(QWidget* parent)
 
 HTreeListWidget::~HTreeListWidget()
 {
+    pimpl->items.clear();
 }
 
 //--------------------------------------------------------------------------
 
 void HTreeListWidget::onItemInsert(HTreeListItem* item)
 {
+#if 0
     for (auto& otherItem: pimpl->items)
     {
         connect(
@@ -101,10 +103,12 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
             otherItem.second,
             [other=otherItem.second](bool selected)
             {
+                other->blockSignals(true);
                 if (selected)
                 {
                     other->setSelected(false);
                 }
+                other->blockSignals(false);
             }
         );
         connect(
@@ -113,15 +117,37 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
             item,
             [item](bool selected)
             {
+                item->blockSignals(true);
                 if (selected)
                 {
                     item->setSelected(false);
                 }
+                item->blockSignals(false);
             }
         );
     }
+#endif
 
-    pimpl->items[item->pathElement().id()]=item;
+    connect(
+        item,
+        &HTreeListItem::selectionChanged,
+        this,
+        [id=item->uniqueId(),this](bool selected)
+        {
+            if (selected)
+            {
+                for (auto& item1 : pimpl->items)
+                {
+                    if (item1.first!=id)
+                    {
+                        item1.second->setSelected(false);
+                    }
+                }
+            }
+        }
+    );
+
+    pimpl->items[item->uniqueId()]=item;
 
     pimpl->maxItemWidth=std::max(pimpl->maxItemWidth,item->sizeHint().width()+ItemExtraWidth);
 
@@ -137,7 +163,7 @@ void HTreeListWidget::onItemRemove(HTreeListItem* item)
 {
     if (item!=nullptr)
     {
-        auto id=item->pathElement().id();
+        auto id=item->uniqueId();
         pimpl->items.erase(id);
     }
 }
@@ -219,7 +245,7 @@ void HTreeListWidget::setNextNodeId(const std::string& id)
     for (auto& it:pimpl->items)
     {
         auto item=it.second;
-        item->setSelected(item->pathElement().id()==id);
+        item->setSelected(item->uniqueId()==id);
     }
 }
 
@@ -305,7 +331,7 @@ QWidget* HTreeList::doCreateContentWidget()
     auto next=nextNode();
     if (next!=nullptr)
     {
-        m_widget->setNextNodeId(next->path().id());
+        m_widget->setNextNodeId(next->path().uniqueId());
     }
     else
     {
