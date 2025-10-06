@@ -110,11 +110,11 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
 
 template <typename BaseT>
 HTreeListItemT<BaseT>::HTreeListItemT(HTreePathElement el, QWidget* parent)
-    : QFrame(parent),
+    : BaseT(parent),
       pimpl(std::make_unique<HTreeListItemT_p<BaseT>>())
 {
     auto self=this;
-    m_qobject=new HTreeListItemTQ(parent);
+    m_qobject=new HTreeListItemTQ(this);
     m_qobject->setOnDestroy(
         [self]()
         {
