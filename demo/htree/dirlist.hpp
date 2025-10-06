@@ -33,7 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextBrowser>
 
 #include <uise/desktop/flyweightlistview.hpp>
-#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
 #include <uise/desktop/htreestandardlistitem.hpp>
@@ -131,8 +131,9 @@ class DirListItem : public HTreeStandardListItem
             setOpenInWindowEnabled(entry.is_directory() || isTextFile);
 
             connect(
+                qobject(),
+                &HTreeListItemTQ::selectionChanged,
                 this,
-                &DirListItem::selectionChanged,
                 [this,drawIcon](bool selected)
                 {
                     if (!this->entry.is_directory())
@@ -144,8 +145,8 @@ class DirListItem : public HTreeStandardListItem
             );
 
             connect(
-                this,
-                &DirListItem::activateRequested,
+                qobject(),
+                &HTreeListItemTQ::activateRequested,
                 this,
                 &DirListItem::onActivateRequested
             );
@@ -172,7 +173,7 @@ class DirListItem : public HTreeStandardListItem
         {
             if (entry.is_directory())
             {
-                emit openRequested(el);
+                emit qobject()->openRequested(el);
                 return;
             }
 
@@ -190,7 +191,7 @@ class DirListItem : public HTreeStandardListItem
                 {
                     if (entry.is_directory())
                     {
-                        emit openRequested(pathElement(),true);
+                        emit qobject()->openRequested(pathElement(),true);
                         return;
                     }
 

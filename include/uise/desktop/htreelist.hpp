@@ -119,20 +119,20 @@ class HTreeListUiHelper
                 [listWidget,node](auto item)
                 {
                     QObject::connect(
-                        item,
-                        &HTreeListItem::openRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openRequested,
                         node,
                         &HTreeBranch::openNextNode
                     );
                     QObject::connect(
-                        item,
-                        &HTreeListItem::openInNewTabRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openInNewTabRequested,
                         node,
                         &HTreeBranch::openNextNodeInNewTab
                     );
                     QObject::connect(
-                        item,
-                        &HTreeListItem::openInNewTreeRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openInNewTreeRequested,
                         node,
                         &HTreeBranch::openNextNodeInNewTree
                     );
@@ -145,20 +145,20 @@ class HTreeListUiHelper
                 [listWidget,node](auto item)
                 {
                     QObject::disconnect(
-                        item,
-                        &HTreeListItem::openRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openRequested,
                         node,
                         &HTreeBranch::openNextNode
                         );
                     QObject::disconnect(
-                        item,
-                        &HTreeListItem::openInNewTabRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openInNewTabRequested,
                         node,
                         &HTreeBranch::openNextNodeInNewTab
                         );
                     QObject::disconnect(
-                        item,
-                        &HTreeListItem::openInNewTreeRequested,
+                        item->qobject(),
+                        &HTreeListItemTQ::openInNewTreeRequested,
                         node,
                         &HTreeBranch::openNextNodeInNewTree
                     );

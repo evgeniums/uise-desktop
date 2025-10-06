@@ -37,7 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLineEdit>
 
 #include <uise/desktop/flyweightlistview.hpp>
-#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN

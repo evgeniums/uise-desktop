@@ -24,9 +24,34 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/htreeflyweightlistitem.hpp>
-#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/flyweightlistview.ipp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+/************************* HTreeFlyweightListItem ******************************/
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+HTreeFlyweightListItem<BaseT>::HTreeFlyweightListItem(HTreePathElement el, QWidget* parent)
+    : HTreeListItemT<BaseT>(std::move(el),parent)
+{
+    m_layout=Layout::horizontal(this);
+    this->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeFlyweightListItem<BaseT>::setItemWidgets(QWidget* icon, QWidget* content, int contentStretch, int nextStrech)
+{
+    m_layout->addWidget(icon);
+    m_layout->addWidget(content,contentStretch);
+    if (nextStrech!=0)
+    {
+        m_layout->addStretch(nextStrech);
+    }
+}
 
 /************************* HTreeFlyweightListItemView ***********************/
 
@@ -39,7 +64,8 @@ HTreeFlyweightListItemView<ItemT>::HTreeFlyweightListItemView(QWidget* parent) :
 /************************* HTreeStandardListView ***********************/
 
 template <typename ItemT>
-HTreeFlyweightListView<ItemT>::HTreeFlyweightListView(QWidget* parent, int minimumWidth) : HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>>()
+HTreeFlyweightListView<ItemT>::HTreeFlyweightListView(QWidget* parent, int minimumWidth)
+    : HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>>()
 {
     auto l=Layout::vertical(this);
     auto listView=new HTreeFlyweightListItemView<ItemT>(this);

@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/flyweightlistview.ipp
+/** @file uise/desktop/ipp/flyweightlistview.ipp
 *
 *  Contains implementation of FlyweightListView.
 *

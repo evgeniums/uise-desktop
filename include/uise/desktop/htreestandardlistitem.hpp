@@ -36,7 +36,7 @@ class ElidedLabel;
 
 class HTreeStandardListItem_p;
 
-class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem
+class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<>
 {
     Q_OBJECT
 

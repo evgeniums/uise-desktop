@@ -37,7 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreestandardlistitem.hpp>
 
-#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -47,7 +47,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString& text, std::shared_ptr<SvgIcon> icon, QWidget* parent)
-    : HTreeFlyweightListItem(std::move(el),parent)
+    : HTreeFlyweightListItem<>(std::move(el),parent)
 {
     m_icon=new PushButton(this);
     m_icon->setObjectName("hTreeItemPixmap");

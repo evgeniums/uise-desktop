@@ -95,8 +95,8 @@ HTreeListWidget::~HTreeListWidget()
 void HTreeListWidget::onItemInsert(HTreeListItem* item)
 {
     connect(
-        item,
-        &HTreeListItem::selectionChanged,
+        item->qobject(),
+        &HTreeListItemTQ::selectionChanged,
         this,
         [id=item->uniqueId(),this](bool selected)
         {

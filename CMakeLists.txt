@@ -59,8 +59,7 @@ SET (HEADERS
     include/uise/desktop/linkedlistviewitem.hpp
 
     include/uise/desktop/flyweightlistitem.hpp
-    include/uise/desktop/flyweightlistview.hpp
-    include/uise/desktop/flyweightlistview.ipp
+    include/uise/desktop/flyweightlistview.hpp    
 
     include/uise/desktop/alignedstretchingwidget.hpp
 
@@ -105,6 +104,7 @@ SET (HEADERS
 
     include/uise/desktop/htreelist.hpp
     include/uise/desktop/htreelistitem.hpp
+    include/uise/desktop/htreelistitemtemplate.hpp
     include/uise/desktop/htreeflyweightlistitem.hpp
     include/uise/desktop/htreestandardlistitem.hpp
     include/uise/desktop/htreelistwidget.hpp
@@ -148,7 +148,9 @@ SET (HEADERS ${HEADERS}
 
 SET (HEADERS ${HEADERS}
     include/uise/desktop/ipp/dialog.ipp
+    include/uise/desktop/ipp/flyweightlistview.ipp
     include/uise/desktop/ipp/htreeflyweightlistitem.ipp
+    include/uise/desktop/ipp/htreelistitemtemplate.ipp
 )
 
 SET (SOURCES

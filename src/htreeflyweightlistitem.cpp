@@ -23,36 +23,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <uise/desktop/utils/layout.hpp>
-#include <uise/desktop/utils/singleshottimer.hpp>
-
-#include <uise/desktop/flyweightlistview.ipp>
-
 #include <uise/desktop/htreeflyweightlistitem.hpp>
+
+#include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-/************************* HTreeFlyweightListItem ******************************/
-
 //--------------------------------------------------------------------------
 
-HTreeFlyweightListItem::HTreeFlyweightListItem(HTreePathElement el, QWidget* parent)
-    : HTreeListItem(std::move(el),parent)
-{
-    m_layout=Layout::horizontal(this);
-    setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
-}
+template class UISE_DESKTOP_EXPORT HTreeFlyweightListItem<QFrame>;
 
 //--------------------------------------------------------------------------
-
-void HTreeFlyweightListItem::setItemWidgets(QWidget* icon, QWidget* content, int contentStretch, int nextStrech)
-{
-    m_layout->addWidget(icon);
-    m_layout->addWidget(content,contentStretch);
-    if (nextStrech!=0)
-    {
-        m_layout->addStretch(nextStrech);
-    }
-}
 
 UISE_DESKTOP_NAMESPACE_END

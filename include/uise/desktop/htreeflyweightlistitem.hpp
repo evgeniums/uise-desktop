@@ -28,18 +28,17 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
-#include <uise/desktop/flyweightlistview.ipp>
+#include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
 #include <uise/desktop/htreelist.hpp>
-#include <uise/desktop/htreelistitem.hpp>
+#include <uise/desktop/htreelistitemtemplate.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
+template <typename BaseT=QFrame>
+class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
 {
-    Q_OBJECT
-
     public:
 
         HTreeFlyweightListItem(HTreePathElement el, QWidget* parent=nullptr);
@@ -51,22 +50,22 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
 
         std::string itemName() const
         {
-            return pathElement().name();
+            return this->pathElement().name();
         }
 
         auto itemSortValue() const
         {
-            return pathElement().name();
+            return this->pathElement().name();
         }
 
         std::string itemType() const
         {
-            return pathElement().type();
+            return this->pathElement().type();
         }
 
         auto itemId() const
         {
-            return uniqueId();
+            return this->uniqueId();
         }
 
     private:
@@ -74,7 +73,7 @@ class UISE_DESKTOP_EXPORT HTreeFlyweightListItem : public HTreeListItem
         QHBoxLayout* m_layout;
 };
 
-template <typename ItemT=HTreeFlyweightListItem>
+template <typename ItemT=HTreeFlyweightListItem<>>
 struct HTreeFlyweightListItemTraits : public FlyweightListItemTraits<ItemT*,ItemT,std::string,std::string>
 {
     static auto sortValue(const ItemT* item) noexcept -> decltype(auto)
@@ -87,16 +86,16 @@ struct HTreeFlyweightListItemTraits : public FlyweightListItemTraits<ItemT*,Item
         return item;
     }
 
-    static auto id(const HTreeFlyweightListItem* item) -> decltype(auto)
+    static auto id(const ItemT* item) -> decltype(auto)
     {
         return item->itemId();
     }
 };
 
-template <typename ItemT=HTreeFlyweightListItem>
+template <typename ItemT=HTreeFlyweightListItem<>>
 using HTreeFlyweightListItemWrapper=FlyweightListItem<HTreeFlyweightListItemTraits<ItemT>>;
 
-template <typename ItemT=HTreeFlyweightListItem>
+template <typename ItemT=HTreeFlyweightListItem<>>
 class HTreeFlyweightListItemView : public FlyweightListView<HTreeFlyweightListItemWrapper<ItemT>>
 {
     public:
@@ -104,7 +103,7 @@ class HTreeFlyweightListItemView : public FlyweightListView<HTreeFlyweightListIt
     HTreeFlyweightListItemView(QWidget* parent=nullptr);
 };
 
-template <typename ItemT=HTreeFlyweightListItem>
+template <typename ItemT=HTreeFlyweightListItem<>>
 class HTreeFlyweightListView : public HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>>
 {
     public:
