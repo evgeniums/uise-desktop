@@ -148,7 +148,6 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     updatePageStep();
     resizeList();
 
-    m_qobjectHelper.setWidgetDestroyedHandler([this](QObject* obj){onWidgetDestroyed(obj);});
     m_qobjectHelper.setListResizeHandler([this](){onListContentResized();});
 
     if (m_llist->frameWidth()!=0)
@@ -208,8 +207,49 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const 
     auto widget=item->widget();
 
     PointerHolder::keepProperty(item,widget,ItemT::Property);
-    QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
-    QObject::connect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
+    QObject::disconnect(widget,nullptr,&m_qobjectHelper,nullptr);
+
+    QObject::connect(widget,
+                     &QObject::destroyed,
+                     &m_qobjectHelper,
+                     [this,id=item->id()]()
+                     {
+                        auto& idx=itemIdx();
+                        idx.erase(id);
+
+                        auto& order=itemOrder();
+                        auto b=order.begin();
+                        if (b!=order.end())
+                        {
+                            m_firstItem=&(*b);
+                        }
+                        else
+                        {
+                            m_firstItem=nullptr;
+                        }
+                        auto e=order.rbegin();
+                        if (e!=order.rend())
+                        {
+                            m_lastItem=&(*e);
+                        }
+                        else
+                        {
+                            m_lastItem=nullptr;
+                        }
+
+                        m_resizeListTimer.shot(0,
+                                               [this,ignoreUpdates=m_ignoreUpdates]()
+                                               {
+                                                   resizeList();
+                                                   if (!ignoreUpdates)
+                                                   {
+                                                       endUpdate();
+                                                   }
+                                               }
+                                            );
+                     }
+                );
+
     widget->removeEventFilter(&m_qobjectHelper);
     widget->installEventFilter(&m_qobjectHelper);
 
@@ -350,30 +390,6 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isHorizontal() const noexcept
 {
     return m_llist->orientation()==Qt::Horizontal;
-}
-
-//--------------------------------------------------------------------------
-template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onWidgetDestroyed(QObject* obj)
-{
-    //! @todo crash possible, especially if widget is the first or the last in the list
-
-    auto item=PointerHolder::getProperty<ItemT*>(obj,ItemT::Property);
-    if (item)
-    {
-        auto& idx=itemIdx();
-        idx.erase(item->id());
-        m_resizeListTimer.shot(0,
-            [this]()
-            {
-                resizeList();
-            }
-        );
-        if (!m_ignoreUpdates)
-        {
-            endUpdate();
-        }
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -1163,7 +1179,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clearWidget(typename I
     PointerHolder::clearProperty(widget,ItemT::Property);
     m_llist->takeWidget(widget);
     widget->removeEventFilter(&m_qobjectHelper);
-    QObject::disconnect(widget,SIGNAL(destroyed(QObject*)),&m_qobjectHelper,SLOT(onWidgetDestroyed(QObject*)));
+    QObject::disconnect(widget,nullptr,&m_qobjectHelper,nullptr);
 
     ItemT::dropWidget(widget);
 }

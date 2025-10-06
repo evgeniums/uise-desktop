@@ -60,24 +60,9 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
 
     public:
 
-        void setWidgetDestroyedHandler(std::function<void (QObject*)>&& handler)
-        {
-            widgetDestroyedHandler=std::move(handler);
-        }
-
         void setListResizeHandler(std::function<void ()>&& handler)
         {
             listResizeHandler=std::move(handler);
-        }
-
-    public slots:
-
-        void onWidgetDestroyed(QObject* obj)
-        {
-            if (widgetDestroyedHandler)
-            {
-                widgetDestroyedHandler(obj);
-            }
         }
 
     protected:
@@ -108,7 +93,6 @@ class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
 
     private:
 
-        std::function<void (QObject*)> widgetDestroyedHandler;
         std::function<void ()> listResizeHandler;
 };
 
@@ -173,8 +157,6 @@ class FlyweightListView_p : public OrientationInvariant
         const ItemT* lastItem() const noexcept;
 
         bool isHorizontal() const noexcept override;
-
-        void onWidgetDestroyed(QObject* obj);
 
         void onListContentResized();
 

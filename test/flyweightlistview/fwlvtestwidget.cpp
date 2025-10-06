@@ -167,6 +167,14 @@ void FwlvTestWidget::setup()
         foreach (const QString& id, ids)
         {
             auto idInt=id.toInt();
+
+            auto it=pimpl->itemSeqs.find(idInt);
+            if (it!=pimpl->itemSeqs.end())
+            {
+                pimpl->items.erase(it->second);
+                pimpl->itemSeqs.erase(it);
+            }
+
             const auto* item=pimpl->view->item(idInt);
             if (item)
             {
