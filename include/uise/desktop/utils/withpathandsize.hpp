@@ -65,6 +65,11 @@ class WithPath
             return m_path;
         }
 
+        auto& path() noexcept
+        {
+            return m_path;
+        }
+
         void setPath(WithPath path)
         {
             m_path=path.path();
@@ -88,6 +93,11 @@ class WithPath
         operator std::vector<std::string>() const
         {
             return m_path;
+        }
+
+        void clear()
+        {
+            m_path.clear();
         }
 
     private:
