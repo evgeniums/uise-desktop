@@ -153,10 +153,16 @@ class HTreePathElement
             return m_uniqueId;
         }
 
+        static std::string uniqueId(std::string id, std::string type)
+        {
+            return id.append(type);
+        }
+
     private:
 
         void updateUniqueId()
         {
+            m_uniqueId.clear();
             m_uniqueId.append(m_id).append(m_type);
         }
 
