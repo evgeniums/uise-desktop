@@ -153,7 +153,7 @@ class HTreePathElement
             return m_uniqueId;
         }
 
-        static std::string uniqueId(std::string id, std::string type)
+        static std::string uniqueId(std::string type,std::string id)
         {
             return id.append(type);
         }
