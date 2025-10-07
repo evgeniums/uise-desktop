@@ -105,6 +105,10 @@ class FlyweightListView : public QFrame
          */
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
+        explicit FlyweightListView(QWidget* parent, OrderComparer orderComparer, IdComparer idComparer={}, size_t prefetchItemCountHint=PrefetchItemCountHint)
+            : FlyweightListView(parent,prefetchItemCountHint,orderComparer,idComparer)
+        {}
+
         //! Destructor.
         ~FlyweightListView();
 
@@ -131,6 +135,15 @@ class FlyweightListView : public QFrame
         void insertItems(const std::vector<ItemT>& items);
 
         void reorderItem(const ItemT& item);
+
+        void reorderItem(const typename ItemT::IdType& id)
+        {
+            const auto* itm=item(id);
+            if (itm!=nullptr)
+            {
+                reorderItem(*itm);
+            }
+        }
 
         /**
          * @brief Insert continuous set of items into the list.

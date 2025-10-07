@@ -54,7 +54,7 @@ namespace detail {
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
-        FlyweightListView<ItemT>* view,
+        FlyweightListView<ItemT,OrderComparer,IdComparer>* view,
         size_t prefetchItemCountHint,
         OrderComparer orderComparer,
         IdComparer idComparer

@@ -104,7 +104,7 @@ class FlyweightListView_p : public OrientationInvariant
         constexpr static const char* LastWidgetPosProperty="uise_dt_FlyweightListItemPos";
 
         FlyweightListView_p(
-            FlyweightListView<ItemT>* view,
+            FlyweightListView<ItemT,OrderComparer,IdComparer>* view,
             size_t prefetchItemCountHint,
             OrderComparer orderComparer,
             IdComparer idComparer
@@ -246,7 +246,7 @@ class FlyweightListView_p : public OrientationInvariant
                 >
             >;
 
-        QFrame* m_obj;
+        FlyweightListView<ItemT,OrderComparer,IdComparer>* m_obj;
         QScrollBar* m_vbar;
         QScrollBar* m_hbar;
 

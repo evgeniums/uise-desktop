@@ -55,8 +55,10 @@ void HTreeFlyweightListItem<BaseT>::setItemWidgets(QWidget* icon, QWidget* conte
 
 /************************* HTreeFlyweightListItemView ***********************/
 
-template <typename ItemT>
-HTreeFlyweightListItemView<ItemT>::HTreeFlyweightListItemView(QWidget* parent) : FlyweightListView<HTreeFlyweightListItemWrapper<ItemT>>(parent)
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+HTreeFlyweightListItemView<ItemT,OrderComparer,IdComparer>::HTreeFlyweightListItemView(
+        QWidget* parent, OrderComparer orderComparer, IdComparer idComparer
+    ) : Base(parent,orderComparer,idComparer)
 {
     this->setSingleScrollStep(10);
 }

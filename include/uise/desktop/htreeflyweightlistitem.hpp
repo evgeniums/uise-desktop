@@ -95,12 +95,14 @@ struct HTreeFlyweightListItemTraits : public FlyweightListItemTraits<ItemT*,Item
 template <typename ItemT=HTreeFlyweightListItem<>>
 using HTreeFlyweightListItemWrapper=FlyweightListItem<HTreeFlyweightListItemTraits<ItemT>>;
 
-template <typename ItemT=HTreeFlyweightListItem<>>
-class HTreeFlyweightListItemView : public FlyweightListView<HTreeFlyweightListItemWrapper<ItemT>>
+template <typename ItemT=HTreeFlyweightListItem<>, typename OrderComparer=ComparerWithOrder, typename IdComparer=ComparerWithOrder>
+class HTreeFlyweightListItemView : public FlyweightListView<HTreeFlyweightListItemWrapper<ItemT>,OrderComparer,IdComparer>
 {
     public:
 
-    HTreeFlyweightListItemView(QWidget* parent=nullptr);
+        using Base=FlyweightListView<HTreeFlyweightListItemWrapper<ItemT>,OrderComparer,IdComparer>;
+
+        HTreeFlyweightListItemView(QWidget* parent=nullptr, OrderComparer orderComparer=OrderComparer{}, IdComparer idComparer=IdComparer{});
 };
 
 template <typename ItemT=HTreeFlyweightListItem<>>
