@@ -69,7 +69,7 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         bool openPath(HTreePath path);
 
         HTreeNode* node() const;
-        HTreeNode* node(const HTreePath& path, bool exact) const;
+        HTreeNode* node(const HTreePath& path, bool exact=true) const;
 
         HTreePath path() const;
 
