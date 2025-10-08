@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QStyle>
 
+#include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -41,7 +42,7 @@ RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
       m_hovered(false),
       m_parentHovered(false),
       m_selected(false),
-      m_cacheSvgPixmap(true),
+      m_cacheSvgPixmap(false),
       m_autoFitEllipse(false)
 {}
 
@@ -247,6 +248,16 @@ void RoundedImage::setParentHovered(bool enable)
 {
     m_parentHovered=enable;
     update();
+}
+
+//--------------------------------------------------------------------------
+
+WithRoundedImage::WithRoundedImage(QWidget *parent)
+    : QFrame(parent)
+{
+    m_img=new RoundedImage(this);
+    auto l=Layout::vertical(this);
+    l->addWidget(m_img);
 }
 
 //--------------------------------------------------------------------------
