@@ -271,11 +271,10 @@ void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
 
 void AvatarWidget::generateLetters(QPainter* painter) const
 {
-    QColor color{Qt::white};
     QString fontName{AvatarSource::DefaultFontName};
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
 
-    painter->setPen(color);
+    painter->setPen(fontColor());
     auto fontSize=imageSize().height()*0.45;
     QFont font{fontName};
     font.setPointSize(qRound(fontSize));
