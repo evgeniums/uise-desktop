@@ -36,13 +36,15 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeList;
 
-template <typename ItemT, typename BaseT=QFrame>
-class HTreeListFlyweightView : public WithFlyweightListView<ItemT,BaseT>,
+template <typename ItemT, typename BaseT=QFrame, typename OrderComparer=ComparerWithOrder, typename IdComparer=ComparerWithOrder>
+class HTreeListFlyweightView : public WithFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>,
                                public WithRefreshRequested
 {
     public:
 
-        using WithFlyweightListView<ItemT,BaseT>::WithFlyweightListView;
+        using Node=HTreeList;
+
+        using WithFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::WithFlyweightListView;
 
         ~HTreeListFlyweightView()
         {
@@ -52,19 +54,19 @@ class HTreeListFlyweightView : public WithFlyweightListView<ItemT,BaseT>,
             }
         }
 
-        void setListNode(HTreeList* listNode) noexcept
+        void setListNode(Node* listNode) noexcept
         {
             m_node=listNode;
         }
 
-        HTreeList* listNode() const noexcept
+        Node* listNode() const noexcept
         {
             return m_node;
         }
 
     private:
 
-        HTreeList* m_node=nullptr;
+        Node* m_node=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END

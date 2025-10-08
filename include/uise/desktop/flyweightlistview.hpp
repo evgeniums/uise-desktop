@@ -549,14 +549,16 @@ class FlyweightListView : public QFrame
 /**
  * @brief Widget containing FlyweightListView.
  */
-template <typename ItemT, typename BaseT=QFrame>
+template <typename ItemT, typename BaseT=QFrame, typename OrderComparer=ComparerWithOrder, typename IdComparer=ComparerWithOrder>
 class WithFlyweightListView : public BaseT
 {
     public:
 
+        using ListView=FlyweightListView<ItemT,OrderComparer,IdComparer>;
+
         using BaseT::BaseT;
 
-        FlyweightListView<ItemT>* listView() const noexcept
+        ListView* listView() const noexcept
         {
             return m_listView;
         }
@@ -568,7 +570,7 @@ class WithFlyweightListView : public BaseT
 
     protected:
 
-        void setListView(FlyweightListView<ItemT>* listView) noexcept
+        void setListView(ListView* listView) noexcept
         {
             m_listView=listView;
         }
@@ -577,7 +579,7 @@ class WithFlyweightListView : public BaseT
 
     private:
 
-        FlyweightListView<ItemT>* m_listView=nullptr;
+        ListView* m_listView=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END
