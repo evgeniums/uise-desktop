@@ -94,7 +94,7 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 
     private:
 
-        void updateText();
+        void updateText(int width);
 
         QString m_content;
         Qt::TextElideMode m_mode;
