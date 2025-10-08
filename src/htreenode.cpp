@@ -122,8 +122,9 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
     pimpl->layout->addWidget(pimpl->collapse);
     pimpl->layout->addWidget(pimpl->expandExclusive);
     pimpl->layout->addWidget(pimpl->refresh);
-    pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->title,1);
+
+    //! @todo Use as many placeholder buttons as there are visible buttons on the opposite side
     pimpl->layout->addWidget(placeholderButton(this));
 
 #else
@@ -131,7 +132,6 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
     pimpl->layout->addWidget(pimpl->toParentNode);
     pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->title,1);
-    pimpl->layout->addWidget(placeholderButton(this));
     pimpl->layout->addWidget(pimpl->refresh);
     pimpl->layout->addWidget(pimpl->collapse);
     pimpl->layout->addWidget(pimpl->expandExclusive);
