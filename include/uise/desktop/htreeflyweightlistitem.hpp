@@ -70,7 +70,8 @@ class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
 
     private:
 
-        QHBoxLayout* m_layout;
+        QFrame* m_contentWrapper=nullptr;
+        QHBoxLayout* m_layout=nullptr;
 };
 
 template <typename ItemT=HTreeFlyweightListItem<>>
