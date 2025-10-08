@@ -178,7 +178,6 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             m_yRadius.reset();
         }
 
-
         void setSvgIcon(std::shared_ptr<SvgIcon> svgIcon)
         {
             m_svgIcon=std::move(svgIcon);
@@ -266,6 +265,24 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         bool m_selected;
         bool m_cacheSvgPixmap;
         bool m_autoFitEllipse;
+};
+
+class UISE_DESKTOP_EXPORT WithRoundedImage : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        explicit WithRoundedImage(QWidget *parent=nullptr);
+
+        RoundedImage* image() const noexcept
+        {
+            return m_img;
+        }
+
+    private:
+
+        RoundedImage* m_img;
 };
 
 UISE_DESKTOP_NAMESPACE_END
