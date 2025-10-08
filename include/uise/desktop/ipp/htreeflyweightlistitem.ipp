@@ -32,19 +32,21 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-template <typename BaseT>
-HTreeFlyweightListItem<BaseT>::HTreeFlyweightListItem(HTreePathElement el, QWidget* parent)
+template <typename ContentWidgetT,typename BaseT>
+HTreeFlyweightListItem<ContentWidgetT,BaseT>::HTreeFlyweightListItem(HTreePathElement el, QWidget* parent)
     : HTreeListItemT<BaseT>(std::move(el),parent)
-{
-    m_layout=Layout::horizontal(this);
+{    
     this->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseT>
-void HTreeFlyweightListItem<BaseT>::setItemWidgets(QWidget* icon, QWidget* content, int contentStretch, int nextStrech)
+template <typename ContentWidgetT,typename BaseT>
+void HTreeFlyweightListItem<ContentWidgetT,BaseT>::setItemWidgets(QWidget* icon, ContentWidgetT* content, int contentStretch, int nextStrech)
 {
+    m_contentWrapper=new QFrame(this);
+    this->setWidget(m_contentWrapper);
+    m_layout=Layout::horizontal(m_contentWrapper);
     m_layout->addWidget(icon);
     m_layout->addWidget(content,contentStretch);
     if (nextStrech!=0)

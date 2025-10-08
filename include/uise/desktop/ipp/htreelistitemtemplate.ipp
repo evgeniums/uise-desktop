@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/svgicon.hpp>
@@ -74,7 +75,7 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
     QObject::connect(open,&QAction::triggered,qobject(),
         [this]()
         {
-            emit qobject()->activateRequested(pathElement());
+            emit qobject()->openRequested(pathElement());
         }
     );
 
@@ -152,6 +153,11 @@ HTreeListItemT<BaseT>::~HTreeListItemT()
 template <typename BaseT>
 void HTreeListItemT<BaseT>::setWidget(QWidget* widget)
 {
+    if (pimpl->widget!=nullptr)
+    {
+        destroyWidget(pimpl->widget);
+    }
+
     widget->setProperty("htree_item",true);
     pimpl->widget=widget;
     pimpl->layout->addWidget(widget);
@@ -165,6 +171,14 @@ void HTreeListItemT<BaseT>::setWidget(QWidget* widget)
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
+QWidget* HTreeListItemT<BaseT>::widget() const
+{
+    return pimpl->widget;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
 void HTreeListItemT<BaseT>::setSelected(bool enable)
 {
     this->setProperty("selected",enable);
@@ -172,6 +186,8 @@ void HTreeListItemT<BaseT>::setSelected(bool enable)
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("selected",enable);
+        pimpl->widget->style()->unpolish(pimpl->widget);
+        pimpl->widget->style()->polish(pimpl->widget);
     }
     this->style()->unpolish(this);
     this->style()->polish(this);
@@ -206,6 +222,8 @@ void HTreeListItemT<BaseT>::enterEvent(QEnterEvent *event)
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("hover",true);
+        pimpl->widget->style()->unpolish(pimpl->widget);
+        pimpl->widget->style()->polish(pimpl->widget);
     }
     doSetHovered(true);
     this->style()->unpolish(this);
@@ -222,6 +240,8 @@ void HTreeListItemT<BaseT>::leaveEvent(QEvent *event)
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("hover",false);
+        pimpl->widget->style()->unpolish(pimpl->widget);
+        pimpl->widget->style()->polish(pimpl->widget);
     }
     doSetHovered(false);
     this->style()->unpolish(this);

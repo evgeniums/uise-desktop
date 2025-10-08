@@ -112,6 +112,14 @@ class HTreeListItemT : public BaseT
 
         void setWidget(QWidget* widget);
 
+        QWidget* widget() const;
+
+        template <typename T>
+        T* widget() const
+        {
+            return qobject_cast<T*>(widget());
+        }
+
         void setPathElement(HTreePathElement pathElement);
         const HTreePathElement& pathElement() const noexcept;
 

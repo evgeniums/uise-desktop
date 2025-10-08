@@ -36,17 +36,19 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-template <typename BaseT=QFrame>
+template <typename ContentWidgetT=QWidget, typename BaseT=QFrame>
 class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
 {
     public:
+
+        using Content=ContentWidgetT;
 
         HTreeFlyweightListItem(HTreePathElement el, QWidget* parent=nullptr);
 
         HTreeFlyweightListItem(QWidget* parent=nullptr) : HTreeFlyweightListItem(HTreePathElement{},parent)
         {}
 
-        void setItemWidgets(QWidget* icon, QWidget* content, int contentStretch=0, int nextStrech=0);
+        void setItemWidgets(QWidget* icon, ContentWidgetT* content, int contentStretch=0, int nextStrech=0);
 
         std::string itemName() const
         {

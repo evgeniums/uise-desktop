@@ -78,11 +78,10 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
     public slots:
 
         void setNextNodeId(const std::string& id);
+        void onItemInsert(UISE_DESKTOP_NAMESPACE::HTreeListItem* item);
+        void onItemRemove(UISE_DESKTOP_NAMESPACE::HTreeListItem* item);
 
     private:
-
-        void onItemInsert(HTreeListItem* item);
-        void onItemRemove(HTreeListItem* item);
 
         std::unique_ptr<HTreeListWidget_p> pimpl;
 
