@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QLabel>
+#include <QResizeEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 
@@ -54,7 +55,7 @@ void ElidedLabel::setText(const QString& text)
     m_hiddenLabel->setText(text);
     m_label->setText(text);
 
-    updateText();
+    updateText(width());
 }
 
 void ElidedLabel::setAlignment(Qt::Alignment alignment)
@@ -80,13 +81,14 @@ QSize ElidedLabel::sizeHint() const
 
 void ElidedLabel::resizeEvent(QResizeEvent *event)
 {
-    updateText();
+    updateText(event->size().width());
     QFrame::resizeEvent(event);
 }
 
-void ElidedLabel::updateText()
+void ElidedLabel::updateText(int width)
 {
-    QString elidedText = fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, width()-contentsMargins().left()-contentsMargins().right());
+    auto w=width-contentsMargins().left()-contentsMargins().right();
+    QString elidedText = m_label->fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, w);
     m_label->setText(elidedText);
 }
 
