@@ -55,6 +55,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 FlyweightListView<ItemT,OrderComparer,IdComparer>::~FlyweightListView()
 {
     beginUpdate();
+    resetCallbacks();
     pimpl->clear();
 }
 
