@@ -275,10 +275,11 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
 
     painter->setPen(fontColor());
-    auto fontSize=imageSize().height()*0.45;
+    auto fontSize=imageSize().height()*fontSizeRatio();
     QFont font{fontName};
-    font.setPointSize(qRound(fontSize));
-    font.setStyleStrategy(QFont::PreferAntialias);    
+    font.setPixelSize(qRound(fontSize));
+    font.setStyleStrategy(QFont::PreferAntialias);
+    font.setBold(true);
     painter->setFont(font);
 
     QString name=QString::fromUtf8(m_avatarName);
@@ -303,7 +304,7 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     auto y= height()/2 - qCeil(fh/2);
     auto bearing=metrics.leftBearing(letters[0]);
 
-    painter->drawStaticText(x-bearing,y-dy-2,QStaticText{letters});
+    painter->drawStaticText(x-bearing,y-dy,QStaticText{letters});
 }
 
 UISE_DESKTOP_NAMESPACE_END

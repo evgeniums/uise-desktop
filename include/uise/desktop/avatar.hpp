@@ -240,9 +240,10 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
     public:
 
+        constexpr static const double DefaultFontSizeRation=0.37;
         constexpr static const double CornerImageSizeRatio=0.2;
         constexpr static QRgb DefaultCornerCircleColor=0x0038b000;
-        constexpr static QRgb DefaultFontColor=0x00DDDDDD;
+        constexpr static QRgb DefaultFontColor=0x00FFFFFF;
 
         using RoundedImage::RoundedImage;
 
@@ -381,6 +382,17 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             m_fontColor=color;
         }
 
+        double fontSizeRatio() const
+        {
+            //! @todo Use from avatar source
+            return m_fontSizeRatio;
+        }
+
+        void setFontSizeratio(double ratio)
+        {
+            m_fontSizeRatio=ratio;
+        }
+
     protected:
 
         void doPaint(QPainter* painter) override;
@@ -406,8 +418,9 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         std::string m_avatarName;
 
         AvatarSource* m_avatarSource=nullptr;
-        QColor m_backgroundColor=Qt::blue;
+        QColor m_backgroundColor=QRgb(0x00669bbc);
         QColor m_fontColor=DefaultFontColor;
+        double m_fontSizeRatio=DefaultFontSizeRation;
 };
 
 UISE_DESKTOP_NAMESPACE_END
