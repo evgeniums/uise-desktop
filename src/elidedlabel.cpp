@@ -34,7 +34,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     : QFrame(parent),
-      m_mode(Qt::ElideRight)
+      m_mode(Qt::ElideRight),
+      m_ignoreSizeHint(false)
 {
     auto l=Layout::horizontal(this);
 
@@ -76,6 +77,10 @@ QString ElidedLabel::text() const
 
 QSize ElidedLabel::sizeHint() const
 {
+    if (m_ignoreSizeHint)
+    {
+        return QSize();
+    }
     return m_hiddenLabel->sizeHint();
 }
 
@@ -90,6 +95,19 @@ void ElidedLabel::updateText(int width)
     auto w=width-contentsMargins().left()-contentsMargins().right();
     QString elidedText = m_label->fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, w);
     m_label->setText(elidedText);
+}
+
+void ElidedLabel::setIgnoreSizeHint(bool enable)
+{
+    m_ignoreSizeHint=enable;
+    if (enable)
+    {
+        m_label->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+    }
+    else
+    {
+        m_label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed);
+    }
 }
 
 UISE_DESKTOP_NAMESPACE_END

@@ -88,6 +88,13 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
         void setAlignment(Qt::Alignment alignment);
         Qt::Alignment alignment() const;
 
+        void setIgnoreSizeHint(bool enable);
+
+        bool isIgnoreSizeHint() const noexcept
+        {
+            return m_ignoreSizeHint;
+        }
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
@@ -100,6 +107,8 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
         Qt::TextElideMode m_mode;
         QLabel* m_label;
         QLabel* m_hiddenLabel;
+
+        bool m_ignoreSizeHint;
 };
 
 UISE_DESKTOP_NAMESPACE_END
