@@ -185,6 +185,7 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     {
         // paint svg icon
         m_svgIcon->paint(&painter,rect(),currentSvgIconMode(),QIcon::Off,m_cacheSvgPixmap);
+        // doFill(&painter,m_svgIcon->pixmap(rect().size(),currentSvgIconMode(),QIcon::Off));
     }
     else
     {
@@ -204,9 +205,6 @@ void RoundedImage::paintEvent(QPaintEvent *event)
 
     // add extra painting in derived class
     doPaint(&painter);
-
-    // done
-    QLabel::paintEvent(event);
 }
 
 //--------------------------------------------------------------------------
