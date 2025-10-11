@@ -195,6 +195,7 @@ void AvatarWidget::doPaint(QPainter* painter)
     int x=width() - w - m_cornerImageXOffset;
     int y=height() - h - m_cornerImageYOffset;
     QRect rect{x,y,w,h};
+    auto sz=QSize{w,h};
 
     auto pixmap=m_rightBottomPixmap;
     if (pixmap.isNull() && m_rightBottomSvgIcon)
@@ -205,14 +206,7 @@ void AvatarWidget::doPaint(QPainter* painter)
     {
         return;
     }
-
-    if (pixmap.width()!=w || pixmap.height()!=h)
-    {
-        pixmap=pixmap.scaled(QSize(w,h),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
-    }
-
     painter->setPen(Qt::NoPen);
-    painter->setBrush(pixmap);    
     painter->drawPixmap(rect,pixmap);
 }
 
