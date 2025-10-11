@@ -38,7 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIcon::State state, bool cache)
 {
-    // qDebug() << "SvgIcon::paint mode=" << mode << " state=" << state << " name="<<name();
+    // qDebug() << "SvgIcon::paint mode=" << mode << " state=" << state << " name="<<name() << " size="<<rect.size();
 
     if (cache)
     {
@@ -46,6 +46,7 @@ void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIc
         auto px=pixmap(rect.size(),mode,state);
         if (!px.isNull() && px.size()==rect.size())
         {
+            // qDebug() << "SvgIcon::paint draw cached pixmap  "<< " name="<<name() << " px.size()=" << px.size();
             painter->drawPixmap(rect,px);
             return;
         }
@@ -75,13 +76,13 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
     if (set==nullptr || set->isNull())
     {
         // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
-
         return makePixmap(size,mode,state);
     }
 
     auto px=set->pixmap(size,state);
     if (px.isNull() || px.size()!=size)
     {
+        // qDebug() << "SvgIcon::pixmap size mismatch px.size()="<<px.size();
         return makePixmap(size,mode,state);
     }
     return px;
@@ -92,13 +93,12 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
 QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache)
 {
     // paint pixmap
-    QImage img(size, QImage::Format_ARGB32);
-    img.fill(qRgba(0, 0, 0, 0));
-    auto px = QPixmap::fromImage(img, Qt::NoFormatConversion);
+    QPixmap px{size};
     {
+        px.fill(Qt::transparent);
         QPainter painter(&px);
-        QRect r(QPoint(0.0, 0.0), size);
-        paint(&painter, r, mode, state, false);
+        painter.setRenderHints(QPainter::Antialiasing);
+        paint(&painter, px.rect(), mode, state, false);
     }
 
     // qDebug() << "SvgIcon::makePixmap 1";
