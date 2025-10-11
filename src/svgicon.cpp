@@ -27,6 +27,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFile>
 #include <QPixmap>
 #include <QPainter>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <QtSvg/QSvgRenderer>
 
@@ -44,7 +46,7 @@ void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIc
     {
         // try to find pixmap of requested size
         auto px=pixmap(rect.size(),mode,state);
-        if (!px.isNull() && px.size()==rect.size())
+        if (!px.isNull())
         {
             // qDebug() << "SvgIcon::paint draw cached pixmap  "<< " name="<<name() << " px.size()=" << px.size();
             painter->drawPixmap(rect,px);
@@ -93,13 +95,15 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
 QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache)
 {
     // paint pixmap
-    QPixmap px{size};
-    {
-        px.fill(Qt::transparent);
-        QPainter painter(&px);
-        painter.setRenderHints(QPainter::Antialiasing);
-        paint(&painter, px.rect(), mode, state, false);
-    }
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    QPixmap px{size*pixelRatio};
+    px.fill(Qt::transparent);
+    QPainter painter;
+    painter.begin(&px);
+    painter.setRenderHints(QPainter::Antialiasing);
+    paint(&painter, px.rect(), mode, state, false);
+    painter.end();
+    px.setDevicePixelRatio(pixelRatio);
 
     // qDebug() << "SvgIcon::makePixmap 1";
 
