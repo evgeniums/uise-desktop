@@ -42,7 +42,7 @@ RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
       m_hovered(false),
       m_parentHovered(false),
       m_selected(false),
-      m_cacheSvgPixmap(false),
+      m_cacheSvgPixmap(true),
       m_autoFitEllipse(false)
 {}
 
@@ -179,13 +179,14 @@ void RoundedImage::paintEvent(QPaintEvent *event)
         setImageSize(size());
     }
 
-    QPainter painter(this);
+    QPainter painter;
+    painter.begin(this);
     painter.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     if (m_svgIcon)
     {
         // paint svg icon
+        // the corners are not rounded, it must be done in SVG source if needed
         m_svgIcon->paint(&painter,rect(),currentSvgIconMode(),QIcon::Off,m_cacheSvgPixmap);
-        // doFill(&painter,m_svgIcon->pixmap(rect().size(),currentSvgIconMode(),QIcon::Off));
     }
     else
     {
@@ -205,6 +206,8 @@ void RoundedImage::paintEvent(QPaintEvent *event)
 
     // add extra painting in derived class
     doPaint(&painter);
+
+    painter.end();
 }
 
 //--------------------------------------------------------------------------

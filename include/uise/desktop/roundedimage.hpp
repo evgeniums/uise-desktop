@@ -178,6 +178,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             m_yRadius.reset();
         }
 
+        // note then when SVG icon is used then the corners would not be rounded, it must be done in SVG source
         void setSvgIcon(std::shared_ptr<SvgIcon> svgIcon)
         {
             m_svgIcon=std::move(svgIcon);
