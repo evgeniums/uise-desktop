@@ -67,12 +67,15 @@ HTreeFlyweightListItemView<ItemT,OrderComparer,IdComparer>::HTreeFlyweightListIt
 
 /************************* HTreeStandardListView ***********************/
 
-template <typename ItemT>
-HTreeFlyweightListView<ItemT>::HTreeFlyweightListView(QWidget* parent, int minimumWidth)
-    : HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>>()
+template <typename ItemT, typename BaseT, typename OrderComparer, typename IdComparer>
+HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::HTreeFlyweightListView(QWidget* parent,
+                                                      OrderComparer orderComparer,
+                                                      IdComparer idComparer,
+                                                      int minimumWidth)
+    : HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>,BaseT,OrderComparer,IdComparer>()
 {
     auto l=Layout::vertical(this);
-    auto listView=new HTreeFlyweightListItemView<ItemT>(this);
+    auto listView=new HTreeFlyweightListItemView<ItemT,OrderComparer,IdComparer>(this,std::move(orderComparer),std::move(idComparer));
     l->addWidget(listView);
 
     listView->setFlyweightEnabled(false);

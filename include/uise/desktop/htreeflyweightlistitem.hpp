@@ -108,14 +108,21 @@ class HTreeFlyweightListItemView : public FlyweightListView<HTreeFlyweightListIt
         HTreeFlyweightListItemView(QWidget* parent=nullptr, OrderComparer orderComparer=OrderComparer{}, IdComparer idComparer=IdComparer{});
 };
 
-template <typename ItemT=HTreeFlyweightListItem<>>
-class HTreeFlyweightListView : public HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>>
+template <typename ItemT=HTreeFlyweightListItem<>, typename BaseT=QFrame, typename OrderComparer=ComparerWithOrder, typename IdComparer=ComparerWithOrder>
+class HTreeFlyweightListView : public HTreeListFlyweightView<HTreeFlyweightListItemWrapper<ItemT>,BaseT,OrderComparer,IdComparer>
 {
     public:
 
         constexpr static const int DefaultMinimumWidth=300;
 
-        HTreeFlyweightListView(QWidget* parent=nullptr, int minimumWidth=DefaultMinimumWidth);
+        HTreeFlyweightListView(QWidget* parent=nullptr,
+                               OrderComparer orderComparer=OrderComparer{},
+                               IdComparer idComparer=IdComparer{},
+                               int minimumWidth=DefaultMinimumWidth);
+
+        HTreeFlyweightListView(QWidget* parent, int minimumWidth)
+            : HTreeFlyweightListView(parent,OrderComparer{},IdComparer{},minimumWidth)
+        {}
 
         HTreeFlyweightListView(int minimumWidth) : HTreeFlyweightListView(nullptr,minimumWidth)
         {}
