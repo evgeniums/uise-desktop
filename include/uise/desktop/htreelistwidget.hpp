@@ -64,7 +64,7 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
 
         QSize sizeHint() const override;
 
-        void setDefaultMaxItemWith(int val);
+        void setDefaultMaxItemWidth(int val);
 
         int defaultMaxItemWidth() const noexcept;
 

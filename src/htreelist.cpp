@@ -226,13 +226,22 @@ void HTreeListWidget::setNextNodeId(const std::string& id)
 
 QSize HTreeListWidget::sizeHint() const
 {
+    auto margins=contentsMargins();
     auto sz=QFrame::sizeHint();
+
     if (pimpl->maxItemWidth==0)
     {
+        auto w=sz.width();
+        for (auto& it:pimpl->items)
+        {
+            auto item=it.second;
+            w=std::max(item->sizeHint().width(),w);
+        }
+
+        sz.setWidth(w+margins.left()+margins.right());
         return sz;
     }
 
-    auto margins=contentsMargins();
     auto width=pimpl->maxItemWidth;
     sz.setWidth(width+margins.left()+margins.right());
     return sz;
@@ -240,7 +249,7 @@ QSize HTreeListWidget::sizeHint() const
 
 //--------------------------------------------------------------------------
 
-void HTreeListWidget::setDefaultMaxItemWith(int val)
+void HTreeListWidget::setDefaultMaxItemWidth(int val)
 {
     pimpl->maxItemWidth=val;
     pimpl->updateMaxWidth();
@@ -316,7 +325,10 @@ QWidget* HTreeList::doCreateContentWidget()
         m_widget->setNextNodeId(std::string());
     }    
     setMinimumWidth(m_widget->minimumWidth());
-    m_widget->setDefaultMaxItemWith(m_widget->minimumWidth());
+    if (m_widget->defaultMaxItemWidth()!=0)
+    {
+        m_widget->setDefaultMaxItemWidth(m_widget->minimumWidth());
+    }
     return m_widget;
 }
 
