@@ -149,6 +149,7 @@ class HTreeSplitterInternal : public QFrame
     private slots:
 
         void onSectionDestroyed(QObject* obj);
+        void updateSize(int newWidth);
 
     protected:
 
@@ -163,6 +164,7 @@ class HTreeSplitterInternal : public QFrame
         int recalculateWidths(int totalWidth);
         void updatePositions();
         void updateWidths();
+        void updateMinWidth();
 
         void recalculateSectionStretch();        
 
@@ -187,12 +189,15 @@ class HTreeSplitterInternal : public QFrame
         void updateStretches(Section* section, int stretch=0);
         Section* section(int index) const;
 
+        void splitterResized(QResizeEvent* event, bool withDelayedReadjust=true);
+
         QHBoxLayout* m_layout;
         std::vector<std::unique_ptr<Section>> m_sections;
 
         QPoint m_prevMousePos;
         bool m_blockResizeEvent;
         SingleShotTimer* m_blockResizeTimer;
+        SingleShotTimer* m_emitMinMaxSizeTimer;
         int m_resizingIndex;
         int m_prevViewportWidth;
 

@@ -93,6 +93,10 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
         void toggleSectionExpanded(int index, bool expanded, bool visible);
 
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
+
     private:
 
         std::unique_ptr<HTreeSplitter_p> pimpl;
