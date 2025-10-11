@@ -121,7 +121,7 @@ void AlignedStretchingWidget::updateSize()
     setOProp(widgetSize,OProp::size,targetSize);
     setOProp(widgetSize,OProp::size,otherSize,true);
 
-    qDebug() << "AlignedStretchingWidget::updateSize targetSize=" << targetSize << " widgetSize="<<widgetSize;
+    // qDebug() << "AlignedStretchingWidget::updateSize targetSize=" << targetSize << " widgetSize="<<widgetSize;
 
     m_widget->resize(widgetSize);
 
@@ -207,7 +207,7 @@ void AlignedStretchingWidget::updateSize()
 //--------------------------------------------------------------------------
 void AlignedStretchingWidget::resizeEvent(QResizeEvent *event)
 {
-    qDebug() << "AlignedStretchingWidget::resizeEvent oldsize=" << event->oldSize() << " newsize="<<event->size();
+    // qDebug() << "AlignedStretchingWidget::resizeEvent oldsize=" << event->oldSize() << " newsize="<<event->size();
     QFrame::resizeEvent(event);
     updateSize();
 }
