@@ -240,6 +240,7 @@ void HTreeSplitterInternal::updateSize(int w)
     m_prevViewportWidth=vw;
 
     auto newW=recalculateWidths(w);
+    std::ignore=newW;
     if (needResize)
     {
         // qDebug() << "HTreeSplitterInternal::updateSize() update minwidth from " << minimumWidth() << " to " <<newW;
@@ -417,8 +418,8 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                             }
                             if (dW!=0)
                             {
-                                auto newW=width()+dW;
-                                qDebug() << "HTreeSplitterInternal::mouseMoveEvent 1 update minwidth from " << minimumWidth() << " to " << newW << " by dw=" << dW;
+                                // auto newW=width()+dW;
+                                // qDebug() << "HTreeSplitterInternal::mouseMoveEvent 1 update minwidth from " << minimumWidth() << " to " << newW << " by dw=" << dW;
                                 updateMinWidth();
                             }
                         }
@@ -435,7 +436,7 @@ void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
                             auto splitterWidth=m_splitter->viewPort()->width();
                             if (totalWidth > splitterWidth)
                             {
-                                qDebug() << "HTreeSplitterInternal::mouseMoveEvent q update minwidth from " << minimumWidth() << " to " << totalWidth;
+                                // qDebug() << "HTreeSplitterInternal::mouseMoveEvent 2 update minwidth from " << minimumWidth() << " to " << totalWidth;
                                 updateMinWidth();
                                 resize(totalWidth,height());
                             }
@@ -1036,7 +1037,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
     w->setExpanded(expanded);
     w->setSectionVisible(visible);
 
-    auto prevMinWidth=s->minWidth;
+    // auto prevMinWidth=s->minWidth;
     auto prevWidth=s->width;
     s->minWidth=w->minimumWidth();
     if (!expanded)
@@ -1122,7 +1123,7 @@ void HTreeSplitterInternal::truncate(int index)
         }
     }
 
-    qDebug() << "HTreeSplitterInternal::truncate update minwidth from " << minimumWidth() << " to " << minW;
+    // qDebug() << "HTreeSplitterInternal::truncate update minwidth from " << minimumWidth() << " to " << minW;
     w=recalculateWidths(w);
     updateMinWidth();
 
