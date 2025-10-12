@@ -98,6 +98,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         void setAvatarPath(PathT path)
         {
             setPath(std::move(path));
+            updateAvatarPath();
             updateBackgroundColor();
             updateGeneratedAvatar();
         }
@@ -113,38 +114,25 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             updateProducers();
         }
 
-        QPixmap basepPixmap() const
+        QPixmap basePixmap() const
         {
             return m_basePixmap;
         }
 
+        void setPixmap(const QPixmap& pixmap);
+
         QPixmap pixmap(const QSize& size) const;
 
-        void setImageSource(AvatarSource* source) noexcept
+        void setAvatarSource(AvatarSource* source) noexcept
         {
             m_avatarSource=source;
             updateBackgroundColor();
             updateGeneratedAvatar();
         }
 
-        AvatarSource* imageSource() const noexcept
+        AvatarSource* avatarSource() const noexcept
         {
             return m_avatarSource;
-        }
-
-        void incRefCount()
-        {
-            ++m_refCount;
-        }
-
-        void decRefCount()
-        {
-            --m_refCount;
-        }
-
-        int refCount() const noexcept
-        {
-            return m_refCount;
         }
 
         QColor fontColor() const;
@@ -180,9 +168,37 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         QPixmap generatePixmap(const QSize& size) const;
 
+        const std::set<QSize,compareQSize> watchPixmapSizes() const
+        {
+            return m_watchSizes;
+        }
+
+        void watchPixmapForSize(const QSize& size)
+        {
+            m_watchSizes.insert(size);
+            doWatchPixmapForSize(size);
+        }
+
+        void unwatchPixmapForSize(const QSize& size)
+        {
+            m_watchSizes.erase(size);
+            doUnwatchPixmapForSize(size);
+        }
+
     protected:
 
         void updateProducers();
+
+        virtual void doWatchPixmapForSize(const QSize&)
+        {
+        }
+
+        virtual void doUnwatchPixmapForSize(const QSize&)
+        {
+        }
+
+        virtual void updateAvatarPath()
+        {}
 
     private:
 
@@ -195,13 +211,14 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         AvatarSource* m_avatarSource;
 
-        int m_refCount;
-
         QColor m_backgroundColor;
         std::optional<QColor> m_fontColor;
         std::optional<double> m_fontSizeRatio;
 
         std::shared_ptr<AvatarBackgroundGenerator> m_backgroundColorGenerator;
+
+        std::map<QSize,QPixmap,compareQSize> m_pixmaps;
+        std::set<QSize,compareQSize> m_watchSizes;
 };
 
 class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource

@@ -35,7 +35,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a86ff",
                                     "#00a6fb", "#006494", "ef476f", "#006d77", "#e36414",
-                                    "#2a9d8f", "#fa9500", "#390099", "#ce4257", "#52796f"
+                                    "#2a9d8f", "#fa9500", "#390099", "#ce4257", "#52796f",
+                                    "#0077b6"
                                     };
 
 /********************* AvatarBackgroundGenerator ********************/
@@ -102,7 +103,6 @@ QColor AvatarBackgroundGenerator::generateBackgroundColor(const WithPath& path) 
 
 Avatar::Avatar()
     : m_avatarSource(nullptr),
-      m_refCount(0),
       m_backgroundColor(AvatarBackgroundGenerator::DefaultBackgroundColor)
 {}
 
@@ -129,15 +129,33 @@ void Avatar::updateProducers()
 
 //--------------------------------------------------------------------------
 
+void Avatar::setPixmap(const QPixmap& pixmap)
+{
+    m_pixmaps.emplace(pixmap.size(),pixmap);
+    updateProducers();
+}
+
+//--------------------------------------------------------------------------
+
 QPixmap Avatar::pixmap(const QSize& size) const
 {
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+
+    auto it=m_pixmaps.find(size);
+    if (it!=m_pixmaps.end())
+    {
+        auto px=it->second;
+        px.setDevicePixelRatio(pixelRatio);
+        return px;
+    }
+
     // generate pixmap if base pixmap is not set
     if (m_basePixmap.isNull())
     {
         return generatePixmap(size);
     }
 
-    // scale pixmap if needed
+    // scale base pixmap if needed
     auto scalePixmap=[&,this]()
     {
         if (m_basePixmap.size()==size)
@@ -153,16 +171,17 @@ QPixmap Avatar::pixmap(const QSize& size) const
         return m_basePixmap.scaled(size,aspectRatio,Qt::SmoothTransformation);
     };
 
-    // use pixmap
+    // use scaled pixmap
     auto px=scalePixmap();
     if (px.isNull())
     {
         return px;
     }
 
-    // set device pixel ratio because input size must be with pixel ratio
-    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    // set device pixel ratio because input size must be with pixel ratio    
     px.setDevicePixelRatio(pixelRatio);
+
+    // done
     return px;
 }
 
@@ -332,19 +351,21 @@ AvatarSource::AvatarSource()
 
 void AvatarSource::doLoadProducer(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key);
+    const auto& avatarPath=key.toWithPath();
+
+    auto it=m_avatars.find(avatarPath);
     if (it==m_avatars.end())
     {
         Q_ASSERT(m_avatarBuilder);
-        auto avatar=m_avatarBuilder(key);
-        avatar->setAvatarPath(key);
-        avatar->setImageSource(this);
-        avatar->incRefCount();
-        m_avatars.emplace(key,std::move(avatar));
+        auto avatar=m_avatarBuilder(avatarPath);
+        avatar->setAvatarPath(avatarPath);
+        avatar->setAvatarSource(this);
+        avatar->watchPixmapForSize(key.size());
+        m_avatars.emplace(avatarPath,std::move(avatar));
     }
     else
     {
-        it->second->incRefCount();
+        it->second->watchPixmapForSize(key.size());
     }
 }
 
@@ -352,11 +373,11 @@ void AvatarSource::doLoadProducer(const PixmapKey& key)
 
 void AvatarSource::doUnloadProducer(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key);
+    auto it=m_avatars.find(key.toWithPath());
     if (it!=m_avatars.end())
     {
-        it->second->decRefCount();
-        if (it->second->refCount()<=0)
+        it->second->unwatchPixmapForSize(key.size());
+        if (it->second->watchPixmapSizes().empty())
         {
             m_avatars.erase(it);
         }
@@ -367,7 +388,7 @@ void AvatarSource::doUnloadProducer(const PixmapKey& key)
 
 void AvatarSource::doLoadPixmap(const PixmapKey& key)
 {
-    auto it=m_avatars.find(key);
+    auto it=m_avatars.find(key.toWithPath());
     if (it!=m_avatars.end())
     {
         auto px=it->second->pixmap(key.size());
