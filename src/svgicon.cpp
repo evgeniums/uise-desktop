@@ -96,7 +96,7 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
 {
     // paint pixmap
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
-    QPixmap px{size*pixelRatio};
+    QPixmap px{size};
     px.fill(Qt::transparent);
     QPainter painter;
     painter.begin(&px);
