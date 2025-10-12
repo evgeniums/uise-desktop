@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QCryptographicHash>
 #include <QPainter>
 #include <QStaticText>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <uise/desktop/avatar.hpp>
 
@@ -36,13 +38,72 @@ static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a
                                     "#2a9d8f", "#fa9500", "#390099", "#ce4257", "#52796f"
                                     };
 
+/********************* AvatarBackgroundGenerator ********************/
+
+//--------------------------------------------------------------------------
+
+AvatarBackgroundGenerator::AvatarBackgroundGenerator(std::vector<QColor> backgroundPallette)
+{
+    if (!backgroundPallette.empty())
+    {
+        m_backgroundPallette=std::move(backgroundPallette);
+        return;
+    }
+
+    auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
+    for (size_t i=0;i<colorCount;i++)
+    {
+        auto color=QColor::fromString(ColorPallette[i]);
+        if (color.isValid())
+        {
+            m_backgroundPallette.emplace_back(color);
+        }
+    }
+
+    if (m_backgroundPallette.empty())
+    {
+        m_backgroundPallette.emplace_back(DefaultBackgroundColor);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+AvatarBackgroundGenerator::~AvatarBackgroundGenerator()
+{}
+
+//--------------------------------------------------------------------------
+
+QColor AvatarBackgroundGenerator::generateBackgroundColor(const WithPath& path) const
+{
+    if (m_backgroundPallette.empty())
+    {
+        return DefaultBackgroundColor;
+    }
+
+    QCryptographicHash hash{QCryptographicHash::Sha1};
+    for (const auto& el: path.path())
+    {
+        hash.addData(el);
+    }
+    auto result=hash.result();
+
+    size_t idx=0;
+    memcpy(&idx,result.constData(),sizeof(idx));
+
+    size_t palletteLength = m_backgroundPallette.size();
+    auto colorIdx=idx%palletteLength;
+
+    return m_backgroundPallette.at(colorIdx);
+}
+
 /************************** Avatar **********************************/
 
 //--------------------------------------------------------------------------
 
 Avatar::Avatar()
-    : m_imageSource(nullptr),
-      m_refCount(0)
+    : m_avatarSource(nullptr),
+      m_refCount(0),
+      m_backgroundColor(AvatarBackgroundGenerator::DefaultBackgroundColor)
 {}
 
 //--------------------------------------------------------------------------
@@ -54,12 +115,12 @@ Avatar::~Avatar()
 
 void Avatar::updateProducers()
 {
-    if (!m_imageSource)
+    if (!m_avatarSource)
     {
         return;
     }
 
-    auto producers=m_imageSource->producers(avatarPath());
+    auto producers=m_avatarSource->producers(avatarPath());
     for (auto& producer: producers)
     {
         producer->setPixmap(pixmap(producer->size()));
@@ -70,16 +131,54 @@ void Avatar::updateProducers()
 
 QPixmap Avatar::pixmap(const QSize& size) const
 {
+    // generate pixmap if base pixmap is not set
     if (m_basePixmap.isNull())
     {
-        return QPixmap{};
+        return generatePixmap(size);
     }
 
-    if (m_imageSource==nullptr)
+    // scale pixmap if needed
+    auto scalePixmap=[&,this]()
     {
-        return m_basePixmap.scaled(size,AvatarSource::DefaultAspectRatioMode,Qt::SmoothTransformation);
+        if (m_basePixmap.size()==size)
+        {
+            return m_basePixmap;
+        }
+
+        auto aspectRatio=AvatarSource::DefaultAspectRatioMode;
+        if (m_avatarSource!=nullptr)
+        {
+            aspectRatio=m_avatarSource->aspectRatioMode();
+        }
+        return m_basePixmap.scaled(size,aspectRatio,Qt::SmoothTransformation);
+    };
+
+    // use pixmap
+    auto px=scalePixmap();
+    if (px.isNull())
+    {
+        return px;
     }
-    return m_basePixmap.scaled(size,m_imageSource->aspectRatioMode(),Qt::SmoothTransformation);
+
+    // set device pixel ratio because input size must be with pixel ratio
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    px.setDevicePixelRatio(pixelRatio);
+    return px;
+}
+
+//--------------------------------------------------------------------------
+
+void Avatar::updateBackgroundColor()
+{
+    auto generator=backgroundColorGenerator();
+    if (generator)
+    {
+        m_backgroundColor=generator->generateBackgroundColor(*this);
+    }
+    else
+    {
+        m_backgroundColor=AvatarBackgroundGenerator::DefaultBackgroundColor;
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -92,13 +191,123 @@ void Avatar::updateGeneratedAvatar()
     }
 }
 
+//--------------------------------------------------------------------------
+
+QColor Avatar::fontColor() const
+{
+    if (m_fontColor || !m_avatarSource)
+    {
+        return m_fontColor.value_or(DefaultFontColor);
+    }
+    return m_avatarSource->fontColor();
+}
+
+//--------------------------------------------------------------------------
+
+double Avatar::fontSizeRatio() const
+{
+    if (m_fontSizeRatio || !m_avatarSource)
+    {
+        return m_fontSizeRatio.value_or(DefaultFontSizeRatio);
+    }
+    return m_avatarSource->fontSizeRatio();
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<AvatarBackgroundGenerator> Avatar::backgroundColorGenerator() const
+{
+    if (m_avatarSource==nullptr)
+    {
+        return std::shared_ptr<AvatarBackgroundGenerator>{};
+    }
+
+    if (m_backgroundColorGenerator)
+    {
+        return m_backgroundColorGenerator;
+    }
+    return m_avatarSource->backgroundColorGenerator();
+}
+
+//--------------------------------------------------------------------------
+
+QPixmap Avatar::generatePixmap(const QSize& size) const
+{
+    QString fontName{AvatarSource::DefaultFontName};
+    size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
+
+    QPixmap px{size};
+    px.fill(Qt::transparent);
+
+    QPainter painter;
+    painter.begin(&px);
+
+    // draw background
+    painter.setRenderHints(QPainter::Antialiasing);
+    painter.setBrush(m_backgroundColor);
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(0, 0, size.width(), size.height());
+
+    if (!m_avatarName.empty())
+    {
+        // draw first letters
+        painter.setRenderHints(QPainter::TextAntialiasing);
+        painter.setPen(fontColor());
+        auto fontSize=size.height()*fontSizeRatio();
+        QFont font{fontName};
+        font.setPixelSize(qRound(fontSize));
+        font.setStyleStrategy(QFont::PreferAntialias);
+        font.setBold(true);
+        painter.setFont(font);
+
+        QString name=QString::fromUtf8(m_avatarName);
+        name=name.trimmed();
+        auto words=name.split(" ");
+        auto count=std::min(words.size(),qsizetype(maxLetters));
+        words.resize(count);
+        QString letters;
+        for (size_t i=0;i<words.count();i++)
+        {
+            const auto& word=words.at(i);
+            letters+=word.front().toUpper();
+        }
+
+        QFontMetrics metrics(font);
+        auto br=metrics.tightBoundingRect(letters);
+        auto bbr=metrics.boundingRect(letters);
+        auto fw=std::min(br.width(),bbr.width());
+        auto fh=br.height();
+        auto dy=metrics.ascent()-br.height();
+        auto x= size.width()/2 - qCeil(fw/2);
+        auto y= size.height()/2 - qCeil(fh/2);
+        auto bearing=metrics.leftBearing(letters[0]);
+
+        painter.drawStaticText(x-bearing,y-dy,QStaticText{letters});
+    }
+    else if (m_avatarSource && m_avatarSource->noNameSvgIcon())
+    {
+        // draw noname icon
+        painter.setRenderHints(QPainter::SmoothPixmapTransform);
+        auto sz=size * 0.7;
+        QRect r{size.width()/2-sz.width()/2,size.height()/2-sz.height()/2,sz.width(),sz.height()};
+        m_avatarSource->noNameSvgIcon()->paint(&painter,r);
+    }
+
+    // done
+    painter.end();
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    px.setDevicePixelRatio(pixelRatio);
+    return px;
+}
+
 /************************** AvatarSource *****************************/
 
 //--------------------------------------------------------------------------
 
 AvatarSource::AvatarSource()
     : m_fontName(DefaultFontName),
-      m_fontColor(Qt::white),
+      m_fontColor(Avatar::DefaultFontColor),
+      m_fontSizeRatio(Avatar::DefaultFontSizeRatio),
       m_maxAvatarLetterCount(DefaultMaxAvatarLetterCount)
 {
     auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
@@ -115,6 +324,8 @@ AvatarSource::AvatarSource()
     {
         m_backgroundPallette.emplace_back(Qt::blue);
     }
+
+    m_backgroundColorGenerator=std::make_shared<AvatarBackgroundGenerator>();
 }
 
 //--------------------------------------------------------------------------
@@ -200,7 +411,7 @@ void AvatarWidget::doPaint(QPainter* painter)
     auto pixmap=m_rightBottomPixmap;
     if (pixmap.isNull() && m_rightBottomSvgIcon)
     {
-        m_rightBottomSvgIcon->paint(painter,rect,currentSvgIconMode(),QIcon::Off,isCacheSvgPixmap());
+        pixmap=m_rightBottomSvgIcon->pixmap(imageSize(),currentSvgIconMode());
     }
     if (pixmap.isNull())
     {
@@ -237,21 +448,24 @@ void AvatarWidget::updateBackgroundColor()
 
 //--------------------------------------------------------------------------
 
-void AvatarWidget::doFill(QPainter* painter, const QPixmap& pixmap)
+void AvatarWidget::fillIfNoPixmap(QPainter* painter)
 {
-    if (!pixmap.isNull())
-    {
-        RoundedImage::doFill(painter,pixmap);
-        return;
-    }
-
     painter->setBrush(m_backgroundColor);
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(0, 0, imageSize().width(), imageSize().height(), xRadius(), yRadius());
 
     if (!m_avatarName.empty())
     {
-        generateLetters(painter);
+        const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+        QPixmap px{imageSize()*pixelRatio};
+        px.fill(Qt::transparent);
+        QPainter pxp;
+        pxp.begin(&px);
+        pxp.setRenderHints(QPainter::TextAntialiasing);
+        generateLetters(&pxp);
+        pxp.end();
+        px.setDevicePixelRatio(pixelRatio);
+        painter->drawPixmap(rect(),px);
     }
     else if (m_avatarSource && m_avatarSource->noNameSvgIcon())
     {
@@ -269,7 +483,8 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
 
     painter->setPen(fontColor());
-    auto fontSize=imageSize().height()*fontSizeRatio();
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    auto fontSize=imageSize().height()*fontSizeRatio()*pixelRatio;
     QFont font{fontName};
     font.setPixelSize(qRound(fontSize));
     font.setStyleStrategy(QFont::PreferAntialias);
@@ -294,8 +509,8 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     auto fw=std::min(br.width(),bbr.width());
     auto fh=br.height();
     auto dy=metrics.ascent()-br.height();
-    auto x= width()/2 - qCeil(fw/2);
-    auto y= height()/2 - qCeil(fh/2);
+    auto x= width()*pixelRatio/2 - qCeil(fw/2);
+    auto y= height()*pixelRatio/2 - qCeil(fh/2);
     auto bearing=metrics.leftBearing(letters[0]);
 
     painter->drawStaticText(x-bearing,y-dy,QStaticText{letters});

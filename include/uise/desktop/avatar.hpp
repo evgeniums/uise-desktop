@@ -36,9 +36,43 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class AvatarSource;
 
+class UISE_DESKTOP_EXPORT AvatarBackgroundGenerator
+{
+    public:
+
+        constexpr static const QRgb DefaultBackgroundColor=0x00669bbc;
+
+        AvatarBackgroundGenerator(std::vector<QColor> backgroundPallette={});
+        virtual ~AvatarBackgroundGenerator();
+
+        AvatarBackgroundGenerator(const AvatarBackgroundGenerator&)=default;
+        AvatarBackgroundGenerator(AvatarBackgroundGenerator&&)=default;
+        AvatarBackgroundGenerator& operator=(const AvatarBackgroundGenerator&)=default;
+        AvatarBackgroundGenerator& operator=(AvatarBackgroundGenerator&&)=default;
+
+        void setBackgroundPallette(std::vector<QColor> pallette)
+        {
+            m_backgroundPallette=std::move(pallette);
+        }
+
+        const std::vector<QColor>& backgroundPallette() const
+        {
+            return m_backgroundPallette;
+        }
+
+        virtual QColor generateBackgroundColor(const WithPath& path) const;
+
+    private:
+
+        std::vector<QColor> m_backgroundPallette;
+};
+
 class UISE_DESKTOP_EXPORT Avatar : public WithPath
 {
     public:
+
+        constexpr static const double DefaultFontSizeRatio=0.37;
+        constexpr static QRgb DefaultFontColor=0x00FFFFFF;
 
         Avatar();
 
@@ -64,6 +98,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         void setAvatarPath(PathT path)
         {
             setPath(std::move(path));
+            updateBackgroundColor();
             updateGeneratedAvatar();
         }
 
@@ -85,15 +120,16 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         QPixmap pixmap(const QSize& size) const;
 
-        void setImageSource(AvatarSource* imageSource) noexcept
+        void setImageSource(AvatarSource* source) noexcept
         {
-            m_imageSource=imageSource;
+            m_avatarSource=source;
+            updateBackgroundColor();
             updateGeneratedAvatar();
         }
 
         AvatarSource* imageSource() const noexcept
         {
-            return m_imageSource;
+            return m_avatarSource;
         }
 
         void incRefCount()
@@ -111,6 +147,39 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
             return m_refCount;
         }
 
+        QColor fontColor() const;
+
+        void setFontColor(QColor color)
+        {
+            m_fontColor=color;
+        }
+
+        void resetFontColor()
+        {
+            m_fontColor.reset();
+        }
+
+        double fontSizeRatio() const;
+
+        void setFontSizeRatio(double ratio)
+        {
+            m_fontSizeRatio=ratio;
+        }
+
+        void setFontSizeRatio()
+        {
+            m_fontSizeRatio.reset();
+        }
+
+        void setBackgroundColorGenerator(std::shared_ptr<AvatarBackgroundGenerator> backgroundColorGenerator)
+        {
+            m_backgroundColorGenerator=std::move(backgroundColorGenerator);
+        }
+
+        std::shared_ptr<AvatarBackgroundGenerator> backgroundColorGenerator() const;
+
+        QPixmap generatePixmap(const QSize& size) const;
+
     protected:
 
         void updateProducers();
@@ -118,14 +187,21 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
     private:
 
         void updateGeneratedAvatar();
+        void updateBackgroundColor();
 
         std::string m_avatarName;
 
         QPixmap m_basePixmap;
 
-        AvatarSource* m_imageSource;
+        AvatarSource* m_avatarSource;
 
         int m_refCount;
+
+        QColor m_backgroundColor;
+        std::optional<QColor> m_fontColor;
+        std::optional<double> m_fontSizeRatio;
+
+        std::shared_ptr<AvatarBackgroundGenerator> m_backgroundColorGenerator;
 };
 
 class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
@@ -159,6 +235,17 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         QColor fontColor() const noexcept
         {
             return m_fontColor;
+        }
+
+        double fontSizeRatio() const
+        {
+            //! @todo Use from avatar source
+            return m_fontSizeRatio;
+        }
+
+        void setFontSizeRatio(double ratio)
+        {
+            m_fontSizeRatio=ratio;
         }
 
         void setMaxAvatarLetterCount(size_t count)
@@ -213,6 +300,16 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
             return m_noNameSvgIcon;
         }
 
+        void setBackgroundColorGenerator(std::shared_ptr<AvatarBackgroundGenerator> backgroundColorGenerator)
+        {
+            m_backgroundColorGenerator=std::move(backgroundColorGenerator);
+        }
+
+        std::shared_ptr<AvatarBackgroundGenerator> backgroundColorGenerator() const
+        {
+            return m_backgroundColorGenerator;
+        }
+
     protected:
 
         void doLoadProducer(const PixmapKey& key) override;
@@ -227,10 +324,12 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
         QString m_fontName;
         QColor m_fontColor;
+        double m_fontSizeRatio;
         size_t m_maxAvatarLetterCount;
         std::vector<QColor> m_backgroundPallette;
         std::shared_ptr<SvgIcon> m_noNameSvgIcon;
 
+        std::shared_ptr<AvatarBackgroundGenerator> m_backgroundColorGenerator;
         AvatarBuilderFn m_avatarBuilder;
 };
 
@@ -396,7 +495,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
     protected:
 
         void doPaint(QPainter* painter) override;
-        void doFill(QPainter*, const QPixmap&) override;
+        void fillIfNoPixmap(QPainter*) override;
 
         virtual void updateBackgroundColor();
 

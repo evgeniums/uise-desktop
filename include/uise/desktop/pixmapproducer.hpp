@@ -267,7 +267,7 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
     public:
 
         constexpr static const size_t DefaultProducerDestroyingDelayMs=15000;
-        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
+        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatio;
 
         PixmapSource();
 

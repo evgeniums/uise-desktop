@@ -147,6 +147,8 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             return m_size;
         }
 
+        bool isDeviceImageSizeEqual(const QSize& other) const;
+
         void setAutoSize(bool enable) noexcept
         {
             m_autoSize=enable;
@@ -245,7 +247,10 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         virtual void doPaint(QPainter*)
         {}
 
-        virtual void doFill(QPainter* painter, const QPixmap& pixmap);
+        virtual void fillIfNoPixmap(QPainter* painter)
+        {
+            std::ignore=painter;
+        }
 
     private:
 

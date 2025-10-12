@@ -25,6 +25,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPainter>
 #include <QStyle>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/roundedimage.hpp>
@@ -88,9 +90,19 @@ void RoundedImage::setImageSize(
         const QSize& size
     )
 {
-    m_size=size;
-    setFixedSize(m_size);
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    m_size=size * pixelRatio;
+    setFixedSize(size);
     createPixmapConsumer();
+}
+
+//--------------------------------------------------------------------------
+
+bool RoundedImage::isDeviceImageSizeEqual(const QSize& other) const
+{
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    auto sz=other*pixelRatio;
+    return m_size==sz;
 }
 
 //--------------------------------------------------------------------------
@@ -102,7 +114,7 @@ void RoundedImage::createPixmapConsumer()
         delete m_pixmapConsumer;
         m_pixmapConsumer=nullptr;
     }
-    if (!m_imageSource || path().empty())
+    if (!m_imageSource || path().empty() || !m_size.isValid() || m_size.isNull())
     {
         return;
     }
@@ -174,7 +186,7 @@ IconMode RoundedImage::currentSvgIconMode() const
 void RoundedImage::paintEvent(QPaintEvent *event)
 {
     // update image size
-    if (m_size!=size() && m_autoSize)
+    if (!isDeviceImageSizeEqual(size()) && m_autoSize)
     {
         setImageSize(size());
     }
@@ -182,42 +194,38 @@ void RoundedImage::paintEvent(QPaintEvent *event)
     QPainter painter;
     painter.begin(this);
     painter.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    if (m_svgIcon)
+
+    QPixmap px=pixmap();
+
+    if (px.isNull() && m_svgIcon)
     {
-        // paint svg icon
-        // the corners are not rounded, it must be done in SVG source if needed
-        m_svgIcon->paint(&painter,rect(),currentSvgIconMode(),QIcon::Off,m_cacheSvgPixmap);
+        // use svg icon
+        px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
+    }
+    if (px.isNull() && m_pixmapConsumer!=nullptr)
+    {
+        // use pixmap from pixmap consumer
+        px=m_pixmapConsumer->pixmapProducer()->pixmap();
+    }
+
+    // draw pixmap
+    if (!px.isNull())
+    {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(px);
+        painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
     }
     else
     {
-        // paint pixmap
-        auto px=pixmap();
-        bool hasPixmap=!px.isNull();
-        if (!hasPixmap && m_pixmapConsumer!=nullptr)
-        {
-            px=m_pixmapConsumer->pixmapProducer()->pixmap();
-        }
-        if (!px.isNull() && px.size()!=m_size)
-        {
-            px=px.scaled(m_size, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        }
-        doFill(&painter,px);
+        // pixmap is null, try to fill the image in derived class
+        fillIfNoPixmap(&painter);
     }
 
     // add extra painting in derived class
     doPaint(&painter);
 
+    // done
     painter.end();
-}
-
-//--------------------------------------------------------------------------
-
-void RoundedImage::doFill(QPainter* painter, const QPixmap& pixmap)
-{
-    QBrush brush(pixmap);
-    painter->setBrush(brush);
-    painter->setPen(Qt::NoPen);
-    painter->drawRoundedRect(0, 0, m_size.width(), m_size.height(), xRadius(), yRadius());
 }
 
 //--------------------------------------------------------------------------

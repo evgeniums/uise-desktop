@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
                     img->setCornerImageOffsets(9,9);
                 }
 
-                img->setRightBottomCircleColor("#38b000");
+                img->setRightBottomCircleColor(0x0038b000);
             }
             if (i==3)
             {
