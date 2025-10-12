@@ -100,6 +100,27 @@ class WithPath
             m_path.clear();
         }
 
+        const auto& toWithPath() const
+        {
+            return *this;
+        }
+
+        auto& toWithPath()
+        {
+            return *this;
+        }
+
+        std::string toString() const
+        {
+            std::string p;
+            for (const auto& el:m_path)
+            {
+                p.append("/");
+                p.append(el);
+            }
+            return p;
+        }
+
     private:
 
         std::vector<std::string> m_path;
