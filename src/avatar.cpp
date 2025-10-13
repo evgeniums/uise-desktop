@@ -178,7 +178,7 @@ QPixmap Avatar::pixmap(const QSize& size) const
         return px;
     }
 
-    // set device pixel ratio because input size must be with pixel ratio    
+    // set device pixel ratio because input size must be with pixel ratio
     px.setDevicePixelRatio(pixelRatio);
 
     // done

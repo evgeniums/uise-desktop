@@ -85,18 +85,17 @@ void PixmapProducer::setPixmap(const QPixmap& pixmap, UISE_DESKTOP_NAMESPACE::Ic
 {
     m_svgIcon.reset();
     auto px=pixmap;
-
     if (!px.isNull() && size().isValid() && px.size()!=size())
     {
         px=px.scaled(size(),m_aspectRatioMode,Qt::SmoothTransformation);
     }
     if (state==QIcon::State::On)
     {
-        m_onPixmaps.emplace(mode,std::move(px));
+        m_onPixmaps[mode]=std::move(px);
     }
     else
     {
-        m_offPixmaps.emplace(mode,std::move(px));
+        m_offPixmaps[mode]=std::move(px);
     }
 
     emit pixmapUpdated();
@@ -273,7 +272,6 @@ void PixmapSource::updatePixmap(const PixmapKey& key, const QPixmap& pixmap)
     }
 
     auto* producer=it->value();
-
     if (!pixmap.isNull() && pixmap.size()!=producer->size())
     {
         auto px=pixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
@@ -294,7 +292,7 @@ void PixmapSource::updateScaledPixmaps(const WithPath& path, const QPixmap& orig
     for (auto it=from; it!=to; ++it)
     {
         auto* producer=it->value();
-        if (!originalPixmap.isNull())
+        if (!originalPixmap.isNull() && originalPixmap.size() != producer->size())
         {
             auto px=originalPixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
             producer->setPixmap(px);

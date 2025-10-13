@@ -252,6 +252,10 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             std::ignore=painter;
         }
 
+    private slots:
+
+        void onPixmapUpdated();
+
     private:
 
         void createPixmapConsumer();

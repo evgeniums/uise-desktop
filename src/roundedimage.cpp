@@ -102,7 +102,7 @@ bool RoundedImage::isDeviceImageSizeEqual(const QSize& other) const
 {
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     auto sz=other*pixelRatio;
-    return m_size==sz;
+    return m_size.width()==sz.width() && m_size.height()==sz.height();
 }
 
 //--------------------------------------------------------------------------
@@ -121,6 +121,12 @@ void RoundedImage::createPixmapConsumer()
 
     m_pixmapConsumer=new PixmapConsumer(path(),m_size,this);
     m_pixmapConsumer->setPixmapSource(m_imageSource);
+    connect(
+        m_pixmapConsumer,
+        &PixmapConsumer::pixmapUpdated,
+        this,
+        &RoundedImage::onPixmapUpdated
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -186,7 +192,8 @@ IconMode RoundedImage::currentSvgIconMode() const
 void RoundedImage::paintEvent(QPaintEvent *event)
 {
     // update image size
-    if (!isDeviceImageSizeEqual(size()) && m_autoSize)
+    auto imageSizeMatch=isDeviceImageSizeEqual(size());
+    if (!imageSizeMatch && m_autoSize)
     {
         setImageSize(size());
     }
@@ -257,6 +264,13 @@ void RoundedImage::setParentHovered(bool enable)
 {
     m_parentHovered=enable;
     update();
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::onPixmapUpdated()
+{
+    repaint();
 }
 
 //--------------------------------------------------------------------------

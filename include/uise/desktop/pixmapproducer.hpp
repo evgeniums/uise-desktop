@@ -117,7 +117,7 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
     public:
 
         constexpr static const QIcon::State DefaultIconState=QIcon::State::Off;
-        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
+        constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatio;
 
         PixmapProducer(PixmapKey pixmapKey)
             : PixmapKey(std::move(pixmapKey)),
