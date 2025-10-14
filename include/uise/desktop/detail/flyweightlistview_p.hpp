@@ -105,7 +105,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         FlyweightListView_p(
             FlyweightListView<ItemT,OrderComparer,IdComparer>* view,
-            size_t prefetchItemCountHint,
+            size_t prefetchItemWindowHint,
             OrderComparer orderComparer,
             IdComparer idComparer
         );
@@ -122,7 +122,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         void configureWidget(const ItemT* item);
 
-        size_t prefetchItemCount() noexcept;
+        size_t prefetchItemWindow() noexcept;
 
         size_t autoPrefetchCount() noexcept;
 
@@ -221,6 +221,15 @@ class FlyweightListView_p : public OrientationInvariant
         void setPrefetchScreensCount(double value);
         double prefetchScreensCount() const noexcept;
 
+        void setPrefetchThresholdRatio(double value);
+        double prefetchThresholdRatio() const noexcept;
+
+        void setPrefetchItemCount(size_t value);
+        void resetPrefetchItemCount();
+        size_t prefetchItemCount() const noexcept;
+        size_t prefetchItemCountAuto() noexcept;
+        size_t prefetchItemCountEffective() noexcept;
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
@@ -254,8 +263,8 @@ class FlyweightListView_p : public OrientationInvariant
         QScrollBar* m_hbar;
 
         QFrame* m_view;
-        size_t m_prefetchItemCount;
-        size_t m_prefetchItemCountHint;        
+        size_t m_prefetchItemWindow;
+        size_t m_prefetchItemWindowHint;
 
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsCb;
         typename FlyweightListView<ItemT>::ItemRangeCb m_viewportChangedCb;
@@ -320,6 +329,8 @@ class FlyweightListView_p : public OrientationInvariant
         OrderComparer m_orderComparer;
 
         double m_prefetchScreenCount;
+        double m_prefetchThresholdRatio;
+        std::optional<size_t> m_prefetchItemCount;
 };
 
 } // namespace detail

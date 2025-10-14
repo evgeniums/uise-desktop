@@ -55,15 +55,15 @@ namespace detail {
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         FlyweightListView<ItemT,OrderComparer,IdComparer>* view,
-        size_t prefetchItemCountHint,
+        size_t prefetchItemWindowHint,
         OrderComparer orderComparer,
         IdComparer idComparer
     ) : m_obj(view),
         m_vbar(nullptr),
         m_hbar(nullptr),
         m_view(nullptr),
-        m_prefetchItemCount(prefetchItemCountHint),
-        m_prefetchItemCountHint(prefetchItemCountHint),
+        m_prefetchItemWindow(prefetchItemWindowHint),
+        m_prefetchItemWindowHint(prefetchItemWindowHint),
         m_llist(nullptr),
         m_enableFlyweight(true),
         m_stick(Direction::END),
@@ -96,7 +96,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
           )
         ),
         m_orderComparer(orderComparer),
-        m_prefetchScreenCount(FlyweightListView<ItemT>::PrefetchScreensCountHint)
+        m_prefetchScreenCount(FlyweightListView<ItemT>::PrefetchScreensCountHint),
+        m_prefetchThresholdRatio(FlyweightListView<ItemT>::PrefetchThresholdRatio)
 {
 }
 
@@ -262,7 +263,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const 
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCount() noexcept
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemWindow() noexcept
 {
     return autoPrefetchCount();
 }
@@ -271,23 +272,22 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCount() 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::autoPrefetchCount() noexcept
 {
-    m_prefetchItemCount=std::max(m_prefetchItemCount,static_cast<size_t>(qRound(visibleCount()*m_prefetchScreenCount)));
-    return m_prefetchItemCount;
+    m_prefetchItemWindow=std::max(m_prefetchItemWindow,static_cast<size_t>(qRound(visibleCount()*m_prefetchScreenCount)));
+    return m_prefetchItemWindow;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::maxHiddenItemsBeyondEdge() noexcept
 {
-    return prefetchItemCount()*m_prefetchScreenCount;
+    return prefetchItemWindow()*m_prefetchScreenCount;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchThreshold() noexcept
 {
-    //! @todo Make it configurable
-    return prefetchItemCount()*0.9;
+    return prefetchItemWindow()*m_prefetchThresholdRatio;
 }
 
 //--------------------------------------------------------------------------
@@ -896,7 +896,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
     m_firstItem=nullptr;
     m_lastItem=nullptr;
     m_firstWidgetPos=0;
-    m_prefetchItemCount=m_prefetchItemCountHint;
+    m_prefetchItemWindow=m_prefetchItemWindowHint;
 
     m_cleared=true;
 }
@@ -1276,7 +1276,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
 
     auto maxHidden=maxHiddenItemsBeyondEdge();
     auto minPrefetch=prefetchThreshold();
-    auto prefetch=9;//prefetchItemCount();
+    auto prefetch=prefetchItemCountEffective();
 
     int hiddenBefore=0;
     auto first=firstItem();
@@ -1500,6 +1500,55 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 double FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchScreensCount() const noexcept
 {
     return m_prefetchScreenCount;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setPrefetchThresholdRatio(double value)
+{
+    m_prefetchThresholdRatio=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+double FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchThresholdRatio() const noexcept
+{
+    return m_prefetchThresholdRatio;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setPrefetchItemCount(size_t value)
+{
+    m_prefetchItemCount=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resetPrefetchItemCount()
+{
+    m_prefetchItemCount.reset();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCount() const noexcept
+{
+    return m_prefetchItemCount.value_or(0);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCountAuto() noexcept
+{
+    return prefetchItemWindow();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCountEffective() noexcept
+{
+    return m_prefetchItemCount.value_or(prefetchItemCountAuto());
 }
 
 //--------------------------------------------------------------------------

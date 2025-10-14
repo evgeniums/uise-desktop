@@ -82,8 +82,9 @@ class FlyweightListView : public QFrame
 {
     public:
 
-        inline static size_t PrefetchItemCountHint=20;
+        inline static size_t PrefetchItemWindowHint=20;
         inline static double PrefetchScreensCountHint=2.0;
+        inline static double PrefetchThresholdRatio=0.75;
         inline static size_t DefaultPageStep=10;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
@@ -96,18 +97,18 @@ class FlyweightListView : public QFrame
         /**
          * @brief Constructor.
          * @param parent Parent widget.
-         * @param prefetchItemCountHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemCountHint().
+         * @param prefetchItemWindowHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemWindowHint().
          */
-        explicit FlyweightListView(QWidget* parent, size_t prefetchItemCountHint=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
+        explicit FlyweightListView(QWidget* parent, size_t prefetchItemWindowHint=PrefetchItemWindowHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
         /**
          * @brief Default constructor.
-         * @param prefetchItemCountHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemCountHint().
+         * @param prefetchItemWindowHint Hint for number of items above/before the viewport to prefetch in advance. See also setPrefetchItemWindowHint().
          */
-        explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
+        explicit FlyweightListView(size_t prefetchItemWindow=PrefetchItemWindowHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
-        explicit FlyweightListView(QWidget* parent, OrderComparer orderComparer, IdComparer idComparer={}, size_t prefetchItemCountHint=PrefetchItemCountHint)
-            : FlyweightListView(parent,prefetchItemCountHint,std::move(orderComparer),std::move(idComparer))
+        explicit FlyweightListView(QWidget* parent, OrderComparer orderComparer, IdComparer idComparer={}, size_t prefetchItemWindowHint=PrefetchItemWindowHint)
+            : FlyweightListView(parent,prefetchItemWindowHint,std::move(orderComparer),std::move(idComparer))
         {}
 
         //! Destructor.
@@ -197,23 +198,23 @@ class FlyweightListView : public QFrame
          * This is a hint for number of items to prefetch. Hint is used as a default value for number of prefetched items.
          * Actual number of prefetched number is calculated dynamically and depends on sizes of item widgets and the view.
          */
-        void setPrefetchItemCountHint(size_t val) noexcept;
+        void setPrefetchItemWindowHint(size_t val) noexcept;
 
         /**
          * @brief Get hint for number of items above/before the viewport to prefetch in advance.
          * @return Hint value.
          *
-         * See also setPrefetchItemCountHint().
+         * See also setPrefetchItemWindowHint().
          */
-        size_t prefetchItemCountHint() const noexcept;
+        size_t prefetchItemWindowHint() const noexcept;
 
         /**
          * @brief Get actual number of items above/before the viewport to prefetch in advance.
          * @return Actual value.
          *
-         * See also setPrefetchItemCountHint().
+         * See also setPrefetchItemWindowHint().
          */
-        size_t prefetchItemCount() const noexcept;
+        size_t prefetchItemWindow() const noexcept;
 
         /**
          * @brief Get number of items in viewport.
@@ -536,6 +537,15 @@ class FlyweightListView : public QFrame
 
         void setPrefetchScreensCount(double value);
         double prefetchScreensCount() const noexcept;
+
+        void setPrefetchThresholdRatio(double value);
+        double prefetchThresholdRatio() const noexcept;
+
+        void setPrefetchItemCount(size_t value);
+        void resetPrefetchItemCount();
+        size_t prefetchItemCount() const noexcept;
+        size_t prefetchItemCountAuto() noexcept;
+        size_t prefetchItemCountEffective() noexcept;
 
     protected:
 
