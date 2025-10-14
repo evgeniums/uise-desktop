@@ -152,7 +152,7 @@ struct FwlvTestContext
 
         if (flyweightMode && prefetched)
         {
-            expectedItemCount=testWidget->initialItemCount+view->prefetchItemCount();
+            expectedItemCount=testWidget->initialItemCount+view->prefetchItemWindow();
         }
         else
         {

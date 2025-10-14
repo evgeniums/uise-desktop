@@ -40,8 +40,8 @@ BOOST_AUTO_TEST_SUITE(TestFlyWeightListView)
 namespace {
 void checkSettersGetters(FlwListType* view)
 {
-    UISE_TEST_CHECK_EQUAL(view->prefetchItemCountHint(),FlwListType::PrefetchItemCountHint);
-    UISE_TEST_CHECK_EQUAL(view->prefetchItemCount(),FlwListType::PrefetchItemCountHint);
+    UISE_TEST_CHECK_EQUAL(view->prefetchItemWindowHint(),FlwListType::PrefetchItemWindowHint);
+    UISE_TEST_CHECK_EQUAL(view->prefetchItemWindow(),FlwListType::PrefetchItemWindowHint);
     UISE_TEST_CHECK_EQUAL(view->visibleItemCount(),0);
     UISE_TEST_CHECK_EQUAL(view->itemCount(),0);
     UISE_TEST_CHECK_EQUAL(view->hasItem(0),false);

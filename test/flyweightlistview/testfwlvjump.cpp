@@ -48,7 +48,7 @@ void visibleItemsChanged(FwlvTestContext* ctx, const HelloWorldItemWrapper* begi
     BOOST_TEST_CONTEXT(msg.c_str())
     {
         ctx->fillExpectedAfterLoad();
-        ctx->expectedItemCount=ctx->view->prefetchItemCount();
+        ctx->expectedItemCount=ctx->view->prefetchItemWindow();
         if (ctx->step==2)
         {
             ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),0,true);
@@ -113,7 +113,7 @@ void checkJumpEdge(FwlvTestContext* ctx)
             [ctx]()
             {
                 ctx->fillExpectedAfterLoad();
-                ctx->expectedItemCount=ctx->view->prefetchItemCount();
+                ctx->expectedItemCount=ctx->view->prefetchItemWindow();
                 ctx->fillExpectedIds(ctx->frontID(),ctx->backID(),0,true);
                 BOOST_TEST_CONTEXT("After jump") {ctx->doChecks(true,true);}
 
@@ -124,7 +124,7 @@ void checkJumpEdge(FwlvTestContext* ctx)
                 [ctx]()
                 {
                     ctx->fillExpectedAfterLoad();
-                    ctx->expectedItemCount=ctx->view->prefetchItemCount();
+                    ctx->expectedItemCount=ctx->view->prefetchItemWindow();
                     ctx->fillExpectedIds(ctx->frontID(),ctx->backID());
                     BOOST_TEST_CONTEXT("After jump back") {ctx->doChecks();}
 

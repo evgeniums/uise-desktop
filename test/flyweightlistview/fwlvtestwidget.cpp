@@ -66,7 +66,7 @@ void FwlvTestWidget::setup()
     QFrame* mainFrame=this;
     auto layout=new QGridLayout(mainFrame);
 
-    pimpl->view=new FlwListType(FlwListType::PrefetchItemCountHint,UISE_DESKTOP_NAMESPACE::Order::ASC);
+    pimpl->view=new FlwListType(FlwListType::PrefetchItemWindowHint,UISE_DESKTOP_NAMESPACE::Order::ASC);
 
     int row=0;
     layout->addWidget(pimpl->view,row,0,1,4);
@@ -465,7 +465,7 @@ void FwlvTestWidget::setup()
             return;
         }
 
-        size_t prefetchCount=pimpl->view->prefetchItemCount();
+        size_t prefetchCount=pimpl->view->prefetchItemWindow();
         auto firstItem=pimpl->view->firstItem();
         size_t firstPos=firstItem->sortValue();
         if (firstPos==0)
@@ -517,7 +517,7 @@ void FwlvTestWidget::setup()
             return;
         }
 
-        size_t prefetchCount=pimpl->view->prefetchItemCount();
+        size_t prefetchCount=pimpl->view->prefetchItemWindow();
         auto lastItem=pimpl->view->lastItem();
         size_t lastPos=lastItem->sortValue();
         if (lastPos>=count-1)
@@ -584,7 +584,7 @@ void FwlvTestWidget::setup()
                     auto exists=pimpl->view->scrollToItem(pimpl->jumpItem->value(),pimpl->jumpOffset->value());
                     if (!exists)
                     {
-                        size_t prefetchCount=pimpl->view->prefetchItemCount();
+                        size_t prefetchCount=pimpl->view->prefetchItemWindow();
                         size_t itemCount=pimpl->view->itemCount();
                         if (itemCount<prefetchCount)
                         {

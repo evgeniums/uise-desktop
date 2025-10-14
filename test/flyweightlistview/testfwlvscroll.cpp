@@ -132,14 +132,14 @@ void itemRangeChangedLong(FwlvTestContext* ctx, const HelloWorldItemWrapper* beg
         }
         else
         {
-            ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemCount();
+            ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemWindow();
             if (ctx->stickMode==Direction::END)
             {
-                ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemCount(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
+                ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemWindow(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
             }
             else
             {
-                ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemCount(),idOffset(ctx,CountBeforeScroll/2));
+                ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemWindow(),idOffset(ctx,CountBeforeScroll/2));
             }
         }
 
@@ -277,14 +277,14 @@ void checkScrollLong(std::function<void (FwlvTestContext* ctx, int delta)> scrol
                 }
                 else
                 {
-                    ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemCount();
+                    ctx->expectedItemCount=CountBeforeScroll+ctx->view->prefetchItemWindow();
                     if (ctx->stickMode==Direction::END)
                     {
-                        ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemCount(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
+                        ctx->fillExpectedIds(FrontIDBeforeScroll+ctx->view->prefetchItemWindow(),BackIDBeforeScroll,idOffset(ctx,CountBeforeScroll/2));
                     }
                     else
                     {
-                        ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemCount(),idOffset(ctx,CountBeforeScroll/2));
+                        ctx->fillExpectedIds(FrontIDBeforeScroll,BackIDBeforeScroll-ctx->view->prefetchItemWindow(),idOffset(ctx,CountBeforeScroll/2));
                     }
                 }
                 BOOST_TEST_CONTEXT("After scroll") {ctx->doChecks();}
