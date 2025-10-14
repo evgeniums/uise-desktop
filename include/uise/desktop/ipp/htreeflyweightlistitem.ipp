@@ -60,7 +60,7 @@ void HTreeFlyweightListItem<ContentWidgetT,BaseT>::setItemWidgets(QWidget* icon,
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 HTreeFlyweightListItemView<ItemT,OrderComparer,IdComparer>::HTreeFlyweightListItemView(
         QWidget* parent, OrderComparer orderComparer, IdComparer idComparer
-    ) : Base(parent,orderComparer,idComparer)
+    ) : Base(parent,std::move(orderComparer),std::move(idComparer))
 {
     this->setSingleScrollStep(10);
 }

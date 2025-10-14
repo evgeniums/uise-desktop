@@ -88,14 +88,15 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_minSortValue(ItemT::defaultSortValue()),
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
         m_hbarPolicy(Qt::ScrollBarAsNeeded),
-        m_scrollWheelHorizontal(true)
-    ,
+        m_scrollWheelHorizontal(true),
         m_items(
           boost::make_tuple(
             boost::make_tuple(OrderIdxFn{},orderComparer),
-            boost::make_tuple(IdIdxFn{},idComparer)
+            boost::make_tuple(IdIdxFn{},std::move(idComparer))
           )
-        )
+        ),
+        m_orderComparer(orderComparer),
+        m_prefetchScreenCount(FlyweightListView<ItemT>::PrefetchScreensCountHint)
 {
 }
 
@@ -270,7 +271,7 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCount() 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::autoPrefetchCount() noexcept
 {
-    m_prefetchItemCount=std::max(m_prefetchItemCount,visibleCount()*2);
+    m_prefetchItemCount=std::max(m_prefetchItemCount,static_cast<size_t>(qRound(visibleCount()*m_prefetchScreenCount)));
     return m_prefetchItemCount;
 }
 
@@ -278,14 +279,15 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::autoPrefetchCount() 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::maxHiddenItemsBeyondEdge() noexcept
 {
-    return prefetchItemCount()*2;
+    return prefetchItemCount()*m_prefetchScreenCount;
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchThreshold() noexcept
 {
-    return prefetchItemCount()*0.75;
+    //! @todo Make it configurable
+    return prefetchItemCount()*0.9;
 }
 
 //--------------------------------------------------------------------------
@@ -891,6 +893,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
     m_wheelOffsetAccumulatedOther=0.0f;
     m_atBegin=true;
     m_atEnd=true;
+    m_firstItem=nullptr;
+    m_lastItem=nullptr;
     m_firstWidgetPos=0;
     m_prefetchItemCount=m_prefetchItemCountHint;
 
@@ -1272,7 +1276,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
 
     auto maxHidden=maxHiddenItemsBeyondEdge();
     auto minPrefetch=prefetchThreshold();
-    auto prefetch=prefetchItemCount();
+    auto prefetch=9;//prefetchItemCount();
 
     int hiddenBefore=0;
     auto first=firstItem();
@@ -1482,6 +1486,20 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onOtherSbarChanged(int
     auto pos=m_llist->pos();
     setOProp(pos,OProp::pos,-value,true);
     m_llist->move(pos);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setPrefetchScreensCount(double value)
+{
+    m_prefetchScreenCount=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+double FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchScreensCount() const noexcept
+{
+    return m_prefetchScreenCount;
 }
 
 //--------------------------------------------------------------------------

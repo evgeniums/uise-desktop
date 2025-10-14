@@ -83,6 +83,7 @@ class FlyweightListView : public QFrame
     public:
 
         inline static size_t PrefetchItemCountHint=20;
+        inline static double PrefetchScreensCountHint=2.0;
         inline static size_t DefaultPageStep=10;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
@@ -106,7 +107,7 @@ class FlyweightListView : public QFrame
         explicit FlyweightListView(size_t prefetchItemCount=PrefetchItemCountHint, OrderComparer orderComparer={}, IdComparer idComparer={});
 
         explicit FlyweightListView(QWidget* parent, OrderComparer orderComparer, IdComparer idComparer={}, size_t prefetchItemCountHint=PrefetchItemCountHint)
-            : FlyweightListView(parent,prefetchItemCountHint,orderComparer,idComparer)
+            : FlyweightListView(parent,prefetchItemCountHint,std::move(orderComparer),std::move(idComparer))
         {}
 
         //! Destructor.
@@ -532,6 +533,9 @@ class FlyweightListView : public QFrame
 
         void setSortOrder(Order order) noexcept;
         Order sortOrder() const noexcept;
+
+        void setPrefetchScreensCount(double value);
+        double prefetchScreensCount() const noexcept;
 
     protected:
 

@@ -218,6 +218,9 @@ class FlyweightListView_p : public OrientationInvariant
 
         void updateScrollBarOrientation();
 
+        void setPrefetchScreensCount(double value);
+        double prefetchScreensCount() const noexcept;
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
@@ -315,6 +318,8 @@ class FlyweightListView_p : public OrientationInvariant
 
         ItemsContainer m_items;
         OrderComparer m_orderComparer;
+
+        double m_prefetchScreenCount;
 };
 
 } // namespace detail
