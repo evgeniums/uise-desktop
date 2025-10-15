@@ -177,35 +177,34 @@ void HTreeStandardListItem::doSetSelected(bool enable)
 
 void HTreeStandardListItem::setExpandVisible(bool enable)
 {
+    destroyWidget(m_expand);
+
     if (!enable)
     {
-        destroyWidget(m_expand);
+        return;
     }
 
-    if (m_expand==nullptr)
-    {
-        m_expand=new PushButton(this);
-        m_expand->setObjectName("hTreeItemExpand");
-        m_expand->setSvgIcon(Style::instance().svgIconLocator().icon(iconName("expand"),this));
-        m_expand->setCheckable(true);
-        itemLayout()->addWidget(m_expand);
-        connect(
-            m_expand,
-            &PushButton::clicked,
-            this,
-            [this]()
+    m_expand=new PushButton(this);
+    m_expand->setObjectName("hTreeItemExpand");
+    m_expand->setSvgIcon(Style::instance().svgIconLocator().icon(iconName("expand"),this));
+    m_expand->setCheckable(true);
+    itemLayout()->addWidget(m_expand);
+    connect(
+        m_expand,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            if (m_propagateIconClick)
             {
-                if (m_propagateIconClick)
-                {
-                    click();
-                }
-                else
-                {
-                    emit iconClicked();
-                }
+                click();
             }
-        );
-    }
+            else
+            {
+                emit iconClicked();
+            }
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
