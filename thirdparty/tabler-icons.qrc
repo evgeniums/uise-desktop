@@ -58,5 +58,6 @@
         <file>tabler-icons/outline/square.svg</file>
         <file>tabler-icons/outline/message-chatbot.svg</file>
         <file>tabler-icons/outline/note.svg</file>
+        <file>tabler-icons/outline/math-greater.svg</file>
     </qresource>
 </RCC>

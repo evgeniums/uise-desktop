@@ -69,6 +69,9 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
             return QString("HTreeStandardListItem::%1").arg(name);
         }
 
+        void setExpandVisible(bool enable);
+        bool isExpandVisible() const;
+
     signals:
 
         void iconClicked();
@@ -87,6 +90,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
 
         PushButton* m_icon=nullptr;
         ElidedLabel* m_text=nullptr;
+        PushButton* m_expand=nullptr;
         bool m_propagateIconClick=true;
 };
 

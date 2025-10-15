@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/style.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
 #include <uise/desktop/htreestandardlistitem.hpp>
@@ -58,7 +60,7 @@ HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString&
     m_text->setObjectName("hTreeItemText");
 
     setItemWidgets(m_icon,m_text,0,1);
-    setTextElideMode(Qt::ElideMiddle);    
+    setTextElideMode(Qt::ElideMiddle);
 
     connect(
         m_icon,
@@ -154,6 +156,10 @@ bool HTreeStandardListItem::isPropagateIconClick() const
 void HTreeStandardListItem::doSetHovered(bool enable)
 {
     m_icon->setParentHovered(enable);
+    if (m_expand!=nullptr)
+    {
+        m_expand->setParentHovered(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -161,6 +167,43 @@ void HTreeStandardListItem::doSetHovered(bool enable)
 void HTreeStandardListItem::doSetSelected(bool enable)
 {
     m_icon->setChecked(enable);
+    if (m_expand!=nullptr)
+    {
+        m_expand->setChecked(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStandardListItem::setExpandVisible(bool enable)
+{
+    if (!enable)
+    {
+        destroyWidget(m_expand);
+    }
+
+    if (m_expand==nullptr)
+    {
+        m_expand=new PushButton(this);
+        Style::instance().svgIconLocator().icon(iconName("expand"),this);
+        itemLayout()->addWidget(m_expand);
+        connect(
+            m_expand,
+            &PushButton::clicked,
+            this,
+            [this]()
+            {
+                if (m_propagateIconClick)
+                {
+                    click();
+                }
+                else
+                {
+                    emit iconClicked();
+                }
+            }
+        );
+    }
 }
 
 //--------------------------------------------------------------------------

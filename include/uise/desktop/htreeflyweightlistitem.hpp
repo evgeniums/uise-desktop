@@ -70,6 +70,11 @@ class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
             return this->uniqueId();
         }
 
+        QHBoxLayout* itemLayout() const
+        {
+            return m_layout;
+        }
+
     private:
 
         QFrame* m_contentWrapper=nullptr;

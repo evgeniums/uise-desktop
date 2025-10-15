@@ -15,6 +15,12 @@
             "aliases" : {
                 "dots" : "${uise-svg-icons-1}/dots-vertical"
             }
+        },
+        {
+            "name" : "HTreeStandardListItem",
+            "aliases" : {
+                "expand" : "${uise-svg-icons-1}/math-greater"
+            }
         }
     ]
 }

@@ -44,11 +44,22 @@ HTreeFlyweightListItem<ContentWidgetT,BaseT>::HTreeFlyweightListItem(HTreePathEl
 template <typename ContentWidgetT,typename BaseT>
 void HTreeFlyweightListItem<ContentWidgetT,BaseT>::setItemWidgets(QWidget* icon, ContentWidgetT* content, int contentStretch, int nextStrech)
 {
+    if (m_contentWrapper)
+    {
+        destroyWidget(m_contentWrapper);
+    }
+
     m_contentWrapper=new QFrame(this);
     this->setWidget(m_contentWrapper);
     m_layout=Layout::horizontal(m_contentWrapper);
-    m_layout->addWidget(icon);
-    m_layout->addWidget(content,contentStretch);
+    if (icon!=nullptr)
+    {
+        m_layout->addWidget(icon);
+    }
+    if (content!=nullptr)
+    {
+        m_layout->addWidget(content,contentStretch);
+    }
     if (nextStrech!=0)
     {
         m_layout->addStretch(nextStrech);
