@@ -109,9 +109,11 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItemView : public HTreeFlyweightListI
 inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>& items,
                                     HTreePathElement el,
                                     const QString& icon,
+                                    bool expandVisible=false,
                                     QWidget* parent=nullptr)
 {
     auto item=new HTreeStandardListItem(el,QString::fromStdString(el.name()),Style::instance().svgIconLocator().icon(icon,parent));
+    item->setExpandVisible(expandVisible);
     items.emplace_back(item);
 }
 

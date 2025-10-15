@@ -185,7 +185,9 @@ void HTreeStandardListItem::setExpandVisible(bool enable)
     if (m_expand==nullptr)
     {
         m_expand=new PushButton(this);
-        Style::instance().svgIconLocator().icon(iconName("expand"),this);
+        m_expand->setObjectName("hTreeItemExpand");
+        m_expand->setSvgIcon(Style::instance().svgIconLocator().icon(iconName("expand"),this));
+        m_expand->setCheckable(true);
         itemLayout()->addWidget(m_expand);
         connect(
             m_expand,

@@ -59,5 +59,6 @@
         <file>tabler-icons/outline/message-chatbot.svg</file>
         <file>tabler-icons/outline/note.svg</file>
         <file>tabler-icons/outline/math-greater.svg</file>
+        <file>tabler-icons/outline/chevron-compact-right.svg</file>
     </qresource>
 </RCC>
