@@ -36,8 +36,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class SvgIcon;
 
-class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
-                                           public Widget
+class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
 {
     Q_OBJECT
 
@@ -81,7 +80,7 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public QFrame,
             {}
         };
 
-        using QFrame::QFrame;
+        using WidgetQFrame::WidgetQFrame;
 
         virtual void setButtons(std::vector<ButtonConfig> buttons)=0;
 

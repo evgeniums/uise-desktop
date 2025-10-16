@@ -38,8 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class SvgIcon;
 
-class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
-                                                  public Widget
+class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 {
     Q_OBJECT
 
@@ -72,7 +71,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public QFrame,
             ButtonsInvisible
         };
 
-        using QFrame::QFrame;
+        using WidgetQFrame::WidgetQFrame;
 
         virtual void setEditable(bool enable)=0;
         virtual bool isEditable() const noexcept=0;

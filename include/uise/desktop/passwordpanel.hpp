@@ -43,14 +43,13 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class SvgIcon;
 class PasswordPanel_p;
 
-class UISE_DESKTOP_EXPORT AbstractPasswordPanel : public QFrame,
-                                                  public Widget
+class UISE_DESKTOP_EXPORT AbstractPasswordPanel : public WidgetQFrame
 {
     Q_OBJECT
 
     public:
 
-        using QFrame::QFrame;
+        using WidgetQFrame::WidgetQFrame;
 
         virtual void setDescription(const QString& message)=0;
 

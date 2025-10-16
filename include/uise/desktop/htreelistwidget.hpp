@@ -43,8 +43,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class HTreeList;
 
 class HTreeListWidget_p;
-class UISE_DESKTOP_EXPORT HTreeListWidget : public QFrame,
-                                            public Widget
+class UISE_DESKTOP_EXPORT HTreeListWidget : public WidgetQFrame
 {
     Q_OBJECT
 

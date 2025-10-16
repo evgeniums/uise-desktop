@@ -34,6 +34,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class WidgetController;
+
 class UISE_DESKTOP_EXPORT WidgetFactory
 {
     public:
@@ -59,15 +61,17 @@ class UISE_DESKTOP_EXPORT WidgetFactory
             std::vector<BuilderContext> contextBuilders;
         };
 
-        QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
+        QObject* makeWidget(const char* className, const QString& name={}, QWidget* parent=nullptr) const;
 
-        QObject* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
+        WidgetController* makeWidgetController(const char* className, QString name={}, QWidget* parent=nullptr) const;
+
+        QObject* makeWidget(const QMetaObject& metaObj, const QString& name={}, QWidget* parent=nullptr) const
         {
             return makeWidget(metaObj.className(),std::move(name),parent);
         }
 
         template <typename T>
-        T* makeWidget(QString name={}, QWidget* parent=nullptr) const
+        T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
         {
             auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
             if (w==nullptr)

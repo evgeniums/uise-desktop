@@ -34,14 +34,13 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT AbstractEditablePanels : public QFrame,
-                                                   public Widget
+class UISE_DESKTOP_EXPORT AbstractEditablePanels : public WidgetQFrame
 {
     Q_OBJECT
 
     public:
 
-        using QFrame::QFrame;
+        using WidgetQFrame::WidgetQFrame;
 
         virtual void addPanel(QWidget* panel, int stretch=0, Qt::Alignment alignment={})=0;
 };

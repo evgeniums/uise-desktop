@@ -95,6 +95,11 @@ class UISE_DESKTOP_EXPORT AbstractNewPasswordWizard : public QObject,
             m_emptyError=std::move(msg);
         }
 
+        QWidget* qWidget() override
+        {
+            return nullptr;
+        }
+
     signals:
 
         void completed();

@@ -76,6 +76,11 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
 
         virtual void construct() override;
 
+        QWidget* qWidget() override
+        {
+            return this;
+        }
+
     signals:
 
         void cancelled();

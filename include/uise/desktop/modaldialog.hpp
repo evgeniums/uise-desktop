@@ -73,6 +73,11 @@ class ModalDialog : public FrameWithModalPopup,
             setShortcutEnabled(false);
         }
 
+        QWidget* qWidget() override
+        {
+            return this;
+        }
+
         /**
          * @brief Open modal dialog.
          * @parame destroyOnCancel Destroy dialog if cancelled.

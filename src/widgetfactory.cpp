@@ -24,13 +24,14 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/stylecontext.hpp>
+#include <uise/desktop/widget.hpp>
 #include <uise/desktop/widgetfactory.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-QObject* WidgetFactory::makeWidget(const char* className, QString name, QWidget* parent) const
+QObject* WidgetFactory::makeWidget(const char* className, const QString& name, QWidget* parent) const
 {
     QObject obj{parent};
     obj.setProperty(StyleContext::TypeProperty,className);
@@ -43,9 +44,27 @@ QObject* WidgetFactory::makeWidget(const char* className, QString name, QWidget*
     auto b=builder(className,ctx);
     if (b)
     {
-        return b(parent);
+        auto w=b(parent);
+        auto wc=qobject_cast<WidgetController*>(w);
+        if (wc!=nullptr)
+        {
+            wc->setParentWidget(parent);
+        }
+        return w;
     }
 
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+WidgetController* WidgetFactory::makeWidgetController(const char* className, QString name, QWidget* parent) const
+{
+    auto wc=qobject_cast<WidgetController*>(makeWidget(className,std::move(name),parent));
+    if (wc!=nullptr)
+    {
+        wc->setParentWidget(parent);
+    }
     return nullptr;
 }
 

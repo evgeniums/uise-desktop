@@ -82,7 +82,7 @@ void HTreeListWidget_p::updateMaxWidth()
 //--------------------------------------------------------------------------
 
 HTreeListWidget::HTreeListWidget(QWidget* parent)
-    : QFrame(parent),
+    : WidgetQFrame(parent),
       pimpl(std::make_unique<HTreeListWidget_p>())
 {
     pimpl->mainLayout=Layout::vertical(this);

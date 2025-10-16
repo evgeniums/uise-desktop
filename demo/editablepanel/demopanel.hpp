@@ -32,14 +32,13 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-class DemoPanel : public QFrame,
-                  public Widget
+class DemoPanel : public WidgetQFrame
 {
     Q_OBJECT
 
     public:
 
-        DemoPanel(QWidget* parent=nullptr) : QFrame(parent)
+        DemoPanel(QWidget* parent=nullptr) : WidgetQFrame(parent)
         {
             auto l=Layout::vertical(this);
 
