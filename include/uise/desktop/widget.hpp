@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class WidgetFactory;
+class WidgetController;
 
 class UISE_DESKTOP_EXPORT Widget
 {
@@ -58,9 +59,9 @@ class UISE_DESKTOP_EXPORT Widget
             m_factory=std::move(factory);
         }
 
-        QWidget* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
+        QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
 
-        QWidget* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
+        QObject* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
         {
             return makeWidget(metaObj.className(),std::move(name),parent);
         }
@@ -125,9 +126,33 @@ class UISE_DESKTOP_EXPORT Widget
         virtual void construct()
         {}
 
+        virtual WidgetController* controller()
+        {
+            return nullptr;
+        }
+
     private:
 
         std::shared_ptr<WidgetFactory> m_factory;
+};
+
+class UISE_DESKTOP_EXPORT WidgetController : public QObject,
+                                             public Widget
+{
+    Q_OBJECT
+
+    public:
+
+        using QObject::QObject;
+
+        QWidget* widget()
+        {
+            return m_widget;
+        }
+
+    private:
+
+        QWidget* m_widget;
 };
 
 UISE_DESKTOP_NAMESPACE_END

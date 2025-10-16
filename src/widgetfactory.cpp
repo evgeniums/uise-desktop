@@ -30,7 +30,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-QWidget* WidgetFactory::makeWidget(const char* className, QString name, QWidget* parent) const
+QObject* WidgetFactory::makeWidget(const char* className, QString name, QWidget* parent) const
 {
     QObject obj{parent};
     obj.setProperty(StyleContext::TypeProperty,className);

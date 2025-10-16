@@ -38,7 +38,7 @@ class UISE_DESKTOP_EXPORT WidgetFactory
 {
     public:
 
-        using Builder=std::function<QWidget* (QWidget* parent)>;
+        using Builder=std::function<QObject* (QWidget* parent)>;
 
         struct BuilderContext
         {
@@ -59,9 +59,9 @@ class UISE_DESKTOP_EXPORT WidgetFactory
             std::vector<BuilderContext> contextBuilders;
         };
 
-        QWidget* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
+        QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
 
-        QWidget* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
+        QObject* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
         {
             return makeWidget(metaObj.className(),std::move(name),parent);
         }

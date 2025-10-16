@@ -31,7 +31,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-QWidget* Widget::makeWidget(const char* className, QString name, QWidget* parent) const
+QObject* Widget::makeWidget(const char* className, QString name, QWidget* parent) const
 {
     const auto* factory=m_factory.get();
     if (factory==nullptr)
