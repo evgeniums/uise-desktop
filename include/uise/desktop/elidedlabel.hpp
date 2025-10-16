@@ -95,6 +95,12 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
             return m_ignoreSizeHint;
         }
 
+        void setMaxLines(int count);
+        int maxLines() const noexcept
+        {
+            return m_maxLines;
+        }
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
@@ -109,6 +115,7 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
         QLabel* m_hiddenLabel;
 
         bool m_ignoreSizeHint;
+        int m_maxLines;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -35,7 +35,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     : QFrame(parent),
       m_mode(Qt::ElideRight),
-      m_ignoreSizeHint(false)
+      m_ignoreSizeHint(false),
+      m_maxLines(1)
 {
     auto l=Layout::horizontal(this);
 
@@ -93,20 +94,47 @@ void ElidedLabel::resizeEvent(QResizeEvent *event)
 void ElidedLabel::updateText(int width)
 {
     auto w=width-contentsMargins().left()-contentsMargins().right();
-    QString elidedText = m_label->fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, w);
+    if (m_maxLines>1)
+    {
+        w-=m_label->fontMetrics().maxWidth()*3;
+    }
+    auto w1=w*m_maxLines;
+    QString elidedText = m_label->fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, w1);
     m_label->setText(elidedText);
 }
 
 void ElidedLabel::setIgnoreSizeHint(bool enable)
 {
     m_ignoreSizeHint=enable;
+    auto sp=sizePolicy();
     if (enable)
     {
-        m_label->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+        m_label->setSizePolicy(QSizePolicy::Ignored,sp.verticalPolicy());
     }
     else
     {
-        m_label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed);
+        m_label->setSizePolicy(QSizePolicy::MinimumExpanding,sp.verticalPolicy());
+    }
+}
+
+void ElidedLabel::setMaxLines(int maxLines)
+{
+    if (maxLines<=0)
+    {
+        maxLines=1;
+    }
+    m_maxLines=maxLines;
+    auto wordWrap=m_maxLines>1;
+    m_label->setWordWrap(wordWrap);
+    m_hiddenLabel->setWordWrap(wordWrap);
+    auto sp=sizePolicy();
+    if (wordWrap)
+    {
+        m_label->setSizePolicy(sp.horizontalPolicy(),QSizePolicy::Preferred);
+    }
+    else
+    {
+        m_label->setSizePolicy(sp.horizontalPolicy(),QSizePolicy::Fixed);
     }
 }
 
