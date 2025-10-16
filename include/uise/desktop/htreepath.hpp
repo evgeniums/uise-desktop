@@ -325,6 +325,13 @@ class HTreePath
         std::vector<HTreePathElement> m_elements;
 };
 
+enum class NodeOpenMode
+{
+    SameTab,
+    NewTab,
+    NewWindow
+};
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_HORIZONTAL_TREE_HPP
