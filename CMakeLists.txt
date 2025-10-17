@@ -135,6 +135,8 @@ SET (HEADERS
     include/uise/desktop/pixmapproducer.hpp
     include/uise/desktop/roundedimage.hpp
     include/uise/desktop/avatar.hpp
+
+    include/uise/desktop/loadingframe.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -217,6 +219,8 @@ SET (SOURCES
     src/pixmapproducer.cpp
     src/roundedimage.cpp
     src/avatar.cpp
+
+    src/loadingframe.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
