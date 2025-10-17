@@ -146,6 +146,11 @@ void LoadingFrame::cancel()
 
 void LoadingFrame::finish()
 {
+    if (!pimpl->busyWaitingMode)
+    {
+        return;
+    }
+
     pimpl->busyWaitingMode=false;
     pimpl->busyWaiting->stop();
     closePopup();
