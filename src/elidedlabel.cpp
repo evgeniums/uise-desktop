@@ -32,6 +32,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+//--------------------------------------------------------------------------
+
 ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     : QFrame(parent),
       m_mode(Qt::ElideRight),
@@ -52,6 +54,8 @@ ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     setText(text);
 }
 
+//--------------------------------------------------------------------------
+
 void ElidedLabel::setText(const QString& text)
 {
     m_hiddenLabel->setText(text);
@@ -60,21 +64,29 @@ void ElidedLabel::setText(const QString& text)
     updateText(width());
 }
 
+//--------------------------------------------------------------------------
+
 void ElidedLabel::setAlignment(Qt::Alignment alignment)
 {
     m_hiddenLabel->setAlignment(alignment);
     m_label->setAlignment(alignment);
 }
 
+//--------------------------------------------------------------------------
+
 Qt::Alignment ElidedLabel::alignment() const
 {
     return m_label->alignment();
 }
 
+//--------------------------------------------------------------------------
+
 QString ElidedLabel::text() const
 {
     return m_hiddenLabel->text();
 }
+
+//--------------------------------------------------------------------------
 
 QSize ElidedLabel::sizeHint() const
 {
@@ -85,11 +97,15 @@ QSize ElidedLabel::sizeHint() const
     return m_hiddenLabel->sizeHint();
 }
 
+//--------------------------------------------------------------------------
+
 void ElidedLabel::resizeEvent(QResizeEvent *event)
 {
     updateText(event->size().width());
     QFrame::resizeEvent(event);
 }
+
+//--------------------------------------------------------------------------
 
 void ElidedLabel::updateText(int width)
 {
@@ -102,6 +118,8 @@ void ElidedLabel::updateText(int width)
     QString elidedText = m_label->fontMetrics().elidedText(m_hiddenLabel->text(), m_mode, w1);
     m_label->setText(elidedText);
 }
+
+//--------------------------------------------------------------------------
 
 void ElidedLabel::setIgnoreSizeHint(bool enable)
 {
@@ -116,6 +134,8 @@ void ElidedLabel::setIgnoreSizeHint(bool enable)
         m_label->setSizePolicy(QSizePolicy::MinimumExpanding,sp.verticalPolicy());
     }
 }
+
+//--------------------------------------------------------------------------
 
 void ElidedLabel::setMaxLines(int maxLines)
 {
@@ -137,5 +157,7 @@ void ElidedLabel::setMaxLines(int maxLines)
         m_label->setSizePolicy(sp.horizontalPolicy(),QSizePolicy::Fixed);
     }
 }
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
