@@ -137,6 +137,7 @@ SET (HEADERS
     include/uise/desktop/avatar.hpp
 
     include/uise/desktop/loadingframe.hpp
+    include/uise/desktop/elidedcontainer.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -221,6 +222,7 @@ SET (SOURCES
     src/avatar.cpp
 
     src/loadingframe.cpp
+    src/elidedcontainer.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

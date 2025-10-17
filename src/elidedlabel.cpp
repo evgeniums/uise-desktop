@@ -44,6 +44,7 @@ ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
 
     m_hiddenLabel=new QLabel(this);
     l->addWidget(m_hiddenLabel);
+    m_hiddenLabel->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Preferred);
     m_hiddenLabel->hide();
 
     m_label=new QLabel(this);
@@ -92,9 +93,26 @@ QSize ElidedLabel::sizeHint() const
 {
     if (m_ignoreSizeHint)
     {
-        return QSize();
+        return QSize{};
     }
-    return m_hiddenLabel->sizeHint();
+    auto sz=m_hiddenLabel->sizeHint();
+    if (sz.isValid())
+    {
+        QSize{sz.width()+contentsMargins().left()+contentsMargins().right(),sz.height()};
+    }
+    return QSize{};
+}
+
+//--------------------------------------------------------------------------
+
+int ElidedLabel::widthHint() const
+{
+    auto sz=m_hiddenLabel->sizeHint();
+    if (sz.isValid())
+    {
+        return sz.width()+contentsMargins().left()+contentsMargins().right();
+    }
+    return 0;
 }
 
 //--------------------------------------------------------------------------
