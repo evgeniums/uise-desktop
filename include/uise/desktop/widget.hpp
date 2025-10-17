@@ -38,19 +38,11 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class WidgetFactory;
 class Widget;
 
-class UISE_DESKTOP_EXPORT WidgetController : public QObject
+class UISE_DESKTOP_EXPORT WidgetBase
 {
-    Q_OBJECT
-
     public:
 
-        WidgetController(QObject* parent=nullptr);
-
-        virtual ~WidgetController();
-        WidgetController(const WidgetController&)=delete;
-        WidgetController(WidgetController&&)=delete;
-        WidgetController& operator=(const WidgetController&)=delete;
-        WidgetController& operator=(WidgetController&&)=delete;
+        virtual ~WidgetBase()=default;
 
         std::shared_ptr<WidgetFactory> widgetFactory() const
         {
@@ -59,10 +51,142 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject
 
         void setWidgetFactory(std::shared_ptr<WidgetFactory> factory)
         {
-            m_factory=std::move(factory);
+            m_factory=factory;
         }
 
-        WidgetController* makeWidgetController(const char* className, QString name={}, QWidget* parent=nullptr) const;
+        virtual void construct()
+        {}
+
+        QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
+
+    protected:
+
+        std::shared_ptr<WidgetFactory> m_factory;
+};
+
+struct WidgetTraits
+{
+    template <typename T>
+    static void preConstruct(T* createdObject, QWidget* parent)
+    {
+        std::ignore=createdObject;
+        std::ignore=parent;
+    }
+};
+
+template <typename Traits=WidgetTraits>
+class WidgetT : public WidgetBase
+{
+    public:
+
+        using WidgetBase::makeWidget;
+
+        QObject* makeWidget(const QMetaObject& metaObj, QString name={}, QWidget* parent=nullptr) const
+        {
+            return WidgetBase::makeWidget(metaObj.className(),std::move(name),parent);
+        }
+
+        template <typename T>
+        T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
+        {
+            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
+            if (w==nullptr)
+            {
+                if constexpr (std::is_constructible_v<T,QWidget*>)
+                {
+                    w=new T(parent);
+                    w->setObjectName(name);
+                }
+            }
+            if constexpr (std::is_base_of_v<WidgetBase,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(widgetFactory());
+                    Traits::preConstruct(w,parent);
+                    w->construct();
+                }
+            }
+
+            return w;
+        }
+
+        template <typename T, typename DefaultT>
+        T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
+        {
+            auto w=qobject_cast<T*>(makeWidget(T::staticMetaObject,std::move(name),parent));
+            if (w==nullptr)
+            {
+                w=new DefaultT(parent);
+                w->setObjectName(name);
+            }
+            if constexpr (std::is_base_of_v<WidgetBase,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(widgetFactory());
+                    Traits::preConstruct(w,parent);
+                    w->construct();
+                }
+            }
+
+            return w;
+        }
+
+        template <typename T>
+        T* makeWidget(QWidget* parent) const
+        {
+            return makeWidget<T>(QString{},parent);
+        }
+
+        template <typename T, typename DefaultT>
+        T* makeWidget(QWidget* parent) const
+        {
+            return makeWidget<T,DefaultT>(QString{},parent);
+        }
+};
+
+class WidgetController;
+
+struct WidgetControllerTraits
+{
+    template <typename T>
+    static void preConstruct(T* createdObject, QWidget* parent)
+    {
+        auto wc=qobject_cast<WidgetController*>(createdObject);
+        if (wc!=nullptr)
+        {
+            wc->setParentWidget(parent);
+            wc->createActualWidget();
+        }
+    }
+};
+
+class UISE_DESKTOP_EXPORT WidgetController : public QObject,
+                                             public WidgetT<WidgetControllerTraits>
+{
+    Q_OBJECT
+
+    public:
+
+        WidgetController(QObject* parent=nullptr);
+
+#if 0
+        virtual ~WidgetController();
+        WidgetController(const WidgetController&)=delete;
+        WidgetController(WidgetController&&)=delete;
+        WidgetController& operator=(const WidgetController&)=delete;
+        WidgetController& operator=(WidgetController&&)=delete;
+
+        WidgetController* makeWidgetController(const char* className, QString name={}, QWidget* parent=nullptr) const
+        {
+            auto wc=qobject_cast<WidgetController*>(makeWidget(className,std::move(name),parent));
+            if (wc!=nullptr)
+            {
+                wc->setParentWidget(parent);
+            }
+            return nullptr;
+        }
 
         QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
 
@@ -128,15 +252,15 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject
             return makeWidgetController<T,DefaultT>(QString{},parent);
         }
 
+        virtual void construct()
+        {}
+#endif
         QWidget* qWidget();
 
         Widget* widget()
         {
             return m_widget;
         }
-
-        virtual void construct()
-        {}
 
     protected:
 
@@ -152,24 +276,22 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject
 
         Widget* m_widget=nullptr;
         QWidget* m_parentWidget=nullptr;
-
-        std::shared_ptr<WidgetFactory> m_factory;
-        friend class WidgetFactory;
 };
 
-class UISE_DESKTOP_EXPORT Widget
+class UISE_DESKTOP_EXPORT Widget : public WidgetT<>
 {
     public:
 
+        virtual QWidget* qWidget() =0;
+
+#if 0
         Widget()=default;
         virtual ~Widget();
 
         Widget(const Widget&)=delete;
         Widget(Widget&&)=delete;
         Widget& operator=(const Widget&)=delete;
-        Widget& operator=(Widget&&)=delete;
-
-        virtual QWidget* qWidget() =0;
+        Widget& operator=(Widget&&)=delete;        
 
         std::shared_ptr<WidgetFactory> widgetFactory() const
         {
@@ -260,7 +382,7 @@ class UISE_DESKTOP_EXPORT Widget
 
         virtual void construct()
         {}
-
+#endif
     private:
 
         void setController(WidgetController* ctrl)
@@ -270,8 +392,6 @@ class UISE_DESKTOP_EXPORT Widget
         }
 
         friend class WidgetController;
-
-        std::shared_ptr<WidgetFactory> m_factory;
         WidgetController* m_ctrl=nullptr;
 };
 

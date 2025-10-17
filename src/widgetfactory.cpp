@@ -44,27 +44,9 @@ QObject* WidgetFactory::makeWidget(const char* className, const QString& name, Q
     auto b=builder(className,ctx);
     if (b)
     {
-        auto w=b(parent);
-        auto wc=qobject_cast<WidgetController*>(w);
-        if (wc!=nullptr)
-        {
-            wc->setParentWidget(parent);
-        }
-        return w;
+        return b(parent);
     }
 
-    return nullptr;
-}
-
-//--------------------------------------------------------------------------
-
-WidgetController* WidgetFactory::makeWidgetController(const char* className, QString name, QWidget* parent) const
-{
-    auto wc=qobject_cast<WidgetController*>(makeWidget(className,std::move(name),parent));
-    if (wc!=nullptr)
-    {
-        wc->setParentWidget(parent);
-    }
     return nullptr;
 }
 

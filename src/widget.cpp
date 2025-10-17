@@ -31,6 +31,22 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
+QObject* WidgetBase::makeWidget(const char* className, QString name, QWidget* parent) const
+{
+    const auto* factory=m_factory.get();
+    if (factory==nullptr)
+    {
+        factory=Style::instance().widgetFactory();
+    }
+    if (factory==nullptr)
+    {
+        return nullptr;
+    }
+    return factory->makeWidget(className,std::move(name),parent);
+}
+
+//--------------------------------------------------------------------------
+
 WidgetController::WidgetController(QObject* parent)
     : QObject(parent),
       m_widget(nullptr),
@@ -38,6 +54,8 @@ WidgetController::WidgetController(QObject* parent)
 {}
 
 //--------------------------------------------------------------------------
+
+#if 0
 
 WidgetController::~WidgetController()
 {
@@ -74,6 +92,7 @@ QObject* WidgetController::makeWidget(const char* className, QString name, QWidg
     }
     return factory->makeWidget(className,std::move(name),parent);
 }
+#endif
 
 //--------------------------------------------------------------------------
 
@@ -92,11 +111,14 @@ QWidget* WidgetController::qWidget()
 
 //--------------------------------------------------------------------------
 
+#if 0
+
 Widget::~Widget()
 {
 }
 
 //--------------------------------------------------------------------------
+
 
 QObject* Widget::makeWidget(const char* className, QString name, QWidget* parent) const
 {
@@ -121,7 +143,7 @@ QObject* Widget::makeWidget(const char* className, QString name, QWidget* parent
     }
     return m_ctrl->makeWidget(className,name,parent);
 }
-
+#endif
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END

@@ -63,8 +63,6 @@ class UISE_DESKTOP_EXPORT WidgetFactory
 
         QObject* makeWidget(const char* className, const QString& name={}, QWidget* parent=nullptr) const;
 
-        WidgetController* makeWidgetController(const char* className, QString name={}, QWidget* parent=nullptr) const;
-
         QObject* makeWidget(const QMetaObject& metaObj, const QString& name={}, QWidget* parent=nullptr) const
         {
             return makeWidget(metaObj.className(),std::move(name),parent);
