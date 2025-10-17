@@ -75,6 +75,18 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
             return this;
         }
 
+        void setBusyWaiting(bool enable)
+        {
+            if (enable)
+            {
+                popupBusyWaiting();
+            }
+            else
+            {
+                finish();
+            }
+        }
+
     signals:
 
         void cancelled();
