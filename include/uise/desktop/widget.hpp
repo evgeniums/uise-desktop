@@ -192,6 +192,8 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject,
 
         Widget* m_widget=nullptr;
         QWidget* m_parentWidget=nullptr;
+
+        friend class WidgetControllerTraits;
 };
 
 class UISE_DESKTOP_EXPORT Widget : public WidgetT<>
