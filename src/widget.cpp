@@ -55,47 +55,6 @@ WidgetController::WidgetController(QObject* parent)
 
 //--------------------------------------------------------------------------
 
-#if 0
-
-WidgetController::~WidgetController()
-{
-}
-
-//--------------------------------------------------------------------------
-
-WidgetController* WidgetController::makeWidgetController(const char* className, QString name, QWidget* parent) const
-{
-    const auto* factory=m_factory.get();
-    if (factory==nullptr)
-    {
-        factory=Style::instance().widgetFactory();
-    }
-    if (factory==nullptr)
-    {
-        return nullptr;
-    }
-    return factory->makeWidgetController(className,std::move(name),parent);
-}
-
-//--------------------------------------------------------------------------
-
-QObject* WidgetController::makeWidget(const char* className, QString name, QWidget* parent) const
-{
-    const auto* factory=m_factory.get();
-    if (factory==nullptr)
-    {
-        factory=Style::instance().widgetFactory();
-    }
-    if (factory==nullptr)
-    {
-        return nullptr;
-    }
-    return factory->makeWidget(className,std::move(name),parent);
-}
-#endif
-
-//--------------------------------------------------------------------------
-
 void WidgetController::createActualWidget()
 {
     m_widget=doCreateActualWidget(m_parentWidget);
@@ -109,41 +68,6 @@ QWidget* WidgetController::qWidget()
     return m_widget->qWidget();
 }
 
-//--------------------------------------------------------------------------
-
-#if 0
-
-Widget::~Widget()
-{
-}
-
-//--------------------------------------------------------------------------
-
-
-QObject* Widget::makeWidget(const char* className, QString name, QWidget* parent) const
-{
-    if (m_ctrl==nullptr)
-    {
-        const auto* factory=m_factory.get();
-        if (factory==nullptr)
-        {
-            factory=Style::instance().widgetFactory();
-        }
-        if (factory==nullptr)
-        {
-            return nullptr;
-        }
-        return factory->makeWidget(className,std::move(name),parent);
-    }
-
-    auto ctrl=m_ctrl->makeWidgetController(className,name,parent);
-    if (ctrl!=nullptr)
-    {
-        return ctrl->qWidget();
-    }
-    return m_ctrl->makeWidget(className,name,parent);
-}
-#endif
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
