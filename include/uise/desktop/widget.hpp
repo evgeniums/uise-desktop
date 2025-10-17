@@ -64,17 +64,23 @@ class UISE_DESKTOP_EXPORT WidgetBase
         std::shared_ptr<WidgetFactory> m_factory;
 };
 
-struct WidgetTraits
+class WidgetController;
+
+struct WidgetControllerTraits
 {
     template <typename T>
     static void preConstruct(T* createdObject, QWidget* parent)
     {
-        std::ignore=createdObject;
-        std::ignore=parent;
+        auto wc=qobject_cast<WidgetController*>(createdObject);
+        if (wc!=nullptr)
+        {
+            wc->setParentWidget(parent);
+            wc->createActualWidget();
+        }
     }
 };
 
-template <typename Traits=WidgetTraits>
+template <typename Traits=WidgetControllerTraits>
 class WidgetT : public WidgetBase
 {
     public:
@@ -144,22 +150,6 @@ class WidgetT : public WidgetBase
         {
             return makeWidget<T,DefaultT>(QString{},parent);
         }
-};
-
-class WidgetController;
-
-struct WidgetControllerTraits
-{
-    template <typename T>
-    static void preConstruct(T* createdObject, QWidget* parent)
-    {
-        auto wc=qobject_cast<WidgetController*>(createdObject);
-        if (wc!=nullptr)
-        {
-            wc->setParentWidget(parent);
-            wc->createActualWidget();
-        }
-    }
 };
 
 class UISE_DESKTOP_EXPORT WidgetController : public QObject,
