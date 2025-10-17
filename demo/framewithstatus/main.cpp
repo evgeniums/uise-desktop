@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file demo/framewirhstatus/main.cpp
+/** @file demo/framewithstatus/main.cpp
 *
 *  Demo application of FrameWithModalStatus.
 *
