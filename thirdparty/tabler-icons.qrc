@@ -60,5 +60,7 @@
         <file>tabler-icons/outline/note.svg</file>
         <file>tabler-icons/outline/math-greater.svg</file>
         <file>tabler-icons/outline/chevron-compact-right.svg</file>
+        <file>tabler-icons/outline/bell-off.svg</file>
+        <file>tabler-icons/outline/speakerphone.svg</file>
     </qresource>
 </RCC>
