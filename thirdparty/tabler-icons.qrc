@@ -62,5 +62,10 @@
         <file>tabler-icons/outline/chevron-compact-right.svg</file>
         <file>tabler-icons/outline/bell-off.svg</file>
         <file>tabler-icons/outline/speakerphone.svg</file>
+        <file>tabler-icons/outline/flip-horizontal.svg</file>
+        <file>tabler-icons/outline/flip-vertical.svg</file>
+        <file>tabler-icons/outline/rotate-2.svg</file>
+        <file>tabler-icons/outline/zoom-in.svg</file>
+        <file>tabler-icons/outline/zoom-out.svg</file>
     </qresource>
 </RCC>

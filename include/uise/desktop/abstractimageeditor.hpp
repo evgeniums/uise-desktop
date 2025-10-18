@@ -148,6 +148,15 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         void setMinimumImageSize(const QSize& size);
         void setFixedImageSize(const QSize& size);
 
+    public slots:
+
+        virtual void zoomIn() {}
+        virtual void zoomOut() {}
+        virtual void flipVertical() {}
+        virtual void flipHorizontal() {}
+        virtual void rotate() {}
+        virtual void rotateClockwise() {}
+
     protected:
 
         virtual void updateCropShape()

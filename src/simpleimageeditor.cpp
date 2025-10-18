@@ -36,7 +36,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLineEdit>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
+#include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/simpleimageeditor.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -56,9 +58,17 @@ class SimpleImageEditorWidget_p
         QGraphicsPixmapItem *imageItem = nullptr;
         CropRectItem *cropperItem = nullptr;
 
+        QFrame* controlsFrame;
+        PushButton* rotate;
+        PushButton* rotateClockwise;
+        PushButton* flipHorizontal;
+        PushButton* flipVertical;
+
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
         QPushButton* browseFile;
+
+        int angle=0;
 };
 
 //--------------------------------------------------------------------------
@@ -75,6 +85,53 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->scene = new QGraphicsScene(this);
     pimpl->view->setScene(pimpl->scene);
     pimpl->layout->addWidget(pimpl->view,1);
+
+    pimpl->controlsFrame=new QFrame(this);
+    pimpl->controlsFrame->setObjectName("controlsFrame");
+    pimpl->layout->addWidget(pimpl->controlsFrame);
+    auto cl=Layout::horizontal(pimpl->controlsFrame);
+    cl->addStretch(1);
+    pimpl->rotate=new PushButton(pimpl->controlsFrame);
+    pimpl->rotate->setToolTip(tr("Rotate"));
+    pimpl->rotate->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::rotate",this));
+    cl->addWidget(pimpl->rotate);
+    connect(
+        pimpl->rotate,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::rotate
+    );
+    pimpl->rotateClockwise=new PushButton(pimpl->controlsFrame);
+    pimpl->rotateClockwise->setToolTip(tr("Rotate clockwise"));
+    pimpl->rotateClockwise->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::rotate-clockwise",this));
+    cl->addWidget(pimpl->rotateClockwise);
+    connect(
+        pimpl->rotateClockwise,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::rotateClockwise
+    );
+    pimpl->flipHorizontal=new PushButton(pimpl->controlsFrame);
+    pimpl->flipHorizontal->setToolTip(tr("Flip horizontally"));
+    pimpl->flipHorizontal->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::flip-horizontal",this));
+    cl->addWidget(pimpl->flipHorizontal);
+    connect(
+        pimpl->flipHorizontal,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::flipHorizontal
+    );
+    pimpl->flipVertical=new PushButton(pimpl->controlsFrame);
+    pimpl->flipVertical->setToolTip(tr("Flip vertically"));
+    pimpl->flipVertical->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::flip-vertical",this));
+    cl->addWidget(pimpl->flipVertical);
+    connect(
+        pimpl->flipVertical,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::flipVertical
+    );
+    cl->addStretch(1);
 
     pimpl->fileBrowserFrame=new QFrame(this);
     pimpl->fileBrowserFrame->setObjectName("fileBrowserFrame");
@@ -168,6 +225,7 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->view->setSceneRect(QRectF{});
     m_widget->pimpl->cropperItem=nullptr;
     m_widget->pimpl->imageItem = nullptr;
+    m_widget->pimpl->angle=0;
 
     auto px=originalImage();
     if (px.isNull())
@@ -183,14 +241,7 @@ void SimpleImageEditor::doLoadImage()
     }
 
     m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
-
-    m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
-    m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
-    m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
-    m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
-    m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
-    m_widget->pimpl->cropperItem->setMinimumImageSize(minimumImageSize());
-    m_widget->pimpl->cropperItem->init();
+    resetCropper();
 }
 
 //--------------------------------------------------------------------------
@@ -235,14 +286,15 @@ QPixmap SimpleImageEditor::editedImage()
         return QPixmap{};
     }
 
+    auto viewRect=m_widget->pimpl->view->mapFromScene(croppedRect).boundingRect();
     m_widget->pimpl->cropperItem->setVisible(false);
 
-    QPixmap px{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    QPixmap px{static_cast<int>(viewRect.width()),static_cast<int>(viewRect.height())};
     QPainter painter;
     painter.begin(&px);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-    m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
+    m_widget->pimpl->view->render(&painter,px.rect(),viewRect);
     m_widget->pimpl->cropperItem->setVisible(true);
 
     painter.end();
@@ -260,6 +312,105 @@ QPixmap SimpleImageEditor::editedImage()
     }
 
     return px;
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::resetCropper()
+{
+    if (m_widget->pimpl->cropperItem!=nullptr)
+    {
+        m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
+        delete m_widget->pimpl->cropperItem;
+    }
+
+    m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
+    m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
+    m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
+    m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
+    m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
+    m_widget->pimpl->cropperItem->setMinimumImageSize(minimumImageSize());
+    m_widget->pimpl->cropperItem->init();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::rotate()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    t.rotate(-90);
+    m_widget->pimpl->angle-=90;
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::rotateClockwise()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    t.rotate(90);
+    m_widget->pimpl->angle+=90;
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::flipHorizontal()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    if (m_widget->pimpl->angle%180==0)
+    {
+        t.scale(-1, 1);
+    }
+    else
+    {
+        t.scale(1, -1);
+    }
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::flipVertical()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    if (m_widget->pimpl->angle%180==0)
+    {
+        t.scale(1, -1);
+    }
+    else
+    {
+        t.scale(-1, 1);
+    }
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
 }
 
 //--------------------------------------------------------------------------

@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "ImageEditor",
+            "aliases" : {
+                "flip-horizontal"  : "${uise-svg-icons-1}/flip-vertical",
+                "flip-vertical"  : "${uise-svg-icons-1}/flip-horizontal",
+                "rotate"  : "${uise-svg-icons-1}/rotate-2",
+                "rotate-clockwise"  : "${uise-svg-icons-1}/rotate-clockwise-2",
+                "zoom-in"  : "${uise-svg-icons-1}/zoom-in",
+                "zoom-out"  : "${uise-svg-icons-1}/zoom-out"
+            }
+        }
+    ]
+}

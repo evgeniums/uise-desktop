@@ -43,6 +43,15 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
 
         QPixmap editedImage() override;
 
+    public slots:
+
+        // void zoomIn() override;
+        // void zoomOut() override;
+        void flipVertical() override;
+        void flipHorizontal() override;
+        void rotate() override;
+        void rotateClockwise() override;
+
     protected:
 
         void updateCropShape() override;
@@ -60,6 +69,7 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
     private:
 
         void doUpdateFilenameState();
+        void resetCropper();
 
         SimpleImageEditorWidget* m_widget;
 };

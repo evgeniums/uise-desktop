@@ -134,10 +134,18 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
 //--------------------------------------------------------------------------
 
-CropRectItem::HandleType CropRectItem::getHandleType(const QPointF& pos) const
+CropRectItem::HandleType CropRectItem::getHandleType(QPointF pos, bool forCursor) const
 {
-    const qreal handleTolerance = 15.0; // Area around handles to detect click
     QRectF r = m_cropperRect;
+    auto t=m_view->transform();
+    if (forCursor && (t.isRotating()||t.isScaling()))
+    {
+        t=t.inverted();
+        pos=t.map(pos);
+        r=t.mapRect(r).toRect();
+    }
+
+    const qreal handleTolerance = 15.0; // Area around handles to detect click    
 
     // Corners
     if (QRectF(r.topLeft() - QPointF(handleTolerance/2, handleTolerance/2), QSizeF(handleTolerance, handleTolerance)).contains(pos)) return TopLeft;
@@ -161,7 +169,7 @@ CropRectItem::HandleType CropRectItem::getHandleType(const QPointF& pos) const
 
 void CropRectItem::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 {
-    HandleType handle = getHandleType(event->pos());
+    HandleType handle = getHandleType(event->pos(),true);
     switch (handle) {
     case TopLeft:
     case BottomRight:
@@ -348,7 +356,9 @@ void CropRectItem::adjustCropRect()
         return;
     }
 
-    QRectF imageBounds = m_imageItem->boundingRect();
+    QRectF imageBoundsScene = m_imageItem->mapToScene(m_imageItem->boundingRect()).boundingRect();
+    QRectF imageBounds=mapRectFromScene(imageBoundsScene);
+
     QRect portRect = m_view->viewport()->rect();
     QRectF sceneRect = m_view->mapToScene(portRect).boundingRect();
     QRectF viewBounds = mapRectFromScene(sceneRect);

@@ -123,11 +123,11 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
             return m_view;
         }
 
+        void adjustCropRect();
+
     protected:
 
-        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
-
-        HandleType getHandleType(const QPointF& pos) const;
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;        
 
         void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
 
@@ -142,6 +142,8 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         HandleType m_activeHandle;
         QPointF m_lastPos;
         QGraphicsPixmapItem* m_imageItem;
+
+        HandleType getHandleType(QPointF pos, bool forCursor=false) const;
 
         void updateAspectRatio()
         {
@@ -159,9 +161,7 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         bool keepAspectRatio() const
         {
             return m_square||m_keepAspectRatio;
-        }
-
-        void adjustCropRect();
+        }        
 
         bool m_square;
         bool m_ellipse;
