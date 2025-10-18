@@ -44,12 +44,12 @@ class UISE_DESKTOP_EXPORT WidgetBase
 
         virtual ~WidgetBase()=default;
 
-        std::shared_ptr<WidgetFactory> widgetFactory() const
+        std::shared_ptr<const WidgetFactory> widgetFactory() const
         {
             return m_factory;
         }
 
-        void setWidgetFactory(std::shared_ptr<WidgetFactory> factory)
+        void setWidgetFactory(std::shared_ptr<const WidgetFactory> factory)
         {
             m_factory=factory;
         }
@@ -61,7 +61,7 @@ class UISE_DESKTOP_EXPORT WidgetBase
 
     protected:
 
-        std::shared_ptr<WidgetFactory> m_factory;
+        std::shared_ptr<const WidgetFactory> m_factory;
 };
 
 class WidgetController;

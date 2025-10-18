@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/editablepanelgrid.hpp>
 #include <uise/desktop/editablepanels.hpp>
 #include <uise/desktop/loadingframe.hpp>
+#include <uise/desktop/simpleimageeditor.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -43,6 +44,7 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     factory->registerBuilder<AbstractEditablePanels>([](QWidget* parent){return new EditablePanels(parent);});
 
     factory->registerBuilder<LoadingFrame>([](QWidget* parent){return new LoadingFrame(parent);});
+    factory->registerBuilder<AbstractImageEditor>([](QWidget* parent){return new SimpleImageEditor(parent);});
 
     return factory;
 }

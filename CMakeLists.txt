@@ -138,6 +138,10 @@ SET (HEADERS
 
     include/uise/desktop/loadingframe.hpp
     include/uise/desktop/elidedcontainer.hpp
+
+    include/uise/desktop/abstractimageeditor.hpp
+    include/uise/desktop/simpleimageeditor.hpp
+    include/uise/desktop/imagecropper.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -223,6 +227,10 @@ SET (SOURCES
 
     src/loadingframe.cpp
     src/elidedcontainer.cpp
+
+    src/abstractimageeditor.cpp
+    src/simpleimageeditor.cpp
+    src/imagecropper.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

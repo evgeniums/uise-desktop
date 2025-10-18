@@ -31,12 +31,13 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/stylecontext.hpp>
+#include <uise/desktop/widget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class WidgetController;
 
-class UISE_DESKTOP_EXPORT WidgetFactory
+class UISE_DESKTOP_EXPORT WidgetFactory : public std::enable_shared_from_this<WidgetFactory>
 {
     public:
 
@@ -78,6 +79,15 @@ class UISE_DESKTOP_EXPORT WidgetFactory
                 {
                     w=new T(parent);
                     w->setObjectName(name);
+                }
+            }
+            if constexpr (std::is_base_of_v<WidgetBase,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(shared_from_this());
+                    WidgetControllerTraits::preConstruct(w,parent);
+                    w->construct();
                 }
             }
             return w;
