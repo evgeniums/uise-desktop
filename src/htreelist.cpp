@@ -193,7 +193,7 @@ void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, Q
     }
 
     pimpl->listView=listView;
-    pimpl->layout->addWidget(listView);
+    pimpl->layout->addWidget(listView,1);
     minWidth=std::max(listView->minimumWidth(),minWidth);
 
     if (bottomWidget!=nullptr)
