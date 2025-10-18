@@ -122,7 +122,11 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     // 3. Draw the corner and center handles
     painter->setBrush(Qt::white);
     painter->setPen(QPen(Qt::black, 1));
-    const qreal handleSize = 10.0;
+    qreal handleSize = 10.0;
+    if (sz.width()>1000 || sz.height()>1000)
+    {
+        handleSize=20.0;
+    }
     const qreal halfHandle = handleSize / 2.0;
 
     // Draw Corner Handles
