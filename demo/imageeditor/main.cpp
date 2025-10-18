@@ -27,6 +27,8 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QMainWindow>
 #include <QFrame>
 #include <QCheckBox>
+#include <QLabel>
+#include <QPushButton>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -47,16 +49,31 @@ int main(int argc, char *argv[])
     auto mainFrame=new QFrame();
     auto l = Layout::vertical(mainFrame);
 
-    auto editorCtrl=Style::instance().widgetFactory()->makeWidget<AbstractImageEditor>();
+    auto contentFrame=new QFrame(mainFrame);
+    auto contentL = Layout::horizontal(contentFrame);
+    l->addWidget(contentFrame,1);
+
+    auto editorFrame=new QFrame(contentFrame);
+    auto editorL = Layout::vertical(editorFrame);
+    contentL->addWidget(editorFrame);
+    auto viewerFrame=new QFrame(contentFrame);
+    auto viewerL = Layout::vertical(viewerFrame);
+    contentL->addWidget(viewerFrame);
+
+    auto editorCtrl=Style::instance().widgetFactory()->makeWidget<AbstractImageEditor>(editorFrame);
     Q_ASSERT(editorCtrl);
-    editorCtrl->setEllipseCrop(true);
-    l->addWidget(editorCtrl->qWidget(),1);
+    editorCtrl->setEllipseCropPreview(true);
+    editorCtrl->setMaximumImageSize(QSize(512,512));
+    editorL->addWidget(editorCtrl->qWidget(),1);
+
+    auto viewer=new QLabel(viewerFrame);
+    viewerL->addWidget(viewer,1);
 
     QFrame* configFrame=new QFrame();
     l->addWidget(configFrame);
     auto cl=new QHBoxLayout(configFrame);
 
-    auto square=new QCheckBox("Square",configFrame);
+    auto square=new QCheckBox("Square crop",configFrame);
     square->setChecked(true);
     cl->addWidget(square);
     QObject::connect(
@@ -69,7 +86,7 @@ int main(int argc, char *argv[])
         }
     );
 
-    auto ellipse=new QCheckBox("Ellipse",configFrame);
+    auto ellipse=new QCheckBox("Ellipse crop preview",configFrame);
     ellipse->setChecked(true);
     cl->addWidget(ellipse);
     QObject::connect(
@@ -78,11 +95,11 @@ int main(int argc, char *argv[])
         editorCtrl->qWidget(),
         [&](bool enable)
         {
-            editorCtrl->setEllipseCrop(enable);
+            editorCtrl->setEllipseCropPreview(enable);
         }
     );
 
-    auto aspectRatio=new QCheckBox("Keep aspect ratio",configFrame);
+    auto aspectRatio=new QCheckBox("Keep aspect ratio crop",configFrame);
     aspectRatio->setChecked(false);
     cl->addWidget(aspectRatio);
     QObject::connect(
@@ -118,6 +135,19 @@ int main(int argc, char *argv[])
         [&](bool enable)
         {
             editorCtrl->setFilenameVisible(enable);
+        }
+    );
+
+    auto takeImage=new QPushButton("Take image",configFrame);
+    cl->addWidget(takeImage);
+    QObject::connect(
+        takeImage,
+        &QPushButton::clicked,
+        editorCtrl->qWidget(),
+        [&]()
+        {
+            auto px=editorCtrl->editedImage();
+            viewer->setPixmap(px);
         }
     );
 

@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
 #include <QGraphicsPixmapItem>
+#include <QStyleOptionGraphicsItem>
 
 #include <QPushButton>
 #include <QLineEdit>
@@ -130,7 +131,7 @@ void SimpleImageEditor::updateCropShape()
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
         m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
-        m_widget->pimpl->cropperItem->setEllipse(isEllipseCrop());
+        m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
         m_widget->pimpl->cropperItem->update();
     }
 }
@@ -166,6 +167,7 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->view->resetTransform();
     m_widget->pimpl->view->setSceneRect(QRectF{});
     m_widget->pimpl->cropperItem=nullptr;
+    m_widget->pimpl->imageItem = nullptr;
 
     auto px=originalImage();
     if (px.isNull())
@@ -190,7 +192,7 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->cropperItem->setZValue(1);
     m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
     m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
-    m_widget->pimpl->cropperItem->setEllipse(isEllipseCrop());
+    m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
     m_widget->pimpl->cropperItem->setMinimumImageSize(minimumImageSize());
 }
 
@@ -213,7 +215,74 @@ void SimpleImageEditor::doUpdateFilenameState()
 
 QPixmap SimpleImageEditor::editedImage()
 {
-    return QPixmap{};
+    if (m_widget->pimpl->cropperItem==nullptr)
+    {
+        return QPixmap{};
+    }
+
+    QRectF croppedRect;
+    auto items=m_widget->pimpl->scene->items();
+    for (size_t i=0; i<items.count();i++)
+    {
+        auto* item=items.at(i);
+        if (item->type()==CropRectItem::Type)
+        {
+            auto cropper=qgraphicsitem_cast<CropRectItem*>(item);
+            croppedRect=cropper->getCropAreaCoordinates();
+            break;
+        }
+    }
+
+    if (!croppedRect.isValid())
+    {
+        return QPixmap{};
+    }
+
+    m_widget->pimpl->cropperItem->setVisible(false);
+
+    QPixmap px{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    QPainter painter;
+    painter.begin(&px);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+#if 0
+    QPixmap px{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    QPainter painter;
+    painter.begin(&px);
+
+    for (size_t i=0; i<items.count();i++)
+    {
+        auto* item=items.at(i);
+        if (item->type()==CropRectItem::Type)
+        {
+            continue;
+        }
+
+        auto exposedRect=item->mapRectFromScene(croppedRect);
+        qDebug() << "croppedRect=" << croppedRect << " opt.exposedRect="<<exposedRect;
+        painter.setClipRect(exposedRect);
+        item->paint(&painter,nullptr);
+    }
+#else
+
+    m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
+    m_widget->pimpl->cropperItem->setVisible(true);
+
+    painter.end();
+
+    if (maximumImageSize().isValid())
+    {
+        if (px.width()>maximumImageSize().width())
+        {
+            px=px.scaledToWidth(maximumImageSize().width(),Qt::SmoothTransformation);
+        }
+        if (px.height()>maximumImageSize().height())
+        {
+            px=px.scaledToHeight(maximumImageSize().height(),Qt::SmoothTransformation);
+        }
+    }
+#endif
+    return px;
 }
 
 //--------------------------------------------------------------------------

@@ -132,14 +132,14 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
             return m_filenameVisible;
         }
 
-        bool isEllipseCrop() const noexcept
+        bool isEllipseCropPreview() const noexcept
         {
-            return m_ellipseCrop;
+            return m_ellipseCropPreview;
         }
 
-        void setEllipseCrop(bool enable)
+        void setEllipseCropPreview(bool enable)
         {
-            m_ellipseCrop=enable;
+            m_ellipseCropPreview=enable;
             updateCropShape();
         }
 
@@ -180,7 +180,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         QString m_filename;
         bool m_filenameVisible=true;
         bool m_filenameEditable=true;
-        bool m_ellipseCrop=false;
+        bool m_ellipseCropPreview=false;
 
         QString m_folder;
 };
