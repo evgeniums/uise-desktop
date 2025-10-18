@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QPixmap>
 #include <QCursor>
+#include <QGraphicsView>
 
 #include <uise/desktop/imagecropper.hpp>
 
@@ -36,24 +37,24 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-CropRectItem::CropRectItem(const QRectF& imageRect, const QRectF& initialRect, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent)
-    : QGraphicsRectItem(imageRect, parent),
-    m_activeHandle(NoHandle),
-    m_imageItem(imageItem),
-    m_square(false),
-    m_ellipse(false),
-    m_keepAspectRatio(true)
-{
-    m_cropperRect=initialRect;
+CropRectItem::CropRectItem(QGraphicsView* view, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent)
+    : QGraphicsRectItem(imageItem->boundingRect(),parent),
+      m_activeHandle(NoHandle),
+      m_imageItem(imageItem),
+      m_square(false),
+      m_ellipse(false),
+      m_keepAspectRatio(true),
+      m_view(view)
+{    
+}
 
-    if (m_square)
-    {
-        m_xyAspectRatio=1.0;
-    }
-    else if (imageRect.height()!=0)
-    {
-        m_xyAspectRatio=imageRect.width()/imageRect.height();
-    }
+//--------------------------------------------------------------------------
+
+void CropRectItem::init()
+{
+    m_cropperRect=m_imageItem->boundingRect();
+    updateAspectRatio();
+    adjustCropRect();
 
     // Enable hover events to change cursor shape
     setAcceptHoverEvents(true);
@@ -61,6 +62,9 @@ CropRectItem::CropRectItem(const QRectF& imageRect, const QRectF& initialRect, Q
     // Set flags for movement, but we'll handle actual movement and resizing manually
     // because we want custom handles.
     setFlags(ItemIsMovable | ItemSendsGeometryChanges);
+
+    setZValue(1);
+    update();
 }
 
 //--------------------------------------------------------------------------
@@ -76,6 +80,11 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
+
+    if (m_imageItem==nullptr)
+    {
+        return;
+    }
 
     QColor backgroundColor(0, 0, 0, 128);
     auto sz=boundingRect().size().toSize();
@@ -326,6 +335,60 @@ void CropRectItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         if (getHandleType(event->pos()) == Move)
         {
             QGraphicsRectItem::mouseReleaseEvent(event);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void CropRectItem::adjustCropRect()
+{
+    if (m_imageItem==nullptr)
+    {
+        return;
+    }
+
+    QRectF imageBounds = m_imageItem->boundingRect();
+    QRect portRect = m_view->viewport()->rect();
+    QRectF sceneRect = m_view->mapToScene(portRect).boundingRect();
+    QRectF viewBounds = mapRectFromScene(sceneRect);
+
+    auto left=std::max(imageBounds.x(),viewBounds.x());
+    auto top=std::max(imageBounds.y(),viewBounds.y());
+    auto right=std::min(imageBounds.right(),viewBounds.right());
+    auto bottom=std::min(imageBounds.bottom(),viewBounds.bottom());
+    m_cropperRect=QRectF{QPointF{left,top},QPointF{right,bottom}};
+
+    if (m_square || m_keepAspectRatio)
+    {
+        auto newRatio=m_cropperRect.width()/m_cropperRect.height();
+        if (!qFuzzyCompare(m_xyAspectRatio,newRatio))
+        {
+            qreal newX;
+            qreal newY;
+            qreal newW;
+            qreal newH;
+
+            if (newRatio>m_xyAspectRatio)
+            {
+                // decrease width
+                newW=m_cropperRect.height()*m_xyAspectRatio;
+                auto deltaX=(qRound(m_cropperRect.width())-newW)/2;
+                newX=m_cropperRect.x()+deltaX;
+                newY=m_cropperRect.y();
+                newH=m_cropperRect.height();
+            }
+            else
+            {
+                // decrease height
+                newH=m_cropperRect.width()/m_xyAspectRatio;
+                auto deltaY=(qRound(m_cropperRect.height())-newH)/2;
+                newY=m_cropperRect.y()+deltaY;
+                newX=m_cropperRect.x();
+                newW=m_cropperRect.width();
+            }
+
+             m_cropperRect=QRectF{newX,newY,newW,newH};
         }
     }
 }

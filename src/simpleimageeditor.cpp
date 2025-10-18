@@ -174,7 +174,6 @@ void SimpleImageEditor::doLoadImage()
     {
         return;
     }
-
     auto viewRect=m_widget->pimpl->view->rect();
     m_widget->pimpl->imageItem = m_widget->pimpl->scene->addPixmap(px);
 
@@ -183,17 +182,15 @@ void SimpleImageEditor::doLoadImage()
         m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
     }
 
-    auto imageRect=m_widget->pimpl->imageItem->boundingRect();
-    m_widget->pimpl->scene->setSceneRect(imageRect);
+    m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
 
-    QRectF initialCrop=imageRect;
-    m_widget->pimpl->cropperItem = new CropRectItem(imageRect,initialCrop, m_widget->pimpl->imageItem);
+    m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
     m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
-    m_widget->pimpl->cropperItem->setZValue(1);
     m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
     m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
     m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
     m_widget->pimpl->cropperItem->setMinimumImageSize(minimumImageSize());
+    m_widget->pimpl->cropperItem->init();
 }
 
 //--------------------------------------------------------------------------
@@ -245,26 +242,6 @@ QPixmap SimpleImageEditor::editedImage()
     painter.begin(&px);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-#if 0
-    QPixmap px{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
-    QPainter painter;
-    painter.begin(&px);
-
-    for (size_t i=0; i<items.count();i++)
-    {
-        auto* item=items.at(i);
-        if (item->type()==CropRectItem::Type)
-        {
-            continue;
-        }
-
-        auto exposedRect=item->mapRectFromScene(croppedRect);
-        qDebug() << "croppedRect=" << croppedRect << " opt.exposedRect="<<exposedRect;
-        painter.setClipRect(exposedRect);
-        item->paint(&painter,nullptr);
-    }
-#else
-
     m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
     m_widget->pimpl->cropperItem->setVisible(true);
 
@@ -281,7 +258,7 @@ QPixmap SimpleImageEditor::editedImage()
             px=px.scaledToHeight(maximumImageSize().height(),Qt::SmoothTransformation);
         }
     }
-#endif
+
     return px;
 }
 

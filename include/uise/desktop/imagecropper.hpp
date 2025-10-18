@@ -62,6 +62,9 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         void setKeepAspectRatio(bool enable)
         {
             m_keepAspectRatio=enable;
+            updateAspectRatio();
+            adjustCropRect();
+            update();
         }
 
         bool isKeepAspectRatio() const noexcept
@@ -72,6 +75,9 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         void setSquare(bool enable)
         {
             m_square=enable;
+            updateAspectRatio();
+            adjustCropRect();
+            update();
         }
 
         bool isSquare() const noexcept
@@ -82,6 +88,7 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         void setEllipse(bool enable)
         {
             m_ellipse=enable;
+            update();
         }
 
         bool isEllipse() const noexcept
@@ -100,9 +107,21 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
             return QSize{int(m_minWidth),int(m_minHeight)};
         }
 
-        CropRectItem(const QRectF& imageRect, const QRectF& initialRect, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent = nullptr);
+        CropRectItem(QGraphicsView* view, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent = nullptr);
+
+        void init();
 
         QRectF getCropAreaCoordinates() const;
+
+        void setView(QGraphicsView* view)
+        {
+            m_view=view;
+        }
+
+        QGraphicsView* view() const
+        {
+            return m_view;
+        }
 
     protected:
 
@@ -124,10 +143,25 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         QPointF m_lastPos;
         QGraphicsPixmapItem* m_imageItem;
 
+        void updateAspectRatio()
+        {
+            auto cropperRect=m_imageItem->boundingRect();
+            if (m_square)
+            {
+                m_xyAspectRatio=1.0;
+            }
+            else if (cropperRect.height()!=0)
+            {
+                m_xyAspectRatio=cropperRect.width()/cropperRect.height();
+            }
+        }
+
         bool keepAspectRatio() const
         {
             return m_square||m_keepAspectRatio;
         }
+
+        void adjustCropRect();
 
         bool m_square;
         bool m_ellipse;
@@ -138,6 +172,8 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         qreal m_minHeight=10;
 
         QRectF m_cropperRect;
+
+        QGraphicsView* m_view=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END
