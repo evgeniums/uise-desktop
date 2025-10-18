@@ -45,8 +45,8 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
 
     public slots:
 
-        // void zoomIn() override;
-        // void zoomOut() override;
+        void zoomIn() override;
+        void zoomOut() override;
         void flipVertical() override;
         void flipHorizontal() override;
         void rotate() override;

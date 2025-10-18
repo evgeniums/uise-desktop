@@ -63,6 +63,8 @@ class SimpleImageEditorWidget_p
         PushButton* rotateClockwise;
         PushButton* flipHorizontal;
         PushButton* flipVertical;
+        PushButton* zoomIn;
+        PushButton* zoomOut;
 
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
@@ -130,6 +132,26 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::flipVertical
+    );
+    pimpl->zoomIn=new PushButton(pimpl->controlsFrame);
+    pimpl->zoomIn->setToolTip(tr("Zoom in"));
+    pimpl->zoomIn->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::zoom-in",this));
+    cl->addWidget(pimpl->zoomIn);
+    connect(
+        pimpl->zoomIn,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::zoomIn
+        );
+    pimpl->zoomOut=new PushButton(pimpl->controlsFrame);
+    pimpl->zoomOut->setToolTip(tr("Zoom out"));
+    pimpl->zoomOut->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::zoom-out",this));
+    cl->addWidget(pimpl->zoomOut);
+    connect(
+        pimpl->zoomOut,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &AbstractImageEditor::zoomOut
     );
     cl->addStretch(1);
 
@@ -408,6 +430,38 @@ void SimpleImageEditor::flipVertical()
     {
         t.scale(-1, 1);
     }
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::zoomIn()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    t.scale(1.25, 1.25);
+    m_widget->pimpl->view->setTransform(t);
+
+    resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::zoomOut()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    auto t=m_widget->pimpl->view->transform();
+    t.scale(0.8, 0.8);
     m_widget->pimpl->view->setTransform(t);
 
     resetCropper();
