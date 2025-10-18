@@ -78,6 +78,10 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 
         int widthHint() const;
 
+    signals:
+
+        void textUpdated();
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;

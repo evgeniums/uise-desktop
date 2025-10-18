@@ -63,6 +63,8 @@ void ElidedLabel::setText(const QString& text)
     m_label->setText(text);
 
     updateText(width());
+
+    emit textUpdated();
 }
 
 //--------------------------------------------------------------------------

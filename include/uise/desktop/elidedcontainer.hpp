@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SingleShotTimer;
 class ElidedLabel;
 
 class UISE_DESKTOP_EXPORT ElidedContainer : public QFrame
@@ -56,13 +57,22 @@ class UISE_DESKTOP_EXPORT ElidedContainer : public QFrame
 
         QSize sizeHint() const override;
 
+        void refresh();
+
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
 
+        bool eventFilter(QObject *watched, QEvent *event) override;
+
+    private slots:
+
+        void onElidedTextUpdate();
+
     private:
 
         void updateMinimumHeight();
+        void updateSize(const QSize& size);
 
         struct Widget
         {
@@ -71,7 +81,10 @@ class UISE_DESKTOP_EXPORT ElidedContainer : public QFrame
             int width=0;
         };
 
+        void onWidgetAdded(Widget w);
+
         std::vector<Widget> m_widgets;
+        SingleShotTimer* m_updateTimer;
 };
 
 UISE_DESKTOP_NAMESPACE_END

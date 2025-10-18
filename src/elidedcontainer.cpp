@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QResizeEvent>
 
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/elidedcontainer.hpp>
 
@@ -37,6 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 ElidedContainer::ElidedContainer(QWidget* parent)
     : QFrame(parent)
 {
+    m_updateTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -44,7 +46,13 @@ ElidedContainer::ElidedContainer(QWidget* parent)
 void ElidedContainer::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
+    updateSize(event->size());
+}
 
+//--------------------------------------------------------------------------
+
+void ElidedContainer::updateSize(const QSize& newSize)
+{
     auto margins=contentsMargins();
 
     int elidedMinWidth=0;
@@ -66,11 +74,11 @@ void ElidedContainer::resizeEvent(QResizeEvent* event)
         }
         else
         {
-            nonElidedMinWidth+=w.widget->minimumWidth();
+            nonElidedMinWidth+=w.widget->sizeHint().width();
         }
     }
-    auto newWidth=event->size().width();
-    auto newHeight=event->size().height();
+    auto newWidth=newSize.width();
+    auto newHeight=newSize.height();
     auto elidedWidth=0;
     int averageElidedWidth=0;
     if (elidedLabelsCount!=0)
@@ -143,7 +151,7 @@ void ElidedContainer::resizeEvent(QResizeEvent* event)
         }
         w.widget->move(pos,y);
 
-        auto widgetWidth=w.widget->minimumWidth();
+        auto widgetWidth=w.widget->sizeHint().width();
         if (w.label)
         {
             if (w.width!=0)
@@ -160,7 +168,7 @@ void ElidedContainer::resizeEvent(QResizeEvent* event)
             }
         }
 #if 0
-        qDebug() << "Move widget " << i <<  " to pos=" << pos << " y=" << y << " width="<<widgetWidth << " height="<<newHeight
+        UNCOMMENTED_QDEBUG << "Move widget " << i <<  " to pos=" << pos << " y=" << y << " width="<<widgetWidth << " height="<<newHeight
                  << " totalWidth="<<newWidth;
 #endif
         pos+=widgetWidth;
@@ -175,9 +183,7 @@ void ElidedContainer::addWidget(QWidget* widget)
     widget->setParent(this);
     Widget w;
     w.widget=widget;
-    m_widgets.emplace_back(w);
-    updateMinimumHeight();
-    update();
+    onWidgetAdded(w);
 }
 
 //--------------------------------------------------------------------------
@@ -185,12 +191,16 @@ void ElidedContainer::addWidget(QWidget* widget)
 void ElidedContainer::addElidedLabel(ElidedLabel* label)
 {
     label->setParent(this);
+    connect(
+        label,
+        &ElidedLabel::textUpdated,
+        this,
+        &ElidedContainer::onElidedTextUpdate
+    );
     Widget w;
     w.widget=label;
     w.label=label;
-    m_widgets.emplace_back(w);
-    updateMinimumHeight();
-    update();
+    onWidgetAdded(w);
 }
 
 //--------------------------------------------------------------------------
@@ -198,7 +208,7 @@ void ElidedContainer::addElidedLabel(ElidedLabel* label)
 QSize ElidedContainer::sizeHint() const
 {
     int width=0;
-    int height=0;
+    int height=minimumHeight();
     for (const auto& w : m_widgets)
     {
         if (!w.widget)
@@ -225,16 +235,56 @@ QSize ElidedContainer::sizeHint() const
 
 void ElidedContainer::updateMinimumHeight()
 {
-    int min=minimumHeight();
+    int min=0;
     for (const auto& w : m_widgets)
     {
         if (!w.widget || w.widget->isHidden())
         {
             continue;
         }
-        min=std::max(min,w.widget->minimumHeight());
+        min=std::max(min,w.widget->sizeHint().height());
     }
     setMinimumHeight(min);
+}
+
+//--------------------------------------------------------------------------
+
+void ElidedContainer::onWidgetAdded(Widget w)
+{
+    m_widgets.emplace_back(w);
+    w.widget->installEventFilter(this);
+    updateMinimumHeight();
+    refresh();
+}
+
+//--------------------------------------------------------------------------
+
+bool ElidedContainer::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type()==QEvent::Show || event->type()==QEvent::Hide)
+    {
+        refresh();
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+void ElidedContainer::onElidedTextUpdate()
+{
+    refresh();
+}
+
+//--------------------------------------------------------------------------
+
+void ElidedContainer::refresh()
+{
+    m_updateTimer->shot(10,
+        [this]()
+        {
+            updateSize(size());
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
