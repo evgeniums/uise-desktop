@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QFileDialog>
+#include <QTimer>
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
@@ -35,6 +36,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPushButton>
 #include <QLineEdit>
 #include <QSpinBox>
+
+#include <QtColorWidgets/HueSlider>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -61,6 +64,7 @@ class SimpleImageEditorWidget_p
         CropRectItem *cropperItem = nullptr;
 
         QFrame* controlsFrame;
+        QFrame* mainButtonsFrame;
         PushButton* rotate;
         PushButton* rotateClockwise;
         PushButton* flipHorizontal;
@@ -75,6 +79,7 @@ class SimpleImageEditorWidget_p
         PushButton* freeHandDrawAccept;
         QSpinBox* freeHandDrawPenWidth;
         PushButton* freeHandDrawCancel;
+        color_widgets::HueSlider* freeHandColor;
 
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
@@ -103,70 +108,76 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->layout->addWidget(pimpl->controlsFrame);
     auto cl=Layout::horizontal(pimpl->controlsFrame);
     cl->addStretch(1);
-    pimpl->rotate=new PushButton(pimpl->controlsFrame);
+
+    pimpl->mainButtonsFrame=new QFrame(pimpl->controlsFrame);
+    pimpl->mainButtonsFrame->setObjectName("mainButtonsFrame");
+    auto ml=Layout::horizontal(pimpl->mainButtonsFrame);
+    cl->addWidget(pimpl->mainButtonsFrame);
+
+    pimpl->rotate=new PushButton(pimpl->mainButtonsFrame);
     pimpl->rotate->setToolTip(tr("Rotate"));
     pimpl->rotate->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::rotate",this));
-    cl->addWidget(pimpl->rotate);
+    ml->addWidget(pimpl->rotate);
     connect(
         pimpl->rotate,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::rotate
     );
-    pimpl->rotateClockwise=new PushButton(pimpl->controlsFrame);
+    pimpl->rotateClockwise=new PushButton(pimpl->mainButtonsFrame);
     pimpl->rotateClockwise->setToolTip(tr("Rotate clockwise"));
     pimpl->rotateClockwise->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::rotate-clockwise",this));
-    cl->addWidget(pimpl->rotateClockwise);
+    ml->addWidget(pimpl->rotateClockwise);
     connect(
         pimpl->rotateClockwise,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::rotateClockwise
     );
-    pimpl->flipHorizontal=new PushButton(pimpl->controlsFrame);
+    pimpl->flipHorizontal=new PushButton(pimpl->mainButtonsFrame);
     pimpl->flipHorizontal->setToolTip(tr("Flip horizontally"));
     pimpl->flipHorizontal->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::flip-horizontal",this));
-    cl->addWidget(pimpl->flipHorizontal);
+    ml->addWidget(pimpl->flipHorizontal);
     connect(
         pimpl->flipHorizontal,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::flipHorizontal
     );
-    pimpl->flipVertical=new PushButton(pimpl->controlsFrame);
+    pimpl->flipVertical=new PushButton(pimpl->mainButtonsFrame);
     pimpl->flipVertical->setToolTip(tr("Flip vertically"));
     pimpl->flipVertical->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::flip-vertical",this));
-    cl->addWidget(pimpl->flipVertical);
+    ml->addWidget(pimpl->flipVertical);
     connect(
         pimpl->flipVertical,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::flipVertical
     );
-    pimpl->zoomIn=new PushButton(pimpl->controlsFrame);
+    pimpl->zoomIn=new PushButton(pimpl->mainButtonsFrame);
     pimpl->zoomIn->setToolTip(tr("Zoom in"));
     pimpl->zoomIn->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::zoom-in",this));
-    cl->addWidget(pimpl->zoomIn);
+    ml->addWidget(pimpl->zoomIn);
     connect(
         pimpl->zoomIn,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::zoomIn
         );
-    pimpl->zoomOut=new PushButton(pimpl->controlsFrame);
+    pimpl->zoomOut=new PushButton(pimpl->mainButtonsFrame);
     pimpl->zoomOut->setToolTip(tr("Zoom out"));
     pimpl->zoomOut->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::zoom-out",this));
-    cl->addWidget(pimpl->zoomOut);
+    ml->addWidget(pimpl->zoomOut);
     connect(
         pimpl->zoomOut,
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageEditor::zoomOut
     );
-    pimpl->freeHandDraw=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDraw=new PushButton(pimpl->mainButtonsFrame);
     pimpl->freeHandDraw->setToolTip(tr("Freehand draw"));
     pimpl->freeHandDraw->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::brush",this));
-    cl->addWidget(pimpl->freeHandDraw);
+    ml->addWidget(pimpl->freeHandDraw);
     connect(
         pimpl->freeHandDraw,
         &PushButton::toggled,
@@ -221,8 +232,18 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         pimpl->view,
         &FreeHandDrawView::redoHandDraw
     );
-
+    pimpl->freeHandColor=new color_widgets::HueSlider(pimpl->controlsFrame);
+    pimpl->freeHandColor->setObjectName("freeHandColor");
+    pimpl->freeHandColor->setToolTip(tr("Pen color"));
+    fhwl->addWidget(pimpl->freeHandColor);
+    connect(
+        pimpl->freeHandColor,
+        &color_widgets::HueSlider::colorChanged,
+        pimpl->view,
+        &FreeHandDrawView::setPenColor
+    );
     pimpl->freeHandDrawPenWidth=new QSpinBox(pimpl->controlsFrame);
+    pimpl->freeHandDrawPenWidth->setObjectName("freeHanPenWidth");
     pimpl->freeHandDrawPenWidth->setToolTip(tr("Pen width"));
     pimpl->freeHandDrawPenWidth->setMinimum(2);
     pimpl->freeHandDrawPenWidth->setMaximum(100);
@@ -236,7 +257,6 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     );
 
     pimpl->freeHandDrawFrame->setVisible(false);
-
 
     cl->addStretch(1);
     pimpl->controlsFrame->setVisible(false);
@@ -341,6 +361,8 @@ void SimpleImageEditor::doLoadImage()
     {
         return;
     }
+    m_widget->pimpl->controlsFrame->setVisible(true);
+
     auto viewRect=m_widget->pimpl->view->rect();
     m_widget->pimpl->imageItem = m_widget->pimpl->scene->addPixmap(px);
 
@@ -350,9 +372,7 @@ void SimpleImageEditor::doLoadImage()
     }
 
     m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
-    resetCropper();
-
-    m_widget->pimpl->controlsFrame->setVisible(true);
+    resetCropper();    
 }
 
 //--------------------------------------------------------------------------
@@ -438,6 +458,7 @@ void SimpleImageEditor::resetCropper()
     {
         m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
         delete m_widget->pimpl->cropperItem;
+        m_widget->pimpl->cropperItem=nullptr;
     }
 
     m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
@@ -567,6 +588,13 @@ void SimpleImageEditor::setFreeHandDrawMode(bool enable)
 {
     m_widget->pimpl->view->setFreeHandDrawEnabled(enable);
 
+    m_widget->pimpl->freeHandDraw->blockSignals(true);
+    m_widget->pimpl->freeHandDraw->setChecked(enable);
+    m_widget->pimpl->freeHandDraw->setEnabled(!enable);
+    m_widget->pimpl->freeHandDraw->blockSignals(false);
+
+    m_widget->pimpl->freeHandDrawFrame->setVisible(enable);
+
     if (enable)
     {
         if (m_widget->pimpl->cropperItem!=nullptr)
@@ -576,15 +604,15 @@ void SimpleImageEditor::setFreeHandDrawMode(bool enable)
     }
     else
     {
-        resetCropper();
+        QTimer::singleShot(
+            50,
+            this,
+            [this]()
+            {
+                resetCropper();
+            }
+        );
     }
-
-    m_widget->pimpl->freeHandDraw->blockSignals(true);
-    m_widget->pimpl->freeHandDraw->setChecked(enable);
-    m_widget->pimpl->freeHandDraw->setEnabled(!enable);
-    m_widget->pimpl->freeHandDraw->blockSignals(false);
-
-    m_widget->pimpl->freeHandDrawFrame->setVisible(enable);
 }
 
 //--------------------------------------------------------------------------
