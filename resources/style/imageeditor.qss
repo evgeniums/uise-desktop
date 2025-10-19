@@ -4,8 +4,29 @@ padding:4px;
 icon-size:24px;
 }
 
+uise--SimpleImageEditorWidget uise--PushButton {
+}
+
+uise--SimpleImageEditorWidget #controlsFrame {
+padding:2px;
+}
+
 uise--SimpleImageEditorWidget #freeHandDrawFrame {
 border-radius: 4px;
-margin-top:2px;
-margin-bottom:2px;
 }
+
+uise--SimpleImageEditorWidget #freeHanPenWidth{
+margin-right: 4px;
+}
+
+uise--SimpleImageEditorWidget #freeHandColor
+{
+margin-right: 8px;
+min-height: 20px;
+}
+
+uise--SimpleImageEditorWidget #mainButtonsFrame{
+padding-top:4px;
+padding-bottom:4px;
+}
+

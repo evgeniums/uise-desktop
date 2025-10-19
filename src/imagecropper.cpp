@@ -107,33 +107,57 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     }
     p.end();
     painter->setRenderHints(QPainter::SmoothPixmapTransform);
-    painter->drawPixmap(boundingRect().topLeft(), px);
+    painter->drawPixmap(0,0,sz.width(),sz.height(),px);
 
     const auto& r=m_cropperRect;
 
-    // 2. Draw the crop border
-    QPen borderPen(Qt::white);
-    borderPen.setWidth(2);
+    auto transform = m_view->transform();
+    auto scale_x = qSqrt(transform.m11() * transform.m11() + transform.m12() * transform.m12());
+
+    // calculate width of handle
+    qreal handleSize = BaseHandleWidth;
+    QRect portRect = m_view->viewport()->rect();
+    if ((sz.width()>portRect.width() || sz.height()>portRect.height()))
+    {
+        if (scale_x>0)
+        {
+            handleSize=handleSize/scale_x;
+        }
+    }
+
+    // draw the crop border
+    QColor borderColor{BorderColor};
+    borderColor.setAlpha(BorderColorAlpha);
+    QPen borderPen(borderColor);
+    borderPen.setWidth(qRound(handleSize));
     borderPen.setStyle(Qt::DashLine);
     painter->setPen(borderPen);
     painter->setBrush(Qt::NoBrush);
     painter->drawRect(r);
 
-    // 3. Draw the corner and center handles
-    painter->setBrush(Qt::white);
-    painter->setPen(QPen(Qt::black, 1));
-    qreal handleSize = 10.0;
-    if (sz.width()>1000 || sz.height()>1000)
+    // draw the corner handles
+    auto cornerHandleSize=handleSize*20;
+    auto cornerWidth=handleSize*4;
+    if (r.width()<64)
     {
-        handleSize=20.0;
+        cornerHandleSize=handleSize*4;
+        cornerWidth=2;
     }
-    const qreal halfHandle = handleSize / 2.0;
+    QColor handleColor{HandleColor};
+    QPen pen{handleColor};
+    pen.setWidth(cornerWidth);
+    painter->setPen(pen);
 
-    // Draw Corner Handles
-    painter->drawRect(r.topLeft().x() - halfHandle, r.topLeft().y() - halfHandle, handleSize, handleSize);
-    painter->drawRect(r.topRight().x() - halfHandle, r.topRight().y() - halfHandle, handleSize, handleSize);
-    painter->drawRect(r.bottomLeft().x() - halfHandle, r.bottomLeft().y() - halfHandle, handleSize, handleSize);
-    painter->drawRect(r.bottomRight().x() - halfHandle, r.bottomRight().y() - halfHandle, handleSize, handleSize);
+    // draw corner handles
+    painter->drawLine(r.topLeft().x(),r.topLeft().y(),r.topLeft().x()+cornerHandleSize,r.topLeft().y());
+    painter->drawLine(r.topRight().x()-cornerHandleSize,r.topLeft().y(),r.topRight().x(),r.topRight().y());
+    painter->drawLine(r.bottomLeft().x(),r.bottomLeft().y(),r.bottomLeft().x()+cornerHandleSize,r.bottomLeft().y());
+    painter->drawLine(r.bottomRight().x()-cornerHandleSize,r.bottomLeft().y(),r.bottomRight().x(),r.bottomRight().y());
+
+    painter->drawLine(r.topLeft().x(),r.topLeft().y(),r.topLeft().x(),r.topLeft().y()+cornerHandleSize);
+    painter->drawLine(r.topRight().x(),r.topLeft().y(),r.topRight().x(),r.topRight().y()+cornerHandleSize);
+    painter->drawLine(r.bottomLeft().x(),r.bottomLeft().y()-cornerHandleSize,r.bottomLeft().x(),r.bottomLeft().y());
+    painter->drawLine(r.bottomRight().x(),r.bottomLeft().y()-cornerHandleSize,r.bottomRight().x(),r.bottomRight().y());
 }
 
 //--------------------------------------------------------------------------
@@ -149,7 +173,14 @@ CropRectItem::HandleType CropRectItem::getHandleType(QPointF pos, bool forCursor
         r=t.mapRect(r).toRect();
     }
 
-    const qreal handleTolerance = 15.0; // Area around handles to detect click    
+    qreal handleTolerance = BaseHandleTolerance; // Area around handles to detect click
+    auto transform = m_view->transform();
+    auto scale_x = qSqrt(transform.m11() * transform.m11() + transform.m12() * transform.m12());
+    QRect portRect = m_view->viewport()->rect();
+    if (scale_x>0 && (r.width()>portRect.width() || r.height()>portRect.height()))
+    {
+        handleTolerance=handleTolerance/scale_x;
+    }
 
     // Corners
     if (QRectF(r.topLeft() - QPointF(handleTolerance/2, handleTolerance/2), QSizeF(handleTolerance, handleTolerance)).contains(pos)) return TopLeft;

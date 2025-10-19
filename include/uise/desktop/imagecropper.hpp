@@ -39,7 +39,14 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
 {
     public:
 
-        enum HandleType {
+        constexpr static const qreal BaseHandleWidth=1.0;
+        constexpr static const qreal BaseHandleTolerance=15.0;
+        constexpr static const QRgb HandleColor=QRgb{0xF0F0F0};
+        constexpr static const QRgb BorderColor=QRgb{0xF0F0F0};
+        constexpr static const uint32_t BorderColorAlpha=30;
+
+        enum HandleType
+        {
             NoHandle,
             TopLeft,
             TopRight,

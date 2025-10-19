@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QClipboard>
 #include <QMimeData>
 #include <QFileInfo>
+#include <QShortcut>
 
 #include <uise/desktop/widgetfactory.hpp>
 #include <uise/desktop/abstractimageeditor.hpp>
