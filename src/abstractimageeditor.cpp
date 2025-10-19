@@ -43,6 +43,14 @@ void AbstractImageEditor::setSquareCrop(bool enable)
 
 //--------------------------------------------------------------------------
 
+void AbstractImageEditor::setCropEnabled(bool enable)
+{
+    m_cropperEnabled=enable;
+    updateCropShape();
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractImageEditor::setMaximumImageSize(const QSize& size)
 {
     m_maxImageSize=size;

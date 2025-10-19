@@ -282,7 +282,7 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         {
             QPointer<QObject> guard{this};
 
-            auto filter=tr("Images (*.png *.jpg *.svg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
+            auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
             auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter);
             if (guard)
             {
@@ -449,7 +449,7 @@ QPixmap SimpleImageEditor::editedImage()
 
 void SimpleImageEditor::resetCropper()
 {
-    if (m_widget->pimpl->imageItem==nullptr)
+    if (!isCropEnabled() || m_widget->pimpl->imageItem==nullptr || m_widget->pimpl->view->isFreeHandDrawEnabled())
     {
         return;
     }
@@ -604,14 +604,7 @@ void SimpleImageEditor::setFreeHandDrawMode(bool enable)
     }
     else
     {
-        QTimer::singleShot(
-            50,
-            this,
-            [this]()
-            {
-                resetCropper();
-            }
-        );
+        resetCropper();
     }
 }
 

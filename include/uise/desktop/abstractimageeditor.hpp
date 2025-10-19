@@ -137,12 +137,18 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
             return m_ellipseCropPreview;
         }
 
+        bool isCropEnabled() const noexcept
+        {
+            return m_cropperEnabled;
+        }
+
         void setEllipseCropPreview(bool enable)
         {
             m_ellipseCropPreview=enable;
             updateCropShape();
         }
 
+        void setCropEnabled(bool enable);
         void setSquareCrop(bool enable);
         void setMaximumImageSize(const QSize& size);
         void setMinimumImageSize(const QSize& size);
@@ -192,6 +198,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         bool m_filenameVisible=true;
         bool m_filenameEditable=true;
         bool m_ellipseCropPreview=false;
+        bool m_cropperEnabled=true;
 
         QString m_folder;
 };
