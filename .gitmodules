@@ -1,3 +1,6 @@
 [submodule "thirdparty/file-icon-vectors"]
 	path = thirdparty/file-icon-vectors
 	url = https://github.com/evgeniums/file-icon-vectors.git
+[submodule "thirdparty/qtcolorwidgets"]
+	path = thirdparty/qtcolorwidgets
+	url = https://gitlab.com/mattbas/Qt-Color-Widgets.git
