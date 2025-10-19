@@ -100,9 +100,9 @@ QSize ElidedLabel::sizeHint() const
     auto sz=m_hiddenLabel->sizeHint();
     if (sz.isValid())
     {
-        QSize{sz.width()+contentsMargins().left()+contentsMargins().right(),sz.height()};
+        return QSize{sz.width()+contentsMargins().left()+contentsMargins().right(),sz.height()};
     }
-    return QSize{};
+    return sz;
 }
 
 //--------------------------------------------------------------------------
