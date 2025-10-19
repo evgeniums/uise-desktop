@@ -97,6 +97,9 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setExlusivelyExpandableNode(bool enable) noexcept;
         bool isExlusivelyExpandableNode() const noexcept;
 
+        void setExpandableLastDepthOnNodeOpen(int) noexcept;
+        int expandableLastDepthOnNodeOpen() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);

@@ -57,6 +57,8 @@ class HTree_p
 
         bool singleCollapsePlaceholder=true;
         bool exlusivelyExpandableNode=false;
+
+        int expandLastDepthOnOpen=0;
 };
 
 //--------------------------------------------------------------------------
@@ -393,6 +395,20 @@ void HTree::setExlusivelyExpandableNode(bool enable) noexcept
 bool HTree::isExlusivelyExpandableNode() const noexcept
 {
     return pimpl->exlusivelyExpandableNode;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setExpandableLastDepthOnNodeOpen(int value) noexcept
+{
+    pimpl->expandLastDepthOnOpen=value;
+}
+
+//--------------------------------------------------------------------------
+
+int HTree::expandableLastDepthOnNodeOpen() const noexcept
+{
+    return pimpl->expandLastDepthOnOpen;
 }
 
 //--------------------------------------------------------------------------

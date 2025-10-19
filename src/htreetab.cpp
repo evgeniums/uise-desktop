@@ -199,7 +199,6 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // add widget to splitter
     splitter->addWidget(node);
     auto index=splitter->count()-1;
-    splitter->scrollToIndex(index);
 
     // add item to navigation bar
     navbar->addItem(node->name(),node->nodeTooltip(),node->id());
@@ -263,7 +262,16 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         nodeDestroyedMapper,
         SLOT(map())
     );
-    nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));    
+    nodeDestroyedMapper->setMapping(node,static_cast<int>(nodes.size()-1));
+
+    if (tree->expandableLastDepthOnNodeOpen()!=0)
+    {
+        node->expandExclusive(tree->expandableLastDepthOnNodeOpen());
+    }
+    else
+    {
+        splitter->scrollToIndex(index);
+    }
 }
 
 //--------------------------------------------------------------------------

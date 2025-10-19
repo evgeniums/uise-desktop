@@ -980,14 +980,14 @@ void HTreeNode::setParentNodeTitle(const QString& title)
 //--------------------------------------------------------------------------
 
 void HTreeNode::expandExclusive(int depth)
-{    
+{
     auto p=parentNode();
     while (p!=nullptr)
     {
+        --depth;
         auto collapseParent=depth<=0;
         p->setExpanded(!collapseParent);
         p=p->parentNode();
-        --depth;
     }
     auto n=nextNode();
     if (n!=nullptr)
