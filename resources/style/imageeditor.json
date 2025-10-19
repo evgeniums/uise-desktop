@@ -8,7 +8,12 @@
                 "rotate"  : "${uise-svg-icons-1}/rotate-2",
                 "rotate-clockwise"  : "${uise-svg-icons-1}/rotate-clockwise-2",
                 "zoom-in"  : "${uise-svg-icons-1}/zoom-in",
-                "zoom-out"  : "${uise-svg-icons-1}/zoom-out"
+                "zoom-out"  : "${uise-svg-icons-1}/zoom-out",
+                "undo"  : "${uise-svg-icons-1}/arrow-back",
+                "redo"  : "${uise-svg-icons-1}/arrow-forward-up",
+                "brush"  : "${uise-svg-icons-1}/brush",
+                "accept"  : "${uise-svg-icons-1}/check",
+                "cancel"  : "${uise-svg-icons-1}/x"
             }
         }
     ]

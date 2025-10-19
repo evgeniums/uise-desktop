@@ -52,6 +52,11 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
         void rotate() override;
         void rotateClockwise() override;
 
+        virtual void setFreeHandDrawMode(bool enable) override;
+
+        void acceptFreeHandDraw();
+        void cancelFreeHandDraw();
+
     protected:
 
         void updateCropShape() override;

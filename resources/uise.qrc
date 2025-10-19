@@ -47,5 +47,7 @@
         <file>style/light/passworddialog.qss</file>
         <file>style/imageeditor.json</file>
         <file>style/dark/imageeditor.json</file>
+        <file>style/dark/imageeditor.qss</file>
+        <file>style/imageeditor.qss</file>
     </qresource>
 </RCC>

@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/freehanddrawview.hpp>
 #include <uise/desktop/simpleimageeditor.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -53,7 +54,7 @@ class SimpleImageEditorWidget_p
 
         QBoxLayout* layout;
 
-        QGraphicsView *view;
+        FreeHandDrawView *view;
         QGraphicsScene *scene;
         QGraphicsPixmapItem *imageItem = nullptr;
         CropRectItem *cropperItem = nullptr;
@@ -65,6 +66,13 @@ class SimpleImageEditorWidget_p
         PushButton* flipVertical;
         PushButton* zoomIn;
         PushButton* zoomOut;
+        PushButton* freeHandDraw;
+
+        QFrame* freeHandDrawFrame;
+        PushButton* freeHandDrawUndo;
+        PushButton* freeHandDrawRedo;
+        PushButton* freeHandDrawAccept;
+        PushButton* freeHandDrawCancel;
 
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
@@ -83,7 +91,7 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
 
     pimpl->layout=Layout::vertical(this);
 
-    pimpl->view = new QGraphicsView(this);
+    pimpl->view = new FreeHandDrawView(this);
     pimpl->scene = new QGraphicsScene(this);
     pimpl->view->setScene(pimpl->scene);
     pimpl->layout->addWidget(pimpl->view,1);
@@ -153,7 +161,68 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         pimpl->ctrl,
         &AbstractImageEditor::zoomOut
     );
+    pimpl->freeHandDraw=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDraw->setToolTip(tr("Freehand draw"));
+    pimpl->freeHandDraw->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::brush",this));
+    cl->addWidget(pimpl->freeHandDraw);
+    connect(
+        pimpl->freeHandDraw,
+        &PushButton::toggled,
+        pimpl->ctrl,
+        &AbstractImageEditor::setFreeHandDrawMode
+    );
+    pimpl->freeHandDraw->setCheckable(true);
+
+    pimpl->freeHandDrawFrame=new QFrame(pimpl->controlsFrame);
+    pimpl->freeHandDrawFrame->setObjectName("freeHandDrawFrame");
+    pimpl->freeHandDrawFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    auto fhwl=Layout::horizontal(pimpl->freeHandDrawFrame);
+    cl->addWidget(pimpl->freeHandDrawFrame);
+
+    pimpl->freeHandDrawAccept=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDrawAccept->setToolTip(tr("Accept freehand drawing"));
+    pimpl->freeHandDrawAccept->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::accept",this));
+    fhwl->addWidget(pimpl->freeHandDrawAccept);
+    connect(
+        pimpl->freeHandDrawAccept,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &SimpleImageEditor::acceptFreeHandDraw
+    );
+    pimpl->freeHandDrawCancel=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDrawCancel->setToolTip(tr("Cancel freehand drawing"));
+    pimpl->freeHandDrawCancel->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::cancel",this));
+    fhwl->addWidget(pimpl->freeHandDrawCancel);
+    connect(
+        pimpl->freeHandDrawCancel,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &SimpleImageEditor::cancelFreeHandDraw
+    );
+    pimpl->freeHandDrawUndo=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDrawUndo->setToolTip(tr("Undo"));
+    pimpl->freeHandDrawUndo->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::undo",this));
+    fhwl->addWidget(pimpl->freeHandDrawUndo);
+    connect(
+        pimpl->freeHandDrawUndo,
+        &PushButton::clicked,
+        pimpl->view,
+        &FreeHandDrawView::undoHandDraw
+    );
+    pimpl->freeHandDrawRedo=new PushButton(pimpl->controlsFrame);
+    pimpl->freeHandDrawRedo->setToolTip(tr("Redo"));
+    pimpl->freeHandDrawRedo->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::redo",this));
+    fhwl->addWidget(pimpl->freeHandDrawRedo);
+    connect(
+        pimpl->freeHandDrawRedo,
+        &PushButton::clicked,
+        pimpl->view,
+        &FreeHandDrawView::redoHandDraw
+    );
+    pimpl->freeHandDrawFrame->setVisible(false);
+
     cl->addStretch(1);
+    pimpl->controlsFrame->setVisible(false);
 
     pimpl->fileBrowserFrame=new QFrame(this);
     pimpl->fileBrowserFrame->setObjectName("fileBrowserFrame");
@@ -248,6 +317,7 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->cropperItem=nullptr;
     m_widget->pimpl->imageItem = nullptr;
     m_widget->pimpl->angle=0;
+    m_widget->pimpl->controlsFrame->setVisible(false);
 
     auto px=originalImage();
     if (px.isNull())
@@ -264,6 +334,8 @@ void SimpleImageEditor::doLoadImage()
 
     m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
     resetCropper();
+
+    m_widget->pimpl->controlsFrame->setVisible(true);
 }
 
 //--------------------------------------------------------------------------
@@ -340,6 +412,11 @@ QPixmap SimpleImageEditor::editedImage()
 
 void SimpleImageEditor::resetCropper()
 {
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
         m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
@@ -465,6 +542,48 @@ void SimpleImageEditor::zoomOut()
     m_widget->pimpl->view->setTransform(t);
 
     resetCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::setFreeHandDrawMode(bool enable)
+{
+    m_widget->pimpl->view->setFreeHandDrawEnabled(enable);
+
+    if (enable)
+    {
+        if (m_widget->pimpl->cropperItem!=nullptr)
+        {
+            m_widget->pimpl->cropperItem->setVisible(false);
+        }
+    }
+    else
+    {
+        resetCropper();
+    }
+
+    m_widget->pimpl->freeHandDraw->blockSignals(true);
+    m_widget->pimpl->freeHandDraw->setChecked(enable);
+    m_widget->pimpl->freeHandDraw->setEnabled(!enable);
+    m_widget->pimpl->freeHandDraw->blockSignals(false);
+
+    m_widget->pimpl->freeHandDrawFrame->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::acceptFreeHandDraw()
+{
+    m_widget->pimpl->view->acceptHandDraw();
+    setFreeHandDrawMode(false);
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::cancelFreeHandDraw()
+{
+    m_widget->pimpl->view->cancelHandDraw();
+    setFreeHandDrawMode(false);
 }
 
 //--------------------------------------------------------------------------

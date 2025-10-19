@@ -67,5 +67,8 @@
         <file>tabler-icons/outline/rotate-2.svg</file>
         <file>tabler-icons/outline/zoom-in.svg</file>
         <file>tabler-icons/outline/zoom-out.svg</file>
+        <file>tabler-icons/outline/arrow-back.svg</file>
+        <file>tabler-icons/outline/arrow-forward-up.svg</file>
+        <file>tabler-icons/outline/brush.svg</file>
     </qresource>
 </RCC>

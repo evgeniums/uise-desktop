@@ -1,0 +1,5 @@
+uise--SimpleImageEditorWidget uise--PushButton QPushButton {
+margin-right:4px;
+padding:4px;
+icon-size:24px;
+}
