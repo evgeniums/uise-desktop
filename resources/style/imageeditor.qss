@@ -3,3 +3,9 @@ margin-right:4px;
 padding:4px;
 icon-size:24px;
 }
+
+uise--SimpleImageEditorWidget #freeHandDrawFrame {
+border-radius: 4px;
+margin-top:2px;
+margin-bottom:2px;
+}

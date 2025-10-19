@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPushButton>
 #include <QLineEdit>
+#include <QSpinBox>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -72,6 +73,7 @@ class SimpleImageEditorWidget_p
         PushButton* freeHandDrawUndo;
         PushButton* freeHandDrawRedo;
         PushButton* freeHandDrawAccept;
+        QSpinBox* freeHandDrawPenWidth;
         PushButton* freeHandDrawCancel;
 
         QFrame* fileBrowserFrame;
@@ -219,7 +221,22 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         pimpl->view,
         &FreeHandDrawView::redoHandDraw
     );
+
+    pimpl->freeHandDrawPenWidth=new QSpinBox(pimpl->controlsFrame);
+    pimpl->freeHandDrawPenWidth->setToolTip(tr("Pen width"));
+    pimpl->freeHandDrawPenWidth->setMinimum(2);
+    pimpl->freeHandDrawPenWidth->setMaximum(100);
+    pimpl->freeHandDrawPenWidth->setValue(pimpl->view->penWidth());
+    fhwl->addWidget(pimpl->freeHandDrawPenWidth);
+    connect(
+        pimpl->freeHandDrawPenWidth,
+        &QSpinBox::valueChanged,
+        pimpl->view,
+        &FreeHandDrawView::setPenWidth
+    );
+
     pimpl->freeHandDrawFrame->setVisible(false);
+
 
     cl->addStretch(1);
     pimpl->controlsFrame->setVisible(false);
