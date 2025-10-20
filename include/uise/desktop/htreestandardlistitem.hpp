@@ -106,7 +106,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItemView : public HTreeFlyweightListI
         using HTreeFlyweightListItemView<HTreeStandardListItem>::HTreeFlyweightListItemView;
 };
 
-inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>& items,
+inline auto* createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>& items,
                                     HTreePathElement el,
                                     const QString& icon,
                                     bool expandVisible=false,
@@ -114,7 +114,8 @@ inline void createHTreeStandardListItem(std::vector<HTreeStansardListIemWrapper>
 {
     auto item=new HTreeStandardListItem(el,QString::fromStdString(el.name()),Style::instance().svgIconLocator().icon(icon,parent));
     item->setExpandVisible(expandVisible);
-    items.emplace_back(item);
+    items.push_back(item);
+    return item;
 }
 
 class UISE_DESKTOP_EXPORT HTreeStandardListView : public HTreeFlyweightListView<HTreeStandardListItem>

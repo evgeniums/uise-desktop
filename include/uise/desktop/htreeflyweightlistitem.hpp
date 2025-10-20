@@ -57,7 +57,7 @@ class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
 
         auto itemSortValue() const
         {
-            return this->pathElement().name();
+            return m_sortValue.value_or(this->pathElement().name());
         }
 
         std::string itemType() const
@@ -75,10 +75,21 @@ class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
             return m_layout;
         }
 
+        void setSortValue(std::string val)
+        {
+            m_sortValue=std::move(val);
+        }
+
+        void resetSortValue()
+        {
+            m_sortValue.reset();
+        }
+
     private:
 
         QFrame* m_contentWrapper=nullptr;
         QHBoxLayout* m_layout=nullptr;
+        std::optional<std::string> m_sortValue;
 };
 
 template <typename ItemT=HTreeFlyweightListItem<>>

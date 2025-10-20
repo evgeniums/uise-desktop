@@ -248,6 +248,11 @@ class FlyweightListView_p : public OrientationInvariant
 
         void onJumpEdgeClicked();
 
+        bool itemOrdersEqual(const ItemT* l, const ItemT* r) const;
+
+        template <typename T>
+        bool itemOrdersEqual(const T& l, const T& r) const;
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<

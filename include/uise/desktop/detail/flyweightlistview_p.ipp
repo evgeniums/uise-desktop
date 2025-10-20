@@ -600,7 +600,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
     {
         for (auto it=order.begin();it!=order.end();++it)
         {
-            if (m_orderComparer(m_firstViewportSortValue,it->sortValue()) || m_firstViewportSortValue==it->sortValue())
+            if (m_orderComparer(m_firstViewportSortValue,it->sortValue()) || itemOrdersEqual(m_firstViewportSortValue,it->sortValue()))
             {
                 oldItem=&(*it);
                 break;
@@ -731,12 +731,13 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
 
     m_scrollBarsTimer.shot(10,[this](){updateScrollBars();});
 
+    //! @todo Use ID comparer for comparing od ids
     if (
             l_cleared ||
             l_firstViewportItemID!=m_firstViewportItemID ||
-            l_firstViewportSortValue!=m_firstViewportSortValue ||
+            !itemOrdersEqual(l_firstViewportSortValue,m_firstViewportSortValue) ||
             l_lastViewportItemID!=m_lastViewportItemID ||
-            l_lastViewportSortValue!=m_lastViewportSortValue
+            !itemOrdersEqual(l_lastViewportSortValue,m_lastViewportSortValue)
         )
     {
         m_informViewportUpdateTimer.shot(0,
@@ -1250,6 +1251,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endItemRangeChange()
     m_firstItem=firstItem();
     m_lastItem=lastItem();
 
+    //! @todo use item comparer
     if (m_firstItem!=first || m_lastItem!=last)
     {
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
@@ -1670,18 +1672,54 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
         m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Right
         )
     {
-        if (m_endRequestCb)
+        if (!m_enableFlyweight)
+        {
+            scrollToEdge(Direction::END);
+        }
+        else if (m_lastItem!=nullptr && itemOrdersEqual(m_lastItem->sortValue(),m_maxSortValue))
+        {
+            scrollToEdge(Direction::END);
+        }
+        else if (m_endRequestCb)
         {
             m_endRequestCb({});
         }
     }
     else
     {
-        if (m_homeRequestCb)
+        if (!m_enableFlyweight)
+        {
+            scrollToEdge(Direction::HOME);
+        }
+        else if (m_firstItem!=nullptr && itemOrdersEqual(m_firstItem->sortValue(),m_minSortValue))
+        {
+            scrollToEdge(Direction::HOME);
+        }
+        else if (m_homeRequestCb)
         {
             m_homeRequestCb({});
         }
     }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+template <typename T>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemOrdersEqual(const T& l, const T& r) const
+{
+    return !m_orderComparer(l,r) && !m_orderComparer(r,l);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemOrdersEqual(const ItemT* l, const ItemT* r) const
+{
+    if (l==nullptr || r==nullptr)
+    {
+        return false;
+    }
+
+    return itemOrdersEqual(l->sortValue(),r->sortValue());
 }
 
 //--------------------------------------------------------------------------
