@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QEnterEvent>
 #include <QPalette>
+#include <QStaticText>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
@@ -65,13 +66,12 @@ void JumpEdge::paintEvent(QPaintEvent *event)
 
     auto r=rect();
 
+    // draw cirvle background
     auto w=r.width();
     auto circleWidth=w;
     auto outerWidth=w-circleWidth;
     auto halfOuterWidth=outerWidth/2;
     QRect circleRect{r.left()+halfOuterWidth,r.bottom()-halfOuterWidth-circleWidth,circleWidth,circleWidth};
-
-    // QColor color{QRgb{0x00444444}};
     auto color=m_sample->palette().color(QPalette::Window);
     p.setBrush(color);
     p.setPen(Qt::NoPen);
@@ -79,6 +79,7 @@ void JumpEdge::paintEvent(QPaintEvent *event)
     p.drawEllipse(circleRect);
     p.setBrush(Qt::NoBrush);
 
+    // draw icon
     if (m_icon)
     {
         // encode configurable parameters in QSS using properties:
@@ -136,6 +137,10 @@ void JumpEdge::paintEvent(QPaintEvent *event)
         m_icon->paint(&p,iconRect,mode,QIcon::Off,false);
     }
 
+    // draw badge text
+    renderBadgeText(p);
+
+    // done
     p.end();
 }
 
@@ -214,6 +219,7 @@ QString JumpEdge::badgeText() const
 void JumpEdge::clearBadgeText()
 {
     m_badgeText->clear();
+    update();
 }
 
 //--------------------------------------------------------------------------
@@ -229,6 +235,62 @@ void JumpEdge::mousePressEvent(QMouseEvent* event)
               emit clicked();
            }
         );
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::renderBadgeText(QPainter& painter)
+{
+    auto badgeText=m_badgeText->text();
+    if (!badgeText.isEmpty())
+    {
+        QColor fontColor=m_badgeText->palette().color(QPalette::Text);
+        QFont font=m_badgeText->font();
+
+        auto r=rect();
+        auto w=r.width();
+
+        QFontMetrics metrics(font);
+        auto br=metrics.tightBoundingRect(badgeText);
+        auto bbr=metrics.boundingRect(badgeText);
+        auto fw=std::min(br.width(),bbr.width());
+        auto fh=br.height();
+        auto dy=metrics.ascent()-br.height();
+        auto x= w/2 - qCeil(fw/2);
+        auto bearing=metrics.leftBearing(badgeText[0]);
+        auto textLeft=x-bearing;
+
+        // draw background circle
+        auto m=m_badgeText->contentsMargins();
+        auto circleWidth=std::max(fw+m.left()+m.right(),fh+m.top()+m.bottom());
+        auto minCircleWidth=m_badgeText->minimumWidth()+m.left()+m.right();
+        if (circleWidth<minCircleWidth)
+        {
+            circleWidth=minCircleWidth;
+        }
+        if (circleWidth>w)
+        {
+            circleWidth=w;
+        }
+        auto outerWidth=w-circleWidth;
+        auto halfOuterWidth=outerWidth/2;
+        auto circleLeft=r.left()+halfOuterWidth;
+        auto circleTop=r.top();
+        QRect circleRect{circleLeft,circleTop,circleWidth,circleWidth};
+        auto color=m_badgeText->palette().color(QPalette::Base);
+        painter.setBrush(color);
+        painter.setPen(Qt::NoPen);
+        painter.setRenderHints(QPainter::Antialiasing);
+        painter.drawEllipse(circleRect);
+
+        // draw text
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(fontColor);
+        painter.setFont(font);
+        painter.setRenderHints(QPainter::TextAntialiasing);
+        auto textTop=r.top()+(circleWidth-fh)/2 -dy;
+        painter.drawStaticText(textLeft,textTop,QStaticText{badgeText});
     }
 }
 

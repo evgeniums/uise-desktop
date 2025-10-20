@@ -69,7 +69,7 @@ void FwlvTestWidget::setup()
     QFrame* mainFrame=this;
     auto layout=new QGridLayout(mainFrame);
 
-    pimpl->view=new FlwListType(FlwListType::PrefetchItemWindowHint,UISE_DESKTOP_NAMESPACE::Order::ASC);
+    pimpl->view=new FlwListType(FlwListType::PrefetchItemWindowHint,UISE_DESKTOP_NAMESPACE::Order::ASC);    
 
     int row=0;
     layout->addWidget(pimpl->view,row,0,1,4);
@@ -640,6 +640,27 @@ void FwlvTestWidget::setup()
                     }
                 }
                 break;
+            }
+        }
+    );
+
+    pimpl->badgeText=new QLineEdit(mainFrame);
+    layout->addWidget(pimpl->badgeText,++row,0,1,2);
+    pimpl->updateBadgeTextButton=new QPushButton("Update badge text",mainFrame);
+    layout->addWidget(pimpl->updateBadgeTextButton,row,3);
+    QObject::connect(
+        pimpl->updateBadgeTextButton,
+        &QPushButton::clicked,
+        this,
+        [this]()
+        {
+            if (pimpl->badgeText->text().isEmpty())
+            {
+                pimpl->view->jumpEdgeControl()->clearBadgeText();
+            }
+            else
+            {
+                pimpl->view->jumpEdgeControl()->setBadgeText(pimpl->badgeText->text());
             }
         }
     );

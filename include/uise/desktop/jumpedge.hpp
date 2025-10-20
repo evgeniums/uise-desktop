@@ -108,6 +108,7 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
     private:
 
         void updateIcon();
+        void renderBadgeText(QPainter& p);
 
         QLabel* m_badgeText;
         bool m_hovered;

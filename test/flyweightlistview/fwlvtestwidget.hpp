@@ -87,6 +87,9 @@ class FwlvTestWidget_p
         QSpinBox* updateSeqNumId=nullptr;
         QSpinBox* updateNewSeqNum=nullptr;
         QPushButton* updateSeqNumButton=nullptr;
+
+        QLineEdit* badgeText=nullptr;
+        QPushButton* updateBadgeTextButton=nullptr;
 };
 
 //--------------------------------------------------------------------------
