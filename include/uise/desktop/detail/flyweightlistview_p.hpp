@@ -45,6 +45,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/linkedlistview.hpp>
+#include <uise/desktop/jumpedge.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/flyweightlistitem.hpp>
 
@@ -230,6 +231,23 @@ class FlyweightListView_p : public OrientationInvariant
         size_t prefetchItemCountAuto() noexcept;
         size_t prefetchItemCountEffective() noexcept;
 
+        void setJumpEdgeControlEnabled(bool value);
+        bool isJumpEdgeControlEnabled() const;
+
+        void updateJumpEdgeVisibility();
+        void updateJumpEdgePosition();
+        void updateJumpEdgeOrientation();
+
+        void setJumpEdgeInvisibleItemCount(size_t value);
+        size_t jumpEdgeInvisibleItemCount() const;
+
+        JumpEdge* jumpEdgeControl() const
+        {
+            return m_jumpEdge;
+        }
+
+        void onJumpEdgeClicked();
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
@@ -331,6 +349,11 @@ class FlyweightListView_p : public OrientationInvariant
         double m_prefetchScreenCount;
         double m_prefetchThresholdRatio;
         std::optional<size_t> m_prefetchItemCount;
+
+        bool m_enableJumpEdgeControl;
+        JumpEdge* m_jumpEdge;
+        QSize m_jumpEdgeOffset;
+        size_t m_jumpEdgeInvisibleItemCount;
 };
 
 } // namespace detail

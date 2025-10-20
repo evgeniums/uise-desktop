@@ -375,6 +375,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setStickMode(Direction mode) noexcept
 {
     pimpl->m_stick=mode;
+    pimpl->m_jumpEdge->setDirection(mode);
 }
 
 //--------------------------------------------------------------------------
@@ -627,6 +628,40 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::prefetchItemCountEffective() noexcept
 {
     return pimpl->prefetchItemCountEffective();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeControlEnabled(bool value)
+{
+    pimpl->setJumpEdgeControlEnabled(value);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isJumpEdgeControlEnabled() const
+{
+    return pimpl->isJumpEdgeControlEnabled();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeInvisibleItemCount(size_t value)
+{
+    pimpl->setJumpEdgeInvisibleItemCount(value);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemCount() const
+{
+    return pimpl->jumpEdgeInvisibleItemCount();
+}
+
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+JumpEdge* FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeControl() const
+{
+    return pimpl->jumpEdgeControl();
 }
 
 //--------------------------------------------------------------------------

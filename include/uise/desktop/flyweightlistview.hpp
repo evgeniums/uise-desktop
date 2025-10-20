@@ -39,6 +39,8 @@ class QScrollBar;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class JumpEdge;
+
 namespace detail
 {
     template <typename ItemT, typename OrderComparer, typename IdComparer>
@@ -86,6 +88,10 @@ class FlyweightListView : public QFrame
         inline static double PrefetchScreensCountHint=2.0;
         inline static double PrefetchThresholdRatio=0.75;
         inline static size_t DefaultPageStep=10;
+
+        inline static size_t DefaultJumpEdgeXOffset=10;
+        inline static size_t DefaultJumpEdgeYOffset=10;
+        inline static size_t DefaultJumpInvisibleItemCount=3;
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
@@ -546,6 +552,14 @@ class FlyweightListView : public QFrame
         size_t prefetchItemCount() const noexcept;
         size_t prefetchItemCountAuto() noexcept;
         size_t prefetchItemCountEffective() noexcept;
+
+        void setJumpEdgeControlEnabled(bool value);
+        bool isJumpEdgeControlEnabled() const;
+
+        void setJumpEdgeInvisibleItemCount(size_t value);
+        size_t jumpEdgeInvisibleItemCount() const;
+
+        JumpEdge* jumpEdgeControl() const;
 
     protected:
 

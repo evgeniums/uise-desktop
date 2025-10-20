@@ -1,0 +1,13 @@
+{
+    "contexts" : [
+        {
+            "name" : "JumpEdge",
+            "aliases" : {
+                "up"  : "${uise-svg-icons-1}/chevron-up",
+                "down"  : "${uise-svg-icons-1}/chevron-down",
+                "left"  : "${uise-svg-icons-1}/chevron-left",
+                "right"  : "${uise-svg-icons-1}/chevron-right"
+            }
+        }
+    ]
+}

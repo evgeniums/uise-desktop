@@ -143,6 +143,8 @@ SET (HEADERS
     include/uise/desktop/simpleimageeditor.hpp
     include/uise/desktop/imagecropper.hpp
     include/uise/desktop/freehanddrawview.hpp
+
+    include/uise/desktop/jumpedge.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -233,6 +235,8 @@ SET (SOURCES
     src/simpleimageeditor.cpp
     src/imagecropper.cpp
     src/freehanddrawview.cpp
+
+    src/jumpedge.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

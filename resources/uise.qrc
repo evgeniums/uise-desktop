@@ -49,5 +49,9 @@
         <file>style/dark/imageeditor.json</file>
         <file>style/dark/imageeditor.qss</file>
         <file>style/imageeditor.qss</file>
+        <file>style/flyweightlistview.json</file>
+        <file>style/dark/flyweightlistview.json</file>
+        <file>style/flyweightlistview.qss</file>
+        <file>style/dark/flyweightlistview.qss</file>
     </qresource>
 </RCC>

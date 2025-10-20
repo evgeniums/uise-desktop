@@ -23,6 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <uise/desktop/style.hpp>
 #include <fwlvtestwidget.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -33,6 +34,8 @@ FwlvTestWidget::FwlvTestWidget(
     ) : QFrame(parent),
         pimpl(std::make_unique<FwlvTestWidget_p>())
 {
+    Style::instance().applyStyleSheet();
+
     HelloWorldItem::HelloWorldItemId=1000000;
     setup();
 }
@@ -471,7 +474,7 @@ void FwlvTestWidget::setup()
         if (firstPos==0)
         {
 #if 0
-            qDebug() << "jumpHome only jump";
+            qDebug() << "jumpHome only jump firstPos="<< firstPos << " prefetchCount=" <<prefetchCount;
 #endif
 
             // only jump
@@ -479,7 +482,7 @@ void FwlvTestWidget::setup()
         else if (firstPos>prefetchCount)
         {
 #if 0
-            qDebug() << "jumpHome reload all";
+            qDebug() << "jumpHome reload allfirstPos="<< firstPos << " prefetchCount=" <<prefetchCount;
 #endif
             // reload all pimpl->items
             itemCount=std::max(itemCount,prefetchCount);
@@ -493,7 +496,7 @@ void FwlvTestWidget::setup()
         else
         {
 #if 0
-            qDebug() << "jumpHome prefetch some pimpl->items";
+            qDebug() << "jumpHome prefetch some pimpl->items firstPos="<< firstPos << " prefetchCount=" <<prefetchCount;
 #endif
             // prefetch only some elements
             std::vector<HelloWorldItemWrapper> newItems;
@@ -523,14 +526,15 @@ void FwlvTestWidget::setup()
         if (lastPos>=count-1)
         {
 #if 0
-            qDebug() << "jumpEnd only jump";
+            qDebug() << "jumpEnd only jump lastPos="<<lastPos;
 #endif
             // only jump
         }
         else if ((lastPos+prefetchCount)<count)
         {
 #if 0
-            qDebug() << "jumpEnd reload all";
+            qDebug() << "jumpEnd reload all lastPos="<< lastPos << " count="<<count
+                     << " (count-prefetchCount)"<<(count-prefetchCount);
 #endif
             // reload all pimpl->items
             itemCount=std::max(itemCount,prefetchCount);
@@ -544,11 +548,12 @@ void FwlvTestWidget::setup()
         else
         {
 #if 0
-            qDebug() << "jumpEnd prefetch last pimpl->items";
+            qDebug() << "jumpEnd prefetch last pimpl->items count="<<count << " lastPos=" << lastPos
+                     << " (count-lastPos)="<<(count-lastPos);
 #endif
             // prefetch only last elements
             std::vector<HelloWorldItemWrapper> newItems;
-            for (size_t i=count-lastPos;i<count;i++)
+            for (size_t i=lastPos+1;i<count;i++)
             {
                 newItems.emplace_back(HelloWorldItemWrapper(new HelloWorldItem(i,pimpl->items[i])));
             }
@@ -557,8 +562,14 @@ void FwlvTestWidget::setup()
         pimpl->view->scrollToEdge(Direction::END);
     };
 
-    pimpl->view->setRequestHomeCb([jumpHome](Qt::KeyboardModifiers modifiers){if (modifiers&Qt::ControlModifier) {jumpHome();}});
-    pimpl->view->setRequestEndCb([jumpEnd](Qt::KeyboardModifiers modifiers){if (modifiers&Qt::ControlModifier) {jumpEnd();}});
+    pimpl->view->setRequestHomeCb([jumpHome](Qt::KeyboardModifiers modifiers){
+        // if (modifiers&Qt::ControlModifier) {jumpHome();}
+        jumpHome();
+    });
+    pimpl->view->setRequestEndCb([jumpEnd](Qt::KeyboardModifiers modifiers){
+        // if (modifiers&Qt::ControlModifier) {jumpEnd();}
+        jumpEnd();
+    });
 
     QObject::connect(
         pimpl->jumpToButton,

@@ -97,7 +97,11 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         ),
         m_orderComparer(orderComparer),
         m_prefetchScreenCount(FlyweightListView<ItemT>::PrefetchScreensCountHint),
-        m_prefetchThresholdRatio(FlyweightListView<ItemT>::PrefetchThresholdRatio)
+        m_prefetchThresholdRatio(FlyweightListView<ItemT>::PrefetchThresholdRatio),
+        m_enableJumpEdgeControl(true),
+        m_jumpEdge(nullptr),
+        m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
+        m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount)
 {
 }
 
@@ -167,6 +171,20 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     updateScrollBarOrientation();
     QObject::connect(m_vbar,&QScrollBar::valueChanged,[this](int value){m_vScrollCb(value);});
     QObject::connect(m_hbar,&QScrollBar::valueChanged,[this](int value){m_hScrollCb(value);});
+
+    m_jumpEdge=new JumpEdge(m_view);
+    m_jumpEdge->setDirection(m_stick);
+    m_jumpEdge->setOrientation(m_llist->orientation());
+    updateJumpEdgeVisibility();
+    QObject::connect(
+        m_jumpEdge,
+        &JumpEdge::clicked,
+        m_view,
+        [this]()
+        {
+            onJumpEdgeClicked();
+        }
+    );
 
     QTimer::singleShot(0,m_obj,[this](){onResized();});
 }
@@ -477,6 +495,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onResized()
 {
     auto margins=m_obj->contentsMargins();
     m_hbar->resize(m_obj->width()-m_vbar->width()-margins.left()-margins.right(),m_hbar->height());
+    updateJumpEdgePosition();
 }
 
 //--------------------------------------------------------------------------
@@ -653,7 +672,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setOrientation(Qt::Ori
     m_llist->setOrientation(orientation);
     updateScrollBarOrientation();
     updatePageStep();
-    endUpdate();
+    m_jumpEdge->setOrientation(orientation);
+    endUpdate();    
 }
 
 //--------------------------------------------------------------------------
@@ -722,13 +742,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
         m_informViewportUpdateTimer.shot(0,
             [this]()
             {
+                updateJumpEdgeVisibility();
                 if (m_viewportChangedCb)
                 {
                     m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
                 }
             }
         );
-    }    
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -899,6 +920,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
     m_prefetchItemWindow=m_prefetchItemWindowHint;
 
     m_cleared=true;
+    m_jumpEdge->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -1549,6 +1571,117 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::prefetchItemCountEffective() noexcept
 {
     return m_prefetchItemCount.value_or(prefetchItemCountAuto());
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibility()
+{
+    if (!m_enableJumpEdgeControl)
+    {
+        m_jumpEdge->setVisible(false);
+        return;
+    }
+
+    const auto& order=itemOrder();
+    size_t invisibleCount=0;
+    bool showControl=false;
+
+    if (m_stick==Direction::HOME)
+    {
+        auto it=order.find(m_firstViewportSortValue);
+        if (it!=order.end())
+        {
+            for (auto it1=order.begin();it1!=it;++it1)
+            {
+                invisibleCount++;
+                if (invisibleCount==m_jumpEdgeInvisibleItemCount)
+                {
+                    showControl=true;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (auto it=order.find(m_lastViewportSortValue);it!=order.end();++it)
+        {
+            invisibleCount++;
+            if (invisibleCount==m_jumpEdgeInvisibleItemCount)
+            {
+                showControl=true;
+                break;
+            }
+        }
+    }
+
+    m_jumpEdge->setVisible(showControl);
+    updateJumpEdgePosition();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgePosition()
+{
+    auto r=m_view->rect();
+    auto jeSize=m_jumpEdge->size();
+    QPoint jePos{r.right()-jeSize.width()-m_jumpEdgeOffset.width(),r.bottom()-jeSize.height()-m_jumpEdgeOffset.height()};
+
+    m_jumpEdge->move(jePos);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setJumpEdgeControlEnabled(bool enable)
+{
+    m_enableJumpEdgeControl=enable;
+    updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isJumpEdgeControlEnabled() const
+{
+    return m_enableJumpEdgeControl;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setJumpEdgeInvisibleItemCount(size_t value)
+{
+    m_jumpEdgeInvisibleItemCount=value;
+    updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemCount() const
+{
+    return m_jumpEdgeInvisibleItemCount;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
+{
+    if (m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Down
+        ||
+        m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Right
+        )
+    {
+        if (m_endRequestCb)
+        {
+            m_endRequestCb({});
+        }
+    }
+    else
+    {
+        if (m_homeRequestCb)
+        {
+            m_homeRequestCb({});
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

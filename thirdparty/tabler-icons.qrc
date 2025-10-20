@@ -59,7 +59,6 @@
         <file>tabler-icons/outline/message-chatbot.svg</file>
         <file>tabler-icons/outline/note.svg</file>
         <file>tabler-icons/outline/math-greater.svg</file>
-        <file>tabler-icons/outline/chevron-compact-right.svg</file>
         <file>tabler-icons/outline/bell-off.svg</file>
         <file>tabler-icons/outline/speakerphone.svg</file>
         <file>tabler-icons/outline/flip-horizontal.svg</file>
@@ -70,5 +69,9 @@
         <file>tabler-icons/outline/arrow-back.svg</file>
         <file>tabler-icons/outline/arrow-forward-up.svg</file>
         <file>tabler-icons/outline/brush.svg</file>
+        <file>tabler-icons/outline/chevron-down.svg</file>
+        <file>tabler-icons/outline/chevron-left.svg</file>
+        <file>tabler-icons/outline/chevron-right.svg</file>
+        <file>tabler-icons/outline/chevron-up.svg</file>
     </qresource>
 </RCC>

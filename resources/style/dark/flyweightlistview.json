@@ -1,0 +1,18 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "JumpEdge",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}

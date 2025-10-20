@@ -428,6 +428,8 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         void mergeWidgetFactory(std::shared_ptr<WidgetFactory> factory);
 
+        static void updateWidgetStyle(QWidget* source, QWidget* target=nullptr);
+
     private:
 
         QString m_qss;

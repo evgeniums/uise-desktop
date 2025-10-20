@@ -1,8 +1,8 @@
 <!--
-tags: [arrow, direction, navigate, forward, move, point, indicator, symbol, guide, orient]
+tags: [move, checklist, next]
 category: Arrows
-version: "2.24"
-unicode: "faf2"
+version: "1.0"
+unicode: "ea61"
 -->
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -15,5 +15,5 @@ unicode: "faf2"
   stroke-linecap="round"
   stroke-linejoin="round"
 >
-  <path d="M11 4l3 8l-3 8" />
+  <path d="M9 6l6 6l-6 6" />
 </svg>

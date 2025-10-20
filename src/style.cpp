@@ -385,4 +385,24 @@ void Style::mergeWidgetFactory(std::shared_ptr<WidgetFactory> factory)
 
 //--------------------------------------------------------------------------
 
+void Style::updateWidgetStyle(QWidget* source, QWidget* target)
+{
+    if (source==nullptr)
+    {
+        return;
+    }
+    if (target==nullptr)
+    {
+        target=source;
+    }
+    auto style=source->style();
+    if (style!=nullptr)
+    {
+        style->unpolish(target);
+        style->polish(target);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
