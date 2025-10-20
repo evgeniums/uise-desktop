@@ -30,7 +30,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStaticText>
 
 #include <uise/desktop/style.hpp>
-#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/jumpedge.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -50,8 +49,6 @@ JumpEdge::JumpEdge(QWidget* parent)
     m_sample=new QFrame(this);
     m_sample->setObjectName("sample");
     m_sample->setVisible(false);
-
-    m_clickTimer=new SingleShotTimer(this);
 
     setCursor(Qt::PointingHandCursor);
     updateIcon();
@@ -104,13 +101,11 @@ void JumpEdge::paintEvent(QPaintEvent *event)
             case (IconDirection::Down):
             {
                 bottomPadding=m.bottom();
-                // bottomPadding=directedPadding;
             }
             break;
             case (IconDirection::Left):
             {
                 leftPadding=m.left();
-                // leftPadding=directedPadding;
             }
             break;
             case (IconDirection::Right):
@@ -229,12 +224,7 @@ void JumpEdge::mousePressEvent(QMouseEvent* event)
     QFrame::mousePressEvent(event);
     if (event->button()==Qt::LeftButton)
     {
-        m_clickTimer->shot(50,
-           [this]()
-           {
-              emit clicked();
-           }
-        );
+        emit clicked();
     }
 }
 

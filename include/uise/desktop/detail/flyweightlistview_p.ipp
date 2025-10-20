@@ -1312,7 +1312,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenBefore=to-from;
     }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+    qDebug() << "FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
              << " first->sortValue() "<<first->sortValue()
              << " m_minSortValue "<<m_minSortValue;
 #endif
@@ -1667,10 +1667,22 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleIte
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
 {
+    auto direction=Direction::HOME;
     if (m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Down
         ||
         m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Right
         )
+    {
+        direction=Direction::END;
+    }
+    jumpToEdge(direction);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction direction, bool forceLongfJump, Qt::KeyboardModifiers modifiers)
+{
+    if (direction==Direction::END)
     {
         if (!m_enableFlyweight)
         {
@@ -1682,7 +1694,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
         }
         else if (m_endRequestCb)
         {
-            m_endRequestCb({});
+            m_endRequestCb(forceLongfJump,modifiers);
         }
     }
     else
@@ -1697,7 +1709,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
         }
         else if (m_homeRequestCb)
         {
-            m_homeRequestCb({});
+            m_homeRequestCb(forceLongfJump,modifiers);
         }
     }
 }

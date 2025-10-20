@@ -119,7 +119,6 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
         QFrame* m_sample;
         IconDirection m_iconDirection;
-        SingleShotTimer* m_clickTimer;
 };
 
 UISE_DESKTOP_NAMESPACE_END

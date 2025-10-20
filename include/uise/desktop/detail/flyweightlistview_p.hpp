@@ -253,6 +253,8 @@ class FlyweightListView_p : public OrientationInvariant
         template <typename T>
         bool itemOrdersEqual(const T& l, const T& r) const;
 
+        void jumpToEdge(Direction direction, bool forceLongfJump=true, Qt::KeyboardModifiers modifiers={});
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<

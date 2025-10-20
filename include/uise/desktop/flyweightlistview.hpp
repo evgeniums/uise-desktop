@@ -95,7 +95,7 @@ class FlyweightListView : public QFrame
 
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
-        using RequestJumpCb=std::function<void (Qt::KeyboardModifiers)>;
+        using RequestJumpCb=std::function<void (bool,Qt::KeyboardModifiers)>;
 
         using InsertItemCb=std::function<void (typename ItemT::WidgetType*)>;
         using RemoveItemCb=std::function<void (typename ItemT::WidgetType*)>;

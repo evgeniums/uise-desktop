@@ -450,17 +450,11 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::keyPressEvent(QKeyEvent 
     }
     else if (event->key()==Qt::Key_Home)
     {
-        if (pimpl->m_homeRequestCb)
-        {
-            pimpl->m_homeRequestCb(event->modifiers());
-        }
+        pimpl->jumpToEdge(Direction::HOME,false,event->modifiers());
     }
     else if (event->key()==Qt::Key_End)
     {
-        if (pimpl->m_endRequestCb)
-        {
-            pimpl->m_endRequestCb(event->modifiers());
-        }
+        pimpl->jumpToEdge(Direction::END,false,event->modifiers());
     }
 
     QFrame::keyPressEvent(event);
