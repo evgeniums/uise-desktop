@@ -72,6 +72,14 @@ class UISE_DESKTOP_EXPORT SingleShotTimer : public QObject
          */
         void clear();
 
+        /**
+         * @brief Stop timer and clear handler.
+         */
+        void cancel()
+        {
+            clear();
+        }
+
     private slots:
 
         void onTimeout();
