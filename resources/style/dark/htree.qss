@@ -17,3 +17,10 @@ uise--HTreeNode #nodeTopFrame {
     background-color: #444444;
 }
 
+uise--HTreeTab #closeWarnFrame {
+border: 4px solid #999999;
+}
+
+uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{
+background-color:#E0E0E0;
+}

@@ -21,6 +21,12 @@
             "aliases" : {
                 "expand" : "${uise-svg-icons-1}/math-greater"
             }
+        },
+        {
+            "name" : "HTreeTabCloseWarn",
+            "aliases" : {
+                "close" : "${uise-svg-icons-1}/x"
+            }
         }
     ]
 }

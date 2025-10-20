@@ -99,12 +99,17 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         void nodeUpdated(const UISE_DESKTOP_NAMESPACE::HTreePath&);
 
+    private slots:
+
+        void nodeCloseHovered(UISE_DESKTOP_NAMESPACE::HTreeNode*, bool);
+
     private:
 
         void adjustWidthsAndPositions();
 
         friend class HTree;
         friend class HTreeNode;
+        friend class HTreeTab_p;
 
         std::unique_ptr<HTreeTab_p> pimpl;
 };

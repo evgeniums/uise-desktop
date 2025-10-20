@@ -36,6 +36,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/navigationbar.hpp>
+#include <uise/desktop/style.hpp>
+#include <uise/desktop/pushbutton.hpp>
 
 #include <uise/desktop/htreenode.hpp>
 #include <uise/desktop/htreebranch.hpp>
@@ -65,6 +67,9 @@ class HTreeTab_p
 
         std::vector<HTreeNode*> nodes;
         SingleShotTimer* scrolTimer;
+
+        QFrame* closeWarnFrame;
+        SingleShotTimer* closeWarnTimer;
 
         ~HTreeTab_p()
         {
@@ -132,6 +137,12 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
             &HTreeNode::iconUpdated,
             self,
             &HTreeTab::iconUpdated
+        );
+        node->disconnect(
+            node,
+            &HTreeNode::closeHovered,
+            self,
+            &HTreeTab::nodeCloseHovered
         );
 
         if (beforeDestroy)
@@ -205,7 +216,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
     navbar->blockSignals(false);
-    self->connect(
+    node->connect(
         node,
         &HTreeNode::nameUpdated,
         self,
@@ -214,7 +225,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             navbar->setItemName(nodes.size(),val);
         }
     );
-    self->connect(
+    node->connect(
         node,
         &HTreeNode::tooltipUpdated,
         self,
@@ -223,7 +234,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             navbar->setItemTooltip(nodes.size(),val);
         }
     );
-    self->connect(
+    node->connect(
         node,
         &HTreeNode::toggleExpanded,
         self,
@@ -232,6 +243,15 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             navbar->blockSignals(true);
             navbar->setItemChecked(index,enable);
             navbar->blockSignals(false);
+        }
+    );
+    node->connect(
+        node,
+        &HTreeNode::closeHovered,
+        self,
+        [this](UISE_DESKTOP_NAMESPACE::HTreeNode* node, bool enable)
+        {
+            self->nodeCloseHovered(node,enable);
         }
     );
 
@@ -416,6 +436,18 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     );
 
     pimpl->splitter->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+
+    pimpl->closeWarnFrame=new QFrame(this);
+    pimpl->closeWarnFrame->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);
+    pimpl->closeWarnFrame->setObjectName("closeWarnFrame");
+    pimpl->closeWarnFrame->setVisible(false);
+    auto cwL=Layout::vertical(pimpl->closeWarnFrame);
+    auto closeWarnButton=new PushButton(pimpl->closeWarnFrame);
+    auto closeWarnIcon=Style::instance().svgIconLocator().icon("HTreeTabCloseWarn::close",this);
+    closeWarnButton->setSvgIcon(closeWarnIcon);
+    cwL->addWidget(closeWarnButton,0,Qt::AlignLeft);
+    cwL->addStretch(1);
+    pimpl->closeWarnTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -699,6 +731,47 @@ bool HTreeTab::isSingleCollapsePlaceholder() const noexcept
 void HTreeTab::adjustWidthsAndPositions()
 {
     pimpl->splitter->adjustWidthsAndPositions();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
+{
+    pimpl->closeWarnTimer->clear();
+    if (node==nullptr)
+    {
+        pimpl->closeWarnFrame->setVisible(false);
+        return;
+    }
+
+    if (!enable)
+    {
+        pimpl->closeWarnFrame->setVisible(false);
+        return;
+    }
+
+    QRect nodeRect = node->geometry();
+    auto topLeft=node->mapTo(this,nodeRect.topRight());
+
+    auto lastNode=pimpl->nodes.back();
+    if (lastNode!=node)
+    {
+        auto lastNodeRect=lastNode->geometry();
+        auto bottomRight=lastNode->mapTo(this,lastNodeRect.bottomRight());
+
+        QRect targetRect{topLeft,bottomRight};
+
+        pimpl->closeWarnFrame->setGeometry(targetRect);
+        pimpl->closeWarnFrame->setVisible(true);
+
+        pimpl->closeWarnTimer->shot(
+            3000,
+            [this]()
+            {
+                pimpl->closeWarnFrame->setVisible(false);
+            }
+        );
+    }
 }
 
 //--------------------------------------------------------------------------

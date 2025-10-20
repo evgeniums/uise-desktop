@@ -232,6 +232,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void initRequested();
 
+        void closeHovered(UISE_DESKTOP_NAMESPACE::HTreeNode* node, bool enable);
+
     protected:
 
         virtual QWidget* createContentWidget()=0;

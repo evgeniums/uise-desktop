@@ -98,9 +98,18 @@ HTreeNodeTitleBar::HTreeNodeTitleBar(HTreeNode* node)
 
     pimpl->close=iconButton("HTreeNodeTitleBar::close",this);
     pimpl->close->setToolTip(tr("Close this section with all subsequent sections"));
+    connect(
+        pimpl->close,
+        &PushButton::hovered,
+        pimpl->node,
+        [this](bool enable)
+        {
+            emit pimpl->node->closeHovered(pimpl->node,enable);
+        }
+    );
 
     pimpl->collapse=iconButton("HTreeNodeTitleBar::collapse",this);
-    pimpl->collapse->setToolTip(tr("Collapse section"));
+    pimpl->collapse->setToolTip(tr("Hide section"));
 
     pimpl->expandExclusive=iconButton("HTreeNodeTitleBar::expand",this);
     pimpl->expandExclusive->setToolTip(tr("Maximize section"));

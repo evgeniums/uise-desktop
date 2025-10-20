@@ -38,3 +38,16 @@ uise--HTreeNode #nodeBottomFrame uise--PushButton QPushButton {
 }
 
 uise--HTree QTabWidget::pane {padding:0;}
+
+uise--HTreeTab #closeWarnFrame uise--PushButton {
+margin: 20px;
+}
+
+uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{
+icon-size: 30px;
+padding-top:2px;
+padding-bottom:2px;
+padding-left:0px;
+padding-right:0px;
+border-radius:16px;
+}
