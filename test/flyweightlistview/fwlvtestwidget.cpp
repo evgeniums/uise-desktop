@@ -562,13 +562,11 @@ void FwlvTestWidget::setup()
         pimpl->view->scrollToEdge(Direction::END);
     };
 
-    pimpl->view->setRequestHomeCb([jumpHome](Qt::KeyboardModifiers modifiers){
-        // if (modifiers&Qt::ControlModifier) {jumpHome();}
-        jumpHome();
+    pimpl->view->setRequestHomeCb([jumpHome](bool forceLongJump,Qt::KeyboardModifiers modifiers){
+        if (forceLongJump || modifiers&Qt::ControlModifier) {jumpHome();}
     });
-    pimpl->view->setRequestEndCb([jumpEnd](Qt::KeyboardModifiers modifiers){
-        // if (modifiers&Qt::ControlModifier) {jumpEnd();}
-        jumpEnd();
+    pimpl->view->setRequestEndCb([jumpEnd](bool forceLongJump,Qt::KeyboardModifiers modifiers){
+        if (forceLongJump || modifiers&Qt::ControlModifier) {jumpEnd();}
     });
 
     QObject::connect(
