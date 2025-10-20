@@ -138,6 +138,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
 
         void clicked();
         void toggled(bool enable);
+        void hovered(bool enable);
 
     public slots:
 

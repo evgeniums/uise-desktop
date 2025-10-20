@@ -47,12 +47,16 @@ void PushButton::enterEvent(QEnterEvent* event)
 
     style()->unpolish(m_button);
     style()->polish(m_button);
+
+    emit hovered(true);
 }
 
 //--------------------------------------------------------------------------
 
 void PushButton::leaveEvent(QEvent* event)
 {
+    emit hovered(false);
+
     if (m_parentHovered)
     {
         return;
