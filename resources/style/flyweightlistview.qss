@@ -1,8 +1,8 @@
-uise--JumpEdge {min-width:40px;min-height:64px;max-width:40px;max-height:64px;}
+uise--JumpEdge {min-width:44px;min-height:64px;max-width:44px;max-height:64px;}
 uise--JumpEdge #sample {min-width:4px;padding-left:2px;padding-bottom:2px;padding-top:4px;padding-right:4px;}
 
 uise--JumpEdge QLabel{
-font-weight-bold;
+font-weight:bold;
 padding: 4px;
-min-width: 12px;
+min-width: 10px;
 }
