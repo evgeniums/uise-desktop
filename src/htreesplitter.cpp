@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 #include <QApplication>
 #include <QScrollBar>
+#include <QDateTime>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -187,6 +188,11 @@ HTreeSplitterInternal::~HTreeSplitterInternal()
 
 void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
 {
+    // qDebug() << "HTreeSplitterInternal::resizeEvent size=" << event->size()
+    //                    << " oldSize=" << event->oldSize()
+    //                    << " minWidth=" << minimumWidth()
+    //                    << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+
     QFrame::resizeEvent(event);
 
     if (!m_blockResizeEvent)
@@ -243,7 +249,8 @@ void HTreeSplitterInternal::updateSize(int w)
     std::ignore=newW;
     if (needResize)
     {
-        // qDebug() << "HTreeSplitterInternal::updateSize() update minwidth from " << minimumWidth() << " to " <<newW;
+        // qDebug() << "HTreeSplitterInternal::updateSize() update minwidth from " << minimumWidth() << " to " <<newW
+        //                    << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         updateMinWidth();
     }
 
@@ -770,7 +777,8 @@ void HTreeSplitterInternal::updateMinWidth()
 
         i++;
     }
-    // qDebug() << "HTreeSplitterInternal::updateMinWidth() prev="<<prev << " minWidth="<<current;
+    // qDebug() << "HTreeSplitterInternal::updateMinWidth() prev="<<prev << " minWidth="<<current
+    //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");;
     if (prev!=current)
     {
         setMinimumWidth(current);
@@ -950,7 +958,8 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
 
     auto newWidth=recalculateWidths(width());
 
-    // qDebug() << "HTreeSplitterInternal::addWidget update minwidth from " << minimumWidth() << " to " << newWidth;
+    // qDebug() << "HTreeSplitterInternal::addWidget update minwidth from " << minimumWidth() << " to " << newWidth
+    //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");;
     updateMinWidth();
     resize(newWidth,height());
     updatePositions();
@@ -1038,7 +1047,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
     w->setSectionVisible(visible);
 
     // auto prevMinWidth=s->minWidth;
-    auto prevWidth=s->width;
+    // auto prevWidth=s->width;
     s->minWidth=w->minimumWidth();
     if (!expanded)
     {
@@ -1066,13 +1075,12 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
         }
     }
 
-    // auto minWd=minimumWidth() - prevMinWidth + s->minWidth;
-    // qDebug() << "HTreeSplitterInternal::toggleSectionExpanded update minwidth from " << minimumWidth() << " to " << minWd;
+    recalculateWidths(width());
 
-    auto wd=recalculateWidths(width() - prevWidth + s->width);
+    // qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth resizeWidth="<<m_prevViewportWidth
+    //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
 
     updateMinWidth();
-    resize(wd,height());
     updatePositions();
     updateWidths();
 }
@@ -1124,7 +1132,7 @@ void HTreeSplitterInternal::truncate(int index)
     }
 
     // qDebug() << "HTreeSplitterInternal::truncate update minwidth from " << minimumWidth() << " to " << minW;
-    w=recalculateWidths(w);
+    w=recalculateWidths(width());
     updateMinWidth();
 
     m_stretchLastSection=true;
@@ -1321,7 +1329,7 @@ void HTreeSplitter::resizeEvent(QResizeEvent* event)
     //          << " wrapperSizeHint" << pimpl->wrapper->sizeHint() << " wrapperSize="<<pimpl->wrapper->size()
     //          << " wrapperMinSize="<<pimpl->wrapper->minimumSize()
     //          << " wrapperMinSizeHint="<<pimpl->wrapper->minimumSizeHint()
-    //     ;
+    //          << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
 
     pimpl->content->updateMinWidth();
     QFrame::resizeEvent(event);
