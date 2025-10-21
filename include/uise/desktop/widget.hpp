@@ -59,6 +59,8 @@ class UISE_DESKTOP_EXPORT WidgetBase
 
         QObject* makeWidget(const char* className, QString name={}, QWidget* parent=nullptr) const;
 
+        virtual QWidget* qWidget() =0;
+
     protected:
 
         std::shared_ptr<const WidgetFactory> m_factory;
@@ -161,7 +163,7 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject,
 
         WidgetController(QObject* parent=nullptr);
 
-        QWidget* qWidget();
+        QWidget* qWidget() override;
 
         Widget* widget()
         {
@@ -170,7 +172,11 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject,
 
     protected:
 
-        virtual Widget* doCreateActualWidget(QWidget* parent) = 0;
+        virtual Widget* doCreateActualWidget(QWidget* parent)
+        {
+            std::ignore=parent;
+            return nullptr;
+        }
 
     private:
 
@@ -189,8 +195,6 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject,
 class UISE_DESKTOP_EXPORT Widget : public WidgetT<>
 {
     public:
-
-        virtual QWidget* qWidget() =0;
 
     private:
 

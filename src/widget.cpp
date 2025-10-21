@@ -58,13 +58,20 @@ WidgetController::WidgetController(QObject* parent)
 void WidgetController::createActualWidget()
 {
     m_widget=doCreateActualWidget(m_parentWidget);
-    m_widget->setController(this);
+    if (m_widget!=nullptr)
+    {
+        m_widget->setController(this);
+    }
 }
 
 //--------------------------------------------------------------------------
 
 QWidget* WidgetController::qWidget()
 {
+    if (m_widget==nullptr)
+    {
+        return nullptr;
+    }
     return m_widget->qWidget();
 }
 
