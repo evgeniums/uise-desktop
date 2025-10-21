@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/widget.hpp>
 #include <uise/desktop/valuewidget.hpp>
+#include <uise/desktop/statusdialog.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -119,18 +120,78 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 
         virtual void setComment(int index, const QString& comment)=0;
         virtual void setLabel(int index, const QString& label)=0;
+        virtual void setCommentStatus(int index, Status::Type status=Status::Type::None)
+        {
+            std::ignore=index;
+            std::ignore=status;
+        }
+
+        virtual void setBusyWaiting(bool)
+        {}
+
+        virtual void showStatus(const QString& message, const QString& status)
+        {
+            std::ignore=message;
+            std::ignore=status;;
+        }
+
+        template <typename T>
+        void showStatus(const QString& message, T status)
+        {
+            if (m_statusHelper)
+            {
+                showStatus(message,m_statusHelper->statusString(status));
+            }
+            else
+            {
+                showStatus(message,StatusBase::statusString(status));
+            }
+        }
+
+        void showError(const QString& message)
+        {
+            showStatus(message,Status::Type::Error);
+        }
+
+        void setStatusHelper(std::shared_ptr<Status> statusHelper)
+        {
+            m_statusHelper=std::move(statusHelper);
+        }
+
+        std::shared_ptr<Status> statusHelper() const
+        {
+            return m_statusHelper;
+        }
 
     signals:
 
         void editRequested();
         void cancelRequested();
         void applyRequested();
+        void applyCommited();
 
     public slots:
 
-        virtual void edit()=0;
-        virtual void apply()=0;
+        virtual void edit()=0;        
         virtual void cancel()=0;
+
+        void apply();
+        void commitApply();
+
+        virtual void contentEdited()
+        {}
+
+    protected:
+
+        virtual void doCommitApply()
+        {}
+
+        virtual void doBeginApply()
+        {}
+
+    private:
+
+        std::shared_ptr<Status> m_statusHelper;
 };
 
 class EditablePanel_p;
@@ -172,19 +233,29 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void setWidget(QWidget* widget) override final;
 
+        void setBusyWaiting(bool) override;
+
+        void showStatus(const QString& message, const QString& status) override;
+
     public slots:
 
-        void edit() override final;
-        void apply() override final;
-        void cancel() override final;
+        void edit() override;
+        void cancel() override;
+
+        void contentEdited() override;
 
     protected:
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
 
+        void doCommitApply() override;
+
+        void doBeginApply() override;
+
     private:
 
+        void resetStatus();
         void setEditingMode(bool enable);
         void updateState();
 

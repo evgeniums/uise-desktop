@@ -29,3 +29,7 @@ color: #FFFFFF;
 
 uise--EditablePanel #bottomButtonsFrame QPushButton{color: #EEEEEE;border: 2px solid #999999; background-color: transparent;}
 uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #FFFFFF;border: 1px solid #FFFFFF;}
+
+uise--EditablePanel #statusFrame #statusText[status="error"]{
+color: #CC4444;
+}

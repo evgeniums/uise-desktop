@@ -383,6 +383,19 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
         std::ignore=widget;
         std::ignore=config;
     }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QLineEdit::textChanged,
+            valueWidget,
+            [valueWidget](const QString&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
 };
 
 /**
@@ -430,6 +443,19 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
             widget->setMaximum(maxInt);
         }
     }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QSpinBox::valueChanged,
+            valueWidget,
+            [valueWidget](int)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
 };
 
 /**
@@ -463,6 +489,19 @@ struct EditableLabelTraits<EditableLabel::Type::Double>
         auto minDbl=config.property(ValueWidgetProperty::Min).toDouble();
         auto maxDbl=config.property(ValueWidgetProperty::Max).toDouble();
         widget->setRange(minDbl,maxDbl);
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QDoubleSpinBox::valueChanged,
+            valueWidget,
+            [valueWidget](double)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
     }
 };
 
@@ -530,6 +569,19 @@ struct EditableLabelTraits<EditableLabel::Type::Combo>
             }
         }
     }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QComboBox::currentIndexChanged,
+            valueWidget,
+            [valueWidget](int)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
 };
 
 /**
@@ -563,6 +615,19 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     {
         std::ignore=widget;
         std::ignore=config;
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QDateEdit::dateChanged,
+            valueWidget,
+            [valueWidget](const QDate&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
     }
 };
 
@@ -598,6 +663,19 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
         std::ignore=widget;
         std::ignore=config;
     }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QTimeEdit::timeChanged,
+            valueWidget,
+            [valueWidget](const QTime&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
 };
 
 /**
@@ -631,6 +709,19 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     {
         std::ignore=widget;
         std::ignore=config;
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QDateTimeEdit::dateTimeChanged,
+            valueWidget,
+            [valueWidget](const QDateTime&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
     }
 };
 
@@ -668,6 +759,11 @@ struct EditableLabelHelper
     {
         traits::updateConfig(widget, config);
     }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        traits::watchValueEditing(valueWidget,widget);
+    }
 };
 
 /**
@@ -697,6 +793,8 @@ class EditableLabelTmpl : public EditableLabel
 
             m_editor->setObjectName("editor");
             m_editor->installEventFilter(this);
+
+            helper::watchValueEditing(this,m_editor);
         }
 
         EditableLabelTmpl(AbstractEditablePanel* panel) : EditableLabelTmpl(static_cast<QWidget*>(panel),true)

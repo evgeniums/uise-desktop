@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScrollArea>
 #include <QApplication>
 #include <QMainWindow>
+#include <QTimer>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/widgetfactory.hpp>
@@ -61,16 +62,57 @@ int main(int argc, char *argv[])
 
     auto panel1= new DemoPanel();
     panels->addPanel(panel1);
+    QObject::connect(
+        panel1->panel(),
+        &AbstractEditablePanel::applyRequested,
+        mainFrame,
+        [panel1]()
+        {
+            panel1->panel()->setBusyWaiting(true);
+            QTimer::singleShot(3000,
+               panel1,
+               [panel1]()
+               {
+                    panel1->panel()->commitApply();
+               }
+            );
+        }
+    );
 
     auto panel2= new DemoPanel();
     panels->addPanel(panel2);
     panel2->setTitle("Panel 2");
+    QObject::connect(
+        panel2->panel(),
+        &AbstractEditablePanel::applyRequested,
+        mainFrame,
+        [panel2]()
+        {
+            panel2->panel()->setBusyWaiting(true);
+            QTimer::singleShot(2000,
+               panel2,
+               [panel2]()
+               {
+                   panel2->panel()->showError("This is error message");
+               }
+            );
+        }
+    );
 
     auto panel3= new DemoPanel();
     panels->addPanel(panel3);
     panel3->setTitle("Panel 3");
     panel3->setButtonsMode(EditablePanel::ButtonsMode::BottomAlwaysVisible);
     panel3->edit();
+    QObject::connect(
+        panel3->panel(),
+        &AbstractEditablePanel::applyRequested,
+        mainFrame,
+        [panel3]()
+        {
+            panel3->panel()->commitApply();
+        }
+    );
 
     auto panel4= new DemoPanel();
     panels->addPanel(panel4);

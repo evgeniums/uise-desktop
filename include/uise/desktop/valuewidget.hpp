@@ -113,6 +113,8 @@ class AbstractEditablePanel;
 
 class AbstractValueWidget : public QWidget
 {
+    Q_OBJECT
+
     public:
 
         using QWidget::QWidget;
@@ -138,6 +140,10 @@ class AbstractValueWidget : public QWidget
 
         virtual void setEditablePanel(AbstractEditablePanel*)
         {}
+
+    signals:
+
+        void valueEdited();
 
     protected:
 

@@ -182,9 +182,15 @@ void EditableLabel::setEditablePanel(AbstractEditablePanel* panel)
         );
         connect(
             panel,
-            &AbstractEditablePanel::applyRequested,
+            &AbstractEditablePanel::applyCommited,
             this,
             &EditableLabel::apply
+        );
+        connect(
+            this,
+            &AbstractValueWidget::valueEdited,
+            panel,
+            &AbstractEditablePanel::contentEdited
         );
     }
 }

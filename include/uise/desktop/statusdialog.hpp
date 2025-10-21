@@ -40,16 +40,13 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class SvgIcon;
 class StatusDialog_p;
 
-class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog
+class UISE_DESKTOP_EXPORT StatusBase
 {
-    Q_OBJECT
-
     public:
-
-        using AbstractDialog::AbstractDialog;
 
         enum class Type : int
         {
+            None,
             Error,
             Warning,
             Info,
@@ -57,6 +54,115 @@ class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog
 
             User=0x100
         };
+
+        static QString statusString(int status);
+
+        static QString statusTitle(int status);
+
+        template <typename T>
+        static QString statusString(T status)
+        {
+            return statusString(static_cast<int>(status));
+        }
+
+        template <typename T>
+        static QString statusTitle(T status)
+        {
+            return statusTitle(static_cast<int>(status));
+        }
+};
+
+class UISE_DESKTOP_EXPORT Status : public StatusBase
+{
+    public:
+
+        template <typename T>
+        Status(T status) : m_status(static_cast<int>(status))
+        {}
+
+        Status(Type status=Type::None) : m_status(static_cast<int>(status))
+        {}
+
+        virtual ~Status()=default;
+        Status(const Status&)=default;
+        Status(Status&&)=default;
+        Status& operator=(const Status&)=default;
+        Status& operator=(Status&&)=default;
+
+        QString statusString(int status) const;
+
+        QString statusTitle(int status) const;
+
+        template <typename T>
+        QString statusString(T status) const
+        {
+            return statusString(static_cast<int>(status));
+        }
+
+        template <typename T>
+        QString statusTitle(T status) const
+        {
+            return statusTitle(static_cast<int>(status));
+        }
+
+        QString statusString() const
+        {
+            return statusString(m_status);
+        }
+
+        QString statusTitle() const
+        {
+            return statusTitle(m_status);
+        }
+
+        template <typename T>
+        void setStatusType(T status) noexcept
+        {
+            m_status=status;
+        }
+
+        int statusType() const noexcept
+        {
+            return m_status;
+        }
+
+        template <typename T>
+        T statusType() const noexcept
+        {
+            return static_cast<T>(m_status);
+        }
+
+        template <typename T>
+        bool isStatusType(T status) const noexcept
+        {
+            return m_status==static_cast<int>(status);
+        }
+
+    protected:
+
+        virtual QString customStatusString(int /*status*/) const
+        {
+            return QString{};
+        }
+
+        virtual QString customStatusTitle(int /*status*/) const
+        {
+            return QString{};
+        }
+
+    private:
+
+        int m_status;
+};
+
+class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog,
+                                                 public Status
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractDialog::AbstractDialog;
 
         virtual QLabel* textWidget() const=0;
 

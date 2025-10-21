@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/editablepanel.hpp>
+#include <uise/desktop/loadingframe.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -61,8 +62,14 @@ class EditablePanel_p
 
         QFrame* bottomButtonsFrame=nullptr;
         QBoxLayout* bottomButtonsLayout=nullptr;
-        PushButton* buttomButtonApply=nullptr;
+        PushButton* bottomButtonApply=nullptr;
         bool bottomButtonsVisible=true;
+
+        QFrame* statusFrame=nullptr;
+        QBoxLayout* statusLayout=nullptr;
+        QLabel* statusText;
+
+        LoadingFrame* loadingFrame=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -72,7 +79,12 @@ EditablePanel::EditablePanel(
     ) : AbstractEditablePanel(parent),
         pimpl(std::make_unique<EditablePanel_p>())
 {
-    pimpl->layout=Layout::vertical(this);
+    auto l=Layout::vertical(this);
+    pimpl->loadingFrame=new LoadingFrame(this);
+    pimpl->loadingFrame->construct();
+    l->addWidget(pimpl->loadingFrame,1);
+
+    pimpl->layout=Layout::vertical(pimpl->loadingFrame);
 
     pimpl->topButtonsFrame=new QFrame(this);
     pimpl->topButtonsFrame->setObjectName("topButtonsFrame");
@@ -101,13 +113,23 @@ EditablePanel::EditablePanel(
     pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
     pimpl->layout->addWidget(pimpl->contentFrame,1);
 
+    pimpl->statusFrame=new QFrame(this);
+    pimpl->statusFrame->setObjectName("statusFrame");
+    pimpl->statusLayout=Layout::horizontal(pimpl->statusFrame);
+    pimpl->layout->addWidget(pimpl->statusFrame);
+    pimpl->statusText=new QLabel(pimpl->statusFrame);
+    pimpl->statusText->setObjectName("statusText");
+    pimpl->statusText->setWordWrap(true);
+    pimpl->statusText->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    pimpl->statusLayout->addWidget(pimpl->statusText,0,Qt::AlignLeft);
+
     pimpl->bottomButtonsFrame=new QFrame(this);
     pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
     pimpl->bottomButtonsLayout=Layout::horizontal(pimpl->bottomButtonsFrame);
     pimpl->layout->addWidget(pimpl->bottomButtonsFrame,0,Qt::AlignCenter);
-    pimpl->buttomButtonApply=new PushButton(tr("Apply"),pimpl->bottomButtonsFrame);
-    pimpl->buttomButtonApply->setObjectName("bottomButtonsApply");
-    pimpl->bottomButtonsLayout->addWidget(pimpl->buttomButtonApply);
+    pimpl->bottomButtonApply=new PushButton(tr("Apply"),pimpl->bottomButtonsFrame);
+    pimpl->bottomButtonApply->setObjectName("bottomButtonsApply");
+    pimpl->bottomButtonsLayout->addWidget(pimpl->bottomButtonApply);
 
     connect(
         pimpl->topButtonEdit,
@@ -137,7 +159,7 @@ EditablePanel::EditablePanel(
         }
     );
     connect(
-        pimpl->buttomButtonApply,
+        pimpl->bottomButtonApply,
         &PushButton::clicked,
         this,
         [this]()
@@ -233,28 +255,28 @@ EditablePanel::ButtonsMode EditablePanel::buttonsMode() const noexcept
 
 void EditablePanel::setBottomApplyText(const QString& text)
 {
-    pimpl->buttomButtonApply->setText(text);
+    pimpl->bottomButtonApply->setText(text);
 }
 
 //--------------------------------------------------------------------------
 
 QString EditablePanel::bottomApplyText() const
 {
-    return pimpl->buttomButtonApply->text();
+    return pimpl->bottomButtonApply->text();
 }
 
 //--------------------------------------------------------------------------
 
 void EditablePanel::setBottomApplyIcon(std::shared_ptr<SvgIcon> icon)
 {
-    pimpl->buttomButtonApply->setSvgIcon(std::move(icon));
+    pimpl->bottomButtonApply->setSvgIcon(std::move(icon));
 }
 
 //--------------------------------------------------------------------------
 
 std::shared_ptr<SvgIcon> EditablePanel::bottomApplyIcon() const
 {
-    return pimpl->buttomButtonApply->svgIcon();
+    return pimpl->bottomButtonApply->svgIcon();
 }
 
 //--------------------------------------------------------------------------
@@ -275,21 +297,9 @@ void EditablePanel::edit()
         return;
     }
 
+    setBusyWaiting(false);
     setEditingMode(true);
     emit editRequested();
-}
-
-//--------------------------------------------------------------------------
-
-void EditablePanel::apply()
-{
-    if (!isEditingMode())
-    {
-        return;
-    }
-
-    setEditingMode(false);
-    emit applyRequested();
 }
 
 //--------------------------------------------------------------------------
@@ -301,14 +311,23 @@ void EditablePanel::cancel()
         return;
     }
 
+    setBusyWaiting(false);
     setEditingMode(false);
     emit cancelRequested();
 }
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::doCommitApply()
+{
+    setEditingMode(false);
+}
+
+//--------------------------------------------------------------------------
+
 void EditablePanel::updateState()
 {
+    bool editing=isEditingMode();
     pimpl->titleFrame->setVisible(pimpl->titleVisible);
     pimpl->bottomButtonsFrame->setVisible(isEditingMode() && buttonsMode()==ButtonsMode::BottomAlwaysVisible);
 
@@ -317,14 +336,19 @@ void EditablePanel::updateState()
                           &&
                           (
                              buttonsMode()==ButtonsMode::TopAlwaysVisible ||
-                             (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || isEditingMode()))
+                             (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || editing))
                           );
 
     pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
     pimpl->topButtonEdit->setEnabled(topButtonsVisible);
-    pimpl->topButtonEdit->setVisible(!isEditingMode());
-    pimpl->topButtonApply->setVisible(topButtonsVisible && isEditingMode());
-    pimpl->topButtonCancel->setVisible(topButtonsVisible && isEditingMode());
+    pimpl->topButtonEdit->setVisible(!editing);
+    pimpl->topButtonApply->setVisible(topButtonsVisible && editing);
+    pimpl->topButtonCancel->setVisible(topButtonsVisible && editing);
+
+    if (!editing)
+    {
+        resetStatus();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -353,6 +377,49 @@ void EditablePanel::leaveEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::setBusyWaiting(bool enable)
+{
+    pimpl->loadingFrame->setBusyWaiting(enable);
+    if (enable)
+    {
+        resetStatus();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::resetStatus()
+{
+    pimpl->statusText->setText(" ");
+    pimpl->statusText->setProperty("status",QVariant{});
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::showStatus(const QString& message, const QString& status)
+{
+    setBusyWaiting(false);
+    pimpl->statusText->setText(message);
+    pimpl->statusText->setProperty("status",status);
+    Style::updateWidgetStyle(pimpl->statusText);
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::doBeginApply()
+{
+    resetStatus();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::contentEdited()
+{
+    resetStatus();
+}
+
+//--------------------------------------------------------------------------
+
 int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
 {
     widget->setEditablePanel(this);
@@ -365,6 +432,28 @@ int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
         config.property(ValueWidgetProperty::Comment).toString(),
         config.property(ValueWidgetProperty::RowSpan,1).toInt()
     );
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::commitApply()
+{
+    doCommitApply();
+    setBusyWaiting(false);
+    emit applyCommited();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::apply()
+{
+    if (!isEditingMode())
+    {
+        return;
+    }
+
+    doBeginApply();
+    emit applyRequested();
 }
 
 //--------------------------------------------------------------------------

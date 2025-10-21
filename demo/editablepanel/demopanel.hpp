@@ -106,6 +106,11 @@ class DemoPanel : public WidgetQFrame
             m_panel->edit();
         }
 
+        AbstractEditablePanel* panel() const
+        {
+            return m_panel;
+        }
+
     private:
 
         AbstractEditablePanel* m_panel;

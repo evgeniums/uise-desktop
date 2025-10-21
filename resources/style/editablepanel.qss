@@ -40,7 +40,7 @@ uise--EditablePanel #topButtonsFrame #topButtonApply QPushButton {
 font-size:16px;
 }
 
-uise--EditablePanel #bottomButtonsFrame uise--PushButton {margin:16px;}
+uise--EditablePanel #bottomButtonsFrame uise--PushButton {margin-bottom:16px;margin-top:0px;}
 uise--EditablePanel #bottomButtonsFrame uise--PushButton QPushButton{border-radius: 8px; padding: 4px 20px;font-size:16px;}
 
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
@@ -49,4 +49,11 @@ color:transparent;
 
 uise--EditablePanels {
 padding-bottom: 6px;
+}
+
+uise--EditablePanel #statusFrame {
+margin-left: 16px;
+margin-right: 16px;
+margin-top: 4px;
+margin-bottom: 4px;
 }

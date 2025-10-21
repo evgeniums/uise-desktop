@@ -54,6 +54,8 @@ class UISE_DESKTOP_EXPORT EditablePanelGrid : public EditablePanel
         virtual void setComment(int index, const QString& comment) override;
         virtual void setLabel(int index, const QString& label) override;
 
+        virtual void setCommentStatus(int index, Status::Type status=Status::Type::None) override;
+
     private:
 
         QFrame* m_gridFrame;

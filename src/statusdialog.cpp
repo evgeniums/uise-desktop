@@ -37,6 +37,66 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+/**************************** Status ***********************************/
+
+//--------------------------------------------------------------------------
+
+QString StatusBase::statusString(int status)
+{
+    switch (status)
+    {
+        case (static_cast<int>(Type::Error)): return "error"; break;
+        case (static_cast<int>(Type::Warning)): return "warning"; break;
+        case (static_cast<int>(Type::Info)): return "info"; break;
+        case (static_cast<int>(Type::Question)): return "question"; break;
+        case (static_cast<int>(Type::None)): return ""; break;
+        default: break;
+    }
+
+    return QString{};
+}
+
+//--------------------------------------------------------------------------
+
+QString StatusBase::statusTitle(int status)
+{
+    switch (status)
+    {
+        case (static_cast<int>(Type::Error)): return QObject::tr("Error","Status"); break;
+        case (static_cast<int>(Type::Warning)): return QObject::tr("Warning","Status"); break;
+        case (static_cast<int>(Type::Info)): return QObject::tr("Information","Status"); break;
+        case (static_cast<int>(Type::Question)): return QObject::tr("Question","Status"); break;
+        case (static_cast<int>(Type::None)): return ""; break;
+        default: break;
+    }
+
+        return QString{};
+}
+
+//--------------------------------------------------------------------------
+
+QString Status::statusString(int status) const
+{
+    auto str=StatusBase::statusString(status);
+    if (!str.isEmpty())
+    {
+        return str;
+    }
+    return customStatusString(status);
+}
+
+//--------------------------------------------------------------------------
+
+QString Status::statusTitle(int status) const
+{
+    auto str=StatusBase::statusTitle(status);
+    if (!str.isEmpty())
+    {
+        return str;
+    }
+    return customStatusTitle(status);
+}
+
 /**************************** StatusDialog ***********************************/
 
 //--------------------------------------------------------------------------

@@ -151,6 +151,41 @@ void EditablePanelGrid::setComment(int index, const QString& comment)
 
 //--------------------------------------------------------------------------
 
+void EditablePanelGrid::setCommentStatus(int index, Status::Type status)
+{
+    auto it=m_rows.find(index);
+    if (it==m_rows.end())
+    {
+        return;
+    }
+
+    auto helper=statusHelper();
+    QString str;
+    if (helper)
+    {
+        str=helper->statusString(status);
+    }
+    else
+    {
+        str=StatusBase::statusString(status);
+    }
+
+    if (it->second.comment)
+    {
+        if (str.isEmpty())
+        {
+            it->second.comment->setProperty("status",QVariant{});
+        }
+        else
+        {
+            it->second.comment->setProperty("status",str);
+        }
+        Style::updateWidgetStyle(it->second.comment);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void EditablePanelGrid::setLabel(int index, const QString& label)
 {
     auto it=m_rows.find(index);
