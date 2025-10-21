@@ -85,11 +85,22 @@ class HTreeFlyweightListItem : public HTreeListItemT<BaseT>
             m_sortValue.reset();
         }
 
+        Content* content()
+        {
+            return m_content;
+        }
+
+        const Content* content() const
+        {
+            return m_content;
+        }
+
     private:
 
         QFrame* m_contentWrapper=nullptr;
         QHBoxLayout* m_layout=nullptr;
         std::optional<std::string> m_sortValue;
+        Content* m_content=nullptr;
 };
 
 template <typename ItemT=HTreeFlyweightListItem<>>

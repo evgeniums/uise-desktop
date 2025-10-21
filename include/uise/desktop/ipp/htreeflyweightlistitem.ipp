@@ -58,7 +58,15 @@ void HTreeFlyweightListItem<ContentWidgetT,BaseT>::setItemWidgets(QWidget* icon,
     }
     if (content!=nullptr)
     {
-        m_layout->addWidget(content,contentStretch);
+        m_content=content;
+        if constexpr (std::is_base_of_v<WidgetBase,ContentWidgetT>)
+        {
+            m_layout->addWidget(content->qWidget(),contentStretch);
+        }
+        else
+        {
+            m_layout->addWidget(content,contentStretch);
+        }
     }
     if (nextStrech!=0)
     {
