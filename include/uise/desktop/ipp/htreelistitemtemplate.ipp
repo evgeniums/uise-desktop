@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -222,8 +223,7 @@ void HTreeListItemT<BaseT>::enterEvent(QEnterEvent *event)
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("hover",true);
-        pimpl->widget->style()->unpolish(pimpl->widget);
-        pimpl->widget->style()->polish(pimpl->widget);
+        Style::updateWidgetStyle(pimpl->widget);
     }
     doSetHovered(true);
     this->style()->unpolish(this);
@@ -240,8 +240,7 @@ void HTreeListItemT<BaseT>::leaveEvent(QEvent *event)
     if (pimpl->widget!=nullptr)
     {
         pimpl->widget->setProperty("hover",false);
-        pimpl->widget->style()->unpolish(pimpl->widget);
-        pimpl->widget->style()->polish(pimpl->widget);
+        Style::updateWidgetStyle(pimpl->widget);
     }
     doSetHovered(false);
     this->style()->unpolish(this);
