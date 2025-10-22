@@ -97,6 +97,8 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
             return *this;
         }
 
+        void acquireProducer();
+
     signals:
 
         void pixmapUpdated();

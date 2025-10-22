@@ -148,6 +148,11 @@ class WithPathAndSize : public WithPath
             return m_size;
         }
 
+        bool isValid() const
+        {
+            return m_size.isValid() && !empty();
+        }
+
         template <typename OtherT>
         bool operator <(const OtherT& other) const noexcept
         {

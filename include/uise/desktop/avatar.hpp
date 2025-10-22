@@ -357,7 +357,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
     public:
 
         constexpr static const double DefaultFontSizeRation=0.37;
-        constexpr static const double CornerImageSizeRatio=0.2;
+        constexpr static const double CornerImageSizeRatio=0.27;
         constexpr static QRgb DefaultCornerCircleColor=0x0038b000;
         constexpr static QRgb DefaultFontColor=0x00FFFFFF;
 
@@ -519,6 +519,16 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             return m_bottomPixmapHoverVisible;
         }
 
+        void setClickable(bool enable)
+        {
+            m_clickable=enable;
+        }
+
+        bool isClickable() const
+        {
+            return m_clickable;
+        }
+
         QColor backgroundColor() const
         {
             return m_backgroundColor;
@@ -561,7 +571,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         QColor m_fontColor=DefaultFontColor;
         double m_fontSizeRatio=DefaultFontSizeRation;
         bool m_bottomPixmapHoverVisible=false;
-        bool m_hovered;
+        bool m_hovered=false;
+        bool m_clickable=false;
 };
 
 UISE_DESKTOP_NAMESPACE_END

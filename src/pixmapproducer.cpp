@@ -148,6 +148,10 @@ void PixmapConsumer::resetPixmapProducer()
 void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
 {
     m_producer=std::move(producer);
+    if (!m_producer)
+    {
+        return;
+    }
     connect(
         m_producer.get(),
         &PixmapProducer::pixmapUpdated,
@@ -158,14 +162,21 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
 
 //--------------------------------------------------------------------------
 
-void PixmapConsumer::setPixmapSource(std::shared_ptr<PixmapSource> source)
+void PixmapConsumer::acquireProducer()
 {
-    m_source=std::move(source);
-    if (m_source)
+    if (m_source && PixmapKey::isValid())
     {
         auto p=m_source->acquireProducer(this);
         setPixmapProducer(std::move(p));
     }
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapConsumer::setPixmapSource(std::shared_ptr<PixmapSource> source)
+{
+    m_source=std::move(source);
+    acquireProducer();
 }
 
 /************************** PixmapSource **********************************/

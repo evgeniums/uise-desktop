@@ -140,6 +140,11 @@ void Avatar::setPixmap(const QPixmap& pixmap)
 
 QPixmap Avatar::pixmap(const QSize& size) const
 {
+    if (!size.isValid())
+    {
+        return QPixmap{};
+    }
+
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
 
     auto it=m_pixmaps.find(size);
@@ -253,6 +258,11 @@ std::shared_ptr<AvatarBackgroundGenerator> Avatar::backgroundColorGenerator() co
 
 QPixmap Avatar::generatePixmap(const QSize& size) const
 {
+    if (!size.isValid())
+    {
+        return QPixmap{};
+    }
+
     QString fontName{AvatarSource::DefaultFontName};
     size_t maxLetters=AvatarSource::DefaultMaxAvatarLetterCount;
 
@@ -565,7 +575,7 @@ void AvatarWidget::leaveEvent(QEvent* event)
 
 void AvatarWidget::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button()==Qt::LeftButton)
+    if (m_clickable && event->button()==Qt::LeftButton)
     {
         emit clicked();
     }
