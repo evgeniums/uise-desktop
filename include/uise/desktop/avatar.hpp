@@ -509,12 +509,25 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             m_fontSizeRatio=ratio;
         }
 
+        void setBottomPixmapHoverVisible(bool enable)
+        {
+            m_bottomPixmapHoverVisible=enable;
+        }
+
+        bool isBottomPixmapHoverVisible() const
+        {
+            return m_bottomPixmapHoverVisible;
+        }
+
     protected:
 
         void doPaint(QPainter* painter) override;
         void fillIfNoPixmap(QPainter*) override;
 
         virtual void updateBackgroundColor();
+
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
 
     private:
 
@@ -537,6 +550,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         QColor m_backgroundColor=QRgb(0x00669bbc);
         QColor m_fontColor=DefaultFontColor;
         double m_fontSizeRatio=DefaultFontSizeRation;
+        bool m_bottomPixmapHoverVisible=false;
+        bool m_hovered;
 };
 
 UISE_DESKTOP_NAMESPACE_END

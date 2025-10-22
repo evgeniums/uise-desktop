@@ -429,17 +429,23 @@ void AvatarWidget::doPaint(QPainter* painter)
     QRect rect{x,y,w,h};
     auto sz=QSize{w,h};
 
-    auto pixmap=m_rightBottomPixmap;
-    if (pixmap.isNull() && m_rightBottomSvgIcon)
+    if (!m_bottomPixmapHoverVisible || m_hovered)
     {
-        pixmap=m_rightBottomSvgIcon->pixmap(imageSize(),currentSvgIconMode());
+        auto pixmap=m_rightBottomPixmap;
+        if (pixmap.isNull() && m_rightBottomSvgIcon)
+        {
+            const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+            sz=sz*pixelRatio;
+            pixmap=m_rightBottomSvgIcon->pixmap(sz,currentSvgIconMode());
+        }
+        if (pixmap.isNull())
+        {
+            return;
+        }
+        painter->setPen(Qt::NoPen);
+        painter->setRenderHints(QPainter::SmoothPixmapTransform);
+        painter->drawPixmap(rect,pixmap);
     }
-    if (pixmap.isNull())
-    {
-        return;
-    }
-    painter->setPen(Qt::NoPen);
-    painter->drawPixmap(rect,pixmap);
 }
 
 //--------------------------------------------------------------------------
@@ -535,5 +541,25 @@ void AvatarWidget::generateLetters(QPainter* painter) const
 
     painter->drawStaticText(x-bearing,y-dy,QStaticText{letters});
 }
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::enterEvent(QEnterEvent* event)
+{
+    RoundedImage::enterEvent(event);
+    m_hovered=true;
+    update();
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::leaveEvent(QEvent* event)
+{
+    RoundedImage::leaveEvent(event);
+    m_hovered=false;
+    update();
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END

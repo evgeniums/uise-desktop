@@ -53,5 +53,7 @@
         <file>style/dark/flyweightlistview.json</file>
         <file>style/flyweightlistview.qss</file>
         <file>style/dark/flyweightlistview.qss</file>
+        <file>style/avatar.json</file>
+        <file>style/dark/avatar.json</file>
     </qresource>
 </RCC>

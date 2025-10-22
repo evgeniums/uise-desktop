@@ -1,0 +1,11 @@
+{
+    "contexts" : [
+        {
+            "name" : "Avatar",
+            "aliases" : {
+                "noname" : "${uise-svg-icons-2}/user",
+                "camera" : "${uise-svg-icons-2}/camera"
+            }
+        }
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "Avatar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#DDDDDD" }
+                }
+            }
+        }
+    ]
+}

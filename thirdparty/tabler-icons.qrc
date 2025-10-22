@@ -73,5 +73,6 @@
         <file>tabler-icons/outline/chevron-left.svg</file>
         <file>tabler-icons/outline/chevron-right.svg</file>
         <file>tabler-icons/outline/chevron-up.svg</file>
+        <file>tabler-icons/filled/camera.svg</file>
     </qresource>
 </RCC>
