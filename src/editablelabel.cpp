@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QSizePolicy>
+#include <QTimer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -107,33 +108,58 @@ EditableLabel::EditableLabel(Type type, AbstractEditablePanel* panel)
 
 bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 {
-    if (event->type() == QEvent::KeyPress && !m_inGroup && watched == editor())
+    if (event->type() == QEvent::KeyPress && watched == editor())
     {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->key()==Qt::Key_Escape)
         {
-            cancel();
-            return true;
+            if (m_inGroup)
+            {
+                emit groupCancelRequested();
+            }
+            else
+            {
+                cancel();
+            }
         }
-        if (keyEvent->key()==Qt::Key_Return)
+        if (keyEvent->key()==Qt::Key_Return && !m_inGroup)
         {
-            apply();
-            return true;
+            if (editor()->metaObject()->metaType()!=QTextEdit::staticMetaObject.metaType())
+            {
+                apply();
+            }
         }
     }
     else if (watched == m_label)
     {
         if (event->type() == QEvent::MouseButtonDblClick)
         {
-            if (m_inGroup)
+            if (m_editable)
             {
-                return false;
-            }
+                if (m_inGroup)
+                {
+                    if (isGroupEditingRequestEnabled())
+                    {
+                        emit groupEditingRequested();
+                        QTimer::singleShot(
+                            10,
+                            this,
+                            [this]()
+                            {
+                                editor()->setFocus();
+                            }
+                        );
+                        return true;
+                    }
+                    return false;
+                }
 
-            setEditing(true);
-            return true;
+                setEditing(true);
+                return true;
+            }
+            return false;
         }
-        if (event->type() == QEvent::ContextMenu)
+        else if (event->type() == QEvent::ContextMenu)
         {
             auto menu=new QMenu(m_label);
 

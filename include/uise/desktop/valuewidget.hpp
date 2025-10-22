@@ -142,9 +142,22 @@ class AbstractValueWidget : public QWidget
         virtual void setEditablePanel(AbstractEditablePanel*)
         {}
 
+
+        void setGroupEditingRequestEnabled(bool enable)
+        {
+            m_requestGroupEditingEnabled=enable;
+        }
+
+        bool isGroupEditingRequestEnabled() const noexcept
+        {
+            return m_requestGroupEditingEnabled;
+        }
+
     signals:
 
         void valueEdited();
+        void groupEditingRequested();
+        void groupCancelRequested();
 
     protected:
 
@@ -154,6 +167,7 @@ class AbstractValueWidget : public QWidget
     private:
 
         ValueWidgetConfig m_config;
+        bool m_requestGroupEditingEnabled=false;
 };
 
 UISE_DESKTOP_NAMESPACE_END

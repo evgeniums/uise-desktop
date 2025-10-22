@@ -423,6 +423,22 @@ void EditablePanel::contentEdited()
 int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
 {
     widget->setEditablePanel(this);
+    widget->setGroupEditingRequestEnabled(m_requestGroupEditingEnabled);
+    if (m_requestGroupEditingEnabled)
+    {
+        connect(
+            widget,
+            &AbstractValueWidget::groupEditingRequested,
+            this,
+            &AbstractEditablePanel::edit
+            );
+        connect(
+            widget,
+            &AbstractValueWidget::groupCancelRequested,
+            this,
+            &AbstractEditablePanel::cancel
+        );
+    }
     const auto& config=widget->config();
     return addRow(
         config.property(ValueWidgetProperty::Label).toString(),

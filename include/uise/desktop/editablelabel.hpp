@@ -302,7 +302,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         PushButton* m_cancelButton;
 
         AbstractEditablePanel* m_panel;
-        bool m_editable;
+        bool m_editable;        
 };
 
 /**
@@ -400,6 +400,11 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
             }
         );
     }
+
+    static void clear(widgetType* widget)
+    {
+        widget->clear();
+    }
 };
 
 /**
@@ -443,6 +448,11 @@ struct EditableLabelTraits<EditableLabel::Type::TextEdit>
                 emit valueWidget->valueEdited();
             }
         );
+    }
+
+    static void clear(widgetType* widget)
+    {
+        widget->clear();
     }
 };
 
@@ -504,6 +514,11 @@ struct EditableLabelTraits<EditableLabel::Type::Int>
             }
         );
     }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setValue(widget->minimum());
+    }
 };
 
 /**
@@ -550,6 +565,11 @@ struct EditableLabelTraits<EditableLabel::Type::Double>
                 emit valueWidget->valueEdited();
             }
         );
+    }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setValue(widget->minimum());
     }
 };
 
@@ -630,6 +650,18 @@ struct EditableLabelTraits<EditableLabel::Type::Combo>
             }
         );
     }
+
+    static void clear(widgetType* widget)
+    {
+        if (widget->count()==0)
+        {
+            widget->setCurrentIndex(-1);
+        }
+        else
+        {
+            widget->setCurrentIndex(0);
+        }
+    }
 };
 
 /**
@@ -676,6 +708,11 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
                 emit valueWidget->valueEdited();
             }
         );
+    }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setDate(QDate::currentDate());
     }
 };
 
@@ -724,6 +761,11 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
             }
         );
     }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setTime(QTime::currentTime());
+    }
 };
 
 /**
@@ -771,6 +813,11 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
             }
         );
     }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setDateTime(QDateTime::currentDateTime());
+    }
 };
 
 template <EditableLabel::Type TypeId>
@@ -795,6 +842,11 @@ struct EditableLabelHelper
     static auto value(const widgetType* widget)
     {
        return traits::value(widget);
+    }
+
+    static void clear(const widgetType* widget)
+    {
+        traits::clear(widget);
     }
 
     template <typename ValueType>
@@ -867,6 +919,18 @@ class EditableLabelTmpl : public EditableLabel
         {
             m_editor->blockSignals(true);
             helper::setValue(m_editor,value);
+            helper::loadLabel(label(),m_editor,formatter());
+            m_backupValue=helper::value(m_editor);
+            m_editor->blockSignals(false);
+        }
+
+        /**
+         * @brief Clear value of the label.
+         */
+        auto clear() const
+        {
+            m_editor->blockSignals(true);
+            helper::clear(m_editor);
             helper::loadLabel(label(),m_editor,formatter());
             m_backupValue=helper::value(m_editor);
             m_editor->blockSignals(false);

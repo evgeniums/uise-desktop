@@ -163,6 +163,16 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return m_statusHelper;
         }
 
+        void setGroupEditingRequestEnabled(bool enable)
+        {
+            m_requestGroupEditingEnabled=enable;
+        }
+
+        bool isGroupEditingRequestEnabled() const noexcept
+        {
+            return m_requestGroupEditingEnabled;
+        }
+
     signals:
 
         void editRequested();
@@ -192,6 +202,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
     private:
 
         std::shared_ptr<Status> m_statusHelper;
+        bool m_requestGroupEditingEnabled=false;
 };
 
 class EditablePanel_p;
