@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStaticText>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QMouseEvent>
 
 #include <uise/desktop/avatar.hpp>
 
@@ -558,6 +559,17 @@ void AvatarWidget::leaveEvent(QEvent* event)
     RoundedImage::leaveEvent(event);
     m_hovered=false;
     update();
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton)
+    {
+        emit clicked();
+    }
+    RoundedImage::mousePressEvent(event);
 }
 
 //--------------------------------------------------------------------------

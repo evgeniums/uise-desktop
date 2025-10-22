@@ -316,12 +316,17 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             paint(painter,rect,IconMode::Normal,QIcon::Off,false);
         }
 
-        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::Off);
+        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::Off, bool cache=true, const QColor& background=Qt::transparent);
 
         QPixmap pixmap(int size, IconVariant mode, QIcon::State state)
         {
             return pixmap(QSize(size,size),mode,state);
-        }        
+        }
+
+        QPixmap pixmap(const QSize &size, const QColor& background)
+        {
+            return pixmap(size,IconMode::Normal,QIcon::Off,false,background);
+        }
 
         bool addFile(
             const QString& filename,
@@ -414,6 +419,8 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             m_refs.emplace_back(other);
         }
 
+        QPixmap makePixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On, bool cache=true, const QColor& background=Qt::transparent);
+
     private:
 
         QString m_name;
@@ -442,8 +449,6 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             }
             return nullptr;
         }
-
-        QPixmap makePixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On, bool cache=true);
 
         QByteArray offContent(IconVariant mode) const
         {

@@ -143,6 +143,7 @@ SET (HEADERS
     include/uise/desktop/simpleimageeditor.hpp
     include/uise/desktop/imagecropper.hpp
     include/uise/desktop/freehanddrawview.hpp
+    include/uise/desktop/imageeditdialog.hpp
 
     include/uise/desktop/jumpedge.hpp
 )
@@ -235,6 +236,7 @@ SET (SOURCES
     src/simpleimageeditor.cpp
     src/imagecropper.cpp
     src/freehanddrawview.cpp
+    src/imageeditdialog.cpp
 
     src/jumpedge.cpp
 )

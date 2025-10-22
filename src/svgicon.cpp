@@ -70,7 +70,7 @@ void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIc
 
 //--------------------------------------------------------------------------
 
-QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state)
+QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background)
 {
     // qDebug() << "SvgIcon::pixmap state="<<state << " mode="<<mode<< " name="<<m_name << " size=" << size;
 
@@ -78,26 +78,26 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
     if (set==nullptr || set->isNull())
     {
         // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
-        return makePixmap(size,mode,state);
+        return makePixmap(size,mode,state,cache,background);
     }
 
     auto px=set->pixmap(size,state);
     if (px.isNull() || px.size()!=size)
     {
         // qDebug() << "SvgIcon::pixmap size mismatch px.size()="<<px.size();
-        return makePixmap(size,mode,state);
+        return makePixmap(size,mode,state,cache,background);
     }
     return px;
 }
 
 //--------------------------------------------------------------------------
 
-QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache)
+QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background)
 {
     // paint pixmap
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     QPixmap px{size};
-    px.fill(Qt::transparent);
+    px.fill(background);
     QPainter painter;
     painter.begin(&px);
     painter.setRenderHints(QPainter::Antialiasing);

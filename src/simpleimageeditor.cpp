@@ -33,9 +33,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QGraphicsPixmapItem>
 #include <QStyleOptionGraphicsItem>
 
-#include <QPushButton>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QLabel>
 
 #include <QtColorWidgets/HueSlider>
 
@@ -83,7 +83,7 @@ class SimpleImageEditorWidget_p
 
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
-        QPushButton* browseFile;
+        PushButton* browseFile;
 
         int angle=0;
 };
@@ -269,14 +269,14 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->filenameEdit->setObjectName("fileBrowserFrame");
     pimpl->filenameEdit->setPlaceholderText(tr("Select image file"));
     fl->addWidget(pimpl->filenameEdit,1);
-    pimpl->browseFile=new QPushButton(pimpl->fileBrowserFrame);
+    pimpl->browseFile=new PushButton(pimpl->fileBrowserFrame);
     pimpl->browseFile->setObjectName("fileBrowserFrame");
     pimpl->browseFile->setText(tr("Browse..."));
     fl->addWidget(pimpl->browseFile);
 
     connect(
         pimpl->browseFile,
-        &QPushButton::clicked,
+        &PushButton::clicked,
         this,
         [this]()
         {

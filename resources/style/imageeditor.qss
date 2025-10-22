@@ -30,3 +30,10 @@ padding-top:4px;
 padding-bottom:4px;
 }
 
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton{
+border-radius: 4px; padding: 2px 12px; margin-left: 4px;
+}
+
+uise--SimpleImageEditorWidget #fileBrowserFrame QLineEdit {
+padding: 2px;
+}

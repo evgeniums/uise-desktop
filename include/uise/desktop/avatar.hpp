@@ -519,6 +519,15 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             return m_bottomPixmapHoverVisible;
         }
 
+        QColor backgroundColor() const
+        {
+            return m_backgroundColor;
+        }
+
+    signals:
+
+        void clicked();
+
     protected:
 
         void doPaint(QPainter* painter) override;
@@ -528,6 +537,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
+        void mousePressEvent(QMouseEvent* event) override;
 
     private:
 
