@@ -105,6 +105,7 @@ enum class ValueWidgetProperty : int
     Max,
     ListItems,
     EditFocus,
+    ExplicitType,
 
     User=0x1000
 };

@@ -52,22 +52,6 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
 
     auto count=m_layout->count();
 
-    QLabel* commentWidget=nullptr;
-    if (!comment.isEmpty())
-    {
-        commentWidget=new QLabel(comment);
-        commentWidget->setObjectName("panelComment");
-        if (label.isEmpty())
-        {
-            m_layout->addWidget(commentWidget,count,0,1,items.size());
-        }
-        else
-        {
-            m_layout->addWidget(commentWidget,count,1,1,items.size());
-        }
-        ++count;
-    }
-
     int column=0;
     QLabel* labelWidget=nullptr;
     if (!label.isEmpty())
@@ -86,6 +70,22 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
         widgets.push_back(item.widget);        
     }
     ++count;
+
+    QLabel* commentWidget=nullptr;
+    if (!comment.isEmpty())
+    {
+        commentWidget=new QLabel(comment);
+        commentWidget->setObjectName("panelComment");
+        if (label.isEmpty())
+        {
+            m_layout->addWidget(commentWidget,count,0,1,items.size());
+        }
+        else
+        {
+            m_layout->addWidget(commentWidget,count,1,1,items.size());
+        }
+        ++count;
+    }
 
     m_rows.emplace(m_rowIndex,Row{std::move(widgets),true,labelWidget,commentWidget});
     auto index=m_rowIndex++;

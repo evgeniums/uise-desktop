@@ -34,6 +34,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QComboBox>
 #include <QDateEdit>
 #include <QTimeEdit>
+#include <QTextEdit>
 #include <QDateTimeEdit>
 #include <QCoreApplication>
 #include <QPushButton>
@@ -51,6 +52,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class EditableLabelFormatter;
 
 class EditableLabelText;
+class EditableLabelTextEdit;
 class EditableLabelInt;
 class EditableLabelDouble;
 class EditableLabelCombo;
@@ -63,7 +65,7 @@ class EditableLabelDateTime;
  */
 enum class EditableLabelType : int
 {
-    Text,
+    Text=0x1000,
     Int,
     Double,
     Combo,
@@ -75,7 +77,9 @@ enum class EditableLabelType : int
     UInt32,
     UInt64,
 
-    Custom=0x100
+    TextEdit,
+
+    Custom=0x10000
 };
 
 //! @todo Implement Int64, UInt32, UInt64
@@ -391,6 +395,50 @@ struct EditableLabelTraits<EditableLabel::Type::Text>
             &QLineEdit::textChanged,
             valueWidget,
             [valueWidget](const QString&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
+};
+
+/**
+ * @brief Traits of editable label of text editor type.
+ */
+template <>
+struct EditableLabelTraits<EditableLabel::Type::TextEdit>
+{
+    using type=EditableLabelTextEdit;
+    using widgetType=QTextEdit;
+
+    static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
+    {
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::TextEdit,QString>(label,formatter,widget->toPlainText(),[](const QString& val){return val;});
+    }
+
+    static auto value(const widgetType* widget)
+    {
+        return widget->toPlainText();
+    }
+
+    static void setValue(widgetType* widget, const QString& value)
+    {
+        widget->setPlainText(value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QTextEdit::textChanged,
+            valueWidget,
+            [valueWidget]()
             {
                 emit valueWidget->valueEdited();
             }
@@ -910,6 +958,41 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public EditableLabelTmpl<EditableL
         virtual void notifyValueChanged() override
         {
             emit valueChanged(editorWidget()->text());
+        }
+};
+
+/**
+ * @brief Editable text editor label.
+ */
+class UISE_DESKTOP_EXPORT EditableLabelTextEdit : public EditableLabelTmpl<EditableLabel::Type::TextEdit>
+{
+    Q_OBJECT
+
+    public:
+
+        using baseType = EditableLabelTmpl<EditableLabel::Type::TextEdit>;
+
+        EditableLabelTextEdit(QWidget* parent=nullptr, bool inGroup=false)
+            : baseType(parent,inGroup)
+        {
+            label()->setWordWrap(true);
+        }
+
+        EditableLabelTextEdit(AbstractEditablePanel* panel)
+            : baseType(panel)
+        {
+            label()->setWordWrap(true);
+        }
+
+    signals:
+
+        void valueChanged(const QString& text);
+
+    protected:
+
+        virtual void notifyValueChanged() override
+        {
+            emit valueChanged(editorWidget()->toPlainText());
         }
 };
 
