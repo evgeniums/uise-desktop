@@ -85,7 +85,7 @@ void AbstractImageEditor::loadImageFromFile(const QString& filename)
     }
 
     QFileInfo finf{filename};
-    setFolder(finf.canonicalPath());
+    setFolder(finf.absolutePath());
 
     QPixmap pixmap(filename);
 
