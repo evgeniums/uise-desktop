@@ -49,6 +49,8 @@ class LoadingFrame_p
         QPointer<QFrame> busyWaitingFrame;
 
         bool busyWaitingMode=false;
+        QBoxLayout* layout=nullptr;
+        QPointer<QWidget> content;
 };
 
 //--------------------------------------------------------------------------
@@ -134,6 +136,22 @@ void LoadingFrame::popupBusyWaiting()
     pimpl->busyWaiting->start();
     popup();
 }
+
+//--------------------------------------------------------------------------
+
+QSize LoadingFrame::sizeHint() const
+{
+    if (pimpl->content!=nullptr)
+    {
+        auto m=pimpl->content->contentsMargins();
+        auto sz=pimpl->content->sizeHint();
+        sz.setWidth(sz.width()+m.left()+m.right());
+        sz.setHeight(sz.height()+m.top()+m.bottom());
+        return sz;
+    }
+    return FrameWithModalPopup::sizeHint();
+}
+
 //--------------------------------------------------------------------------
 
 void LoadingFrame::cancel()
@@ -161,6 +179,17 @@ void LoadingFrame::finish()
 BusyWaiting* LoadingFrame::busyWaitingWidget() const
 {
     return pimpl->busyWaiting;
+}
+
+//--------------------------------------------------------------------------
+
+void LoadingFrame::setWidget(QWidget* widget)
+{
+    destroyWidget(pimpl->content);
+
+    pimpl->content=new QFrame(this);
+    pimpl->layout=Layout::vertical(pimpl->content.get());
+    pimpl->layout->addWidget(widget);
 }
 
 //--------------------------------------------------------------------------

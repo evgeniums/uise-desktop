@@ -87,6 +87,10 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
             }
         }
 
+        void setWidget(QWidget*);
+
+        QSize sizeHint() const override;
+
     signals:
 
         void cancelled();
