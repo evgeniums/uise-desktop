@@ -58,6 +58,7 @@ EditableLabel::EditableLabel(
     m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
 
     m_label->installEventFilter(this);
+    m_label->setWordWrap(true);
 
     m_editorFrame=new QFrame(this);
     m_editorFrame->setObjectName("labelEditorFrame");

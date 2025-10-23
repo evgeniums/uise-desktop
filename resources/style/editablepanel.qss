@@ -13,6 +13,10 @@ uise--EditablePanel uise--EditableLabel QLineEdit {
 padding: 2px;
 }
 
+uise--EditablePanel uise--EditableLabel QTextEdit {
+max-height: 50px;
+}
+
 uise--FrameWithModalStatus uise--EditableLabel uise--PushButton QPushButton {
 border:none;
 padding: 2px;

@@ -1038,14 +1038,12 @@ class UISE_DESKTOP_EXPORT EditableLabelTextEdit : public EditableLabelTmpl<Edita
 
         EditableLabelTextEdit(QWidget* parent=nullptr, bool inGroup=false)
             : baseType(parent,inGroup)
-        {
-            label()->setWordWrap(true);
+        {            
         }
 
         EditableLabelTextEdit(AbstractEditablePanel* panel)
             : baseType(panel)
         {
-            label()->setWordWrap(true);
         }
 
     signals:

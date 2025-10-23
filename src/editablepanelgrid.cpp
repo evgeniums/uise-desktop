@@ -76,6 +76,7 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
     {
         commentWidget=new QLabel(comment);
         commentWidget->setObjectName("panelComment");
+        commentWidget->setWordWrap(true);
         if (label.isEmpty())
         {
             m_layout->addWidget(commentWidget,count,0,1,items.size());

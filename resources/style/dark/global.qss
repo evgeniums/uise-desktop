@@ -45,16 +45,17 @@ QLineEdit,
 QComboBox,
 QDateTimeEdit,
 QSpinBox,
-QDoubleSpinBox {
+QDoubleSpinBox,
+QTextEdit {
     padding:2px;
-    border:none;
     border-radius:4px;
     border: 2px solid #333333;
     background-color: #000000;
 }
 
 QComboBox {padding-left:4px;}
-QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus {border: 2px solid #777777;}
+QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus,
+QTextEdit:focus {border: 2px solid #777777;}
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button,
