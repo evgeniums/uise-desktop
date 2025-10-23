@@ -288,6 +288,11 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
             {
                 pimpl->filenameEdit->setText(filename);
                 pimpl->ctrl->loadImageFromFile(filename);
+                QFileInfo finf{filename};
+                if (finf.exists())
+                {
+                    pimpl->ctrl->setFolder(finf.absolutePath());
+                }
             }
         }
     );
