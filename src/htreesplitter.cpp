@@ -816,8 +816,6 @@ void HTreeSplitterInternal::updatePositions()
         if (w!=nullptr)
         {
             w->move(currentX,y);
-            UNCOMMENTED_QDEBUG << "HTreeSplitterInternal::updatePositions() section->width="<<section->width
-                               << " section->expanded=" << w->isExpanded() << " sectionVisible="<< w->isSectionVisible();
             if (w->isSectionVisible())
             {
                 currentX+=section->width;
@@ -1174,6 +1172,8 @@ class HTreeSplitter_p
 
         HTreeSplitterInternal* content=nullptr;
         QHBoxLayout* layout=nullptr;
+
+        SingleShotTimer* scrollToEndTimer;
 };
 
 //--------------------------------------------------------------------------
@@ -1213,6 +1213,8 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
             pimpl->wrapper->resize(width,pimpl->wrapper->height());
         }
     );
+
+    pimpl->scrollToEndTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -1333,10 +1335,12 @@ void HTreeSplitter::scrollToIndex(int index, int xmargin)
 void HTreeSplitter::truncate(int index)
 {
     pimpl->content->truncate(index);
-    if (count()>0)
-    {
-        scrollToIndex(count()-1);
-    }
+    pimpl->scrollToEndTimer->shot(20,
+        [this]()
+        {
+            scrollToIndex(count()-1);
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
