@@ -70,7 +70,7 @@ void SvgIcon::paint(QPainter *painter, const QRect &rect, IconVariant mode,  QIc
 
 //--------------------------------------------------------------------------
 
-QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background)
+QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background, QRect rect)
 {
     // qDebug() << "SvgIcon::pixmap state="<<state << " mode="<<mode<< " name="<<m_name << " size=" << size;
 
@@ -78,21 +78,21 @@ QPixmap SvgIcon::pixmap(const QSize &size, IconVariant mode,  QIcon::State state
     if (set==nullptr || set->isNull())
     {
         // qDebug() << "SvgIcon::pixmap set not found="<<state<< " mode="<<mode<< " name="<<m_name;
-        return makePixmap(size,mode,state,cache,background);
+        return makePixmap(size,mode,state,cache,background,rect);
     }
 
     auto px=set->pixmap(size,state);
     if (px.isNull() || px.size()!=size)
     {
         // qDebug() << "SvgIcon::pixmap size mismatch px.size()="<<px.size();
-        return makePixmap(size,mode,state,cache,background);
+        return makePixmap(size,mode,state,cache,background,rect);
     }
     return px;
 }
 
 //--------------------------------------------------------------------------
 
-QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background)
+QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State state, bool cache, const QColor& background, QRect rect)
 {
     // paint pixmap
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
@@ -101,7 +101,12 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
     QPainter painter;
     painter.begin(&px);
     painter.setRenderHints(QPainter::Antialiasing);
-    paint(&painter, px.rect(), mode, state, false);
+    auto r=rect;
+    if (!r.isValid())
+    {
+        r=px.rect();
+    }
+    paint(&painter, r, mode, state, false);
     painter.end();
     px.setDevicePixelRatio(pixelRatio);
 

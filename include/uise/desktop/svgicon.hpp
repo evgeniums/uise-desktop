@@ -316,16 +316,16 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             paint(painter,rect,IconMode::Normal,QIcon::Off,false);
         }
 
-        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::Off, bool cache=true, const QColor& background=Qt::transparent);
+        QPixmap pixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::Off, bool cache=true, const QColor& background=Qt::transparent, QRect rect={});
 
         QPixmap pixmap(int size, IconVariant mode, QIcon::State state)
         {
             return pixmap(QSize(size,size),mode,state);
         }
 
-        QPixmap pixmap(const QSize &size, const QColor& background)
+        QPixmap pixmap(const QSize &size, const QColor& background, QRect rect={})
         {
-            return pixmap(size,IconMode::Normal,QIcon::Off,false,background);
+            return pixmap(size,IconMode::Normal,QIcon::Off,false,background,rect);
         }
 
         bool addFile(
@@ -419,7 +419,7 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             m_refs.emplace_back(other);
         }
 
-        QPixmap makePixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On, bool cache=true, const QColor& background=Qt::transparent);
+        QPixmap makePixmap(const QSize &size, IconVariant mode=IconMode::Normal,  QIcon::State state=QIcon::On, bool cache=true, const QColor& background=Qt::transparent, QRect rect={});
 
     private:
 
