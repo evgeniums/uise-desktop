@@ -513,6 +513,7 @@ QPixmap AvatarWidget::nonamePixmap(const QSize& size, QRect* rect) const
 void AvatarWidget::fillIfNoPixmap(QPainter* painter)
 {
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    painter->setRenderHint(QPainter::Antialiasing,true);
     painter->setBrush(m_backgroundColor);
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(0, 0, width(), height(), xRadius(), yRadius());
