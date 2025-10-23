@@ -488,13 +488,13 @@ void AvatarWidget::updateBackgroundColor()
 
 void AvatarWidget::fillIfNoPixmap(QPainter* painter)
 {
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     painter->setBrush(m_backgroundColor);
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(0, 0, width(), height(), xRadius(), yRadius());
 
     if (!m_avatarName.empty())
-    {
-        const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    {        
         QPixmap px{imageSize()};
         px.fill(Qt::transparent);
         QPainter pxp;
@@ -509,7 +509,12 @@ void AvatarWidget::fillIfNoPixmap(QPainter* painter)
     {
         auto sz=size() * 0.7;
         QRect r{width()/2-sz.width()/2,height()/2-sz.height()/2,sz.width(),sz.height()};
-        m_avatarSource->noNameSvgIcon()->paint(painter,r,currentSvgIconMode(),QIcon::Off,isCacheSvgPixmap());
+        auto px=m_avatarSource->noNameSvgIcon()->pixmap(sz*pixelRatio,currentSvgIconMode());
+        if (!px.isNull())
+        {
+            px.setDevicePixelRatio(pixelRatio);
+            painter->drawPixmap(r,px);
+        }
     }
 }
 
