@@ -358,6 +358,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
         constexpr static const double DefaultFontSizeRation=0.37;
         constexpr static const double CornerImageSizeRatio=0.27;
+        constexpr static const double NonameImageSizeRatio=0.7;
         constexpr static QRgb DefaultCornerCircleColor=0x0038b000;
         constexpr static QRgb DefaultFontColor=0x00FFFFFF;
 
@@ -533,6 +534,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         {
             return m_backgroundColor;
         }
+
+        QPixmap nonamePixmap(const QSize& size, QRect* rect=nullptr) const;
 
     signals:
 

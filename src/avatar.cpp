@@ -486,6 +486,30 @@ void AvatarWidget::updateBackgroundColor()
 
 //--------------------------------------------------------------------------
 
+QPixmap AvatarWidget::nonamePixmap(const QSize& size, QRect* rect) const
+{
+    if (!m_avatarSource || !m_avatarSource->noNameSvgIcon())
+    {
+        return QPixmap{};
+    }
+
+    const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+    auto sz=size * NonameImageSizeRatio;
+    QRect r{size.width()/2-sz.width()/2,size.height()/2-sz.height()/2,sz.width(),sz.height()};
+    if (rect!=nullptr)
+    {
+        *rect=r;
+    }
+    auto px=m_avatarSource->noNameSvgIcon()->pixmap(sz*pixelRatio,currentSvgIconMode());
+    if (!px.isNull())
+    {
+        px.setDevicePixelRatio(pixelRatio);
+    }
+    return px;
+}
+
+//--------------------------------------------------------------------------
+
 void AvatarWidget::fillIfNoPixmap(QPainter* painter)
 {
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
@@ -505,16 +529,11 @@ void AvatarWidget::fillIfNoPixmap(QPainter* painter)
         px.setDevicePixelRatio(pixelRatio);
         painter->drawPixmap(rect(),px);
     }
-    else if (m_avatarSource && m_avatarSource->noNameSvgIcon())
+    QRect r;
+    auto px=nonamePixmap(size(),&r);
+    if (!px.isNull())
     {
-        auto sz=size() * 0.7;
-        QRect r{width()/2-sz.width()/2,height()/2-sz.height()/2,sz.width(),sz.height()};
-        auto px=m_avatarSource->noNameSvgIcon()->pixmap(sz*pixelRatio,currentSvgIconMode());
-        if (!px.isNull())
-        {
-            px.setDevicePixelRatio(pixelRatio);
-            painter->drawPixmap(r,px);
-        }
+        painter->drawPixmap(r,px);
     }
 }
 
