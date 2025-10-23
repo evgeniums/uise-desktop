@@ -90,6 +90,11 @@ class WithPath
             return m_path.empty();
         }
 
+        bool isPathEmpty() const
+        {
+            return empty();
+        }
+
         operator std::vector<std::string>() const
         {
             return m_path;
@@ -150,7 +155,12 @@ class WithPathAndSize : public WithPath
 
         bool isValid() const
         {
-            return m_size.isValid() && !empty();
+            return m_size.isValid() && !isPathEmpty();
+        }
+
+        bool isPathAndSizeValid() const
+        {
+            return isValid();
         }
 
         template <typename OtherT>
