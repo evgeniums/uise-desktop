@@ -189,9 +189,9 @@ HTreeSplitterInternal::~HTreeSplitterInternal()
 void HTreeSplitterInternal::resizeEvent(QResizeEvent* event)
 {
     // qDebug() << "HTreeSplitterInternal::resizeEvent size=" << event->size()
-    //                    << " oldSize=" << event->oldSize()
-    //                    << " minWidth=" << minimumWidth()
-    //                    << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+    // << " oldSize=" << event->oldSize()
+    // << " minWidth=" << minimumWidth()
+    // << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
 
     QFrame::resizeEvent(event);
 
@@ -249,8 +249,6 @@ void HTreeSplitterInternal::updateSize(int w)
     std::ignore=newW;
     if (needResize)
     {
-        // qDebug() << "HTreeSplitterInternal::updateSize() update minwidth from " << minimumWidth() << " to " <<newW
-        //                    << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         updateMinWidth();
     }
 
@@ -521,11 +519,11 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             hintTotalWidth+=w->sizeHint().width();
 
             // qDebug() << "HTreeSplitterInternal::recalculateWidths i=" << i++
-            //                    << " hint w=" << w->sizeHint().width()
-            //                    << " expanded=" << w->isExpanded()
-            //                    << " minWidth="<<w->minimumWidth()
-            //                    << " manualWidth="<<section->manualWidth
-            //                    << " effective minwidth="<<effectiveWidth;
+            // << " hint w=" << w->sizeHint().width()
+            // << " expanded=" << w->isExpanded()
+            // << " minWidth="<<w->minimumWidth()
+            // << " manualWidth="<<section->manualWidth
+            // << " effective minwidth="<<effectiveWidth;
 
             totalStretch+=section->stretch;
         }
@@ -534,6 +532,10 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
 
     // qDebug() << "HTreeSplitterInternal::recalculateWidths totalWidth="<<totalWidth << " hintTotalWidth="<<hintTotalWidth << " minTotalWidth=" << minTotalWidth;
 
+    if (m_prevViewportWidth!=0 && hintTotalWidth>m_prevViewportWidth)
+    {
+        hintTotalWidth=m_prevViewportWidth;
+    }
     if (hintTotalWidth<totalWidth)
     {
         hintTotalWidth=totalWidth;
@@ -734,11 +736,11 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
             }
 
             // qDebug() << "HTreeSplitterInternal::recalculateWidths after i="<<i
-            //          << "section->precalculated="<<precalculatedWidths[i]
-            //          << "section->width="<<section->width
-            //          << "section->manualWidth="<<section->manualWidth
-            //          << "section->minWidth="<<section->minWidth
-            //          << "section->stretch="<<section->stretch;
+            // << "section->precalculated="<<precalculatedWidths[i]
+            // << "section->width="<<section->width
+            // << "section->manualWidth="<<section->manualWidth
+            // << "section->minWidth="<<section->minWidth
+            // << "section->stretch="<<section->stretch;
         }
     }
 
@@ -753,6 +755,7 @@ void HTreeSplitterInternal::updateMinWidth()
 {
     auto prev=minimumWidth();
     int current=0;
+    auto sectionWidth=0;
     int i=0;
     for (auto& section: m_sections)
     {
@@ -762,8 +765,6 @@ void HTreeSplitterInternal::updateMinWidth()
             continue;
         }
 
-        // qDebug() << "HTreeSplitterInternal::updateMinWidth() i="<<i << " minWidth="<<section->minWidth << " manualWidth="<<section->manualWidth
-        //                    << " width=" << section->width;
         auto diff=section->minWidth;
         auto* w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w)
@@ -771,22 +772,31 @@ void HTreeSplitterInternal::updateMinWidth()
             if (w->isExpanded())
             {
                 diff=std::max(section->minWidth,section->manualWidth);
+
+                // qDebug() << "HTreeSplitterInternal::updateMinWidth() section->minWidth="<<diff  << " swidth=" << section->width << " i="<<i
+                // << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+                // sectionWidth+=section->width;
             }
         }
         current+=diff;
 
         i++;
     }
-    // qDebug() << "HTreeSplitterInternal::updateMinWidth() prev="<<prev << " minWidth="<<current
-    //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");;
+    auto prevWidth=width();
     if (prev!=current)
     {
         setMinimumWidth(current);
     }
+
+    // qDebug() << "HTreeSplitterInternal::updateMinWidth() prev="<<prev << " minWidth="<<current
+    //                    << " prevWidth=" << prevWidth
+    //                    << " width="<<width()
+    //                    << " sectionWidth=" << sectionWidth
+    //                    << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+
     m_emitMinMaxSizeTimer->shot(11,
         [this]()
         {
-            // qDebug() << "HTreeSplitterInternal::updateMinWidth() width="<<width();
             emit minMaxSizeUpdated();
         },
         true
@@ -1075,10 +1085,12 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
         }
     }
 
-    recalculateWidths(width());
-
-    // qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth resizeWidth="<<m_prevViewportWidth
-    //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+    auto accWidth=recalculateWidths(m_prevViewportWidth);
+#if 0
+    auto ww=width();
+    qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth m_prevViewportWidth="<<m_prevViewportWidth << " accWidth="<<accWidth << " width=" << ww
+        << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+#endif
 
     updateMinWidth();
     updatePositions();
