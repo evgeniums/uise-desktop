@@ -101,7 +101,7 @@ void HTreeSplitterSection::setWidget(QWidget* widget)
     m_layout->addWidget(m_widget);
     m_line=new HTreeSplitterLine(m_content);
     m_stubLine=new QFrame(this);
-    m_stubLine->setMinimumWidth(4);
+    m_stubLine->setMinimumWidth(HTreeSplitter::SectionLineWidth);
     m_stubLine->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
     m_stubLine->setVisible(false);
     m_layout->addWidget(m_line);
@@ -530,7 +530,7 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     }
     bool stretchLastSection=m_stretchLastSection && (totalStretch<=1);
 
-    // qDebug() << "HTreeSplitterInternal::recalculateWidths totalWidth="<<totalWidth << " hintTotalWidth="<<hintTotalWidth << " minTotalWidth=" << minTotalWidth;
+    // qDebug() << "HTreeSplitterInternal::recalculateWidths totalWidth="<<totalWidth << " hintTotalWidth="<<hintTotalWidth << " minTotalWidth=" << minTotalWidth << " m_prevViewportWidth="<<m_prevViewportWidth;
 
     if (m_prevViewportWidth!=0 && hintTotalWidth>m_prevViewportWidth)
     {
@@ -782,7 +782,7 @@ void HTreeSplitterInternal::updateMinWidth()
 
         i++;
     }
-    auto prevWidth=width();
+    // auto prevWidth=width();
     if (prev!=current)
     {
         setMinimumWidth(current);
@@ -812,11 +812,16 @@ void HTreeSplitterInternal::updatePositions()
     int y=margins.top();
     for (auto& section: m_sections)
     {
-        auto w=qobject_cast<QWidget*>(section->obj);
+        auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
         if (w!=nullptr)
         {
             w->move(currentX,y);
-            currentX+=section->width;
+            UNCOMMENTED_QDEBUG << "HTreeSplitterInternal::updatePositions() section->width="<<section->width
+                               << " section->expanded=" << w->isExpanded() << " sectionVisible="<< w->isSectionVisible();
+            if (w->isSectionVisible())
+            {
+                currentX+=section->width;
+            }
         }
     }
 }
@@ -1085,8 +1090,9 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
         }
     }
 
-    auto accWidth=recalculateWidths(m_prevViewportWidth);
+    recalculateWidths(m_prevViewportWidth);
 #if 0
+    auto accWidth=recalculateWidths(m_prevViewportWidth);
     auto ww=width();
     qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth m_prevViewportWidth="<<m_prevViewportWidth << " accWidth="<<accWidth << " width=" << ww
         << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
