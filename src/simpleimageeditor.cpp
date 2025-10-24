@@ -366,18 +366,25 @@ void SimpleImageEditor::doLoadImage()
     {
         return;
     }
+    px.setDevicePixelRatio(1.0);
     m_widget->pimpl->controlsFrame->setVisible(true);
 
-    auto viewRect=m_widget->pimpl->view->rect();
     m_widget->pimpl->imageItem = m_widget->pimpl->scene->addPixmap(px);
+    m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
+    auto viewRect=m_widget->pimpl->view->rect();
+
+    // qDebug() << " SimpleImageEditor::doLoadImage() size=" << px.size()
+    //                    << " viewRect="<<viewRect
+    //                    << " imageBoundingRect="<<m_widget->pimpl->imageItem->boundingRect()
+    //                    << " sceneRect="<<m_widget->pimpl->scene->sceneRect()
+    //                    << " pixmapRatio=" << px.devicePixelRatio();
 
     if (px.width()>viewRect.width() || px.height() > viewRect.height())
     {
         m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
     }
 
-    m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
-    resetCropper();    
+    resetCropper();
 }
 
 //--------------------------------------------------------------------------
@@ -425,15 +432,39 @@ QPixmap SimpleImageEditor::editedImage()
     auto viewRect=m_widget->pimpl->view->mapFromScene(croppedRect).boundingRect();
     m_widget->pimpl->cropperItem->setVisible(false);
 
-    QPixmap px{static_cast<int>(viewRect.width()),static_cast<int>(viewRect.height())};
-    QPainter painter;
-    painter.begin(&px);
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-
-    m_widget->pimpl->view->render(&painter,px.rect(),viewRect);
+    QPixmap px;
+#if 0
+    if (m_widget->pimpl->view->transform().isRotating())
+#endif
+    {
+        px=QPixmap{static_cast<int>(viewRect.width()),static_cast<int>(viewRect.height())};
+        QPainter painter;
+        painter.begin(&px);
+        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        m_widget->pimpl->view->render(&painter,px.rect(),viewRect);
+        painter.end();
+    }
+#if 0
+    else
+    {
+        px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+        QPainter painter;
+        painter.begin(&px);
+        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
+        painter.end();
+    }
+#endif
     m_widget->pimpl->cropperItem->setVisible(true);
 
-    painter.end();
+    auto transform = m_widget->pimpl->view->transform();
+    auto scale_x = qSqrt(transform.m11() * transform.m11() + transform.m12() * transform.m12());
+
+    qDebug() << "SimpleImageEditor::editedImage() croppedRect=" << croppedRect
+                       << " viewRect=" << viewRect << " sceneRect=" << m_widget->pimpl->view->sceneRect()
+                       << " px.size()" << px.size() << " isScaling()" << m_widget->pimpl->view->transform().isScaling()
+                       << " isRotating="<<m_widget->pimpl->view->transform().isRotating()
+                       << " scale_x="<<scale_x;
 
     if (maximumImageSize().isValid())
     {
