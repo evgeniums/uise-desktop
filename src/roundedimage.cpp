@@ -127,6 +127,7 @@ void RoundedImage::createPixmapConsumer()
         this,
         &RoundedImage::onPixmapUpdated
     );
+    update();
 }
 
 //--------------------------------------------------------------------------
