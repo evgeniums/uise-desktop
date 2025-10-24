@@ -29,6 +29,8 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QCheckBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -63,7 +65,7 @@ int main(int argc, char *argv[])
     auto editorCtrl=Style::instance().widgetFactory()->makeWidget<AbstractImageEditor>(editorFrame);
     Q_ASSERT(editorCtrl);
     editorCtrl->setEllipseCropPreview(true);
-    editorCtrl->setMaximumImageSize(QSize(512,512));
+    editorCtrl->setMaximumImageSize(QSize(1000,1000));
     editorL->addWidget(editorCtrl->qWidget(),1);
 
     auto viewer=new QLabel(viewerFrame);
@@ -144,9 +146,11 @@ int main(int argc, char *argv[])
         takeImage,
         &QPushButton::clicked,
         editorCtrl->qWidget(),
-        [&]()
+        [=]()
         {
             auto px=editorCtrl->editedImage();
+            const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+            px.setDevicePixelRatio(pixelRatio);
             viewer->setPixmap(px);
         }
     );

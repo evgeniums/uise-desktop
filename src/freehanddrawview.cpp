@@ -42,7 +42,8 @@ FreeHandDrawView::FreeHandDrawView(QWidget *parent)
       m_currentPathItem(nullptr),
       m_freeHandDrawEnabled(false),
       m_penColor(Qt::black),
-      m_penWidth(2)
+      m_penWidth(2),
+      m_group(nullptr)
 {
     setMouseTracking(true);
 }
@@ -63,7 +64,14 @@ void FreeHandDrawView::mousePressEvent(QMouseEvent *event)
         QPen pen(m_penColor, m_penWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         m_currentPathItem = new QGraphicsPathItem();
         m_currentPathItem->setPen(pen);
-        scene()->addItem(m_currentPathItem);
+        if (m_group!=nullptr)
+        {
+            m_group->addToGroup(m_currentPathItem);
+        }
+        else
+        {
+            scene()->addItem(m_currentPathItem);
+        }
 
         // start the painter path
         m_currentPath.moveTo(mapToScene(event->pos()));
@@ -125,6 +133,10 @@ void FreeHandDrawView::cancelHandDraw()
     while (!m_undoStack.isEmpty())
     {
         auto item=m_undoStack.pop();
+        if (m_group!=nullptr)
+        {
+            m_group->removeFromGroup(item);
+        }
         scene()->removeItem(item);
         delete item;
     }
@@ -138,6 +150,10 @@ void FreeHandDrawView::undoHandDraw()
     if (!m_undoStack.isEmpty())
     {
         auto item=m_undoStack.pop();
+        if (m_group!=nullptr)
+        {
+            m_group->removeFromGroup(item);
+        }
         scene()->removeItem(item);
         m_redoStack.push(item);
     }
@@ -150,7 +166,14 @@ void FreeHandDrawView::redoHandDraw()
     if (!m_redoStack.isEmpty())
     {
         auto item=m_redoStack.pop();
-        scene()->addItem(item);
+        if (m_group!=nullptr)
+        {
+            m_group->addToGroup(item);
+        }
+        else
+        {
+            scene()->addItem(item);
+        }
         m_undoStack.push(item);
     }
 }

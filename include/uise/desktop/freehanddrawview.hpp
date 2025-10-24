@@ -57,6 +57,16 @@ class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
             return m_penWidth;
         }
 
+        void setItemGroup(QGraphicsItemGroup* group)
+        {
+            m_group=group;
+        }
+
+        QGraphicsItemGroup* group() const
+        {
+            return m_group;
+        }
+
     public slots:
 
         void setFreeHandDrawEnabled(bool value);
@@ -92,6 +102,8 @@ class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
 
         QStack<QGraphicsPathItem*> m_undoStack;
         QStack<QGraphicsPathItem*> m_redoStack;
+
+        QGraphicsItemGroup* m_group;
 };
 
 UISE_DESKTOP_NAMESPACE_END

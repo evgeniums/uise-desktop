@@ -75,6 +75,7 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
 
         void doUpdateFilenameState();
         void resetCropper();
+        void destroyCropper();
 
         SimpleImageEditorWidget* m_widget;
 };

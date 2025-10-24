@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsItemGroup>
 #include <QStyleOptionGraphicsItem>
 
 #include <QLineEdit>
@@ -84,6 +85,8 @@ class SimpleImageEditorWidget_p
         QFrame* fileBrowserFrame;
         QLineEdit* filenameEdit;
         PushButton* browseFile;
+
+        QGraphicsItemGroup* itemGroup=nullptr;
 
         int angle=0;
 };
@@ -280,18 +283,20 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         this,
         [this]()
         {
-            QPointer<QObject> guard{this};
-
-            auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
-            auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter);
-            if (guard)
+            QPointer<SimpleImageEditorWidget> guard{this};
+            if (guard && guard->pimpl->ctrl!=nullptr)
             {
-                pimpl->filenameEdit->setText(filename);
-                pimpl->ctrl->loadImageFromFile(filename);
-                QFileInfo finf{filename};
-                if (finf.exists())
+                auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
+                auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter);
+                if (guard)
                 {
-                    pimpl->ctrl->setFolder(finf.absolutePath());
+                    pimpl->filenameEdit->setText(filename);
+                    pimpl->ctrl->loadImageFromFile(filename);
+                    QFileInfo finf{filename};
+                    if (finf.exists())
+                    {
+                        pimpl->ctrl->setFolder(finf.absolutePath());
+                    }
                 }
             }
         }
@@ -352,6 +357,7 @@ void SimpleImageEditor::updateAspectRatio()
 
 void SimpleImageEditor::doLoadImage()
 {
+    destroyCropper();
     m_widget->pimpl->scene->clear();
     m_widget->pimpl->view->update();
     m_widget->pimpl->view->resetTransform();
@@ -360,6 +366,8 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->imageItem = nullptr;
     m_widget->pimpl->angle=0;
     m_widget->pimpl->controlsFrame->setVisible(false);
+    m_widget->pimpl->itemGroup=m_widget->pimpl->scene->createItemGroup(QList<QGraphicsItem *>{});
+    m_widget->pimpl->view->setItemGroup(m_widget->pimpl->itemGroup);
 
     auto px=originalImage();
     if (px.isNull())
@@ -383,6 +391,8 @@ void SimpleImageEditor::doLoadImage()
     {
         m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
     }
+
+    m_widget->pimpl->itemGroup->addToGroup(m_widget->pimpl->imageItem);
 
     resetCropper();
 }
@@ -429,42 +439,27 @@ QPixmap SimpleImageEditor::editedImage()
         return QPixmap{};
     }
 
-    auto viewRect=m_widget->pimpl->view->mapFromScene(croppedRect).boundingRect();
     m_widget->pimpl->cropperItem->setVisible(false);
 
-    QPixmap px;
-#if 0
-    if (m_widget->pimpl->view->transform().isRotating())
-#endif
-    {
-        px=QPixmap{static_cast<int>(viewRect.width()),static_cast<int>(viewRect.height())};
-        QPainter painter;
-        painter.begin(&px);
-        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        m_widget->pimpl->view->render(&painter,px.rect(),viewRect);
-        painter.end();
-    }
-#if 0
-    else
-    {
-        px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
-        QPainter painter;
-        painter.begin(&px);
-        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
-        painter.end();
-    }
-#endif
+    auto px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    QPainter painter;
+    painter.begin(&px);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
+    painter.end();
+
     m_widget->pimpl->cropperItem->setVisible(true);
 
+#if 0
+    auto viewRect=m_widget->pimpl->view->mapFromScene(croppedRect).boundingRect();
     auto transform = m_widget->pimpl->view->transform();
     auto scale_x = qSqrt(transform.m11() * transform.m11() + transform.m12() * transform.m12());
-
     qDebug() << "SimpleImageEditor::editedImage() croppedRect=" << croppedRect
                        << " viewRect=" << viewRect << " sceneRect=" << m_widget->pimpl->view->sceneRect()
                        << " px.size()" << px.size() << " isScaling()" << m_widget->pimpl->view->transform().isScaling()
                        << " isRotating="<<m_widget->pimpl->view->transform().isRotating()
                        << " scale_x="<<scale_x;
+#endif
 
     if (maximumImageSize().isValid())
     {
@@ -483,6 +478,18 @@ QPixmap SimpleImageEditor::editedImage()
 
 //--------------------------------------------------------------------------
 
+void SimpleImageEditor::destroyCropper()
+{
+    if (m_widget->pimpl->cropperItem!=nullptr)
+    {
+        m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
+        delete m_widget->pimpl->cropperItem;
+        m_widget->pimpl->cropperItem=nullptr;
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void SimpleImageEditor::resetCropper()
 {
     if (!isCropEnabled() || m_widget->pimpl->imageItem==nullptr || m_widget->pimpl->view->isFreeHandDrawEnabled())
@@ -490,12 +497,7 @@ void SimpleImageEditor::resetCropper()
         return;
     }
 
-    if (m_widget->pimpl->cropperItem!=nullptr)
-    {
-        m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
-        delete m_widget->pimpl->cropperItem;
-        m_widget->pimpl->cropperItem=nullptr;
-    }
+    destroyCropper();
 
     m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
     m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
@@ -515,11 +517,10 @@ void SimpleImageEditor::rotate()
         return;
     }
 
-    auto t=m_widget->pimpl->view->transform();
-    t.rotate(-90);
+    auto r=m_widget->pimpl->itemGroup->boundingRect();
     m_widget->pimpl->angle-=90;
-    m_widget->pimpl->view->setTransform(t);
-
+    m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
+    m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
     resetCropper();
 }
 
@@ -531,12 +532,10 @@ void SimpleImageEditor::rotateClockwise()
     {
         return;
     }
-
-    auto t=m_widget->pimpl->view->transform();
-    t.rotate(90);
+    auto r=m_widget->pimpl->itemGroup->boundingRect();
     m_widget->pimpl->angle+=90;
-    m_widget->pimpl->view->setTransform(t);
-
+    m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
+    m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
     resetCropper();
 }
 
@@ -548,18 +547,12 @@ void SimpleImageEditor::flipHorizontal()
     {
         return;
     }
-
-    auto t=m_widget->pimpl->view->transform();
-    if (m_widget->pimpl->angle%180==0)
-    {
-        t.scale(-1, 1);
-    }
-    else
-    {
-        t.scale(1, -1);
-    }
-    m_widget->pimpl->view->setTransform(t);
-
+    QTransform transform = m_widget->pimpl->itemGroup->transform();
+    QPointF center = m_widget->pimpl->itemGroup->mapToScene(m_widget->pimpl->itemGroup->boundingRect().center());
+    transform.translate(center.x(), center.y());
+    transform.scale(-1, 1);
+    transform.translate(-center.x(), -center.y());
+    m_widget->pimpl->itemGroup->setTransform(transform);
     resetCropper();
 }
 
@@ -571,18 +564,12 @@ void SimpleImageEditor::flipVertical()
     {
         return;
     }
-
-    auto t=m_widget->pimpl->view->transform();
-    if (m_widget->pimpl->angle%180==0)
-    {
-        t.scale(1, -1);
-    }
-    else
-    {
-        t.scale(-1, 1);
-    }
-    m_widget->pimpl->view->setTransform(t);
-
+    QTransform transform = m_widget->pimpl->itemGroup->transform();
+    QPointF center = m_widget->pimpl->itemGroup->mapToScene(m_widget->pimpl->itemGroup->boundingRect().center());
+    transform.translate(center.x(), center.y());
+    transform.scale(1, -1);
+    transform.translate(-center.x(), -center.y());
+    m_widget->pimpl->itemGroup->setTransform(transform);
     resetCropper();
 }
 
