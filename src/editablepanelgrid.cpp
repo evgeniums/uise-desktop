@@ -58,7 +58,7 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
     {
         labelWidget=new QLabel(label,m_gridFrame);
         labelWidget->setObjectName("panellabel");
-        labelWidget->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        labelWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         m_layout->addWidget(labelWidget,count,column,Qt::AlignRight|Qt::AlignVCenter);
         ++column;
     }
@@ -77,6 +77,7 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
         commentWidget=new QLabel(comment);
         commentWidget->setObjectName("panelComment");
         commentWidget->setWordWrap(true);
+        commentWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         if (label.isEmpty())
         {
             m_layout->addWidget(commentWidget,count,0,1,items.size());
