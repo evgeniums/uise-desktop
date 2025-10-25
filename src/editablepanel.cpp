@@ -121,7 +121,7 @@ EditablePanel::EditablePanel(
     pimpl->statusText->setObjectName("statusText");
     pimpl->statusText->setWordWrap(true);
     pimpl->statusText->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    pimpl->statusLayout->addWidget(pimpl->statusText,0,Qt::AlignLeft);
+    pimpl->statusLayout->addWidget(pimpl->statusText);
 
     pimpl->bottomButtonsFrame=new QFrame(this);
     pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
@@ -169,6 +169,8 @@ EditablePanel::EditablePanel(
     );
 
     updateState();
+
+    // showStatus("One two three four five six seven eight nine ten","error");
 }
 
 //--------------------------------------------------------------------------
