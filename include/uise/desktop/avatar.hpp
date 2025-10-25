@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -98,6 +99,9 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         void setAvatarPath(PathT path)
         {
             setPath(std::move(path));
+
+            // qDebug() << "Avatar::setAvatarPath" << toString() << " " << printCurrentDateTime();
+
             updateAvatarPath();
             updateBackgroundColor();
             updateGeneratedAvatar();
@@ -110,8 +114,9 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         void setBasePixmap(const QPixmap& pixmap)
         {
+            // qDebug() << "Avatar::setBasePixmap() " << toString() << printCurrentDateTime();
             m_basePixmap=pixmap;
-            updateProducers();
+            updateProducers(true);
         }
 
         QPixmap basePixmap() const
@@ -187,7 +192,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
     protected:
 
-        void updateProducers();
+        void updateProducers(bool forBasePixmap=false);
 
         virtual void doWatchPixmapForSize(const QSize&)
         {

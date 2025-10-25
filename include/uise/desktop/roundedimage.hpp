@@ -261,6 +261,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         void createPixmapConsumer();
 
         PixmapConsumer* m_pixmapConsumer;
+        PixmapConsumer* m_prevPixmapConsumer;
         std::shared_ptr<RoundedImageSource> m_imageSource;
         QSize m_size;
 

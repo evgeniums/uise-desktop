@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScreen>
 #include <QMouseEvent>
 
+#include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/avatar.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -114,16 +115,27 @@ Avatar::~Avatar()
 
 //--------------------------------------------------------------------------
 
-void Avatar::updateProducers()
+void Avatar::updateProducers(bool forBasePixmap)
 {
     if (!m_avatarSource)
     {
         return;
     }
 
+    // qDebug() << "Avatar::updateProducers() " << toString() << printCurrentDateTime();
+
     auto producers=m_avatarSource->producers(avatarPath());
     for (auto& producer: producers)
     {
+        if (forBasePixmap)
+        {
+            auto it=m_pixmaps.find(m_basePixmap.size());
+            if (it!=m_pixmaps.end())
+            {
+                continue;
+            }
+        }
+
         producer->setPixmap(pixmap(producer->size()));
     }
 }
@@ -132,6 +144,8 @@ void Avatar::updateProducers()
 
 void Avatar::setPixmap(const QPixmap& pixmap)
 {
+    // qDebug() << "Avatar::setPixmap() " << toString() << printCurrentDateTime();
+
     m_pixmaps.emplace(pixmap.size(),pixmap);
     updateProducers();
 }
@@ -212,6 +226,8 @@ void Avatar::updateGeneratedAvatar()
 {
     if (m_basePixmap.isNull())
     {
+        // qDebug() << "Avatar::updateGeneratedAvatar() " << toString() << printCurrentDateTime();
+
         updateProducers();
     }
 }

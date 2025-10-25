@@ -168,7 +168,7 @@ void ElidedContainer::updateSize(const QSize& newSize)
             }
         }
 #if 0
-        UNCOMMENTED_QDEBUG << "Move widget " << i <<  " to pos=" << pos << " y=" << y << " width="<<widgetWidth << " height="<<newHeight
+        qDebug() << "Move widget " << i <<  " to pos=" << pos << " y=" << y << " width="<<widgetWidth << " height="<<newHeight
                  << " totalWidth="<<newWidth;
 #endif
         pos+=widgetWidth;

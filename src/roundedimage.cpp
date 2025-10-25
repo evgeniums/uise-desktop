@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScreen>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -40,6 +41,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
     : QLabel(parent,f),
       m_pixmapConsumer(nullptr),
+      m_prevPixmapConsumer(nullptr),
       m_autoSize(true),
       m_hovered(false),
       m_parentHovered(false),
@@ -92,6 +94,10 @@ void RoundedImage::setImageSize(
 {
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     m_size=size * pixelRatio;
+
+    // qDebug() << "RoundedImage::setImageSize() m_size="<<m_size
+    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
+
     setFixedSize(size);
     createPixmapConsumer();
 }
@@ -109,16 +115,51 @@ bool RoundedImage::isDeviceImageSizeEqual(const QSize& other) const
 
 void RoundedImage::createPixmapConsumer()
 {
-    if (m_pixmapConsumer!=nullptr)
+    auto minSize=minimumSize();
+#if 0
+    qDebug() << "RoundedImage::createPixmapConsumer() minSize="<<minSize << " m_size="<<m_size
+                       << " path=" << toWithPath().toString()  << " " << printCurrentDateTime();
+#endif
+    if ((m_size.isNull() || !m_size.isValid()) && minSize.isValid())
     {
-        delete m_pixmapConsumer;
-        m_pixmapConsumer=nullptr;
-    }
-    if (!m_imageSource || path().empty() || !m_size.isValid() || m_size.isNull())
-    {
-        return;
+        const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+        m_size=minSize*pixelRatio;
     }
 
+    if (m_pixmapConsumer!=nullptr)
+    {
+        if (m_size==m_pixmapConsumer->size() && path()==m_pixmapConsumer->path())
+        {
+#if 0
+            qDebug() << "RoundedImage::createPixmapConsumer() use existing consumer m_size="<<m_size
+                               << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
+#endif
+            update();
+            return;
+        }
+#if 0
+        qDebug() << "RoundedImage::createPixmapConsumer() destroy existing consumer m_size="<<m_size
+                           << " path=" << toWithPath().toString()
+                           << " consumerSize=" << m_pixmapConsumer->size()
+                           << " consumerPath="<<m_pixmapConsumer->toWithPath().toString()
+                            << " " << printCurrentDateTime();
+#endif
+        m_prevPixmapConsumer=m_pixmapConsumer;
+    }
+
+    if (!m_imageSource || path().empty() || !m_size.isValid() || m_size.isNull())
+    {
+#if 0
+        qDebug() << "RoundedImage::createPixmapConsumer() not ready" << " " << printCurrentDateTime();
+#endif
+        delete m_pixmapConsumer;
+        m_pixmapConsumer=nullptr;
+        return;
+    }
+#if 0
+    qDebug() << "RoundedImage::createPixmapConsumer() create new consumer m_size="<<m_size
+        << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
+#endif
     m_pixmapConsumer=new PixmapConsumer(path(),m_size,this);
     m_pixmapConsumer->setPixmapSource(m_imageSource);
     connect(
@@ -127,7 +168,12 @@ void RoundedImage::createPixmapConsumer()
         this,
         &RoundedImage::onPixmapUpdated
     );
-    update();
+    if (m_pixmapConsumer->pixmapProducer()!=nullptr && !m_pixmapConsumer->pixmapProducer()->pixmap().isNull())
+    {
+        delete m_prevPixmapConsumer;
+        m_prevPixmapConsumer=nullptr;
+        update();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -192,6 +238,9 @@ IconMode RoundedImage::currentSvgIconMode() const
 
 void RoundedImage::paintEvent(QPaintEvent *event)
 {
+    // qDebug() << "RoundedImage::paintEvent() m_size="<<m_size
+    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
+
     // update image size
     auto imageSizeMatch=isDeviceImageSizeEqual(size());
     if (!imageSizeMatch && m_autoSize)
@@ -210,10 +259,17 @@ void RoundedImage::paintEvent(QPaintEvent *event)
         // use svg icon
         px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
     }
-    if (px.isNull() && m_pixmapConsumer!=nullptr)
+    if (px.isNull())
     {
-        // use pixmap from pixmap consumer
-        px=m_pixmapConsumer->pixmapProducer()->pixmap();
+        if (m_pixmapConsumer!=nullptr)
+        {
+            // use pixmap from pixmap consumer
+            px=m_pixmapConsumer->pixmapProducer()->pixmap();
+        }
+        if (px.isNull() && m_prevPixmapConsumer!=nullptr)
+        {
+            px=m_prevPixmapConsumer->pixmapProducer()->pixmap();
+        }
     }
 
     // draw pixmap
@@ -271,7 +327,16 @@ void RoundedImage::setParentHovered(bool enable)
 
 void RoundedImage::onPixmapUpdated()
 {
-    repaint();
+    // qDebug() << "RoundedImage::onPixmapUpdated() " << this << " m_size="<<m_size
+    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
+
+    if (m_prevPixmapConsumer!=nullptr)
+    {
+        delete m_prevPixmapConsumer;
+        m_prevPixmapConsumer=nullptr;
+    }
+
+    update();
 }
 
 //--------------------------------------------------------------------------

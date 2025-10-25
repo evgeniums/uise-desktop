@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/stylecontext.hpp>
+#include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/pixmapproducer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -199,6 +200,9 @@ PixmapSource::~PixmapSource()
 
 std::shared_ptr<PixmapProducer> PixmapSource::acquireProducer(PixmapConsumer* consumer)
 {
+    // qDebug() << "PixmapSource::acquireProducer consumer="<<consumer
+    //                    <<" path="<<consumer->toString() << " size="<<consumer->size();
+
     auto& kIdx=keyIdx();
 
     auto it=kIdx.find(consumer->pixmapKey());
