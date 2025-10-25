@@ -220,18 +220,18 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         node,
         &HTreeNode::nameUpdated,
         self,
-        [this](const QString& val)
+        [this,index](const QString& val)
         {
-            navbar->setItemName(nodes.size(),val);
+            navbar->setItemName(index,val);
         }
     );
     node->connect(
         node,
         &HTreeNode::tooltipUpdated,
         self,
-        [this](const QString& val)
+        [this,index](const QString& val)
         {
-            navbar->setItemTooltip(nodes.size(),val);
+            navbar->setItemTooltip(index,val);
         }
     );
     node->connect(
