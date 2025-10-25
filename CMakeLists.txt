@@ -54,6 +54,7 @@ SET (HEADERS
     include/uise/desktop/utils/makenullwidget.hpp
     include/uise/desktop/utils/withpathandsize.hpp
     include/uise/desktop/utils/enums.hpp
+    include/uise/desktop/utils/datetime.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
