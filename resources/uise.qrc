@@ -55,5 +55,7 @@
         <file>style/dark/flyweightlistview.qss</file>
         <file>style/avatar.json</file>
         <file>style/dark/avatar.json</file>
+        <file>style/toast.qss</file>
+        <file>style/dark/toast.qss</file>
     </qresource>
 </RCC>
