@@ -1,0 +1,7 @@
+uise--Toast {
+border-radius: 10px;
+}
+
+uise--Toast QLabel {
+padding: 10px;
+}
