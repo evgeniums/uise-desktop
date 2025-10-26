@@ -95,16 +95,7 @@ class HTreeTab_p
 
 void HTreeTab_p::scrollToEnd()
 {
-    auto timer=new SingleShotTimer(self);
-    timer->shot(50,[this,timer]()
-    {
-        if (!nodes.empty())
-        {
-            splitter->scrollToIndex(nodes.size()-1);
-        }
-
-        timer->deleteLater();
-    });
+    splitter->scrollToEnd();
 }
 
 //--------------------------------------------------------------------------
@@ -290,7 +281,16 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     }
     else
     {
-        splitter->scrollToIndex(index);
+        scrolTimer->shot(50,
+            [this,node=QPointer<HTreeNode>{node}]
+            {
+                if (node)
+                {
+                    scrollToNode(node);
+                }
+            },
+            true
+        );
     }
 }
 
