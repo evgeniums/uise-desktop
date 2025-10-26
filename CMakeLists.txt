@@ -147,6 +147,9 @@ SET (HEADERS
     include/uise/desktop/imageeditdialog.hpp
 
     include/uise/desktop/jumpedge.hpp
+
+    include/uise/desktop/newpasswordpanel.hpp
+    include/uise/desktop/toast.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -240,6 +243,9 @@ SET (SOURCES
     src/imageeditdialog.cpp
 
     src/jumpedge.cpp
+
+    src/newpasswordpanel.cpp
+    src/toast.cpp
 )
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)

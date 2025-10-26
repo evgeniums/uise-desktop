@@ -37,6 +37,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/passwordinput.hpp>
 #include <uise/desktop/passworddialog.hpp>
+#include <uise/desktop/newpasswordpanel.hpp>
+#include <uise/desktop/toast.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -71,8 +73,12 @@ int main(int argc, char *argv[])
         }
     );
 
+    QFrame* buttonsFrame=new QFrame();
+    mainL->addWidget(buttonsFrame);
+    auto bl=Layout::horizontal(buttonsFrame);
+
     auto showDialog=new QPushButton("Show dialog");
-    mainL->addWidget(showDialog);
+    bl->addWidget(showDialog);
     auto showError=new QPushButton("Show error");
     showError->setVisible(false);
     mainL->addWidget(showError);
@@ -120,7 +126,25 @@ int main(int argc, char *argv[])
 
             dialog->setDialogFocus();
         }
-    );    
+    );
+
+    auto showNewPasswordPanel=new QPushButton("Show new password");
+    bl->addWidget(showNewPasswordPanel);
+    QObject::connect(
+        showNewPasswordPanel,
+        &QPushButton::clicked,
+        mainFrame,
+        [=]()
+        {
+            AbstractNewPasswordPanel* panel=new NewPasswordPanel();
+            panel->construct();
+            auto* toast=new Toast(mainFrame);
+            toast->setDrawInParent(true);
+            panel->setGlobalToast(toast);
+            mainL->insertWidget(mainL->count()-1,panel);
+        }
+    );
+
     mainL->addStretch(1);
 
     w.setCentralWidget(mainFrame);
