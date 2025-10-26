@@ -50,14 +50,34 @@ class UISE_DESKTOP_EXPORT PasswordInput : public QFrame
         PasswordInput& operator=(const PasswordInput&)=delete;
         PasswordInput& operator=(PasswordInput&&)=delete;
 
-        void setUnmaskButtonChecked(bool enable);
-        bool isUnmaskButtonChecked() const;
-
         QLineEdit* editor() const;
+
+        bool isUnmaskButtonChecked() const;
+        bool isUnmaskButtonVisible() const;
+        bool isClearButtonEnabled() const;
+
+        QString title() const;
+        bool isTitleVisible() const;
+
+        QString password() const
+        {
+            return editor()->text();
+        }
 
     signals:
 
         void returnPressed();
+
+        void unmaskButtonToggled(bool enable);
+
+    public slots:
+
+        void setUnmaskButtonChecked(bool enable);
+        void setUnmaskButtonVisible(bool enable);
+        void setClearButtonEnabled(bool enable);
+
+        void setTitle(const QString& title);
+        void setTitleVisible(bool enable);
 
     private:
 
