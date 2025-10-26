@@ -159,7 +159,12 @@ class DirListItem : public HTreeStandardListItem
 
         std::string sortValue() const noexcept
         {
-            return name();
+            QString dirFlag="0";
+            if (!entry.is_directory())
+            {
+                dirFlag="1";
+            }
+            return QString{"%1%2"}.arg(dirFlag,QString::fromStdString(name())).toStdString();
         }
 
         std::string id() const
@@ -296,7 +301,9 @@ class DirList : public HTreeListFlyweightView<DirItemWrapper>
                     {
                         return true;
                     }
-                    return l<r;
+                    auto ll=QString::fromStdString(l.path().filename().string());
+                    auto rl=QString::fromStdString(r.path().filename().string());
+                    return ll<rl;
                 });
 
                 for (const auto& entry : entries)
