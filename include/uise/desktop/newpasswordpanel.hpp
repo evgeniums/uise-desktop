@@ -82,6 +82,8 @@ class UISE_DESKTOP_EXPORT AbstractNewPasswordPanel : public WidgetQFrame
             return m_globalToast;
         }
 
+        virtual GeneratorFn defaultPasswordGenerator() const =0;
+
     signals:
 
         void passwordEntered();
@@ -150,6 +152,8 @@ class UISE_DESKTOP_EXPORT NewPasswordPanel : public AbstractNewPasswordPanel
         {
             return m_defaultGenMaxLength;
         }
+
+        virtual GeneratorFn defaultPasswordGenerator() const override;
 
     public slots:
 

@@ -294,7 +294,7 @@ void NewPasswordPanel::construct()
     setPasswordGenerator(
         [this]()
         {
-            auto str=defaultPasswordGenerator(defaultGenMinLength(),defaultGenMaxLength());
+            auto str=UISE_DESKTOP_NAMESPACE::defaultPasswordGenerator(defaultGenMinLength(),defaultGenMaxLength());
             return QString::fromStdString(str);
         }
     );
@@ -406,6 +406,18 @@ void NewPasswordPanel::checkPasswordThenEmit()
     {
         setError(tr("Values do not match"));
     }
+}
+
+//--------------------------------------------------------------------------
+
+AbstractNewPasswordPanel::GeneratorFn NewPasswordPanel::defaultPasswordGenerator() const
+{
+    AbstractNewPasswordPanel::GeneratorFn fn=[this]() -> QString
+    {
+        auto str=UISE_DESKTOP_NAMESPACE::defaultPasswordGenerator(defaultGenMinLength(),defaultGenMaxLength());
+        return QString::fromStdString(str);
+    };
+    return fn;
 }
 
 //--------------------------------------------------------------------------
