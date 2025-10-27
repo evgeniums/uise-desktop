@@ -1,3 +1,9 @@
 uise--PushButton QPushButton {
     padding: 2px;
 }
+
+QCheckBox, QRadioButton {
+padding: 2px 0;
+border-radius: 2px;
+border: 2px solid transparent;
+}

@@ -55,7 +55,7 @@ QTextEdit {
 
 QComboBox {padding-left:4px;}
 QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus,
-QTextEdit:focus {border: 2px solid #777777;}
+QTextEdit:focus,QCheckBox:hover,QCheckBox:focus, QRadioButton:hover, QRadioButton:focus {border: 2px solid #777777;}
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button,
