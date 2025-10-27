@@ -2,7 +2,13 @@ uise--EditableLabel uise--PushButton QPushButton {
     icon-size: 14px;
 }
 
-uise--EditableLabel #label
+uise--EditableLabel #label,
+uise--EditableLabel #comment
+{
+    margin-right: 2px;
+}
+
+uise--EditableLabel #comment
 {
     margin-right: 2px;
 }

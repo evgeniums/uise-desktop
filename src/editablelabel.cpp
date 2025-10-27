@@ -52,7 +52,12 @@ EditableLabel::EditableLabel(
         m_panel(nullptr),
         m_editable(true)
 {
-    m_layout=Layout::horizontal(this);
+    m_mainLayout=Layout::vertical(this);
+
+    auto mainFrame=new QFrame(this);
+    m_mainLayout->addWidget(mainFrame);
+
+    m_layout=Layout::horizontal(mainFrame);
     m_layout->addWidget(m_label,100);
     m_label->setObjectName("label");
     m_label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
@@ -95,6 +100,13 @@ EditableLabel::EditableLabel(
     m_cancelButton->setVisible(false);
     connect(m_cancelButton,&PushButton::clicked,this,&EditableLabel::cancel);
     m_buttonsLayout->addWidget(m_cancelButton,Qt::AlignBaseline | Qt::AlignLeft);
+
+    m_comment=new QLabel(mainFrame);
+    m_comment->setObjectName("comment");
+    m_comment->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_comment->setWordWrap(true);
+    m_mainLayout->addWidget(m_comment);
+    m_comment->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -220,6 +232,19 @@ void EditableLabel::setEditablePanel(AbstractEditablePanel* panel)
             &AbstractEditablePanel::contentEdited
         );
     }
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabel::setComment(const QString& comment)
+{
+    m_comment->setText(comment);
+    m_comment->setVisible(!comment.isEmpty());
+}
+
+QString EditableLabel::comment() const
+{
+    return m_comment->text();
 }
 
 //--------------------------------------------------------------------------

@@ -422,6 +422,13 @@ void EditablePanel::contentEdited()
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::setStatusFrameVisible(bool enable)
+{
+    pimpl->statusFrame->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
 int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
 {
     widget->setEditablePanel(this);

@@ -101,6 +101,16 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return addRow(label,{Item{widget,alignment,columnSpan,1}},comment);
         }
 
+        int addRow(const QString& label, QWidget* widget, const QString& comment)
+        {
+            return addRow(label,widget,1,Qt::Alignment{},comment);
+        }
+
+        int addRow(QWidget* widget, const QString& comment={})
+        {
+            return addRow("",widget,1,Qt::Alignment{},comment);
+        }
+
         int addRow(std::vector<Item> items, const QString& comment={})
         {
             return addRow("",std::move(items),comment);
@@ -173,6 +183,18 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return m_requestGroupEditingEnabled;
         }
 
+        void setLabelAlignment(Qt::Alignment alignment)
+        {
+            m_labelAlignment=alignment;
+        }
+
+        Qt::Alignment labelAlignment() const
+        {
+            return m_labelAlignment;
+        }
+
+        virtual void setStatusFrameVisible(bool enable) =0;
+
     signals:
 
         void editRequested();
@@ -203,6 +225,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 
         std::shared_ptr<Status> m_statusHelper;
         bool m_requestGroupEditingEnabled=false;
+        Qt::Alignment m_labelAlignment=Qt::AlignRight | Qt::AlignVCenter;
 };
 
 class EditablePanel_p;
@@ -247,6 +270,8 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
         void setBusyWaiting(bool) override;
 
         void showStatus(const QString& message, const QString& status) override;
+
+        void setStatusFrameVisible(bool enable) override;
 
     public slots:
 

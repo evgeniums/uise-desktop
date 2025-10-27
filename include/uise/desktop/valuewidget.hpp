@@ -120,8 +120,15 @@ class AbstractValueWidget : public QWidget
 
         using QWidget::QWidget;
 
-        virtual void setVariantValue(const QVariant& val)=0;
-        virtual QVariant variantValue() const=0;
+        virtual void setVariantValue(const QVariant& val)
+        {
+            std::ignore=val;
+        }
+
+        virtual QVariant variantValue() const
+        {
+            return QVariant{};
+        }
 
         void setConfig(ValueWidgetConfig config)
         {
@@ -141,7 +148,6 @@ class AbstractValueWidget : public QWidget
 
         virtual void setEditablePanel(AbstractEditablePanel*)
         {}
-
 
         void setGroupEditingRequestEnabled(bool enable)
         {

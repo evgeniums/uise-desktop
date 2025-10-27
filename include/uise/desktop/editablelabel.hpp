@@ -136,7 +136,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
          * @brief Get label editor.
          * @return Query result.
          */
-        virtual QWidget* editor() const noexcept =0;
+        QWidget* editor() const noexcept
+        {
+            return m_editor;
+        }
 
         /**
          * @brief Set text formatter.
@@ -212,6 +215,14 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             return m_editable;
         }
 
+        void setComment(const QString& comment);
+        QString comment() const;
+
+        void setEditor(QWidget* widget)
+        {
+            m_editorLayout->addWidget(widget);
+        }
+
     public slots:
 
         /**
@@ -235,7 +246,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         /**
          * @brief Apply editor,
          */
-        virtual void apply() = 0;
+        virtual void apply()
+        {}
 
         /**
          * @brief Cancel editing.
@@ -263,12 +275,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
     protected:
 
-        QBoxLayout* editorLayout() const noexcept
-        {
-            return m_editorLayout;
-        }
-
-        virtual void restoreWidgetValue() =0;
+        virtual void restoreWidgetValue()
+        {}
 
         bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -285,6 +293,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         Type m_type;
         QLabel* m_label;
+        QBoxLayout* m_mainLayout;
         QBoxLayout* m_layout;
         QFrame* m_editorFrame;
         QBoxLayout* m_editorLayout;
@@ -302,7 +311,10 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         PushButton* m_cancelButton;
 
         AbstractEditablePanel* m_panel;
-        bool m_editable;        
+        bool m_editable;
+
+        QLabel* m_comment;
+        QWidget* m_editor;
 };
 
 /**
@@ -889,7 +901,7 @@ class EditableLabelTmpl : public EditableLabel
                     parent
                   ))
         {
-            editorLayout()->addWidget(m_editor);
+            setEditor(m_editor);
 
             m_editor->setObjectName("editor");
             m_editor->installEventFilter(this);
@@ -951,15 +963,6 @@ class EditableLabelTmpl : public EditableLabel
             helper::updateConfig(m_editor,config());
             auto editable=config().property(ValueWidgetProperty::Editable,true).toBool();
             setEditable(editable);
-        }
-
-        /**
-         * @brief Get editor widget.
-         * @return Query result.
-         */
-        QWidget* editor() const noexcept override
-        {
-            return m_editor;
         }
 
         /**

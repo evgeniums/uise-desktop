@@ -3,13 +3,26 @@ border: 2px solid #444444;
 background-color: #282828;
 }
 
-uise--EditablePanel QLabel {
+uise--EditablePanel #contentFrame{
+}
+
+uise--EditablePanel QLabel,
+uise--EditablePanel uise--EditableLabel QLabel#comment {
 color: #BBBBBB;
 }
 
-uise--EditablePanel uise--EditableLabel QLabel {
+uise--EditablePanel QLabel:disabled,
+uise--EditablePanel uise--EditableLabel QLabel#comment:disabled {
+color: #777777;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel#label {
 background-color: #444444;
 color: #FFFFFF;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel#label:disabled {
+color: #777777;
 }
 
 uise--EditablePanel uise--PushButton QPushButton
