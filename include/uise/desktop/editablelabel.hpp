@@ -220,6 +220,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         void setEditor(QWidget* widget)
         {
+            m_editor=widget;
             m_editorLayout->addWidget(widget);
         }
 
