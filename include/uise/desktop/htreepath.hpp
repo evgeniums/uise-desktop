@@ -148,6 +148,27 @@ class HTreePathElement
             return m_data;
         }
 
+        QVariantMap dataMap() const
+        {
+            if (!m_data.isNull() && m_data.metaType().id()==QMetaType::QVariantMap)
+            {
+                return m_data.toMap();
+            }
+            return QVariantMap{};
+        }
+
+        void setData(const QString& key, const QVariant& value)
+        {
+            auto m=dataMap();
+            m.insert(key,value);
+            setData(m);
+        }
+
+        QVariant data(const QString& key,const QVariant& defaultValue={}) const
+        {
+            return dataMap().value(key);
+        }
+
         std::string uniqueId() const
         {
             return m_uniqueId;
@@ -248,7 +269,7 @@ class HTreePath
             return &m_elements.back();
         }
 
-        std::string type() const noexcept
+        std::string type() const
         {
             auto l=last();
             if (l==nullptr)
@@ -258,7 +279,7 @@ class HTreePath
             return l->type();
         }
 
-        std::string id() const noexcept
+        std::string id() const
         {
             auto l=last();
             if (l==nullptr)
@@ -268,7 +289,7 @@ class HTreePath
             return l->id();
         }
 
-        std::string uniqueId() const noexcept
+        std::string uniqueId() const
         {
             auto l=last();
             if (l==nullptr)
@@ -278,7 +299,7 @@ class HTreePath
             return l->uniqueId();
         }
 
-        std::string name() const noexcept
+        std::string name() const
         {
             auto l=last();
             if (l==nullptr)
@@ -288,7 +309,7 @@ class HTreePath
             return l->name();
         }
 
-        QVariant data() const noexcept
+        QVariant data() const
         {
             auto l=last();
             if (l==nullptr)
@@ -296,6 +317,36 @@ class HTreePath
                 return QVariant{};
             }
             return l->data();
+        }
+
+        QVariantMap dataMap() const
+        {
+            auto l=last();
+            if (l==nullptr)
+            {
+                return QVariantMap{};
+            }
+            return l->dataMap();
+        }
+
+        void setData(const QString& key, const QVariant& value)
+        {
+            auto l=last();
+            if (l==nullptr)
+            {
+                return;
+            }
+            l->setData(key,value);
+        }
+
+        QVariant data(const QString& key,const QVariant& defaultValue={}) const
+        {
+            auto l=last();
+            if (l==nullptr)
+            {
+                return QVariant{};
+            }
+            return l->data(key,defaultValue);
         }
 
         bool operator== (const HTreePath& other) const noexcept
@@ -318,6 +369,30 @@ class HTreePath
             auto p=*this;
             p.m_elements.emplace_back(std::move(el));
             return p;
+        }
+
+        bool hasType(std::string_view type) const
+        {
+            for (const auto& el : m_elements)
+            {
+                if (el.type()==type)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        const HTreePathElement* findByType(std::string_view type) const
+        {
+            for (const auto& el : m_elements)
+            {
+                if (el.type()==type)
+                {
+                    return &el;
+                }
+            }
+            return nullptr;
         }
 
     private:
