@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QFrame>
 #include <QPushButton>
+#include <QToolButton>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -41,13 +42,26 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
 
     public:
 
-        PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr)
+        PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr, bool toolButton=false)
             : QFrame(parent),
               m_icon(std::move(icon)),
+              m_pushButton(nullptr),
+              m_toolButton(nullptr),
               m_parentHovered(false)
         {
             auto l=Layout::vertical(this);
-            m_button=new QPushButton(this);
+
+            if (toolButton)
+            {
+                m_toolButton=new QToolButton(this);
+                m_button=m_toolButton;
+            }
+            else
+            {
+                m_pushButton=new QPushButton(this);
+                m_button=m_pushButton;
+            }
+
             l->addWidget(m_button);
 
             if (m_icon)
@@ -59,15 +73,15 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             connect(m_button,&QPushButton::toggled,this,&PushButton::toggled);
         }
 
-        PushButton(QWidget* parent=nullptr) : PushButton(std::shared_ptr<SvgIcon>{},parent)
+        PushButton(QWidget* parent=nullptr, bool toolButton=false) : PushButton(std::shared_ptr<SvgIcon>{},parent,toolButton)
         {}
 
-        PushButton(const QString text, QWidget* parent=nullptr) : PushButton(std::shared_ptr<SvgIcon>{},parent)
+        PushButton(const QString text, QWidget* parent=nullptr, bool toolButton=false) : PushButton(std::shared_ptr<SvgIcon>{},parent,toolButton)
         {
             setText(text);
         }
 
-        PushButton(const QString text, std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr) : PushButton(std::move(icon),parent)
+        PushButton(const QString text, std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr, bool toolButton=false) : PushButton(std::move(icon),parent,toolButton)
         {
             setText(text);
         }
@@ -134,6 +148,16 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             return m_button->text();
         }
 
+        QPushButton* qPushButton() const
+        {
+            return m_pushButton;
+        }
+
+        QToolButton* qToolButton() const
+        {
+            return m_toolButton;
+        }
+
     signals:
 
         void clicked();
@@ -159,7 +183,11 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
 
     private:
 
-        QPushButton* m_button;
+        QAbstractButton* m_button;
+
+        QPushButton* m_pushButton;
+        QToolButton* m_toolButton;
+
         std::shared_ptr<SvgIcon> m_icon;
         bool m_parentHovered;
 };
