@@ -161,6 +161,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
         void setAutoColor(bool enable);
         bool isAutoColor() const;
 
+        void setContentWidget(QWidget* widget);
+
     signals:
 
         void popupHidden();

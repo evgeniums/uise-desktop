@@ -26,8 +26,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <QResizeEvent>
 #include <QShortcut>
 #include <QPalette>
+#include <QBoxLayout>
+#include <QPointer>
 
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/modalpopup.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -45,7 +48,7 @@ class ModalPopup_p
         QShortcut* shortcut=nullptr;
 
         bool shortcutEnabled=true;
-        bool autoDestroy=false;
+        bool autoDestroy=false;        
 };
 
 //--------------------------------------------------------------------------
@@ -224,6 +227,8 @@ class FrameWithModalPopup_p
         bool locked=false;
         bool autoDestroy=true;
         bool autoColor=true;
+        QBoxLayout* layout=nullptr;
+        QPointer<QWidget> contentWidget;
 
         int maxWidthPercent=FrameWithModalPopup::DefaultMaxWidthPercent;
         int maxHeightPercent=FrameWithModalPopup::DefaultMaxHeightPercent;
@@ -363,6 +368,20 @@ void FrameWithModalPopup::setAutoColor(bool enable)
 bool FrameWithModalPopup::isAutoColor() const
 {
     return pimpl->autoColor;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setContentWidget(QWidget* widget)
+{
+    destroyWidget(pimpl->contentWidget);
+    if (pimpl->layout)
+    {
+        pimpl->layout->deleteLater();
+    }
+
+    pimpl->layout=Layout::vertical(this);
+    pimpl->layout->addWidget(widget);
 }
 
 //--------------------------------------------------------------------------
