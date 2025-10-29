@@ -357,7 +357,7 @@ void NewPasswordPanel::reset()
     setMaskMode(true);
     pimpl->password->editor()->clear();
     pimpl->repeatPassword->editor()->clear();
-    pimpl->error->clear();
+    pimpl->error->setText(" ");
 }
 
 //--------------------------------------------------------------------------
@@ -365,6 +365,10 @@ void NewPasswordPanel::reset()
 void NewPasswordPanel::setError(const QString& message)
 {
     pimpl->error->setText(message);
+    if (message.isEmpty())
+    {
+        pimpl->error->setText(" ");
+    }
 }
 
 //--------------------------------------------------------------------------
