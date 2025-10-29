@@ -83,7 +83,7 @@ class ModalDialog : public FrameWithModalPopup,
          * @parame destroyOnCancel Destroy dialog if cancelled.
          * @return Returns true if new dialog is created, false if dialog already existed.
          */
-        bool openDialog(bool destroyOnCancel=true)
+        bool openDialog(bool destroyOnCancel=true, bool show=true)
         {
             if (m_dialog)
             {
@@ -132,8 +132,11 @@ class ModalDialog : public FrameWithModalPopup,
                 &AbstractDialog::closeDialog
             );
 
-            popup();
-            dialogWidget->setDialogFocus();
+            if (show)
+            {
+                popup();
+                dialogWidget->setDialogFocus();
+            }
             return true;
         }
 
