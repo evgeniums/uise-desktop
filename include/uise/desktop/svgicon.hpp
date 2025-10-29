@@ -336,11 +336,11 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
 
         bool addFile(
             const QString& filename,
-            IconVariant state,
+            IconVariant mode,
             const SizeSet& sizes=SizeSet{}
         )
         {
-            return addFile(filename,{{state,ColorMap{}}},sizes);
+            return addFile(filename,{{mode,ColorMap{}}},sizes);
         }
 
         bool addFile(
@@ -356,6 +356,21 @@ class UISE_DESKTOP_EXPORT SvgIcon : public std::enable_shared_from_this<SvgIcon>
             )
         {
             return addFile(filename,IconMode::Normal,SizeSet{});
+        }
+
+        bool loadFromData(
+            const QByteArray& content,
+            const std::map<IconVariant,ColorMap>& colorMaps,
+            const SizeSet& sizes=SizeSet{}
+        );
+
+        bool loadFromData(
+            const QByteArray& content,
+            IconVariant mode=IconMode::Normal,
+            const SizeSet& sizes=SizeSet{}
+        )
+        {
+            return loadFromData(content,{{mode,ColorMap{}}},sizes);
         }
 
         void reset()

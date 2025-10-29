@@ -136,26 +136,15 @@ QPixmap SvgIcon::makePixmap(const QSize &size, IconVariant mode,  QIcon::State s
 
 //--------------------------------------------------------------------------
 
-bool SvgIcon::addFile(
-        const QString& filename,
-        const std::map<IconVariant,ColorMap>& colorMaps,
-        const SizeSet& sizes
-    )
+bool SvgIcon::loadFromData(
+    const QByteArray& content,
+    const std::map<IconVariant,ColorMap>& colorMaps,
+    const SizeSet& sizes
+)
 {
-    // qDebug() << "SvgIcon::addFile name=" << m_name;
-
-    // load content from file
-    QFile file(filename);
-    if (!file.open(QFile::ReadOnly))
-    {
-        qWarning() << "Failed to open SVG file " << filename << ": " << file.errorString();
-        return false;
-    }
-    auto content=file.readAll();
     QSvgRenderer renderer(content);
     if (!renderer.isValid())
     {
-        qWarning() << "Invalid format of SVG file " << filename;
         return false;
     }
 
@@ -168,26 +157,16 @@ bool SvgIcon::addFile(
 
             if (!colorMap.second.on.empty())
             {
-                // qDebug() << "SvgIcon::addFile color map on not empty";
-
                 auto on=content;
                 for (const auto& colorMapping : colorMap.second.on)
                 {
                     on.replace(colorMapping.first.toLocal8Bit().data(),colorMapping.second.toLocal8Bit().data());
                 }
                 m_onContent.emplace(colorMap.first,on);
-
-                // qDebug() << "m_onContent " << QString::fromUtf8(on) << " for mode " << colorMap.first;
-            }
-            else
-            {
-                // qDebug() << "SvgIcon::addFile color map on empty";
             }
 
             if (!colorMap.second.off.empty())
             {
-                // qDebug() << "SvgIcon::addFile color map off not empty";
-
                 auto off=content;
                 for (const auto& colorMapping : colorMap.second.off)
                 {
@@ -195,11 +174,6 @@ bool SvgIcon::addFile(
                 }
                 m_offContent.emplace(colorMap.first,off);
 
-                // qDebug() << "m_offContent " << QString::fromUtf8(off) << " for mode " << colorMap.first;
-            }
-            else
-            {
-                // qDebug() << "SvgIcon::addFile color map off empty";
             }
 
             // fill cache of pixmaps for all sizes
@@ -217,11 +191,8 @@ bool SvgIcon::addFile(
         }
     };
 
-    // qDebug() << "m_initialContent " << QString::fromUtf8(content);
-
     if (colorMaps.empty())
     {
-        // qDebug() << "SvgIcon::addFile color maps empty";
         std::map<IconVariant,ColorMap> colorMaps{
             {IconMode::Normal,{}}
         };
@@ -229,12 +200,30 @@ bool SvgIcon::addFile(
     }
     else
     {
-        // qDebug() << "SvgIcon::addFile color maps not empty";
         exec(colorMaps);
     }
 
     // done
     return true;
+}
+
+//--------------------------------------------------------------------------
+
+bool SvgIcon::addFile(
+        const QString& filename,
+        const std::map<IconVariant,ColorMap>& colorMaps,
+        const SizeSet& sizes
+    )
+{
+    // load content from file
+    QFile file(filename);
+    if (!file.open(QFile::ReadOnly))
+    {
+        qWarning() << "Failed to open SVG file " << filename << ": " << file.errorString();
+        return false;
+    }
+    auto content=file.readAll();    
+    return loadFromData(content,colorMaps,sizes);
 }
 
 //--------------------------------------------------------------------------
