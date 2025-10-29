@@ -4,3 +4,6 @@
 [submodule "thirdparty/qtcolorwidgets"]
 	path = thirdparty/qtcolorwidgets
 	url = https://gitlab.com/mattbas/Qt-Color-Widgets.git
+[submodule "thirdparty/zxing-cpp"]
+	path = thirdparty/zxing-cpp
+	url = https://github.com/zxing-cpp/zxing-cpp.git

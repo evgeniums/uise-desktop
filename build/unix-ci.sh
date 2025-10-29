@@ -98,11 +98,23 @@ if [ -d $build_dir ];
 fi
 mkdir -p $build_dir
 
+echo "install_prefix=${uise_install_prefix}"
+
+if [[ -n "${uise_install_prefix}" ]]
+then    
+    install_prefix="-DCMAKE_INSTALL_PREFIX=$uise_install_prefix"
+fi
+
 export current_dir=$PWD
 cd $build_dir
 
-cmake -G "Unix Makefiles" -DUISE_TEST_JUNIT=ON -DCMAKE_BUILD_TYPE=$build_type $src_dir
+cmake -DUISE_TEST_JUNIT=ON -DCMAKE_BUILD_TYPE=$build_type $install_prefix $src_dir
 cmake --build . -j$build_workers
+
+if [[ "$uise_install" == "yes" ]]
+then
+cmake --install . --prefix $uise_install_prefix --config $build_type
+fi
 
 if [[ "$uise_run_tests" == "1" ]];
 then

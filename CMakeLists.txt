@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(uisedesktop VERSION 0.1.1 LANGUAGES CXX)
+PROJECT(uisedesktop VERSION 0.1.1 LANGUAGES CXX C ASM)
 
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -19,9 +19,12 @@ ENDIF()
 
 FIND_PACKAGE(Qt6 COMPONENTS Core Widgets Svg REQUIRED)
 
+ADD_SUBDIRECTORY(thirdparty)
+
 SET(UISE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 OPTION(UISE_DESKTOP_STATIC "Build static uise-desktop library" OFF)
+OPTION(UISE_DESKTOP_MULTIMEDIA "Enable multimedia classesy" ON)
 
 GET_DIRECTORY_PROPERTY(HasParent PARENT_DIRECTORY)
 IF(HasParent)
@@ -150,6 +153,9 @@ SET (HEADERS
 
     include/uise/desktop/newpasswordpanel.hpp
     include/uise/desktop/toast.hpp
+
+    include/uise/desktop/qrbarcode.hpp
+    include/uise/desktop/qrcodefromimage.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -246,7 +252,23 @@ SET (SOURCES
 
     src/newpasswordpanel.cpp
     src/toast.cpp
+
+    src/qrcodefromimage.cpp
 )
+
+IF (UISE_DESKTOP_MULTIMEDIA)
+
+    LIST (APPEND HEADERS
+        include/uise/desktop/qrcodefromvideo.hpp
+        include/uise/desktop/qrcodescanner.hpp
+    )
+
+    LIST (APPEND SOURCES
+        src/qrcodefromvideo.cpp
+        src/qrcodescanner.cpp
+    )
+
+ENDIF()
 
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/file-icon-vectors.qrc)
@@ -289,8 +311,13 @@ ENDIF()
 
 FIND_PACKAGE(Boost CONFIG 1.65 REQUIRED)
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Core Qt6::Widgets Qt6::Svg)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Core Qt6::Widgets Qt6::Svg ZXing)
 TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
+
+IF (UISE_DESKTOP_MULTIMEDIA)
+    FIND_PACKAGE(Qt6 COMPONENTS Multimedia MultimediaWidgets REQUIRED)
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC Qt6::Multimedia Qt6::MultimediaWidgets)
+ENDIF()
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC QtColorWidgets)
 
@@ -343,4 +370,3 @@ IF (INSTALL_DEV)
     INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/uise DESTINATION include)
 ENDIF(INSTALL_DEV)
 
-INCLUDE(thirdparty/thirdparty.cmake)

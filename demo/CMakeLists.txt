@@ -18,3 +18,7 @@ ADD_SUBDIRECTORY(newpasswordwizard)
 ADD_SUBDIRECTORY(avatar)
 ADD_SUBDIRECTORY(elidedcontainer)
 ADD_SUBDIRECTORY(imageeditor)
+
+IF (UISE_DESKTOP_MULTIMEDIA)
+    ADD_SUBDIRECTORY(qrcodescanner)
+ENDIF()
