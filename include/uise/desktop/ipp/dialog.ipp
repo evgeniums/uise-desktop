@@ -87,7 +87,12 @@ Dialog<BaseT>::Dialog(QWidget* parent)
 {
     pimpl->widget=this;
 
-    pimpl->layout=Layout::vertical(this);
+    auto mainFrame=new QFrame(this);
+    mainFrame->setObjectName("mainFrame");
+    auto l=Layout::vertical(this);
+    l->addWidget(mainFrame);
+
+    pimpl->layout=Layout::vertical(mainFrame);
 
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
@@ -97,7 +102,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->titleClose->setToolTip(AbstractDialog::tr("Close","dialog"));
     pimpl->title=new QLabel(pimpl->titleFrame);
     pimpl->title->setAlignment(Qt::AlignCenter);
-    pimpl->title->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+    pimpl->titleFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 #ifdef Q_OS_MACOS
     tl->addWidget(pimpl->titleClose,0);
     tl->addWidget(pimpl->title,1);
@@ -122,7 +127,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->dialogFrame=new QFrame(this);
     pimpl->dialogFrame->setObjectName("dialogFrame");
     pimpl->dialogLayout=Layout::vertical(pimpl->dialogFrame);
-    pimpl->contentLayout->addWidget(pimpl->dialogFrame,1);
+    pimpl->contentLayout->addWidget(pimpl->dialogFrame);
 
     pimpl->buttonGroup=new QSignalMapper(this);
     QObject::connect(
@@ -166,7 +171,7 @@ Dialog<BaseT>::~Dialog()
 template <typename BaseT>
 void Dialog<BaseT>::setWidget(QWidget* widget)
 {
-    return pimpl->dialogLayout->addWidget(widget);
+    pimpl->dialogLayout->addWidget(widget);
 }
 
 //--------------------------------------------------------------------------
@@ -200,7 +205,7 @@ void Dialog<BaseT>::doSetButtons(std::vector<AbstractDialog::ButtonConfig> butto
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("dialogButtonsFrame");
     pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
-    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment);
+    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment | Qt::AlignBottom);
     pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     for (const auto& button: buttons)
