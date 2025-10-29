@@ -163,10 +163,7 @@ void ModalPopup::updateWidgetGeometry()
     };
 
     auto minSize=pimpl->widget->minimumSize();
-    if (minSize.isNull())
-    {
-        minSize=pimpl->widget->minimumSizeHint();
-    }
+
     auto maxSize=pimpl->widget->maximumSize();
     if (minSize==maxSize && minSize.isValid())
     {
@@ -178,20 +175,20 @@ void ModalPopup::updateWidgetGeometry()
     auto newW=w * pimpl->parent->maxWidthPercent()/100;
     auto newH=h * pimpl->parent->maxHeightPercent()/100;
 
-    if (maxSize.width()!=0 && newW>maxSize.width())
+    if (maxSize.width()>0 && newW>maxSize.width())
     {
         newW=maxSize.width();
     }
-    if (minSize.width()!=0 && newW<minSize.width())
+    if (minSize.width()>0 && newW<minSize.width())
     {
         newW=minSize.width();
     }
 
-    if (maxSize.height()!=0 && newH>maxSize.height())
+    if (maxSize.height()>0 && newH>maxSize.height())
     {
         newH=maxSize.height();
     }
-    if (minSize.height()!=0 && newH<minSize.height())
+    if (minSize.height()>0 && newH<minSize.height())
     {
         newH=minSize.height();
     }
