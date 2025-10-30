@@ -96,7 +96,7 @@ PasswordInput::PasswordInput(QWidget* parent)
     connect(pimpl->editor,&QLineEdit::returnPressed,this,&PasswordInput::returnPressed);
     pimpl->editor->setClearButtonEnabled(true);
 
-    pimpl->title->setVisible(true);
+    pimpl->title->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
