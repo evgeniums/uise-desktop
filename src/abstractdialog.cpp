@@ -132,6 +132,11 @@ AbstractDialog::ButtonConfig AbstractDialog::standardButton(StandardButton butto
             return make(button,tr("Complete"),"complete");
         }
         break;
+        case(StandardButton::Done):
+        {
+            return make(button,tr("Done"),"done");
+        }
+        break;
     }
 
     return ButtonConfig{-1,tr("Unknown")};

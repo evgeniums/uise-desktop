@@ -58,7 +58,8 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
             Back=11,
             Start=12,
             Finish=13,
-            Complete=14
+            Complete=14,
+            Done=15
         };
 
         struct ButtonConfig
