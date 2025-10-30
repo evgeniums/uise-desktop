@@ -154,6 +154,16 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         void setMinimumImageSize(const QSize& size);
         void setFixedImageSize(const QSize& size);
 
+        void setNativeFileDialog(bool enable) noexcept
+        {
+            m_nativeFileDialog=enable;
+        }
+
+        bool isNativeFileDialog() const noexcept
+        {
+            return m_nativeFileDialog;
+        }
+
     public slots:
 
         virtual void zoomIn() {}
@@ -201,6 +211,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         bool m_cropperEnabled=true;
 
         QString m_folder;
+        bool m_nativeFileDialog=true;
 };
 
 UISE_DESKTOP_NAMESPACE_END

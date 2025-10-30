@@ -286,8 +286,14 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
             QPointer<SimpleImageEditorWidget> guard{this};
             if (guard && guard->pimpl->ctrl!=nullptr)
             {
+                QFileDialog::Options options;
+                if (!pimpl->ctrl->isNativeFileDialog())
+                {
+                    options=QFileDialog::DontUseNativeDialog;
+                }
+
                 auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
-                auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter);
+                auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter,nullptr,options);
                 if (guard)
                 {
                     pimpl->filenameEdit->setText(filename);
