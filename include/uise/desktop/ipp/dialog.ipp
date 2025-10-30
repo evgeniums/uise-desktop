@@ -87,12 +87,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
 {
     pimpl->widget=this;
 
-    auto mainFrame=new QFrame(this);
-    mainFrame->setObjectName("mainFrame");
-    auto l=Layout::vertical(this);
-    l->addWidget(mainFrame);
-
-    pimpl->layout=Layout::vertical(mainFrame);
+    pimpl->layout=Layout::vertical(this);
 
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
@@ -127,7 +122,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->dialogFrame=new QFrame(this);
     pimpl->dialogFrame->setObjectName("dialogFrame");
     pimpl->dialogLayout=Layout::vertical(pimpl->dialogFrame);
-    pimpl->contentLayout->addWidget(pimpl->dialogFrame);
+    pimpl->contentLayout->addWidget(pimpl->dialogFrame,1);
 
     pimpl->buttonGroup=new QSignalMapper(this);
     QObject::connect(
@@ -205,14 +200,14 @@ void Dialog<BaseT>::doSetButtons(std::vector<AbstractDialog::ButtonConfig> butto
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("dialogButtonsFrame");
     pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
-    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment | Qt::AlignBottom);
+    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment);
     pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     for (const auto& button: buttons)
     {
         auto bt=new PushButton(button.text,button.icon,pimpl->buttonsFrame);
         bt->setObjectName(button.name);
-        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle->alignment);
+        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle->alignment | Qt::AlignBottom);
         pimpl->buttonGroup->setMapping(bt,button.id);
         QObject::connect(
             bt,
