@@ -46,6 +46,7 @@ enum class IconMode : int
     Checked=QIcon::Selected,
 
     Hovered,
+    CheckedHovered,
 
     User=0x100
 };
@@ -57,7 +58,8 @@ inline std::map<QString,IconMode> defaultModeMap()
         {"disabled",IconMode::Disabled},
         {"active",IconMode::Active},
         {"checked",IconMode::Checked},
-        {"hovered",IconMode::Hovered}
+        {"hovered",IconMode::Hovered},
+        {"checked-hovered",IconMode::CheckedHovered},
     };
     return m;
 }
