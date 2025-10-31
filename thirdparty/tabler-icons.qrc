@@ -74,5 +74,6 @@
         <file>tabler-icons/outline/chevron-right.svg</file>
         <file>tabler-icons/outline/chevron-up.svg</file>
         <file>tabler-icons/filled/camera.svg</file>
+        <file>tabler-icons/outline/file-upload.svg</file>
     </qresource>
 </RCC>
