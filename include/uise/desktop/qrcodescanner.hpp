@@ -71,7 +71,7 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
 
         void setPreviewSize(int width, int height=-1);
 
-        QSize previewSize() const;
+        QSize previewSize() const noexcept;
 
         void setButtonsVisible(bool enable);
         bool buttonsVisible() const noexcept;
@@ -100,6 +100,10 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
         void onFoundBarcode(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
         void onMissedBarcode();
         void onVideoSizeChanged();
+
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
 
     private:
 
