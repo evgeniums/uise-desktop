@@ -238,6 +238,16 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
 
         IconMode currentSvgIconMode() const;
 
+        void setDisableHover(bool disable)
+        {
+            m_disableHover=disable;
+        }
+
+        bool isHoverDisabled() const noexcept
+        {
+            return m_disableHover;
+        }
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;
@@ -276,6 +286,8 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         bool m_selected;
         bool m_cacheSvgPixmap;
         bool m_autoFitEllipse;
+
+        bool m_disableHover;
 };
 
 class UISE_DESKTOP_EXPORT WithRoundedImage : public QFrame

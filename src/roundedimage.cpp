@@ -27,6 +27,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStyle>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QEnterEvent>
+#include <QEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/datetime.hpp>
@@ -47,7 +49,8 @@ RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
       m_parentHovered(false),
       m_selected(false),
       m_cacheSvgPixmap(true),
-      m_autoFitEllipse(false)
+      m_autoFitEllipse(false),
+      m_disableHover(false)
 {}
 
 //--------------------------------------------------------------------------
@@ -94,10 +97,6 @@ void RoundedImage::setImageSize(
 {
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     m_size=size * pixelRatio;
-
-    // qDebug() << "RoundedImage::setImageSize() m_size="<<m_size
-    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
-
     setFixedSize(size);
     createPixmapConsumer();
 }
@@ -300,26 +299,42 @@ void RoundedImage::paintEvent(QPaintEvent *event)
 
 void RoundedImage::enterEvent(QEnterEvent* event)
 {
+    if (m_disableHover)
+    {
+        QFrame::enterEvent(event);
+        return;
+    }
+
     if (!m_parentHovered)
     {
         m_hovered=true;
+        event->accept();
+        update();
+        return;
     }
 
     QFrame::enterEvent(event);
-    update();
 }
 
 //--------------------------------------------------------------------------
 
 void RoundedImage::leaveEvent(QEvent* event)
 {
+    if (m_disableHover)
+    {
+        QFrame::leaveEvent(event);
+        return;
+    }
+
     if (!m_parentHovered)
     {
-        m_hovered=false;
+        QFrame::leaveEvent(event);
+        event->accept();
+        update();
+        return;
     }
 
     QFrame::leaveEvent(event);
-    update();
 }
 
 //--------------------------------------------------------------------------
