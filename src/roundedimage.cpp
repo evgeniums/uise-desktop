@@ -223,13 +223,20 @@ int RoundedImage::yRadius() const
 IconMode RoundedImage::currentSvgIconMode() const
 {
     auto mode=IconMode::Normal;
-    if (m_selected)
+    if (m_hovered||m_parentHovered)
+    {
+        if (m_selected)
+        {
+            mode=IconMode::CheckedHovered;
+        }
+        else
+        {
+            mode=IconMode::Hovered;
+        }
+    }
+    else if (m_selected)
     {
         mode=IconMode::Checked;
-    }
-    else if (m_hovered||m_parentHovered)
-    {
-        mode=IconMode::Hovered;
     }
     return mode;
 }
@@ -238,9 +245,6 @@ IconMode RoundedImage::currentSvgIconMode() const
 
 void RoundedImage::paintEvent(QPaintEvent *event)
 {
-    // qDebug() << "RoundedImage::paintEvent() m_size="<<m_size
-    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
-
     // update image size
     auto imageSizeMatch=isDeviceImageSizeEqual(size());
     if (!imageSizeMatch && m_autoSize)
@@ -296,7 +300,11 @@ void RoundedImage::paintEvent(QPaintEvent *event)
 
 void RoundedImage::enterEvent(QEnterEvent* event)
 {
-    m_hovered=true;
+    if (!m_parentHovered)
+    {
+        m_hovered=true;
+    }
+
     QFrame::enterEvent(event);
     update();
 }
@@ -305,12 +313,11 @@ void RoundedImage::enterEvent(QEnterEvent* event)
 
 void RoundedImage::leaveEvent(QEvent* event)
 {
-    if (m_parentHovered)
+    if (!m_parentHovered)
     {
-        return;
+        m_hovered=false;
     }
 
-    m_hovered=false;
     QFrame::leaveEvent(event);
     update();
 }
@@ -327,9 +334,6 @@ void RoundedImage::setParentHovered(bool enable)
 
 void RoundedImage::onPixmapUpdated()
 {
-    // qDebug() << "RoundedImage::onPixmapUpdated() " << this << " m_size="<<m_size
-    //                    << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
-
     if (m_prevPixmapConsumer!=nullptr)
     {
         delete m_prevPixmapConsumer;
