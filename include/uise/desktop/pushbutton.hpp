@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/pushm_button.hpp
+/** @file uise/desktop/pushbutton.hpp
 *
 *  Declares PushButton.
 *

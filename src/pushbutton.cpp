@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/pushm_button.cpp
+/** @file uise/desktop/pushbutton.cpp
 *
 *  Defines PushButton.
 *
@@ -23,10 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <QPaintEvent>
-#include <QStylePainter>
-#include <QStyleOptionButton>
-
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -45,8 +42,7 @@ void PushButton::enterEvent(QEnterEvent* event)
     }
     QFrame::enterEvent(event);
 
-    style()->unpolish(m_button);
-    style()->polish(m_button);
+    Style::updateWidgetStyle(m_button);
 
     emit hovered(true);
 }
@@ -69,8 +65,7 @@ void PushButton::leaveEvent(QEvent* event)
     }
     QFrame::leaveEvent(event);
 
-    style()->unpolish(m_button);
-    style()->polish(m_button);
+    Style::updateWidgetStyle(m_button);
 }
 
 //--------------------------------------------------------------------------
@@ -91,8 +86,7 @@ void PushButton::setParentHovered(bool enable)
         }
     }
 
-    style()->unpolish(m_button);
-    style()->polish(m_button);
+    Style::updateWidgetStyle(m_button);
 }
 
 //--------------------------------------------------------------------------
