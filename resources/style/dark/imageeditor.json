@@ -6,11 +6,17 @@
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#999999" },
-                    "on" :  { "currentColor" : "#FFFFFF" }
+                    "on" : { "currentColor" : "#D8D8D8" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#CCCCCC" },
-                    "on" : { "currentColor" : "#EEEEEE" }
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#E8E8E8" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#D8D8D8" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#E8E8E8" }
                 }
             }
         }
