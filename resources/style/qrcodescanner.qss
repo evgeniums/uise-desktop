@@ -1,0 +1,14 @@
+uise--QrCodeScanner #buttonsFrame {
+padding: 8px;
+}
+
+uise--QrCodeScanner #buttonsFrame uise--PushButton {
+margin-left: 8px;
+margin-right: 8px;
+}
+
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton
+{
+border-radius: 4px;
+padding: 2px 12px;
+}

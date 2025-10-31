@@ -27,15 +27,20 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVideoSink>
 #include <QMediaDevices>
 #include <QPermission>
-#include <QImageCapture>
 #include <QMediaCaptureSession>
-#include <QtMultimediaWidgets/QVideoWidget>
 #include <QMessageBox>
+#include <QThread>
+
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsVideoItem>
+#include <QGraphicsPolygonItem>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/qrcodefromvideo.hpp>
 #include <uise/desktop/qrcodescanner.hpp>
 
@@ -55,8 +60,10 @@ class QrCodeScanner_p
         QMediaCaptureSession captureSession;
         std::unique_ptr<QCamera> camera;
 
-        QFrame* videoFrame;
-        QVideoWidget *videoPreview;
+        QGraphicsScene* scene;
+        QGraphicsView* view;
+        QGraphicsVideoItem* videoPreview=nullptr;
+        QGraphicsPolygonItem* qrcodeFrame=nullptr;
 
         QFrame* buttonsFrame;
         PushButton* startButton;
@@ -65,6 +72,13 @@ class QrCodeScanner_p
         qrcode::VideoReader* qrCodeReader;
 
         bool initialized=false;
+        QSize previewSize;
+
+        bool barcodeFound=false;
+
+        QColor qrFrameColor=QrCodeScanner::DefaulQrFrameColor;
+        qreal qrFrameWidth=QrCodeScanner::DefaulQrFrameWidth;
+        Qt::PenStyle qrFrameStyle=QrCodeScanner::DefaulQrFrameStyle;
 };
 
 //--------------------------------------------------------------------------
@@ -73,6 +87,7 @@ QrCodeScanner::QrCodeScanner(QWidget* parent)
     : WidgetQFrame(parent),
       pimpl(std::make_unique<QrCodeScanner_p>())
 {
+    pimpl->previewSize=QSize(DefaultPreviewSize,DefaultPreviewSize);
 }
 
 //--------------------------------------------------------------------------
@@ -81,13 +96,20 @@ void QrCodeScanner::construct()
 {
     auto l=Layout::vertical(this);
 
-    pimpl->videoFrame=new QFrame(this);
-    pimpl->videoFrame->setObjectName("videoFrame");
-    auto vl=Layout::horizontal(pimpl->videoFrame);
-    l->addWidget(pimpl->videoFrame,0,Qt::AlignHCenter);
-    pimpl->videoPreview=new QVideoWidget(pimpl->videoFrame);
-    pimpl->videoPreview->setFixedSize(640,640);
-    vl->addWidget(pimpl->videoPreview,0,Qt::AlignCenter);
+    l->addStretch(1);
+
+    pimpl->scene=new QGraphicsScene(this);
+    pimpl->view=new QGraphicsView(this);
+    pimpl->view->setScene(pimpl->scene);
+    l->addWidget(pimpl->view,0,Qt::AlignCenter);
+
+    pimpl->videoPreview=new QGraphicsVideoItem();
+    pimpl->scene->addItem(pimpl->videoPreview);
+    pimpl->qrcodeFrame=new QGraphicsPolygonItem();
+    pimpl->scene->addItem(pimpl->qrcodeFrame);
+    pimpl->qrcodeFrame->setVisible(false);
+    pimpl->qrcodeFrame->setPen(QPen{pimpl->qrFrameColor,pimpl->qrFrameWidth,pimpl->qrFrameStyle});
+    pimpl->videoPreview->setSize(pimpl->previewSize);
 
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("buttonsFrame");
@@ -112,6 +134,12 @@ void QrCodeScanner::construct()
         this,
         &QrCodeScanner::onFoundBarcode
     );
+    connect(
+        pimpl->qrCodeReader,
+        &VideoReader::failedRead,
+        this,
+        &QrCodeScanner::onMissedBarcode
+    );
 
     connect(
         pimpl->startButton,
@@ -124,6 +152,13 @@ void QrCodeScanner::construct()
         &PushButton::clicked,
         this,
         &QrCodeScanner::stop
+    );
+
+    connect(
+        pimpl->videoPreview->videoSink(),
+        &QVideoSink::videoSizeChanged,
+        this,
+        &QrCodeScanner::onVideoSizeChanged
     );
 
     updateCameraActive(false);
@@ -149,12 +184,13 @@ void QrCodeScanner::init()
             emit displayError(tr("Camera permission is not granted!"));
             return;
         case Qt::PermissionStatus::Granted:
-            pimpl->initialized=true;
+            pimpl->initialized=true;            
             break;
     }
 #endif
 
     setCamera(QMediaDevices::defaultVideoInput());
+    start();
 }
 
 //--------------------------------------------------------------------------
@@ -204,7 +240,7 @@ void QrCodeScanner::updateCameraActive(bool active)
     if (active)
     {
         pimpl->startButton->setEnabled(false);
-        pimpl->stopButton->setEnabled(true);
+        pimpl->stopButton->setEnabled(true);        
     }
     else
     {
@@ -253,14 +289,149 @@ void QrCodeScanner::updateCameraDevice(const QVariant& device)
 void QrCodeScanner::onFoundBarcode(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode)
 {
     auto pos=barcode.position();
-    QRect r{pos.topLeft(),pos.bottomRight()};
 
-qDebug() << "QrCodeScanner::foundBarcode " << QString("Format: \t %1 \nText: \t %2 \nType: \t %3  ").arg(barcode.formatName(),barcode.text(),barcode.contentTypeName()) << "\n Size:" << r.size()
+    if (!pimpl->barcodeFound)
+    {
+        pimpl->qrcodeFrame->setVisible(true);
+    }
+    pimpl->barcodeFound=true;
+
+#if 0
+qDebug() << "QrCodeScanner::foundBarcode " << QString("Format: \t %1 \nText: \t %2 \nType: \t %3  ").arg(barcode.formatName(),barcode.text(),barcode.contentTypeName())
         << "\t TopLeft:"<<pos.topLeft()
         << "\t TopRight:"<<pos.topRight()
         << "\t BottomLeft:"<<pos.bottomLeft()
         << "\t BottomRight:"<<pos.bottomRight()
+        << "\t NativeSize:" << pimpl->videoPreview->nativeSize()
+        << "\t Size:" << pimpl->videoPreview->size()
+        << "\t Offset:" << pimpl->videoPreview->offset()
+        << "\t Current thread:" <<  QThread::currentThread()
         ;
+#endif
+    QPolygon polygon{
+        QList<QPoint>{
+            pos.topLeft(),
+            pos.topRight(),
+            pos.bottomRight(),
+            pos.bottomLeft()
+        }
+    };
+    pimpl->qrcodeFrame->setPolygon(polygon);
+    emit qrCodeCaptured(barcode);
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::onMissedBarcode()
+{
+    if (pimpl->barcodeFound)
+    {
+        pimpl->barcodeFound=false;
+        pimpl->qrcodeFrame->setVisible(false);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::setPreviewSize(int width, int height)
+{
+    if (height<0)
+    {
+        height=width;
+    }
+    pimpl->previewSize=QSize(width,height);
+    if (pimpl->videoPreview)
+    {
+        pimpl->videoPreview->setSize(pimpl->previewSize);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::setButtonsVisible(bool enable)
+{
+    pimpl->buttonsFrame->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool QrCodeScanner::buttonsVisible() const noexcept
+{
+    return pimpl->buttonsFrame->isVisible();
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::onVideoSizeChanged()
+{
+    auto videoSize=pimpl->videoPreview->videoSink()->videoSize();
+    pimpl->videoPreview->setSize(videoSize);
+
+    qreal videoRatio=qreal(videoSize.width())/qreal(videoSize.height());
+    auto viewSize=pimpl->view->size();
+    qreal viewRatio=qreal(viewSize.width())/qreal(viewSize.height());
+    if (!qFuzzyCompare(videoRatio,viewRatio))
+    {
+        auto scaleRatio=viewRatio/videoRatio;
+        if (scaleRatio>1)
+        {
+            auto newW=viewSize.width()/scaleRatio;
+            viewSize.setWidth(newW);
+        }
+        else
+        {
+            auto newH=viewSize.height()*scaleRatio;
+            viewSize.setHeight(newH);
+        }
+        pimpl->view->setFixedSize(viewSize);
+    }
+
+    pimpl->view->fitInView(pimpl->videoPreview, Qt::KeepAspectRatio);
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::setQrFrameColor(QColor color)
+{
+    pimpl->qrFrameColor=color;
+    pimpl->qrcodeFrame->setPen(QPen{pimpl->qrFrameColor,pimpl->qrFrameWidth,pimpl->qrFrameStyle});
+}
+
+//--------------------------------------------------------------------------
+
+int QrCodeScanner::qrFrameWidth() const noexcept
+{
+    return static_cast<int>(pimpl->qrFrameWidth);
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner::setQrFrameWidth(int width)
+{
+    pimpl->qrFrameWidth=width;
+    pimpl->qrcodeFrame->setPen(QPen{pimpl->qrFrameColor,pimpl->qrFrameWidth,pimpl->qrFrameStyle});
+}
+
+//--------------------------------------------------------------------------
+
+QColor QrCodeScanner::qrFrameColor() const noexcept
+{
+    return pimpl->qrFrameColor;
+}
+
+//--------------------------------------------------------------------------
+
+void QrCodeScanner:: setQrFrameStyle(Qt::PenStyle style)
+{
+    pimpl->qrFrameStyle=style;
+    pimpl->qrcodeFrame->setPen(QPen{pimpl->qrFrameColor,pimpl->qrFrameWidth,pimpl->qrFrameStyle});
+}
+
+//--------------------------------------------------------------------------
+
+Qt::PenStyle QrCodeScanner::qrFrameStyle() const noexcept
+{
+    return pimpl->qrFrameStyle;
 }
 
 //--------------------------------------------------------------------------

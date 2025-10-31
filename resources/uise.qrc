@@ -57,5 +57,7 @@
         <file>style/dark/avatar.json</file>
         <file>style/toast.qss</file>
         <file>style/dark/toast.qss</file>
+        <file>style/qrcodescanner.qss</file>
+        <file>style/dark/qrcodescanner.qss</file>
     </qresource>
 </RCC>

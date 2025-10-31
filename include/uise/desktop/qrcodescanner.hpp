@@ -46,6 +46,11 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
 
     public:
 
+        constexpr static const int DefaultPreviewSize=500;
+        constexpr static const auto DefaulQrFrameColor=Qt::green;
+        constexpr static const int DefaulQrFrameWidth=8;
+        constexpr static const auto DefaulQrFrameStyle=Qt::DotLine;
+
         QrCodeScanner(QWidget* parent=nullptr);
 
         ~QrCodeScanner();
@@ -64,6 +69,22 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
 
         void init();
 
+        void setPreviewSize(int width, int height=-1);
+
+        QSize previewSize() const;
+
+        void setButtonsVisible(bool enable);
+        bool buttonsVisible() const noexcept;
+
+        void setQrFrameColor(QColor color);
+        QColor qrFrameColor() const noexcept;
+
+        void setQrFrameWidth(int width);
+        int qrFrameWidth() const noexcept;
+
+        void setQrFrameStyle(Qt::PenStyle style);
+        Qt::PenStyle qrFrameStyle() const noexcept;
+
     public slots:
 
         void start();
@@ -71,12 +92,14 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
 
     signals:
 
-        void qrCodeCaptured();
+        void qrCodeCaptured(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
         void displayError(const QString& error);
 
     private slots:
 
         void onFoundBarcode(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
+        void onMissedBarcode();
+        void onVideoSizeChanged();
 
     private:
 
