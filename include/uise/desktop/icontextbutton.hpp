@@ -46,6 +46,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         enum class IconPosition
         {
+            Invisible,
             BeforeText,
             AfterText,
             AboveText,
@@ -103,6 +104,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         {
             return m_iconPosition;
         }
+
+        void setTextInteractionFlags(Qt::TextInteractionFlags flags);
+        Qt::TextInteractionFlags textInteractionFlags() const;
 
     signals:
 

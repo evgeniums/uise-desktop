@@ -45,20 +45,23 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
       m_checkable(false)
 {
     m_icon=new RoundedImage(this);
+    m_icon->setDisableHover(true);
     m_text=new QLabel(this);
+    m_text->setObjectName("text");
     setIconPosition(iconPosition);
+
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
 
 void IconTextButton::setHovered(bool enable)
 {
-    setProperty("hovered",enable);
-    m_icon->setParentHovered(enable);
+    setProperty("hovered",enable);    
     m_text->setProperty("hovered",enable);
-    Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(this,m_text);
-    Style::updateWidgetStyle(this,m_icon);
+    Style::updateWidgetStyle(m_text);
+    m_icon->setParentHovered(enable);
+    m_text->repaint();
 }
 
 //--------------------------------------------------------------------------
@@ -67,23 +70,25 @@ void IconTextButton::enterEvent(QEnterEvent* event)
 {
     if (!m_parentHovered)
     {
+        event->accept();
         setHovered(true);
+        emit hovered(true);
+        return;
     }
     QFrame::enterEvent(event);
-    emit hovered(true);
 }
 
 //--------------------------------------------------------------------------
 
 void IconTextButton::leaveEvent(QEvent* event)
-{
-    emit hovered(false);
-
+{    
     if (!m_parentHovered)
-    {
+    {        
         setHovered(false);
+        emit hovered(false);
+        event->accept();
+        return;
     }
-
     QFrame::leaveEvent(event);
 }
 
@@ -111,8 +116,8 @@ void IconTextButton::setChecked(bool enable)
     m_icon->setSelected(enable);
     m_text->setProperty("checked",enable);
     Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(this,m_text);
-    Style::updateWidgetStyle(this,m_icon);
+    Style::updateWidgetStyle(m_text);
+    Style::updateWidgetStyle(m_icon);
 
     if (prevChecked!=m_checked)
     {
@@ -174,6 +179,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
     }
 
     m_iconPosition=iconPosition;
+    m_icon->setVisible(true);
 
     switch (m_iconPosition)
     {
@@ -212,6 +218,16 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_text->setProperty("position","above");
         }
         break;
+
+        case IconPosition::Invisible:
+        {
+            m_layout=Layout::horizontal(this);
+            m_layout->addWidget(m_text,0,Qt::AlignCenter);
+            m_layout->addWidget(m_icon,0,Qt::AlignCenter);
+            m_text->setProperty("position",QVariant{});
+            m_icon->setVisible(false);
+        }
+        break;
     }
 }
 
@@ -219,12 +235,25 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
 
 void IconTextButton::mousePressEvent(QMouseEvent* event)
 {
-    QFrame::mousePressEvent(event);
-
     if (event->button()==Qt::LeftButton)
     {
         click();
     }
+    QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void IconTextButton::setTextInteractionFlags(Qt::TextInteractionFlags flags)
+{
+    m_text->setTextInteractionFlags(flags);
+}
+
+//--------------------------------------------------------------------------
+
+Qt::TextInteractionFlags IconTextButton::textInteractionFlags() const
+{
+    return m_text->textInteractionFlags();
 }
 
 //--------------------------------------------------------------------------
