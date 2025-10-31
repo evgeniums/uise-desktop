@@ -7,3 +7,19 @@ padding: 2px 0;
 border-radius: 2px;
 border: 2px solid transparent;
 }
+
+
+uise--IconTextButton QLabel {
+margin-right: 0;
+margin-left: 0;
+}
+
+uise--IconTextButton QLabel[position="before"] {
+margin-right: 2px;
+margin-left: 0;
+}
+
+uise--IconTextButton QLabel[position="after"] {
+margin-right: 0;
+margin-left: 2px;
+}

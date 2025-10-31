@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file demo/avatar/avatar.cpp
+/** @file demo/avatar/main.cpp
 *
 *  Demo application of Avatar.
 *

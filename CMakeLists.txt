@@ -156,6 +156,8 @@ SET (HEADERS
 
     include/uise/desktop/qrbarcode.hpp
     include/uise/desktop/qrcodefromimage.hpp
+
+    include/uise/desktop/icontextbutton.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -254,6 +256,7 @@ SET (SOURCES
     src/toast.cpp
 
     src/qrcodefromimage.cpp
+    src/icontextbutton.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
