@@ -159,6 +159,8 @@ SET (HEADERS
 
     include/uise/desktop/icontextbutton.hpp
     include/uise/desktop/loadcontrol.hpp
+
+    include/uise/desktop/abstractimageviewer.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -259,6 +261,8 @@ SET (SOURCES
     src/qrcodefromimage.cpp
     src/icontextbutton.cpp
     src/loadcontrol.cpp
+
+    src/abstractimageviewer.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
