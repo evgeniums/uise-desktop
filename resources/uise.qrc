@@ -59,5 +59,9 @@
         <file>style/dark/toast.qss</file>
         <file>style/qrcodescanner.qss</file>
         <file>style/dark/qrcodescanner.qss</file>
+        <file>style/loadcontrol.json</file>
+        <file>style/loadcontrol.qss</file>
+        <file>style/dark/loadcontrol.json</file>
+        <file>style/dark/loadcontrol.qss</file>
     </qresource>
 </RCC>

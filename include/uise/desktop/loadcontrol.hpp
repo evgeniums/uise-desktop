@@ -15,16 +15,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/jumpedge.hpp
+/** @file uise/desktop/loadcontrol.hpp
 *
-*  Declares JumpEdge.
+*  Declares LoadControl.
 *
 */
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_JUMP_EDGE_HPP
-#define UISE_DESKTOP_JUMP_EDGE_HPP
+#ifndef UISE_DESKTOP_LOAD_CONTROL_HPP
+#define UISE_DESKTOP_LOAD_CONTROL_HPP
 
 #include <QFrame>
 
@@ -32,64 +32,63 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/utils/enums.hpp>
 
-class QLabel;
-
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
+class UISE_DESKTOP_EXPORT LoadControl : public QFrame
 {
     Q_OBJECT
 
     public:
 
-        enum class IconDirection
+        enum class State
         {
-            Up,
-            Down,
-            Left,
-            Right
+            None,
+            CanDownload,
+            CanUpload,
+            Paused,
+            Waiting,
+            Running
         };
 
-        JumpEdge(QWidget* parent);
+        constexpr static const qreal CircleWidthRatio=0.8;
+        constexpr static const qreal IconRadiusRatio=0.8;
 
-        void clearBadgeText();
+        LoadControl(QWidget* parent=nullptr);
 
-        QString badgeText() const;
+        void setState(State state);
 
-        void setDirection(Direction value)
+        State state() const noexcept
         {
-            m_direction=value;
-            updateIcon();
+            return m_state;
         }
 
-        Direction direction() const noexcept
+        void setProgress(qreal value);
+
+        template <typename T1, typename T2>
+        void setProgress(T1 currentvalue, T2 total)
         {
-            return m_direction;
+            if (qFuzzyIsNull(total))
+            {
+                setProgress(0);
+                return;
+            }
+            if (currentvalue>total)
+            {
+                setProgress(100.0);
+                return;
+            }
+            auto progress=100.0*static_cast<qreal>(currentvalue)/static_cast<qreal>(total);
+            setProgress(progress);
         }
 
-        void setOrientation(Qt::Orientation value)
+        qreal progress() const noexcept
         {
-            m_orientation=value;
-            updateIcon();
-        }
-
-        Qt::Orientation orientation() const noexcept
-        {
-            return m_orientation;
-        }
-
-        IconDirection iconDirection() const noexcept
-        {
-            return m_iconDirection;
+            return m_progress;
         }
 
     signals:
 
         void clicked();
-
-    public slots:
-
-        void setBadgeText(const QString& text);
 
     protected:
 
@@ -100,20 +99,17 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
     private:
 
-        void updateIcon();
-        void renderBadgeText(QPainter& p);
+        void updateIcon(const QString name={});
 
-        QLabel* m_badgeText;
-        bool m_hovered;
         std::shared_ptr<SvgIcon> m_icon;
 
-        Qt::Orientation m_orientation;
-        Direction m_direction;
-
         QFrame* m_sample;
-        IconDirection m_iconDirection;
+        State m_state;
+
+        qreal m_progress;
+        bool m_hovered;
 };
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_JUMP_EDGE_HPP
+#endif // UISE_DESKTOP_LOAD_CONTROL_HPP

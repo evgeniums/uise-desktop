@@ -1,0 +1,18 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "LoadControl",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}

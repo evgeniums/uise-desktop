@@ -1,0 +1,14 @@
+{
+    "contexts" : [
+        {
+            "name" : "LoadControl",
+            "aliases" : {
+                "download"  : "${uise-svg-icons-1}/arrow-big-down",
+                "upload"  : "${uise-svg-icons-1}/arrow-big-up",
+                "pause"  : "${uise-svg-icons-1}/player-pause",
+                "wait"  : "${uise-svg-icons-1}/hourglass-empty",
+                "stop"  : "${uise-svg-icons-1}/x"
+            }
+        }
+    ]
+}

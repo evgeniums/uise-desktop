@@ -75,5 +75,12 @@
         <file>tabler-icons/outline/chevron-up.svg</file>
         <file>tabler-icons/filled/camera.svg</file>
         <file>tabler-icons/outline/file-upload.svg</file>
+        <file>tabler-icons/outline/arrow-big-down.svg</file>
+        <file>tabler-icons/outline/arrow-big-left.svg</file>
+        <file>tabler-icons/outline/arrow-big-right.svg</file>
+        <file>tabler-icons/outline/arrow-big-up.svg</file>
+        <file>tabler-icons/outline/hourglass-empty.svg</file>
+        <file>tabler-icons/outline/hourglass.svg</file>
+        <file>tabler-icons/outline/player-pause.svg</file>
     </qresource>
 </RCC>
