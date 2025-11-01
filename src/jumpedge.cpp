@@ -63,7 +63,7 @@ void JumpEdge::paintEvent(QPaintEvent *event)
 
     auto r=rect();
 
-    // draw cirvle background
+    // draw circle background
     auto w=r.width();
     auto circleWidth=w;
     auto outerWidth=w-circleWidth;
@@ -116,13 +116,6 @@ void JumpEdge::paintEvent(QPaintEvent *event)
         }
 
         QRect iconRect{r.left()+leftPadding,r.bottom()-iconWidth-bottomPadding,iconWidth,iconWidth};
-
-        // qDebug() << "JumpEdge::paintEvent rect=" << r << " circleRect="<<circleRect << " iconRect="<<iconRect
-        //          << " margins="<<m << " outerWidth="<<outerWidth
-        //          << " iconRect.left()="<<iconRect.left()<< " iconRect.top()="<<iconRect.top()
-        //          << " iconRect.size()="<<iconRect.size()
-        //                    <<  " basePadding="<<basePadding
-        //                    << " mins="<<m_sample->minimumSize();
 
         auto mode=IconMode::Normal;
         if (m_hovered)
