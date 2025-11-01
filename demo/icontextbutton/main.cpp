@@ -15,7 +15,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file demo/icontextbutton/avatar.cpp
+/** @file demo/icontextbutton/main.cpp
 *
 *  Demo application of IconTextButton.
 *
