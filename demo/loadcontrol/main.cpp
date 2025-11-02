@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
     w.setCentralWidget(mainFrame);
     w.resize(300,400);
-    w.setWindowTitle("Avatar Demo");
+    w.setWindowTitle("Load Control Demo");
     w.show();
     auto ret=app.exec();
     return ret;
