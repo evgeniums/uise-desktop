@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <QSize>
 
@@ -48,6 +49,11 @@ class WithPath
         WithPath(std::vector<std::string> nestedPath)
             : m_path(nestedPath)
         {}
+
+        WithPath(const std::filesystem::path& filePath)
+        {
+            loadFilePath(filePath);
+        }
 
         void setPath(std::string path)
         {
@@ -126,6 +132,25 @@ class WithPath
             return p;
         }
 
+        std::filesystem::path toFilePath() const
+        {
+            std::filesystem::path p;
+            for (const auto& el : m_path)
+            {
+                p.append(el);
+            }
+            return p;
+        }
+
+        void loadFilePath(const std::filesystem::path& path)
+        {
+            m_path.clear();
+            for (const auto& component : path)
+            {
+                m_path.push_back(component.string());
+            }
+        }
+
     private:
 
         std::vector<std::string> m_path;
@@ -140,12 +165,20 @@ class WithPathAndSize : public WithPath
         template <typename PathT>
         WithPathAndSize(PathT path, const QSize& size={})
             : WithPath(std::move(path)),
-              m_size(size)
+              m_size(size),
+              m_anySize(false)
         {}
 
         void setSize(const QSize& size)
         {
             m_size=size;
+        }
+
+        void setPathAndSize(const WithPathAndSize& other)
+        {
+            setPath(other.toWithPath());
+            setSize(other.size());
+            setAnySize(other.isAnySize());
         }
 
         QSize size() const noexcept
@@ -155,7 +188,7 @@ class WithPathAndSize : public WithPath
 
         bool isValid() const
         {
-            return m_size.isValid() && !isPathEmpty();
+            return (m_anySize || m_size.isValid()) && !isPathEmpty();
         }
 
         bool isPathAndSizeValid() const
@@ -199,9 +232,20 @@ class WithPathAndSize : public WithPath
             return path()==other.path() && size()==other.size();
         }
 
+        bool isAnySize() const noexcept
+        {
+            return m_anySize;
+        }
+
+        void setAnySize(bool enable) noexcept
+        {
+            m_anySize=enable;
+        }
+
     private:
 
         QSize m_size;
+        bool m_anySize;
 };
 
 using PixmapKey=WithPathAndSize;
