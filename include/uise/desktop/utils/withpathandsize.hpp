@@ -193,6 +193,12 @@ class WithPathAndSize : public WithPath
             return false;
         }
 
+        template <typename OtherT>
+        bool operator == (const OtherT& other) const noexcept
+        {
+            return path()==other.path() && size()==other.size();
+        }
+
     private:
 
         QSize m_size;

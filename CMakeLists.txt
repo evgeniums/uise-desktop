@@ -161,6 +161,9 @@ SET (HEADERS
     include/uise/desktop/loadcontrol.hpp
 
     include/uise/desktop/abstractimageviewer.hpp
+    include/uise/desktop/imageviewer.hpp
+
+    include/uise/desktop/circlebusy.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -263,6 +266,9 @@ SET (SOURCES
     src/loadcontrol.cpp
 
     src/abstractimageviewer.cpp
+    src/imageviewer.cpp
+
+    src/circlebusy.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)

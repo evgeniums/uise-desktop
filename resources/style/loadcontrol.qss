@@ -1,2 +1,9 @@
-uise--LoadControl {min-width:44px;min-height:44px;max-width:44px;max-height:44px;}
-uise--LoadControl #sample {min-width:10px;border: 4px solid transparent;}
+uise--LoadControl,
+uise--CircleBusy {
+min-width:44px;min-height:44px;max-width:44px;max-height:44px;
+}
+
+uise--LoadControl #sample,
+uise--CircleBusy #sample {
+min-width:10px;border: 4px solid transparent;
+}
