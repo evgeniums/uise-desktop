@@ -21,6 +21,7 @@ ADD_SUBDIRECTORY(imageeditor)
 ADD_SUBDIRECTORY(icontextbutton)
 ADD_SUBDIRECTORY(loadcontrol)
 ADD_SUBDIRECTORY(circlebusy)
+ADD_SUBDIRECTORY(imageviewer)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)

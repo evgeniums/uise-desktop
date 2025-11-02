@@ -46,6 +46,9 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         {
             PixmapKey key;
             QPixmap content;
+
+            Image(PixmapKey key={}, QPixmap content={}) : key(std::move(key)), content(std::move(content))
+            {}
         };
 
         using WidgetController::WidgetController;
@@ -134,6 +137,7 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         void showPrevImage();
 
         void selectImage(size_t index);
+        void selectImage(const UISE_DESKTOP_NAMESPACE::PixmapKey& key);
 
     private slots:
 

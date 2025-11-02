@@ -43,6 +43,8 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
 
         void reset() override;
 
+        void fitImage();
+
     public slots:
 
         void zoomIn() override;
@@ -59,9 +61,11 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
     protected:
 
         void doReset();
-        void fitImage();
         void doSelectImage() override;
         Widget* doCreateActualWidget(QWidget* parent) override;
+
+        void updateBusySpinner();
+        void updatePrevNextButtons();
 
         ImageViewerWidget* m_widget;
 };
@@ -81,8 +85,14 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         ImageViewerWidget& operator=(const ImageViewerWidget&)=delete;
         ImageViewerWidget& operator=(ImageViewerWidget&&)=delete;
 
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+
     private:
 
+        void updateButtonPositions();
         std::unique_ptr<ImageViewerWidget_p> pimpl;
 
         friend class ImageViewer;

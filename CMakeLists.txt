@@ -162,6 +162,7 @@ SET (HEADERS
 
     include/uise/desktop/abstractimageviewer.hpp
     include/uise/desktop/imageviewer.hpp
+    include/uise/desktop/directoryimagesviewer.hpp
 
     include/uise/desktop/circlebusy.hpp
 )
@@ -267,6 +268,7 @@ SET (SOURCES
 
     src/abstractimageviewer.cpp
     src/imageviewer.cpp
+    src/directoryimagesviewer.cpp
 
     src/circlebusy.cpp
 )

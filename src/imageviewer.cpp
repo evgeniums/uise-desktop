@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QTimer>
+#include <QLabel>
+#include <QKeyEvent>
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
@@ -32,6 +34,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/jumpedge.hpp>
+#include <uise/desktop/circlebusy.hpp>
 #include <uise/desktop/imageviewer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -44,6 +48,7 @@ class ImageViewerWidget_p
 
         ImageViewer* ctrl;
 
+        QFrame* contentFrame;
         QBoxLayout* layout;
 
         QGraphicsView *view;
@@ -60,6 +65,15 @@ class ImageViewerWidget_p
         PushButton* zoomOut;
 
         int angle=0;
+
+        JumpEdge* prevButton;
+        JumpEdge* nextButton;
+
+        QLabel* styleSample;
+
+        CircleBusy* busySpinner;
+
+        qreal scale=1.0;
 };
 
 //--------------------------------------------------------------------------
@@ -70,13 +84,21 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
 {
     pimpl->ctrl=ctrl;
 
-    pimpl->layout=Layout::vertical(this);
+    auto l=Layout::vertical(this);
+    pimpl->contentFrame=new QFrame(this);
+    l->addWidget(pimpl->contentFrame);
+    pimpl->contentFrame->setObjectName("contentFrame");
+
+    pimpl->layout=Layout::vertical(pimpl->contentFrame);
+    pimpl->styleSample=new QLabel(this);
+    pimpl->styleSample->setObjectName("viewerStyleSample");
+    pimpl->styleSample->setVisible(false);
 
     pimpl->view = new QGraphicsView(this);
     pimpl->scene = new QGraphicsScene(this);
     pimpl->view->setScene(pimpl->scene);
+    pimpl->view->setFocusPolicy(Qt::NoFocus);
     pimpl->layout->addWidget(pimpl->view,1);
-    pimpl->scene->addItem(pimpl->imageItem);
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -150,13 +172,75 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
         &AbstractImageViewer::zoomOut
     );
 
+    pimpl->prevButton=new JumpEdge(this);
+    pimpl->prevButton->setOrientation(Qt::Horizontal);
+    pimpl->prevButton->setDirection(Direction::HOME);
+
+    pimpl->nextButton=new JumpEdge(this);
+    pimpl->nextButton->setOrientation(Qt::Horizontal);
+    pimpl->nextButton->setDirection(Direction::END);
+
     cl->addStretch(1);
+
+    updateButtonPositions();
+
+    pimpl->busySpinner=new CircleBusy(pimpl->contentFrame);
+    pimpl->busySpinner->stop();
+    pimpl->busySpinner->setVisible(false);
+
+    setFocusPolicy(Qt::StrongFocus);
 }
 
 //--------------------------------------------------------------------------
 
 ImageViewerWidget::~ImageViewerWidget()
 {}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::resizeEvent(QResizeEvent* event)
+{
+    QFrame::resizeEvent(event);
+    pimpl->ctrl->fitImage();
+    updateButtonPositions();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::updateButtonPositions()
+{
+    auto r=pimpl->view->contentsRect();
+    auto m=pimpl->styleSample->contentsMargins();
+
+    auto buttonSize=pimpl->prevButton->size();
+
+    auto y=pimpl->view->y()+r.center().y()-buttonSize.height()/2;
+    auto prevX=pimpl->view->x()+m.left()+r.left();
+    auto nextX=pimpl->view->x()+r.right()-buttonSize.width()-m.right();
+
+    pimpl->prevButton->move(prevX,y);
+    pimpl->nextButton->move(nextX,y);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key()==Qt::Key_Left)
+    {
+        pimpl->ctrl->showPrevImage();
+        event->accept();
+    }
+    else if (event->key()==Qt::Key_Right)
+    {
+        pimpl->ctrl->showNextImage();
+        event->accept();
+    }
+    else
+    {
+        QFrame::keyPressEvent(event);
+    }
+}
 
 /************************** ImageViewer *****************************/
 
@@ -166,6 +250,25 @@ Widget* ImageViewer::doCreateActualWidget(QWidget* parent)
 {
     m_widget=new ImageViewerWidget(this,parent);
     reset();
+
+    connect(
+        m_widget->pimpl->prevButton,
+        &JumpEdge::clicked,
+        this,
+        &ImageViewer::showPrevImage
+    );
+
+    connect(
+        m_widget->pimpl->nextButton,
+        &JumpEdge::clicked,
+        this,
+        &ImageViewer::showNextImage
+    );
+
+    updateBusySpinner();
+    m_widget->updateButtonPositions();
+    updatePrevNextButtons();
+
     return m_widget;
 }
 
@@ -186,6 +289,7 @@ void ImageViewer::doReset()
     m_widget->pimpl->view->setSceneRect(QRectF{});
     m_widget->pimpl->imageItem = nullptr;
     m_widget->pimpl->angle=0;
+    m_widget->pimpl->scale=1.0;
 }
 
 //--------------------------------------------------------------------------
@@ -271,6 +375,7 @@ void ImageViewer::zoomIn()
 
     auto t=m_widget->pimpl->view->transform();
     t.scale(1.25, 1.25);
+    m_widget->pimpl->scale=m_widget->pimpl->scale*1.25;
     m_widget->pimpl->view->setTransform(t);
 }
 
@@ -285,6 +390,7 @@ void ImageViewer::zoomOut()
 
     auto t=m_widget->pimpl->view->transform();
     t.scale(0.8, 0.8);
+    m_widget->pimpl->scale=m_widget->pimpl->scale*0.8;
     m_widget->pimpl->view->setTransform(t);
 }
 
@@ -294,8 +400,22 @@ void ImageViewer::doSelectImage()
 {
     doReset();
     auto px=currentImage();
-    m_widget->pimpl->imageItem=m_widget->pimpl->scene->addPixmap(px);
+    if (!px.isNull())
+    {
+        m_widget->pimpl->imageItem=m_widget->pimpl->scene->addPixmap(px);
+    }
     fitImage();
+    updateBusySpinner();
+    updatePrevNextButtons();
+    m_widget->setFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::updatePrevNextButtons()
+{
+    m_widget->pimpl->prevButton->setVisible(currentImageIndex()>0);
+    m_widget->pimpl->nextButton->setVisible((currentImageIndex()+1)<imageCount());
 }
 
 //--------------------------------------------------------------------------
@@ -303,14 +423,15 @@ void ImageViewer::doSelectImage()
 void ImageViewer::fitImage()
 {
     auto px=currentImage();
-    if (!px.isNull())
+    if (!px.isNull() && m_widget->pimpl->imageItem!=nullptr)
     {
         m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
         auto viewRect=m_widget->pimpl->view->rect();
-        if (px.width()>viewRect.width() || px.height() > viewRect.height())
+        if (qFuzzyCompare(m_widget->pimpl->scale,1.0) && (px.width()>viewRect.width() || px.height() > viewRect.height()))
         {
             m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
         }
+        m_widget->updateButtonPositions();
     }
 }
 
@@ -322,6 +443,24 @@ void ImageViewer::onPixmapUpdated(const PixmapKey& key)
     {
         m_widget->pimpl->imageItem->setPixmap(currentImage());
         fitImage();
+    }
+    updateBusySpinner();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::updateBusySpinner()
+{
+    auto px=currentImage();
+    if (px.isNull())
+    {
+        m_widget->pimpl->busySpinner->setVisible(true);
+        m_widget->pimpl->busySpinner->start();
+    }
+    else
+    {
+        m_widget->pimpl->busySpinner->setVisible(false);
+        m_widget->pimpl->busySpinner->stop();
     }
 }
 

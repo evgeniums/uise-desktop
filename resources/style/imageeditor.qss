@@ -1,4 +1,5 @@
-uise--SimpleImageEditorWidget uise--PushButton QPushButton {
+uise--SimpleImageEditorWidget uise--PushButton QPushButton,
+uise--ImageViewerWidget uise--PushButton QPushButton{
 margin-right:4px;
 padding:4px;
 icon-size:24px;
@@ -25,15 +26,31 @@ margin-right: 8px;
 min-height: 20px;
 }
 
-uise--SimpleImageEditorWidget #mainButtonsFrame{
+uise--SimpleImageEditorWidget #mainButtonsFrame,
+uise--ImageViewerWidget #mainButtonsFrame{
 padding-top:4px;
 padding-bottom:4px;
 }
 
-uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton{
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton{
 border-radius: 4px; padding: 2px 12px; margin-left: 4px;
 }
 
-uise--SimpleImageEditorWidget #fileBrowserFrame QLineEdit {
+uise--SimpleImageEditorWidget #fileBrowserFrame QLineEdit,
+uise--DirectoryImagesViewer #fileBrowserFrame QLineEdit{
 padding: 2px;
+}
+
+uise--DirectoryImagesViewer {
+padding: 8px;
+}
+
+uise--DirectoryImagesViewer #fileBrowserFrame
+{
+margin-top: 4px;
+}
+
+uise--ImageViewerWidget #viewerStyleSample {
+margin: 0 8px;
 }

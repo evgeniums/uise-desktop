@@ -50,6 +50,22 @@ void AbstractImageViewer::selectImage(size_t index)
 
 //--------------------------------------------------------------------------
 
+void AbstractImageViewer::selectImage(const PixmapKey& key)
+{
+    auto it=std::find(m_imageKeys.begin(),m_imageKeys.end(),key);
+    if (it != m_imageKeys.end())
+    {
+        int index = std::distance(m_imageKeys.begin(), it);
+        selectImage(index);
+    }
+    else
+    {
+        selectImage(0);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractImageViewer::showNextImage()
 {
     if (m_imageKeys.empty())
@@ -101,8 +117,8 @@ void AbstractImageViewer::insertImages(size_t index, std::vector<Image> images)
         item->content=image.content;
         if (m_imageSource)
         {
+            item->consumer.setPathAndSize(image.key);
             item->consumer.setPixmapSource(m_imageSource);
-            item->consumer.acquireProducer();
             connect(
                 &item->consumer,
                 &PixmapConsumer::pixmapUpdated,
@@ -112,6 +128,8 @@ void AbstractImageViewer::insertImages(size_t index, std::vector<Image> images)
                     onPixmapUpdated(key);
                 }
             );
+            item->consumer.acquireProducer();
+            onPixmapUpdated(image.key);
         }
         m_images[image.key]=item;
     }

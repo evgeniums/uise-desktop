@@ -15,9 +15,9 @@ You may select, at your option, one of the above-comboed licenses.
 
 /****************************************************************************/
 
-/** @file demo/umageeditor/main.cpp
+/** @file demo/imageeditor/main.cpp
 *
-*  Demo application of SImpleImageEDitor.
+*  Demo application of SimpleImageEditor.
 *
 */
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
         }
     );
 
-    cl->addStrut(1);
+    cl->addStretch(1);
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);

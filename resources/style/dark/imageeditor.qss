@@ -3,8 +3,10 @@ border: 1px solid #999999;
 background-color: #444444;
 }
 
-uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton
 {color: #CCCCCC;border: 1px solid #999999; background-color: transparent;}
 
-uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton:hover
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton:hover,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton:hover
 {color: #EEEEEE;border: 1px solid #EEEEEE;}
