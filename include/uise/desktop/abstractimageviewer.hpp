@@ -115,6 +115,8 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             return m_currentImageIndex;
         }
 
+        virtual void reset() {}
+
     signals:
 
         void currentImageIndexChanged(size_t index);
