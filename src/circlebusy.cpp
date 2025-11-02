@@ -103,8 +103,11 @@ void CircleBusy::start()
     {
         parentWidget()->setEnabled(false);
     }
-    m_timeLine.setFrameRange(m_startAngle,m_startAngle-270-90);
-    m_timeLine.start();
+    if (m_timeLine.state()!=QTimeLine::Running)
+    {
+        m_timeLine.setFrameRange(m_startAngle,m_startAngle-270-90);
+        m_timeLine.start();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -115,7 +118,10 @@ void CircleBusy::stop()
     {
         parentWidget()->setEnabled(true);
     }
-    m_timeLine.stop();
+    if (m_timeLine.state()==QTimeLine::Running)
+    {
+        m_timeLine.stop();
+    }
 }
 
 //--------------------------------------------------------------------------
