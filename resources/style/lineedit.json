@@ -1,0 +1,11 @@
+{
+    "contexts" : [
+        {
+            "name" : "LineEdit",
+            "aliases" : {
+                "search" : "${uise-svg-icons-1}/search",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        }
+    ]
+}

@@ -82,5 +82,9 @@
         <file>tabler-icons/outline/hourglass-empty.svg</file>
         <file>tabler-icons/outline/hourglass.svg</file>
         <file>tabler-icons/outline/player-pause.svg</file>
+        <file>tabler-icons/outline/file.svg</file>
+        <file>tabler-icons/outline/hash.svg</file>
+        <file>tabler-icons/outline/qrcode.svg</file>
+        <file>tabler-icons/outline/search.svg</file>
     </qresource>
 </RCC>

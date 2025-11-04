@@ -1,0 +1,16 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "LineEdit",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#999999" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}

@@ -63,5 +63,8 @@
         <file>style/loadcontrol.qss</file>
         <file>style/dark/loadcontrol.json</file>
         <file>style/dark/loadcontrol.qss</file>
+        <file>style/lineedit.json</file>
+        <file>style/lineedit.qss</file>
+        <file>style/dark/lineedit.json</file>
     </qresource>
 </RCC>

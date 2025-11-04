@@ -165,6 +165,8 @@ SET (HEADERS
     include/uise/desktop/directoryimagesviewer.hpp
 
     include/uise/desktop/circlebusy.hpp
+    include/uise/desktop/lineedit.hpp
+    include/uise/desktop/searchlineedit.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -271,6 +273,8 @@ SET (SOURCES
     src/directoryimagesviewer.cpp
 
     src/circlebusy.cpp
+    src/lineedit.cpp
+    src/searchlineedit.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
