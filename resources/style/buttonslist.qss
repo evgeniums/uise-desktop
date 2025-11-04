@@ -1,0 +1,18 @@
+uise--ButtonsList uise--IconTextButton uise--RoundedImage{
+min-width:24px;
+max-width:24px;
+min-height:24px;
+max-height:24px;
+}
+
+uise--ButtonsList uise--IconTextButton #text{
+margin-left:8px;
+}
+
+uise--ButtonsList uise--IconTextButton{
+padding: 4px;
+}
+
+uise--ButtonsList {
+padding:4px;
+}

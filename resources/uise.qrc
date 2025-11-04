@@ -66,5 +66,6 @@
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>
+        <file>style/buttonslist.qss</file>
     </qresource>
 </RCC>

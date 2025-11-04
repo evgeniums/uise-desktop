@@ -167,6 +167,8 @@ SET (HEADERS
     include/uise/desktop/circlebusy.hpp
     include/uise/desktop/lineedit.hpp
     include/uise/desktop/searchlineedit.hpp
+
+    include/uise/desktop/buttonslist.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -275,6 +277,8 @@ SET (SOURCES
     src/circlebusy.cpp
     src/lineedit.cpp
     src/searchlineedit.cpp
+
+    src/buttonslist.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)

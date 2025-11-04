@@ -49,6 +49,7 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
     m_text=new QLabel(this);
     m_text->setObjectName("text");
     setIconPosition(iconPosition);
+    setSvgIcon(std::move(icon));
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }

@@ -80,3 +80,11 @@ QDateTimeEdit::down-button {
     subcontrol-position: bottom left;
     border:1px solid transparent;
 }
+
+uise--IconTextButton #text {
+color: #CCCCCC;
+}
+
+uise--IconTextButton #text[hovered="true"] {
+color: #FFFFFF;
+}
