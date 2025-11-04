@@ -109,7 +109,7 @@ PushButton* LineEdit::addPushButton(std::shared_ptr<SvgIcon> icon, QLineEdit::Ac
 
 void LineEdit::addPushButton(PushButton* button, QLineEdit::ActionPosition position)
 {
-    Q_ASSERT(button->qToolButton());
+    Q_ASSERT(button->qPushButton());
 
     if (position==QLineEdit::LeadingPosition)
     {
