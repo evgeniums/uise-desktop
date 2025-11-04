@@ -30,6 +30,39 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
+PushButton::PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool toolButton)
+    : QFrame(parent),
+    m_icon(std::move(icon)),
+    m_pushButton(nullptr),
+    m_toolButton(nullptr),
+    m_parentHovered(false)
+{
+    auto l=Layout::vertical(this);
+
+    if (toolButton)
+    {
+        m_toolButton=new QToolButton(this);
+        m_button=m_toolButton;
+    }
+    else
+    {
+        m_pushButton=new QPushButton(this);
+        m_button=m_pushButton;
+    }
+
+    l->addWidget(m_button,0,Qt::AlignCenter);
+
+    if (m_icon)
+    {
+        setIcon(m_icon->icon());
+    }
+
+    connect(m_button,&QPushButton::clicked,this,&PushButton::clicked);
+    connect(m_button,&QPushButton::toggled,this,&PushButton::toggled);
+}
+
+//--------------------------------------------------------------------------
+
 void PushButton::enterEvent(QEnterEvent* event)
 {
     if (!m_parentHovered)
@@ -41,9 +74,7 @@ void PushButton::enterEvent(QEnterEvent* event)
         }
     }
     QFrame::enterEvent(event);
-
     Style::updateWidgetStyle(m_button);
-
     emit hovered(true);
 }
 
@@ -51,21 +82,18 @@ void PushButton::enterEvent(QEnterEvent* event)
 
 void PushButton::leaveEvent(QEvent* event)
 {
-    emit hovered(false);
-
-    if (m_parentHovered)
+    if (!m_parentHovered)
     {
-        return;
+        setProperty("hovered",false);
+        if (m_icon)
+        {
+            m_button->setIcon(m_icon->icon());
+        }
     }
 
-    setProperty("hovered",false);
-    if (m_icon)
-    {
-        m_button->setIcon(m_icon->icon());
-    }
     QFrame::leaveEvent(event);
-
     Style::updateWidgetStyle(m_button);
+    emit hovered(false);
 }
 
 //--------------------------------------------------------------------------
