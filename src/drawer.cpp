@@ -342,11 +342,15 @@ void Drawer::updateDrawerGeometry()
     {
         newW=w-(margins.left()+margins.right());
         newH=(h*pimpl->parent->sizePercent()/100)-(margins.top()+margins.bottom());
+        newH=std::max(pimpl->widget->minimumHeight(),newH);
+        newH=std::max(pimpl->widget->sizeHint().height(),newH);
     }
     else
     {
         newW=(w*pimpl->parent->sizePercent()/100)-(margins.left()+margins.right());
         newH=h-(margins.top()+margins.bottom());
+        newW=std::max(pimpl->widget->minimumWidth(),newW);
+        newW=std::max(pimpl->widget->sizeHint().width(),newW);
     }
     pimpl->widget->resize(newW,newH);
 
