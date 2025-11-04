@@ -1,3 +1,7 @@
+QFrame {
+background-color: #333;
+}
+
 uise--PushButton QPushButton {
     background-color: transparent;
     border: none;
