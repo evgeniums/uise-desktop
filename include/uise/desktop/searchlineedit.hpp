@@ -50,11 +50,12 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
     public slots:
 
         void cancel();
+        void edit();
 
     signals:
 
         void cancelled();
-        void editingMode(bool enable);
+        void editingModeChanged(bool enable);
 
     protected:
 
@@ -63,7 +64,7 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
 
     private:
 
-        void edit();
+        void doCancel(bool keepFocus);
 
         PushButton* m_searchButton;
         PushButton* m_cancelButton;

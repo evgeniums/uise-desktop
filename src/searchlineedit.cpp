@@ -76,6 +76,10 @@ SearchLineEdit::SearchLineEdit(QWidget* parent)
             {
                 edit();
             }
+            else
+            {
+                doCancel(true);
+            }
         }
     );
 
@@ -85,6 +89,13 @@ SearchLineEdit::SearchLineEdit(QWidget* parent)
 //--------------------------------------------------------------------------
 
 void SearchLineEdit::cancel()
+{
+    doCancel(false);
+}
+
+//--------------------------------------------------------------------------
+
+void SearchLineEdit::doCancel(bool keepFocus)
 {
     if (!m_editing)
     {
@@ -96,9 +107,12 @@ void SearchLineEdit::cancel()
     m_searchButton->setVisible(true);
     m_cancelButton->setVisible(false);
     updateButtonPositions();
-    emit editingMode(m_editing);
+    emit editingModeChanged(m_editing);
     emit cancelled();
-    clearFocus();
+    if (!keepFocus)
+    {
+        clearFocus();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -114,7 +128,7 @@ void SearchLineEdit::edit()
     m_searchButton->setVisible(false);
     m_cancelButton->setVisible(true);
     updateButtonPositions();
-    emit editingMode(m_editing);
+    emit editingModeChanged(m_editing);
 }
 
 //--------------------------------------------------------------------------
