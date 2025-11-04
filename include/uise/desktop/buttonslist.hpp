@@ -67,6 +67,10 @@ class UISE_DESKTOP_EXPORT PopupButtonsList : public QFrame
 
         void show();
 
+    protected:
+
+        void closeEvent(QCloseEvent* event) override;
+
     private:
 
         ButtonsList* m_buttonsList;

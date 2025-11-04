@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScreen>
 #include <QApplication>
 #include <QGuiApplication>
+#include <QCloseEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -40,6 +41,7 @@ ButtonsList::ButtonsList(QWidget *parent)
 {
     m_layout=Layout::vertical(this);
     m_layout->addStretch(1);
+    setFocusPolicy(Qt::StrongFocus);
 }
 
 //--------------------------------------------------------------------------
@@ -61,12 +63,15 @@ IconTextButton* ButtonsList::addButton(const QString& text, std::shared_ptr<SvgI
 //--------------------------------------------------------------------------
 
 PopupButtonsList::PopupButtonsList(QWidget* parent)
-    : QFrame(parent, Qt::Popup | Qt::FramelessWindowHint)
+    : QFrame(parent, Qt::Popup | Qt::FramelessWindowHint | Qt::Dialog)
 {
     auto l=Layout::vertical(this);
     m_buttonsList=new ButtonsList(this);
     l->addWidget(m_buttonsList);
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+
+    setAttribute(Qt::WA_ShowWithoutActivating,true);
+    setAttribute(Qt::WA_DeleteOnClose,true);
 }
 
 //--------------------------------------------------------------------------
@@ -76,7 +81,13 @@ void PopupButtonsList::show()
     auto pos=QCursor::pos();
     move(pos);
     QFrame::show();
-    setFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void PopupButtonsList::closeEvent(QCloseEvent* event)
+{
+    QFrame::closeEvent(event);
 }
 
 //--------------------------------------------------------------------------
