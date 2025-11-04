@@ -313,7 +313,8 @@ void Drawer::mousePressEvent(QMouseEvent *event)
 {
     QFrame::mousePressEvent(event);
 
-    if (!pimpl->widget->underMouse())
+    auto underMouse=pimpl->widget->rect().contains(mapFromGlobal(QCursor::pos()));
+    if (!underMouse)
     {
         closeDrawer();
     }

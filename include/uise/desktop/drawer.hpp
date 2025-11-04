@@ -89,7 +89,7 @@ class UISE_DESKTOP_EXPORT FrameWithDrawer : public QFrame,
 
     public:
 
-        static const int DefaultSizePercent=50;
+        static const int DefaultSizePercent=30;
         static const int DefaultAlpha=30;
         static const int DefaultSlideDurationMs=150;
 
