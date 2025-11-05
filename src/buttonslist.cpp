@@ -63,7 +63,7 @@ IconTextButton* ButtonsList::addButton(const QString& text, std::shared_ptr<SvgI
 //--------------------------------------------------------------------------
 
 PopupButtonsList::PopupButtonsList(QWidget* parent)
-    : QFrame(parent, Qt::Popup | Qt::FramelessWindowHint | Qt::Dialog)
+    : QFrame(parent, Qt::Popup | Qt::FramelessWindowHint)
 {
     auto l=Layout::vertical(this);
     m_buttonsList=new ButtonsList(this);
