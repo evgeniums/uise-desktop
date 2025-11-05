@@ -71,6 +71,8 @@ class UISE_DESKTOP_EXPORT LineEdit : public QLineEdit
 
         void updateButtonPositions();
 
+        void resetHover();
+
     signals:
 
         void hovered(bool enable);
@@ -81,6 +83,7 @@ class UISE_DESKTOP_EXPORT LineEdit : public QLineEdit
         void leaveEvent(QEvent* event) override;
 
         void resizeEvent(QResizeEvent* event) override;
+        void focusOutEvent(QFocusEvent* event) override;
 
     private:
 

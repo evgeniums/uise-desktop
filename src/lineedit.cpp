@@ -94,6 +94,18 @@ void LineEdit::updateIcons(bool hovered)
             action.action->setIcon(action.icon->icon());
         }
     }
+
+    if (!hovered)
+    {
+        for (auto* button : m_leadingButtons)
+        {
+            button->resetHover();
+        }
+        for (auto* button : m_trailingButtons)
+        {
+            button->resetHover();
+        }
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -188,6 +200,23 @@ void LineEdit::updateButtonPositions()
     }
 
     setTextMargins(lastX,tm.top(),rightW,tm.bottom());
+}
+
+//--------------------------------------------------------------------------
+
+void LineEdit::resetHover()
+{
+    setProperty("hovered",false);
+    updateIcons(false);
+    Style::updateWidgetStyle(this);
+}
+
+//--------------------------------------------------------------------------
+
+void LineEdit::focusOutEvent(QFocusEvent* event)
+{
+    QLineEdit::focusOutEvent(event);
+    resetHover();
 }
 
 //--------------------------------------------------------------------------

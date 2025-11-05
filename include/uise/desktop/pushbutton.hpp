@@ -129,6 +129,8 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             return m_toolButton;
         }
 
+        void resetHover();
+
     signals:
 
         void clicked();

@@ -126,4 +126,15 @@ void PushButton::setChecked(bool enable)
 
 //--------------------------------------------------------------------------
 
+void PushButton::resetHover()
+{
+    setProperty("hovered",false);
+    if (m_icon)
+    {
+        m_button->setIcon(m_icon->icon());
+    }
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
