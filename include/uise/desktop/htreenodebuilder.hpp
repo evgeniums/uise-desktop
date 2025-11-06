@@ -51,7 +51,7 @@ class UISE_DESKTOP_EXPORT HTreeNodeBuilder
         virtual HTreeNode* makeNode(const HTreePathElement& pathElement, HTreeNode* parentNode=nullptr, HTreeTab* treeTab=nullptr) const=0;
 
         template <typename T, typename ParentT, typename ... Args>
-        HTreeNode* makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode, HTreeTab* treeTab, Args&& ...args) const
+        auto makeNodeT(const HTreePathElement& pathElement, ParentT* parentNode, HTreeTab* treeTab, Args&& ...args) const
         {
             auto node=new T(treeTab,parentNode,std::forward<Args>(args)...);
             return node;
