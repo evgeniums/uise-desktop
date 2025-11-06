@@ -47,7 +47,7 @@ class PasswordInput_p
 //--------------------------------------------------------------------------
 
 PasswordInput::PasswordInput(QWidget* parent)
-    : QFrame(parent),
+    : AbstractPasswordInput(parent),
       pimpl(std::make_unique<PasswordInput_p>())
 {
     auto mainL=Layout::vertical(this);
@@ -93,9 +93,17 @@ PasswordInput::PasswordInput(QWidget* parent)
         }
     );
 
-    connect(pimpl->editor,&QLineEdit::returnPressed,this,&PasswordInput::returnPressed);
+    connect(
+        pimpl->editor,
+        &QLineEdit::returnPressed,
+        this,
+        [this]()
+        {
+            emit returnPressed();
+            emit passwordEntered();
+        }
+    );
     pimpl->editor->setClearButtonEnabled(true);
-
     pimpl->title->setVisible(false);
 }
 
@@ -179,6 +187,21 @@ void PasswordInput::setClearButtonEnabled(bool enable)
 bool PasswordInput::isClearButtonEnabled() const
 {
     return pimpl->editor->isClearButtonEnabled();
+}
+
+//--------------------------------------------------------------------------
+
+QString PasswordInput::password() const
+{
+    return editor()->text();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordInput::reset()
+{
+    pimpl->editor->clear();
+    setUnmaskButtonChecked(false);
 }
 
 //--------------------------------------------------------------------------

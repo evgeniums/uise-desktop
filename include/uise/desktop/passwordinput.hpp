@@ -31,12 +31,37 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLineEdit>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/widget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class UISE_DESKTOP_EXPORT AbstractPasswordInput : public WidgetQFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using WidgetQFrame::WidgetQFrame;
+
+        virtual QString password() const =0;
+        virtual void reset() =0;
+
+        virtual QString title() const =0;
+        virtual bool isTitleVisible() const =0;
+
+    public slots:
+
+        virtual void setTitle(const QString& title) =0;
+        virtual void setTitleVisible(bool enable) =0;
+
+    signals:
+
+        void passwordEntered();
+};
+
 class PasswordInput_p;
 
-class UISE_DESKTOP_EXPORT PasswordInput : public QFrame
+class UISE_DESKTOP_EXPORT PasswordInput : public AbstractPasswordInput
 {
     Q_OBJECT
 
@@ -56,13 +81,12 @@ class UISE_DESKTOP_EXPORT PasswordInput : public QFrame
         bool isUnmaskButtonVisible() const;
         bool isClearButtonEnabled() const;
 
-        QString title() const;
-        bool isTitleVisible() const;
+        QString title() const override;
+        bool isTitleVisible() const override;
 
-        QString password() const
-        {
-            return editor()->text();
-        }
+        QString password() const override;
+
+        void reset() override;
 
     signals:
 
@@ -76,8 +100,8 @@ class UISE_DESKTOP_EXPORT PasswordInput : public QFrame
         void setUnmaskButtonVisible(bool enable);
         void setClearButtonEnabled(bool enable);
 
-        void setTitle(const QString& title);
-        void setTitleVisible(bool enable);
+        void setTitle(const QString& title) override;
+        void setTitleVisible(bool enable) override;
 
     private:
 
