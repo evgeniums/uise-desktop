@@ -35,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SvgIcon;
+
 class UISE_DESKTOP_EXPORT AbstractPasswordInput : public WidgetQFrame
 {
     Q_OBJECT
@@ -45,6 +47,16 @@ class UISE_DESKTOP_EXPORT AbstractPasswordInput : public WidgetQFrame
 
         virtual QString password() const =0;
         virtual void reset() =0;
+
+        virtual void setApplyButtonVisible(bool enable) {std::ignore=enable;}
+
+        virtual bool isApplyButtonVisible() const {return false;}
+
+        virtual void setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon={})
+        {
+            std::ignore=text;
+            std::ignore=icon;
+        }
 
         virtual QString title() const =0;
         virtual bool isTitleVisible() const =0;
@@ -81,12 +93,18 @@ class UISE_DESKTOP_EXPORT PasswordInput : public AbstractPasswordInput
         bool isUnmaskButtonVisible() const;
         bool isClearButtonEnabled() const;
 
-        QString title() const override;
-        bool isTitleVisible() const override;
-
         QString password() const override;
 
         void reset() override;
+
+        virtual void setApplyButtonVisible(bool enable) override;
+
+        virtual bool isApplyButtonVisible() const override;
+
+        virtual void setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon={}) override;
+
+        QString title() const override;
+        bool isTitleVisible() const override;
 
     signals:
 

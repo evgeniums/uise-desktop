@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/passwordinput.hpp>
 #include <uise/desktop/passwordpanel.hpp>
 
@@ -81,7 +82,7 @@ void PasswordPanel::construct()
 
     connect(
         pimpl->password,
-        &PasswordInput::returnPressed,
+        &PasswordInput::passwordEntered,
         this,
         [this]()
         {
@@ -150,6 +151,27 @@ void PasswordPanel::reset()
 void PasswordPanel::setError(const QString& message)
 {
     pimpl->error->setText(message);
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordPanel::setApplyButtonVisible(bool enable)
+{
+    pimpl->password->setApplyButtonVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool PasswordPanel::isApplyButtonVisible() const
+{
+    return pimpl->password->isApplyButtonVisible();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordPanel::setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->password->setApplyButtonContent(text,std::move(icon));
 }
 
 //--------------------------------------------------------------------------

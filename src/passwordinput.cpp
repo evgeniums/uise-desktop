@@ -42,6 +42,7 @@ class PasswordInput_p
         QLabel* title;
         QLineEdit* editor;
         PushButton* unmaskButton;
+        PushButton* applyButton;
 };
 
 //--------------------------------------------------------------------------
@@ -60,7 +61,7 @@ PasswordInput::PasswordInput(QWidget* parent)
     auto l=Layout::horizontal(hFrame);
     mainL->addWidget(hFrame);
 
-    pimpl->editor=new QLineEdit(this);
+    pimpl->editor=new QLineEdit(hFrame);
     l->addWidget(pimpl->editor,1);
 
     pimpl->unmaskButton=new PushButton(Style::instance().svgIconLocator().icon("PasswordInput::unmask",this),this);
@@ -89,6 +90,7 @@ PasswordInput::PasswordInput(QWidget* parent)
             {
                 setPasswordMode();
             }
+            pimpl->editor->setFocus();
             emit unmaskButtonToggled(checked);
         }
     );
@@ -103,8 +105,26 @@ PasswordInput::PasswordInput(QWidget* parent)
             emit passwordEntered();
         }
     );
+
+    pimpl->applyButton=new PushButton(this);
+    pimpl->applyButton->setObjectName("passwordApply");
+    pimpl->applyButton->setVisible(false);
+    l->addWidget(pimpl->applyButton);
+
+    connect(
+        pimpl->applyButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            emit passwordEntered();
+        }
+    );
+
     pimpl->editor->setClearButtonEnabled(true);
+
     pimpl->title->setVisible(false);
+    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -149,34 +169,6 @@ bool PasswordInput::isUnmaskButtonVisible() const
 
 //--------------------------------------------------------------------------
 
-void PasswordInput::setTitle(const QString& title)
-{
-    pimpl->title->setText(title);
-}
-
-//--------------------------------------------------------------------------
-
-QString PasswordInput::title() const
-{
-    return pimpl->title->text();
-}
-
-//--------------------------------------------------------------------------
-
-void PasswordInput::setTitleVisible(bool enable)
-{
-    pimpl->title->setVisible(enable);
-}
-
-//--------------------------------------------------------------------------
-
-bool PasswordInput::isTitleVisible() const
-{
-    return pimpl->title->isVisible();
-}
-
-//--------------------------------------------------------------------------
-
 void PasswordInput::setClearButtonEnabled(bool enable)
 {
     pimpl->editor->setClearButtonEnabled(enable);
@@ -202,6 +194,56 @@ void PasswordInput::reset()
 {
     pimpl->editor->clear();
     setUnmaskButtonChecked(false);
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordInput::setApplyButtonVisible(bool enable)
+{
+    pimpl->applyButton->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool PasswordInput::isApplyButtonVisible() const
+{
+    return pimpl->applyButton->isVisible();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordInput::setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->applyButton->setText(text);
+    pimpl->applyButton->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordInput::setTitle(const QString& title)
+{
+    pimpl->title->setText(title);
+}
+
+//--------------------------------------------------------------------------
+
+QString PasswordInput::title() const
+{
+    return pimpl->title->text();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordInput::setTitleVisible(bool enable)
+{
+    pimpl->title->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool PasswordInput::isTitleVisible() const
+{
+    return pimpl->title->isVisible();
 }
 
 //--------------------------------------------------------------------------

@@ -61,6 +61,16 @@ class UISE_DESKTOP_EXPORT AbstractPasswordPanel : public WidgetQFrame
 
         virtual void reset()=0;
 
+        virtual void setApplyButtonVisible(bool enable) {std::ignore=enable;}
+
+        virtual bool isApplyButtonVisible() const {return false;}
+
+        virtual void setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon={})
+        {
+            std::ignore=text;
+            std::ignore=icon;
+        }
+
     signals:
 
         void passwordEntered();
@@ -98,6 +108,12 @@ class UISE_DESKTOP_EXPORT PasswordPanel : public AbstractPasswordPanel
         virtual void reset() override;
 
         virtual void construct() override;
+
+        virtual void setApplyButtonVisible(bool enable) override;
+
+        virtual bool isApplyButtonVisible() const override;
+
+        virtual void setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon={}) override;
 
     private:
 
