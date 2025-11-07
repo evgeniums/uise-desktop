@@ -178,7 +178,9 @@ void QrCodeScanner::construct()
         &QrCodeScanner::onVideoSizeChanged
     );
 
+    blockSignals(true);
     updateCameraActive(false);
+    blockSignals(false);
 
     updateCameras();
     connect(&pimpl->devices, &QMediaDevices::videoInputsChanged, this, &QrCodeScanner::updateCameras);
