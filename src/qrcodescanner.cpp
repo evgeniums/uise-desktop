@@ -87,7 +87,7 @@ class QrCodeScanner_p
 //--------------------------------------------------------------------------
 
 QrCodeScanner::QrCodeScanner(QWidget* parent)
-    : WidgetQFrame(parent),
+    : AbstractQrCodeScanner(parent),
       pimpl(std::make_unique<QrCodeScanner_p>())
 {
     pimpl->previewSize=QSize(DefaultPreviewSize,DefaultPreviewSize);
@@ -270,12 +270,14 @@ void QrCodeScanner::updateCameraActive(bool active)
     if (active)
     {
         pimpl->startButton->setEnabled(false);
-        pimpl->stopButton->setEnabled(true);        
+        pimpl->stopButton->setEnabled(true);
+        emit cameraStarted();
     }
     else
     {
         pimpl->startButton->setEnabled(true);
         pimpl->stopButton->setEnabled(false);
+        emit cameraStopped();
     }
 }
 

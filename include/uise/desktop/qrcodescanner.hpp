@@ -38,9 +38,47 @@ namespace qrcode
 class Barcode;
 }
 
+class UISE_DESKTOP_EXPORT AbstractQrCodeScanner : public WidgetQFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using WidgetQFrame::WidgetQFrame;
+
+        virtual void setPreviewSize(int width, int height=-1) =0;
+
+        virtual QSize previewSize() const noexcept =0;
+
+        virtual void setButtonsVisible(bool enable) =0;
+        virtual bool buttonsVisible() const noexcept =0;
+
+        virtual void setQrFrameColor(QColor color) =0;
+        virtual QColor qrFrameColor() const noexcept =0;
+
+        virtual void setQrFrameWidth(int width) =0;
+        virtual int qrFrameWidth() const noexcept =0;
+
+        virtual void setQrFrameStyle(Qt::PenStyle style) =0;
+        virtual Qt::PenStyle qrFrameStyle() const noexcept =0;
+
+    public slots:
+
+        virtual void start() =0;
+        virtual void stop() =0;
+
+    signals:
+
+        void cameraStarted();
+        void cameraStopped();
+        void qrCodeCaptured(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
+        void displayError(const QString& error);
+
+};
+
 class QrCodeScanner_p;
 
-class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
+class UISE_DESKTOP_EXPORT QrCodeScanner : public AbstractQrCodeScanner
 {
     Q_OBJECT
 
@@ -62,38 +100,28 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public WidgetQFrame
 
         virtual void construct() override;
 
-        QWidget* qWidget() override
-        {
-            return this;
-        }
-
         void init();
 
-        void setPreviewSize(int width, int height=-1);
+        void setPreviewSize(int width, int height=-1) override;
 
-        QSize previewSize() const noexcept;
+        QSize previewSize() const noexcept override;
 
-        void setButtonsVisible(bool enable);
-        bool buttonsVisible() const noexcept;
+        void setButtonsVisible(bool enable) override;
+        bool buttonsVisible() const noexcept override;
 
-        void setQrFrameColor(QColor color);
-        QColor qrFrameColor() const noexcept;
+        void setQrFrameColor(QColor color) override;
+        QColor qrFrameColor() const noexcept override;
 
-        void setQrFrameWidth(int width);
-        int qrFrameWidth() const noexcept;
+        void setQrFrameWidth(int width) override;
+        int qrFrameWidth() const noexcept override;
 
-        void setQrFrameStyle(Qt::PenStyle style);
-        Qt::PenStyle qrFrameStyle() const noexcept;
+        void setQrFrameStyle(Qt::PenStyle style) override;
+        Qt::PenStyle qrFrameStyle() const noexcept override;
 
     public slots:
 
-        void start();
-        void stop();
-
-    signals:
-
-        void qrCodeCaptured(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
-        void displayError(const QString& error);
+        void start() override;
+        void stop() override;
 
     private slots:
 
