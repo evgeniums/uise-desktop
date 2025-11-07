@@ -1,0 +1,13 @@
+uise--ValidatedInput QLineEdit[state="intermediate"]{
+color: #999999;
+}
+
+uise--ValidatedInput QLineEdit[state="invalid"]{
+color: #ff6677;
+}
+
+uise--ValidatedInput uise--PushButton QPushButton
+{color: #CCCCCC;border: 1px solid #999999; background-color: transparent;}
+
+uise--ValidatedInput uise--PushButton QPushButton:hover
+{color: #EEEEEE;border: 1px solid #EEEEEE;}

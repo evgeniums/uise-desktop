@@ -169,6 +169,7 @@ SET (HEADERS
     include/uise/desktop/searchlineedit.hpp
 
     include/uise/desktop/buttonslist.hpp
+    include/uise/desktop/validatedinput.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -279,6 +280,7 @@ SET (SOURCES
     src/searchlineedit.cpp
 
     src/buttonslist.cpp
+    src/validatedinput.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
