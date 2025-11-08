@@ -84,6 +84,7 @@ class UISE_DESKTOP_EXPORT LineEdit : public QLineEdit
 
         void resizeEvent(QResizeEvent* event) override;
         void focusOutEvent(QFocusEvent* event) override;
+        void showEvent(QShowEvent* event) override;
 
     private:
 

@@ -144,6 +144,7 @@ void LineEdit::addPushButton(PushButton* button, QLineEdit::ActionPosition posit
         }
     );
     button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    button->setCursor(Qt::ArrowCursor);
 }
 
 //--------------------------------------------------------------------------
@@ -151,6 +152,14 @@ void LineEdit::addPushButton(PushButton* button, QLineEdit::ActionPosition posit
 void LineEdit::resizeEvent(QResizeEvent* event)
 {
     QLineEdit::resizeEvent(event);
+    updateButtonPositions();
+}
+
+//--------------------------------------------------------------------------
+
+void LineEdit::showEvent(QShowEvent* event)
+{
+    QLineEdit::showEvent(event);
     updateButtonPositions();
 }
 
