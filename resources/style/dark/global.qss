@@ -88,3 +88,7 @@ color: #CCCCCC;
 uise--IconTextButton #text[hovered="true"] {
 color: #FFFFFF;
 }
+
+QLineEdit {
+placeholder-text-color: #888888;
+}
