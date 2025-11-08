@@ -89,6 +89,6 @@ uise--IconTextButton #text[hovered="true"] {
 color: #FFFFFF;
 }
 
-QLineEdit {
+QLineEdit, QTextEdit {
 placeholder-text-color: #888888;
 }
