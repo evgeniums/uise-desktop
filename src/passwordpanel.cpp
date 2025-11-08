@@ -96,8 +96,6 @@ void PasswordPanel::construct()
 
     pimpl->password->setTitleVisible(true);
     setDescriptionImpl(tr("Enter password"));
-
-    // setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
