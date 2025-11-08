@@ -189,7 +189,12 @@ void QrCodeScanner::construct()
 //--------------------------------------------------------------------------
 
 QrCodeScanner::~QrCodeScanner()
-{}
+{
+    if (pimpl->camera && pimpl->running)
+    {
+        pimpl->camera->stop();
+    }
+}
 
 //--------------------------------------------------------------------------
 
