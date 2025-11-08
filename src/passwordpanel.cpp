@@ -142,7 +142,7 @@ void PasswordPanel::setPasswordFocus()
 
 void PasswordPanel::reset()
 {
-    pimpl->password->editor()->clear();
+    pimpl->password->reset();
     pimpl->error->setText(QString{});
 }
 
