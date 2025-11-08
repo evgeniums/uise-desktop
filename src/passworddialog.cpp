@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/passwordpanel.hpp>
@@ -179,9 +180,9 @@ void PasswordDialog::setError(const QString& message)
 void PasswordDialog::updateMinimumHeight()
 {
     auto newHeight=std::max(sizeHint().height(),150);
-    if (newHeight>height())
+    if (newHeight>minimumHeight())
     {
-        setFixedHeight(newHeight);
+        setMinimumHeight(newHeight);
     }
 }
 

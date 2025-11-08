@@ -119,7 +119,7 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         std::unique_ptr<PasswordDialog_p> pimpl;
 };
 
-using ModalPasswordDialogType=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,50>;
+using ModalPasswordDialogType=ModalDialog<AbstractPasswordDialog,PasswordDialog,ModalDialogDefaultPopupMaxWidth,ModalDialogDefaultMaxWidthPercent,-1,30>;
 
 class UISE_DESKTOP_EXPORT ModalPasswordDialog : public ModalPasswordDialogType
 {

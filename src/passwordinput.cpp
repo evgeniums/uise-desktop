@@ -28,7 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
-
+#include <uise/desktop/lineedit.hpp>
 #include <uise/desktop/passwordinput.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -40,9 +40,11 @@ class PasswordInput_p
     public:
 
         QLabel* title;
-        QLineEdit* editor;
+        LineEdit* editor;
+        PushButton* clearButton;
         PushButton* unmaskButton;
         PushButton* applyButton;
+        bool clearButtonEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -54,6 +56,8 @@ PasswordInput::PasswordInput(QWidget* parent)
     auto mainL=Layout::vertical(this);
     pimpl->title=new QLabel(this);
     pimpl->title->setObjectName("title");
+    pimpl->title->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    pimpl->title->setWordWrap(true);
     mainL->addWidget(pimpl->title);
 
     auto hFrame=new QFrame(this);
@@ -61,12 +65,17 @@ PasswordInput::PasswordInput(QWidget* parent)
     auto l=Layout::horizontal(hFrame);
     mainL->addWidget(hFrame);
 
-    pimpl->editor=new QLineEdit(hFrame);
+    pimpl->editor=new LineEdit(hFrame);
     l->addWidget(pimpl->editor,1);
 
-    pimpl->unmaskButton=new PushButton(Style::instance().svgIconLocator().icon("PasswordInput::unmask",this),this);
+    pimpl->unmaskButton=new PushButton(Style::instance().svgIconLocator().icon("PasswordInput::unmask",this),pimpl->editor);
     pimpl->unmaskButton->setCheckable(true);
-    l->addWidget(pimpl->unmaskButton);
+    pimpl->unmaskButton->setObjectName("unmaskButton");
+    pimpl->editor->addPushButton(pimpl->unmaskButton,QLineEdit::TrailingPosition);
+    pimpl->clearButton=new PushButton(Style::instance().svgIconLocator().icon("PasswordInput::clear",this),pimpl->editor);
+    pimpl->clearButton->setObjectName("clearButton");
+    pimpl->clearButton->setVisible(false);
+    pimpl->editor->addPushButton(pimpl->clearButton,QLineEdit::TrailingPosition);
 
     auto setPasswordMode=[this]()
     {
@@ -96,6 +105,16 @@ PasswordInput::PasswordInput(QWidget* parent)
     );
 
     connect(
+        pimpl->clearButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            pimpl->editor->clear();
+        }
+    );
+
+    connect(
         pimpl->editor,
         &QLineEdit::returnPressed,
         this,
@@ -121,10 +140,19 @@ PasswordInput::PasswordInput(QWidget* parent)
         }
     );
 
-    pimpl->editor->setClearButtonEnabled(true);
-
     pimpl->title->setVisible(false);
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+
+    connect(
+        pimpl->editor,
+        &QLineEdit::textChanged,
+        this,
+        [this](const QString& text)
+        {
+            pimpl->clearButton->setVisible(pimpl->clearButtonEnabled && !text.isEmpty());
+            pimpl->editor->updateButtonPositions();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -171,14 +199,14 @@ bool PasswordInput::isUnmaskButtonVisible() const
 
 void PasswordInput::setClearButtonEnabled(bool enable)
 {
-    pimpl->editor->setClearButtonEnabled(enable);
+    pimpl->clearButtonEnabled=enable;
 }
 
 //--------------------------------------------------------------------------
 
 bool PasswordInput::isClearButtonEnabled() const
 {
-    return pimpl->editor->isClearButtonEnabled();
+    return pimpl->clearButtonEnabled;
 }
 
 //--------------------------------------------------------------------------

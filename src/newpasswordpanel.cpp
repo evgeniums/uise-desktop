@@ -358,6 +358,7 @@ void NewPasswordPanel::reset()
     pimpl->password->editor()->clear();
     pimpl->repeatPassword->editor()->clear();
     pimpl->error->setText(" ");
+    pimpl->password->editor()->setFocus();
 }
 
 //--------------------------------------------------------------------------
@@ -384,12 +385,12 @@ void NewPasswordPanel::setMaskMode(bool enable)
     pimpl->repeatPassword->setUnmaskButtonChecked(!enable);
 
     pimpl->repeatPassword->setVisible(enable);
-    pimpl->password->setUnmaskButtonVisible(!enable);
-
-    pimpl->password->setClearButtonEnabled(!enable);
+    pimpl->password->setUnmaskButtonVisible(!enable);    
 
     pimpl->password->blockSignals(false);
     pimpl->repeatPassword->blockSignals(false);
+
+    // pimpl->password->setClearButtonEnabled(!enable);
 }
 
 //--------------------------------------------------------------------------

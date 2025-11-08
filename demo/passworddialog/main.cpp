@@ -334,7 +334,7 @@ int main(int argc, char *argv[])
 
     w.setCentralWidget(mainFrame);
     w.resize(1200,800);
-    w.setWindowTitle("Frame With Modal Status Demo");
+    w.setWindowTitle("Password Dialog Demo");
     w.show();
     auto ret=app.exec();
     return ret;

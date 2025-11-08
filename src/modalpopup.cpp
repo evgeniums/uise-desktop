@@ -163,7 +163,6 @@ void ModalPopup::updateWidgetGeometry()
     };
 
     auto minSize=pimpl->widget->minimumSize();
-
     auto maxSize=pimpl->widget->maximumSize();
     if (minSize==maxSize && minSize.isValid())
     {

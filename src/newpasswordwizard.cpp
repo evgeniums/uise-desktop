@@ -108,10 +108,12 @@ void NewPasswordWizard::construct()
 
     pimpl->page1=makeWidget<AbstractPasswordPanel,PasswordPanel>();
     pimpl->page1->setDescription(tr("Enter new password"));
+    pimpl->page1->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);
     pimpl->wizard->addPage(pimpl->page1,Style::instance().svgIconLocator().icon("PasswordDialog::key"));
 
     pimpl->page2=makeWidget<AbstractPasswordPanel,PasswordPanel>();
     pimpl->page2->setDescription(tr("Repeat password"));
+    pimpl->page2->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);
     pimpl->wizard->addPage(pimpl->page2,Style::instance().svgIconLocator().icon("PasswordDialog::password"));
 
     connect(

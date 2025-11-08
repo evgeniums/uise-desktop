@@ -43,9 +43,7 @@ class PasswordPanel_p
 {
     public:
 
-        QLabel* description;
         QLabel* error;
-
         PasswordInput* password;
 };
 
@@ -63,11 +61,6 @@ void PasswordPanel::construct()
 {
     auto l=Layout::vertical(this);
     l->addStretch(1);
-
-    pimpl->description=new QLabel(this);
-    l->addWidget(pimpl->description);
-    pimpl->description->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    pimpl->description->setWordWrap(true);
 
     pimpl->password=new PasswordInput(this);
     l->addWidget(pimpl->password);
@@ -101,7 +94,10 @@ void PasswordPanel::construct()
         }
     );
 
+    pimpl->password->setTitleVisible(true);
     setDescriptionImpl(tr("Enter password"));
+
+    // setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -126,9 +122,16 @@ void PasswordPanel::setDescription(const QString& message)
 
 //--------------------------------------------------------------------------
 
+void PasswordPanel::setDescriptionVisible(bool enable)
+{
+    pimpl->password->setTitleVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
 void PasswordPanel::setDescriptionImpl(const QString& message)
 {
-    pimpl->description->setText(message);
+    pimpl->password->setTitle(message);
 }
 
 //--------------------------------------------------------------------------
