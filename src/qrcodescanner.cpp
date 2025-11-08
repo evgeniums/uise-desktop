@@ -425,6 +425,8 @@ void QrCodeScanner::onVideoSizeChanged()
 {
     auto videoSize=pimpl->videoPreview->videoSink()->videoSize();
     pimpl->videoPreview->setSize(videoSize);
+    QRectF itemSceneRect = pimpl->videoPreview->mapToScene(pimpl->videoPreview->boundingRect()).boundingRect();
+    pimpl->scene->setSceneRect(itemSceneRect);
 
     qreal videoRatio=qreal(videoSize.width())/qreal(videoSize.height());
     auto viewSize=pimpl->previewSize;
@@ -443,8 +445,8 @@ void QrCodeScanner::onVideoSizeChanged()
             viewSize.setHeight(newH);
         }
     }
-    pimpl->view->setFixedSize(viewSize);
 
+    pimpl->view->setFixedSize(viewSize);
     pimpl->view->fitInView(pimpl->videoPreview, Qt::KeepAspectRatio);
     pimpl->deviceList->setFixedSize(pimpl->view->width(),pimpl->deviceList->height());
 }
