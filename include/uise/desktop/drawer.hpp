@@ -59,6 +59,7 @@ class UISE_DESKTOP_EXPORT Drawer : public QFrame
         Drawer& operator=(Drawer&&)=delete;
 
         void setWidget(QWidget* widget);
+        QWidget* takeWidget();
 
         void openDrawer();
         void closeDrawer(bool immediate=false);
@@ -114,6 +115,8 @@ class UISE_DESKTOP_EXPORT FrameWithDrawer : public QFrame,
          * @param widget Widget to use within drawer.
          */
         void setDrawerWidget(QWidget* widget);
+
+        QWidget* takeDrawerWidget();
 
         /**
          * @brief Show drawer.
@@ -191,6 +194,8 @@ class UISE_DESKTOP_EXPORT FrameWithDrawer : public QFrame,
          * @return Operation result.
          */
         Qt::Edge drawerEdge() const noexcept;
+
+        void setContentWidget(QWidget* widget);
 
     signals:
 

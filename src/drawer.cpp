@@ -27,8 +27,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QShortcut>
 #include <QPalette>
 #include <QVariantAnimation>
+#include <QBoxLayout>
 
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/drawer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -256,6 +258,19 @@ void Drawer::setWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+QWidget* Drawer::takeWidget()
+{
+    auto widget=pimpl->widget;
+    if (pimpl->widget!=nullptr)
+    {
+        pimpl->widget->setParent(nullptr);
+        pimpl->widget=nullptr;
+    }
+    return widget;
+}
+
+//--------------------------------------------------------------------------
+
 void Drawer::openDrawer()
 {
     if (pimpl->state==State::Visible || pimpl->state==State::SlidingToHide)
@@ -313,6 +328,12 @@ void Drawer::mousePressEvent(QMouseEvent *event)
 {
     QFrame::mousePressEvent(event);
 
+    if (pimpl->widget==nullptr)
+    {
+        closeDrawer(true);
+        return;
+    }
+
     auto underMouse=pimpl->widget->rect().contains(mapFromGlobal(QCursor::pos()));
     if (!underMouse)
     {
@@ -332,6 +353,11 @@ void Drawer::resizeEvent(QResizeEvent *event)
 
 void Drawer::updateDrawerGeometry()
 {
+    if (pimpl->widget==nullptr)
+    {
+        return;
+    }
+
     auto margins=contentsMargins();
     auto w=width();
     auto h=height();
@@ -393,6 +419,9 @@ class FrameWithDrawer_p
         int slideDurationMs=FrameWithDrawer::DefaultSlideDurationMs;
 
         Qt::Edge edge=Qt::LeftEdge;
+
+        QBoxLayout* layout=nullptr;
+        QWidget* contentWidget=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -415,6 +444,13 @@ FrameWithDrawer::~FrameWithDrawer()
 void FrameWithDrawer::setDrawerWidget(QWidget* widget)
 {
     pimpl->drawer->setWidget(widget);
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* FrameWithDrawer::takeDrawerWidget()
+{
+    return pimpl->drawer->takeWidget();
 }
 
 //--------------------------------------------------------------------------
@@ -551,6 +587,19 @@ Qt::Edge FrameWithDrawer::drawerEdge() const noexcept
 bool FrameWithDrawer::isHorizontal() const noexcept
 {
     return pimpl->edge==Qt::LeftEdge || pimpl->edge==Qt::RightEdge;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithDrawer::setContentWidget(QWidget* widget)
+{
+    destroyWidget(pimpl->contentWidget);
+    if (pimpl->layout==nullptr)
+    {
+        pimpl->layout=Layout::vertical(this);
+    }
+    pimpl->contentWidget=widget;
+    pimpl->layout->addWidget(widget,1);
 }
 
 //--------------------------------------------------------------------------
