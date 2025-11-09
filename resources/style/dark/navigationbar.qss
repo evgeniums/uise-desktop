@@ -4,4 +4,6 @@ uise--NavigationBar QToolButton {color:#888888;}
 uise--NavigationBar QToolButton:hover:!checked {color: #BBBBBB;}
 uise--NavigationBar QToolButton:checked {color: #BBBBBB;}
 
-uise--NavigationBarPanel {background-color: #444444;}
+uise--NavigationBarPanel {background-color: #444444; border:none;}
+
+uise--NavigationBar {border:none;}

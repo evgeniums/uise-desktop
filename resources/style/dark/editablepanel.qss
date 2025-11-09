@@ -46,3 +46,9 @@ uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #FFFFFF;border:
 uise--EditablePanel #statusFrame #statusText[status="error"]{
 color: #ff6677;
 }
+
+uise--EditablePanel #topButtonsFrame,
+uise--EditablePanel #bottomButtonsFrame,
+uise--EditablePanel #titleFrame {
+background-color:transparent;
+}

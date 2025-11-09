@@ -1,0 +1,129 @@
+/*QFrame {border:none;}*/
+
+QLabel, QRadioButton, QCheckBox, QComboBox, QPushButton {
+color: #EEEEEE;
+}
+
+QLineEdit, QTextEdit {
+color: #FFFFFF;
+}
+
+QFrame:disabled, QLabel:disabled, QComboBox:disabled, QLineEdit:disabled, QCheckBox:disabled, QPushButton:disabled {
+background-color: transparent;
+border:1px solid transparent;
+color: #999;
+}
+
+QPushButton {
+background-color: transparent;
+}
+
+QComboBox QAbstractItemView, QMenu{
+background-color: #333;
+}
+
+QTabWidget {
+border:none;
+}
+
+QTabWidget::pane, QFileDialog, QAbstractItemView
+{
+background-color: #262626;
+color: #ffffff;
+border: 1px solid #333;
+}
+
+QTabBar {
+background-color: #343434;
+border:none;
+}
+
+QTabBar::tab
+{
+background-color: #262626;
+color: #CCCCCC;
+border: 1px solid #333;
+padding: 2px 5px;
+border-bottom: none;
+}
+
+QTabBar::tab:disabled
+{
+background-color: #656565;
+color: #656565;
+}
+
+QTabBar::tab:hover
+{
+color: #FFFFFF;
+}
+
+QTabBar::tab:selected
+{
+background-color: #1e6091;
+color: #EEEEEE;
+}
+
+QTabBar::tab:selected:disabled
+{
+background-color: #404040;
+color: #656565;
+}
+
+QTabBar::tab:!selected
+{
+background-color: #262626;
+}
+
+QTabBar::tab:top, QTabBar::tab:bottom
+{
+min-width: 8ex;
+}
+
+QFileDialog QPushButton
+{color: #CCCCCC;border: 1px solid #999999; background-color: transparent; padding: 2px 8px; border-radius:4px;}
+
+QFileDialog QPushButton:hover
+{color: #EEEEEE;border: 1px solid #EEEEEE;}
+
+QGraphicsView {
+background-color: #343434;
+}
+
+QSplitter {
+border:none;
+}
+
+QScrollBar:handle {
+background: #777;
+border-radius:4px;
+}
+
+QScrollBar {
+margin:0;padding:0;
+background: transparent;
+}
+
+QScrollBar:horizontal {
+height: 8px;
+}
+
+QScrollBar:vertical {
+width: 8px;
+}
+
+QScrollBar::add-line:vertical {
+height: 0px;
+}
+
+QScrollBar::sub-line:vertical {
+height: 0px;
+}
+
+QScrollBar::add-line:horizontal {
+width: 0px;
+}
+
+QScrollBar::sub-line:horizontal {
+width: 0px;
+}

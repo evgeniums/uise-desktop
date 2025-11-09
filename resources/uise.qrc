@@ -69,5 +69,6 @@
         <file>style/buttonslist.qss</file>
         <file>style/inputwidgets.qss</file>
         <file>style/dark/inputwidgets.qss</file>
+        <file>style/dark/reset.qss</file>
     </qresource>
 </RCC>

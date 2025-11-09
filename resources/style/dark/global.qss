@@ -92,3 +92,12 @@ color: #FFFFFF;
 QLineEdit, QTextEdit {
 placeholder-text-color: #888888;
 }
+
+uise--ButtonsList {
+background-color: #333;
+}
+
+uise--ScrollArea {
+border:none;
+background-color: transparent;
+}
