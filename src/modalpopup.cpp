@@ -69,6 +69,7 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
             close(pimpl->autoDestroy);
         }
     );
+    setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -222,7 +223,7 @@ class FrameWithModalPopup_p
         ModalPopup* popup;
         bool locked=false;
         bool autoDestroy=true;
-        bool autoColor=true;
+        bool autoColor=false;
         QBoxLayout* layout=nullptr;
         QPointer<QWidget> contentWidget;
 
