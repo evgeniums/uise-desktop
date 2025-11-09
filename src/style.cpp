@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStyleHints>
 
 #include <uise/desktop/htree.hpp>
 
@@ -63,11 +64,7 @@ Style::Style(
 //--------------------------------------------------------------------------
 bool Style::checkDarkTheme()
 {
-    auto palette = qApp->palette("QLabel");
-    auto textColor = palette.color(QPalette::WindowText).value();
-    auto bgColor = palette.color(QPalette::Window).value();
-    m_darkTheme = textColor > bgColor;
-
+    m_darkTheme=QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
     return m_darkTheme;
 }
 
