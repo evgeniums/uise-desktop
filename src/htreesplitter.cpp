@@ -1167,7 +1167,7 @@ class HTreeSplitter_p
 {
     public:
 
-        QScrollArea* scArea=nullptr;
+        ScrollArea* scArea=nullptr;
         AlignedStretchingWidget* wrapper=nullptr;
 
         HTreeSplitterInternal* content=nullptr;
@@ -1184,7 +1184,7 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
 {
     auto* l=Layout::horizontal(this);
 
-    pimpl->scArea=new QScrollArea(this);
+    pimpl->scArea=new ScrollArea(this);
     pimpl->scArea->setWidgetResizable(true);
     pimpl->scArea->setObjectName("hTreeSplitterScArea");
     l->addWidget(pimpl->scArea);
