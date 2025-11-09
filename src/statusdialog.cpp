@@ -49,6 +49,7 @@ QString StatusBase::statusString(int status)
         case (static_cast<int>(Type::Warning)): return "warning"; break;
         case (static_cast<int>(Type::Info)): return "info"; break;
         case (static_cast<int>(Type::Question)): return "question"; break;
+        case (static_cast<int>(Type::Attention)): return "attention"; break;
         case (static_cast<int>(Type::None)): return ""; break;
         default: break;
     }
@@ -66,6 +67,7 @@ QString StatusBase::statusTitle(int status)
         case (static_cast<int>(Type::Warning)): return QObject::tr("Warning","Status"); break;
         case (static_cast<int>(Type::Info)): return QObject::tr("Information","Status"); break;
         case (static_cast<int>(Type::Question)): return QObject::tr("Question","Status"); break;
+        case (static_cast<int>(Type::Attention)): return QObject::tr("Attention","Status"); break;
         case (static_cast<int>(Type::None)): return ""; break;
         default: break;
     }
@@ -118,6 +120,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
+    pimpl->text->setObjectName("text");
 
     setWidget(pimpl->text);
     setMinimumWidth(400);
@@ -150,6 +153,7 @@ void StatusDialog::setStatus(const QString& message, const QString& title, std::
 void StatusDialog::setStatus(const QString& message, Type type, const QString& title)
 {
     auto titleText=title;
+    pimpl->text->setProperty("status",statusString(type));
 
     switch (type)
     {
@@ -217,6 +221,22 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
         }
         break;
 
+        case(Type::Attention):
+        {
+            if (titleText.isEmpty())
+            {
+                titleText=tr("Attention");
+            }
+            setButtons(
+                {
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Yes,this),
+                    AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this)
+                }
+            );
+            setStatus(message,titleText,Style::instance().svgIconLocator().icon("StatusDialog::attention",this));
+        }
+        break;
+
         default:
         {
             setButtons(
@@ -228,6 +248,8 @@ void StatusDialog::setStatus(const QString& message, Type type, const QString& t
         }
         break;
     }
+
+    Style::updateWidgetStyle(pimpl->text);
 }
 
 //--------------------------------------------------------------------------

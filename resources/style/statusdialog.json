@@ -6,6 +6,7 @@
                 "close" : "${uise-svg-icons-1}/x",
                 "error" : "${uise-svg-icons-1}/alert-hexagon",
                 "warning" : "${uise-svg-icons-1}/alert-triangle",
+                "attention" : "${uise-svg-icons-1}/alert-triangle",
                 "info" : "${uise-svg-icons-1}/info-circle",
                 "question" : "${uise-svg-icons-1}/help"
             }

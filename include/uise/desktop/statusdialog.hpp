@@ -51,6 +51,7 @@ class UISE_DESKTOP_EXPORT StatusBase
             Warning,
             Info,
             Question,
+            Attention,
 
             User=0x100
         };

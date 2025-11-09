@@ -35,6 +35,14 @@
                             "off" : { "currentColor" : "#FB8500" }
                         }
                     }
+                },
+                {
+                    "name" : "attention",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#FB8500" }
+                        }
+                    }
                 }
             ]
         }
