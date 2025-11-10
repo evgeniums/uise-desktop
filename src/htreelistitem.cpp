@@ -26,13 +26,15 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreelistitem.hpp>
 
 #include <uise/desktop/ipp/htreelistitemtemplate.ipp>
+#include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
+
+#include <uise/desktop/htreelistitemexport.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-//--------------------------------------------------------------------------
-
-template class UISE_DESKTOP_EXPORT HTreeListItemT<QFrame>;
-
-//--------------------------------------------------------------------------
+#ifndef _MSC_VER
+template class HTreeListItemT<QFrame>;
+template class HTreeFlyweightListItem<QFrame>;
+#endif
 
 UISE_DESKTOP_NAMESPACE_END

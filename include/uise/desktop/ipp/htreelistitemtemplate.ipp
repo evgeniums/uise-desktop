@@ -15,13 +15,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/ipp/htreelistitem.ipp
+/** @file uise/desktop/ipp/htreelistitemtemplate.ipp
 *
 *  Defines HTreeListItemT.
 *
 */
 
 /****************************************************************************/
+
+#ifndef UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_IPP
+#define UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_IPP
 
 #include <QLabel>
 #include <QMenu>
@@ -407,3 +410,5 @@ void HTreeListItemT<BaseT>::doSetSelected(bool)
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_IPP

@@ -37,10 +37,13 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
-#include <uise/desktop/htreestandardlistitem.hpp>
-
-#include <uise/desktop/ipp/flyweightlistview.ipp>
+// #include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
+#ifdef _MSC_VER
+#include <uise/desktop/ipp/htreelistitemtemplate.ipp>
+#endif
+
+#include <uise/desktop/htreestandardlistitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 

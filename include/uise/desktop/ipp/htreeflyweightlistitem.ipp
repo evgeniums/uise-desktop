@@ -23,6 +23,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#ifndef UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_IPP
+#define UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_IPP
+
 #include <uise/desktop/htreeflyweightlistitem.hpp>
 #include <uise/desktop/ipp/flyweightlistview.ipp>
 
@@ -111,3 +114,5 @@ HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::HTreeFlyweightList
 //--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_IPP

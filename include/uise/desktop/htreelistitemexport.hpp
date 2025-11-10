@@ -1,5 +1,5 @@
 /**
-@copyright Evgeny Sidorov 2022
+@copyright Evgeny Sidorov 2021
 
 This software is dual-licensed. Choose the appropriate license for your project.
 
@@ -15,11 +15,25 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/htreeflyweightlistitem.cpp
-*
-*  Defines HTreeFlyWeighListItem.
+/** @file uise/desktop/htreelistitemexport.hpp
 *
 */
 
 /****************************************************************************/
 
+#ifndef UISE_DESKTOP_HTREE_LIST_ITEM_EXPORT_HPP
+#define UISE_DESKTOP_HTREE_LIST_ITEM_EXPORT_HPP
+
+#include <uise/desktop/htreelistitem.hpp>
+#include <uise/desktop/htreeflyweightlistitem.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+#ifdef _MSC_VER
+template class UISE_DESKTOP_EXPORT HTreeListItemT<QFrame>;
+template class UISE_DESKTOP_EXPORT HTreeFlyweightListItem<QFrame>;
+#endif
+
+UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_HTREE_LIST_ITEM_EXPORT_HPP
