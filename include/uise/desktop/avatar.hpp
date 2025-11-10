@@ -277,7 +277,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
         int maxAvatarLetterCount() const noexcept
         {
-            return m_maxAvatarLetterCount;
+            return static_cast<int>(m_maxAvatarLetterCount);
         }
 
         void clearAvatars();
