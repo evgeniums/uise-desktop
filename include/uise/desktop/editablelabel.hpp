@@ -857,7 +857,7 @@ struct EditableLabelHelper
        return traits::value(widget);
     }
 
-    static void clear(const widgetType* widget)
+    static void clear(widgetType* widget)
     {
         traits::clear(widget);
     }
@@ -940,7 +940,7 @@ class EditableLabelTmpl : public EditableLabel
         /**
          * @brief Clear value of the label.
          */
-        auto clear() const
+        auto clear()
         {
             m_editor->blockSignals(true);
             helper::clear(m_editor);

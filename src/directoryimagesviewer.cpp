@@ -107,7 +107,7 @@ void DirectoryImagesViewer::browseFile()
         options=QFileDialog::DontUseNativeDialog;
     }
     QString filter{tr("Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)")};
-    auto fileName=QFileDialog::getOpenFileName(this,tr("Select image file"),QString::fromStdString(path()),filter,nullptr,options);
+    auto fileName=QFileDialog::getOpenFileName(this,tr("Select image file"),QString::fromStdString(path().string()),filter,nullptr,options);
     if (!guard || fileName.isEmpty())
     {
         return;
