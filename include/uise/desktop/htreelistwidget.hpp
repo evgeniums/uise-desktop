@@ -82,6 +82,8 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public WidgetQFrame
 
     private:
 
+        void updateNextNodeId();
+
         std::unique_ptr<HTreeListWidget_p> pimpl;
 
         friend class HTreeListUiHelper;

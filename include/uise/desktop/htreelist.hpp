@@ -78,6 +78,8 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
         virtual void setupContentWidget() =0;
 
+        virtual void onNodeExpanded() override;
+
     private:
 
         QWidget* doCreateContentWidget();

@@ -56,6 +56,8 @@ class HTreeListWidget_p
 
         int maxItemWidth=HTreeList::DefaultMaxItemWidth;
 
+        std::string nextNodeId;
+
         void updateMaxWidth();
 };
 
@@ -128,6 +130,8 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
             it.second->setMaximumWidth(pimpl->maxItemWidth);
         }
     }
+
+    item->setSelected(item->uniqueId()==pimpl->nextNodeId);
 }
 
 //--------------------------------------------------------------------------
@@ -215,10 +219,18 @@ void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, Q
 
 void HTreeListWidget::setNextNodeId(const std::string& id)
 {
+    pimpl->nextNodeId=id;
+    updateNextNodeId();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListWidget::updateNextNodeId()
+{
     for (auto& it:pimpl->items)
     {
         auto item=it.second;
-        item->setSelected(item->uniqueId()==id);
+        item->setSelected(item->uniqueId()==pimpl->nextNodeId);
     }
 }
 
@@ -346,6 +358,16 @@ void HTreeList::setNextNodeId(const std::string& id)
     if (m_widget)
     {
         m_widget->setNextNodeId(id);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeList::onNodeExpanded()
+{
+    if (nextNode()!=nullptr)
+    {
+        setNextNodeId(nextNode()->path().uniqueId());
     }
 }
 

@@ -1087,6 +1087,25 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
             }
         }
     }
+    else if (expanded)
+    {
+        s->stretch=0;
+        size_t expandedCount=0;
+        Section* lastExpanded=nullptr;
+        for (const auto& sc: m_sections)
+        {
+            auto ww=qobject_cast<HTreeSplitterSection*>(sc->obj);
+            if (!sc->destroyed && ww && ww->isExpanded())
+            {
+                ++expandedCount;
+                lastExpanded=sc.get();
+            }
+        }
+        if (expandedCount==2)
+        {
+            lastExpanded->stretch=std::max(lastExpanded->stretch,1);
+        }
+    }
 
     recalculateWidths(m_prevViewportWidth);
 #if 0

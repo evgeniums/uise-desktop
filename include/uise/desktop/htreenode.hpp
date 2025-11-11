@@ -243,6 +243,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void fillContent();
 
+        virtual void onNodeExpanded()
+        {}
+
     private slots:
 
         void nextNodeDestroyed(QObject*);

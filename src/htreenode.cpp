@@ -582,6 +582,8 @@ void HTreeNode::expandNode()
     {
         expandExclusive();
     }
+
+    onNodeExpanded();
 }
 
 //--------------------------------------------------------------------------
@@ -973,6 +975,22 @@ void HTreeNode::init()
 
 void HTreeNode::expandParentNode()
 {
+    if (treeTab()->tree()->expandableLastDepthOnNodeOpen()!=0)
+    {
+        int count=0;
+        auto next=nextNode();
+        while (next!=nullptr)
+        {
+            if (count >= treeTab()->tree()->expandableLastDepthOnNodeOpen())
+            {
+                next->closeNode();
+                break;
+            }
+
+            ++count;
+            next=nextNode();
+        }
+    }
     if (parentNode())
     {
         parentNode()->setExpanded(true);
