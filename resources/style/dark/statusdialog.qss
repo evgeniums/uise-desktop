@@ -8,5 +8,5 @@ color: #eae2b7;
 }
 
 uise--StatusDialog #dialogFrame #text[status="error"] {
-color: #ffe5ec;
+color: #FFFFFF;
 }
