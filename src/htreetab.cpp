@@ -373,7 +373,23 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
                 pimpl->navbar->blockSignals(true);
                 pimpl->navbar->setItemChecked(index,true);
                 pimpl->navbar->blockSignals(false);
-                node->setExpanded(true);
+
+                if (pimpl->tree->expandableLastDepthOnNodeOpen()==0)
+                {
+                    node->setExpanded(true);
+                }
+                else
+                {
+                    auto next=node->nextNode();
+                    if (next!=nullptr)
+                    {
+                        next->expandParentNode();
+                    }
+                    else
+                    {
+                        node->setExpanded(true);
+                    }
+                }
                 scrollToNode(node);
             }
         }
