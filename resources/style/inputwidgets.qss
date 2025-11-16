@@ -5,3 +5,7 @@ border-radius: 4px; padding: 2px 12px; margin-left: 4px;
 uise--ValidatedInput QLineEdit{
 padding: 2px;
 }
+
+uise--ValidatedInput QLabel {
+margin: 2px;
+}

@@ -32,6 +32,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/widget.hpp>
 
+class QLabel;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class PushButton;
@@ -76,6 +78,8 @@ class UISE_DESKTOP_EXPORT AbstractValidatedInput : public WidgetQFrame
             return m_validator;
         }
 
+        virtual void showError(const QString& msg) =0;
+
     signals:
 
         void applyRequested();
@@ -115,6 +119,8 @@ class UISE_DESKTOP_EXPORT ValidatedInput : public AbstractValidatedInput
 
         virtual QWidget* editorWidget() const override;
 
+        void showError(const QString& msg) override;
+
     private slots:
 
         void onTextChanged(QString text);
@@ -128,6 +134,7 @@ class UISE_DESKTOP_EXPORT ValidatedInput : public AbstractValidatedInput
 
         QLineEdit* m_input;
         PushButton* m_button;
+        QLabel* m_error;
 };
 
 UISE_DESKTOP_NAMESPACE_END

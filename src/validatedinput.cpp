@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QLabel>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -38,13 +40,26 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 ValidatedInput::ValidatedInput(QWidget* parent)
     : AbstractValidatedInput(parent)
 {
-    auto l=Layout::horizontal(this);
+    auto l=Layout::vertical(this);
+
+    // auto placeHolder=new QLabel(this);
+    // placeHolder->setObjectName("placeHolder");
+    // l->addWidget(placeHolder);
+
+    auto mainFrame=new QFrame(this);
+    auto ml=Layout::horizontal(mainFrame);
+    l->addWidget(mainFrame);
 
     m_input=new QLineEdit(this);
-    l->addWidget(m_input,1);
+    ml->addWidget(m_input,1);
 
     m_button=new PushButton(tr("Apply"),this);
-    l->addWidget(m_button);
+    m_button->setObjectName("apply");
+    ml->addWidget(m_button);
+
+    m_error=new QLabel(this);
+    m_error->setObjectName("error");
+    l->addWidget(m_error);
 
     connect(
         m_button,
@@ -68,6 +83,8 @@ ValidatedInput::ValidatedInput(QWidget* parent)
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
     m_input->setClearButtonEnabled(true);
+    m_button->setEnabled(false);
+    m_error->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -80,15 +97,22 @@ void ValidatedInput::clear()
 //--------------------------------------------------------------------------
 
 void ValidatedInput::onTextChanged(QString text)
-{
+{    
     int pos=0;
     auto state=m_input->validator()->validate(text,pos);
     switch (state)
     {
-    case QValidator::Invalid: m_input->setProperty("state","invalid"); break;
-    case QValidator::Intermediate: m_input->setProperty("state","intermediate"); break;
-    case QValidator::Acceptable: m_input->setProperty("state","acceptable"); break;
+        case QValidator::Invalid: m_input->setProperty("state","invalid"); m_button->setEnabled(false); break;
+        case QValidator::Intermediate: m_input->setProperty("state","intermediate"); m_button->setEnabled(false); break;
+        case QValidator::Acceptable: m_input->setProperty("state","acceptable"); m_button->setEnabled(true); break;
     }
+    m_error->clear();
+    m_error->setVisible(false);
+    if (text.isEmpty())
+    {
+        m_button->setEnabled(false);
+    }
+
     Style::updateWidgetStyle(m_input);
 }
 
@@ -180,6 +204,15 @@ bool ValidatedInput::isApplyButtonVisible() const
 void ValidatedInput::updateValidator()
 {
     m_input->setValidator(validator());
+}
+
+//--------------------------------------------------------------------------
+
+void ValidatedInput::showError(const QString& msg)
+{
+    m_error->setText(msg);
+    m_error->setVisible(!msg.isEmpty());
+    m_input->setFocus();
 }
 
 //--------------------------------------------------------------------------

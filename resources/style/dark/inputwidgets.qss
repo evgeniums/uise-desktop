@@ -9,5 +9,13 @@ color: #ff6677;
 uise--ValidatedInput uise--PushButton QPushButton
 {color: #CCCCCC;border: 1px solid #999999; background-color: transparent;}
 
+uise--ValidatedInput uise--PushButton QPushButton:disabled,
+uise--ValidatedInput uise--PushButton QPushButton:disabled:hover
+{color: #999;border: none;}
+
 uise--ValidatedInput uise--PushButton QPushButton:hover
 {color: #EEEEEE;border: 1px solid #EEEEEE;}
+
+uise--ValidatedInput QLabel#error {
+color: #ff6677;
+}
