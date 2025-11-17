@@ -155,6 +155,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setPath(HTreePath path);
         const HTreePath& path() const;
 
+        HTreePath& mutablePath();
+
         void setParentNode(HTreeNode* node);
         HTreeNode* parentNode() const;
 

@@ -419,6 +419,13 @@ const HTreePath& HTreeNode::path() const
 
 //--------------------------------------------------------------------------
 
+HTreePath& HTreeNode::mutablePath()
+{
+    return pimpl->path;
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeNode::setParentNode(HTreeNode* node)
 {
     pimpl->parentNode=node;
