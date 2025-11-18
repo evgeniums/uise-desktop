@@ -84,6 +84,8 @@ class UISE_DESKTOP_EXPORT AbstractNewPasswordPanel : public WidgetQFrame
 
         virtual GeneratorFn defaultPasswordGenerator() const =0;
 
+        virtual bool checkPassword() =0;
+
     signals:
 
         void passwordEntered();
@@ -155,6 +157,8 @@ class UISE_DESKTOP_EXPORT NewPasswordPanel : public AbstractNewPasswordPanel
 
         virtual GeneratorFn defaultPasswordGenerator() const override;
 
+        bool checkPassword() override;
+
     public slots:
 
         void setMaskMode(bool enable);
@@ -162,6 +166,7 @@ class UISE_DESKTOP_EXPORT NewPasswordPanel : public AbstractNewPasswordPanel
     private:
 
         void checkPasswordThenEmit();
+
 
         void setPasswordTitleImpl(const QString& message);
         void setRepeatPasswordTitleImpl(const QString& message);

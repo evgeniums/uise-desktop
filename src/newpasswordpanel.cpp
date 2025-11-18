@@ -415,6 +415,23 @@ void NewPasswordPanel::checkPasswordThenEmit()
 
 //--------------------------------------------------------------------------
 
+bool NewPasswordPanel::checkPassword()
+{
+    if (!pimpl->maskMode)
+    {
+        return true;
+    }
+
+    if (pimpl->password->password()==pimpl->repeatPassword->password())
+    {
+        return true;
+    }
+    setError(tr("Values do not match"));
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
 AbstractNewPasswordPanel::GeneratorFn NewPasswordPanel::defaultPasswordGenerator() const
 {
     AbstractNewPasswordPanel::GeneratorFn fn=[this]() -> QString
