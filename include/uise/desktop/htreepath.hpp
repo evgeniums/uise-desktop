@@ -95,6 +95,7 @@ class HTreePathElement
         void setType(std::string type)
         {
             m_type=std::move(type);
+            updateUniqueId();
         }
 
         std::string id() const noexcept
@@ -104,7 +105,7 @@ class HTreePathElement
 
         void setId(std::string id)
         {
-            m_type=std::move(id);
+            m_id=std::move(id);
             updateUniqueId();
         }
 
@@ -115,7 +116,7 @@ class HTreePathElement
 
         void setName(std::string name)
         {
-            m_type=std::move(name);
+            m_name=std::move(name);
         }
 
         const HTreePathElementConfig& config() const noexcept
