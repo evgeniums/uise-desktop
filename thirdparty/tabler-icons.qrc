@@ -87,5 +87,8 @@
         <file>tabler-icons/outline/qrcode.svg</file>
         <file>tabler-icons/outline/search.svg</file>
         <file>tabler-icons/outline/at.svg</file>
+        <file>tabler-icons/outline/hand-stop.svg</file>
+        <file>tabler-icons/outline/message-circle.svg</file>
+        <file>tabler-icons/outline/phone.svg</file>
     </qresource>
 </RCC>
