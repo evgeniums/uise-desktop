@@ -90,5 +90,7 @@
         <file>tabler-icons/outline/hand-stop.svg</file>
         <file>tabler-icons/outline/message-circle.svg</file>
         <file>tabler-icons/outline/phone.svg</file>
+        <file>tabler-icons/filled/message-circle.svg</file>
+        <file>tabler-icons/filled/phone.svg</file>
     </qresource>
 </RCC>
