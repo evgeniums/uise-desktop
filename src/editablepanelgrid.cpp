@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QGridLayout>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/editablepanelgrid.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -56,9 +57,8 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
     QLabel* labelWidget=nullptr;
     if (!label.isEmpty())
     {
-        labelWidget=new QLabel(label,m_gridFrame);
+        labelWidget=new Label(label,m_gridFrame);
         labelWidget->setObjectName("panelLabel");
-        labelWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         m_layout->addWidget(labelWidget,count,column,labelAlignment());
         ++column;
     }
@@ -74,10 +74,9 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
     QLabel* commentWidget=nullptr;
     if (!comment.isEmpty())
     {
-        commentWidget=new QLabel(comment);
+        commentWidget=new Label(comment);
         commentWidget->setObjectName("panelComment");
         commentWidget->setWordWrap(true);
-        commentWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         if (label.isEmpty())
         {
             m_layout->addWidget(commentWidget,count,0,1,items.size());

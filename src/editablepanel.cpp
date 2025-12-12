@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/editablepanel.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/loadingframe.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -104,7 +105,7 @@ EditablePanel::EditablePanel(
     pimpl->titleFrame->setObjectName("titleFrame");
     pimpl->titleLayout=Layout::horizontal(pimpl->titleFrame);
     pimpl->layout->addWidget(pimpl->titleFrame,0,Qt::AlignHCenter);
-    pimpl->title=new QLabel(pimpl->titleFrame);
+    pimpl->title=new Label(pimpl->titleFrame);
     pimpl->title->setObjectName("panelTitle");
     pimpl->titleLayout->addWidget(pimpl->title,0,Qt::AlignHCenter);
 
@@ -117,7 +118,7 @@ EditablePanel::EditablePanel(
     pimpl->statusFrame->setObjectName("statusFrame");
     pimpl->statusLayout=Layout::horizontal(pimpl->statusFrame);
     pimpl->layout->addWidget(pimpl->statusFrame);
-    pimpl->statusText=new QLabel(pimpl->statusFrame);
+    pimpl->statusText=new Label(pimpl->statusFrame);
     pimpl->statusText->setObjectName("statusText");
     pimpl->statusText->setWordWrap(true);
     pimpl->statusText->setTextInteractionFlags(Qt::TextBrowserInteraction);

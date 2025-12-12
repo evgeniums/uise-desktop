@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/editablepanel.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/editablelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -45,7 +46,7 @@ EditableLabel::EditableLabel(
         bool inGroup
     ) : AbstractValueWidget(parent),
         m_type(type),
-        m_label(new QLabel(this)),
+        m_label(new Label(this)),
         m_formatter(nullptr),
         m_editing(false),
         m_inGroup(inGroup),

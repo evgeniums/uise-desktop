@@ -27,7 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QResizeEvent>
 
 #include <uise/desktop/utils/layout.hpp>
-
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -42,12 +42,12 @@ ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
 {
     auto l=Layout::horizontal(this);
 
-    m_hiddenLabel=new QLabel(this);
+    m_hiddenLabel=new Label(this);
     l->addWidget(m_hiddenLabel);
     m_hiddenLabel->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Preferred);
     m_hiddenLabel->hide();
 
-    m_label=new QLabel(this);
+    m_label=new Label(this);
     l->addWidget(m_label,1);
 
     m_label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed);

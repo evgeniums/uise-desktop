@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/label.hpp>
 
 #include <uise/desktop/validatedinput.hpp>
 
@@ -42,10 +43,6 @@ ValidatedInput::ValidatedInput(QWidget* parent)
 {
     auto l=Layout::vertical(this);
 
-    // auto placeHolder=new QLabel(this);
-    // placeHolder->setObjectName("placeHolder");
-    // l->addWidget(placeHolder);
-
     auto mainFrame=new QFrame(this);
     auto ml=Layout::horizontal(mainFrame);
     l->addWidget(mainFrame);
@@ -57,7 +54,7 @@ ValidatedInput::ValidatedInput(QWidget* parent)
     m_button->setObjectName("apply");
     ml->addWidget(m_button);
 
-    m_error=new QLabel(this);
+    m_error=new Label(this);
     m_error->setObjectName("error");
     l->addWidget(m_error);
 

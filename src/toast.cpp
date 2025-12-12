@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/toast.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -65,7 +66,7 @@ Toast::Toast(const QString &message, int duration, QWidget *parent)
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_TranslucentBackground);
 
-    m_label = new QLabel(message);
+    m_label = new Label(message);
     m_label->setAlignment(Qt::AlignCenter);
     m_label->setWordWrap(true);
 

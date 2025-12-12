@@ -171,6 +171,8 @@ SET (HEADERS
 
     include/uise/desktop/buttonslist.hpp
     include/uise/desktop/validatedinput.hpp
+
+    include/uise/desktop/label.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -282,6 +284,8 @@ SET (SOURCES
 
     src/buttonslist.cpp
     src/validatedinput.cpp
+
+    src/label.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
