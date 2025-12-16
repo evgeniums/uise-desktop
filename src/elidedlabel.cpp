@@ -48,6 +48,7 @@ ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
     m_hiddenLabel->hide();
 
     m_label=new Label(this);
+    m_label->setTextInteractionFlags(Qt::NoTextInteraction);
     l->addWidget(m_label,1);
 
     m_label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed);
