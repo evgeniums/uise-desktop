@@ -173,6 +173,9 @@ SET (HEADERS
     include/uise/desktop/validatedinput.hpp
 
     include/uise/desktop/label.hpp
+
+    include/uise/desktop/abstractchatmessage.hpp
+    include/uise/desktop/chatmessage.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -286,6 +289,7 @@ SET (SOURCES
     src/validatedinput.cpp
 
     src/label.cpp
+    src/chatmessage.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
