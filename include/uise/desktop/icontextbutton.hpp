@@ -74,22 +74,22 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         void setParentHovered(bool enable);
 
-        bool isParentHovered() const
+        bool isParentHovered() const noexcept
         {
             return m_parentHovered;
         }
 
-        bool isChecked() const
+        bool isChecked() const noexcept
         {
             return m_checked;
         }
 
-        void setCheckable(bool enable)
+        void setCheckable(bool enable) noexcept
         {
             m_checkable=enable;
         }
 
-        bool isCheckable() const
+        bool isCheckable() const noexcept
         {
             return m_checkable;
         }
