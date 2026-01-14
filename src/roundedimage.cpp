@@ -167,11 +167,28 @@ void RoundedImage::createPixmapConsumer()
         this,
         &RoundedImage::onPixmapUpdated
     );
-    if (m_pixmapConsumer->pixmapProducer()!=nullptr && !m_pixmapConsumer->pixmapProducer()->pixmap().isNull())
+    connect(
+        m_pixmapConsumer,
+        &PixmapConsumer::dataUpdated,
+        this,
+        [this]()
+        {
+            if (m_pixmapConsumer->pixmapProducer()!=nullptr)
+            {
+                emit producerDataUpdated(m_pixmapConsumer->pixmapProducer()->data());
+            }
+        }
+    );
+    if (m_pixmapConsumer->pixmapProducer()!=nullptr)
     {
-        delete m_prevPixmapConsumer;
-        m_prevPixmapConsumer=nullptr;
-        update();
+        emit producerDataUpdated(m_pixmapConsumer->pixmapProducer()->data());
+
+        if (!m_pixmapConsumer->pixmapProducer()->pixmap().isNull())
+        {
+            delete m_prevPixmapConsumer;
+            m_prevPixmapConsumer=nullptr;
+            update();
+        }
     }
 }
 

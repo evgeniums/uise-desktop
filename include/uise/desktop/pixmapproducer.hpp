@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QObject>
 #include <QPixmap>
 #include <QImage>
+#include <QVariant>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
@@ -102,6 +103,7 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
     signals:
 
         void pixmapUpdated();
+        void dataUpdated();
 
     private:
 
@@ -173,9 +175,15 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
             return m_aspectRatioMode;
         }
 
+        QVariant data() const
+        {
+            return m_data;
+        }
+
     signals:
 
         void pixmapUpdated();
+        void dataUpdated();
 
     public slots:
 
@@ -183,6 +191,8 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         void setPixmap(const QPixmap& pixmap, UISE_DESKTOP_NAMESPACE::IconVariant mode={}, QIcon::State state=DefaultIconState);
 
         void setSvgIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> svgIcon);
+
+        void setData(QVariant data);
 
     private:
 
@@ -218,6 +228,8 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         SingleShotTimer* m_destroyingTimer;
 
         Qt::AspectRatioMode m_aspectRatioMode;
+
+        QVariant m_data;
 
         friend class PixmapSource;
 };

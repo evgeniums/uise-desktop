@@ -115,7 +115,7 @@ Avatar::~Avatar()
 
 //--------------------------------------------------------------------------
 
-void Avatar::updateProducers(bool forBasePixmap)
+void Avatar::updateProducers(bool forBasePixmap, bool nameData)
 {
     if (!m_avatarSource)
     {
@@ -127,16 +127,23 @@ void Avatar::updateProducers(bool forBasePixmap)
     auto producers=m_avatarSource->producers(avatarPath());
     for (auto& producer: producers)
     {
-        if (forBasePixmap)
+        if (nameData)
         {
-            auto it=m_pixmaps.find(m_basePixmap.size());
-            if (it!=m_pixmaps.end())
-            {
-                continue;
-            }
+            producer->setData(QString::fromStdString(m_avatarName));
         }
+        else
+        {
+            if (forBasePixmap)
+            {
+                auto it=m_pixmaps.find(m_basePixmap.size());
+                if (it!=m_pixmaps.end())
+                {
+                    continue;
+                }
+            }
 
-        producer->setPixmap(pixmap(producer->size()));
+            producer->setPixmap(pixmap(producer->size()));
+        }
     }
 }
 
@@ -218,6 +225,15 @@ void Avatar::updateBackgroundColor()
     {
         m_backgroundColor=AvatarBackgroundGenerator::DefaultBackgroundColor;
     }
+}
+
+//--------------------------------------------------------------------------
+
+void Avatar::setAvatarName(std::string name)
+{
+    m_avatarName=std::move(name);
+    updateProducers(false,true);
+    updateGeneratedAvatar();
 }
 
 //--------------------------------------------------------------------------
@@ -485,7 +501,7 @@ void AvatarWidget::updateBackgroundColor()
     }
 
     QCryptographicHash hash{QCryptographicHash::Sha1};
-    for (const auto& el: avatarPath())
+    for (const auto& el: avatarPath().path())
     {
         hash.addData(el);
     }

@@ -84,11 +84,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
         Avatar& operator=(const Avatar&)=delete;
         Avatar& operator=(Avatar&&)=delete;
 
-        void setAvatarName(std::string name)
-        {
-            m_avatarName=std::move(name);
-            updateGeneratedAvatar();
-        }
+        void setAvatarName(std::string name);
 
         std::string avatarName() const
         {
@@ -192,7 +188,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
     protected:
 
-        void updateProducers(bool forBasePixmap=false);
+        void updateProducers(bool forBasePixmap=false, bool nameData=false);
 
         virtual void doWatchPixmapForSize(const QSize&)
         {
@@ -483,14 +479,19 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
         const auto& avatarPath() const noexcept
         {
-            return path();
+            return toWithPath();
         }
 
         void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource)
         {
-            m_avatarSource=avatarSource.get();
+            m_avatarSource=avatarSource;
             setImageSource(std::move(avatarSource));
             updateBackgroundColor();
+        }
+
+        std::shared_ptr<AvatarSource> avatarSource() const
+        {
+            return m_avatarSource;
         }
 
         QColor fontColor() const
@@ -574,7 +575,7 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
         std::string m_avatarName;
 
-        AvatarSource* m_avatarSource=nullptr;
+        std::shared_ptr<AvatarSource> m_avatarSource;
         QColor m_backgroundColor=QRgb(0x00669bbc);
         QColor m_fontColor=DefaultFontColor;
         double m_fontSizeRatio=DefaultFontSizeRation;

@@ -248,6 +248,10 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             return m_disableHover;
         }
 
+    signals:
+
+        void producerDataUpdated(const QVariant& data);
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;

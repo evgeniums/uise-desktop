@@ -74,6 +74,14 @@ void PixmapProducer::setSvgIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon>
 
 //--------------------------------------------------------------------------
 
+void PixmapProducer::setData(QVariant data)
+{
+    m_data=std::move(data);
+    emit dataUpdated();
+}
+
+//--------------------------------------------------------------------------
+
 void PixmapProducer::setImage(const QImage& img, UISE_DESKTOP_NAMESPACE::IconVariant mode, QIcon::State state)
 {
     auto px=QPixmap::fromImage(img);
@@ -158,6 +166,12 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
         &PixmapProducer::pixmapUpdated,
         this,
         &PixmapConsumer::pixmapUpdated
+    );
+    connect(
+        m_producer.get(),
+        &PixmapProducer::dataUpdated,
+        this,
+        &PixmapConsumer::dataUpdated
     );
 }
 
