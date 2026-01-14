@@ -50,11 +50,11 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public WidgetQFrame
         virtual void setText(const QString& text) =0;
         virtual QString text() const =0;
 
-        virtual void setIconPath(const WithPath& path) =0;
-        virtual WithPath iconPath() =0;
+        virtual void setIconPath(WithPath path) =0;
+        virtual WithPath iconPath() const =0;
 
         virtual void setIconSource(std::shared_ptr<AvatarSource> avatarSource) =0;
-        virtual std::shared_ptr<AvatarSource> avatarSource() =0;
+        virtual std::shared_ptr<AvatarSource> iconSource() const =0;
 
         virtual void setTailIcon(std::shared_ptr<SvgIcon> icon) =0;
         virtual std::shared_ptr<SvgIcon> tailIcon() const =0;
@@ -85,9 +85,18 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public WidgetQFrame
         virtual AbstractChatSeparatorSection* section(int index) const =0;
 };
 
+class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public WidgetQFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using WidgetQFrame::WidgetQFrame;
+};
+
 class AbstractChatMessage;
 
-class UISE_DESKTOP_EXPORT AbstractChatContent : public WidgetQFrame
+class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public WidgetQFrame
 {
     Q_OBJECT
 
@@ -101,13 +110,31 @@ class UISE_DESKTOP_EXPORT AbstractChatContent : public WidgetQFrame
             updateParentMessage();
         }
 
+        void setHeader(AbstractChatMessageHeader* header)
+        {
+            m_header=header;
+            updateHeader();
+        }
+
+        AbstractChatMessage* parentMessage() const noexcept
+        {
+            return m_parentMessage;
+        }
+
+        AbstractChatMessageHeader* header() const noexcept
+        {
+            return m_header;
+        }
+
     protected:
 
         virtual void updateParentMessage() =0;
+        virtual void updateHeader() =0;
 
     private:
 
         AbstractChatMessage* m_parentMessage=nullptr;
+        AbstractChatMessageHeader* m_header=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
@@ -189,7 +216,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_topSpaceVisible;
         }
 
-        void setContent(AbstractChatContent* content)
+        void setContent(AbstractChatMessageContent* content)
         {
             delete m_content;
             m_content=content;
@@ -292,7 +319,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_topSpaceVisible=true;
         bool m_lastInBatch=true;
         bool m_bodyVisible=true;
-        AbstractChatContent* m_content=nullptr;
+        AbstractChatMessageContent* m_content=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END

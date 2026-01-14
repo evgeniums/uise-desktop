@@ -31,6 +31,45 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class ChatSeparatorSection_p;
+
+class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSection
+{
+    Q_OBJECT
+
+    public:
+
+        ChatSeparatorSection(QWidget* parent=nullptr);
+
+        ~ChatSeparatorSection();
+        ChatSeparatorSection(const ChatSeparatorSection&)=delete;
+        ChatSeparatorSection& operator=(const ChatSeparatorSection&)=delete;
+        ChatSeparatorSection(ChatSeparatorSection&&)=delete;
+        ChatSeparatorSection& operator=(ChatSeparatorSection&&)=delete;
+
+        void setHLineVisible(bool enable) override;
+        bool isHLineVisible() const override;
+
+        void setText(const QString& text) override;
+        QString text() const override;
+
+        void setIconPath(WithPath path) override;
+        WithPath iconPath() const override;
+
+        void setIconSource(std::shared_ptr<AvatarSource> source) override;
+        std::shared_ptr<AvatarSource> iconSource() const override;
+
+        void setTailIcon(std::shared_ptr<SvgIcon> icon) override;
+        std::shared_ptr<SvgIcon> tailIcon() const override;
+
+        void setClickable(bool enable) override;
+        bool isClickable() const override;
+
+    private:
+
+        std::unique_ptr<ChatSeparatorSection_p> pimpl;
+};
+
 class ChatMessage_p;
 
 class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
