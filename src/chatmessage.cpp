@@ -23,13 +23,14 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QPointer>
+#include <QCheckBox>
+#include <QTextBrowser>
+
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
 #include <uise/desktop/alignedstretchingwidget.hpp>
 #include <uise/desktop/chatmessage.hpp>
-
-#include <QPointer>
-#include <QCheckBox>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -425,6 +426,50 @@ void ChatMessage::updateContent()
 void ChatMessage::updateAvatarVisible()
 {
 
+}
+
+/********************************ChatMessageText****************************/
+
+//--------------------------------------------------------------------------
+
+class ChatMessageText_p
+{
+    public:
+
+        QBoxLayout* layout;
+
+        QTextBrowser* text;
+};
+
+//--------------------------------------------------------------------------
+
+ChatMessageText::ChatMessageText(QWidget* parent)
+    : AbstractChatMessageText(parent),
+      pimpl(std::make_unique<ChatMessageText_p>())
+{
+    pimpl->layout=Layout::vertical(this);
+
+    pimpl->text=new QTextBrowser(this);
+    pimpl->layout->addWidget(pimpl->text);
+}
+
+//--------------------------------------------------------------------------
+
+ChatMessageText::~ChatMessageText()
+{}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::loadText(const QString& text, bool markdown)
+{
+    if (markdown)
+    {
+        pimpl->text->setMarkdown(text);
+    }
+    else
+    {
+        pimpl->text->setPlainText(text);
+    }
 }
 
 //--------------------------------------------------------------------------

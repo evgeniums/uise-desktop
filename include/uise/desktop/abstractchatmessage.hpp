@@ -453,6 +453,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_avatarVisible=false;
 };
 
+class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageBody::AbstractChatMessageBody;
+
+        virtual void loadText(const QString& text, bool markdown=true) =0;
+};
+
 inline void AbstractChatMessageChild::setChatMessage(AbstractChatMessage* chatMessage)
 {
     setParent(chatMessage);
