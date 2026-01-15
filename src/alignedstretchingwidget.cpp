@@ -79,6 +79,16 @@ void AlignedStretchingWidget::setWidget(
 }
 
 //--------------------------------------------------------------------------
+void AlignedStretchingWidget::setAlignment(Qt::Alignment alignment)
+{
+    m_alignment=alignment;
+    if (m_widget)
+    {
+        updateMinMaxSize();
+    }
+}
+
+//--------------------------------------------------------------------------
 void AlignedStretchingWidget::updateMinMaxSize()
 {
     auto margins=contentsMargins();

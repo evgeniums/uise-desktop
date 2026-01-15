@@ -26,7 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_ABSTRACTCHATMESSAGE_HPP
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGE_HPP
 
+#include <QPointer>
+
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/widget.hpp>
 #include <uise/desktop/utils/withpathandsize.hpp>
@@ -36,13 +39,39 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class AvatarSource;
 class AvatarWidget;
 
-class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public WidgetQFrame
+class AbstractChatMessage;
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageChild : public WidgetQFrame
 {
     Q_OBJECT
 
     public:
 
         using WidgetQFrame::WidgetQFrame;
+
+        inline void setChatMessage(AbstractChatMessage* chatMessage);
+
+        AbstractChatMessage* chatMessage() const noexcept
+        {
+            return m_chatMessage;
+        }
+
+    protected:
+
+        virtual void updateChatMessage() {}
+
+    private:
+
+        AbstractChatMessage* m_chatMessage=nullptr;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMessageChild
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageChild::AbstractChatMessageChild;
 
         virtual void setHLineVisible(bool enable) =0;
         virtual bool isHLineVisible() const=0;
@@ -67,58 +96,102 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public WidgetQFrame
         void clicked();
 };
 
-class UISE_DESKTOP_EXPORT AbstractChatSeparator : public WidgetQFrame
+class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChild
 {
     Q_OBJECT
 
     public:
 
-        using WidgetQFrame::WidgetQFrame;
+        using AbstractChatMessageChild::AbstractChatMessageChild;
 
-        virtual void insertSection(AbstractChatSeparatorSection* section, int index=-1) =0;
+        void insertSection(AbstractChatSeparatorSection* section, int index=-1)
+        {
+            if (index>=0 && index<m_sections.size())
+            {
+                auto pos=m_sections.begin()+index;
+                m_sections.emplace(pos,section);
+            }
+            else
+            {
+                m_sections.emplace_back(section);
+            }
+            section->setChatMessage(chatMessage());
+            doInsertSection(section,index);
+        }
 
         void appendSection(AbstractChatSeparatorSection* section)
         {
             insertSection(section);
         }
 
-        virtual AbstractChatSeparatorSection* section(int index) const =0;
-};
-
-class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public WidgetQFrame
-{
-    Q_OBJECT
-
-    public:
-
-        using WidgetQFrame::WidgetQFrame;
-};
-
-class AbstractChatMessage;
-
-class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public WidgetQFrame
-{
-    Q_OBJECT
-
-    public:
-
-        using WidgetQFrame::WidgetQFrame;
-
-        void setParentMessage(AbstractChatMessage* parentMessage)
+        AbstractChatSeparatorSection* section(int index) const
         {
-            m_parentMessage=parentMessage;
-            updateParentMessage();
+            if (index<0 || index>=m_sections.size())
+            {
+                return nullptr;
+            }
+
+            return m_sections.at(index);
         }
+
+        size_t sectionCount() const noexcept
+        {
+            return m_sections.size();
+        }
+
+    protected:
+
+        virtual void doInsertSection(AbstractChatSeparatorSection* section, int index) =0;
+
+    private:
+
+        std::vector<QPointer<AbstractChatSeparatorSection>> m_sections;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public AbstractChatMessageChild
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageChild::AbstractChatMessageChild;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public AbstractChatMessageChild
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageChild::AbstractChatMessageChild;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public AbstractChatMessageChild
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageChild::AbstractChatMessageChild;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractChatMessageChild::AbstractChatMessageChild;
 
         void setHeader(AbstractChatMessageHeader* header)
         {
+            destroyWidget(m_header);
             m_header=header;
+            if (m_header!=nullptr)
+            {
+                m_header->setChatMessage(chatMessage());
+            }
             updateHeader();
-        }
-
-        AbstractChatMessage* parentMessage() const noexcept
-        {
-            return m_parentMessage;
         }
 
         AbstractChatMessageHeader* header() const noexcept
@@ -126,15 +199,49 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public WidgetQFrame
             return m_header;
         }
 
+        void setBody(AbstractChatMessageBody* body)
+        {
+            destroyWidget(m_body);
+            m_body=body;
+            if (m_body!=nullptr)
+            {
+                m_body->setChatMessage(chatMessage());
+            }
+            updateBody();
+        }
+
+        AbstractChatMessageBody* body() const noexcept
+        {
+            return m_body;
+        }
+
+        void setBottom(AbstractChatMessageBottom* bottom)
+        {
+            destroyWidget(m_bottom);
+            m_bottom=bottom;
+            if (m_bottom!=nullptr)
+            {
+                m_bottom->setChatMessage(chatMessage());
+            }
+            updateBottom();
+        }
+
+        AbstractChatMessageBottom* bottom() const noexcept
+        {
+            return m_bottom;
+        }
+
     protected:
 
-        virtual void updateParentMessage() =0;
         virtual void updateHeader() =0;
+        virtual void updateBody() =0;
+        virtual void updateBottom() =0;
 
     private:
 
-        AbstractChatMessage* m_parentMessage=nullptr;
-        AbstractChatMessageHeader* m_header=nullptr;
+        QPointer<AbstractChatMessageHeader> m_header=nullptr;
+        QPointer<AbstractChatMessageBody> m_body=nullptr;
+        QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
@@ -149,6 +256,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             Received
         };
 
+        enum class AlignSent : int
+        {
+            Right,
+            Left
+        };
+
         using WidgetQFrame::WidgetQFrame;
 
         AbstractChatSeparator* topSeparator() const noexcept
@@ -158,7 +271,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void setTopSeparator(AbstractChatSeparator* header)
         {
-            delete m_topSeparator;
+            destroyWidget(m_topSeparator);
             m_topSeparator=header;
             updateTopSeparator();
             emit topSeparatorUpdated();
@@ -174,9 +287,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_selected;
         }
 
-        Qt::Alignment alignment() const noexcept
+        AlignSent alignSent() const noexcept
         {
-            return m_alignment;
+            return m_alignSent;
         }
 
         virtual void setAvatarPath(const WithPath& path) =0;
@@ -185,7 +298,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource) =0;
         virtual std::shared_ptr<AvatarSource> avatarSource() =0;
 
-        virtual bool isAvatarVisible(bool enable) const =0;
+        bool isAvatarVisible(bool enable) const noexcept
+        {
+            return m_avatarVisible;
+        }
 
         void setDirection(Direction direction)
         {
@@ -211,18 +327,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_topSpaceVisible;
         }
 
-        bool isBodyVisible() const noexcept
+        bool isContentVisible() const noexcept
         {
-            return m_topSpaceVisible;
+            return m_contentVisible;
         }
 
         void setContent(AbstractChatMessageContent* content)
         {
-            delete m_content;
+            destroyWidget(m_content);
             m_content=content;
-            m_content->setParentMessage(this);
+            m_content->setChatMessage(this);
             updateContent();
             emit contentUpdated();
+        }
+
+        AbstractChatMessageContent* content() const noexcept
+        {
+            return m_content;
         }
 
     public slots:
@@ -245,11 +366,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit selectionUpdated();
         }
 
-        void setAlignment(Qt::Alignment alignment)
+        void setAlignSent(AlignSent alignment)
         {
-            m_alignment=alignment;
-            updateAlignment();
-            emit alignmentUpdated();;
+            m_alignSent=alignment;
+            updateAlignSent();
+            emit alignSentUpdated();;
         }
 
         void setLastInBatch(bool enable)
@@ -259,14 +380,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit lastInBatchUpdated();
         }
 
-        void setBodyVisible(bool enable)
+        void setContentVisible(bool enable)
         {
-            m_bodyVisible=enable;
-            updateBodyVisible();
-            emit bodyVisibilityUpdated();
+            m_contentVisible=enable;
+            updateContentVisible();
+            emit contentVisibilityUpdated();
         }
 
-        virtual void setAvatarVisible(bool enable) =0;
+        void setAvatarVisible(bool enable)
+        {
+            m_avatarVisible=enable;
+            updateAvatarVisible();
+            emit avatarVisibilityUpdated();
+        }
 
     signals:
 
@@ -274,11 +400,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void selectableUpdated();
         void selectionUpdated();
         void directionUpdated();
-        void alignmentUpdated();
+        void alignSentUpdated();
         void topSpaceVisibilityUpdated();
         void lastInBatchUpdated();
-        void bodyVisibilityUpdated();
+        void contentVisibilityUpdated();
         void contentUpdated();
+        void avatarVisibilityUpdated();
 
     protected:
 
@@ -291,7 +418,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual void updateSelection()
         {}
 
-        virtual void updateAlignment()
+        virtual void updateAlignSent()
         {}
 
         virtual void updateDirection()
@@ -303,24 +430,35 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual void updateLastInBatch()
         {}
 
-        virtual void updateBodyVisible()
+        virtual void updateContentVisible()
         {}
 
         virtual void updateContent()
         {}
 
+        virtual void updateAvatarVisible()
+        {}
+
     private:
 
         AbstractChatSeparator* m_topSeparator=nullptr;
+        AbstractChatMessageContent* m_content=nullptr;
         bool m_selectable=false;
         bool m_selected=false;
-        Qt::Alignment m_alignment=Qt::AlignLeft;
+        AlignSent m_alignSent=AlignSent::Right;
         Direction m_direction=Direction::Received;
         bool m_topSpaceVisible=true;
         bool m_lastInBatch=true;
-        bool m_bodyVisible=true;
-        AbstractChatMessageContent* m_content=nullptr;
+        bool m_contentVisible=true;
+        bool m_avatarVisible=false;
 };
+
+inline void AbstractChatMessageChild::setChatMessage(AbstractChatMessage* chatMessage)
+{
+    setParent(chatMessage);
+    m_chatMessage=chatMessage;
+    updateChatMessage();
+}
 
 UISE_DESKTOP_NAMESPACE_END
 

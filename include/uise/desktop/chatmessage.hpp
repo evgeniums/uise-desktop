@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 
+class QBoxLayout;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class ChatSeparatorSection_p;
@@ -70,6 +72,38 @@ class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSec
         std::unique_ptr<ChatSeparatorSection_p> pimpl;
 };
 
+class UISE_DESKTOP_EXPORT ChatSeparator : public AbstractChatSeparator
+{
+    public:
+
+        ChatSeparator(QWidget* parent=nullptr);
+
+    protected:
+
+        void doInsertSection(AbstractChatSeparatorSection* section, int index=-1) override;
+
+    private:
+
+        QBoxLayout* m_layout;
+};
+
+class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
+{
+    public:
+
+        ChatMessageContent(QWidget* parent=nullptr);
+
+    protected:
+
+        void updateHeader() override;
+        void updateBody() override;
+        void updateBottom() override;
+
+    private:
+
+        QBoxLayout* m_layout;
+};
+
 class ChatMessage_p;
 
 class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
@@ -86,11 +120,34 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         ChatMessage(ChatMessage&&)=delete;
         ChatMessage& operator=(ChatMessage&&)=delete;
 
+    protected:
+
+        void updateTopSeparator() override;
+
+        void updateSelectable() override;
+
+        void updateSelection() override;
+
+        void updateAlignSent() override;
+
+        void updateDirection() override;
+
+        void updateTopSpaceVisible() override;
+
+        void updateLastInBatch() override;
+
+        void updateContentVisible() override;
+
+        void updateContent() override;
+
+        void updateAvatarVisible() override;
+
     private:
+
+        void updateAlignment();
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };
-
 
 UISE_DESKTOP_NAMESPACE_END
 

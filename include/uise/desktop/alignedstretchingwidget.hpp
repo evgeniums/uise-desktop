@@ -87,9 +87,16 @@ class UISE_DESKTOP_EXPORT AlignedStretchingWidget : public QFrame,
          */
         bool isHorizontal() const noexcept override;
 
+        Qt::Alignment alignment() const noexcept
+        {
+            return m_alignment;
+        }
+
     public slots:
 
         void updateMinMaxSize();
+
+        void setAlignment(Qt::Alignment alignment);
 
     protected:
 

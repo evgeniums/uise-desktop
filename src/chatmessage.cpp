@@ -25,7 +25,11 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
+#include <uise/desktop/alignedstretchingwidget.hpp>
 #include <uise/desktop/chatmessage.hpp>
+
+#include <QPointer>
+#include <QCheckBox>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -198,6 +202,70 @@ std::shared_ptr<SvgIcon> ChatSeparatorSection::tailIcon() const
     return pimpl->button->tailSvgIcon();
 }
 
+/********************************ChatSeparator*******************************/
+
+//--------------------------------------------------------------------------
+
+ChatSeparator::ChatSeparator(QWidget* parent)
+    : AbstractChatSeparator(parent)
+{
+    m_layout=Layout::vertical(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatSeparator::doInsertSection(AbstractChatSeparatorSection* section, int index)
+{
+    if (index>=0 && index<static_cast<int>(sectionCount()))
+    {
+        m_layout->insertWidget(index,section);
+    }
+    else
+    {
+        m_layout->addWidget(section);
+    }
+}
+
+/*************************ChatMessageContent*******************************/
+
+//--------------------------------------------------------------------------
+
+ChatMessageContent::ChatMessageContent(QWidget* parent)
+    : AbstractChatMessageContent(parent)
+{
+    m_layout=Layout::vertical(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateHeader()
+{
+    if (header()!=0)
+    {
+        m_layout->insertWidget(0,header());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateBody()
+{
+    if (header()!=0)
+    {
+        m_layout->insertWidget(0,body());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateBottom()
+{
+    if (header()!=0)
+    {
+        m_layout->insertWidget(0,bottom());
+    }
+}
+
 /********************************ChatMessage*********************************/
 
 //--------------------------------------------------------------------------
@@ -206,7 +274,22 @@ class ChatMessage_p
 {
     public:
 
+        QBoxLayout* layout;
 
+        QFrame* topSpace;
+
+        QFrame* separatorFrame;
+        QBoxLayout* separatorLayout;
+
+        AlignedStretchingWidget* body;
+        QFrame* main;
+        QBoxLayout* mainLayout;
+
+        QFrame* avatarFrame;
+        QFrame* contentFrame;
+        QBoxLayout* contentLayout;
+
+        QFrame* selectionFrame;
 };
 
 //--------------------------------------------------------------------------
@@ -215,12 +298,134 @@ ChatMessage::ChatMessage(QWidget* parent)
     : AbstractChatMessage(parent),
       pimpl(std::make_unique<ChatMessage_p>())
 {
+    pimpl->layout=Layout::vertical(this);
+
+    pimpl->topSpace=new QFrame(this);
+    pimpl->topSpace->setObjectName("topSpace");
+    pimpl->layout->addWidget(pimpl->topSpace);
+    pimpl->topSpace->setVisible(false);
+
+    pimpl->separatorFrame=new QFrame(this);
+    pimpl->separatorFrame->setObjectName("separatorFrame");
+    pimpl->separatorLayout=Layout::horizontal(pimpl->separatorFrame);
+    pimpl->separatorFrame->setVisible(false);
+    pimpl->layout->addWidget(pimpl->separatorFrame);
+
+    pimpl->body=new AlignedStretchingWidget(this);
+    pimpl->layout->addWidget(pimpl->body);
+
+    pimpl->main=new QFrame(pimpl->body);
+    pimpl->main->setObjectName("main");
+    pimpl->mainLayout=Layout::horizontal(pimpl->main);
+
+    pimpl->avatarFrame=new QFrame(pimpl->main);
+    pimpl->avatarFrame->setObjectName("avatarFrame");
+    pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+
+    pimpl->contentFrame=new QFrame(pimpl->main);
+    pimpl->contentFrame->setObjectName("contentFrame");
+    pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
+    pimpl->mainLayout->addWidget(pimpl->contentFrame);
+
+    pimpl->selectionFrame=new QFrame(pimpl->main);
+    pimpl->selectionFrame->setObjectName("selectionFrame");
+    pimpl->mainLayout->addWidget(pimpl->selectionFrame);
+
+    pimpl->body->setWidget(pimpl->main,Qt::Horizontal);
 }
 
 //--------------------------------------------------------------------------
 
 ChatMessage::~ChatMessage()
 {}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateTopSeparator()
+{
+    bool sepVisible=topSeparator()!=nullptr;
+    pimpl->separatorFrame->setVisible(sepVisible);
+    if (sepVisible)
+    {
+        pimpl->separatorLayout->addWidget(topSeparator());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateSelectable()
+{
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateSelection()
+{
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAlignSent()
+{
+    updateAlignment();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateDirection()
+{
+    updateAlignment();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAlignment()
+{
+    auto alignment=Qt::AlignLeft;
+    if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
+    {
+        alignment=Qt::AlignRight;
+    }
+    pimpl->body->setAlignment(alignment);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateTopSpaceVisible()
+{
+    pimpl->topSpace->setVisible(isTopSpaceVisible());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateLastInBatch()
+{
+
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateContentVisible()
+{
+    pimpl->body->setVisible(isContentVisible());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateContent()
+{
+    if (content()!=nullptr)
+    {
+        pimpl->contentLayout->addWidget(content());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAvatarVisible()
+{
+
+}
 
 //--------------------------------------------------------------------------
 
