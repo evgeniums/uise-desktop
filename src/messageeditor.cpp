@@ -166,7 +166,6 @@ MessageEditor::MessageEditor(QWidget* parent)
 MessageEditor::~MessageEditor()
 {}
 
-
 //--------------------------------------------------------------------------
 
 void MessageEditor::loadText(const QString& text, TextFormat format)
