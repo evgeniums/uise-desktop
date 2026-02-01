@@ -76,6 +76,8 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 
         virtual void setFocusIn() =0;
 
+        virtual void setPlaceHolderText(const QString& text) =0;
+
     public slots:
 
         void finishEditing()

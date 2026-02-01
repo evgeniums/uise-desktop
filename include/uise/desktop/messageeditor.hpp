@@ -102,6 +102,8 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
 
         void setFocusIn() override;
 
+        void setPlaceHolderText(const QString& text) override;
+
     public slots:
 
         void selectAll() override;

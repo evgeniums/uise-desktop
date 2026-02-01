@@ -112,6 +112,7 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
                 return;
             }
         }
+        event->setModifiers(event->modifiers()&~Qt::ControlModifier);
     }
 
     QTextEdit::keyPressEvent(event);
@@ -296,12 +297,21 @@ void MessageEditor::updateEditingMode()
         case (Qt::PlainText):
         {
             loadText(pimpl->editor->toPlainText(),TextFormat::Plain);
+            pimpl->editor->setAcceptRichText(false);
+            break;
+        }
+
+        case (Qt::RichText):
+        {
+            loadText(pimpl->editor->toMarkdown(),TextFormat::Markdown);
+            pimpl->editor->setAcceptRichText(true);
             break;
         }
 
         default:
         {
             loadText(pimpl->editor->toMarkdown(),TextFormat::Markdown);
+            pimpl->editor->setAcceptRichText(false);
             break;
         }
     }
@@ -325,6 +335,13 @@ void MessageEditor::updateEditingFinished()
 void MessageEditor::setupReturnPressed()
 {
     pimpl->editor->setNewLineOnEnter(!isFinishOnEnter());
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setPlaceHolderText(const QString& text)
+{
+    pimpl->editor->setPlaceholderText(text);
 }
 
 //--------------------------------------------------------------------------
