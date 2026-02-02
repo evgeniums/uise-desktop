@@ -292,11 +292,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_alignSent;
         }
 
-        virtual void setAvatarPath(const WithPath& path) =0;
-        virtual WithPath avatarPath() =0;
+        virtual void setAvatarPath(const WithPath& /*path*/) {}
+        virtual WithPath avatarPath() { return WithPath{};}
 
-        virtual void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource) =0;
-        virtual std::shared_ptr<AvatarSource> avatarSource() =0;
+        virtual void setAvatarSource(std::shared_ptr<AvatarSource> /*avatarSource*/) {}
+        virtual std::shared_ptr<AvatarSource> avatarSource() {return std::shared_ptr<AvatarSource>{};}
 
         bool isAvatarVisible(bool enable) const noexcept
         {
