@@ -462,6 +462,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         using AbstractChatMessageBody::AbstractChatMessageBody;
 
         virtual void loadText(const QString& text, bool markdown=true) =0;
+
+        virtual void clearText() =0;
 };
 
 inline void AbstractChatMessageChild::setChatMessage(AbstractChatMessage* chatMessage)

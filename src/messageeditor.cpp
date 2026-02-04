@@ -47,6 +47,7 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
 
 void EnhancedTextEdit::setAutoResizingEnabled(bool enable)
 {
+    m_autoResize=enable;
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     if (enable)

@@ -149,29 +149,6 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         std::unique_ptr<ChatMessage_p> pimpl;
 };
 
-class ChatMessageText_p;
-
-class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
-{
-    Q_OBJECT
-
-    public:
-
-        ChatMessageText(QWidget* parent=nullptr);
-
-        ~ChatMessageText();
-        ChatMessageText(const ChatMessageText&)=delete;
-        ChatMessageText& operator=(const ChatMessageText&)=delete;
-        ChatMessageText(ChatMessageText&&)=delete;
-        ChatMessageText& operator=(ChatMessageText&&)=delete;
-
-        void loadText(const QString& text, bool markdown=true) override;
-
-    private:
-
-        std::unique_ptr<ChatMessageText_p> pimpl;
-};
-
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_CHATMESSAGE_HPP

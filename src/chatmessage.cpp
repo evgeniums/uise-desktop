@@ -251,7 +251,7 @@ void ChatMessageContent::updateHeader()
 
 void ChatMessageContent::updateBody()
 {
-    if (header()!=0)
+    if (body()!=0)
     {
         m_layout->insertWidget(0,body());
     }
@@ -261,7 +261,7 @@ void ChatMessageContent::updateBody()
 
 void ChatMessageContent::updateBottom()
 {
-    if (header()!=0)
+    if (bottom()!=0)
     {
         m_layout->insertWidget(0,bottom());
     }
@@ -299,40 +299,58 @@ ChatMessage::ChatMessage(QWidget* parent)
     : AbstractChatMessage(parent),
       pimpl(std::make_unique<ChatMessage_p>())
 {
+    qDebug() << "ChatMessage::ChatMessage 1";
     pimpl->layout=Layout::vertical(this);
+    qDebug() << "ChatMessage::ChatMessage 1.1";
 
     pimpl->topSpace=new QFrame(this);
     pimpl->topSpace->setObjectName("topSpace");
     pimpl->layout->addWidget(pimpl->topSpace);
     pimpl->topSpace->setVisible(false);
 
+    qDebug() << "ChatMessage::ChatMessage 1.2";
+
     pimpl->separatorFrame=new QFrame(this);
     pimpl->separatorFrame->setObjectName("separatorFrame");
     pimpl->separatorLayout=Layout::horizontal(pimpl->separatorFrame);
     pimpl->separatorFrame->setVisible(false);
     pimpl->layout->addWidget(pimpl->separatorFrame);
+    qDebug() << "ChatMessage::ChatMessage 1.3";
 
+#if 0
     pimpl->body=new AlignedStretchingWidget(this);
     pimpl->layout->addWidget(pimpl->body);
-
     pimpl->main=new QFrame(pimpl->body);
+#else
+    pimpl->main=new QFrame(this);
+    pimpl->layout->addWidget(pimpl->main);
+#endif
+
+    qDebug() << "ChatMessage::ChatMessage 2";
+
     pimpl->main->setObjectName("main");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
 
     pimpl->avatarFrame=new QFrame(pimpl->main);
     pimpl->avatarFrame->setObjectName("avatarFrame");
+    pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     pimpl->mainLayout->addWidget(pimpl->avatarFrame);
 
     pimpl->contentFrame=new QFrame(pimpl->main);
     pimpl->contentFrame->setObjectName("contentFrame");
-    pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
+    pimpl->contentLayout=Layout::vertical(pimpl->contentFrame);
     pimpl->mainLayout->addWidget(pimpl->contentFrame);
 
     pimpl->selectionFrame=new QFrame(pimpl->main);
     pimpl->selectionFrame->setObjectName("selectionFrame");
+    pimpl->selectionFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     pimpl->mainLayout->addWidget(pimpl->selectionFrame);
+#if 0
+    pimpl->body->setWidget(pimpl->main,Qt::Horizontal,Qt::AlignLeft);
+#endif
 
-    pimpl->body->setWidget(pimpl->main,Qt::Horizontal);
+    qDebug() << "ChatMessage::ChatMessage 3";
+    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -417,6 +435,8 @@ void ChatMessage::updateContent()
 {
     if (content()!=nullptr)
     {
+        qDebug() << "ChatMessage::updateContent() " << content();
+
         pimpl->contentLayout->addWidget(content());
     }
 }
@@ -426,50 +446,6 @@ void ChatMessage::updateContent()
 void ChatMessage::updateAvatarVisible()
 {
 
-}
-
-/********************************ChatMessageText****************************/
-
-//--------------------------------------------------------------------------
-
-class ChatMessageText_p
-{
-    public:
-
-        QBoxLayout* layout;
-
-        QTextBrowser* text;
-};
-
-//--------------------------------------------------------------------------
-
-ChatMessageText::ChatMessageText(QWidget* parent)
-    : AbstractChatMessageText(parent),
-      pimpl(std::make_unique<ChatMessageText_p>())
-{
-    pimpl->layout=Layout::vertical(this);
-
-    pimpl->text=new QTextBrowser(this);
-    pimpl->layout->addWidget(pimpl->text);
-}
-
-//--------------------------------------------------------------------------
-
-ChatMessageText::~ChatMessageText()
-{}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageText::loadText(const QString& text, bool markdown)
-{
-    if (markdown)
-    {
-        pimpl->text->setMarkdown(text);
-    }
-    else
-    {
-        pimpl->text->setPlainText(text);
-    }
 }
 
 //--------------------------------------------------------------------------
