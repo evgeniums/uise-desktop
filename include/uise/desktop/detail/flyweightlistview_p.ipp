@@ -1022,12 +1022,17 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::fu
     auto listSize=oprop(m_llist,OProp::size);
 
     int minPos=0;
+    int maxPos=0;
     if (listSize>viewportSize)
     {
         minPos=viewportSize-listSize;
         minPos=std::max(minPos,-listSize);
     }
-    int maxPos=0;
+    else if (m_stick==Direction::END)
+    {
+        minPos=viewportSize-listSize;
+        maxPos=minPos;
+    }
 
     auto pos=m_llist->pos();
     auto posCoordinate=oprop(pos,OProp::pos);
