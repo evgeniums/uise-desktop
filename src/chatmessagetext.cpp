@@ -115,6 +115,19 @@ void ChatMessageTextBrowser::wheelEvent(QWheelEvent *event)
     event->ignore();
 }
 
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::mousePressEvent(QMouseEvent* event)
+{
+    QTextBrowser::mousePressEvent(event);
+    if (parentWidget())
+    {
+        QMouseEvent *cloned = event->clone();
+        QCoreApplication::sendEvent(parentWidget(), cloned);
+        delete cloned;
+    }
+}
+
 /********************************ChatMessageText****************************/
 
 //--------------------------------------------------------------------------
@@ -166,6 +179,15 @@ void ChatMessageText::loadText(const QString& text, bool markdown)
 void ChatMessageText::clearText()
 {
     pimpl->text->clear();    
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::clearContentSelection()
+{
+    auto cur=pimpl->text->textCursor();
+    cur.clearSelection();
+    pimpl->text->setTextCursor(cur);
 }
 
 //--------------------------------------------------------------------------

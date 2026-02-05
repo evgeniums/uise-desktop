@@ -25,7 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QCheckBox>
-#include <QTextBrowser>
+#include <QMouseEvent>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
@@ -256,6 +256,24 @@ void ChatMessageContent::updateWidgets()
     }
 }
 
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::clearContentSelection()
+{
+    if (header()!=nullptr)
+    {
+        header()->clearContentSelection();
+    }
+    if (body()!=nullptr)
+    {
+        body()->clearContentSelection();
+    }
+    if (bottom()!=nullptr)
+    {
+        bottom()->clearContentSelection();
+    }
+}
+
 /********************************ChatMessage*********************************/
 
 //--------------------------------------------------------------------------
@@ -407,6 +425,17 @@ void ChatMessage::updateContent()
 void ChatMessage::updateAvatarVisible()
 {
 
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton)
+    {
+        emit clicked();
+    }
+    QFrame::mousePressEvent(event);
 }
 
 //--------------------------------------------------------------------------

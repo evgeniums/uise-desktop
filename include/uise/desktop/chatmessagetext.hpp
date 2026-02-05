@@ -52,6 +52,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     protected:
 
         void wheelEvent(QWheelEvent *event) override;
+        void mousePressEvent(QMouseEvent* event) override;
 };
 
 class ChatMessageText_p;
@@ -73,6 +74,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
         void loadText(const QString& text, bool markdown=true) override;
 
         void clearText() override;
+
+        void clearContentSelection() override;
 
     private:
 

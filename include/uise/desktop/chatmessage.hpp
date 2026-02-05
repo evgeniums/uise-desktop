@@ -93,6 +93,8 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
         ChatMessageContent(QWidget* parent=nullptr);
 
+        void clearContentSelection() override;
+
     protected:
 
         void updateWidgets() override;
@@ -135,6 +137,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateContent() override;
 
         void updateAvatarVisible() override;
+
+        void mousePressEvent(QMouseEvent* event) override;
 
     private:
 

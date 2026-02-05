@@ -56,6 +56,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageChild : public WidgetQFrame
             return m_chatMessage;
         }
 
+        virtual void clearContentSelection() {}
+
     protected:
 
         virtual void updateChatMessage() {}
@@ -164,6 +166,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public AbstractChatMessageCh
     public:
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
+
+
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public AbstractChatMessageChild
@@ -220,6 +224,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         {
             return m_bottom;
         }
+
+        virtual void setMaxBubbleWidth(int /*w*/) {}
 
     protected:
 
@@ -335,6 +341,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
     public slots:
 
+        void clearContentSelection()
+        {
+            if (m_content)
+            {
+                m_content->clearContentSelection();
+            }
+        }
+
         void setSelectable(bool enable)
         {
             if (!enable)
@@ -384,6 +398,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void contentVisibilityUpdated();
         void contentUpdated();
         void avatarVisibilityUpdated();
+
+        void clicked();
 
     protected:
 
