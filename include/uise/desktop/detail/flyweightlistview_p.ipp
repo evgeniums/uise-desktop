@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QResizeEvent>
 #include <QStyle>
 
+#include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
 
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
@@ -135,17 +136,18 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     vlayout->addWidget(middleFrame,1);
     m_hbar=new QScrollBar(m_obj);
     m_hbar->setOrientation(Qt::Horizontal);
+    m_hbar->setVisible(false);
     vlayout->addWidget(m_hbar);
     auto hlayout=Layout::horizontal(middleFrame);
 
     m_view=new QFrame(middleFrame);
     hlayout->addWidget(m_view,1);
     m_vbar=new QScrollBar(middleFrame);
+    m_vbar->setVisible(false);
     hlayout->addWidget(m_vbar);
 
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_view->setFocusPolicy(Qt::StrongFocus);
-    m_view->resize(0,0);
 
     m_llist=new LinkedListView(m_view);
     m_llist->setObjectName("FlyweightListViewLLits");
@@ -201,6 +203,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::beginUpdate()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
 {
+#if 0
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::endUpdate()  " << m_obj;
+#endif
     resizeList();
     m_ignoreUpdates=false;
     endItemRangeChange();
@@ -214,6 +219,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onListContentResized()
     m_resizeListTimer.shot(0,
         [this]()
         {
+#if 0
+            qDebug() << printCurrentDateTime() << ": FlyweightListView_p::onListContentResized() shot 0 " << m_obj;
+#endif
             resizeList();
             viewportUpdated();
         }
@@ -325,7 +333,7 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::visibleCount() const
     auto last=lastViewportItem();
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "visibleCount() first="<<first<<" last="<<last;
+    qDebug() << printCurrentDateTime() << ": visibleCount() first="<<first<<" last="<<last;
 #endif
 
     if (first&&last)
@@ -334,7 +342,7 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::visibleCount() const
         auto lastPos=m_llist->widgetSeqPos(last->widget());
         count=lastPos-firstPos+1;
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-        qDebug() << "visibleCount() firstPos="<<firstPos<<" lastPos="<<lastPos<<" count=" << count;
+        qDebug() << printCurrentDateTime() << ": visibleCount() firstPos="<<firstPos<<" lastPos="<<lastPos<<" count=" << count;
 #endif
     }
 
@@ -479,6 +487,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateStickingPosition
     auto begin=oprop(m_llist->pos(),OProp::pos);
     auto end=oprop(listEndInViewport(),OProp::pos);
     auto viewPortSize=oprop(m_view,OProp::size);
+
+#if 0
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::updateStickingPositions() " << m_obj
+                       << " begin="<<begin << " end="<<end << " viewPortSize="<<viewPortSize;
+#endif
+
     if (begin>0)
     {
         scrollToEdge(Direction::HOME);
@@ -537,13 +551,23 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
                 newPos=viewSize-listSize;
             }
         }
-        if (newPos>0)
+        if (newPos>0
+            &&
+            !(m_stick==Direction::END && listSize<viewSize)
+            )
         {
             newPos=0;
         }
         setOProp(movePos,OProp::pos,newPos);
         moveList=true;
     }
+
+#if 0
+
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::onViewportResized() " << m_obj << " old m_viewSize=" << m_viewSize << " movePos="<<movePos << " moveEnd="<<moveEnd<<" moveBegin="<<moveBegin << " moveList="<<moveList;
+
+#endif
+
     if (moveList)
     {
         m_llist->move(movePos);
@@ -700,6 +724,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updatePageStep()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
 {
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::viewportUpdated()  " << m_obj;
+
     if (m_ignoreUpdates)
     {
         return;
@@ -720,6 +746,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated()
 {
+#if 0
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::informViewportUpdated()  " << m_obj;
+#endif
+
     auto l_firstViewportItemID=m_firstViewportItemID;
     auto l_firstViewportSortValue=m_firstViewportSortValue;
     auto l_lastViewportItemID=m_lastViewportItemID;
@@ -878,6 +908,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList()
     setOProp(listSize,OProp::size,newSize);
     if (m_llist->size()!=listSize)
     {
+#if 0
+        qDebug() << printCurrentDateTime() << ": FlyweightListView_p::resizeList()  " << m_obj << " set size " << listSize;
+#endif
         m_llist->resize(listSize);
         compensateSizeChange();
     }
@@ -1018,6 +1051,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::function<int (int, int, int)> &cb)
 {
+#if 0
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::scrollTo() " << m_obj;
+#endif
     auto viewportSize=oprop(m_view,OProp::size);
     auto listSize=oprop(m_llist,OProp::size);
 
@@ -1079,7 +1115,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItem(const typename ItemT::IdType &id, int offset)
 {
 #if 0
-    qDebug() << "Scroll to item "<<id<<" offset "<<offset;
+    qDebug() << printCurrentDateTime() << ": Scroll to item "<<id<<" offset "<<offset;
 #endif
     const auto& idx=itemIdx();
     auto it=idx.find(id);
@@ -1114,6 +1150,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
 {
     m_listSize=m_llist->size();
     m_viewSize=m_view->size();
+
+#if 0
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::keepCurrentConfiguration()  " << m_obj << " m_viewSize=" << m_viewSize<< " m_listSize="<<m_listSize;
+#endif
 
     auto keep=[](const ItemT* item, typename ItemT::IdType& id, typename ItemT::SortValueType& sortValue)
     {
@@ -1180,14 +1220,14 @@ const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::lastViewportIt
     auto listLastViewportPoint=m_llist->mapFromParent(viewLastPos);
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "lastViewportItem() listLastViewportPoint "<<listLastViewportPoint;
+    qDebug() << printCurrentDateTime() << ": lastViewportItem() listLastViewportPoint "<<listLastViewportPoint;
 #endif
 
     const auto* item=itemAtPos(listLastViewportPoint);
     if (item==nullptr)
     {
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-        qDebug() << "lastViewportItem() item not found";
+        qDebug() << printCurrentDateTime() << ": lastViewportItem() item not found";
 #endif
         item=lastItem();
     }
@@ -1317,7 +1357,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenBefore=to-from;
     }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
              << " first->sortValue() "<<first->sortValue()
              << " m_minSortValue "<<m_minSortValue;
 #endif
@@ -1343,17 +1383,17 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenAfter=to-from;
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "Last from "<<lastVisible->sortValue()<<" to "<<last->sortValue();
+    qDebug() << printCurrentDateTime() << ": Last from "<<lastVisible->sortValue()<<" to "<<last->sortValue();
 #endif
     }
     else
     {
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "No last item or it is invisible";
+    qDebug() << printCurrentDateTime() << ": No last item or it is invisible";
 #endif
     }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << "hiddenAfter "<<hiddenAfter<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+    qDebug() << printCurrentDateTime() << ": hiddenAfter "<<hiddenAfter<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
              << " last->sortValue() "<<last->sortValue()
              << " m_maxSortValue "<<m_maxSortValue;
 #endif
@@ -1369,7 +1409,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         removeExtraItemsFromEnd(hiddenAfter-maxHidden);
     }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << " item count "<<itemsCount();
+    qDebug() << printCurrentDateTime() << ":  item count "<<itemsCount();
 #endif
 }
 
@@ -1392,7 +1432,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromBe
             break;
         }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-        qDebug() << "Removed item "<<it->sortValue()<< " before viewport";
+        qDebug() << printCurrentDateTime() << ": Removed item "<<it->sortValue()<< " before viewport";
 #endif
         clearWidget(it->widget());
         it=order.erase(it);
@@ -1422,7 +1462,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromEn
 
         nit=std::next(it);
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-        qDebug() << "Removed item "<<it->sortValue()<< " after viewport";
+        qDebug() << printCurrentDateTime() << ": Removed item "<<it->sortValue()<< " after viewport";
 #endif
         clearWidget(it->widget());
         nit = decltype(it){order.erase(std::next(it).base())};
