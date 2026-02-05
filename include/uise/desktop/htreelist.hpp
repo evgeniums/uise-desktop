@@ -118,8 +118,10 @@ class HTreeListUiHelper
             listView->setListNode(node);
 
             listView->listView()->setInsertItemCb(
-                [listWidget,node](auto item)
+                [listWidget,node](auto itemW)
                 {
+                    auto item=itemW->widget();
+
                     QObject::connect(
                         item->qobject(),
                         &HTreeListItemTQ::openRequested,

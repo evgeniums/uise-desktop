@@ -652,10 +652,18 @@ size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemC
     return pimpl->jumpEdgeInvisibleItemCount();
 }
 
+//--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 JumpEdge* FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeControl() const
 {
     return pimpl->jumpEdgeControl();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::eachItem(EachItemHandler handler)
+{
+    return pimpl->eachItem(handler);
 }
 
 //--------------------------------------------------------------------------

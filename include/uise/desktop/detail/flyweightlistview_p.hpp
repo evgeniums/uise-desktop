@@ -103,9 +103,10 @@ class FlyweightListView_p : public OrientationInvariant
     public:
 
         constexpr static const char* LastWidgetPosProperty="uise_dt_FlyweightListItemPos";
+        using ViewType=FlyweightListView<ItemT,OrderComparer,IdComparer>;
 
         FlyweightListView_p(
-            FlyweightListView<ItemT,OrderComparer,IdComparer>* view,
+            ViewType* view,
             size_t prefetchItemWindowHint,
             OrderComparer orderComparer,
             IdComparer idComparer
@@ -254,6 +255,8 @@ class FlyweightListView_p : public OrientationInvariant
         bool itemOrdersEqual(const T& l, const T& r) const;
 
         void jumpToEdge(Direction direction, bool forceLongfJump=true, Qt::KeyboardModifiers modifiers={});
+
+        bool eachItem(typename ViewType::EachItemHandler handler);
 
     public:
 

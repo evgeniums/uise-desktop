@@ -97,8 +97,10 @@ class FlyweightListView : public QFrame
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void (bool,Qt::KeyboardModifiers)>;
 
-        using InsertItemCb=std::function<void (typename ItemT::WidgetType*)>;
+        using InsertItemCb=std::function<void (ItemT*)>;
         using RemoveItemCb=std::function<void (typename ItemT::WidgetType*)>;
+
+        using EachItemHandler=std::function<bool (const ItemT*)>;
 
         /**
          * @brief Constructor.
@@ -274,7 +276,7 @@ class FlyweightListView : public QFrame
          * @brief Set callback function used to notify listener that an item was removed from the list.
          * @param cb Callback function.
          */
-        void setRemoveItemCb(InsertItemCb cb) noexcept;
+        void setRemoveItemCb(RemoveItemCb cb) noexcept;
 
         /**
          * @brief Scroll to an item.
@@ -560,6 +562,8 @@ class FlyweightListView : public QFrame
         size_t jumpEdgeInvisibleItemCount() const;
 
         JumpEdge* jumpEdgeControl() const;
+
+        bool eachItem(EachItemHandler handler);
 
     protected:
 

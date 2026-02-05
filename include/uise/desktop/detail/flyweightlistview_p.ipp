@@ -232,7 +232,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onListContentResized()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const ItemT* item)
 {
-    auto widget=item->widget();
+    auto mutableItem=const_cast<ItemT*>(item);
+    auto widget=mutableItem->widget();
 
     PointerHolder::keepProperty(item,widget,ItemT::Property);
     QObject::disconnect(widget,nullptr,&m_qobjectHelper,nullptr);
@@ -283,7 +284,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const 
 
     if (m_insertItemCb)
     {
-        m_insertItemCb(widget);
+        m_insertItemCb(mutableItem);
     }
 }
 
@@ -1778,6 +1779,22 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemOrdersEqual(const 
     }
 
     return itemOrdersEqual(l->sortValue(),r->sortValue());
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::eachItem(typename ViewType::EachItemHandler handler)
+{
+    auto& order=itemOrder();
+    for (auto&& it : order)
+    {
+        auto ok=handler(&it);
+        if (!ok)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 //--------------------------------------------------------------------------
