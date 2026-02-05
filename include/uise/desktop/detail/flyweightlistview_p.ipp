@@ -724,8 +724,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updatePageStep()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
 {
+#if 0
     qDebug() << printCurrentDateTime() << ": FlyweightListView_p::viewportUpdated()  " << m_obj;
-
+#endif
     if (m_ignoreUpdates)
     {
         return;
