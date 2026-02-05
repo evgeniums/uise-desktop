@@ -299,23 +299,18 @@ ChatMessage::ChatMessage(QWidget* parent)
     : AbstractChatMessage(parent),
       pimpl(std::make_unique<ChatMessage_p>())
 {
-    qDebug() << "ChatMessage::ChatMessage 1";
     pimpl->layout=Layout::vertical(this);
-    qDebug() << "ChatMessage::ChatMessage 1.1";
 
     pimpl->topSpace=new QFrame(this);
     pimpl->topSpace->setObjectName("topSpace");
     pimpl->layout->addWidget(pimpl->topSpace);
     pimpl->topSpace->setVisible(false);
 
-    qDebug() << "ChatMessage::ChatMessage 1.2";
-
     pimpl->separatorFrame=new QFrame(this);
     pimpl->separatorFrame->setObjectName("separatorFrame");
     pimpl->separatorLayout=Layout::horizontal(pimpl->separatorFrame);
     pimpl->separatorFrame->setVisible(false);
     pimpl->layout->addWidget(pimpl->separatorFrame);
-    qDebug() << "ChatMessage::ChatMessage 1.3";
 
 #if 0
     pimpl->body=new AlignedStretchingWidget(this);
@@ -325,8 +320,6 @@ ChatMessage::ChatMessage(QWidget* parent)
     pimpl->main=new QFrame(this);
     pimpl->layout->addWidget(pimpl->main);
 #endif
-
-    qDebug() << "ChatMessage::ChatMessage 2";
 
     pimpl->main->setObjectName("main");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
@@ -349,7 +342,6 @@ ChatMessage::ChatMessage(QWidget* parent)
     pimpl->body->setWidget(pimpl->main,Qt::Horizontal,Qt::AlignLeft);
 #endif
 
-    qDebug() << "ChatMessage::ChatMessage 3";
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
@@ -435,8 +427,6 @@ void ChatMessage::updateContent()
 {
     if (content()!=nullptr)
     {
-        qDebug() << "ChatMessage::updateContent() " << content();
-
         pimpl->contentLayout->addWidget(content());
     }
 }

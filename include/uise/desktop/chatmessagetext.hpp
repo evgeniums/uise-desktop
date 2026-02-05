@@ -45,7 +45,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
     public slots:
 
-        void updateSize();
+        void updateHeight();
 };
 
 class ChatMessageText_p;

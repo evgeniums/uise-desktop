@@ -39,45 +39,39 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 {
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
 
-    connect(document(),
-            &QTextDocument::contentsChanged,
-            this,
-            [this]()
-            {
-                QTimer::singleShot(0,this,[this]{updateSize();});
-            }
-        );
+    connect(this,
+        &QTextBrowser::textChanged,
+        this,
+        [this]()
+        {
+            updateHeight();
+        }
+    );
+
+    setFocusPolicy(Qt::NoFocus);
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageTextBrowser::updateSize()
+void ChatMessageTextBrowser::updateHeight()
 {
-    auto size = document()->size();
-    int height = static_cast<int>(size.height()) + frameWidth() * 2;
-
-    qDebug() << "ChatMessageTextBrowser::updateSize(): documentSize="<<size<<", height="<< height << " for text " << toPlainText();
-    setFixedHeight(height);
+    updateGeometry();
 }
 
 //--------------------------------------------------------------------------
 
 QSize ChatMessageTextBrowser::sizeHint() const
 {
-    // if (m_autoResize && document())
-    // {
-    //     auto size = document()->size();
-    //     int height = static_cast<int>(size.height()) + frameWidth() * 2;
-
-    //     qDebug() << "ChatMessageTextBrowser::sizeHint(): documentSize="<<document()->size()<<", height="<< height << " for text " << toPlainText();
-
-    //     return QSize(width(), height);
-    // }
-
     auto sz=QTextBrowser::sizeHint();
-    qDebug() << "ChatMessageTextBrowser::sizeHint(): sz=" << sz << " maxSz=" << maximumSize() <<" for text " << toPlainText();
-
+    if (document())
+    {
+        document()->adjustSize();
+        QSizeF docSize = document()->size();
+        int height = static_cast<int>(docSize.height() + 2 * frameWidth());
+        return QSize(sz.width(), height);
+    }
     return sz;
 }
 
