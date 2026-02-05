@@ -235,35 +235,24 @@ ChatMessageContent::ChatMessageContent(QWidget* parent)
     : AbstractChatMessageContent(parent)
 {
     m_layout=Layout::vertical(this);
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageContent::updateHeader()
+void ChatMessageContent::updateWidgets()
 {
-    if (header()!=0)
+    if (header()!=nullptr)
     {
-        m_layout->insertWidget(0,header());
+        m_layout->addWidget(header());
     }
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageContent::updateBody()
-{
-    if (body()!=0)
+    if (body()!=nullptr)
     {
-        m_layout->insertWidget(0,body());
+        m_layout->addWidget(body());
     }
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageContent::updateBottom()
-{
-    if (bottom()!=0)
+    if (bottom()!=nullptr)
     {
-        m_layout->insertWidget(0,bottom());
+        m_layout->addWidget(bottom());
     }
 }
 
@@ -282,7 +271,6 @@ class ChatMessage_p
         QFrame* separatorFrame;
         QBoxLayout* separatorLayout;
 
-        AlignedStretchingWidget* body;
         QFrame* main;
         QBoxLayout* mainLayout;
 
@@ -312,35 +300,23 @@ ChatMessage::ChatMessage(QWidget* parent)
     pimpl->separatorFrame->setVisible(false);
     pimpl->layout->addWidget(pimpl->separatorFrame);
 
-#if 0
-    pimpl->body=new AlignedStretchingWidget(this);
-    pimpl->layout->addWidget(pimpl->body);
-    pimpl->main=new QFrame(pimpl->body);
-#else
     pimpl->main=new QFrame(this);
     pimpl->layout->addWidget(pimpl->main);
-#endif
 
     pimpl->main->setObjectName("main");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
 
     pimpl->avatarFrame=new QFrame(pimpl->main);
     pimpl->avatarFrame->setObjectName("avatarFrame");
-    pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+    pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 
     pimpl->contentFrame=new QFrame(pimpl->main);
     pimpl->contentFrame->setObjectName("contentFrame");
-    pimpl->contentLayout=Layout::vertical(pimpl->contentFrame);
-    pimpl->mainLayout->addWidget(pimpl->contentFrame);
+    pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
 
     pimpl->selectionFrame=new QFrame(pimpl->main);
     pimpl->selectionFrame->setObjectName("selectionFrame");
-    pimpl->selectionFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    pimpl->mainLayout->addWidget(pimpl->selectionFrame);
-#if 0
-    pimpl->body->setWidget(pimpl->main,Qt::Horizontal,Qt::AlignLeft);
-#endif
+    pimpl->selectionFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
@@ -376,32 +352,6 @@ void ChatMessage::updateSelection()
 
 //--------------------------------------------------------------------------
 
-void ChatMessage::updateAlignSent()
-{
-    updateAlignment();
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::updateDirection()
-{
-    updateAlignment();
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::updateAlignment()
-{
-    auto alignment=Qt::AlignLeft;
-    if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
-    {
-        alignment=Qt::AlignRight;
-    }
-    pimpl->body->setAlignment(alignment);
-}
-
-//--------------------------------------------------------------------------
-
 void ChatMessage::updateTopSpaceVisible()
 {
     pimpl->topSpace->setVisible(isTopSpaceVisible());
@@ -418,7 +368,7 @@ void ChatMessage::updateLastInBatch()
 
 void ChatMessage::updateContentVisible()
 {
-    pimpl->body->setVisible(isContentVisible());
+    pimpl->main->setVisible(isContentVisible());
 }
 
 //--------------------------------------------------------------------------
@@ -427,7 +377,28 @@ void ChatMessage::updateContent()
 {
     if (content()!=nullptr)
     {
-        pimpl->contentLayout->addWidget(content());
+        auto alignment=Qt::AlignLeft;
+        if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
+        {
+            alignment=Qt::AlignRight;
+        }
+
+        if (alignment==Qt::AlignLeft)
+        {
+            pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+            pimpl->mainLayout->addWidget(pimpl->contentFrame);
+            pimpl->contentLayout->addWidget(content());
+            pimpl->contentLayout->addStretch(1);
+        }
+        else
+        {
+            pimpl->contentLayout->addStretch(1);
+            pimpl->contentLayout->addWidget(content());
+            pimpl->mainLayout->addWidget(pimpl->contentFrame);
+            pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+        }
+
+        pimpl->mainLayout->addWidget(pimpl->selectionFrame);
     }
 }
 

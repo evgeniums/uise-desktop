@@ -43,9 +43,15 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         QSize sizeHint() const override;
 
-    public slots:
+        void setWrapWidth(int w);
+
+    private slots:
 
         void updateHeight();
+
+    protected:
+
+        void wheelEvent(QWheelEvent *event) override;
 };
 
 class ChatMessageText_p;

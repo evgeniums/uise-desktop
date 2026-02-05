@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QTimer>
+#include <QWheelEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -46,17 +47,40 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
         this,
         [this]()
         {
-            updateHeight();
+            QTimer::singleShot(
+                0,
+                this,
+                [this]()
+                {
+                    updateHeight();
+                }
+            );
         }
     );
 
     setFocusPolicy(Qt::NoFocus);
+    setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
+
+    setLineWrapMode(FixedPixelWidth);
+
+    Style::updateWidgetStyle(this);
+
+    auto cm=contentsMargins();
+    setLineWrapColumnOrWidth(maximumWidth()-cm.left()-cm.right());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setWrapWidth(int w)
+{
+    setLineWrapColumnOrWidth(w);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageTextBrowser::updateHeight()
 {
+    document()->setTextWidth(document()->idealWidth());
     updateGeometry();
 }
 
@@ -64,15 +88,31 @@ void ChatMessageTextBrowser::updateHeight()
 
 QSize ChatMessageTextBrowser::sizeHint() const
 {
-    auto sz=QTextBrowser::sizeHint();
     if (document())
     {
-        document()->adjustSize();
         QSizeF docSize = document()->size();
         int height = static_cast<int>(docSize.height() + 2 * frameWidth());
-        return QSize(sz.width(), height);
+        int width = static_cast<int>(document()->idealWidth() + 2 * frameWidth());
+#if 0
+        qDebug() << "ChatMessageTextBrowser::sizeHint() "
+                 << " docSize " << docSize
+                 << " idealWidth " << document()->idealWidth()
+                 << " textWidth " << document()->textWidth()
+                 << " maximumWidth() " << maximumWidth()
+                 << " contentsMargins() " << contentsMargins()
+                 << " frameWidth() " << frameWidth()
+                 << " for " << toPlainText();
+#endif
+        return QSize{width,height};
     }
-    return sz;
+    return QTextBrowser::sizeHint();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::wheelEvent(QWheelEvent *event)
+{
+    event->ignore();
 }
 
 /********************************ChatMessageText****************************/
@@ -94,12 +134,12 @@ ChatMessageText::ChatMessageText(QWidget* parent)
     : AbstractChatMessageText(parent),
       pimpl(std::make_unique<ChatMessageText_p>())
 {
-    pimpl->layout=Layout::vertical(this);
+    pimpl->layout=Layout::horizontal(this);
 
     pimpl->text=new ChatMessageTextBrowser(this);
-    pimpl->layout->addWidget(pimpl->text);
+    pimpl->layout->addWidget(pimpl->text);    
 
-    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -119,7 +159,6 @@ void ChatMessageText::loadText(const QString& text, bool markdown)
     {
         pimpl->text->setPlainText(text);
     }
-    // QTimer::singleShot(10,this,[this](){pimpl->text->updateSize();});
 }
 
 //--------------------------------------------------------------------------

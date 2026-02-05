@@ -95,9 +95,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
     protected:
 
-        void updateHeader() override;
-        void updateBody() override;
-        void updateBottom() override;
+        void updateWidgets() override;
 
     private:
 
@@ -128,10 +126,6 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void updateSelection() override;
 
-        void updateAlignSent() override;
-
-        void updateDirection() override;
-
         void updateTopSpaceVisible() override;
 
         void updateLastInBatch() override;
@@ -143,8 +137,6 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateAvatarVisible() override;
 
     private:
-
-        void updateAlignment();
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };

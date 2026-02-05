@@ -183,7 +183,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
-        void setHeader(AbstractChatMessageHeader* header)
+        void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr, AbstractChatMessageBottom* bottom=nullptr)
         {
             destroyWidget(m_header);
             m_header=header;
@@ -191,7 +191,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             {
                 m_header->setChatMessage(chatMessage());
             }
-            updateHeader();
+            destroyWidget(m_body);
+            m_body=body;
+            if (m_body!=nullptr)
+            {
+                m_body->setChatMessage(chatMessage());
+            }
+            destroyWidget(m_bottom);
+            m_bottom=bottom;
+            if (m_bottom!=nullptr)
+            {
+                m_bottom->setChatMessage(chatMessage());
+            }
+            updateWidgets();
         }
 
         AbstractChatMessageHeader* header() const noexcept
@@ -199,31 +211,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_header;
         }
 
-        void setBody(AbstractChatMessageBody* body)
-        {
-            destroyWidget(m_body);
-            m_body=body;
-            if (m_body!=nullptr)
-            {
-                m_body->setChatMessage(chatMessage());
-            }
-            updateBody();
-        }
-
         AbstractChatMessageBody* body() const noexcept
         {
             return m_body;
-        }
-
-        void setBottom(AbstractChatMessageBottom* bottom)
-        {
-            destroyWidget(m_bottom);
-            m_bottom=bottom;
-            if (m_bottom!=nullptr)
-            {
-                m_bottom->setChatMessage(chatMessage());
-            }
-            updateBottom();
         }
 
         AbstractChatMessageBottom* bottom() const noexcept
@@ -233,9 +223,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
     protected:
 
-        virtual void updateHeader() =0;
-        virtual void updateBody() =0;
-        virtual void updateBottom() =0;
+        virtual void updateWidgets() =0;
 
     private:
 
@@ -263,6 +251,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         };
 
         using WidgetQFrame::WidgetQFrame;
+
+        void setDirection(Direction direction, AlignSent alignSent=AlignSent::Left)
+        {
+            m_direction=direction;
+            m_alignSent=alignSent;
+        }
 
         AbstractChatSeparator* topSeparator() const noexcept
         {
@@ -301,13 +295,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool isAvatarVisible(bool enable) const noexcept
         {
             return m_avatarVisible;
-        }
-
-        void setDirection(Direction direction)
-        {
-            m_direction=direction;
-            updateDirection();
-            emit directionUpdated();
         }
 
         Direction direction() const noexcept
@@ -366,13 +353,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit selectionUpdated();
         }
 
-        void setAlignSent(AlignSent alignment)
-        {
-            m_alignSent=alignment;
-            updateAlignSent();
-            emit alignSentUpdated();;
-        }
-
         void setLastInBatch(bool enable)
         {
             m_lastInBatch=enable;
@@ -399,8 +379,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void topSeparatorUpdated();
         void selectableUpdated();
         void selectionUpdated();
-        void directionUpdated();
-        void alignSentUpdated();
         void topSpaceVisibilityUpdated();
         void lastInBatchUpdated();
         void contentVisibilityUpdated();
@@ -416,12 +394,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {}
 
         virtual void updateSelection()
-        {}
-
-        virtual void updateAlignSent()
-        {}
-
-        virtual void updateDirection()
         {}
 
         virtual void updateTopSpaceVisible()
@@ -445,8 +417,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         AbstractChatMessageContent* m_content=nullptr;
         bool m_selectable=false;
         bool m_selected=false;
-        AlignSent m_alignSent=AlignSent::Right;
-        Direction m_direction=Direction::Received;
+        AlignSent m_alignSent=AlignSent::Left;
+        Direction m_direction=Direction::Sent;
         bool m_topSpaceVisible=true;
         bool m_lastInBatch=true;
         bool m_contentVisible=true;
