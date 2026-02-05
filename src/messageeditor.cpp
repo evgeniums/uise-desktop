@@ -119,6 +119,14 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
     QTextEdit::keyPressEvent(event);
 }
 
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::focusInEvent(QFocusEvent* event)
+{
+    QTextEdit::focusInEvent(event);
+    emit activated();
+}
+
 /********************************MessageEditor*********************************/
 
 //--------------------------------------------------------------------------
@@ -160,6 +168,13 @@ MessageEditor::MessageEditor(QWidget* parent)
         {
             emit textChanged();
         }
+    );
+
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::activated,
+        this,
+        &AbstractMessageEditor::activated
     );
 }
 

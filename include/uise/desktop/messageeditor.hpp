@@ -62,10 +62,12 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
     signals:
 
         void returnPressed();
+        void activated();
 
     protected:
 
         void keyPressEvent(QKeyEvent* event) override;
+        void focusInEvent(QFocusEvent* event) override;
 
     private slots:
 

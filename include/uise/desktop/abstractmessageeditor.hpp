@@ -96,6 +96,7 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 
         void textChanged();
         void editingFinished();
+        void activated();
 
     protected:
 
