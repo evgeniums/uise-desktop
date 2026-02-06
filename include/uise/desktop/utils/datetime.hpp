@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_DATETIME_HPP
 
 #include <QDateTime>
+#include <QRegularExpression>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -33,6 +34,14 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 inline QString printCurrentDateTime()
 {
     return QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+}
+
+inline QString dateAsMonthAndDay(const QDateTime& dt, const QLocale& locale=QLocale{})
+{
+    static QRegularExpression rx("[,./-]*\\s?y+\\s?[,./-]*",QRegularExpression::CaseInsensitiveOption);
+    QString localeFormat = locale.dateFormat(QLocale::LongFormat);
+    QString dateFormat = localeFormat.remove(rx).trimmed();
+    return locale.toString(dt,dateFormat);
 }
 
 UISE_DESKTOP_NAMESPACE_END
