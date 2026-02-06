@@ -74,6 +74,9 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
 
     public:
 
+        constexpr static const char* TypeDate="date";
+        constexpr static const char* TypeFolder="folder";
+
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
         virtual void setHLineVisible(bool enable) =0;
@@ -94,9 +97,24 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         virtual void setClickable(bool enable) =0;
         virtual bool isClickable() const=0;
 
+        void setType(QString type)
+        {
+            m_type=std::move(type);
+            setProperty("separator_type",type);
+        }
+
+        const QString& type() const
+        {
+            return m_type;
+        }
+
     signals:
 
         void clicked();
+
+    private:
+
+        QString m_type;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChild
@@ -140,6 +158,18 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChil
         size_t sectionCount() const noexcept
         {
             return m_sections.size();
+        }
+
+        AbstractChatSeparatorSection* section(const QString& type) const
+        {
+            for (const auto& section : m_sections)
+            {
+                if (section->type()==type)
+                {
+                    return section;
+                }
+            }
+            return nullptr;
         }
 
     protected:
@@ -303,10 +333,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_topSeparator;
         }
 
-        void setTopSeparator(AbstractChatSeparator* header)
+        void setTopSeparator(AbstractChatSeparator* sep)
         {
             destroyWidget(m_topSeparator);
-            m_topSeparator=header;
+            m_topSeparator=sep;
             updateTopSeparator();
             emit topSeparatorUpdated();
         }

@@ -11,3 +11,7 @@ selection-background-color: #1055C9;
 uise--ChatMessageBottom QLabel {
 color: #777777;
 }
+
+uise--ChatSeparatorSection uise--AvatarButton {
+background-color:#333;
+}
