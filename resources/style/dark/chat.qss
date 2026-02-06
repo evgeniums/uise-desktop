@@ -2,7 +2,7 @@ uise--AbstractChatMessageContent {
 background-color: #262a30;
 }
 
-uise--ChatMessageTextBrowser {
+uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
 selection-background-color: #1055C9;

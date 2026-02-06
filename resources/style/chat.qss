@@ -1,10 +1,12 @@
-uise--ChatMessageTextBrowser {
-max-width:500px;
+uise--ChatMessageText uise--ChatMessageTextBrowser {
+max-width:560px;
 border-radius:0;
+background-color: transparent;
+border:none;
 }
 
 uise--AbstractChatMessageContent {
-max-width:516px;
+max-width:576px;
 margin: 2px 0;
 border-radius: 16px;
 min-height: 32px;
