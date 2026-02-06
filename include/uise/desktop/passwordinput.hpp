@@ -31,7 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLineEdit>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 

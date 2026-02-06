@@ -27,7 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 
 class QCameraDevice;
 

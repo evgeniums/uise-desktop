@@ -27,7 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_MODAL_DIALOG_HPP
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 #include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/abstractdialog.hpp>
 

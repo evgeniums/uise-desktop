@@ -31,7 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 #include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/statusdialog.hpp>
 

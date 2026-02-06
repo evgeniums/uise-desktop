@@ -42,6 +42,7 @@ SET (HEADERS
     include/uise/desktop/uisedesktop.hpp
     include/uise/desktop/version.hpp
 
+    include/uise/desktop/frame.hpp
     include/uise/desktop/widget.hpp
     include/uise/desktop/widgetfactory.hpp
 

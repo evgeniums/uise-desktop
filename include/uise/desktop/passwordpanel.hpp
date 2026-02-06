@@ -34,7 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/dialog.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 
 class QLabel;
 

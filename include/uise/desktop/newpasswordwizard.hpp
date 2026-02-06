@@ -32,7 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 #include <uise/desktop/abstractdialog.hpp>
 #include <uise/desktop/modaldialog.hpp>
 

@@ -33,7 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVBoxLayout>
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/widget.hpp>
+#include <uise/desktop/frame.hpp>
 #include <uise/desktop/statusdialog.hpp>
 
 #include <uise/desktop/htreelistitem.hpp>

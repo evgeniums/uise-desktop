@@ -208,50 +208,6 @@ class UISE_DESKTOP_EXPORT Widget : public WidgetT<>
         WidgetController* m_ctrl=nullptr;
 };
 
-class UISE_DESKTOP_EXPORT Frame : public QFrame
-{
-    Q_OBJECT
-
-    Q_PROPERTY(int uisePadding READ getUisePadding WRITE setUisePadding NOTIFY uisePaddingChanged)
-
-    public:
-
-        using QFrame::QFrame;
-
-        int getUisePadding() const noexcept
-        {
-            return m_uisePadding;
-        }
-
-        void setUisePadding(int value) noexcept
-        {
-            m_uisePadding = value;
-        }
-
-    signals:
-
-        void uisePaddingChanged(int value);
-
-    private:
-
-        int m_uisePadding=0;
-};
-
-class UISE_DESKTOP_EXPORT WidgetQFrame : public Frame,
-                                         public Widget
-{
-    Q_OBJECT
-
-    public:
-
-        using Frame::Frame;
-
-        QWidget* qWidget() override
-        {
-            return this;
-        }
-};
-
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_WIDGET_HPP
