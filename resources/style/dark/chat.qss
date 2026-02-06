@@ -1,0 +1,13 @@
+uise--AbstractChatMessageContent {
+background-color: #262a30;
+}
+
+uise--ChatMessageTextBrowser {
+background-color: transparent;
+border:none;
+selection-background-color: #1055C9;
+}
+
+uise--ChatMessageBottom QLabel {
+color: #777777;
+}

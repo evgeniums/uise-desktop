@@ -26,10 +26,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QCheckBox>
 #include <QMouseEvent>
+#include <QLabel>
+#include <QLocale>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
-#include <uise/desktop/alignedstretchingwidget.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/chatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -244,16 +246,17 @@ void ChatMessageContent::updateWidgets()
 {
     if (header()!=nullptr)
     {
-        m_layout->addWidget(header());
+        m_layout->addWidget(header(),0,Qt::AlignLeft);
     }
     if (body()!=nullptr)
     {
-        m_layout->addWidget(body());
+        m_layout->addWidget(body(),0,Qt::AlignLeft);
     }
     if (bottom()!=nullptr)
     {
-        m_layout->addWidget(bottom());
+        m_layout->addWidget(bottom(),0,Qt::AlignLeft);
     }
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
@@ -422,13 +425,6 @@ void ChatMessage::updateContent()
 
 //--------------------------------------------------------------------------
 
-void ChatMessage::updateAvatarVisible()
-{
-
-}
-
-//--------------------------------------------------------------------------
-
 void ChatMessage::mousePressEvent(QMouseEvent* event)
 {
     if (event->button()==Qt::LeftButton)
@@ -436,6 +432,142 @@ void ChatMessage::mousePressEvent(QMouseEvent* event)
         emit clicked();
     }
     QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAvatarVisible()
+{
+
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateDateTime()
+{
+    if (content() && content()->bottom())
+    {
+        QLocale locale;
+        auto dt=datetime();
+        auto tooltip=locale.toString(dt, QLocale::LongFormat);
+        auto time=dt.toString("HH:mm");
+        content()->bottom()->setTimeString(time,tooltip);
+    }
+}
+
+/***************************ChatMessageBottom*****************************/
+
+//--------------------------------------------------------------------------
+
+class ChatMessageBottom_p
+{
+    public:
+
+        QLabel* time;
+        IconTextButton* status;
+        IconTextButton* seen;
+        QLabel* edited;
+};
+
+//--------------------------------------------------------------------------
+
+ChatMessageBottom::ChatMessageBottom(QWidget* parent)
+    : AbstractChatMessageBottom(parent),
+      pimpl(std::make_unique<ChatMessageBottom_p>())
+{
+    auto l=Layout::horizontal(this);
+
+    pimpl->seen=new IconTextButton(Style::instance().svgIconLocator().icon("ChatMessageBottom::seen"),this);
+    pimpl->seen->setObjectName("seen");
+    l->addWidget(pimpl->seen,0,Qt::AlignRight);
+    pimpl->seen->setVisible(false);
+
+    pimpl->edited=new QLabel(this);
+    pimpl->edited->setObjectName("edited");
+    l->addWidget(pimpl->edited,0,Qt::AlignRight);
+    pimpl->edited->setVisible(false);
+
+    pimpl->time=new QLabel(this);
+    pimpl->time->setObjectName("time");
+    l->addWidget(pimpl->time,0,Qt::AlignRight);
+
+    pimpl->status=new IconTextButton(this);
+    pimpl->status->setObjectName("status");
+    l->addWidget(pimpl->status,0,Qt::AlignRight);
+    pimpl->status->setVisible(false);
+}
+
+//--------------------------------------------------------------------------
+
+ChatMessageBottom::~ChatMessageBottom()
+{}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setTimeString(const QString& time, const QString& tooltip)
+{
+    pimpl->time->setText(time);
+    pimpl->time->setToolTip(tooltip);
+    adjustWidth();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setStatusIcon(std::shared_ptr<SvgIcon> icon, const QString& tooltip)
+{
+    pimpl->status->setSvgIcon(std::move(icon));
+    pimpl->status->setVisible(static_cast<bool>(icon));
+    pimpl->status->setToolTip(tooltip);
+    adjustWidth();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setEdited(const QString& text, const QString& tooltip)
+{
+    pimpl->edited->setText(text);
+    pimpl->edited->setToolTip(tooltip);
+    pimpl->edited->setVisible(!text.isEmpty());
+    adjustWidth();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setSeen(const QString& text, const QString& tooltip)
+{
+    pimpl->seen->setText(text);
+    pimpl->seen->setToolTip(tooltip);
+    pimpl->seen->setVisible(!text.isEmpty());
+    adjustWidth();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::adjustWidth()
+{
+    auto bodyHW=chatContent()->body()->sizeHint().width();
+    auto maxW=chatContent()->maximumWidth();
+
+    auto newW1=bodyHW+sizeHint().width();
+    auto newW=newW1;
+
+    int contentPadding = chatContent()->getUisePadding();
+    auto maxW1=maxW-2*contentPadding;
+    if (maxW1>0 && newW>maxW1)
+    {
+        newW=maxW1;
+    }
+
+#if 0
+    qDebug() << "ChatMessageBottom::adjustWidth() "
+                       << " bodyHW="<<bodyHW
+                       << " maxW="<<maxW
+                       << " contentPadding="<<contentPadding
+                       << " maxW1="<<maxW1
+                       << " newW1="<<newW1
+                       << " newW="<<newW;
+#endif
+    setMinimumWidth(newW);
 }
 
 //--------------------------------------------------------------------------

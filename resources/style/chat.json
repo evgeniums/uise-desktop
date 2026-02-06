@@ -1,0 +1,10 @@
+{
+    "contexts" : [
+        {
+            "name" : "ChatMessageBottom",
+            "aliases" : {
+                "seen" : "${uise-svg-icons-1}/eye"
+            }
+        }
+    ]
+}

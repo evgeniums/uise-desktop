@@ -1,0 +1,14 @@
+uise--ChatMessageTextBrowser {
+max-width:500px;
+border-radius:0;
+}
+
+uise--AbstractChatMessageContent {
+max-width:516px;
+margin: 2px 0;
+border-radius: 16px;
+min-height: 32px;
+
+padding: 8px;
+qproperty-uisePadding: 8;
+}

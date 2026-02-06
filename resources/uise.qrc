@@ -70,5 +70,9 @@
         <file>style/inputwidgets.qss</file>
         <file>style/dark/inputwidgets.qss</file>
         <file>style/dark/reset.qss</file>
+        <file>style/chat.json</file>
+        <file>style/chat.qss</file>
+        <file>style/dark/chat.json</file>
+        <file>style/dark/chat.qss</file>
     </qresource>
 </RCC>

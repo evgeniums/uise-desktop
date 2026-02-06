@@ -33,6 +33,8 @@ class QBoxLayout;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+//--------------------------------------------------------------------------
+
 class ChatSeparatorSection_p;
 
 class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSection
@@ -41,7 +43,7 @@ class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSec
 
     public:
 
-        ChatSeparatorSection(QWidget* parent=nullptr);
+        explicit ChatSeparatorSection(QWidget* parent=nullptr);
 
         ~ChatSeparatorSection();
         ChatSeparatorSection(const ChatSeparatorSection&)=delete;
@@ -72,6 +74,8 @@ class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSec
         std::unique_ptr<ChatSeparatorSection_p> pimpl;
 };
 
+//--------------------------------------------------------------------------
+
 class UISE_DESKTOP_EXPORT ChatSeparator : public AbstractChatSeparator
 {
     public:
@@ -87,11 +91,42 @@ class UISE_DESKTOP_EXPORT ChatSeparator : public AbstractChatSeparator
         QBoxLayout* m_layout;
 };
 
+//--------------------------------------------------------------------------
+
+class ChatMessageBottom_p;
+
+class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
+{
+    Q_OBJECT
+
+    public:
+
+        explicit ChatMessageBottom(QWidget* parent=nullptr);
+
+        ~ChatMessageBottom();
+        ChatMessageBottom(const ChatMessageBottom&)=delete;
+        ChatMessageBottom& operator=(const ChatMessageBottom&)=delete;
+        ChatMessageBottom(ChatMessageBottom&&)=delete;
+        ChatMessageBottom& operator=(ChatMessageBottom&&)=delete;
+
+        void setSeen(const QString& text, const QString& tooltip={}) override;
+        void setEdited(const QString& text, const QString& tooltip={}) override;
+        void setTimeString(const QString& time, const QString& tooltip={}) override;
+        void setStatusIcon(std::shared_ptr<SvgIcon> icon ={}, const QString& tooltip={}) override;
+
+    private:
+
+        void adjustWidth();
+        std::unique_ptr<ChatMessageBottom_p> pimpl;
+};
+
+//--------------------------------------------------------------------------
+
 class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 {
     public:
 
-        ChatMessageContent(QWidget* parent=nullptr);
+        explicit ChatMessageContent(QWidget* parent=nullptr);
 
         void clearContentSelection() override;
 
@@ -104,6 +139,8 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         QBoxLayout* m_layout;
 };
 
+//--------------------------------------------------------------------------
+
 class ChatMessage_p;
 
 class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
@@ -112,7 +149,7 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
     public:
 
-        ChatMessage(QWidget* parent=nullptr);
+        explicit ChatMessage(QWidget* parent=nullptr);
 
         ~ChatMessage();
         ChatMessage(const ChatMessage&)=delete;
@@ -137,6 +174,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateContent() override;
 
         void updateAvatarVisible() override;
+
+        void updateDateTime() override;
 
         void mousePressEvent(QMouseEvent* event) override;
 

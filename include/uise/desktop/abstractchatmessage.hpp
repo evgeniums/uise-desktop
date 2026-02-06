@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGE_HPP
 
 #include <QPointer>
+#include <QDateTime>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -150,33 +151,63 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChil
         std::vector<QPointer<AbstractChatSeparatorSection>> m_sections;
 };
 
-class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public AbstractChatMessageChild
+class AbstractChatMessageContent;
+
+class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessageChild
 {
     Q_OBJECT
 
     public:
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
+
+        void setChatContent(AbstractChatMessageContent* chatContent)
+        {
+            m_content=chatContent;
+        }
+
+        AbstractChatMessageContent* chatContent() const noexcept
+        {
+            return m_content;
+        }
+
+    private:
+
+        AbstractChatMessageContent* m_content=nullptr;
 };
 
-class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public AbstractChatMessageChild
+class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public ChatMessageContentSection
 {
     Q_OBJECT
 
     public:
 
-        using AbstractChatMessageChild::AbstractChatMessageChild;
+        using ChatMessageContentSection::ChatMessageContentSection;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSection
+{
+    Q_OBJECT
+
+    public:
+
+        using ChatMessageContentSection::ChatMessageContentSection;
 
 
 };
 
-class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public AbstractChatMessageChild
+class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
 {
     Q_OBJECT
 
     public:
 
-        using AbstractChatMessageChild::AbstractChatMessageChild;
+        using ChatMessageContentSection::ChatMessageContentSection;
+
+        virtual void setSeen(const QString& text, const QString& /*tooltip*/={}) {}
+        virtual void setEdited(const QString& text, const QString& /*tooltip*/={}) {}
+        virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
+        virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
@@ -194,18 +225,21 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             if (m_header!=nullptr)
             {
                 m_header->setChatMessage(chatMessage());
+                m_header->setChatContent(this);
             }
             destroyWidget(m_body);
             m_body=body;
             if (m_body!=nullptr)
             {
                 m_body->setChatMessage(chatMessage());
+                m_body->setChatContent(this);
             }
             destroyWidget(m_bottom);
             m_bottom=bottom;
             if (m_bottom!=nullptr)
             {
                 m_bottom->setChatMessage(chatMessage());
+                m_bottom->setChatContent(this);
             }
             updateWidgets();
         }
@@ -339,6 +373,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_content;
         }
 
+        QDateTime datetime() const
+        {
+            return m_dateTime;
+        }
+
     public slots:
 
         void clearContentSelection()
@@ -388,6 +427,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit avatarVisibilityUpdated();
         }
 
+        void setDateTime(const QDateTime& dt)
+        {
+            m_dateTime=dt;
+            updateDateTime();
+            emit dateTimeUpdated();
+        }
+
     signals:
 
         void topSeparatorUpdated();
@@ -398,6 +444,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void contentVisibilityUpdated();
         void contentUpdated();
         void avatarVisibilityUpdated();
+
+        void dateTimeUpdated();
 
         void clicked();
 
@@ -427,6 +475,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual void updateAvatarVisible()
         {}
 
+        virtual void updateDateTime()
+        {}
+
     private:
 
         AbstractChatSeparator* m_topSeparator=nullptr;
@@ -439,6 +490,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_lastInBatch=true;
         bool m_contentVisible=true;
         bool m_avatarVisible=false;
+
+        QDateTime m_dateTime;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody
