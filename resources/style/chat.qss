@@ -17,6 +17,8 @@ qproperty-uisePadding: 8;
 
 uise--AbstractChatSeparatorSection {
 margin: 8px 0;
+
+max-width:576px;
 }
 
 uise--ChatSeparatorSection uise--AvatarButton {
