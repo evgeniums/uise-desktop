@@ -231,11 +231,18 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::v
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(const std::vector<ItemT> &items)
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(const std::vector<ItemT> &items, bool autoUpdate)
 {
-    beginUpdate();
+    if (autoUpdate)
+    {
+        beginUpdate();
+    }
+
     pimpl->insertContinuousItems(items);
-    endUpdate();
+    if (autoUpdate)
+    {
+        endUpdate();
+    }
 }
 
 //--------------------------------------------------------------------------

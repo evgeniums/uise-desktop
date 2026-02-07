@@ -161,7 +161,7 @@ class FlyweightListView : public QFrame
          *
          * Items must be pre-sorted before insertion.
          */
-        void insertContinuousItems(const std::vector<ItemT>& items);
+        void insertContinuousItems(const std::vector<ItemT>& items, bool autoUpdate=true);
 
         /**
          * @brief Populate lists with the items.
