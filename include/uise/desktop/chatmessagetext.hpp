@@ -45,6 +45,13 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         void setWrapWidth(int w);
 
+        void setMessageTextWidget(AbstractChatMessageText* widget);
+
+        AbstractChatMessageText* messageTextWidget() const
+        {
+            return m_messageTextWidget;
+        }
+
     private slots:
 
         void updateHeight();
@@ -53,6 +60,11 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         void wheelEvent(QWheelEvent *event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+
+    private:
+
+        AbstractChatMessageText* m_messageTextWidget=nullptr;
 };
 
 class ChatMessageText_p;
@@ -76,6 +88,10 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
         void clearText() override;
 
         void clearContentSelection() override;
+
+    protected:
+
+        void updateChatMessage() override;
 
     private:
 

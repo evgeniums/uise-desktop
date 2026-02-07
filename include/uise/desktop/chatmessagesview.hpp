@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGESVIEW_HPP
 
 #include <QBoxLayout>
+#include <QShortcut>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/enums.hpp>
@@ -115,6 +116,8 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
 
     public:
 
+        constexpr static const int MouseMoveDetectDelta=10;
+
         using QObject::QObject;
 
     signals:
@@ -123,7 +126,7 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
 };
 
 template <typename BaseMessageT, typename DataT>
-class ChatMessagesView : public QFrame
+class ChatMessagesView : public MouseMoveEventFilter
 {
     public:
 
@@ -198,6 +201,11 @@ class ChatMessagesView : public QFrame
 
         Message* message(const Id& id) const;
 
+    protected:
+
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+
     private:
 
         ChatMessagesViewQ* m_qobj=nullptr;
@@ -208,6 +216,9 @@ class ChatMessagesView : public QFrame
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
+
+        QPointer<AbstractChatMessage> m_chatUnderMouse;
+        QPoint m_mouseMovePos;
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 

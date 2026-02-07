@@ -26,11 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
-#include <iostream>
-
 #include <QPushButton>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/directchildwidget.hpp>
 
 #include <uise/desktop/chatmessage.hpp>
 #include <uise/desktop/chatmessagesview.hpp>
@@ -97,7 +96,7 @@ Widget* ChatMessagesViewItem<BaseMessageT>::doCreateActualWidget(QWidget* parent
 
 template <typename BaseMessageT,typename DataT>
 ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
-    : QFrame(parent),
+    : MouseMoveEventFilter(parent),
       m_qobj(new ChatMessagesViewQ(this))
 {
     setObjectName("uiseChatMessagesView");
@@ -135,6 +134,42 @@ ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
                 [this]()
                 {
                     setSelectionMode(true);
+                }
+            );
+
+            connect(
+                chatMsg,
+                &AbstractChatMessage::selectionUpdated,
+                m_qobj,
+                [this]()
+                {
+                    bool noneSelected=m_listView->eachItem(
+                        [](const auto* item)
+                        {
+                            return !item->item()->ui()->isSelected();
+                        }
+                    );
+
+                    if (noneSelected)
+                    {
+                        QTimer::singleShot(
+                            300,
+                            this,
+                            [this]()
+                            {
+                                bool noneSelected=m_listView->eachItem(
+                                    [](const auto* item)
+                                    {
+                                        return !item->item()->ui()->isSelected();
+                                    }
+                                );
+                                if (noneSelected)
+                                {
+                                    setSelectionMode(false);
+                                }
+                            }
+                        );
+                    }
                 }
             );
         }
@@ -207,6 +242,11 @@ ChatMessagesView<BaseMessageT,DataT>::~ChatMessagesView()
 template <typename BaseMessageT,typename DataT>
 void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
 {
+    if (m_selectionMode==enable)
+    {
+        return;
+    }
+
     m_selectionMode=enable;
     m_listView->eachItem(
         [enable](const auto* item)
@@ -215,6 +255,17 @@ void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
             return true;
         }
     );
+    if (!m_selectionMode)
+    {
+        m_chatUnderMouse=nullptr;
+        m_mouseMovePos=QPoint{};
+    }
+
+#if 0
+    qDebug() << "ChatMessagesView::setSelectionMode() m_chatUnderMouse=" << m_chatUnderMouse
+                       << " m_mouseMovePos="<<m_mouseMovePos
+                       <<" m_selectionMode="<<m_selectionMode;
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -483,6 +534,87 @@ template <typename BaseMessageT,typename DataT>
 typename ChatMessagesView<BaseMessageT,DataT>::Message* ChatMessagesView<BaseMessageT,DataT>::message(const Id& id) const
 {
     return m_listView->item(id)->item();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
+{
+    if (event->buttons() & Qt::LeftButton)
+    {
+        auto chatMsg=childWidgetAt<AbstractChatMessage>(this,event->pos());
+        if (chatMsg)
+        {
+            bool handleSelection=false;
+
+            auto newPos=event->pos();
+
+#if 0
+            UNCOMMENTED_QDEBUG << "ChatMessagesView::mouseMoveEvent() m_chatUnderMouse=" << m_chatUnderMouse
+                               << " m_mouseMovePos="<<m_mouseMovePos
+                               <<" m_selectionMode="<<m_selectionMode;
+#endif
+            std::optional<bool> forceSelect;
+            if (m_chatUnderMouse)
+            {
+                if (chatMsg!=m_chatUnderMouse.get())
+                {
+                    m_chatUnderMouse->setSelectDetectionBlocked(false);
+                    forceSelect=m_chatUnderMouse->isSelected();
+                }
+                handleSelection=true;
+            }
+            else
+            {
+                if (!m_mouseMovePos.isNull())
+                {
+                    if (qAbs(m_mouseMovePos.y()-newPos.y())>=ChatMessagesViewQ::MouseMoveDetectDelta)
+                    {
+                        handleSelection=true;
+                    }
+                }
+                else
+                {
+                    m_mouseMovePos=newPos;
+                }
+            }
+#if 0
+            qDebug() << "ChatMessagesView::mouseMoveEvent() " << uintptr_t(event) << " msg " << chatMsg << " handleSelection "
+                               << handleSelection
+                               << " newPos=" << newPos
+                               << " m_mouseMovePos=" << m_mouseMovePos
+                               << " m_mouseMovePos.isNull()=" << m_mouseMovePos.isNull()
+                               << " m_chatUnderMouse="<<m_chatUnderMouse
+                               << " delta="<<qAbs(m_mouseMovePos.y()-newPos.y())
+                               << " m_selectionMode="<<m_selectionMode;
+#endif
+            if (handleSelection)
+            {
+                chatMsg->detectMouseSelection(forceSelect);
+                m_chatUnderMouse=chatMsg;
+                m_mouseMovePos=newPos;
+            }
+        }
+        else
+        {
+            m_chatUnderMouse=nullptr;
+        }
+    }
+    else
+    {
+        m_chatUnderMouse=nullptr;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::mouseReleaseEvent(QMouseEvent* event)
+{
+    m_mouseMovePos=QPoint{};
+    m_chatUnderMouse=nullptr;
+    QFrame::mouseReleaseEvent(event);
 }
 
 //--------------------------------------------------------------------------

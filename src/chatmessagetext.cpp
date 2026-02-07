@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QTimer>
 #include <QWheelEvent>
+#include <QMouseEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -93,16 +94,6 @@ QSize ChatMessageTextBrowser::sizeHint() const
         QSizeF docSize = document()->size();
         int height = static_cast<int>(docSize.height() + 2 * frameWidth());
         int width = static_cast<int>(document()->idealWidth() + 2 * frameWidth());
-#if 0
-        qDebug() << "ChatMessageTextBrowser::sizeHint() "
-                 << " docSize " << docSize
-                 << " idealWidth " << document()->idealWidth()
-                 << " textWidth " << document()->textWidth()
-                 << " maximumWidth() " << maximumWidth()
-                 << " contentsMargins() " << contentsMargins()
-                 << " frameWidth() " << frameWidth()
-                 << " for " << toPlainText();
-#endif
         return QSize{width,height};
     }
     return QTextBrowser::sizeHint();
@@ -117,6 +108,13 @@ void ChatMessageTextBrowser::wheelEvent(QWheelEvent *event)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageTextBrowser::setMessageTextWidget(AbstractChatMessageText* widget)
+{
+    m_messageTextWidget=widget;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::mousePressEvent(QMouseEvent* event)
 {
     QTextBrowser::mousePressEvent(event);
@@ -125,6 +123,27 @@ void ChatMessageTextBrowser::mousePressEvent(QMouseEvent* event)
         QMouseEvent *cloned = event->clone();
         QCoreApplication::sendEvent(parentWidget(), cloned);
         delete cloned;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::mouseMoveEvent(QMouseEvent* event)
+{
+    if (m_messageTextWidget && m_messageTextWidget->chatMessage()->isSelectionMode())
+    {
+        event->ignore();
+    }
+    else
+    {
+        if (!rect().contains(event->pos()))
+        {            
+            event->ignore();
+        }
+        else
+        {
+            QTextBrowser::mouseMoveEvent(event);
+        }
     }
 }
 
@@ -149,7 +168,7 @@ ChatMessageText::ChatMessageText(QWidget* parent)
 {
     pimpl->layout=Layout::horizontal(this);
 
-    pimpl->text=new ChatMessageTextBrowser(this);
+    pimpl->text=new ChatMessageTextBrowser(this);    
     pimpl->layout->addWidget(pimpl->text);    
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
@@ -188,6 +207,13 @@ void ChatMessageText::clearContentSelection()
     auto cur=pimpl->text->textCursor();
     cur.clearSelection();
     pimpl->text->setTextCursor(cur);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::updateChatMessage()
+{
+    pimpl->text->setMessageTextWidget(this);
 }
 
 //--------------------------------------------------------------------------

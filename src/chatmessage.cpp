@@ -23,8 +23,6 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <iostream>
-
 #include <QPointer>
 #include <QCheckBox>
 #include <QMouseEvent>
@@ -37,6 +35,43 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/chatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+/***************************AbstractChatMessage******************************/
+
+void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
+{
+    if (select)
+    {
+        setSelectDetectionBlocked(true);
+        setSelected(select.value());
+        return;
+    }
+    else if (topSeparator() && topSeparator()->underMouse())
+    {
+        return;
+    }
+
+    if (!isSelectDetectionBlocked())
+    {
+        if (!isSelected())
+        {
+            setSelectDetectionBlocked(true);
+            setSelected(true);
+            if (!isSelectionMode())
+            {
+                emit selectionModeRequested();
+            }
+        }
+        else
+        {
+            setSelectDetectionBlocked(true);
+            setSelected(false);
+        }
+    }
+    else
+    {
+    }
+}
 
 /***************************ChatSeparatorSection*****************************/
 
@@ -442,80 +477,20 @@ void ChatMessage::mousePressEvent(QMouseEvent* event)
     {        
         if (isSelectionMode())
         {
-            setSelectDetectionBlocked(true);
+            if (topSeparator() && topSeparator()->underMouse())
+            {
+                return;
+            }
+
+            setSelectDetectionBlocked(true);            
             toggleSelected();
-            UNCOMMENTED_QDEBUG << "ChatMessage::mousePressEvent() selectionmode toggleSelected " << this;
         }
         else
         {
-            UNCOMMENTED_QDEBUG << "ChatMessage::mousePressEvent() clicked " << this;
             emit clicked();
         }
     }
     AbstractChatMessage::mousePressEvent(event);
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::mouseReleaseEvent(QMouseEvent* event)
-{
-    if (event->button()==Qt::LeftButton)
-    {
-        UNCOMMENTED_QDEBUG << "ChatMessage::mouseReleaseEvent() " << this;
-        setSelectDetectionBlocked(false);
-    }
-    AbstractChatMessage::mouseReleaseEvent(event);
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::leaveEvent(QEvent* event)
-{
-    UNCOMMENTED_QDEBUG << "ChatMessage::leaveEvent() " << this;
-    setSelectDetectionBlocked(false);
-    AbstractChatMessage::leaveEvent(event);
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::mouseMoveEvent(QMouseEvent* event)
-{
-    if (event->buttons() & Qt::LeftButton)
-    {
-        UNCOMMENTED_QDEBUG << "ChatMessage::mouseMoveEvent() " << this;
-        detectMouseSelection();
-    }
-    AbstractChatMessage::mouseMoveEvent(event);
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessage::detectMouseSelection()
-{
-    if (!isSelectDetectionBlocked() && content() && content()->body())
-    {
-        if (!isSelected())
-        {
-            if (isSelectionMode() || !content()->body()->underMouse())
-            {
-                UNCOMMENTED_QDEBUG << "ChatMessage::detectMouseSelection() select " << this;
-
-                setSelectDetectionBlocked(true);
-                setSelected(true);
-                if (!isSelectionMode())
-                {
-                    emit selectionModeRequested();
-                }
-            }
-        }
-        else
-        {
-            UNCOMMENTED_QDEBUG << "ChatMessage::detectMouseSelection() deselect " << this;
-
-            setSelectDetectionBlocked(true);
-            setSelected(false);
-        }
-    }
 }
 
 //--------------------------------------------------------------------------

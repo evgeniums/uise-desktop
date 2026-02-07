@@ -304,6 +304,29 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
 };
 
+class UISE_DESKTOP_EXPORT MouseMoveEventFilter : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using QFrame::QFrame;
+
+        void setMouseMoveEventFilterEnabled(bool enable)
+        {
+            m_filterEnabled=true;
+        }
+
+        bool isMouseMoveEventFilterEnabled() const noexcept
+        {
+            return m_filterEnabled;
+        }
+
+    private:
+
+        bool m_filterEnabled=false;
+};
+
 class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 {
     Q_OBJECT
@@ -420,6 +443,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_blockSelectDetection;
         }
 
+        void detectMouseSelection(std::optional<bool> select={});
+
     public slots:
 
         void toggleSelected()
@@ -437,9 +462,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void setSelectionMode(bool enable)
         {
+            if (m_selectionMode==enable)
+            {
+                return;
+            }
+
             if (!enable)
             {
                 setSelected(false);
+                setSelectDetectionBlocked(false);
             }
             m_selectionMode=enable;
             updateSelectionMode();
@@ -448,6 +479,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void setSelected(bool enable)
         {
+            if (m_selected==enable)
+            {
+                return;
+            }
             clearContentSelection();
             m_selected=enable;
             updateSelection();

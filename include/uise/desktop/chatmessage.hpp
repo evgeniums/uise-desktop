@@ -180,14 +180,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateDateTime() override;
 
         void mousePressEvent(QMouseEvent* event) override;
-        void mouseReleaseEvent(QMouseEvent* event) override;
 
-        void mouseMoveEvent(QMouseEvent *event) override;
-        void leaveEvent(QEvent *event) override;
-
-    private:
-
-        void detectMouseSelection();
+    private:        
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };

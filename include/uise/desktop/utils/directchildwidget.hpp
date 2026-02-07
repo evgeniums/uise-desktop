@@ -37,7 +37,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  * @brief Get direct child widget of a parent widget.
  * @param parent Parent widget to look for the direct child of.
  * @param nestedChild Child widget of a parent that can be nested.
- * @return Direct child widget of a parent that exists in the parents chain of nestedChild.
+ * @return Direct child widget of a parent that exists in the chain of parents of the nestedChild.
  */
 UISE_DESKTOP_EXPORT QWidget* directChildWidget(QWidget* parent, QWidget* nestedChild);
 
@@ -50,6 +50,30 @@ UISE_DESKTOP_EXPORT QWidget* directChildWidget(QWidget* parent, QWidget* nestedC
 inline QWidget* directChildWidgetAt(QWidget* parent, const QPoint& pos)
 {
     return directChildWidget(parent,parent->childAt(pos));
+}
+
+template <typename T>
+T* findWidgetInParentChain(QWidget* widget)
+{
+    if (widget==nullptr)
+    {
+        return nullptr;
+    }
+
+    auto w=qobject_cast<T*>(widget);
+    if (w!=nullptr)
+    {
+        return w;
+    }
+
+    return findWidgetInParentChain<T>(widget->parentWidget());
+}
+
+template <typename T>
+inline T* childWidgetAt(QWidget* parent, const QPoint& pos)
+{
+    auto w=parent->childAt(pos);
+    return findWidgetInParentChain<T>(w);
 }
 
 UISE_DESKTOP_NAMESPACE_END
