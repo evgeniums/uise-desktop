@@ -133,6 +133,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     auto vlayout=Layout::vertical(m_obj);
 
     auto middleFrame=new QFrame(m_obj);
+    middleFrame->setObjectName("uiseFlyweightListViewM");
     vlayout->addWidget(middleFrame,1);
     m_hbar=new QScrollBar(m_obj);
     m_hbar->setOrientation(Qt::Horizontal);
@@ -141,6 +142,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     auto hlayout=Layout::horizontal(middleFrame);
 
     m_view=new QFrame(middleFrame);
+    m_view->setObjectName("uiseFlyweightListViewV");
     hlayout->addWidget(m_view,1);
     m_vbar=new QScrollBar(middleFrame);
     m_vbar->setVisible(false);
@@ -150,7 +152,6 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     m_view->setFocusPolicy(Qt::StrongFocus);
 
     m_llist=new LinkedListView(m_view);
-    m_llist->setObjectName("FlyweightListViewLLits");
     m_llist->setFocusProxy(m_view);
 
     updatePageStep();
@@ -160,7 +161,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
 
     if (m_llist->frameWidth()!=0)
     {
-        auto err=QString("CSS border, margin and padding for LinkedListView(FlyweightListViewLLits) must be 0 (actual: %1)").arg(m_llist->frameWidth());
+        auto err=QString("CSS border, margin and padding for LinkedListView(FlyweightListView) must be 0 (actual: %1)").arg(m_llist->frameWidth());
         qCritical()<<err;
 
         //! @todo Support other frame widths using contentsRect()
@@ -726,7 +727,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
 {
 #if 0
-    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::viewportUpdated()  " << m_obj;
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::viewportUpdated()  " << m_obj << " m_ignoreUpdates="<<m_ignoreUpdates;
 #endif
     if (m_ignoreUpdates)
     {
@@ -772,6 +773,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
             !itemOrdersEqual(l_lastViewportSortValue,m_lastViewportSortValue)
         )
     {
+#if 0
+        qDebug() << printCurrentDateTime() << ": FlyweightListView_p::informViewportUpdated()  " << m_obj << " inform";
+#endif
         m_informViewportUpdateTimer.shot(0,
             [this]()
             {
@@ -782,6 +786,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
                 }
             }
         );
+    }
+    else
+    {
+#if 0
+        qDebug() << printCurrentDateTime() << ": FlyweightListView_p::informViewportUpdated()  " << m_obj << " skip";
+#endif
     }
 }
 
@@ -1172,6 +1182,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
     };
 
     const auto* item=firstViewportItem();
+
     if (item && item->widget())
     {
         m_firstWidgetPos=oprop(item->widget(),OProp::pos);
@@ -1179,6 +1190,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
     else
     {
         m_firstWidgetPos=0;
+#if 0
+        qDebug()  <<  printCurrentDateTime() << ": FlyweightListView_p::keepCurrentConfiguration()  " << m_obj << " first view item not found";
+#endif
     }
 
     keep(item,m_firstViewportItemID,m_firstViewportSortValue);
@@ -1193,6 +1207,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemAtPos(const QPoint &pos) const
 {
+#if 0
+    qDebug() << printCurrentDateTime() << ": itemAtPos() "<<pos << " m_llist->size() " << m_llist->size();
+#endif
     const auto* widget=directChildWidgetAt(m_llist,pos);
     return PointerHolder::getProperty<const ItemT*>(widget,ItemT::Property);
 }
@@ -1222,7 +1239,7 @@ const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::lastViewportIt
     auto listLastViewportPoint=m_llist->mapFromParent(viewLastPos);
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << printCurrentDateTime() << ": lastViewportItem() listLastViewportPoint "<<listLastViewportPoint;
+    qDebug << printCurrentDateTime() << ": lastViewportItem() listLastViewportPoint "<<listLastViewportPoint;
 #endif
 
     const auto* item=itemAtPos(listLastViewportPoint);
@@ -1663,6 +1680,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
                 break;
             }
         }
+#if 0
+        qDebug() << "FlyweightListView_p updateJumpEdgeVisibility "
+                           << " invisibleCount="<<invisibleCount
+                           << " m_jumpEdgeInvisibleItemCount="<<m_jumpEdgeInvisibleItemCount;
+#endif
     }
 
     m_jumpEdge->setVisible(showControl);
