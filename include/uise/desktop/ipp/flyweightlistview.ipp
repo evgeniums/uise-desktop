@@ -48,8 +48,9 @@ FlyweightListView<ItemT,OrderComparer,IdComparer>::FlyweightListView(
                 )
              )
 {
-    pimpl->setupUi();
+    setObjectName("uiseFlyweightListView");
 
+    pimpl->setupUi();
     pimpl->m_view->installEventFilter(this);
 }
 

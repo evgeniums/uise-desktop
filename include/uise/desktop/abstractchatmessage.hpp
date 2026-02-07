@@ -519,7 +519,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {}
 
         virtual void updateContent()
-        {}
+        {
+        }
 
         virtual void updateAvatarVisible()
         {}

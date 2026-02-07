@@ -136,15 +136,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
         void updateWidgets() override;
 
-        // void mouseReleaseEvent(QMouseEvent* event) override;
-
-        // void mouseMoveEvent(QMouseEvent *event) override;
-        // void enterEvent(QEnterEvent *event) override;
-        // void leaveEvent(QEvent *event) override;
-
     private:
-
-        // void detectMouseSelection();
 
         QBoxLayout* m_layout;
 };

@@ -18,6 +18,7 @@ qproperty-uisePadding: 8;
 uise--AbstractChatSeparatorSection {
 margin: 8px 0;
 
+min-width:576px;
 max-width:576px;
 }
 

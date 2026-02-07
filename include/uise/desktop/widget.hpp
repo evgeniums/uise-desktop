@@ -119,6 +119,22 @@ class WidgetT : public WidgetBase
             return w;
         }
 
+        template <typename T>
+        T* newWidget(QWidget* parent=nullptr) const
+        {
+            auto w=new T(parent);
+            if constexpr (std::is_base_of_v<WidgetBase,T>)
+            {
+                if (w)
+                {
+                    w->setWidgetFactory(widgetFactory());
+                    Traits::preConstruct(w,parent);
+                    w->construct();
+                }
+            }
+            return w;
+        }
+
         template <typename T, typename DefaultT>
         T* makeWidget(const QString& name={}, QWidget* parent=nullptr) const
         {

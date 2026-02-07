@@ -31,53 +31,40 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/enums.hpp>
 #include <uise/desktop/frame.hpp>
+#include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/flyweightlistitem.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-template <class DataT>
-class ChatMessagesViewItem : public WidgetController
+template <typename BaseMessageT>
+class ChatMessagesViewItem : public BaseMessageT
 {
     public:
 
-        using Id=typename DataT::Id;
-        using SortValue=typename DataT::SortValue;
+        using Id=typename BaseMessageT::Id;
+        using SortValue=typename BaseMessageT::SortValue;
 
-        using WidgetController::WidgetController;
+        explicit ChatMessagesViewItem(QWidget* parent=nullptr) :
+            BaseMessageT(parent),
+            m_msg(this),
+            m_ui(nullptr)
+        {}
 
-        const AbstractChatMessage* ui() const
+        AbstractChatMessage* ui() override
         {
             return m_ui;
         }
 
-        AbstractChatMessage* ui()
+        BaseMessageT* msg()
         {
-            return m_ui;
+            return m_msg;
         }
 
-        virtual QDateTime dateTime() const =0;
-
-        void setData(DataT data)
+        const BaseMessageT* msg() const
         {
-            m_data=std::move(data);
-            m_data->setParent(this);
-        }
-
-        const DataT& data() const
-        {
-            return m_data;
-        }
-
-        DataT& data()
-        {
-            return m_data;
-        }
-
-        bool operator < (const ChatMessagesViewItem<DataT>& other) const noexcept
-        {
-            return m_data->sortValue() < other.m_data->sortValue();
+            return m_msg;
         }
 
         void setDateSeparatorVisible(bool enable, bool withYear=false);
@@ -89,20 +76,20 @@ class ChatMessagesViewItem : public WidgetController
     private:
 
         AbstractChatMessage* m_ui;
-        DataT m_data;
+        BaseMessageT* m_msg;
 };
 
-template <class DataT>
-struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesViewItem<DataT>*,
+template <typename BaseMessageT>
+struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesViewItem<BaseMessageT>*,
                                                               AbstractChatMessage,
-                                                              typename DataT::SortValue,
-                                                              typename DataT::Id>
+                                                              typename BaseMessageT::SortValue,
+                                                              typename BaseMessageT::Id>
 {
-    using Item=ChatMessagesViewItem<DataT>;
+    using Item=ChatMessagesViewItem<BaseMessageT>;
 
     static auto sortValue(const Item* item) noexcept
     {
-        return item->data()->sortValue();
+        return item->sortValue();
     }
 
     static auto widget(Item* item) noexcept
@@ -112,15 +99,15 @@ struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesV
 
     static auto id(const Item* item)
     {
-        return item->data()->id();
+        return item->id();
     }
 };
 
-template <class DataT>
-using ChatMessageViewItemWrapper=FlyweightListItem<ChatMessagesViewItemTraits<DataT>>;
+template <typename BaseMessageT>
+using ChatMessageViewItemWrapper=FlyweightListItem<ChatMessagesViewItemTraits<BaseMessageT>>;
 
-template <class DataT>
-using ChatMessagesViewWidget=FlyweightListView<ChatMessageViewItemWrapper<DataT>>;
+template <typename BaseMessageT>
+using ChatMessagesViewWidget=FlyweightListView<ChatMessageViewItemWrapper<BaseMessageT>>;
 
 class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
 {
@@ -135,21 +122,19 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
         void reloadRequested();
 };
 
-template <class DataT>
+template <typename BaseMessageT, typename DataT>
 class ChatMessagesView : public QFrame
 {
     public:
 
-        using Id=typename DataT::Id;
-        using SortValue=typename DataT::SortValue;
-        using Message=ChatMessagesViewItem<DataT>;
-
-        using MessageBuilder=std::function<Message* (DataT data, QWidget* parent)>;
+        using Id=typename BaseMessageT::Id;
+        using SortValue=typename BaseMessageT::SortValue;
+        using Message=ChatMessagesViewItem<BaseMessageT>;
 
         using FuncById=std::function<void (const Id&)>;
         using FuncBySortValue=std::function<void (const SortValue&)>;
+        using MessageBuilder=std::function<Message* (DataT data, QWidget* parent)>;
         using FuncItemsRequested=std::function<void (const SortValue& start, size_t maxCount, Direction direction)>;
-
 
         explicit ChatMessagesView(QWidget* parent=nullptr);
 
@@ -160,17 +145,17 @@ class ChatMessagesView : public QFrame
         ChatMessagesView& operator=(const ChatMessagesView&)=delete;
         ChatMessagesView& operator=(ChatMessagesView&&)=delete;
 
-        QObject* qObject()
+        ChatMessagesViewQ* qObject()
         {
             return m_qobj;
         }
 
-        ChatMessagesViewWidget<DataT>* listView()
+        ChatMessagesViewWidget<BaseMessageT>* listView()
         {
             return m_listView;
         }
 
-        const ChatMessagesViewWidget<DataT>* listView() const
+        const ChatMessagesViewWidget<BaseMessageT>* listView() const
         {
             return m_listView;
         }
@@ -211,15 +196,17 @@ class ChatMessagesView : public QFrame
 
         void jumpToEdge(Direction direction);
 
+        Message* message(const Id& id) const;
+
     private:
 
         ChatMessagesViewQ* m_qobj=nullptr;
 
         QBoxLayout* m_layout=nullptr;
-        ChatMessagesViewWidget<DataT>* m_listView;
+        ChatMessagesViewWidget<BaseMessageT>* m_listView;
         bool m_selectionMode=false;
 
-        FuncBySortValue m_onItemsRequested;
+        FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);

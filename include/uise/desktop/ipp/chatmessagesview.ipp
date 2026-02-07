@@ -26,6 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
+#include <iostream>
+
+#include <QPushButton>
+
 #include <uise/desktop/utils/layout.hpp>
 
 #include <uise/desktop/chatmessage.hpp>
@@ -38,8 +42,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesViewItem<DataT>::setDateSeparatorVisible(bool enable, bool withYear)
+template <typename BaseMessageT>
+void ChatMessagesViewItem<BaseMessageT>::setDateSeparatorVisible(bool enable, bool withYear)
 {
     AbstractChatSeparatorSection* dateSection=nullptr;
     auto sep=m_ui->topSeparator();
@@ -50,7 +54,7 @@ void ChatMessagesViewItem<DataT>::setDateSeparatorVisible(bool enable, bool with
             return;
         }
 
-        sep=makeWidget<AbstractChatSeparator,ChatSeparator>(m_ui);
+        sep=m_msg->template makeWidget<AbstractChatSeparator,ChatSeparator>(m_ui);
         m_ui->setTopSeparator(sep);
     }
 
@@ -62,13 +66,13 @@ void ChatMessagesViewItem<DataT>::setDateSeparatorVisible(bool enable, bool with
             return;
         }
 
-        dateSection=makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
+        dateSection=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
         dateSection->setType(AbstractChatSeparatorSection::TypeDate);
         sep->insertSection(dateSection,0);
     }
 
     dateSection->setVisible(enable);
-    auto localDt=dateTime();
+    auto localDt=m_msg->dateTime();
 
     auto str=dateAsMonthAndDay(localDt);
     if (withYear)
@@ -80,25 +84,28 @@ void ChatMessagesViewItem<DataT>::setDateSeparatorVisible(bool enable, bool with
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-Widget* ChatMessagesViewItem<DataT>::doCreateActualWidget(QWidget* parent)
+template <typename BaseMessageT>
+Widget* ChatMessagesViewItem<BaseMessageT>::doCreateActualWidget(QWidget* parent)
 {
-    return makeWidget<AbstractChatMessage>(parent);
+    m_ui=m_msg->template makeWidget<AbstractChatMessage,ChatMessage>(parent);
+    return m_ui;
 }
 
 /************************* ChatMessagesView ******************************/
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-ChatMessagesView<DataT>::ChatMessagesView(QWidget* parent)
+template <typename BaseMessageT,typename DataT>
+ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
     : QFrame(parent),
       m_qobj(new ChatMessagesViewQ(this))
 {
+    setObjectName("uiseChatMessagesView");
+
     m_layout=Layout::vertical(this);
 
-    m_listView=new ChatMessagesViewWidget<DataT>(this);
-    m_layout->addWidget(m_listView);
+    m_listView=new ChatMessagesViewWidget<BaseMessageT>(this);
+    m_layout->addWidget(m_listView,1);
 
     m_listView->setPrefetchItemWindowHint(20);
     m_listView->setPrefetchScreensCount(2.0);
@@ -109,7 +116,7 @@ ChatMessagesView<DataT>::ChatMessagesView(QWidget* parent)
     m_listView->setInsertItemCb(
         [this](auto itemW)
         {
-            auto chatMsg=itemW->ui();
+            auto chatMsg=itemW->item()->ui();
 
             connect(
                 chatMsg,
@@ -158,26 +165,53 @@ ChatMessagesView<DataT>::ChatMessagesView(QWidget* parent)
             onJumpRequested(Direction::END,forceLongJump,modifiers);
         }
     );
+
+    m_listView->setViewportChangedCb(
+        [this](const auto* startItem, const auto* endItem)
+        {
+#if 0
+            if (startItem)
+            {
+                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged"
+                          << " start=" << startItem->sortValue().toString()
+                          << " maxSortValue= "<<m_listView->maxSortValue().toString()
+                          << std::endl;
+            }
+            if (endItem)
+            {
+                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged"
+                          << " end=" << endItem->sortValue().toString()
+                          << " maxSortValue= "<<m_listView->maxSortValue().toString()
+                          << std::endl;
+            }
+
+            if (!startItem && !endItem)
+            {
+                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged no items";
+            }
+#endif
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-ChatMessagesView<DataT>::~ChatMessagesView()
+template <typename BaseMessageT,typename DataT>
+ChatMessagesView<BaseMessageT,DataT>::~ChatMessagesView()
 {
     m_listView->resetCallbacks();
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::setSelectionMode(bool enable)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
 {
     m_selectionMode=enable;
     m_listView->eachItem(
         [enable](const auto* item)
         {
-            item->ui()->setSelectionMode(enable);
+            item->item()->ui()->setSelectionMode(enable);
             return true;
         }
     );
@@ -185,15 +219,15 @@ void ChatMessagesView<DataT>::setSelectionMode(bool enable)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::clearOtherContentsSelection(const Id& id)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::clearOtherContentsSelection(const Id& id)
 {
     m_listView->eachItem(
         [&id](const auto* item)
         {
             if (item->id()!=id)
             {
-                item->ui()->clearContentSelection();
+                item->item()->ui()->clearContentSelection();
             }
             return true;
         }
@@ -202,8 +236,8 @@ void ChatMessagesView<DataT>::clearOtherContentsSelection(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::onMessageClicked(const Id& id)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::onMessageClicked(const Id& id)
 {
     if (!isSelectionMode())
     {
@@ -213,8 +247,8 @@ void ChatMessagesView<DataT>::onMessageClicked(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers)
 {
     if (forceLongJump || (modifiers & Qt::ControlModifier))
     {
@@ -232,33 +266,33 @@ void ChatMessagesView<DataT>::onJumpRequested(Direction direction, bool forceLon
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::adjustMessageList(std::vector<Message*>& messages)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::adjustMessageList(std::vector<Message*>& messages)
 {
     m_listView->eachItem(
-        [&messages](const ChatMessageViewItemWrapper<DataT>* msgItem)
+        [&messages](const ChatMessageViewItemWrapper<BaseMessageT>* msgItem)
         {
             messages.emplace_back(msgItem->item());
             return true;
         }
-        );
+    );
     std::sort(messages.begin(),messages.end(),[](const auto& l, const auto& r) { return *l<*r;});
 
     for (size_t i=0;i<messages.size();i++)
     {
         auto msg=messages[i];
-        auto dt=msg->dateTime();
+        auto dt=msg->msg()->dateTime();
 
         bool dateVisible=false;
         bool withYear=false;
         if (i==0)
         {
             dateVisible=true;
-            withYear=dt.year()!=QDateTime::currentDateTime().date().year();
+            withYear=dt.date().year()!=QDateTime::currentDateTime().date().year();
         }
         else
         {
-            auto prevDt=messages[i-1]->dateTime();
+            auto prevDt=messages[i-1]->msg()->dateTime();
 
             dateVisible=prevDt.date()!=dt.date();
 
@@ -271,8 +305,8 @@ void ChatMessagesView<DataT>::adjustMessageList(std::vector<Message*>& messages)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::removeMessage(const Id& id)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::removeMessage(const Id& id)
 {
     m_listView->beginUpdate();
     m_listView->removeItem(id);
@@ -283,8 +317,8 @@ void ChatMessagesView<DataT>::removeMessage(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::reorderMessage(const Id& id)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::reorderMessage(const Id& id)
 {
     m_listView->beginUpdate();
     m_listView->reorderItem(id);
@@ -295,11 +329,11 @@ void ChatMessagesView<DataT>::reorderMessage(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::insertFetched(bool forLoad, const std::vector<DataT>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::insertFetched(bool forLoad, const std::vector<DataT>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
 {
     std::vector<Message*> messages;
-    std::vector<ChatMessageViewItemWrapper<DataT>> messageItems;
+    std::vector<ChatMessageViewItemWrapper<BaseMessageT>> messageItems;
 
     for (const auto& dbItem : dbItems)
     {
@@ -391,55 +425,64 @@ void ChatMessagesView<DataT>::insertFetched(bool forLoad, const std::vector<Data
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::loadMessages(const std::vector<DataT>& items)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::loadMessages(const std::vector<DataT>& items)
 {
     insertFetched(true,items);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::insertContinuousMessages(const std::vector<DataT>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::insertContinuousMessages(const std::vector<DataT>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem)
 {
     insertFetched(false,items,wasRequestedMaxCount,wasRequestedDirection,wasStratItem);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::clear()
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::clear()
 {
     m_listView->clear();
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::jumpToEdge(Direction direction)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::jumpToEdge(Direction direction)
 {
     m_listView->scrollToEdge(direction);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename DataT>
-void ChatMessagesView<DataT>::insertMessage(DataT dbItem)
+template <typename BaseMessageT,typename DataT>
+void ChatMessagesView<BaseMessageT,DataT>::insertMessage(DataT dbItem)
 {
     auto message=m_messageBuilder(dbItem,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");
 
     m_listView->beginUpdate();
 
-    if (m_listView->maxSortValue()<message->data()->sortValue())
+    if (m_listView->maxSortValue()<message->msg()->sortValue())
     {
-        m_listView->setMaxSortValue(message->data()->sortValue());
+        m_listView->setMaxSortValue(message->msg()->sortValue());
     }
 
     m_listView->insertItem(message);
     std::vector<Message*> messages;
     adjustMessageList(messages);
+
     m_listView->endUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename DataT>
+typename ChatMessagesView<BaseMessageT,DataT>::Message* ChatMessagesView<BaseMessageT,DataT>::message(const Id& id) const
+{
+    return m_listView->item(id)->item();
 }
 
 //--------------------------------------------------------------------------
