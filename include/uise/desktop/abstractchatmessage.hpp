@@ -291,6 +291,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         virtual void setMaxBubbleWidth(int /*w*/) {}
 
+        virtual void setSelected(bool enable) =0;
+
     protected:
 
         virtual void updateWidgets() =0;
@@ -341,9 +343,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit topSeparatorUpdated();
         }
 
-        bool isSelectable() const noexcept
+        bool isSelectionMode() const noexcept
         {
-            return m_selectable;
+            return m_selectionMode;
         }
 
         bool isSelected() const noexcept
@@ -408,7 +410,22 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_dateTime;
         }
 
+        void setSelectDetectionBlocked(bool enable)
+        {
+            m_blockSelectDetection=enable;
+        }
+
+        bool isSelectDetectionBlocked() const noexcept
+        {
+            return m_blockSelectDetection;
+        }
+
     public slots:
+
+        void toggleSelected()
+        {
+            setSelected(!isSelected());
+        }
 
         void clearContentSelection()
         {
@@ -418,19 +435,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             }
         }
 
-        void setSelectable(bool enable)
+        void setSelectionMode(bool enable)
         {
             if (!enable)
             {
                 setSelected(false);
             }
-            m_selectable=enable;
-            updateSelectable();
-            emit selectableUpdated();
+            m_selectionMode=enable;
+            updateSelectionMode();
+            emit selectionModeUpdated();
         }
 
         void setSelected(bool enable)
         {
+            clearContentSelection();
             m_selected=enable;
             updateSelection();
             emit selectionUpdated();
@@ -467,7 +485,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
     signals:
 
         void topSeparatorUpdated();
-        void selectableUpdated();
+        void selectionModeUpdated();
         void selectionUpdated();
         void topSpaceVisibilityUpdated();
         void lastInBatchUpdated();
@@ -478,13 +496,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void dateTimeUpdated();
 
         void clicked();
+        void selectionModeRequested();
 
     protected:
 
         virtual void updateTopSeparator()
         {}
 
-        virtual void updateSelectable()
+        virtual void updateSelectionMode()
         {}
 
         virtual void updateSelection()
@@ -512,7 +531,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         AbstractChatSeparator* m_topSeparator=nullptr;
         AbstractChatMessageContent* m_content=nullptr;
-        bool m_selectable=false;
+        bool m_selectionMode=false;
         bool m_selected=false;
         AlignSent m_alignSent=AlignSent::Left;
         Direction m_direction=Direction::Sent;
@@ -520,6 +539,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_lastInBatch=true;
         bool m_contentVisible=true;
         bool m_avatarVisible=false;
+
+        bool m_blockSelectDetection=false;
 
         QDateTime m_dateTime;
 };

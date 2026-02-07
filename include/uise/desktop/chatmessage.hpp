@@ -130,11 +130,21 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
         void clearContentSelection() override;
 
+        void setSelected(bool enable) override;
+
     protected:
 
         void updateWidgets() override;
 
+        // void mouseReleaseEvent(QMouseEvent* event) override;
+
+        // void mouseMoveEvent(QMouseEvent *event) override;
+        // void enterEvent(QEnterEvent *event) override;
+        // void leaveEvent(QEvent *event) override;
+
     private:
+
+        // void detectMouseSelection();
 
         QBoxLayout* m_layout;
 };
@@ -161,7 +171,7 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void updateTopSeparator() override;
 
-        void updateSelectable() override;
+        void updateSelectionMode() override;
 
         void updateSelection() override;
 
@@ -178,8 +188,14 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateDateTime() override;
 
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void leaveEvent(QEvent *event) override;
 
     private:
+
+        void detectMouseSelection();
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };
