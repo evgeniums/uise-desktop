@@ -179,6 +179,7 @@ SET (HEADERS
     include/uise/desktop/abstractchatmessage.hpp
     include/uise/desktop/chatmessagetext.hpp
     include/uise/desktop/chatmessage.hpp
+    include/uise/desktop/chatmessagesview.hpp
 
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
@@ -198,6 +199,7 @@ SET (HEADERS ${HEADERS}
     include/uise/desktop/ipp/flyweightlistview.ipp
     include/uise/desktop/ipp/htreeflyweightlistitem.ipp
     include/uise/desktop/ipp/htreelistitemtemplate.ipp
+    include/uise/desktop/ipp/chatmessagesview.ipp
 )
 
 SET (SOURCES
