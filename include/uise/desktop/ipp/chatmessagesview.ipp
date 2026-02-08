@@ -187,11 +187,6 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setRequestItemsCb(
         [this](const auto* startItem, size_t maxCount, Direction direction)
         {
-#if 0
-            const auto* item=startItem->item();
-            std::cerr << common::DateTime::currentUtc().toIsoString() << ": ChatMessages requested items "
-                      << maxCount << " direction="<<int(direction) << " id " << item->id().toString() << std::endl;
-#endif
             m_onItemsRequested(startItem->sortValue(),maxCount,direction);
         }
     );
@@ -244,27 +239,6 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                     m_chatUnderMouse=endItem->widget();
                 }
             }
-#if 0
-            if (startItem)
-            {
-                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged"
-                          << " start=" << startItem->sortValue().toString()
-                          << " maxSortValue= "<<m_listView->maxSortValue().toString()
-                          << std::endl;
-            }
-            if (endItem)
-            {
-                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged"
-                          << " end=" << endItem->sortValue().toString()
-                          << " maxSortValue= "<<m_listView->maxSortValue().toString()
-                          << std::endl;
-            }
-
-            if (!startItem && !endItem)
-            {
-                std::cerr << "ChatMessagesView::ChatMessagesView viewPortChanged no items";
-            }
-#endif
         }
     );
 }
@@ -601,7 +575,7 @@ void ChatMessagesView<BaseMessageT,Traits>::doReorderMessage(const Id& id)
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, bool reorder)
+void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
 {
     auto msg=message(Traits::id(dbItem));
     if (msg==nullptr)
@@ -609,11 +583,15 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, bo
         return;
     }
 
+    auto oldSortValue=msg->sortValue();
+    auto newSortValue=Traits::sortValue(dbItem);
+    auto reorder=oldSortValue != newSortValue;
+
     replaceSelectedData(msg);
 
     m_listView->beginUpdate();
 
-    m_messageUpdater(dbItem,msg);
+    msg->updateData(dbItem);
     if (reorder)
     {
         doReorderMessage(Traits::id(dbItem));

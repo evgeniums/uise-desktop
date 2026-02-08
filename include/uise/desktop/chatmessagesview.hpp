@@ -131,15 +131,12 @@ class ChatMessagesView : public MouseMoveEventFilter
     public:
 
         using Data=typename Traits::Data;
-
-        using Id=typename BaseMessageT::Id;
-        using SortValue=typename BaseMessageT::SortValue;
         using Message=ChatMessagesViewItem<BaseMessageT,Traits>;
 
-        using FuncById=std::function<void (const Id&)>;
-        using FuncBySortValue=std::function<void (const SortValue&)>;
+        using Id=typename Traits::Id;
+        using SortValue=typename Traits::SortValue;
+
         using MessageBuilder=std::function<Message* (const Data& data, QWidget* parent)>;
-        using MessageUpdater=std::function<void (const Data& data, Message* msg)>;
         using FuncItemsRequested=std::function<void (const SortValue& start, size_t maxCount, Direction direction)>;
 
         explicit ChatMessagesView(QWidget* parent=nullptr);
@@ -173,9 +170,7 @@ class ChatMessagesView : public MouseMoveEventFilter
             return m_selectionMode;
         }
 
-        void clearOtherContentsSelection(const Id& excludeId);
-
-        void onMessageClicked(const Id& id);
+        void clearOtherContentsSelection(const Id& excludeId={});
 
         void setOnItemsRequested(FuncItemsRequested handler)
         {
@@ -187,15 +182,7 @@ class ChatMessagesView : public MouseMoveEventFilter
             m_messageBuilder=messageBuilder;
         }
 
-        void setMessageUpdater(MessageUpdater messageUpdater)
-        {
-            m_messageUpdater=messageUpdater;
-        }
-
         void adjustMessageList(std::vector<Message*>& messages);
-
-        void removeMessage(const Id& id);
-        void reorderMessage(const Id& id);
 
         void loadMessages(const std::vector<Data>& items);
 
@@ -204,8 +191,10 @@ class ChatMessagesView : public MouseMoveEventFilter
         void clear();
 
         void insertMessage(const Data& item);
-        void updateMessage(const Data& item, bool reorder=false);
+        void updateMessage(const Data& item);
         void replaceMessage(const Id& replaceId, const Data& newItem);
+        void removeMessage(const Id& id);
+        void reorderMessage(const Id& id);
 
         void jumpToEdge(Direction direction);
 
@@ -220,8 +209,6 @@ class ChatMessagesView : public MouseMoveEventFilter
 
     private:
 
-        Message* makeMessage(const Data& data);
-
         ChatMessagesViewQ* m_qobj=nullptr;
 
         QBoxLayout* m_layout=nullptr;
@@ -230,12 +217,15 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
-        MessageUpdater m_messageUpdater;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
         QPoint m_lastMousePos;
         std::map<Id,Data> m_selectedMessages;
         std::optional<bool> m_mouseMoveUp;
+
+    private:
+
+        Message* makeMessage(const Data& data);
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 
@@ -247,6 +237,8 @@ class ChatMessagesView : public MouseMoveEventFilter
         void doRemoveMessage(const Id& id);
         void doReorderMessage(const Id& id);
         void adjustCurrentMessagesList();
+
+        void onMessageClicked(const Id& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END
