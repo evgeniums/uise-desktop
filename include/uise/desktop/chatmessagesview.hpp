@@ -220,8 +220,9 @@ class ChatMessagesView : public MouseMoveEventFilter
         MessageBuilder m_messageBuilder;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
-        QPoint m_mouseMovePos;
+        QPoint m_lastMousePos;
         std::set<Id> m_selectedMessages;
+        std::optional<bool> m_mouseMoveUp;
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 

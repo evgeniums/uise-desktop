@@ -42,7 +42,7 @@ max-width: 40px;
 }
 
 uise--AbstractChatMessage {
-qproperty-selectorPositionLeft: false;
+qproperty-selectorPositionLeft: true;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{

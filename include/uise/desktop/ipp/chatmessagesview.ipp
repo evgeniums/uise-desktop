@@ -298,15 +298,10 @@ void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
     if (!m_selectionMode)
     {
         m_chatUnderMouse=nullptr;
-        m_mouseMovePos=QPoint{};
+        m_lastMousePos=QPoint{};
         m_selectedMessages.clear();
+        m_mouseMoveUp.reset();
     }
-
-#if 0
-    qDebug() << "ChatMessagesView::setSelectionMode() m_chatUnderMouse=" << m_chatUnderMouse
-                       << " m_mouseMovePos="<<m_mouseMovePos
-                       <<" m_selectionMode="<<m_selectionMode;
-#endif
 }
 
 //--------------------------------------------------------------------------
@@ -582,29 +577,37 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
-        if (event->pos().y()<0)
+        auto newPos=event->pos();
+
+        if (newPos.y()<0)
         {
             m_listView->scroll(-10);
             return;
         }
-        if (event->pos().y()>height())
+        if (newPos.y()>height())
         {
             m_listView->scroll(10);
             return;
         }
 
+        if (m_lastMousePos.isNull())
+        {
+            m_lastMousePos=newPos;
+            return;
+        }
+        auto delta=qAbs(m_lastMousePos.y()-newPos.y());
+        if (delta<ChatMessagesViewQ::MouseMoveDetectDelta)
+        {
+            return;
+        }
+
+        std::optional<bool> mouseMoveUp;
+        mouseMoveUp=m_lastMousePos.y() > newPos.y();
+        m_lastMousePos=newPos;
+
         auto chatMsg=childWidgetAt<AbstractChatMessage>(this,event->pos());
         if (chatMsg)
         {
-            bool handleSelection=false;
-
-            auto newPos=event->pos();
-
-#if 0
-            UNCOMMENTED_QDEBUG << "ChatMessagesView::mouseMoveEvent() m_chatUnderMouse=" << m_chatUnderMouse
-                               << " m_mouseMovePos="<<m_mouseMovePos
-                               <<" m_selectionMode="<<m_selectionMode;
-#endif
             std::optional<bool> forceSelect;
             if (m_chatUnderMouse)
             {
@@ -613,43 +616,25 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
                     m_chatUnderMouse->setSelectDetectionBlocked(false);
                     forceSelect=m_chatUnderMouse->isSelected();
                 }
-                handleSelection=true;
             }
-            else
+
+            if (m_mouseMoveUp && mouseMoveUp)
             {
-                if (!m_mouseMovePos.isNull())
+                if (m_mouseMoveUp.value()!=mouseMoveUp.value())
                 {
-                    if (qAbs(m_mouseMovePos.y()-newPos.y())>=ChatMessagesViewQ::MouseMoveDetectDelta)
-                    {
-                        handleSelection=true;
-                    }
-                }
-                else
-                {
-                    m_mouseMovePos=newPos;
+                    forceSelect=!chatMsg->isSelected();
                 }
             }
-#if 0
-            qDebug() << "ChatMessagesView::mouseMoveEvent() " << uintptr_t(event) << " msg " << chatMsg << " handleSelection "
-                               << handleSelection
-                               << " newPos=" << newPos
-                               << " m_mouseMovePos=" << m_mouseMovePos
-                               << " m_mouseMovePos.isNull()=" << m_mouseMovePos.isNull()
-                               << " m_chatUnderMouse="<<m_chatUnderMouse
-                               << " delta="<<qAbs(m_mouseMovePos.y()-newPos.y())
-                               << " m_selectionMode="<<m_selectionMode;
-#endif
-            if (handleSelection)
-            {
-                chatMsg->detectMouseSelection(forceSelect);
-                m_chatUnderMouse=chatMsg;
-                m_mouseMovePos=newPos;
-            }
+
+            chatMsg->detectMouseSelection(forceSelect);
+            m_chatUnderMouse=chatMsg;
         }
         else
         {
             m_chatUnderMouse=nullptr;
         }
+
+        m_mouseMoveUp=mouseMoveUp;
     }
     else
     {
@@ -662,8 +647,9 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
 template <typename BaseMessageT,typename DataT>
 void ChatMessagesView<BaseMessageT,DataT>::mouseReleaseEvent(QMouseEvent* event)
 {
-    m_mouseMovePos=QPoint{};
     m_chatUnderMouse=nullptr;
+    m_lastMousePos=QPoint{};
+    m_mouseMoveUp.reset();
     QFrame::mouseReleaseEvent(event);
 }
 
