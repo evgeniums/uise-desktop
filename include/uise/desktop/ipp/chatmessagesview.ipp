@@ -141,8 +141,17 @@ ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
                 chatMsg,
                 &AbstractChatMessage::selectionUpdated,
                 m_qobj,
-                [this]()
+                [this,id=itemW->id()](bool selected)
                 {
+                    if (selected)
+                    {
+                        m_selectedMessages.insert(id);
+                    }
+                    else
+                    {
+                        m_selectedMessages.erase(id);
+                    }
+
                     bool noneSelected=m_listView->eachItem(
                         [](const auto* item)
                         {
@@ -259,6 +268,7 @@ void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
     {
         m_chatUnderMouse=nullptr;
         m_mouseMovePos=QPoint{};
+        m_selectedMessages.clear();
     }
 
 #if 0
@@ -388,11 +398,10 @@ void ChatMessagesView<BaseMessageT,DataT>::insertFetched(bool forLoad, const std
 
     for (const auto& dbItem : dbItems)
     {
-        auto message=m_messageBuilder(dbItem,m_listView);
-        Assert(message,"Invalid chat message builder in UI factory");
+        auto message=makeMessage(dbItem);
 
         messages.push_back(message);
-        messageItems.push_back(message);
+        messageItems.push_back(message);        
     }
 
     if (forLoad || jumpToEnd)
@@ -511,8 +520,7 @@ void ChatMessagesView<BaseMessageT,DataT>::jumpToEdge(Direction direction)
 template <typename BaseMessageT,typename DataT>
 void ChatMessagesView<BaseMessageT,DataT>::insertMessage(DataT dbItem)
 {
-    auto message=m_messageBuilder(dbItem,m_listView);
-    Assert(message,"Invalid chat message builder in UI factory");
+    auto message=makeMessage(dbItem);
 
     m_listView->beginUpdate();
 
@@ -615,6 +623,25 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseReleaseEvent(QMouseEvent* event)
     m_mouseMovePos=QPoint{};
     m_chatUnderMouse=nullptr;
     QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename DataT>
+ChatMessagesViewItem<BaseMessageT>* ChatMessagesView<BaseMessageT,DataT>::makeMessage(DataT data)
+{
+    auto message=m_messageBuilder(data,m_listView);
+    Assert(message,"Invalid chat message builder in UI factory");
+    if (isSelectionMode())
+    {
+        message->ui()->setSelectionMode(true);
+        auto it=m_selectedMessages.find(message->id());
+        if (it!=m_selectedMessages.end())
+        {
+            message->ui()->setSelected(true);
+        }
+    }
+    return message;
 }
 
 //--------------------------------------------------------------------------

@@ -344,7 +344,7 @@ class ChatMessage_p
         QFrame* contentFrame;
         QBoxLayout* contentLayout;
 
-        QFrame* selectionFrame;
+        AbstractChatMessageSelector* selector;
 };
 
 //--------------------------------------------------------------------------
@@ -354,7 +354,17 @@ ChatMessage::ChatMessage(QWidget* parent)
       pimpl(std::make_unique<ChatMessage_p>())
 {
     pimpl->layout=Layout::vertical(this);
+}
 
+//--------------------------------------------------------------------------
+
+ChatMessage::~ChatMessage()
+{}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::construct()
+{
     pimpl->topSpace=new QFrame(this);
     pimpl->topSpace->setObjectName("topSpace");
     pimpl->layout->addWidget(pimpl->topSpace);
@@ -369,8 +379,20 @@ ChatMessage::ChatMessage(QWidget* parent)
     pimpl->main=new QFrame(this);
     pimpl->layout->addWidget(pimpl->main);
 
-    pimpl->main->setObjectName("main");
+    pimpl->main->setObjectName("mainMessageFrame");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
+
+    pimpl->selector=makeWidget<AbstractChatMessageSelector,ChatMessageSelector>(pimpl->main);
+    connect(
+        pimpl->selector,
+        &AbstractChatMessageSelector::toggled,
+        this,
+        [this](bool checked)
+        {
+            setSelected(checked);
+        }
+    );
+    pimpl->selector->setVisible(false);
 
     pimpl->avatarFrame=new QFrame(pimpl->main);
     pimpl->avatarFrame->setObjectName("avatarFrame");
@@ -380,17 +402,10 @@ ChatMessage::ChatMessage(QWidget* parent)
     pimpl->contentFrame->setObjectName("contentFrame");
     pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
 
-    pimpl->selectionFrame=new QFrame(pimpl->main);
-    pimpl->selectionFrame->setObjectName("selectionFrame");
-    pimpl->selectionFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
-
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+
+    Style::updateWidgetStyle(this);
 }
-
-//--------------------------------------------------------------------------
-
-ChatMessage::~ChatMessage()
-{}
 
 //--------------------------------------------------------------------------
 
@@ -408,6 +423,13 @@ void ChatMessage::updateTopSeparator()
 
 void ChatMessage::updateSelectionMode()
 {
+    pimpl->selector->setVisible(isSelectionMode());
+    if (!isSelectionMode())
+    {
+        pimpl->selector->blockSignals(true);
+        pimpl->selector->setChecked(false);
+        pimpl->selector->blockSignals(false);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -415,6 +437,9 @@ void ChatMessage::updateSelectionMode()
 void ChatMessage::updateSelection()
 {
     content()->setSelected(isSelected());
+    pimpl->selector->blockSignals(true);
+    pimpl->selector->setChecked(isSelected());
+    pimpl->selector->blockSignals(false);
 }
 
 //--------------------------------------------------------------------------
@@ -450,6 +475,11 @@ void ChatMessage::updateContent()
             alignment=Qt::AlignRight;
         }
 
+        if (isSelectorOnLeft())
+        {
+            pimpl->mainLayout->addWidget(pimpl->selector);
+        }
+
         if (alignment==Qt::AlignLeft)
         {
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
@@ -465,7 +495,10 @@ void ChatMessage::updateContent()
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
         }
 
-        pimpl->mainLayout->addWidget(pimpl->selectionFrame);
+        if (!isSelectorOnLeft())
+        {
+            pimpl->mainLayout->addWidget(pimpl->selector);
+        }
     }
 }
 
@@ -512,6 +545,38 @@ void ChatMessage::updateDateTime()
         auto time=dt.toString("HH:mm");
         content()->bottom()->setTimeString(time,tooltip);
     }
+}
+
+/***************************ChatMessageSelector***************************/
+
+ChatMessageSelector::ChatMessageSelector(QWidget* parent) : AbstractChatMessageSelector(parent)
+{
+    m_layout=Layout::horizontal(this);
+
+    m_checkBox=new QCheckBox(this);
+    m_checkBox->setCursor(Qt::PointingHandCursor);
+    m_layout->addWidget(m_checkBox,0,Qt::AlignCenter);
+
+    connect(
+        m_checkBox,
+        &QCheckBox::toggled,
+        this,
+        &ChatMessageSelector::toggled
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageSelector::setChecked(bool enable)
+{
+    m_checkBox->setChecked(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageSelector::isChecked() const
+{
+    return m_checkBox->isChecked();
 }
 
 /***************************ChatMessageBottom*****************************/

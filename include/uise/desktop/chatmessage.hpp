@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 
 class QBoxLayout;
+class QCheckBox;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -141,6 +142,26 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         QBoxLayout* m_layout;
 };
 
+class UISE_DESKTOP_EXPORT ChatMessageSelector : public AbstractChatMessageSelector
+{
+    Q_OBJECT
+
+    public:
+
+        explicit ChatMessageSelector(QWidget* parent=nullptr);
+
+        bool isChecked() const override;
+
+    public slots:
+
+        void setChecked(bool enable) override;
+
+    private:
+
+        QBoxLayout* m_layout;
+        QCheckBox* m_checkBox;
+};
+
 //--------------------------------------------------------------------------
 
 class ChatMessage_p;
@@ -180,6 +201,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateDateTime() override;
 
         void mousePressEvent(QMouseEvent* event) override;
+
+        void construct() override;
 
     private:        
 

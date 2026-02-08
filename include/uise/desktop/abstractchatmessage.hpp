@@ -331,6 +331,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(bool selectorPositionLeft READ isSelectorOnLeft WRITE setSelectorOnLeft NOTIFY selectorPositionChanged FINAL)
+
     public:
 
         enum class Direction : int
@@ -445,6 +447,18 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void detectMouseSelection(std::optional<bool> select={});
 
+        void setSelectorOnLeft(bool value)
+        {
+            m_selectorPositionLeft=value;
+            UNCOMMENTED_QDEBUG << "AbstractChatMessage::setSelectorPosition value=" << value << " m_selectorPositionLeft="<<m_selectorPositionLeft;
+            emit selectorPositionChanged(value);
+        }
+
+        bool isSelectorOnLeft() const noexcept
+        {
+            return m_selectorPositionLeft;
+        }
+
     public slots:
 
         void toggleSelected()
@@ -486,7 +500,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             clearContentSelection();
             m_selected=enable;
             updateSelection();
-            emit selectionUpdated();
+            emit selectionUpdated(m_selected);
         }
 
         void setLastInBatch(bool enable)
@@ -521,7 +535,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void topSeparatorUpdated();
         void selectionModeUpdated();
-        void selectionUpdated();
+        void selectionUpdated(bool selected);
         void topSpaceVisibilityUpdated();
         void lastInBatchUpdated();
         void contentVisibilityUpdated();
@@ -532,6 +546,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void clicked();
         void selectionModeRequested();
+
+        void selectorPositionChanged(bool);
 
     protected:
 
@@ -577,6 +593,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_avatarVisible=false;
 
         bool m_blockSelectDetection=false;
+        bool m_selectorPositionLeft=true;
 
         QDateTime m_dateTime;
 };
@@ -592,6 +609,30 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         virtual void loadText(const QString& text, bool markdown=true) =0;
 
         virtual void clearText() =0;
+};
+
+class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using WidgetQFrame::WidgetQFrame;
+
+        virtual bool isChecked() const =0;
+
+    public slots:
+
+        virtual void setChecked(bool enable) =0;
+
+        void toggle()
+        {
+            setChecked(!isChecked());
+        }
+
+    signals:
+
+        void toggled(bool checked);
 };
 
 inline void AbstractChatMessageChild::setChatMessage(AbstractChatMessage* chatMessage)

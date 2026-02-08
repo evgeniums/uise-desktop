@@ -31,3 +31,31 @@ border: none;
 uise--ChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
+
+uise--AbstractChatMessageContent #mainMessageFrame {
+max-width: 600px;
+}
+
+uise--AbstractChatMessageSelector {
+min-width: 40px;
+max-width: 40px;
+}
+
+uise--AbstractChatMessage {
+qproperty-selectorPositionLeft: false;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{
+border:none;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox:hover{
+border:none;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
+width:14px;
+height:14px;
+border-radius: 9px;
+}
+

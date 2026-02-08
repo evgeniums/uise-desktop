@@ -19,3 +19,22 @@ color: #777777;
 uise--ChatSeparatorSection uise--AvatarButton {
 background-color:#333;
 }
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
+background-color: #CCC;
+border: 2px solid #222;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked{
+background-color: #1055C9;
+border: 2px solid #222;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:unchecked:hover {
+border: 2px solid #CCC;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked:hover {
+border: 2px solid #1055C9;
+}
+
