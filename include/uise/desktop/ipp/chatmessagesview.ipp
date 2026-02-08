@@ -213,6 +213,37 @@ ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
     m_listView->setViewportChangedCb(
         [this](const auto* startItem, const auto* endItem)
         {
+            if (isSelectionMode() && QGuiApplication::mouseButtons() & Qt::LeftButton)
+            {
+                auto globalCursorPos = QCursor::pos();
+                QPoint localCursorPos = this->mapFromGlobal(globalCursorPos);
+                auto widgetTopLeft = mapToGlobal(QPoint(0, 0));
+
+                if (globalCursorPos.y() < widgetTopLeft.y() && startItem)
+                {
+                    if (m_chatUnderMouse)
+                    {
+                        startItem->widget()->setSelected(m_chatUnderMouse->isSelected());
+                    }
+                    else
+                    {
+                        startItem->widget()->setSelected(true);
+                    }
+                    m_chatUnderMouse=startItem->widget();
+                }
+                else if (localCursorPos.y() > height() && endItem)
+                {
+                    if (m_chatUnderMouse)
+                    {
+                        endItem->widget()->setSelected(m_chatUnderMouse->isSelected());
+                    }
+                    else
+                    {
+                        endItem->widget()->setSelected(true);
+                    }
+                    m_chatUnderMouse=endItem->widget();
+                }
+            }
 #if 0
             if (startItem)
             {
@@ -551,6 +582,17 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
+        if (event->pos().y()<0)
+        {
+            m_listView->scroll(-10);
+            return;
+        }
+        if (event->pos().y()>height())
+        {
+            m_listView->scroll(10);
+            return;
+        }
+
         auto chatMsg=childWidgetAt<AbstractChatMessage>(this,event->pos());
         if (chatMsg)
         {
