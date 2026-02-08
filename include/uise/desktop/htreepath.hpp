@@ -365,10 +365,25 @@ class HTreePath
             m_elements.emplace_back(std::move(el));
         }
 
-        HTreePath copyAppend(HTreePathElement el)
+        void append(const HTreePath& subpath)
+        {
+            for (const auto& el : subpath.elements())
+            {
+                append(el);
+            }
+        }
+
+        HTreePath copyAppend(HTreePathElement el) const
         {
             auto p=*this;
             p.m_elements.emplace_back(std::move(el));
+            return p;
+        }
+
+        HTreePath copyAppend(const HTreePath& subpath) const
+        {
+            auto p=*this;
+            p.append(subpath);
             return p;
         }
 

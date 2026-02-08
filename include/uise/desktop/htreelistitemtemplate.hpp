@@ -70,9 +70,14 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
     signals:
 
         void selectionChanged(bool);
+
         void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, bool exclusive=false);
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
+
+        void openSubpathRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&);
+        void openSubpathInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
+        void openSubpathInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
         void activateRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&);
 
@@ -123,8 +128,11 @@ class HTreeListItemT : public BaseT
         void setPathElement(HTreePathElement pathElement);
         const HTreePathElement& pathElement() const noexcept;
 
-        void setResidentPath(HTreePath setResidentPath);
+        void setResidentPath(HTreePath residentPath);
         const HTreePath& residentPath() const noexcept;
+
+        void setTargetSubpath(HTreePath targetPath);
+        const HTreePath& targetSubpath() const noexcept;
 
         void setSelected(bool enable);
         bool isSelected() const;

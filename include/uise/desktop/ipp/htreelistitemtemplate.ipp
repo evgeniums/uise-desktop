@@ -57,6 +57,7 @@ class HTreeListItemT_p
 
         HTreePathElement pathElement;
         HTreePath residentPath;
+        HTreePath targetSubpath;
         bool selected=false;
 
         bool doubleClickActivation=false;
@@ -79,7 +80,14 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
     QObject::connect(open,&QAction::triggered,qobject(),
         [this]()
         {
-            emit qobject()->openRequested(pathElement());
+            if (pimpl->targetSubpath.isNull())
+            {
+                emit qobject()->openRequested(pathElement());
+            }
+            else
+            {
+                emit qobject()->openSubpathRequested(pimpl->targetSubpath);
+            }
         }
     );
 
@@ -89,7 +97,14 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
         QObject::connect(openInTab,&QAction::triggered,qobject(),
             [this]()
             {
-                emit qobject()->openInNewTabRequested(pathElement(),residentPath());
+                if (pimpl->targetSubpath.isNull())
+                {
+                    emit qobject()->openInNewTabRequested(pathElement(),residentPath());
+                }
+                else
+                {
+                    emit qobject()->openSubpathInNewTabRequested(pimpl->targetSubpath,residentPath());
+                }
             }
         );
     }
@@ -100,7 +115,14 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
         QObject::connect(openInNewWindow,&QAction::triggered,qobject(),
                 [this]()
                 {
-                    emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
+                    if (pimpl->targetSubpath.isNull())
+                    {
+                        emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
+                    }
+                    else
+                    {
+                        emit qobject()->openSubpathInNewTreeRequested(pimpl->targetSubpath,residentPath());
+                    }
                 }
         );
     }
@@ -272,16 +294,38 @@ void HTreeListItemT<BaseT>::click()
 #endif
         )
     {
-        emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
+        if (pimpl->targetSubpath.isNull())
+        {
+            emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
+        }
+        else
+        {
+            emit qobject()->openSubpathInNewTreeRequested(pimpl->targetSubpath,residentPath());
+        }
         return;
     }
     if (QApplication::keyboardModifiers() & Qt::ControlModifier)
     {
-        emit qobject()->openInNewTabRequested(pathElement(),residentPath());
+        if (pimpl->targetSubpath.isNull())
+        {
+            emit qobject()->openInNewTabRequested(pathElement(),residentPath());
+        }
+        else
+        {
+            emit qobject()->openSubpathInNewTabRequested(pimpl->targetSubpath,residentPath());
+        }
         return;
     }
     setSelected(true);
-    emit qobject()->openRequested(pathElement());
+
+    if (pimpl->targetSubpath.isNull())
+    {
+        emit qobject()->openRequested(pathElement());
+    }
+    else
+    {
+        emit qobject()->openSubpathRequested(pimpl->targetSubpath);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -359,6 +403,22 @@ template <typename BaseT>
 const HTreePath& HTreeListItemT<BaseT>::residentPath() const noexcept
 {
     return pimpl->residentPath;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::setTargetSubpath(HTreePath path)
+{
+    pimpl->targetSubpath=std::move(path);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+const HTreePath& HTreeListItemT<BaseT>::targetSubpath() const noexcept
+{
+    return pimpl->targetSubpath;
 }
 
 //--------------------------------------------------------------------------

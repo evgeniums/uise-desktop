@@ -132,6 +132,14 @@ void HTreeBranch::openNextNode(const HTreePathElement& pathElement, bool exclusi
 
 //--------------------------------------------------------------------------
 
+void HTreeBranch::openNextNodes(const HTreePath& subPath)
+{
+    auto p=path().copyAppend(subPath);
+    treeTab()->openPath(p);
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
 {
     if (!residentPath.isNull())
@@ -148,6 +156,21 @@ void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement, cons
 
 //--------------------------------------------------------------------------
 
+void HTreeBranch::openNextNodesInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
+{
+    if (!residentPath.isNull())
+    {
+        treeTab()->tree()->openPath(residentPath,HTree::NewTabIndex);
+    }
+    else
+    {
+        auto p=path().copyAppend(subPath);
+        treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeBranch::openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
 {
     if (!residentPath.isNull())
@@ -158,6 +181,21 @@ void HTreeBranch::openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathE
     {
         auto p=path();
         p.elements().push_back(pathElement);
+        emit treeTab()->tree()->newTreeRequested(p);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeBranch::openNextNodesInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
+{
+    if (!residentPath.isNull())
+    {
+        emit treeTab()->tree()->newTreeRequested(residentPath);
+    }
+    else
+    {
+        auto p=path().copyAppend(subPath);
         emit treeTab()->tree()->newTreeRequested(p);
     }
 }

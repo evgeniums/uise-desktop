@@ -109,9 +109,6 @@ class HTreeListUiHelper
             return std::make_tuple();
         }
 
-        // template <typename ItemT, typename BaseT>
-        // static void setupView(HTreeList* node,  HTreeListWidget* listWidget, HTreeListFlyweightView<ItemT,BaseT>* view, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr)
-
         template <typename ListViewT>
         static void setupView(HTreeList* node,  HTreeListWidget* listWidget, ListViewT* listView, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr)
         {
@@ -139,6 +136,25 @@ class HTreeListUiHelper
                         &HTreeListItemTQ::openInNewTreeRequested,
                         node,
                         &HTreeBranch::openNextNodeInNewTree
+                    );
+
+                    QObject::connect(
+                        item->qobject(),
+                        &HTreeListItemTQ::openSubpathRequested,
+                        node,
+                        &HTreeBranch::openNextNodes
+                    );
+                    QObject::connect(
+                        item->qobject(),
+                        &HTreeListItemTQ::openSubpathInNewTabRequested,
+                        node,
+                        &HTreeBranch::openNextNodesInNewTab
+                    );
+                    QObject::connect(
+                        item->qobject(),
+                        &HTreeListItemTQ::openSubpathInNewTreeRequested,
+                        node,
+                        &HTreeBranch::openNextNodesInNewTree
                     );
 
                     listWidget->onItemInsert(item);
