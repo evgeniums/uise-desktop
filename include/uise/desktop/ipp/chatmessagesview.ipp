@@ -94,8 +94,8 @@ Widget* ChatMessagesViewItem<BaseMessageT>::doCreateActualWidget(QWidget* parent
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
+template <typename BaseMessageT,typename Traits>
+ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     : MouseMoveEventFilter(parent),
       m_qobj(new ChatMessagesViewQ(this))
 {
@@ -271,16 +271,16 @@ ChatMessagesView<BaseMessageT,DataT>::ChatMessagesView(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-ChatMessagesView<BaseMessageT,DataT>::~ChatMessagesView()
+template <typename BaseMessageT,typename Traits>
+ChatMessagesView<BaseMessageT,Traits>::~ChatMessagesView()
 {
     m_listView->resetCallbacks();
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
 {
     if (m_selectionMode==enable)
     {
@@ -306,8 +306,8 @@ void ChatMessagesView<BaseMessageT,DataT>::setSelectionMode(bool enable)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::clearOtherContentsSelection(const Id& id)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::clearOtherContentsSelection(const Id& id)
 {
     m_listView->eachItem(
         [&id](const auto* item)
@@ -323,8 +323,8 @@ void ChatMessagesView<BaseMessageT,DataT>::clearOtherContentsSelection(const Id&
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::onMessageClicked(const Id& id)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::onMessageClicked(const Id& id)
 {
     if (!isSelectionMode())
     {
@@ -334,8 +334,8 @@ void ChatMessagesView<BaseMessageT,DataT>::onMessageClicked(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers)
 {
     if (forceLongJump || (modifiers & Qt::ControlModifier))
     {
@@ -353,8 +353,8 @@ void ChatMessagesView<BaseMessageT,DataT>::onJumpRequested(Direction direction, 
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::adjustMessageList(std::vector<Message*>& messages)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
 {
     m_listView->eachItem(
         [&messages](const ChatMessageViewItemWrapper<BaseMessageT>* msgItem)
@@ -392,8 +392,8 @@ void ChatMessagesView<BaseMessageT,DataT>::adjustMessageList(std::vector<Message
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::removeMessage(const Id& id)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::removeMessage(const Id& id)
 {
     m_listView->beginUpdate();
     m_listView->removeItem(id);
@@ -404,8 +404,8 @@ void ChatMessagesView<BaseMessageT,DataT>::removeMessage(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::reorderMessage(const Id& id)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::reorderMessage(const Id& id)
 {
     m_listView->beginUpdate();
     m_listView->reorderItem(id);
@@ -416,8 +416,8 @@ void ChatMessagesView<BaseMessageT,DataT>::reorderMessage(const Id& id)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::insertFetched(bool forLoad, const std::vector<DataT>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const std::vector<Data>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
 {
     std::vector<Message*> messages;
     std::vector<ChatMessageViewItemWrapper<BaseMessageT>> messageItems;
@@ -511,40 +511,40 @@ void ChatMessagesView<BaseMessageT,DataT>::insertFetched(bool forLoad, const std
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::loadMessages(const std::vector<DataT>& items)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items)
 {
     insertFetched(true,items);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::insertContinuousMessages(const std::vector<DataT>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem)
 {
     insertFetched(false,items,wasRequestedMaxCount,wasRequestedDirection,wasStratItem);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::clear()
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::clear()
 {
     m_listView->clear();
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::jumpToEdge(Direction direction)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::jumpToEdge(Direction direction)
 {
     m_listView->scrollToEdge(direction);
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::insertMessage(DataT dbItem)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::insertMessage(Data dbItem)
 {
     auto message=makeMessage(dbItem);
 
@@ -564,16 +564,16 @@ void ChatMessagesView<BaseMessageT,DataT>::insertMessage(DataT dbItem)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-typename ChatMessagesView<BaseMessageT,DataT>::Message* ChatMessagesView<BaseMessageT,DataT>::message(const Id& id) const
+template <typename BaseMessageT,typename Traits>
+typename ChatMessagesView<BaseMessageT,Traits>::Message* ChatMessagesView<BaseMessageT,Traits>::message(const Id& id) const
 {
     return m_listView->item(id)->item();
 }
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
@@ -644,8 +644,8 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseMoveEvent(QMouseEvent* event)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-void ChatMessagesView<BaseMessageT,DataT>::mouseReleaseEvent(QMouseEvent* event)
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::mouseReleaseEvent(QMouseEvent* event)
 {
     m_chatUnderMouse=nullptr;
     m_lastMousePos=QPoint{};
@@ -655,8 +655,8 @@ void ChatMessagesView<BaseMessageT,DataT>::mouseReleaseEvent(QMouseEvent* event)
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT,typename DataT>
-ChatMessagesViewItem<BaseMessageT>* ChatMessagesView<BaseMessageT,DataT>::makeMessage(DataT data)
+template <typename BaseMessageT,typename Traits>
+ChatMessagesViewItem<BaseMessageT>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
     auto message=m_messageBuilder(data,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");

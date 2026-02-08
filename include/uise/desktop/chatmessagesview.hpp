@@ -125,10 +125,12 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
         void reloadRequested();
 };
 
-template <typename BaseMessageT, typename DataT>
+template <typename BaseMessageT, typename Traits>
 class ChatMessagesView : public MouseMoveEventFilter
 {
     public:
+
+        using Data=typename Traits::Data;
 
         using Id=typename BaseMessageT::Id;
         using SortValue=typename BaseMessageT::SortValue;
@@ -136,7 +138,7 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         using FuncById=std::function<void (const Id&)>;
         using FuncBySortValue=std::function<void (const SortValue&)>;
-        using MessageBuilder=std::function<Message* (DataT data, QWidget* parent)>;
+        using MessageBuilder=std::function<Message* (const Data& data, QWidget* parent)>;
         using FuncItemsRequested=std::function<void (const SortValue& start, size_t maxCount, Direction direction)>;
 
         explicit ChatMessagesView(QWidget* parent=nullptr);
@@ -189,13 +191,13 @@ class ChatMessagesView : public MouseMoveEventFilter
         void removeMessage(const Id& id);
         void reorderMessage(const Id& id);
 
-        void loadMessages(const std::vector<DataT>& items);
+        void loadMessages(const std::vector<Data>& items);
 
-        void insertContinuousMessages(const std::vector<DataT>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
+        void insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
 
         void clear();
 
-        void insertMessage(DataT item);
+        void insertMessage(Data item);
 
         void jumpToEdge(Direction direction);
 
@@ -208,7 +210,7 @@ class ChatMessagesView : public MouseMoveEventFilter
 
     private:
 
-        Message* makeMessage(DataT data);
+        Message* makeMessage(const Data& data);
 
         ChatMessagesViewQ* m_qobj=nullptr;
 
@@ -226,7 +228,7 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 
-        void insertFetched(bool forLoad, const std::vector<DataT>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false);
+        void insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false);
 };
 
 UISE_DESKTOP_NAMESPACE_END
