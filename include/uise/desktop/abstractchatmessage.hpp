@@ -450,7 +450,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void setSelectorOnLeft(bool value)
         {
             m_selectorPositionLeft=value;
-            UNCOMMENTED_QDEBUG << "AbstractChatMessage::setSelectorPosition value=" << value << " m_selectorPositionLeft="<<m_selectorPositionLeft;
             emit selectorPositionChanged(value);
         }
 
