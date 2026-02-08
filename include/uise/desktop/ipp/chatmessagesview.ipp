@@ -393,34 +393,6 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::removeMessage(const Id& id)
-{
-    m_listView->beginUpdate();
-    if (isSelectionMode())
-    {
-        m_selectedMessages.erase(id);
-    }
-    m_listView->removeItem(id);
-    std::vector<Message*> messages;
-    adjustMessageList(messages);
-    m_listView->endUpdate();
-}
-
-//--------------------------------------------------------------------------
-
-template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::reorderMessage(const Id& id)
-{
-    m_listView->beginUpdate();
-    m_listView->reorderItem(id);
-    std::vector<Message*> messages;
-    adjustMessageList(messages);
-    m_listView->endUpdate();
-}
-
-//--------------------------------------------------------------------------
-
-template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const std::vector<Data>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
 {
     std::vector<Message*> messages;
@@ -548,20 +520,106 @@ void ChatMessagesView<BaseMessageT,Traits>::jumpToEdge(Direction direction)
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::insertMessage(Data dbItem)
+void ChatMessagesView<BaseMessageT,Traits>::adjustCurrentMessagesList()
 {
-    auto message=makeMessage(dbItem);
+    std::vector<Message*> messages;
+    adjustMessageList(messages);
+}
 
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::insertMessage(const Data& dbItem)
+{
     m_listView->beginUpdate();
 
-    if (m_listView->maxSortValue()<message->msg()->sortValue())
+    doInsertMessage(dbItem);
+    adjustCurrentMessagesList();
+
+    m_listView->endUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::doInsertMessage(const Data& dbItem)
+{
+    auto message=makeMessage(dbItem);
+    if (m_listView->maxSortValue() < message->msg()->sortValue())
     {
         m_listView->setMaxSortValue(message->msg()->sortValue());
     }
-
     m_listView->insertItem(message);
-    std::vector<Message*> messages;
-    adjustMessageList(messages);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::removeMessage(const Id& id)
+{
+    m_listView->beginUpdate();
+
+    doRemoveMessage(id);
+    adjustCurrentMessagesList();
+
+    m_listView->endUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::doRemoveMessage(const Id& id)
+{
+    if (isSelectionMode())
+    {
+        m_selectedMessages.erase(id);
+    }
+    m_listView->removeItem(id);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::reorderMessage(const Id& id)
+{
+    m_listView->beginUpdate();
+
+    doReorderMessage(id);
+    adjustCurrentMessagesList();
+
+    m_listView->endUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::doReorderMessage(const Id& id)
+{
+    m_listView->reorderItem(id);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, bool reorder)
+{
+    auto msg=message(Traits::id(dbItem));
+    if (msg==nullptr)
+    {
+        return;
+    }
+
+    replaceSelectedData(msg);
+
+    m_listView->beginUpdate();
+
+    m_messageUpdater(dbItem,msg);
+    if (reorder)
+    {
+        doReorderMessage(Traits::id(dbItem));
+    }
+
+    adjustCurrentMessagesList();
 
     m_listView->endUpdate();
 }

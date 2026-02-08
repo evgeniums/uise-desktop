@@ -139,6 +139,7 @@ class ChatMessagesView : public MouseMoveEventFilter
         using FuncById=std::function<void (const Id&)>;
         using FuncBySortValue=std::function<void (const SortValue&)>;
         using MessageBuilder=std::function<Message* (const Data& data, QWidget* parent)>;
+        using MessageUpdater=std::function<void (const Data& data, Message* msg)>;
         using FuncItemsRequested=std::function<void (const SortValue& start, size_t maxCount, Direction direction)>;
 
         explicit ChatMessagesView(QWidget* parent=nullptr);
@@ -186,6 +187,11 @@ class ChatMessagesView : public MouseMoveEventFilter
             m_messageBuilder=messageBuilder;
         }
 
+        void setMessageUpdater(MessageUpdater messageUpdater)
+        {
+            m_messageUpdater=messageUpdater;
+        }
+
         void adjustMessageList(std::vector<Message*>& messages);
 
         void removeMessage(const Id& id);
@@ -197,7 +203,9 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         void clear();
 
-        void insertMessage(Data item);
+        void insertMessage(const Data& item);
+        void updateMessage(const Data& item, bool reorder=false);
+        void replaceMessage(const Id& replaceId, const Data& newItem);
 
         void jumpToEdge(Direction direction);
 
@@ -222,6 +230,7 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
+        MessageUpdater m_messageUpdater;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
         QPoint m_lastMousePos;
@@ -233,6 +242,11 @@ class ChatMessagesView : public MouseMoveEventFilter
         void insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false);
 
         void replaceSelectedData(Message* msg);
+
+        void doInsertMessage(const Data& item);
+        void doRemoveMessage(const Id& id);
+        void doReorderMessage(const Id& id);
+        void adjustCurrentMessagesList();
 };
 
 UISE_DESKTOP_NAMESPACE_END
