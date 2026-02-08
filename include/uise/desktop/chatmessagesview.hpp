@@ -39,13 +39,13 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-template <typename BaseMessageT>
+template <typename BaseMessageT, typename Traits>
 class ChatMessagesViewItem : public BaseMessageT
 {
     public:
 
-        using Id=typename BaseMessageT::Id;
-        using SortValue=typename BaseMessageT::SortValue;
+        using Id=typename Traits::Id;
+        using SortValue=typename Traits::SortValue;
 
         explicit ChatMessagesViewItem(QWidget* parent=nullptr) :
             BaseMessageT(parent),
@@ -80,13 +80,13 @@ class ChatMessagesViewItem : public BaseMessageT
         BaseMessageT* m_msg;
 };
 
-template <typename BaseMessageT>
-struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesViewItem<BaseMessageT>*,
+template <typename BaseMessageT, typename Traits>
+struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesViewItem<BaseMessageT,Traits>*,
                                                               AbstractChatMessage,
                                                               typename BaseMessageT::SortValue,
                                                               typename BaseMessageT::Id>
 {
-    using Item=ChatMessagesViewItem<BaseMessageT>;
+    using Item=ChatMessagesViewItem<BaseMessageT,Traits>;
 
     static auto sortValue(const Item* item) noexcept
     {
@@ -104,11 +104,11 @@ struct ChatMessagesViewItemTraits : public FlyweightListItemTraits<ChatMessagesV
     }
 };
 
-template <typename BaseMessageT>
-using ChatMessageViewItemWrapper=FlyweightListItem<ChatMessagesViewItemTraits<BaseMessageT>>;
+template <typename BaseMessageT, typename Traits>
+using ChatMessageViewItemWrapper=FlyweightListItem<ChatMessagesViewItemTraits<BaseMessageT,Traits>>;
 
-template <typename BaseMessageT>
-using ChatMessagesViewWidget=FlyweightListView<ChatMessageViewItemWrapper<BaseMessageT>>;
+template <typename BaseMessageT, typename Traits>
+using ChatMessagesViewWidget=FlyweightListView<ChatMessageViewItemWrapper<BaseMessageT,Traits>>;
 
 class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
 {
@@ -134,7 +134,7 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         using Id=typename BaseMessageT::Id;
         using SortValue=typename BaseMessageT::SortValue;
-        using Message=ChatMessagesViewItem<BaseMessageT>;
+        using Message=ChatMessagesViewItem<BaseMessageT,Traits>;
 
         using FuncById=std::function<void (const Id&)>;
         using FuncBySortValue=std::function<void (const SortValue&)>;
@@ -155,12 +155,12 @@ class ChatMessagesView : public MouseMoveEventFilter
             return m_qobj;
         }
 
-        ChatMessagesViewWidget<BaseMessageT>* listView()
+        ChatMessagesViewWidget<BaseMessageT,Traits>* listView()
         {
             return m_listView;
         }
 
-        const ChatMessagesViewWidget<BaseMessageT>* listView() const
+        const ChatMessagesViewWidget<BaseMessageT,Traits>* listView() const
         {
             return m_listView;
         }
@@ -203,6 +203,8 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         Message* message(const Id& id) const;
 
+        std::vector<Data> selectedMessages() const;
+
     protected:
 
         void mouseMoveEvent(QMouseEvent *event) override;
@@ -215,7 +217,7 @@ class ChatMessagesView : public MouseMoveEventFilter
         ChatMessagesViewQ* m_qobj=nullptr;
 
         QBoxLayout* m_layout=nullptr;
-        ChatMessagesViewWidget<BaseMessageT>* m_listView;
+        ChatMessagesViewWidget<BaseMessageT,Traits>* m_listView;
         bool m_selectionMode=false;
 
         FuncItemsRequested m_onItemsRequested;
@@ -223,12 +225,14 @@ class ChatMessagesView : public MouseMoveEventFilter
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
         QPoint m_lastMousePos;
-        std::set<Id> m_selectedMessages;
+        std::map<Id,Data> m_selectedMessages;
         std::optional<bool> m_mouseMoveUp;
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 
         void insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false);
+
+        void replaceSelectedData(Message* msg);
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -41,8 +41,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT>
-void ChatMessagesViewItem<BaseMessageT>::setDateSeparatorVisible(bool enable, bool withYear)
+template <typename BaseMessageT, typename Traits>
+void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool enable, bool withYear)
 {
     AbstractChatSeparatorSection* dateSection=nullptr;
     auto sep=m_ui->topSeparator();
@@ -83,8 +83,8 @@ void ChatMessagesViewItem<BaseMessageT>::setDateSeparatorVisible(bool enable, bo
 
 //--------------------------------------------------------------------------
 
-template <typename BaseMessageT>
-Widget* ChatMessagesViewItem<BaseMessageT>::doCreateActualWidget(QWidget* parent)
+template <typename BaseMessageT, typename Traits>
+Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget* parent)
 {
     m_ui=m_msg->template makeWidget<AbstractChatMessage,ChatMessage>(parent);
     return m_ui;
@@ -103,7 +103,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 
     m_layout=Layout::vertical(this);
 
-    m_listView=new ChatMessagesViewWidget<BaseMessageT>(this);
+    m_listView=new ChatMessagesViewWidget<BaseMessageT,Traits>(this);
     m_layout->addWidget(m_listView,1);
 
     m_listView->setPrefetchItemWindowHint(20);
@@ -141,15 +141,15 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                 chatMsg,
                 &AbstractChatMessage::selectionUpdated,
                 m_qobj,
-                [this,id=itemW->id()](bool selected)
+                [this,item=itemW->item()](bool selected)
                 {
                     if (selected)
                     {
-                        m_selectedMessages.insert(id);
+                        m_selectedMessages.emplace(item->id(),item->data());
                     }
                     else
                     {
-                        m_selectedMessages.erase(id);
+                        m_selectedMessages.erase(item->id());
                     }
 
                     bool noneSelected=m_listView->eachItem(
@@ -357,7 +357,7 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
 {
     m_listView->eachItem(
-        [&messages](const ChatMessageViewItemWrapper<BaseMessageT>* msgItem)
+        [&messages](const ChatMessageViewItemWrapper<BaseMessageT,Traits>* msgItem)
         {
             messages.emplace_back(msgItem->item());
             return true;
@@ -396,6 +396,10 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::removeMessage(const Id& id)
 {
     m_listView->beginUpdate();
+    if (isSelectionMode())
+    {
+        m_selectedMessages.erase(id);
+    }
     m_listView->removeItem(id);
     std::vector<Message*> messages;
     adjustMessageList(messages);
@@ -420,7 +424,7 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const std::vector<Data>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
 {
     std::vector<Message*> messages;
-    std::vector<ChatMessageViewItemWrapper<BaseMessageT>> messageItems;
+    std::vector<ChatMessageViewItemWrapper<BaseMessageT,Traits>> messageItems;
 
     for (const auto& dbItem : dbItems)
     {
@@ -656,20 +660,54 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseReleaseEvent(QMouseEvent* event
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-ChatMessagesViewItem<BaseMessageT>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
+ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
     auto message=m_messageBuilder(data,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");
     if (isSelectionMode())
     {
         message->ui()->setSelectionMode(true);
-        auto it=m_selectedMessages.find(message->id());
-        if (it!=m_selectedMessages.end())
-        {
-            message->ui()->setSelected(true);
-        }
+        replaceSelectedData(message);
     }
     return message;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::replaceSelectedData(Message* msg)
+{
+    if (isSelectionMode())
+    {
+        auto it=m_selectedMessages.find(msg->id());
+        if (it!=m_selectedMessages.end())
+        {
+            msg->ui()->setSelected(true);
+            m_selectedMessages.erase(it);
+            m_selectedMessages.emplace(msg->id(),msg->data());
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+std::vector<typename Traits::Data> ChatMessagesView<BaseMessageT,Traits>::selectedMessages() const
+{
+    std::vector<Data> v;
+    if (isSelectionMode())
+    {
+        v.reserve(m_selectedMessages.size());
+        for (const auto& item : m_selectedMessages)
+        {
+            v.emplace_back(item);
+        }
+        std::sort(v.begin(),v.end(),[](const auto& l, const auto& r)
+        {
+            return Traits::sortValue(l) < Traits::sortValue(r);
+        });
+    }
+    return v;
 }
 
 //--------------------------------------------------------------------------
