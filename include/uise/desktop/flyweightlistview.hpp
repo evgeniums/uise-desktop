@@ -139,10 +139,11 @@ class FlyweightListView : public QFrame
         /**
          * @brief Insert items into the list.
          * @param item Items to insert.
+         * @param autoUpdate The list it auto updated when items are inserted.
          *
          * Inserted items will be auto sorted.
          */
-        void insertItems(const std::vector<ItemT>& items);
+        void insertItems(const std::vector<ItemT>& items, bool autoUpdate);
 
         void reorderItem(const ItemT& item);
 
@@ -158,6 +159,7 @@ class FlyweightListView : public QFrame
         /**
          * @brief Insert continuous set of items into the list.
          * @param item Items to insert.
+         * @param autoUpdate The list it auto updated when items are inserted.
          *
          * Items must be pre-sorted before insertion.
          */
@@ -166,10 +168,11 @@ class FlyweightListView : public QFrame
         /**
          * @brief Populate lists with the items.
          * @param items Items to load.
+         * @param autoUpdate The list it auto updated when items are loaded.
          *
          * The list is auto cleared before loading the items.
          */
-        void loadItems(const std::vector<ItemT>& items);
+        void loadItems(const std::vector<ItemT>& items, bool autoUpdate=true);
 
         /**
          * @brief Begin list updating.
@@ -564,6 +567,7 @@ class FlyweightListView : public QFrame
         JumpEdge* jumpEdgeControl() const;
 
         bool eachItem(EachItemHandler handler);
+        bool rEachItem(EachItemHandler handler);
 
     protected:
 

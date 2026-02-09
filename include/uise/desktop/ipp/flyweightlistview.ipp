@@ -210,24 +210,40 @@ Qt::Orientation FlyweightListView<ItemT,OrderComparer,IdComparer>::orientation()
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView<ItemT,OrderComparer,IdComparer>::loadItems(const std::vector<ItemT> &items)
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::loadItems(const std::vector<ItemT> &items, bool autoUpdate)
 {
-    beginUpdate();
+    if (autoUpdate)
+    {
+        beginUpdate();
+    }
+
     pimpl->clear();
     pimpl->insertContinuousItems(items);
-    endUpdate();
+
+    if (autoUpdate)
+    {
+        endUpdate();
+    }
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::vector<ItemT> &items)
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::vector<ItemT> &items, bool autoUpdate)
 {
-    beginUpdate();
+    if (autoUpdate)
+    {
+        beginUpdate();
+    }
+
     for (auto&& item:items)
     {
         pimpl->insertItem(item);
     }
-    endUpdate();
+
+    if (autoUpdate)
+    {
+        endUpdate();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -240,6 +256,7 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(co
     }
 
     pimpl->insertContinuousItems(items);
+
     if (autoUpdate)
     {
         endUpdate();
@@ -672,6 +689,13 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView<ItemT,OrderComparer,IdComparer>::eachItem(EachItemHandler handler)
 {
     return pimpl->eachItem(handler);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::rEachItem(EachItemHandler handler)
+{
+    return pimpl->rEachItem(handler);
 }
 
 //--------------------------------------------------------------------------

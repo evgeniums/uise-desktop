@@ -257,6 +257,7 @@ class FlyweightListView_p : public OrientationInvariant
         void jumpToEdge(Direction direction, bool forceLongfJump=true, Qt::KeyboardModifiers modifiers={});
 
         bool eachItem(typename ViewType::EachItemHandler handler);
+        bool rEachItem(typename ViewType::EachItemHandler handler);
 
     public:
 

@@ -1820,6 +1820,22 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::eachItem(typename View
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::rEachItem(typename ViewType::EachItemHandler handler)
+{
+    auto& order=itemOrder();
+    for (auto it=order.rbegin(); it!=order.rend(); ++it)
+    {
+        auto ok=handler(&(*it));
+        if (!ok)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//--------------------------------------------------------------------------
 
 } // namespace detail
 
