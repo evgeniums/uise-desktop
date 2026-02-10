@@ -101,6 +101,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 {
     setObjectName("uiseChatMessagesView");
 
+    m_resizeTimer=new SingleShotTimer(this);
+
     m_layout=Layout::vertical(this);
 
     m_listView=new ChatMessagesViewWidget<BaseMessageT,Traits>(this);
@@ -786,6 +788,16 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
     adjustMessagesSizes();
+
+    // fix resizing artefacts when window is miximized/normalized
+    int adjustResizeDelta=30;
+    if (qAbs(event->oldSize().width()-event->size().width()) > adjustResizeDelta
+        ||
+        qAbs(event->oldSize().height()-event->size().height()) > adjustResizeDelta
+        )
+    {
+        m_resizeTimer->shot(50,[this](){adjustMessagesSizes();});
+    }
 }
 
 //--------------------------------------------------------------------------

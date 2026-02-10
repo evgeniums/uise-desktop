@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/enums.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/flyweightlistitem.hpp>
@@ -226,6 +227,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         int m_messageBubbleOuterWidth=0;
         int m_messageMinWidth=0;
         int m_messageMaxWidth=QWIDGETSIZE_MAX;
+
+        SingleShotTimer* m_resizeTimer=nullptr;
 
     private:
 
