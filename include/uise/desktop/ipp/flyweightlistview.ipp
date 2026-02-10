@@ -699,6 +699,20 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::rEachItem(EachItemHandle
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setItemsAlignment(FlyweightListViewAlignment value) noexcept
+{
+    pimpl->setItemsAlignment(value);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListViewAlignment FlyweightListView<ItemT,OrderComparer,IdComparer>::itemsAlignment() const noexcept
+{
+    return pimpl->itemsAlignment();
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
 
