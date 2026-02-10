@@ -1,39 +1,32 @@
 uise--ChatMessageText uise--ChatMessageTextBrowser {
-max-width:560px;
 border-radius:0;
 background-color: transparent;
 border:none;
 }
 
 uise--AbstractChatMessageContent {
-max-width:576px;
 margin: 2px 0;
 border-radius: 16px;
 min-height: 32px;
-
 padding: 8px;
-qproperty-uisePadding: 8;
 }
 
 uise--AbstractChatSeparatorSection {
 margin: 8px 0;
-
-min-width:576px;
-max-width:576px;
 }
 
-uise--ChatSeparatorSection uise--AvatarButton {
+uise--AbstractChatSeparatorSection uise--AvatarButton {
 padding: 5px 20px;
 border-radius: 10px;
 border: none;
 }
 
-uise--ChatSeparatorSection uise--AvatarButton #text {
+uise--AbstractChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
 
-uise--AbstractChatMessageContent #mainMessageFrame {
-max-width: 600px;
+uise--AbstractChatMessagesView {
+max-width: 1000px;
 }
 
 uise--AbstractChatMessageSelector {
@@ -41,8 +34,13 @@ min-width: 40px;
 max-width: 40px;
 }
 
+uise--AbstractChatMessageBottom {
+min-width: 50px;
+}
+
 uise--AbstractChatMessage {
-qproperty-selectorPositionLeft: true;
+qproperty-selectorPositionLeft: false;
+min-width: 400px;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{
@@ -58,4 +56,3 @@ width:14px;
 height:14px;
 border-radius: 9px;
 }
-

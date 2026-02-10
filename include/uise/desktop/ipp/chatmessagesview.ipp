@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
+#include <uise/desktop/style.hpp>
 
 #include <uise/desktop/chatmessage.hpp>
 #include <uise/desktop/chatmessagesview.hpp>
@@ -96,7 +97,7 @@ Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget*
 
 template <typename BaseMessageT,typename Traits>
 ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
-    : MouseMoveEventFilter(parent),
+    : AbstractChatMessagesView(parent),
       m_qobj(new ChatMessagesViewQ(this))
 {
     setObjectName("uiseChatMessagesView");
@@ -276,6 +277,8 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
         m_selectedMessages.clear();
         m_mouseMoveUp.reset();
     }
+
+    adjustMessagesSizes();
 }
 
 //--------------------------------------------------------------------------
@@ -330,6 +333,8 @@ void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction,
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
 {
+    return;
+
     m_listView->eachItem(
         [&messages](const ChatMessageViewItemWrapper<BaseMessageT,Traits>* msgItem)
         {
@@ -361,7 +366,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         }
 
         msg->setDateSeparatorVisible(dateVisible,withYear);
-    }
+    }    
 }
 
 //--------------------------------------------------------------------------
@@ -377,7 +382,7 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
         auto message=makeMessage(dbItem);
 
         messages.push_back(message);
-        messageItems.push_back(message);        
+        messageItems.push_back(message);
     }
 
     if (forLoad || jumpToEnd)
@@ -394,7 +399,12 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
         {
             m_listView->setMaxSortValue(messageItems.back().sortValue());
         }
-        m_listView->loadItems(messageItems);
+
+        m_listView->beginUpdate();
+        adjustMessagesSizes(&messages);
+        m_listView->loadItems(messageItems,false);
+        m_listView->endUpdate();
+
         if (!forLoad)
         {
             // special case for jump-to-end
@@ -452,8 +462,8 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             }
 
             // insert items to the list
+            adjustMessagesSizes(&messages);
             m_listView->insertContinuousItems(messageItems,false);
-
             m_listView->endUpdate();
         }
     }
@@ -524,6 +534,7 @@ void ChatMessagesView<BaseMessageT,Traits>::doInsertMessage(const Data& dbItem)
         m_listView->setMaxSortValue(message->msg()->sortValue());
     }
     m_listView->insertItem(message);
+    adjustMesssageSize(message);
 }
 
 //--------------------------------------------------------------------------
@@ -596,6 +607,7 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
     {
         doReorderMessage(Traits::id(dbItem));
     }
+    adjustMesssageSize(msg);
 
     adjustCurrentMessagesList();
 
@@ -699,6 +711,13 @@ template <typename BaseMessageT,typename Traits>
 ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
     auto message=m_messageBuilder(data,m_listView);
+    // if (message->ui()->preContent())
+    // {
+    //     Style::instance().updateWidgetStyle(message->ui()->preContent());
+    //     message->ui()->preContent()->updateBubbleWidth(effectiveWidth());
+    //     message->ui()->setContent(message->ui()->preContent());
+    //     message->ui()->setPreContent(nullptr);
+    // }
     Assert(message,"Invalid chat message builder in UI factory");
     if (isSelectionMode())
     {
@@ -744,6 +763,114 @@ std::vector<typename Traits::Data> ChatMessagesView<BaseMessageT,Traits>::select
         });
     }
     return v;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
+{
+    QFrame::resizeEvent(event);
+    adjustMessagesSizes();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Message*>* messages)
+{
+    auto maxWidth=messageContentWidth(messages);
+
+    auto handler=[maxWidth](const auto* item)
+    {
+        item->widget()->content()->updateBubbleWidth(maxWidth);
+        return true;
+    };
+
+    m_listView->eachItem(handler);
+
+    if (messages!=nullptr)
+    {
+        for (auto& msg : *messages)
+        {
+            handler(msg);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::adjustMesssageSize(Message* msg)
+{
+    msg->ui()->content()->updateBubbleWidth(effectiveWidth());
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+int ChatMessagesView<BaseMessageT,Traits>::messageContentWidth(std::vector<Message*>* messages) const
+{
+    int maxBubbleWidthHint=0;
+    int maxAvatarWidth=0;
+    int maxSelectorWidth=0;
+    int minW=0;
+#if 0
+    int minW=QWIDGETSIZE_MAX;
+    auto handler=[
+       &maxAvatarWidth,
+       &maxSelectorWidth,
+       &minW
+    ]
+    (const auto* item)
+    {
+        auto itemAwvatarWidth=item->widget()->avatarWidth();
+        if (itemAwvatarWidth>maxAvatarWidth)
+        {
+            maxAvatarWidth=itemAwvatarWidth;
+        }
+
+        auto itemSelectorWidth=item->widget()->selectorWidth();
+        if (itemSelectorWidth>maxSelectorWidth)
+        {
+            maxSelectorWidth=itemSelectorWidth;
+        }
+
+        auto itemMinWidth=item->widget()->minimumWidth();
+        if (itemMinWidth<minW)
+        {
+            minW=itemMinWidth;
+        }
+
+        return true;
+    };
+
+    if (messages!=nullptr)
+    {
+        for (auto& msg : *messages)
+        {
+            handler(msg);
+        }
+    }
+    m_listView->eachItem(handler);
+#endif
+    auto cm=contentsMargins();
+    auto w=width() - maxAvatarWidth - maxSelectorWidth - cm.left() - cm.right();
+    if (w<minW)
+    {
+        w=minW;
+    }
+    return w;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+int ChatMessagesView<BaseMessageT,Traits>::effectiveWidth() const
+{
+    auto cm=contentsMargins();
+    auto w=width() - cm.left() - cm.right();
+    return w;
 }
 
 //--------------------------------------------------------------------------

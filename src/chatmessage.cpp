@@ -28,6 +28,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 #include <QLabel>
 #include <QLocale>
+#include <QResizeEvent>
+#include <QTimer>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
@@ -71,6 +73,60 @@ void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
     else
     {
     }
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
+{
+#if 0
+    UNCOMMENTED_QDEBUG << "AbstractChatMessageContent::updateBubbleWidth "
+                       << " margin="<<horizontalTotalMargin(this)
+                       << " padding="<<horizontalTotalPadding(this)
+                       << " width()="<<width()
+                       << " fullWidth()="<<rect().width()
+                       << " contentsWidth()="<<contentsRect().width()
+                       << " diff="<<rect().width()-contentsRect().width()
+        ;
+#endif
+    auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-10;
+
+    int widthHint=0;
+    for (auto& section : m_sections)
+    {
+        auto sectionWidthHint=section->bubbleWidthHint(forMaxWidth);
+        if (sectionWidthHint>widthHint)
+        {
+            widthHint=sectionWidthHint;
+        }
+    }
+
+    if (widthHint>forMaxWidth)
+    {
+        widthHint=forMaxWidth;
+    }
+
+    setMaximumBubbleWidth(widthHint);
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
+{
+    m_maximumBubbleWidth=width;
+    for (auto& section : m_sections)
+    {
+        section->updateMaximumBubbleWidth();
+    }
+    updateGeometry();
+    resize(sizeHint());
+}
+
+//--------------------------------------------------------------------------
+
+QSize AbstractChatMessageContent::sizeHint() const
+{
+    return QSize{m_maximumBubbleWidth+horizontalTotalMargin(this),AbstractChatMessageChild::sizeHint().height()};
 }
 
 /***************************ChatSeparatorSection*****************************/
@@ -322,6 +378,53 @@ void ChatMessageContent::setSelected(bool enable)
     Style::updateWidgetStyle(this);
 }
 
+/*************************ChatMessageContentWrapper*************************/
+
+ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(parent)
+{
+    m_timer=new SingleShotTimer(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContentWrapper::setContent(AbstractChatMessageContent* content)
+{
+    m_content=content;
+    m_content->setParent(this);
+    m_content->move(0,0);
+    m_content->installEventFilter(this);
+    updateGeometry();
+    // m_timer->shot(
+    //     1,
+    //     [this]()
+    //     {
+    //         updateGeometry();
+    //     }
+    // );
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageContentWrapper::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == m_content && event->type() == QEvent::Resize)
+    {
+        updateGeometry();
+    }
+    return QFrame::eventFilter(obj, event);
+}
+
+//--------------------------------------------------------------------------
+
+QSize ChatMessageContentWrapper::sizeHint() const
+{
+    if (m_content)
+    {
+        return m_content->sizeHint();
+    }
+    return QFrame::sizeHint();
+}
+
 /********************************ChatMessage*********************************/
 
 //--------------------------------------------------------------------------
@@ -341,7 +444,7 @@ class ChatMessage_p
         QBoxLayout* mainLayout;
 
         QFrame* avatarFrame;
-        QFrame* contentFrame;
+        ChatMessageContentWrapper* contentFrame;
         QBoxLayout* contentLayout;
 
         AbstractChatMessageSelector* selector;
@@ -398,9 +501,7 @@ void ChatMessage::construct()
     pimpl->avatarFrame->setObjectName("avatarFrame");
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 
-    pimpl->contentFrame=new QFrame(pimpl->main);
-    pimpl->contentFrame->setObjectName("contentFrame");
-    pimpl->contentLayout=Layout::horizontal(pimpl->contentFrame);
+    pimpl->contentFrame=new ChatMessageContentWrapper(pimpl->main);
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
@@ -469,6 +570,8 @@ void ChatMessage::updateContent()
 {
     if (content()!=nullptr)
     {
+        content()->updateGeometry();
+
         auto alignment=Qt::AlignLeft;
         if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
         {
@@ -480,18 +583,15 @@ void ChatMessage::updateContent()
             pimpl->mainLayout->addWidget(pimpl->selector);
         }
 
+        pimpl->contentFrame->setContent(content());
         if (alignment==Qt::AlignLeft)
         {
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
-            pimpl->mainLayout->addWidget(pimpl->contentFrame);
-            pimpl->contentLayout->addWidget(content());
-            pimpl->contentLayout->addStretch(1);
+            pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
         }
         else
         {
-            pimpl->contentLayout->addStretch(1);
-            pimpl->contentLayout->addWidget(content());
-            pimpl->mainLayout->addWidget(pimpl->contentFrame);
+            pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
         }
 
@@ -537,14 +637,43 @@ void ChatMessage::updateAvatarVisible()
 
 void ChatMessage::updateDateTime()
 {
-    if (content() && content()->bottom())
+    auto c=content();
+    if (!c)
+    {
+        c=preContent();
+    }
+
+    if (c && c->bottom())
     {
         QLocale locale;
         auto dt=datetime();
         auto tooltip=locale.toString(dt, QLocale::LongFormat);
         auto time=dt.toString("HH:mm");
-        content()->bottom()->setTimeString(time,tooltip);
+        c->bottom()->setTimeString(time,tooltip);
     }
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessage::avatarWidth() const
+{
+    if (!pimpl->avatarFrame->isVisible())
+    {
+        return 0;
+    }
+    return pimpl->avatarFrame->width();
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessage::selectorWidth() const
+{
+    if (!pimpl->selector->isVisible())
+    {
+        return 0;
+    }
+
+    return pimpl->selector->width();
 }
 
 /***************************ChatMessageSelector***************************/
@@ -632,7 +761,6 @@ void ChatMessageBottom::setTimeString(const QString& time, const QString& toolti
 {
     pimpl->time->setText(time);
     pimpl->time->setToolTip(tooltip);
-    adjustWidth();
 }
 
 //--------------------------------------------------------------------------
@@ -642,7 +770,6 @@ void ChatMessageBottom::setStatusIcon(std::shared_ptr<SvgIcon> icon, const QStri
     pimpl->status->setSvgIcon(std::move(icon));
     pimpl->status->setVisible(static_cast<bool>(icon));
     pimpl->status->setToolTip(tooltip);
-    adjustWidth();
 }
 
 //--------------------------------------------------------------------------
@@ -652,7 +779,6 @@ void ChatMessageBottom::setEdited(const QString& text, const QString& tooltip)
     pimpl->edited->setText(text);
     pimpl->edited->setToolTip(tooltip);
     pimpl->edited->setVisible(!text.isEmpty());
-    adjustWidth();
 }
 
 //--------------------------------------------------------------------------
@@ -662,36 +788,38 @@ void ChatMessageBottom::setSeen(const QString& text, const QString& tooltip)
     pimpl->seen->setText(text);
     pimpl->seen->setToolTip(tooltip);
     pimpl->seen->setVisible(!text.isEmpty());
-    adjustWidth();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageBottom::adjustWidth()
+QSize ChatMessageBottom::sizeHint() const
 {
-    auto bodyHW=chatContent()->body()->sizeHint().width();
-    auto maxW=chatContent()->maximumWidth();
+    return QSize{chatContent()->maximumBubbleWidth(),AbstractChatMessageBottom::sizeHint().height()};
+}
 
-    auto newW1=bodyHW+sizeHint().width();
-    auto newW=newW1;
+//--------------------------------------------------------------------------
 
-    int contentPadding = chatContent()->getUisePadding();
-    auto maxW1=maxW-2*contentPadding;
-    if (maxW1>0 && newW>maxW1)
+int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
+{
+    auto bodyHW=chatContent()->body()->bubbleWidthHint(forMaxWidth);
+    auto wHint=bodyHW+AbstractChatMessageBottom::sizeHint().width();
+    if (wHint>forMaxWidth)
     {
-        newW=maxW1;
+        wHint=forMaxWidth;
+    }
+    else if (wHint<minimumWidth())
+    {
+        wHint=minimumWidth();
     }
 
 #if 0
-    qDebug() << "ChatMessageBottom::adjustWidth() "
-                       << " bodyHW="<<bodyHW
-                       << " maxW="<<maxW
-                       << " contentPadding="<<contentPadding
-                       << " maxW1="<<maxW1
-                       << " newW1="<<newW1
-                       << " newW="<<newW;
+    UNCOMMENTED_QDEBUG << "ChatMessageBottom::bubbleWidthHint"
+                          <<" forMaxWidth="<<forMaxWidth
+                          <<" bodyHW="<<bodyHW
+                          <<" AbstractChatMessageBottom::sizeHint().width()="<<AbstractChatMessageBottom::sizeHint().width()
+                          <<" wHint="<<wHint;
 #endif
-    setMinimumWidth(newW);
+    return wHint;
 }
 
 //--------------------------------------------------------------------------

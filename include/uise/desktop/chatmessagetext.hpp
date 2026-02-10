@@ -41,10 +41,6 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         explicit ChatMessageTextBrowser(QWidget *parent = nullptr);
 
-        QSize sizeHint() const override;
-
-        void setWrapWidth(int w);
-
         void setMessageTextWidget(AbstractChatMessageText* widget);
 
         AbstractChatMessageText* messageTextWidget() const
@@ -52,9 +48,15 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_messageTextWidget;
         }
 
-    private slots:
+        QSize sizeHint() const override;
 
-        void updateHeight();
+        void setWrapWidth(int w);
+
+        int textWidthHint() const;
+
+    public slots:
+
+        void updateSize();
 
     protected:
 
@@ -89,12 +91,17 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         void clearContentSelection() override;
 
+        int bubbleWidthHint(int forMaxWidth) override;
+
+        void updateMaximumBubbleWidth() override;
+
     protected:
 
         void updateChatMessage() override;
 
     private:
 
+        void adjustWrapWidth(int& value, bool add);
         std::unique_ptr<ChatMessageText_p> pimpl;
 };
 

@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGE_HPP
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 
 class QBoxLayout;
@@ -115,9 +116,12 @@ class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
         void setTimeString(const QString& time, const QString& tooltip={}) override;
         void setStatusIcon(std::shared_ptr<SvgIcon> icon ={}, const QString& tooltip={}) override;
 
+        int bubbleWidthHint(int forMaxWidth) override;
+
+        QSize sizeHint() const override;
+
     private:
 
-        void adjustWidth();
         std::unique_ptr<ChatMessageBottom_p> pimpl;
 };
 
@@ -162,6 +166,33 @@ class UISE_DESKTOP_EXPORT ChatMessageSelector : public AbstractChatMessageSelect
         QCheckBox* m_checkBox;
 };
 
+class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        explicit ChatMessageContentWrapper(QWidget* parent=nullptr);
+
+        AbstractChatMessageContent* content() const
+        {
+            return m_content;
+        }
+
+        void setContent(AbstractChatMessageContent* content);
+
+        QSize sizeHint() const override;
+
+    protected:
+
+        bool eventFilter(QObject *obj, QEvent *event) override;
+
+    private:
+
+        AbstractChatMessageContent* m_content=nullptr;
+        SingleShotTimer* m_timer=nullptr;
+};
+
 //--------------------------------------------------------------------------
 
 class ChatMessage_p;
@@ -179,6 +210,9 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         ChatMessage& operator=(const ChatMessage&)=delete;
         ChatMessage(ChatMessage&&)=delete;
         ChatMessage& operator=(ChatMessage&&)=delete;
+
+        int avatarWidth() const override;
+        int selectorWidth() const override;
 
     protected:
 

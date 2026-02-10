@@ -201,9 +201,19 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
             return m_content;
         }
 
+        virtual int bubbleWidthHint(int /*forMaxWidth*/)
+        {
+            return sizeHint().width();
+        }
+
+        virtual void updateMaximumBubbleWidth()
+        {
+            updateGeometry();
+        }
+
     private:
 
-        AbstractChatMessageContent* m_content=nullptr;
+        AbstractChatMessageContent* m_content=nullptr;        
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public ChatMessageContentSection
@@ -222,8 +232,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
     public:
 
         using ChatMessageContentSection::ChatMessageContentSection;
-
-
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
@@ -239,6 +247,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
 };
+
+inline int horizontalTotalMargin(const QFrame* frame)
+{
+    QMargins margins = frame->contentsMargins();
+    return margins.left()+margins.right();
+}
+
+inline int horizontalTotalPadding(const QFrame* frame)
+{
+    QRect fullRect = frame->rect();
+    QRect contentRect = frame->contentsRect();
+
+    int paddingLeft = contentRect.left() - fullRect.left();
+    int paddingRight = contentRect.right() - fullRect.right();
+
+    return paddingLeft+paddingRight;
+}
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
 {
@@ -256,6 +281,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             {
                 m_header->setChatMessage(chatMessage());
                 m_header->setChatContent(this);
+                m_sections.push_back(m_header);
             }
             destroyWidget(m_body);
             m_body=body;
@@ -263,6 +289,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             {
                 m_body->setChatMessage(chatMessage());
                 m_body->setChatContent(this);
+                m_sections.push_back(m_body);
             }
             destroyWidget(m_bottom);
             m_bottom=bottom;
@@ -270,6 +297,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             {
                 m_bottom->setChatMessage(chatMessage());
                 m_bottom->setChatContent(this);
+                m_sections.push_back(m_bottom);
             }
             updateWidgets();
         }
@@ -289,9 +317,21 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bottom;
         }
 
-        virtual void setMaxBubbleWidth(int /*w*/) {}
+        int maximumBubbleWidth() const noexcept
+        {
+            return m_maximumBubbleWidth;
+        }
 
         virtual void setSelected(bool enable) =0;
+
+        void updateBubbleWidth(int forMaxWidthIn);
+
+        const auto& sections() const
+        {
+            return m_sections;
+        }
+
+        QSize sizeHint() const override;
 
     protected:
 
@@ -302,29 +342,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         QPointer<AbstractChatMessageHeader> m_header=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
-};
 
-class UISE_DESKTOP_EXPORT MouseMoveEventFilter : public QFrame
-{
-    Q_OBJECT
+        std::vector<ChatMessageContentSection*> m_sections;
+        int m_maximumBubbleWidth=0;
 
-    public:
-
-        using QFrame::QFrame;
-
-        void setMouseMoveEventFilterEnabled(bool enable)
-        {
-            m_filterEnabled=true;
-        }
-
-        bool isMouseMoveEventFilterEnabled() const noexcept
-        {
-            return m_filterEnabled;
-        }
-
-    private:
-
-        bool m_filterEnabled=false;
+        void setMaximumBubbleWidth(int width);
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
@@ -456,6 +478,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool isSelectorOnLeft() const noexcept
         {
             return m_selectorPositionLeft;
+        }
+
+        virtual int avatarWidth() const =0;
+        virtual int selectorWidth() const =0;
+
+        void setPreContent(AbstractChatMessageContent* preContent)
+        {
+            m_preContent=preContent;
+        }
+
+        AbstractChatMessageContent* preContent() const
+        {
+            return m_preContent;
         }
 
     public slots:
@@ -595,6 +630,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_selectorPositionLeft=true;
 
         QDateTime m_dateTime;
+
+        AbstractChatMessageContent* m_preContent=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody

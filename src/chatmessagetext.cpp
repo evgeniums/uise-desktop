@@ -42,23 +42,6 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-
-    connect(this,
-        &QTextBrowser::textChanged,
-        this,
-        [this]()
-        {
-            QTimer::singleShot(
-                0,
-                this,
-                [this]()
-                {
-                    updateHeight();
-                }
-            );
-        }
-    );
-
     setFocusPolicy(Qt::NoFocus);
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
 
@@ -66,20 +49,26 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 
     Style::updateWidgetStyle(this);
 
-    auto cm=contentsMargins();
-    setLineWrapColumnOrWidth(maximumWidth()-cm.left()-cm.right());
+    // connect(this,
+    //     &QTextBrowser::textChanged,
+    //     this,
+    //     [this]()
+    //     {
+    //         QTimer::singleShot(
+    //             0,
+    //             this,
+    //             [this]()
+    //             {
+    //                 updateSize();
+    //             }
+    //         );
+    //     }
+    // );
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageTextBrowser::setWrapWidth(int w)
-{
-    setLineWrapColumnOrWidth(w);
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageTextBrowser::updateHeight()
+void ChatMessageTextBrowser::updateSize()
 {
     document()->setTextWidth(document()->idealWidth());
     updateGeometry();
@@ -94,8 +83,12 @@ QSize ChatMessageTextBrowser::sizeHint() const
         QSizeF docSize = document()->size();
         int height = static_cast<int>(docSize.height() + 2 * frameWidth());
         int width = static_cast<int>(document()->idealWidth() + 2 * frameWidth());
+#if 0
+        UNCOMMENTED_QDEBUG << "ChatMessageTextBrowser::sizeHint() " << QSize{width,height};
+#endif
         return QSize{width,height};
     }
+
     return QTextBrowser::sizeHint();
 }
 
@@ -158,6 +151,7 @@ class ChatMessageText_p
         QBoxLayout* layout;
 
         ChatMessageTextBrowser* text;
+        int m_widthHint=0;
 };
 
 //--------------------------------------------------------------------------
@@ -214,6 +208,52 @@ void ChatMessageText::clearContentSelection()
 void ChatMessageText::updateChatMessage()
 {
     pimpl->text->setMessageTextWidget(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::adjustWrapWidth(int& value, bool add)
+{
+    auto op=[add](auto a, auto b)
+    {
+        if (add)
+        {
+            return a+b;
+        }
+        else
+        {
+            return a-b;
+        }
+    };
+
+    op(value,pimpl->text->frameWidth()*2);
+    auto applyMargins=[this,&value,op](QMargins cm)
+    {
+        op(value,cm.left());
+        op(value,cm.right());
+    };
+    applyMargins(contentsMargins());
+    applyMargins(pimpl->text->contentsMargins());
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageText::bubbleWidthHint(int forMaxWidth)
+{
+    auto t=const_cast<ChatMessageTextBrowser*>(pimpl->text);
+    t->setLineWrapColumnOrWidth(forMaxWidth);
+    pimpl->text->updateSize();
+    auto w=static_cast<int>(t->document()->idealWidth());
+    return w;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::updateMaximumBubbleWidth()
+{
+    auto wrapWidth=chatContent()->maximumBubbleWidth();
+    pimpl->text->setLineWrapColumnOrWidth(wrapWidth);
+    pimpl->text->updateSize();
 }
 
 //--------------------------------------------------------------------------

@@ -58,6 +58,11 @@ class ChatMessagesViewItem : public BaseMessageT
             return m_ui;
         }
 
+        AbstractChatMessage* widget() const
+        {
+            return m_ui;
+        }
+
         BaseMessageT* msg()
         {
             return m_msg;
@@ -125,8 +130,17 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
         void reloadRequested();
 };
 
+class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        using QFrame::QFrame;
+};
+
 template <typename BaseMessageT, typename Traits>
-class ChatMessagesView : public MouseMoveEventFilter
+class ChatMessagesView : public AbstractChatMessagesView
 {
     public:
 
@@ -207,6 +221,8 @@ class ChatMessagesView : public MouseMoveEventFilter
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
+        void resizeEvent(QResizeEvent* event) override;
+
     private:
 
         ChatMessagesViewQ* m_qobj=nullptr;
@@ -239,6 +255,13 @@ class ChatMessagesView : public MouseMoveEventFilter
         void adjustCurrentMessagesList();
 
         void onMessageClicked(const Id& id);
+
+        void adjustMessagesSizes(std::vector<Message*>* messages=nullptr);
+        int messageContentWidth(std::vector<Message*>* messages=nullptr) const;
+        int defaultMessageContentWidth() const;
+        void adjustMesssageSize(Message* msg);
+
+        int effectiveWidth() const;
 };
 
 UISE_DESKTOP_NAMESPACE_END
