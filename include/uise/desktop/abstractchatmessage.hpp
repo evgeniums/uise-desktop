@@ -483,16 +483,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual int avatarWidth() const =0;
         virtual int selectorWidth() const =0;
 
-        void setPreContent(AbstractChatMessageContent* preContent)
-        {
-            m_preContent=preContent;
-        }
-
-        AbstractChatMessageContent* preContent() const
-        {
-            return m_preContent;
-        }
-
     public slots:
 
         void toggleSelected()
@@ -630,8 +620,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_selectorPositionLeft=true;
 
         QDateTime m_dateTime;
-
-        AbstractChatMessageContent* m_preContent=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody

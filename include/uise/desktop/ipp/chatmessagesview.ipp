@@ -710,13 +710,6 @@ template <typename BaseMessageT,typename Traits>
 ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
     auto message=m_messageBuilder(data,m_listView);
-    // if (message->ui()->preContent())
-    // {
-    //     Style::instance().updateWidgetStyle(message->ui()->preContent());
-    //     message->ui()->preContent()->updateBubbleWidth(effectiveWidth());
-    //     message->ui()->setContent(message->ui()->preContent());
-    //     message->ui()->setPreContent(nullptr);
-    // }
     Assert(message,"Invalid chat message builder in UI factory");
     if (isSelectionMode())
     {
