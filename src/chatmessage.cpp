@@ -403,7 +403,6 @@ bool ChatMessageContentWrapper::eventFilter(QObject *obj, QEvent *event)
     if (obj == m_content && event->type() == QEvent::Resize)
     {
         updateGeometry();
-#if 0
         m_timer->shot(
             1,
             [this]()
@@ -411,7 +410,6 @@ bool ChatMessageContentWrapper::eventFilter(QObject *obj, QEvent *event)
                 updateGeometry();
             }
         );
-#endif
     }
     return QFrame::eventFilter(obj, event);
 }
