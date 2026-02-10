@@ -97,8 +97,7 @@ Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget*
 
 template <typename BaseMessageT,typename Traits>
 ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
-    : AbstractChatMessagesView(parent),
-      m_qobj(new ChatMessagesViewQ(this))
+    : AbstractChatMessagesView(parent)
 {
     setObjectName("uiseChatMessagesView");
 
@@ -121,7 +120,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             connect(
                 chatMsg,
                 &AbstractChatMessage::clicked,
-                m_qobj,
+                this,
                 [this,id=itemW->id()]()
                 {
                     onMessageClicked(id);
@@ -131,7 +130,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             connect(
                 chatMsg,
                 &AbstractChatMessage::selectionModeRequested,
-                m_qobj,
+                this,
                 [this]()
                 {
                     setSelectionMode(true);
@@ -141,7 +140,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             connect(
                 chatMsg,
                 &AbstractChatMessage::selectionUpdated,
-                m_qobj,
+                this,
                 [this,item=itemW->item()](bool selected)
                 {
                     if (selected)
@@ -318,7 +317,7 @@ void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction,
     {
         if (direction==Direction::HOME)
         {
-            emit m_qobj->reloadRequested();
+            emit reloadRequested();
         }
         else if (m_onItemsRequested)
         {
@@ -648,7 +647,7 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
             return;
         }
         auto delta=qAbs(m_lastMousePos.y()-newPos.y());
-        if (delta<ChatMessagesViewQ::MouseMoveDetectDelta)
+        if (delta<MouseMoveDetectDelta)
         {
             return;
         }

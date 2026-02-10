@@ -115,7 +115,7 @@ using ChatMessageViewItemWrapper=FlyweightListItem<ChatMessagesViewItemTraits<Ba
 template <typename BaseMessageT, typename Traits>
 using ChatMessagesViewWidget=FlyweightListView<ChatMessageViewItemWrapper<BaseMessageT,Traits>>;
 
-class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
+class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
 {
     Q_OBJECT
 
@@ -123,20 +123,11 @@ class UISE_DESKTOP_EXPORT ChatMessagesViewQ : public QObject
 
         constexpr static const int MouseMoveDetectDelta=10;
 
-        using QObject::QObject;
+        using QFrame::QFrame;
 
     signals:
 
         void reloadRequested();
-};
-
-class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
-{
-    Q_OBJECT
-
-    public:
-
-        using QFrame::QFrame;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -161,11 +152,6 @@ class ChatMessagesView : public AbstractChatMessagesView
         ChatMessagesView(ChatMessagesView&&)=delete;
         ChatMessagesView& operator=(const ChatMessagesView&)=delete;
         ChatMessagesView& operator=(ChatMessagesView&&)=delete;
-
-        ChatMessagesViewQ* qObject()
-        {
-            return m_qobj;
-        }
 
         ChatMessagesViewWidget<BaseMessageT,Traits>* listView()
         {
@@ -224,8 +210,6 @@ class ChatMessagesView : public AbstractChatMessagesView
         void resizeEvent(QResizeEvent* event) override;
 
     private:
-
-        ChatMessagesViewQ* m_qobj=nullptr;
 
         QBoxLayout* m_layout=nullptr;
         ChatMessagesViewWidget<BaseMessageT,Traits>* m_listView;
