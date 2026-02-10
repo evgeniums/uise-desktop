@@ -111,9 +111,12 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setItemsAlignment(FlyweightListViewAlignment::Begin);
     m_listView->setPrefetchItemWindowHint(20);
     m_listView->setPrefetchScreensCount(2.0);
-    m_listView->setPrefetchItemCount(10);
+    m_listView->setPrefetchItemCount(20);
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
+
+    //! @todo Use scrollbar with placeholder
+    m_listView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 
     m_listView->setInsertItemCb(
         [this](auto itemW)
@@ -345,8 +348,6 @@ void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction,
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
 {
-    return;
-
     m_listView->eachItem(
         [&messages](const ChatMessageViewItemWrapper<BaseMessageT,Traits>* msgItem)
         {
@@ -378,7 +379,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         }
 
         msg->setDateSeparatorVisible(dateVisible,withYear);
-    }    
+    }
 }
 
 //--------------------------------------------------------------------------

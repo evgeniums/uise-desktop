@@ -146,8 +146,6 @@ class ChatSeparatorSection_p
 
         QFrame* rightLine=nullptr;
 
-        QFrame* outerRightLine=nullptr;
-
         QFrame* makeHLine(QWidget* parent, const QString& name) const;
 };
 
@@ -156,6 +154,7 @@ class ChatSeparatorSection_p
 QFrame* ChatSeparatorSection_p::makeHLine(QWidget* parent, const QString& name) const
 {
     auto f=new QFrame(parent);
+    f->setVisible(false);
     f->setObjectName(name);
     return f;
 }
@@ -171,16 +170,14 @@ ChatSeparatorSection::ChatSeparatorSection(QWidget* parent)
     pimpl->content=new QFrame(this);
     pimpl->content->setObjectName("separatorSection");
     mainL->addWidget(pimpl->content);
-    pimpl->outerRightLine=pimpl->makeHLine(this,"outerRightLine");
-    mainL->addWidget(pimpl->outerRightLine);
 
-    auto l=Layout::horizontal(pimpl->content);
+    auto l=Layout::vertical(pimpl->content);
 
     pimpl->leftLine=pimpl->makeHLine(pimpl->content,"leftLine");
     l->addWidget(pimpl->leftLine,1);
 
     pimpl->button=new AvatarButton(pimpl->content);
-    l->addWidget(pimpl->button,Qt::AlignHCenter);
+    l->addWidget(pimpl->button,0,Qt::AlignCenter);
 
     pimpl->rightLine=pimpl->makeHLine(pimpl->content,"rightLine");
     l->addWidget(pimpl->rightLine,1);
@@ -197,6 +194,8 @@ ChatSeparatorSection::ChatSeparatorSection(QWidget* parent)
             }
         }
     );
+
+    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -232,7 +231,6 @@ void ChatSeparatorSection::setHLineVisible(bool enable)
 {
     pimpl->leftLine->setVisible(enable);
     pimpl->rightLine->setVisible(enable);
-    pimpl->outerRightLine->setVisible(enable);
 }
 
 //--------------------------------------------------------------------------
@@ -475,7 +473,7 @@ void ChatMessage::construct()
 
     pimpl->separatorFrame=new QFrame(this);
     pimpl->separatorFrame->setObjectName("separatorFrame");
-    pimpl->separatorLayout=Layout::horizontal(pimpl->separatorFrame);
+    pimpl->separatorLayout=Layout::vertical(pimpl->separatorFrame);
     pimpl->separatorFrame->setVisible(false);
     pimpl->layout->addWidget(pimpl->separatorFrame);
 
@@ -801,14 +799,6 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     {
         wHint=minimumWidth();
     }
-
-#if 0
-    qDebug() << "ChatMessageBottom::bubbleWidthHint"
-                          <<" forMaxWidth="<<forMaxWidth
-                          <<" bodyHW="<<bodyHW
-                          <<" AbstractChatMessageBottom::sizeHint().width()="<<AbstractChatMessageBottom::sizeHint().width()
-                          <<" wHint="<<wHint;
-#endif
     return wHint;
 }
 

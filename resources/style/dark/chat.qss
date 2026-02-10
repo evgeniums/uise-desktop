@@ -37,4 +37,3 @@ border: 2px solid #CCC;
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked:hover {
 border: 2px solid #1055C9;
 }
-
