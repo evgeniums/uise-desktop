@@ -188,6 +188,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setTitleBarVisible(bool enable);
         bool isTitleBarVisible() const;
 
+        int titleBarHeight() const;
+
         void setUnique(bool enable);
         bool isUnique() const;
 

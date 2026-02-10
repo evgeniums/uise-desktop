@@ -1,8 +1,9 @@
 uise--HTree #hTreeSplitterScArea {border:none;}
 
 uise--HTreeNode {padding:0;margin:0;}
-uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:12px;}
+uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:16px;}
 uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0;}
+uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {font-size: 14px;}
 uise--HTreeNodeTitleBar {
     border-right:none;
     border-left:none;
@@ -40,7 +41,7 @@ uise--HTreeNode #nodeBottomFrame uise--PushButton QPushButton {
 uise--HTree QTabWidget::pane {padding:0;}
 
 uise--HTreeTab #closeWarnFrame uise--PushButton {
-margin: 20px;
+margin: 10px;
 }
 
 uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{

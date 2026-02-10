@@ -454,13 +454,14 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     pimpl->splitter->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 
     pimpl->closeWarnFrame=new QFrame(this);
+    pimpl->closeWarnFrame->setAttribute(Qt::WA_ShowWithoutActivating);
     pimpl->closeWarnFrame->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);
     pimpl->closeWarnFrame->setObjectName("closeWarnFrame");
     pimpl->closeWarnFrame->setVisible(false);
     auto cwL=Layout::vertical(pimpl->closeWarnFrame);
     auto closeWarnButton=new PushButton(pimpl->closeWarnFrame);
     auto closeWarnIcon=Style::instance().svgIconLocator().icon("HTreeTabCloseWarn::close",this);
-    closeWarnButton->setSvgIcon(closeWarnIcon);
+    closeWarnButton->setSvgIcon(closeWarnIcon);    
     cwL->addWidget(closeWarnButton,0,Qt::AlignLeft);
     cwL->addStretch(1);
     pimpl->closeWarnTimer=new SingleShotTimer(this);
@@ -704,6 +705,8 @@ NavigationBar* HTreeTab::navbar() const
 
 void HTreeTab::closeNode(HTreeNode* node)
 {
+    pimpl->closeWarnFrame->setVisible(false);
+
     if(node==nullptr)
     {
         return;
@@ -717,6 +720,7 @@ void HTreeTab::closeNode(HTreeNode* node)
 
 void HTreeTab::truncate(int index)
 {
+    pimpl->closeWarnFrame->setVisible(false);
     pimpl->truncate(index);
 }
 
@@ -762,12 +766,32 @@ void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
 
     if (!enable)
     {
-        pimpl->closeWarnFrame->setVisible(false);
+        pimpl->closeWarnTimer->shot(
+            100,
+            [this]()
+            {
+                pimpl->closeWarnFrame->setVisible(false);
+            }
+        );
+        return;
+    }
+
+    if (enable && pimpl->closeWarnFrame->isVisible())
+    {
+        pimpl->closeWarnTimer->shot(
+            3000,
+            [this]()
+            {
+                pimpl->closeWarnFrame->setVisible(false);
+            }
+        );
         return;
     }
 
     QRect nodeRect = node->geometry();
-    auto topLeft=node->mapTo(this,nodeRect.topRight());
+    auto topLeft=nodeRect.topLeft();
+    topLeft.setY(topLeft.y() + node->titleBarHeight());
+    topLeft=node->mapTo(this,topLeft);
 
     auto lastNode=pimpl->nodes.back();
     if (lastNode!=node)

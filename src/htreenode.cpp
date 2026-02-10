@@ -826,6 +826,13 @@ bool HTreeNode::isTitleBarVisible() const
 
 //--------------------------------------------------------------------------
 
+int HTreeNode::titleBarHeight() const
+{
+    return pimpl->titleBar->height();
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeNode::setNextNodeId(const std::string&)
 {
     // intentionally empty
