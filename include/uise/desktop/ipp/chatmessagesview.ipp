@@ -106,6 +106,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView=new ChatMessagesViewWidget<BaseMessageT,Traits>(this);
     m_layout->addWidget(m_listView,1);
 
+    m_listView->setItemsAlignment(FlyweightListViewAlignment::Begin);
     m_listView->setPrefetchItemWindowHint(20);
     m_listView->setPrefetchScreensCount(2.0);
     m_listView->setPrefetchItemCount(10);
