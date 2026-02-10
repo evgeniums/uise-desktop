@@ -259,6 +259,9 @@ class FlyweightListView_p : public OrientationInvariant
         bool eachItem(typename ViewType::EachItemHandler handler);
         bool rEachItem(typename ViewType::EachItemHandler handler);
 
+        void setItemsAlignment(FlyweightListViewAlignment value) noexcept;
+        FlyweightListViewAlignment itemsAlignment() const noexcept;
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
@@ -365,6 +368,8 @@ class FlyweightListView_p : public OrientationInvariant
         JumpEdge* m_jumpEdge;
         QSize m_jumpEdgeOffset;
         size_t m_jumpEdgeInvisibleItemCount;
+
+        FlyweightListViewAlignment m_itemsAlignment;
 };
 
 } // namespace detail

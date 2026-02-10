@@ -70,6 +70,13 @@ struct ComparerWithOrder
     Order order;
 };
 
+enum class FlyweightListViewAlignment : int
+{
+    Center,
+    Begin,
+    End
+};
+
 /**
  * @brief Flyweight list of widgets.
  *
@@ -568,6 +575,9 @@ class FlyweightListView : public QFrame
 
         bool eachItem(EachItemHandler handler);
         bool rEachItem(EachItemHandler handler);
+
+        void setItemsAlignment(FlyweightListViewAlignment value) noexcept;
+        FlyweightListViewAlignment itemsAlignment() const noexcept;
 
     protected:
 

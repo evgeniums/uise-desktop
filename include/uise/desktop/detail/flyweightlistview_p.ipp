@@ -102,7 +102,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_enableJumpEdgeControl(true),
         m_jumpEdge(nullptr),
         m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
-        m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount)
+        m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
+        m_itemsAlignment(FlyweightListViewAlignment::Center)
 {
 }
 
@@ -144,6 +145,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     m_view=new QFrame(middleFrame);
     m_view->setObjectName("uiseFlyweightListViewV");
     hlayout->addWidget(m_view,1);
+    QFrame* paddingFrame=new QFrame(middleFrame);
+    paddingFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    hlayout->addWidget(paddingFrame);
     m_vbar=new QScrollBar(middleFrame);
     m_vbar->setVisible(false);
     hlayout->addWidget(m_vbar);
@@ -440,10 +444,29 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isFlyweightEnabled() c
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 QPoint FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportBegin() const
 {
-    //! @note Using middle point of the llist, so the items must be centered in the view!
-
     QPoint pos;
-    setOProp(pos,OProp::pos,oprop(m_llist,OProp::size,true)/2,true);
+
+    switch (m_itemsAlignment)
+    {
+        case(FlyweightListViewAlignment::Center):
+        {
+            setOProp(pos,OProp::pos,oprop(m_llist,OProp::size,true)/2,true);
+        }
+        break;
+
+        case(FlyweightListViewAlignment::Begin):
+        {
+            setOProp(pos,OProp::pos,0,true);
+        }
+        break;
+
+        case(FlyweightListViewAlignment::End):
+        {
+            setOProp(pos,OProp::pos,oprop(m_llist,OProp::size,true) - 1,true);
+        }
+        break;
+    }
+
     setOProp(pos,OProp::pos,-oprop(m_llist,OProp::pos));
     return pos;
 }
@@ -1225,15 +1248,34 @@ const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::firstViewportI
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 const ItemT* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::lastViewportItem() const
 {
-    //! @note Looking for item in the center of view's end edge, so the items must be centered in the view!
-
     auto edge=oprop(m_view,OProp::size);
     if (edge!=0)
     {
         --edge;
     }
     QPoint viewLastPos;
-    setOProp(viewLastPos,OProp::pos,oprop(m_view,OProp::size,true)/2,true);
+
+    switch (m_itemsAlignment)
+    {
+        case(FlyweightListViewAlignment::Center):
+        {
+            setOProp(viewLastPos,OProp::pos,oprop(m_view,OProp::size,true)/2,true);
+        }
+        break;
+
+        case(FlyweightListViewAlignment::Begin):
+        {
+            setOProp(viewLastPos,OProp::pos,0,true);
+        }
+        break;
+
+        case(FlyweightListViewAlignment::End):
+        {
+            setOProp(viewLastPos,OProp::pos,oprop(m_view,OProp::size,true) - 1,true);
+        }
+        break;
+    }
+
     setOProp(viewLastPos,OProp::pos,edge);
 
     auto listLastViewportPoint=m_llist->mapFromParent(viewLastPos);
@@ -1833,6 +1875,20 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::rEachItem(typename Vie
         }
     }
     return true;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setItemsAlignment(FlyweightListViewAlignment value) noexcept
+{
+    m_itemsAlignment=value;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+FlyweightListViewAlignment FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemsAlignment() const noexcept
+{
+    return m_itemsAlignment;
 }
 
 //--------------------------------------------------------------------------
