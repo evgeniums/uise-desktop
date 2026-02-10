@@ -366,15 +366,14 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         bool withYear=false;
         if (i==0)
         {
-            dateVisible=true;
-            withYear=dt.date().year()!=QDateTime::currentDateTime().date().year();
+            auto current=QDateTime::currentDateTime().date();
+            dateVisible=dt.date()!=current;
+            withYear=dt.date().year()!=current.year();
         }
         else
         {
             auto prevDt=messages[i-1]->msg()->dateTime();
-
             dateVisible=prevDt.date()!=dt.date();
-
             withYear=prevDt.date().year() != dt.date().year();
         }
 

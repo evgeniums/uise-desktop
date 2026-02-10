@@ -651,7 +651,7 @@ void ChatMessage::updateDateTime()
         QLocale locale;
         auto dt=datetime();
         auto tooltip=locale.toString(dt, QLocale::LongFormat);
-        auto time=dt.toString("HH:mm");
+        auto time=locale.toString(dt.time(), QLocale::ShortFormat);
         c->bottom()->setTimeString(time,tooltip);
     }
 }
