@@ -32,12 +32,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/avatar.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/utils/withpathandsize.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class AvatarSource;
 class AvatarWidget;
 
 class AbstractChatMessage;
@@ -388,13 +388,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_alignSent;
         }
 
-        virtual void setAvatarPath(const WithPath& /*path*/) {}
-        virtual WithPath avatarPath() { return WithPath{};}
+        virtual void setAvatarPath(WithPath /*path*/) {}
+        virtual WithPath avatarPath() const { return WithPath{};}
 
         virtual void setAvatarSource(std::shared_ptr<AvatarSource> /*avatarSource*/) {}
-        virtual std::shared_ptr<AvatarSource> avatarSource() {return std::shared_ptr<AvatarSource>{};}
+        virtual std::shared_ptr<AvatarSource> avatarSource() const {return std::shared_ptr<AvatarSource>{};}
 
-        bool isAvatarVisible(bool enable) const noexcept
+        bool isAvatarVisible() const noexcept
         {
             return m_avatarVisible;
         }

@@ -213,6 +213,12 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         int bubbleOuterWidth() const override;
 
+        void setAvatarPath(WithPath path) override;
+        WithPath avatarPath() const override;
+
+        void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource) override;
+        std::shared_ptr<AvatarSource> avatarSource() const override;
+
     protected:
 
         void updateTopSeparator() override;

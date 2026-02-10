@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
+#include <uise/desktop/avatar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/chatmessage.hpp>
 
@@ -442,6 +443,9 @@ class ChatMessage_p
         QBoxLayout* mainLayout;
 
         QFrame* avatarFrame;
+        AvatarWidget* avatar;
+        QBoxLayout* avatarLayout;
+
         ChatMessageContentWrapper* contentFrame;
         QBoxLayout* contentLayout;
 
@@ -498,6 +502,12 @@ void ChatMessage::construct()
     pimpl->avatarFrame=new QFrame(pimpl->main);
     pimpl->avatarFrame->setObjectName("avatarFrame");
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+
+    pimpl->avatarLayout=Layout::vertical(pimpl->avatarFrame);
+    pimpl->avatar=new AvatarWidget(pimpl->avatarFrame);
+    pimpl->avatar->setVisible(false);
+    pimpl->avatar->setObjectName("senderAvatar");
+    pimpl->avatarLayout->addWidget(pimpl->avatar);
 
     pimpl->contentFrame=new ChatMessageContentWrapper(pimpl->main);
 
@@ -628,7 +638,7 @@ void ChatMessage::mousePressEvent(QMouseEvent* event)
 
 void ChatMessage::updateAvatarVisible()
 {
-
+    pimpl->avatar->setVisible(isAvatarVisible());
 }
 
 //--------------------------------------------------------------------------
@@ -662,6 +672,34 @@ int ChatMessage::bubbleOuterWidth() const
     }
 
     return w;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::setAvatarPath(WithPath path)
+{
+    pimpl->avatar->setAvatarPath(std::move(path));
+}
+
+//--------------------------------------------------------------------------
+
+WithPath ChatMessage::avatarPath() const
+{
+    return pimpl->avatar->avatarPath();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::setAvatarSource(std::shared_ptr<AvatarSource> avatarSource)
+{
+    pimpl->avatar->setAvatarSource(std::move(avatarSource));
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
+{
+    return pimpl->avatar->avatarSource();
 }
 
 /***************************ChatMessageSelector***************************/
