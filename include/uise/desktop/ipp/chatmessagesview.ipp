@@ -279,6 +279,10 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
 
     // update messages' widths
     auto msg=m_listView->firstViewportItem();
+    if (msg==nullptr)
+    {
+        msg=m_listView->lastViewportItem();
+    }
     if (msg!=nullptr)
     {
         m_messageBubbleOuterWidth=msg->widget()->bubbleOuterWidth();

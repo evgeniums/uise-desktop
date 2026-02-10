@@ -394,13 +394,6 @@ void ChatMessageContentWrapper::setContent(AbstractChatMessageContent* content)
     m_content->move(0,0);
     m_content->installEventFilter(this);
     updateGeometry();
-    // m_timer->shot(
-    //     1,
-    //     [this]()
-    //     {
-    //         updateGeometry();
-    //     }
-    // );
 }
 
 //--------------------------------------------------------------------------
