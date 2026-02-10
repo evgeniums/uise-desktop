@@ -25,7 +25,7 @@ uise--AbstractChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
 
-uise--AbstractChatMessagesView {
+uise--AbstractChatMessagesView #uiseFlyweightListViewV{
 max-width: 1000px;
 }
 

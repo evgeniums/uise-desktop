@@ -734,6 +734,7 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     Style::updateWidgetStyle(message->ui());
     m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
     m_messageMinWidth=message->ui()->minimumWidth();
+    m_messageMaxWidth=message->ui()->maximumWidth();
 
     // done
     return message;
@@ -826,10 +827,14 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMesssageSize(Message* msg)
 template <typename BaseMessageT,typename Traits>
 int ChatMessagesView<BaseMessageT,Traits>::messageContentWidth() const
 {
-    auto w=width() - horizontalTotalMargin(this) - m_messageBubbleOuterWidth;
+    auto w=m_listView->viewportSize().width() - horizontalTotalMargin(this) - m_messageBubbleOuterWidth;
     if (w<m_messageMinWidth)
     {
         w=m_messageMinWidth;
+    }
+    else if (w>m_messageMaxWidth)
+    {
+        w=m_messageMaxWidth;
     }
     return w;
 }

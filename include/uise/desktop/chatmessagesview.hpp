@@ -224,7 +224,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         std::optional<bool> m_mouseMoveUp;
 
         int m_messageBubbleOuterWidth=0;
-        int m_messageMinWidth=QWIDGETSIZE_MAX;
+        int m_messageMinWidth=0;
+        int m_messageMaxWidth=QWIDGETSIZE_MAX;
 
     private:
 
