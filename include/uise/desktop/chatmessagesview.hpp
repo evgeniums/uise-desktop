@@ -223,6 +223,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         std::map<Id,Data> m_selectedMessages;
         std::optional<bool> m_mouseMoveUp;
 
+        int m_messageBubbleOuterWidth=0;
+        int m_messageMinWidth=QWIDGETSIZE_MAX;
+
     private:
 
         Message* makeMessage(const Data& data);
@@ -241,11 +244,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         void onMessageClicked(const Id& id);
 
         void adjustMessagesSizes(std::vector<Message*>* messages=nullptr);
-        int messageContentWidth(std::vector<Message*>* messages=nullptr) const;
+        int messageContentWidth() const;
         int defaultMessageContentWidth() const;
         void adjustMesssageSize(Message* msg);
-
-        int effectiveWidth() const;
 };
 
 UISE_DESKTOP_NAMESPACE_END

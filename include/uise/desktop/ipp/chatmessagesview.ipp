@@ -277,6 +277,12 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
         m_mouseMoveUp.reset();
     }
 
+    // update messages' widths
+    auto msg=m_listView->firstViewportItem();
+    if (msg!=nullptr)
+    {
+        m_messageBubbleOuterWidth=msg->widget()->bubbleOuterWidth();
+    }
     adjustMessagesSizes();
 }
 
@@ -709,13 +715,23 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseReleaseEvent(QMouseEvent* event
 template <typename BaseMessageT,typename Traits>
 ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
+    // make message
     auto message=m_messageBuilder(data,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");
+
+    // set selection mode
     if (isSelectionMode())
     {
         message->ui()->setSelectionMode(true);
         replaceSelectedData(message);
-    }
+    }    
+
+    // keep message widths assuming that all messages have the same minimum and outer bubble width
+    Style::updateWidgetStyle(message->ui());
+    m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
+    m_messageMinWidth=message->ui()->minimumWidth();
+
+    // done
     return message;
 }
 
@@ -771,21 +787,24 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Message*>* messages)
 {
-    auto maxWidth=messageContentWidth(messages);
-
-    auto handler=[maxWidth](const auto* item)
+    if (messages==nullptr)
     {
-        item->widget()->content()->updateBubbleWidth(maxWidth);
-        return true;
-    };
-
-    m_listView->eachItem(handler);
-
-    if (messages!=nullptr)
-    {
-        for (auto& msg : *messages)
+        auto maxWidth=messageContentWidth();
+        auto handler=[maxWidth](const auto* item)
         {
-            handler(msg);
+            item->widget()->content()->updateBubbleWidth(maxWidth);
+            return true;
+        };
+        m_listView->eachItem(handler);
+    }
+    else
+    {
+        if (messages!=nullptr)
+        {
+            for (auto& msg : *messages)
+            {
+                adjustMesssageSize(msg);
+            }
         }
     }
 }
@@ -795,73 +814,19 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Mess
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMesssageSize(Message* msg)
 {
-    msg->ui()->content()->updateBubbleWidth(effectiveWidth());
+    msg->ui()->content()->updateBubbleWidth(messageContentWidth());
 }
 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-int ChatMessagesView<BaseMessageT,Traits>::messageContentWidth(std::vector<Message*>* messages) const
+int ChatMessagesView<BaseMessageT,Traits>::messageContentWidth() const
 {
-    int maxBubbleWidthHint=0;
-    int maxAvatarWidth=0;
-    int maxSelectorWidth=0;
-    int minW=0;
-#if 0
-    int minW=QWIDGETSIZE_MAX;
-    auto handler=[
-       &maxAvatarWidth,
-       &maxSelectorWidth,
-       &minW
-    ]
-    (const auto* item)
+    auto w=width() - horizontalTotalMargin(this) - m_messageBubbleOuterWidth;
+    if (w<m_messageMinWidth)
     {
-        auto itemAwvatarWidth=item->widget()->avatarWidth();
-        if (itemAwvatarWidth>maxAvatarWidth)
-        {
-            maxAvatarWidth=itemAwvatarWidth;
-        }
-
-        auto itemSelectorWidth=item->widget()->selectorWidth();
-        if (itemSelectorWidth>maxSelectorWidth)
-        {
-            maxSelectorWidth=itemSelectorWidth;
-        }
-
-        auto itemMinWidth=item->widget()->minimumWidth();
-        if (itemMinWidth<minW)
-        {
-            minW=itemMinWidth;
-        }
-
-        return true;
-    };
-
-    if (messages!=nullptr)
-    {
-        for (auto& msg : *messages)
-        {
-            handler(msg);
-        }
+        w=m_messageMinWidth;
     }
-    m_listView->eachItem(handler);
-#endif
-    auto cm=contentsMargins();
-    auto w=width() - maxAvatarWidth - maxSelectorWidth - cm.left() - cm.right();
-    if (w<minW)
-    {
-        w=minW;
-    }
-    return w;
-}
-
-//--------------------------------------------------------------------------
-
-template <typename BaseMessageT,typename Traits>
-int ChatMessagesView<BaseMessageT,Traits>::effectiveWidth() const
-{
-    auto cm=contentsMargins();
-    auto w=width() - cm.left() - cm.right();
     return w;
 }
 

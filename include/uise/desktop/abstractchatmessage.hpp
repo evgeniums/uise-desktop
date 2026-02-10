@@ -248,23 +248,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
 };
 
-inline int horizontalTotalMargin(const QFrame* frame)
-{
-    QMargins margins = frame->contentsMargins();
-    return margins.left()+margins.right();
-}
-
-inline int horizontalTotalPadding(const QFrame* frame)
-{
-    QRect fullRect = frame->rect();
-    QRect contentRect = frame->contentsRect();
-
-    int paddingLeft = contentRect.left() - fullRect.left();
-    int paddingRight = contentRect.right() - fullRect.right();
-
-    return paddingLeft+paddingRight;
-}
-
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
 {
     Q_OBJECT
@@ -480,8 +463,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_selectorPositionLeft;
         }
 
-        virtual int avatarWidth() const =0;
-        virtual int selectorWidth() const =0;
+        virtual int bubbleOuterWidth() const =0;
 
     public slots:
 

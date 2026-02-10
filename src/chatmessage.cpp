@@ -80,7 +80,7 @@ void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
 void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 {
 #if 0
-    UNCOMMENTED_QDEBUG << "AbstractChatMessageContent::updateBubbleWidth "
+    qDebug() << "AbstractChatMessageContent::updateBubbleWidth "
                        << " margin="<<horizontalTotalMargin(this)
                        << " padding="<<horizontalTotalPadding(this)
                        << " width()="<<width()
@@ -638,11 +638,6 @@ void ChatMessage::updateAvatarVisible()
 void ChatMessage::updateDateTime()
 {
     auto c=content();
-    if (!c)
-    {
-        c=preContent();
-    }
-
     if (c && c->bottom())
     {
         QLocale locale;
@@ -655,25 +650,20 @@ void ChatMessage::updateDateTime()
 
 //--------------------------------------------------------------------------
 
-int ChatMessage::avatarWidth() const
+int ChatMessage::bubbleOuterWidth() const
 {
-    if (!pimpl->avatarFrame->isVisible())
+    auto w=horizontalTotalMargin(this);
+
+    if (pimpl->avatarFrame->isVisible())
     {
-        return 0;
+        w+=pimpl->avatarFrame->minimumWidth();
     }
-    return pimpl->avatarFrame->width();
-}
-
-//--------------------------------------------------------------------------
-
-int ChatMessage::selectorWidth() const
-{
-    if (!pimpl->selector->isVisible())
+    if (pimpl->selector->isVisible())
     {
-        return 0;
+        w+=pimpl->selector->minimumWidth();
     }
 
-    return pimpl->selector->width();
+    return w;
 }
 
 /***************************ChatMessageSelector***************************/
@@ -813,7 +803,7 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     }
 
 #if 0
-    UNCOMMENTED_QDEBUG << "ChatMessageBottom::bubbleWidthHint"
+    qDebug() << "ChatMessageBottom::bubbleWidthHint"
                           <<" forMaxWidth="<<forMaxWidth
                           <<" bodyHW="<<bodyHW
                           <<" AbstractChatMessageBottom::sizeHint().width()="<<AbstractChatMessageBottom::sizeHint().width()

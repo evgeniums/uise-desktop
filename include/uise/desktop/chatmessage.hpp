@@ -211,8 +211,7 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         ChatMessage(ChatMessage&&)=delete;
         ChatMessage& operator=(ChatMessage&&)=delete;
 
-        int avatarWidth() const override;
-        int selectorWidth() const override;
+        int bubbleOuterWidth() const override;
 
     protected:
 

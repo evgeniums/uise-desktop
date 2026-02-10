@@ -76,6 +76,12 @@ class UISE_DESKTOP_EXPORT WidgetQFrame : public Frame,
         }
 };
 
+inline int horizontalTotalMargin(const QFrame* frame)
+{
+    QMargins margins = frame->contentsMargins();
+    return margins.left()+margins.right();
+}
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_FRAME_HPP
