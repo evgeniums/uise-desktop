@@ -29,12 +29,12 @@ border:none;
 }
 
 uise--HTreeTab #closeWarnFrame {
-border: 2px solid #999999;
-background-color: rgba(170,170,170,70);
+border: 2px solid #FB9B8F;
+background-color: transparent;
 }
 
 uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{
-background-color:#E0E0E0;
+background-color:#FB9B8F;
 }
 
 uise--HTreeTab {

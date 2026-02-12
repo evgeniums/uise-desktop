@@ -64,8 +64,8 @@
             "name" : "HTreeTabCloseWarn",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" },
-                    "on" : { "currentColor" : "#444444" }
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
                 }
             }
         }
