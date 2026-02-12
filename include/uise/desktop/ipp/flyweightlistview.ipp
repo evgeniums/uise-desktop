@@ -499,7 +499,7 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::eventFilter(QObject *wat
 {
     if (watched==pimpl->m_view && event->type()==QEvent::Resize)
     {
-        auto e=dynamic_cast<QResizeEvent*>(event);
+        auto e=static_cast<QResizeEvent*>(event);
         pimpl->onViewportResized(e);
     }
 
