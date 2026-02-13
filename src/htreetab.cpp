@@ -370,27 +370,42 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
             auto node=pimpl->nodes[index];
             if (node!=nullptr)
             {
-                pimpl->navbar->blockSignals(true);
-                pimpl->navbar->setItemChecked(index,true);
-                pimpl->navbar->blockSignals(false);
-
-                if (pimpl->tree->expandableLastDepthOnNodeOpen()==0)
+                if (checked)
                 {
-                    node->setExpanded(true);
-                }
-                else
-                {
-                    auto next=node->nextNode();
-                    if (next!=nullptr)
-                    {
-                        next->expandParentNode();
-                    }
-                    else
+                    if (pimpl->tree->expandableLastDepthOnNodeOpen()==0)
                     {
                         node->setExpanded(true);
                     }
+                    else
+                    {
+                        auto next=node->nextNode();
+                        if (next!=nullptr)
+                        {
+                            QTimer::singleShot(
+                            10,
+                            this,
+                            [next=QPointer<HTreeNode>{next}]()
+                            {
+                                if (next)
+                                {
+                                    next->expandParentNode();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            node->setExpanded(true);
+                        }
+                    }
                 }
-                scrollToNode(node);
+                else
+                {
+                    pimpl->navbar->blockSignals(true);
+                    pimpl->navbar->setItemChecked(index,true);
+                    pimpl->navbar->blockSignals(false);
+
+                    scrollToNode(node);
+                }
             }
         }
     );

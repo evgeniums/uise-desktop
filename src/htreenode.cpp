@@ -541,12 +541,14 @@ void HTreeNode::collapseNode()
         return;
     }
 
+#if 0
     if (!isExclusivelyExpandable())
     {
         pimpl->prevMinWidth=minimumWidth();
         destroyWidget(pimpl->widget);
         pimpl->loaded=false;
     }
+#endif
 
     pimpl->expanded=false;    
     pimpl->mainFrame->setVisible(false);
@@ -989,26 +991,26 @@ void HTreeNode::init()
 
 void HTreeNode::expandParentNode()
 {
-    if (treeTab()->tree()->expandableLastDepthOnNodeOpen()!=0)
-    {
-        int count=0;
-        auto next=nextNode();
-        while (next!=nullptr)
-        {
-            if (count >= treeTab()->tree()->expandableLastDepthOnNodeOpen())
-            {
-                next->closeNode();
-                break;
-            }
+   if (treeTab()->tree()->expandableLastDepthOnNodeOpen()!=0)
+   {
+       int count=0;
+       auto next=parentNode();
+       while (next!=nullptr)
+       {
+           if (count >= treeTab()->tree()->expandableLastDepthOnNodeOpen())
+           {
+               next->closeNode();
+               break;
+           }
 
-            ++count;
-            next=nextNode();
-        }
-    }
-    if (parentNode())
-    {
-        parentNode()->setExpanded(true);
-    }
+           ++count;
+           next=next->nextNode();
+       }
+   }
+   if (parentNode())
+   {
+       parentNode()->setExpanded(true);
+   }
 }
 
 //--------------------------------------------------------------------------
