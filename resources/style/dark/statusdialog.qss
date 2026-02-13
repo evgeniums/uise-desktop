@@ -4,7 +4,6 @@ color: #F0F0F0;
 
 uise--StatusDialog #dialogFrame #text[status="attention"],
 uise--StatusDialog #dialogFrame #text[status="warning"] {
-color: #eae2b7;
 }
 
 uise--StatusDialog #dialogFrame #text[status="error"] {
