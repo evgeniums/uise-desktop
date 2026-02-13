@@ -83,9 +83,6 @@ QSize ChatMessageTextBrowser::sizeHint() const
         QSizeF docSize = document()->size();
         int height = static_cast<int>(docSize.height() + 2 * frameWidth());
         int width = static_cast<int>(document()->idealWidth() + 2 * frameWidth());
-#if 0
-        UNCOMMENTED_QDEBUG << "ChatMessageTextBrowser::sizeHint() " << QSize{width,height};
-#endif
         return QSize{width,height};
     }
 
