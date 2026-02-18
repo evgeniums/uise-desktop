@@ -357,6 +357,18 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     connect(pimpl->nodeDestroyedMapper,&QSignalMapper::mappedInt,this,
         [this](int index)
         {
+            if (index>=pimpl->tree->expandableLastDepthOnNodeOpen())
+            {
+                int i=index-pimpl->tree->expandableLastDepthOnNodeOpen();
+                if (i<0)
+                {
+                    i=0;
+                }
+                for (;i<index;i++)
+                {
+                    pimpl->nodes[i]->expandNode();
+                }
+            }
             pimpl->truncate(index+1);
         }
     );
@@ -728,6 +740,19 @@ void HTreeTab::closeNode(HTreeNode* node)
     }
 
     int index=node->path().elements().size()-1;
+    if (index>=pimpl->tree->expandableLastDepthOnNodeOpen())
+    {
+        int i=index-pimpl->tree->expandableLastDepthOnNodeOpen();
+        if (i<0)
+        {
+            i=0;
+        }
+        for (;i<index;i++)
+        {
+            pimpl->nodes[i]->setExpanded(true);
+        }
+    }
+
     pimpl->truncate(index);
 }
 
