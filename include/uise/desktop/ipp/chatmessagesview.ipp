@@ -541,12 +541,12 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::doInsertMessage(const Data& dbItem)
 {
     auto message=makeMessage(dbItem);
+    adjustMesssageSize(message);
     if (m_listView->maxSortValue() < message->msg()->sortValue())
     {
         m_listView->setMaxSortValue(message->msg()->sortValue());
     }
-    m_listView->insertItem(message);
-    adjustMesssageSize(message);
+    m_listView->insertItem(message);    
 }
 
 //--------------------------------------------------------------------------
@@ -734,10 +734,13 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     }    
 
     // keep message widths assuming that all messages have the same minimum and outer bubble width
-    Style::updateWidgetStyle(message->ui());
-    m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
-    m_messageMinWidth=message->ui()->minimumWidth();
-    m_messageMaxWidth=message->ui()->maximumWidth();
+    if (m_messageBubbleOuterWidth==0)
+    {
+        Style::updateWidgetStyle(message->ui());
+        m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
+        m_messageMinWidth=message->ui()->minimumWidth();
+        m_messageMaxWidth=message->ui()->maximumWidth();
+    }
 
     // done
     return message;
