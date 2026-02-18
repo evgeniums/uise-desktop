@@ -68,8 +68,10 @@ class HTreeTab_p
         std::vector<HTreeNode*> nodes;
         SingleShotTimer* scrolTimer;
 
+        bool closeWarnDisable=false;
         QFrame* closeWarnFrame;
         SingleShotTimer* closeWarnTimer;
+        SingleShotTimer* closeWarnDisableTimer;
 
         ~HTreeTab_p()
         {
@@ -492,6 +494,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     cwL->addWidget(closeWarnButton,0,Qt::AlignLeft);
     cwL->addStretch(1);
     pimpl->closeWarnTimer=new SingleShotTimer(this);
+    pimpl->closeWarnDisableTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -733,6 +736,16 @@ NavigationBar* HTreeTab::navbar() const
 void HTreeTab::closeNode(HTreeNode* node)
 {
     pimpl->closeWarnFrame->setVisible(false);
+    pimpl->closeWarnDisable=true;
+
+    pimpl->closeWarnDisableTimer->shot(
+        1000,
+        [this]()
+        {
+            pimpl->closeWarnDisable=false;
+        },
+        true
+    );
 
     if(node==nullptr)
     {
@@ -761,6 +774,15 @@ void HTreeTab::closeNode(HTreeNode* node)
 void HTreeTab::truncate(int index)
 {
     pimpl->closeWarnFrame->setVisible(false);
+    pimpl->closeWarnDisableTimer->shot(
+        1000,
+        [this]()
+        {
+            pimpl->closeWarnDisable=false;
+        },
+        true
+    );
+
     pimpl->truncate(index);
 }
 
@@ -797,6 +819,11 @@ void HTreeTab::adjustWidthsAndPositions()
 
 void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
 {
+    if (pimpl->closeWarnDisable)
+    {
+        return;
+    }
+
     pimpl->closeWarnTimer->clear();
     if (node==nullptr)
     {
