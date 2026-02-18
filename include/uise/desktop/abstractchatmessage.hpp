@@ -232,6 +232,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
     public:
 
         using ChatMessageContentSection::ChatMessageContentSection;
+
+        virtual QString selectedText() const {return QString{};}
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
@@ -464,6 +466,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         }
 
         virtual int bubbleOuterWidth() const =0;
+
+        virtual QString selectedText() const {return QString{};}
 
     public slots:
 

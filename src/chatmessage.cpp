@@ -702,6 +702,17 @@ std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
     return pimpl->avatar->avatarSource();
 }
 
+//--------------------------------------------------------------------------
+
+QString ChatMessage::selectedText() const
+{
+    if (content() && content()->body())
+    {
+        return content()->body()->selectedText();
+    }
+    return QString{};
+}
+
 /***************************ChatMessageSelector***************************/
 
 ChatMessageSelector::ChatMessageSelector(QWidget* parent) : AbstractChatMessageSelector(parent)

@@ -209,6 +209,7 @@ class ChatMessagesView : public AbstractChatMessagesView
         void mouseReleaseEvent(QMouseEvent* event) override;
 
         void resizeEvent(QResizeEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
 
     private:
 

@@ -49,21 +49,23 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 
     Style::updateWidgetStyle(this);
 
-    // connect(this,
-    //     &QTextBrowser::textChanged,
-    //     this,
-    //     [this]()
-    //     {
-    //         QTimer::singleShot(
-    //             0,
-    //             this,
-    //             [this]()
-    //             {
-    //                 updateSize();
-    //             }
-    //         );
-    //     }
-    // );
+#if 0
+    connect(this,
+        &QTextBrowser::textChanged,
+        this,
+        [this]()
+        {
+            QTimer::singleShot(
+                0,
+                this,
+                [this]()
+                {
+                    updateSize();
+                }
+            );
+        }
+    );
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -251,6 +253,14 @@ void ChatMessageText::updateMaximumBubbleWidth()
     auto wrapWidth=chatContent()->maximumBubbleWidth();
     pimpl->text->setLineWrapColumnOrWidth(wrapWidth);
     pimpl->text->updateSize();
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageText::selectedText() const
+{
+    auto text=pimpl->text->textCursor().selectedText();
+    return text;
 }
 
 //--------------------------------------------------------------------------

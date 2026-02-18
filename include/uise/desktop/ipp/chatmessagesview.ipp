@@ -26,7 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
-#include <QPushButton>
+#include <QClipboard>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
@@ -853,6 +853,43 @@ int ChatMessagesView<BaseMessageT,Traits>::messageContentWidth() const
         w=m_messageMaxWidth;
     }
     return w;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::keyPressEvent(QKeyEvent* event)
+{
+    if (event->matches(QKeySequence::Copy))
+    {
+        if (isSelectionMode())
+        {
+            //! @todo collect copy text from selected messages
+        }
+        else
+        {
+            QString selectedText;
+            bool noneSelected=m_listView->eachItem(
+                [&selectedText](const auto* item)
+                {
+                    selectedText=item->item()->ui()->selectedText();
+                    return selectedText.isEmpty();
+                }
+            );
+
+            if (!selectedText.isEmpty())
+            {
+                QClipboard *clipboard = QGuiApplication::clipboard();
+                if (clipboard!=nullptr)
+                {
+                    clipboard->setText(selectedText);
+                }
+            }
+        }
+
+        event->ignore();
+    }
+    return AbstractChatMessagesView::keyPressEvent(event);
 }
 
 //--------------------------------------------------------------------------

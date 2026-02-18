@@ -219,6 +219,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource) override;
         std::shared_ptr<AvatarSource> avatarSource() const override;
 
+        QString selectedText() const override;
+
     protected:
 
         void updateTopSeparator() override;

@@ -95,6 +95,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         void updateMaximumBubbleWidth() override;
 
+        QString selectedText() const override;
+
     protected:
 
         void updateChatMessage() override;
