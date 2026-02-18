@@ -35,7 +35,7 @@ max-width: 40px;
 }
 
 uise--AbstractChatMessageBottom {
-min-width: 50px;
+min-width: 90px;
 }
 
 uise--AbstractChatMessage {
