@@ -76,7 +76,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_atBegin(true),
         m_atEnd(true),
         m_firstWidgetPos(0),
-        m_singleStep(1),
+        m_singleStep(10),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_wheelOffsetAccumulated(0.0f),
