@@ -86,9 +86,11 @@ class UISE_DESKTOP_EXPORT LineEdit : public QLineEdit
         void focusOutEvent(QFocusEvent* event) override;
         void showEvent(QShowEvent* event) override;
 
+        bool eventFilter(QObject *obj, QEvent *event) override;
+
     private:
 
-        void updateIcons(bool hovered);        
+        void updateIcons(bool hovered);
 
         std::vector<ActionWithSvgIcon> m_actions;
         bool m_parentHovered=false;

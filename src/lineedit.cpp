@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QFocusEvent>
+
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -145,6 +147,8 @@ void LineEdit::addPushButton(PushButton* button, QLineEdit::ActionPosition posit
     );
     button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     button->setCursor(Qt::ArrowCursor);
+    button->qPushButton()->installEventFilter(this);
+    button->setFocusPolicy(Qt::NoFocus);
 }
 
 //--------------------------------------------------------------------------
@@ -224,8 +228,34 @@ void LineEdit::resetHover()
 
 void LineEdit::focusOutEvent(QFocusEvent* event)
 {
-    QLineEdit::focusOutEvent(event);
     resetHover();
+    QLineEdit::focusOutEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+bool LineEdit::eventFilter(QObject *object, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonPress)
+    {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton)
+        {
+            auto b=qobject_cast<QPushButton*>(object);
+            if (b)
+            {
+                static bool isProcessing = false;
+                if (!isProcessing)
+                {
+                    isProcessing=true;
+                    b->click();
+                    isProcessing=false;
+                }
+                return true;
+            }
+        }
+    }
+    return QObject::eventFilter(object, event);
 }
 
 //--------------------------------------------------------------------------
