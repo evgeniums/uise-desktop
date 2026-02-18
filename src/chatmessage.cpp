@@ -839,7 +839,7 @@ QSize ChatMessageBottom::sizeHint() const
 int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
 {
     auto bodyHW=chatContent()->body()->bubbleWidthHint(forMaxWidth);
-    auto wHint=bodyHW+AbstractChatMessageBottom::sizeHint().width();
+    auto wHint=bodyHW+AbstractChatMessageBottom::sizeHint().width()+10;
     if (wHint>forMaxWidth)
     {
         wHint=forMaxWidth;
