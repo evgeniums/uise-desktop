@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <filesystem>
 
 #include <QSize>
+#include <QVariant>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -151,9 +152,41 @@ class WithPath
             }
         }
 
+        void setData(QVariant data)
+        {
+            m_data=std::move(data);
+        }
+
+        QVariant data() const
+        {
+            return m_data;
+        }
+
+        QVariantMap dataMap() const
+        {
+            if (!m_data.isNull() && m_data.metaType().id()==QMetaType::QVariantMap)
+            {
+                return m_data.toMap();
+            }
+            return QVariantMap{};
+        }
+
+        void setData(const QString& key, const QVariant& value)
+        {
+            auto m=dataMap();
+            m.insert(key,value);
+            setData(m);
+        }
+
+        QVariant data(const QString& key,const QVariant& defaultValue={}) const
+        {
+            return dataMap().value(key);
+        }
+
     private:
 
         std::vector<std::string> m_path;
+        QVariant m_data;
 };
 
 class WithPathAndSize : public WithPath
