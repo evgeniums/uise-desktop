@@ -94,5 +94,6 @@
         <file>tabler-icons/filled/phone.svg</file>
         <file>tabler-icons/outline/send.svg</file>
         <file>tabler-icons/outline/send-2.svg</file>
+        <file>tabler-icons/outline/user-share.svg</file>
     </qresource>
 </RCC>
