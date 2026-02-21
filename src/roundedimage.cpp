@@ -159,7 +159,7 @@ void RoundedImage::createPixmapConsumer()
     qDebug() << "RoundedImage::createPixmapConsumer() create new consumer m_size="<<m_size
         << " path=" << toWithPath().toString() << " " << printCurrentDateTime();
 #endif
-    m_pixmapConsumer=new PixmapConsumer(path(),m_size,this);
+    m_pixmapConsumer=new PixmapConsumer(toWithPath(),m_size,this);
     m_pixmapConsumer->setPixmapSource(m_imageSource);
     connect(
         m_pixmapConsumer,
