@@ -41,7 +41,44 @@ class WithPath
 {
     public:
 
-        WithPath()=default;
+        WithPath()
+        {}
+
+        ~WithPath()=default;
+
+        WithPath(WithPath&& other) :
+            m_path(std::move(other.m_path)),
+            m_data(std::move(other.m_data))
+        {}
+
+        WithPath(const WithPath& other) :
+            m_path(other.m_path),
+            m_data(other.m_data)
+        {}
+
+        WithPath& operator =(WithPath&& other)
+        {
+            if (&other==this)
+            {
+                return *this;
+            }
+
+            m_path=std::move(other.m_path);
+            m_data=std::move(other.m_data);
+            return *this;
+        }
+
+        WithPath& operator =(const WithPath& other)
+        {
+            if (&other==this)
+            {
+                return *this;
+            }
+
+            m_path=other.m_path;
+            m_data=other.m_data;
+            return *this;
+        }
 
         WithPath(std::string plainPath)
             : m_path({std::move(plainPath)})
@@ -79,7 +116,7 @@ class WithPath
 
         void setPath(WithPath path)
         {
-            m_path=path.path();
+            *this=std::move(path);
         }
 
         bool operator <(const WithPath& other) const noexcept
@@ -100,11 +137,6 @@ class WithPath
         bool isPathEmpty() const
         {
             return empty();
-        }
-
-        operator std::vector<std::string>() const
-        {
-            return m_path;
         }
 
         void clear()
@@ -175,6 +207,13 @@ class WithPath
         {
             auto m=dataMap();
             m.insert(key,value);
+            setData(m);
+        }
+
+        void removeData(const QString& key)
+        {
+            auto m=dataMap();
+            m.remove(key);
             setData(m);
         }
 
