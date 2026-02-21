@@ -105,7 +105,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         const auto& avatarPath() const noexcept
         {
-            return path();
+            return toWithPath();
         }
 
         void setBasePixmap(const QPixmap& pixmap)
