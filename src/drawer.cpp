@@ -432,6 +432,8 @@ FrameWithDrawer::FrameWithDrawer(QWidget* parent)
 {
     pimpl->drawer=new Drawer(this);
     pimpl->drawer->setVisible(false);
+
+    qApp->installEventFilter(this);
 }
 
 //--------------------------------------------------------------------------
@@ -524,6 +526,21 @@ void FrameWithDrawer::resizeEvent(QResizeEvent *event)
     auto margins=contentsMargins();
     pimpl->drawer->resize(width()-margins.left()-margins.right(),height()-margins.top()-margins.bottom());
     pimpl->drawer->move(margins.left(),margins.top());
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithDrawer::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::MouseButtonPress && isDrawerVisible())
+    {
+        if (!pimpl->drawer->underMouse())
+        {
+            closeDrawer();
+        }
+    }
+
+    return QObject::eventFilter(obj, event);
 }
 
 //--------------------------------------------------------------------------
