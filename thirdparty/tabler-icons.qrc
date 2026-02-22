@@ -95,5 +95,6 @@
         <file>tabler-icons/outline/send.svg</file>
         <file>tabler-icons/outline/send-2.svg</file>
         <file>tabler-icons/outline/user-share.svg</file>
+        <file>tabler-icons/outline/calendar-event.svg</file>
     </qresource>
 </RCC>

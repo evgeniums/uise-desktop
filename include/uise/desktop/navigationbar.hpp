@@ -171,6 +171,8 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         NavigationBar& operator=(const NavigationBar&)=delete;
         NavigationBar& operator=(NavigationBar&&)=delete;
 
+        void addLeadingWidget(QWidget* widget);
+
         /**
          * @brief Add item to the bar.
          * @param name Item name.

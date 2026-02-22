@@ -201,6 +201,9 @@ class NavigationBar_p
 
         QString checkedSepTooltip;
         QString uncheckedSepTooltip;
+
+        QFrame* leftFrame=nullptr;
+        QBoxLayout* leftFrameLayout=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -287,6 +290,12 @@ NavigationBar::NavigationBar(QWidget* parent)
         pimpl->scArea->viewport()->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     }
 
+    pimpl->leftFrame=new QFrame(pimpl->panel);
+    pimpl->leftFrame->setObjectName("leftFrame");
+    pimpl->layout->addWidget(pimpl->leftFrame,0,Qt::AlignLeft);
+    pimpl->leftFrameLayout=Layout::horizontal(pimpl->leftFrame);
+    pimpl->leftFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+
     pimpl->layout->addStretch(1);
 
     pimpl->scrollTimer=new SingleShotTimer(this);
@@ -317,7 +326,7 @@ void  NavigationBar::showEvent(QShowEvent* event)
 
 void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id)
 {
-    if (pimpl->layout->count()>1)
+    if (pimpl->layout->count()>2)
     {
         delete pimpl->layout->takeAt(pimpl->layout->count()-1);
     }
@@ -676,6 +685,13 @@ void NavigationBar::setItemHoveringCursor(const Qt::CursorShape& cursor) noexcep
 Qt::CursorShape NavigationBar::itemHoveringCursor() const noexcept
 {
     return pimpl->hoveringCursor;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::addLeadingWidget(QWidget* widget)
+{
+    pimpl->leftFrameLayout->addWidget(widget);
 }
 
 //--------------------------------------------------------------------------
