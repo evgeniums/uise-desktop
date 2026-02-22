@@ -292,9 +292,9 @@ NavigationBar::NavigationBar(QWidget* parent)
 
     pimpl->leftFrame=new QFrame(pimpl->panel);
     pimpl->leftFrame->setObjectName("leftFrame");
-    pimpl->layout->addWidget(pimpl->leftFrame,0,Qt::AlignLeft);
+    pimpl->layout->addWidget(pimpl->leftFrame,0,Qt::AlignLeft | Qt::AlignVCenter);
     pimpl->leftFrameLayout=Layout::horizontal(pimpl->leftFrame);
-    pimpl->leftFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+    pimpl->leftFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     pimpl->layout->addStretch(1);
 
