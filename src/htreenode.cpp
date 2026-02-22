@@ -511,6 +511,8 @@ void HTreeNode::setNodeIcon(const QIcon& val)
 
 void HTreeNode::setContentWidget(QWidget* widget)
 {
+    destroyWidget(pimpl->widget);
+
     pimpl->widget=widget;
     pimpl->layout->addWidget(widget);
 
