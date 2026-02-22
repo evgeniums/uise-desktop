@@ -819,6 +819,9 @@ void HTreeTab::adjustWidthsAndPositions()
 
 void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
 {
+//! @todo Configure close frame display
+#if 0
+
     if (pimpl->closeWarnDisable)
     {
         return;
@@ -879,6 +882,7 @@ void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
             }
         );
     }
+#endif
 }
 
 //--------------------------------------------------------------------------
