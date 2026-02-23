@@ -35,10 +35,10 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-static const char* ColorPallette[]={"#ffbe0b","#fb5607","#ff006e","#8338ec","#3a86ff",
-                                    "#00a6fb", "#006494", "ef476f", "#006d77", "#e36414",
-                                    "#2a9d8f", "#fa9500", "#390099", "#ce4257", "#52796f",
-                                    "#0077b6"
+static const char* ColorPallette[]={"#fb5607","#ff006e","#8338ec","#3a86ff",
+                                    "#00a6fb", "#006494", "ef476f", "#006d77",
+                                    "#e36414","#2a9d8f", "#fa9500", "#390099",
+                                      "#ce4257", "#52796f","#0077b6", "#519A66"
                                     };
 
 /********************* AvatarBackgroundGenerator ********************/
@@ -122,7 +122,9 @@ void Avatar::updateProducers(bool forBasePixmap, bool nameData)
         return;
     }
 
-    // qDebug() << "Avatar::updateProducers() " << toString() << printCurrentDateTime();
+#if 0
+    qDebug() << "Avatar::updateProducers() " << toString() << printCurrentDateTime();
+#endif
 
     auto producers=m_avatarSource->producers(avatarPath());
     for (auto& producer: producers)
@@ -171,8 +173,9 @@ QPixmap Avatar::pixmap(const QSize& size) const
     auto it=m_pixmaps.find(size);
     if (it!=m_pixmaps.end())
     {
-        UNCOMMENTED_QDEBUG << "Avatar::pixmap using cached pixmap " << toString();
-
+#if 0
+        qDebug() << "Avatar::pixmap using cached pixmap " << printCurrentDateTime() << " " << toString() << " size " << size;
+#endif
         auto px=it->second;
         px.setDevicePixelRatio(pixelRatio);
         return px;
@@ -181,7 +184,9 @@ QPixmap Avatar::pixmap(const QSize& size) const
     // generate pixmap if base pixmap is not set
     if (m_basePixmap.isNull())
     {
-        UNCOMMENTED_QDEBUG << "Avatar::pixmap using generated pixmap " << toString();
+#if 0
+        qDebug() << "Avatar::pixmap using generated pixmap " << printCurrentDateTime() << " " <<toString() << " size " << size;
+#endif
         return generatePixmap(size);
     }
 
@@ -202,7 +207,9 @@ QPixmap Avatar::pixmap(const QSize& size) const
     };
 
     // use scaled pixmap
-    UNCOMMENTED_QDEBUG << "Avatar::pixmap using scaled pixmap " << toString();
+#if 0
+    qDebug() << "Avatar::pixmap using scaled pixmap " << printCurrentDateTime() << " " << toString() << " size " << size;
+#endif
     auto px=scalePixmap();
     if (px.isNull())
     {
