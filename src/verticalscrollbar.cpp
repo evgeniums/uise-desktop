@@ -57,4 +57,31 @@ QSize VerticalScrollBar::sizeHint() const
 
 //--------------------------------------------------------------------------
 
+void VerticalScrollBar::setHoldPlace(bool enable)
+{
+    m_holdPlace=enable;
+    if (!m_visible)
+    {
+        QFrame::setVisible(m_holdPlace);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void VerticalScrollBar::setVisible(bool enable)
+{
+    m_visible=enable;
+    if (!m_visible)
+    {
+        QFrame::setVisible(m_holdPlace);
+    }
+    else
+    {
+        QFrame::setVisible(true);
+    }
+    m_bar->setVisible(m_visible);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

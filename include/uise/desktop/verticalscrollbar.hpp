@@ -49,9 +49,25 @@ class UISE_DESKTOP_EXPORT VerticalScrollBar : public QFrame
             return m_bar;
         }
 
+        void setVisible(bool enable) override;
+
+        bool isVisible() const
+        {
+            return m_visible;
+        }
+
+        void setHoldPlace(bool enable);
+
+        bool isHoldPlace() const
+        {
+            return m_holdPlace;
+        }
+
     private:
 
         QScrollBar* m_bar;
+        bool m_holdPlace=false;
+        bool m_visible=false;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -171,6 +171,8 @@ QPixmap Avatar::pixmap(const QSize& size) const
     auto it=m_pixmaps.find(size);
     if (it!=m_pixmaps.end())
     {
+        UNCOMMENTED_QDEBUG << "Avatar::pixmap using cached pixmap " << toString();
+
         auto px=it->second;
         px.setDevicePixelRatio(pixelRatio);
         return px;
@@ -179,6 +181,7 @@ QPixmap Avatar::pixmap(const QSize& size) const
     // generate pixmap if base pixmap is not set
     if (m_basePixmap.isNull())
     {
+        UNCOMMENTED_QDEBUG << "Avatar::pixmap using generated pixmap " << toString();
         return generatePixmap(size);
     }
 
@@ -199,6 +202,7 @@ QPixmap Avatar::pixmap(const QSize& size) const
     };
 
     // use scaled pixmap
+    UNCOMMENTED_QDEBUG << "Avatar::pixmap using scaled pixmap " << toString();
     auto px=scalePixmap();
     if (px.isNull())
     {

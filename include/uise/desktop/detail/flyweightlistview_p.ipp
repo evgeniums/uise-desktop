@@ -151,7 +151,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     hlayout->addWidget(paddingFrame);
     m_vbarHolder=new VerticalScrollBar(middleFrame);
     m_vbar=m_vbarHolder->bar();
-    m_vbar->setVisible(false);
+    m_vbarHolder->setVisible(false);
     hlayout->addWidget(m_vbarHolder);
 
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -1544,16 +1544,16 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBars()
     switch (m_vbarPolicy)
     {
         case Qt::ScrollBarAlwaysOff:
-            m_vbar->setVisible(false);
+            m_vbarHolder->setVisible(false);
         break;
 
         case Qt::ScrollBarAlwaysOn:
-            m_vbar->setVisible(true);
+            m_vbarHolder->setVisible(true);
             m_vbar->setMaximum(0);
         break;
 
         case Qt::ScrollBarAsNeeded:
-            m_vbar->setVisible(m_view->height()<m_llist->height());
+            m_vbarHolder->setVisible(m_view->height()<m_llist->height());
         break;
 
         default:
