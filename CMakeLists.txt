@@ -183,6 +183,7 @@ SET (HEADERS
 
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
+    include/uise/desktop/messageselectionpanel.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -302,6 +303,7 @@ SET (SOURCES
     src/chatmessage.cpp
 
     src/messageeditor.cpp
+    src/messageselectionpanel.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)

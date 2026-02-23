@@ -56,3 +56,22 @@ width:14px;
 height:14px;
 border-radius: 9px;
 }
+
+uise--MessageSelectionPanelUi #drawer {
+padding: 0 4px;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+margin: 0 6px;
+padding: 6px 10px;
+border-radius: 2px;
+min-width:100px;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+font-size: 18px;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
+min-width:0;
+}

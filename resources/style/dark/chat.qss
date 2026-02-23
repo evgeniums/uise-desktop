@@ -3,13 +3,13 @@ background-color: #262a30;
 }
 
 uise--AbstractChatMessageContent[selected="true"] {
-background-color: #1055C9;
+background-color: #4A70A9; /* selected message */
 }
 
 uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
-selection-background-color: #1055C9;
+selection-background-color: #4A70A9; /* selected message */
 }
 
 uise--ChatMessageBottom QLabel {
@@ -26,7 +26,7 @@ border: 2px solid #222;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked{
-background-color: #1055C9;
+background-color: #4A70A9; /* selected message */
 border: 2px solid #222;
 }
 
@@ -35,5 +35,33 @@ border: 2px solid #CCC;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked:hover {
-border: 2px solid #1055C9;
+border: 2px solid #4A70A9; /* selected message */
+}
+
+uise--MessageSelectionPanelUi #drawer {
+background-color: #444444; /* node top frame */
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+background-color: #4A70A9; /* selected message */
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
+background-color: transparent;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+color: #DDD;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton:hover {
+color: #FFFFFF;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
+color: #8FABD4;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton:hover {
+color: #EFECE3;
 }
