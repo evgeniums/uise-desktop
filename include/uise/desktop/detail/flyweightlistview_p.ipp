@@ -60,6 +60,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         OrderComparer orderComparer,
         IdComparer idComparer
     ) : m_obj(view),
+        m_vbarHolder(nullptr),
         m_vbar(nullptr),
         m_hbar(nullptr),
         m_view(nullptr),
@@ -148,9 +149,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     QFrame* paddingFrame=new QFrame(middleFrame);
     paddingFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
     hlayout->addWidget(paddingFrame);
-    m_vbar=new QScrollBar(middleFrame);
+    m_vbarHolder=new VerticalScrollBar(middleFrame);
+    m_vbar=m_vbarHolder->bar();
     m_vbar->setVisible(false);
-    hlayout->addWidget(m_vbar);
+    hlayout->addWidget(m_vbarHolder);
 
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_view->setFocusPolicy(Qt::StrongFocus);

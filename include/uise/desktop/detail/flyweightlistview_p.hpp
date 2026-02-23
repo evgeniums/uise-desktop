@@ -43,7 +43,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/utils/orientationinvariant.hpp>
 
-#include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/verticalscrollbar.hpp>
 #include <uise/desktop/linkedlistview.hpp>
 #include <uise/desktop/jumpedge.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
@@ -291,6 +291,7 @@ class FlyweightListView_p : public OrientationInvariant
             >;
 
         FlyweightListView<ItemT,OrderComparer,IdComparer>* m_obj;
+        VerticalScrollBar* m_vbarHolder;
         QScrollBar* m_vbar;
         QScrollBar* m_hbar;
 

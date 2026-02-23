@@ -116,8 +116,10 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
 
+#if 0
     //! @todo Use scrollbar with placeholder
     m_listView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+#endif
 
     m_listView->setInsertItemCb(
         [this](auto itemW)

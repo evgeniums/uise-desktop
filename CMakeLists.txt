@@ -184,6 +184,8 @@ SET (HEADERS
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
+
+    include/uise/desktop/verticalscrollbar.hpp
 )
 
 SET (HEADERS ${HEADERS}
@@ -304,6 +306,7 @@ SET (SOURCES
 
     src/messageeditor.cpp
     src/messageselectionpanel.cpp
+    src/verticalscrollbar.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)
