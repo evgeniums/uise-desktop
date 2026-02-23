@@ -232,6 +232,7 @@ class ChatMessagesView : public AbstractChatMessagesView
         int m_messageMaxWidth=QWIDGETSIZE_MAX;
 
         SingleShotTimer* m_resizeTimer=nullptr;
+        SingleShotTimer* m_selectionModeTimer=nullptr;
 
     private:
 

@@ -102,6 +102,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     setObjectName("uiseChatMessagesView");
 
     m_resizeTimer=new SingleShotTimer(this);
+    m_selectionModeTimer=new SingleShotTimer(this);
 
     m_layout=Layout::vertical(this);
 
@@ -263,12 +264,23 @@ ChatMessagesView<BaseMessageT,Traits>::~ChatMessagesView()
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
 {
+    m_selectionModeTimer->shot(
+        150,
+        [this]()
+        {
+            emit selectionModeToggled(m_selectionMode);
+        },
+        true
+    );
+    if (!enable)
+    {
+        emit selectionModeToggled(false);
+    }
+
     if (m_selectionMode==enable)
     {
         return;
     }
-
-    emit selectionModeToggled(enable);
 
     m_selectionMode=enable;
     m_listView->eachItem(
