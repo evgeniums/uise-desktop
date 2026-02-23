@@ -67,7 +67,7 @@ class Drawer_p
         void updateDrawerPosition(const QVariant& val);
 
         std::pair<int,int> coordinates();
-        void setAnimationBoundaries();
+        void setAnimationBoundaries();        
 };
 
 //--------------------------------------------------------------------------
@@ -188,17 +188,6 @@ Drawer::Drawer(FrameWithDrawer* parent)
 {
     pimpl->self=this;
     pimpl->parent=parent;
-    pimpl->shortcut=new QShortcut(Qt::Key_Escape, this);
-    pimpl->shortcut->setContext(Qt::WindowShortcut);
-    connect(
-        pimpl->shortcut,
-        &QShortcut::activated,
-        this,
-        [this]()
-        {
-            closeDrawer();
-        }
-    );
 
     pimpl->animation=new QVariantAnimation(this);
     connect(
@@ -238,12 +227,44 @@ Drawer::Drawer(FrameWithDrawer* parent)
             }
         }
     );
+
+    setShortcutEnabled(true);
 }
 
 //--------------------------------------------------------------------------
 
 Drawer::~Drawer()
 {}
+
+//--------------------------------------------------------------------------
+
+void Drawer::setShortcutEnabled(bool enable)
+{
+    if (enable)
+    {
+        if (pimpl->shortcut!=nullptr)
+        {
+            return;
+        }
+
+        pimpl->shortcut=new QShortcut(Qt::Key_Escape, this);
+        pimpl->shortcut->setContext(Qt::WindowShortcut);
+        connect(
+            pimpl->shortcut,
+            &QShortcut::activated,
+            this,
+            [this]()
+            {
+                closeDrawer();
+            }
+        );
+    }
+    else if (pimpl->shortcut!=nullptr)
+    {
+        pimpl->shortcut->deleteLater();
+        pimpl->shortcut=nullptr;
+    }
+}
 
 //--------------------------------------------------------------------------
 
@@ -273,21 +294,27 @@ QWidget* Drawer::takeWidget()
 
 void Drawer::openDrawer()
 {
-    if (pimpl->state==State::Visible || pimpl->state==State::SlidingToHide)
+    if (pimpl->state==State::Visible || pimpl->state==State::SlidingToShow)
     {
         return;
     }
 
-    QPalette pal = pimpl->parent->palette();
-    auto background=pal.color(QPalette::Window);
-    QString css("uise--Drawer {background-color: rgba(%1,%2,%3,%4);}");
-    css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->drawerAlpha());
-    setStyleSheet(css);
+    if (pimpl->parent->drawerAlpha()!=0)
+    {
+        QPalette pal = pimpl->parent->palette();
+        auto background=pal.color(QPalette::Window);
+        QString css("uise--Drawer {background-color: rgba(%1,%2,%3,%4);}");
+        css=css.arg(255-background.red()).arg(255-background.green()).arg(255-background.blue()).arg(pimpl->parent->drawerAlpha());
+        setStyleSheet(css);
+    }
 
     show();
     raise();
     updateDrawerGeometry();
-    pimpl->shortcut->setEnabled(true);
+    if (pimpl->shortcut!=nullptr)
+    {
+        pimpl->shortcut->setEnabled(true);
+    }
 
     // start sliding
     pimpl->setAnimationBoundaries();
@@ -305,8 +332,10 @@ void Drawer::closeDrawer(bool immediate)
         return;
     }
 
-
-    pimpl->shortcut->setEnabled(false);
+    if (pimpl->shortcut!=nullptr)
+    {
+        pimpl->shortcut->setEnabled(false);
+    }
     if (immediate)
     {
         hide();
@@ -331,6 +360,11 @@ void Drawer::mousePressEvent(QMouseEvent *event)
     if (pimpl->widget==nullptr)
     {
         closeDrawer(true);
+        return;
+    }
+
+    if (pimpl->parent->isAutocloseDisabled())
+    {
         return;
     }
 
@@ -422,6 +456,8 @@ class FrameWithDrawer_p
 
         QBoxLayout* layout=nullptr;
         QWidget* contentWidget=nullptr;
+
+        bool autocloseDisabled=false;
 };
 
 //--------------------------------------------------------------------------
@@ -532,7 +568,7 @@ void FrameWithDrawer::resizeEvent(QResizeEvent *event)
 
 bool FrameWithDrawer::eventFilter(QObject* obj, QEvent* event)
 {
-    if (event->type() == QEvent::MouseButtonPress && isDrawerVisible())
+    if (!pimpl->autocloseDisabled && event->type() == QEvent::MouseButtonPress && isDrawerVisible())
     {
         if (!pimpl->drawer->underMouse())
         {
@@ -617,6 +653,22 @@ void FrameWithDrawer::setContentWidget(QWidget* widget)
     }
     pimpl->contentWidget=widget;
     pimpl->layout->addWidget(widget,1);
+}
+
+
+//--------------------------------------------------------------------------
+
+void FrameWithDrawer::setAutocloseDisabled(bool value)
+{
+    pimpl->autocloseDisabled=value;
+    pimpl->drawer->setShortcutEnabled(false);
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithDrawer::isAutocloseDisabled() const
+{
+    return pimpl->autocloseDisabled;
 }
 
 //--------------------------------------------------------------------------

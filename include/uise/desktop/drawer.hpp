@@ -64,6 +64,8 @@ class UISE_DESKTOP_EXPORT Drawer : public QFrame
         void openDrawer();
         void closeDrawer(bool immediate=false);
 
+        void setShortcutEnabled(bool enable);
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
@@ -196,6 +198,9 @@ class UISE_DESKTOP_EXPORT FrameWithDrawer : public QFrame,
         Qt::Edge drawerEdge() const noexcept;
 
         void setContentWidget(QWidget* widget);
+
+        void setAutocloseDisabled(bool value);
+        bool isAutocloseDisabled() const;
 
     signals:
 
