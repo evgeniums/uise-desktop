@@ -157,6 +157,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                     {
                         m_selectedMessages.erase(item->id());
                     }
+                    emit selectedCountChanged(m_selectedMessages.size());
 
                     bool noneSelected=m_listView->eachItem(
                         [](const auto* item)
@@ -267,6 +268,8 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
         return;
     }
 
+    emit selectionModeToggled(enable);
+
     m_selectionMode=enable;
     m_listView->eachItem(
         [enable](const auto* item)
@@ -294,6 +297,8 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
         m_messageBubbleOuterWidth=msg->widget()->bubbleOuterWidth();
     }
     adjustMessagesSizes();
+
+    emit selectedCountChanged(m_selectedMessages.size());
 }
 
 //--------------------------------------------------------------------------
@@ -570,8 +575,9 @@ void ChatMessagesView<BaseMessageT,Traits>::doRemoveMessage(const Id& id)
     if (isSelectionMode())
     {
         m_selectedMessages.erase(id);
+        emit selectedCountChanged(m_selectedMessages.size());
     }
-    m_listView->removeItem(id);
+    m_listView->removeItem(id);    
 }
 
 //--------------------------------------------------------------------------
