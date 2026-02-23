@@ -713,6 +713,20 @@ FlyweightListViewAlignment FlyweightListView<ItemT,OrderComparer,IdComparer>::it
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setVerticalScrollBarPlaceHolder(bool enable)
+{
+    pimpl->setVerticalScrollBarPlaceHolder(enable);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isVerticalScrollBarPlaceHolder() const
+{
+    return pimpl->isVerticalScrollBarPlaceHolder();
+}
+
+//--------------------------------------------------------------------------
 
 UISE_DESKTOP_NAMESPACE_END
 

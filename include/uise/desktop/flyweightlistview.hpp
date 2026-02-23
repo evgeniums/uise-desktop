@@ -579,6 +579,9 @@ class FlyweightListView : public QFrame
         void setItemsAlignment(FlyweightListViewAlignment value) noexcept;
         FlyweightListViewAlignment itemsAlignment() const noexcept;
 
+        void setVerticalScrollBarPlaceHolder(bool enable);
+        bool isVerticalScrollBarPlaceHolder() const;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;

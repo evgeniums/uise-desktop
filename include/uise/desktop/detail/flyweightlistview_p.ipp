@@ -1894,6 +1894,20 @@ FlyweightListViewAlignment FlyweightListView_p<ItemT,OrderComparer,IdComparer>::
 }
 
 //--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setVerticalScrollBarPlaceHolder(bool enable)
+{
+    m_vbarHolder->setHoldPlace(enable);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isVerticalScrollBarPlaceHolder() const
+{
+    return m_vbarHolder->isHoldPlace();
+}
+
+//--------------------------------------------------------------------------
 
 } // namespace detail
 

@@ -262,6 +262,9 @@ class FlyweightListView_p : public OrientationInvariant
         void setItemsAlignment(FlyweightListViewAlignment value) noexcept;
         FlyweightListViewAlignment itemsAlignment() const noexcept;
 
+        void setVerticalScrollBarPlaceHolder(bool enable);
+        bool isVerticalScrollBarPlaceHolder() const;
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
