@@ -115,7 +115,6 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setPrefetchItemCount(20);
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
-    m_listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_listView->setVerticalScrollBarPlaceHolder(true);
 
 #if 0

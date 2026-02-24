@@ -120,6 +120,9 @@ class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
 
         QSize sizeHint() const override;
 
+        virtual void setSelected(bool enable) override;
+        virtual void setSent(bool enable) override;
+
     private:
 
         std::unique_ptr<ChatMessageBottom_p> pimpl;
@@ -136,6 +139,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         void clearContentSelection() override;
 
         void setSelected(bool enable) override;
+        void setSent(bool enable) override;
 
     protected:
 
@@ -181,16 +185,32 @@ class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
 
         void setContent(AbstractChatMessageContent* content);
 
+        void setRight(bool enable) noexcept
+        {
+            m_right=enable;
+            updatePosition();
+        }
+
+        bool isRight() const noexcept
+        {
+            return m_right;
+        }
+
         QSize sizeHint() const override;
+
+    public slots:
+
+        void updatePosition();
 
     protected:
 
         bool eventFilter(QObject *obj, QEvent *event) override;
 
-    private:
+    private:        
 
         AbstractChatMessageContent* m_content=nullptr;
         SingleShotTimer* m_timer=nullptr;
+        bool m_right=false;
 };
 
 //--------------------------------------------------------------------------

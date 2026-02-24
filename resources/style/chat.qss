@@ -47,6 +47,10 @@ uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{
 border:none;
 }
 
+uise--AbstractChatMessage #avatarFrame {
+min-width: 8px;
+}
+
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox:hover{
 border:none;
 }

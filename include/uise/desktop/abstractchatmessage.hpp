@@ -211,6 +211,9 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
             updateGeometry();
         }
 
+        virtual void setSelected(bool /*enable*/) {}
+        virtual void setSent(bool /*enable*/) {}
+
     private:
 
         AbstractChatMessageContent* m_content=nullptr;        
@@ -308,6 +311,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         }
 
         virtual void setSelected(bool enable) =0;
+        virtual void setSent(bool enable) =0;
 
         void updateBubbleWidth(int forMaxWidthIn);
 
@@ -317,6 +321,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         }
 
         QSize sizeHint() const override;
+
+    signals:
+
+        void bubbleWidthUpdated();
 
     protected:
 

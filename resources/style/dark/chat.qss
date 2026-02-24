@@ -1,9 +1,15 @@
 uise--AbstractChatMessageContent {
-background-color: #262a30;
+background-color: #262a30; /* received message */
 }
 
-uise--AbstractChatMessageContent[selected="true"] {
+uise--AbstractChatMessageContent[selected="true"],
+uise--AbstractChatMessageContent[selected="true"][sent="true"]
+{
 background-color: #4A70A9; /* selected message */
+}
+
+uise--AbstractChatMessageContent[sent="true"] {
+background-color: #355872; /* sent message */
 }
 
 uise--ChatMessageText uise--ChatMessageTextBrowser {
@@ -13,7 +19,16 @@ selection-background-color: #4A70A9; /* selected message */
 }
 
 uise--ChatMessageBottom QLabel {
-color: #777777;
+color: #888888;
+}
+
+uise--ChatMessageBottom QLabel[sent="true"]{
+color: #7AAACE;
+}
+
+uise--ChatMessageBottom QLabel[selected="true"],
+uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
+color: #9CD5FF;
 }
 
 uise--ChatSeparatorSection uise--AvatarButton {

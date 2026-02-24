@@ -108,6 +108,7 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
     }
 
     setMaximumBubbleWidth(widthHint);
+    emit bubbleWidthUpdated();
 }
 
 //--------------------------------------------------------------------------
@@ -374,6 +375,30 @@ void ChatMessageContent::clearContentSelection()
 void ChatMessageContent::setSelected(bool enable)
 {
     setProperty("selected",enable);
+    if (bottom())
+    {
+        bottom()->setSelected(enable);
+    }
+    if (header())
+    {
+        header()->setSelected(enable);
+    }
+    Style::updateWidgetStyle(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::setSent(bool enable)
+{
+    setProperty("sent",enable);
+    if (bottom())
+    {
+        bottom()->setSent(enable);
+    }
+    if (header())
+    {
+        header()->setSent(enable);
+    }
     Style::updateWidgetStyle(this);
 }
 
@@ -390,9 +415,35 @@ void ChatMessageContentWrapper::setContent(AbstractChatMessageContent* content)
 {
     m_content=content;
     m_content->setParent(this);
-    m_content->move(0,0);
+    updatePosition();
     m_content->installEventFilter(this);
     updateGeometry();
+
+    connect(
+        m_content,
+        &AbstractChatMessageContent::bubbleWidthUpdated,
+        this,
+        &ChatMessageContentWrapper::updatePosition
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContentWrapper::updatePosition()
+{
+    if (!m_content)
+    {
+        return;
+    }
+
+    if (m_right)
+    {
+        m_content->move(width()+contentsMargins().left()-m_content->width(),0);
+    }
+    else
+    {
+        m_content->move(contentsMargins().left(),0);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -401,11 +452,13 @@ bool ChatMessageContentWrapper::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == m_content && event->type() == QEvent::Resize)
     {
+        updatePosition();
         updateGeometry();
         m_timer->shot(
             1,
             [this]()
             {
+                updatePosition();
                 updateGeometry();
             }
         );
@@ -539,6 +592,11 @@ void ChatMessage::updateSelectionMode()
         pimpl->selector->setChecked(false);
         pimpl->selector->blockSignals(false);
     }
+    QTimer::singleShot(10,this,
+    [this](){
+        pimpl->contentFrame->updateGeometry();
+        pimpl->contentFrame->updatePosition();
+    });
 }
 
 //--------------------------------------------------------------------------
@@ -584,6 +642,20 @@ void ChatMessage::updateContent()
         if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
         {
             alignment=Qt::AlignRight;
+        }
+
+        if (content())
+        {
+            if (direction()==Direction::Sent)
+            {
+                content()->setSent(true);
+                pimpl->contentFrame->setRight(true);
+            }
+            else
+            {
+                content()->setSent(false);
+                pimpl->contentFrame->setRight(false);
+            }
         }
 
         if (isSelectorOnLeft())
@@ -849,6 +921,30 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
         wHint=minimumWidth();
     }
     return wHint;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setSelected(bool enable)
+{
+    setProperty("selected",enable);
+    pimpl->time->setProperty("selected",enable);
+    pimpl->edited->setProperty("selected",enable);
+    Style::updateWidgetStyle(this);
+    Style::updateWidgetStyle(this,pimpl->time);
+    Style::updateWidgetStyle(this,pimpl->edited);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setSent(bool enable)
+{
+    setProperty("sent",enable);
+    pimpl->time->setProperty("sent",enable);
+    pimpl->edited->setProperty("sent",enable);
+    Style::updateWidgetStyle(this);
+    Style::updateWidgetStyle(this,pimpl->time);
+    Style::updateWidgetStyle(this,pimpl->edited);
 }
 
 //--------------------------------------------------------------------------
