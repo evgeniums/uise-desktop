@@ -339,6 +339,7 @@ void ChatMessageContent::updateWidgets()
     {
         m_layout->addWidget(bottom(),0,Qt::AlignLeft);
     }
+    m_layout->addStretch(1);
     Style::updateWidgetStyle(this);
 }
 
@@ -434,6 +435,7 @@ void ChatMessageContent::updateLastInBatch()
 ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(parent)
 {
     m_timer=new SingleShotTimer(this);
+    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -523,6 +525,7 @@ class ChatMessage_p
         QBoxLayout* mainLayout;
 
         ChatMessageAvatar* avatarFrame;
+        QFrame* avatarFramePlaceholder;
 
         ChatMessageContentWrapper* contentFrame;
         QBoxLayout* contentLayout;
@@ -561,6 +564,7 @@ void ChatMessage::construct()
 
     pimpl->main=new QFrame(this);
     pimpl->layout->addWidget(pimpl->main);
+    pimpl->main->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
     pimpl->main->setObjectName("mainMessageFrame");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
@@ -578,15 +582,19 @@ void ChatMessage::construct()
     pimpl->selector->setVisible(false);
 
     pimpl->avatarFrame=new ChatMessageAvatar(pimpl->main);
-    pimpl->avatarFrame->setObjectName("avatarFrame");
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
     pimpl->avatarFrame->avatar()->setVisible(false);
+
+    pimpl->avatarFramePlaceholder=new QFrame(pimpl->main);
+    pimpl->avatarFramePlaceholder->setObjectName("avatarFrame");
+    pimpl->avatarFramePlaceholder->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 
     pimpl->contentFrame=new ChatMessageContentWrapper(pimpl->main);
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
     Style::updateWidgetStyle(this);
+    Style::updateWidgetStyle(pimpl->avatarFramePlaceholder);
 }
 
 //--------------------------------------------------------------------------
@@ -616,6 +624,8 @@ void ChatMessage::updateSelectionMode()
     [this](){
         pimpl->contentFrame->updateGeometry();
         pimpl->contentFrame->updatePosition();
+
+        pimpl->main->updateGeometry();
     });
 }
 
@@ -686,9 +696,11 @@ void ChatMessage::updateContent()
         {
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
             pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
+            pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
         }
         else
         {
+            pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
             pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
         }
@@ -752,10 +764,8 @@ int ChatMessage::bubbleOuterWidth() const
 {
     auto w=horizontalTotalMargin(this);
 
-    if (pimpl->avatarFrame->isVisible())
-    {
-        w+=pimpl->avatarFrame->minimumWidth();
-    }
+    w+=pimpl->avatarFrame->minimumWidth();
+    w+=pimpl->avatarFramePlaceholder->minimumWidth();
     if (pimpl->selector->isVisible())
     {
         w+=pimpl->selector->minimumWidth();
