@@ -583,7 +583,7 @@ void ChatMessagesView<BaseMessageT,Traits>::doInsertMessage(const Data& dbItem)
     {
         m_listView->setMaxSortValue(message->msg()->sortValue());
     }
-    m_listView->insertItem(message);    
+    m_listView->insertItem(message);
 }
 
 //--------------------------------------------------------------------------

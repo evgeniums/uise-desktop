@@ -13,12 +13,9 @@ uise--AbstractChatMessage {
 margin-top: 2px;
 }
 
-uise--AbstractChatMessage[first="true"] {
-margin-top: 4px;
-}
-
-uise--AbstractChatMessage[last="true"] {
-margin-bottom: 6px;
+uise--AbstractChatMessage #bottomSpace{
+min-height: 6px;
+max-height: 6px;
 }
 
 uise--AbstractChatMessageContent[sent="true"] {

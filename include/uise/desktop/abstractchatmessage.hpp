@@ -420,18 +420,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_direction;
         }
 
-        void setTopSpaceVisible(bool enable)
-        {
-            m_topSpaceVisible=enable;
-            updateTopSpaceVisible();
-            emit topSpaceVisibilityUpdated();
-        }
-
-        bool isTopSpaceVisible() const noexcept
-        {
-            return m_topSpaceVisible;
-        }
-
         bool isContentVisible() const noexcept
         {
             return m_contentVisible;
@@ -582,7 +570,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void topSeparatorUpdated();
         void selectionModeUpdated();
         void selectionUpdated(bool selected);
-        void topSpaceVisibilityUpdated();
         void firstInBatchUpdated();
         void lastInBatchUpdated();
         void contentVisibilityUpdated();
@@ -605,9 +592,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {}
 
         virtual void updateSelection()
-        {}
-
-        virtual void updateTopSpaceVisible()
         {}
 
         virtual void updateFirstInBatch()
@@ -637,7 +621,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_selected=false;
         AlignSent m_alignSent=AlignSent::Left;
         Direction m_direction=Direction::Sent;
-        bool m_topSpaceVisible=true;
         bool m_firstInBatch=true;
         bool m_lastInBatch=true;
         bool m_contentVisible=true;

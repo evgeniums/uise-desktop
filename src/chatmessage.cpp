@@ -516,7 +516,7 @@ class ChatMessage_p
 
         QBoxLayout* layout;
 
-        QFrame* topSpace;
+        QFrame* bottomSpace;
 
         QFrame* separatorFrame;
         QBoxLayout* separatorLayout;
@@ -551,11 +551,6 @@ ChatMessage::~ChatMessage()
 
 void ChatMessage::construct()
 {
-    pimpl->topSpace=new QFrame(this);
-    pimpl->topSpace->setObjectName("topSpace");
-    pimpl->layout->addWidget(pimpl->topSpace);
-    pimpl->topSpace->setVisible(false);
-
     pimpl->separatorFrame=new QFrame(this);
     pimpl->separatorFrame->setObjectName("separatorFrame");
     pimpl->separatorLayout=Layout::vertical(pimpl->separatorFrame);
@@ -590,6 +585,11 @@ void ChatMessage::construct()
     pimpl->avatarFramePlaceholder->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
 
     pimpl->contentFrame=new ChatMessageContentWrapper(pimpl->main);
+
+    pimpl->bottomSpace=new QFrame(this);
+    pimpl->bottomSpace->setObjectName("bottomSpace");
+    pimpl->layout->addWidget(pimpl->bottomSpace);
+    pimpl->bottomSpace->setVisible(false);
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
@@ -643,18 +643,12 @@ void ChatMessage::updateSelection()
 
 //--------------------------------------------------------------------------
 
-void ChatMessage::updateTopSpaceVisible()
-{
-    pimpl->topSpace->setVisible(isTopSpaceVisible());
-}
-
-//--------------------------------------------------------------------------
-
 void ChatMessage::updateLastInBatch()
 {
     pimpl->avatarFrame->setLastInBatch(isLastInBatch());
+    pimpl->bottomSpace->setVisible(isLastInBatch());
     setProperty("last",isLastInBatch());
-    Style::updateWidgetStyle(this);
+    Style::updateWidgetStyle(this);    
 }
 
 //--------------------------------------------------------------------------
@@ -663,6 +657,7 @@ void ChatMessage::updateFirstInBatch()
 {
     setProperty("first",isFirstInBatch());
     Style::updateWidgetStyle(this);
+    updateGeometry();
 }
 
 //--------------------------------------------------------------------------

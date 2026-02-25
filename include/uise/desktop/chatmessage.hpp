@@ -286,8 +286,6 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void updateSelection() override;
 
-        void updateTopSpaceVisible() override;
-
         void updateFirstInBatch() override;
 
         void updateLastInBatch() override;
