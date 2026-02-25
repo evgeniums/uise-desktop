@@ -111,6 +111,65 @@ class LinkedListView_p
 
         void insertWidget(QWidget *newWidget, QWidget *existingWidget, bool after)
         {
+            // check if inserting or reordering not needed
+            auto newItem=LinkedListViewItem::getFromWidgetProperty(newWidget);
+            if (newItem)
+            {
+                if (existingWidget==nullptr)
+                {
+                    if (after)
+                    {
+                        if (newItem->prev() == nullptr)
+                        {
+#if 0
+                            qDebug() << "LinkedListView_p::insertWidget stays first";
+#endif
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        if (newItem->next() == nullptr)
+                        {
+#if 0
+                            qDebug() << "LinkedListView_p::insertWidget stays last";
+#endif
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    auto existingItem=LinkedListViewItem::getFromWidgetProperty(existingWidget);
+                    if (existingItem)
+                    {
+                        if (after)
+                        {
+                            if (existingItem->next() == newItem)
+                            {
+#if 0
+                                qDebug() << "LinkedListView_p::insertWidget stays in the same position after";
+#endif
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            if (existingItem->prev() == newItem)
+                            {
+#if 0
+                                qDebug() << "LinkedListView_p::insertWidget stays in the same position before";
+#endif
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+#if 0
+            qDebug() << "LinkedListView_p::insertWidget insert to new position";
+#endif
+            // insert widget
             singleWidgetHelper[0]=newWidget;
             insertWidgets(singleWidgetHelper,existingWidget,after);
         }

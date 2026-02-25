@@ -839,7 +839,6 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
         }
         else
         {
-            m_llist->takeWidget(item.widget());
             idx.modify(result.first,[](auto&){});
         }
     }
