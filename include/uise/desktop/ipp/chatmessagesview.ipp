@@ -377,11 +377,13 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     );
     std::sort(messages.begin(),messages.end(),[](const auto& l, const auto& r) { return *l<*r;});
 
+    bool prevLastInBatch=true;
     for (size_t i=0;i<messages.size();i++)
     {
         auto msg=messages[i];
-        auto dt=msg->msg()->dateTime();
 
+        // add date separator
+        auto dt=msg->msg()->dateTime();
         bool dateVisible=false;
         bool withYear=false;
         if (i==0)
@@ -396,8 +398,28 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
             dateVisible=prevDt.date()!=dt.date();
             withYear=prevDt.date().year() != dt.date().year();
         }
-
         msg->setDateSeparatorVisible(dateVisible,withYear);
+
+        // update last in batch for prev msg
+        if (dateVisible && i>0)
+        {
+            prevLastInBatch=true;
+            messages[i-1]->ui()->setLastInBatch(true);
+        }
+
+        // set first in batch
+        msg->ui()->setFirstInBatch(prevLastInBatch);
+
+        // check if the next message is by same author or last in list
+        auto lastInBatch = i==messages.size()-1;
+        if (!lastInBatch)
+        {
+            lastInBatch=!msg->msg()->sameSender(messages[i+1]->msg());
+        }
+        msg->ui()->setLastInBatch(lastInBatch);
+
+        // set prevLastInBatch
+        prevLastInBatch=lastInBatch;
     }
 }
 

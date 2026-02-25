@@ -132,6 +132,8 @@ class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
 
 class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 {
+    Q_OBJECT
+
     public:
 
         explicit ChatMessageContent(QWidget* parent=nullptr);
@@ -143,7 +145,13 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
     protected:
 
+        void updateChatMessage() override;
         void updateWidgets() override;
+
+    private slots:
+
+        void updateFirstInBatch();
+        void updateLastInBatch();
 
     private:
 
@@ -185,7 +193,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
 
         void setContent(AbstractChatMessageContent* content);
 
-        void setRight(bool enable) noexcept
+        void setRight(bool enable)
         {
             m_right=enable;
             updatePosition();
@@ -211,6 +219,35 @@ class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
         AbstractChatMessageContent* m_content=nullptr;
         SingleShotTimer* m_timer=nullptr;
         bool m_right=false;
+};
+
+//--------------------------------------------------------------------------
+
+class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        explicit ChatMessageAvatar(QWidget* parent=nullptr);
+
+        void setRight(bool enable);
+        void setSent(bool enable);
+        void setSelected(bool enable);
+        void setLastInBatch(bool enable);
+
+        AvatarWidget* avatar() const
+        {
+            return m_avatar;
+        }
+
+    private:
+
+        void setStyleProperty(const char* name, bool enable);
+
+        QBoxLayout* m_layout;
+        QFrame* m_mask;
+        AvatarWidget* m_avatar;
 };
 
 //--------------------------------------------------------------------------
@@ -250,6 +287,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateSelection() override;
 
         void updateTopSpaceVisible() override;
+
+        void updateFirstInBatch() override;
 
         void updateLastInBatch() override;
 

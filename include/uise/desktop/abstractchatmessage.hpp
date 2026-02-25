@@ -368,6 +368,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {
             m_direction=direction;
             m_alignSent=alignSent;
+
+            m_right=false;
+            if (m_direction==Direction::Sent && m_alignSent==AlignSent::Right)
+            {
+                m_right=true;
+            }
         }
 
         AbstractChatSeparator* topSeparator() const noexcept
@@ -477,6 +483,21 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         virtual QString selectedText() const {return QString{};}
 
+        bool isFirstInBatch() const
+        {
+            return m_firstInBatch;
+        }
+
+        bool isLastInBatch() const
+        {
+            return m_lastInBatch;
+        }
+
+        bool isRight() const
+        {
+            return m_right;
+        }
+
     public slots:
 
         void toggleSelected()
@@ -528,6 +549,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit lastInBatchUpdated();
         }
 
+        void setFirstInBatch(bool enable)
+        {
+            m_firstInBatch=enable;
+            updateFirstInBatch();
+            emit firstInBatchUpdated();
+        }
+
         void setContentVisible(bool enable)
         {
             m_contentVisible=enable;
@@ -555,6 +583,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void selectionModeUpdated();
         void selectionUpdated(bool selected);
         void topSpaceVisibilityUpdated();
+        void firstInBatchUpdated();
         void lastInBatchUpdated();
         void contentVisibilityUpdated();
         void contentUpdated();
@@ -579,6 +608,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {}
 
         virtual void updateTopSpaceVisible()
+        {}
+
+        virtual void updateFirstInBatch()
         {}
 
         virtual void updateLastInBatch()
@@ -606,12 +638,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         AlignSent m_alignSent=AlignSent::Left;
         Direction m_direction=Direction::Sent;
         bool m_topSpaceVisible=true;
+        bool m_firstInBatch=true;
         bool m_lastInBatch=true;
         bool m_contentVisible=true;
         bool m_avatarVisible=false;
 
         bool m_blockSelectDetection=false;
         bool m_selectorPositionLeft=true;
+
+        bool m_right=false;
 
         QDateTime m_dateTime;
 };

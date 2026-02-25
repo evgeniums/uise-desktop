@@ -5,10 +5,62 @@ border:none;
 }
 
 uise--AbstractChatMessageContent {
-margin: 2px 0;
 border-radius: 16px;
-min-height: 32px;
 padding: 8px;
+}
+
+uise--AbstractChatMessage {
+margin-top: 2px;
+}
+
+uise--AbstractChatMessage[first="true"] {
+margin-top: 4px;
+}
+
+uise--AbstractChatMessage[last="true"] {
+margin-bottom: 6px;
+}
+
+uise--AbstractChatMessageContent[sent="true"] {
+border-top-right-radius: 6px;
+border-bottom-right-radius: 6px;
+}
+
+uise--AbstractChatMessageContent[sent="true"][first="true"] {
+border-top-right-radius: 16px;
+}
+
+uise--AbstractChatMessageContent[sent="true"][last="true"] {
+border-bottom-right-radius: 0;
+}
+
+
+uise--AbstractChatMessageContent[sent="false"] {
+border-top-left-radius: 6px;
+border-bottom-left-radius: 6px;
+}
+
+uise--AbstractChatMessageContent[sent="false"][first="true"] {
+border-top-left-radius: 16px;
+}
+
+uise--AbstractChatMessageContent[sent="false"][last="true"] {
+border-bottom-left-radius: 0;
+}
+
+
+uise--AbstractChatMessage uise--ChatMessageAvatar {
+min-width: 16px;
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask{
+border-radius:0;
+border-bottom-left-radius: 16px;
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask{
+border-radius:0;
+border-bottom-right-radius: 16px;
 }
 
 uise--AbstractChatSeparatorSection {
@@ -45,10 +97,6 @@ min-width: 400px;
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{
 border:none;
-}
-
-uise--AbstractChatMessage #avatarFrame {
-min-width: 8px;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox:hover{

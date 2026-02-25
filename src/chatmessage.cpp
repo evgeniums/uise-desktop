@@ -80,16 +80,6 @@ void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
 
 void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 {
-#if 0
-    qDebug() << "AbstractChatMessageContent::updateBubbleWidth "
-                       << " margin="<<horizontalTotalMargin(this)
-                       << " padding="<<horizontalTotalPadding(this)
-                       << " width()="<<width()
-                       << " fullWidth()="<<rect().width()
-                       << " contentsWidth()="<<contentsRect().width()
-                       << " diff="<<rect().width()-contentsRect().width()
-        ;
-#endif
     auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-10;
 
     int widthHint=0;
@@ -402,6 +392,43 @@ void ChatMessageContent::setSent(bool enable)
     Style::updateWidgetStyle(this);
 }
 
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateChatMessage()
+{
+    connect(
+        chatMessage(),
+        &AbstractChatMessage::lastInBatchUpdated,
+        this,
+        &ChatMessageContent::updateLastInBatch
+    );
+    connect(
+        chatMessage(),
+        &AbstractChatMessage::firstInBatchUpdated,
+        this,
+        &ChatMessageContent::updateFirstInBatch
+    );
+
+    setProperty("right",chatMessage()->isRight());
+    Style::updateWidgetStyle(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateFirstInBatch()
+{
+    setProperty("first",chatMessage()->isFirstInBatch());
+    Style::updateWidgetStyle(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateLastInBatch()
+{
+    setProperty("last",chatMessage()->isLastInBatch());
+    Style::updateWidgetStyle(this);
+}
+
 /*************************ChatMessageContentWrapper*************************/
 
 ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(parent)
@@ -495,9 +522,7 @@ class ChatMessage_p
         QFrame* main;
         QBoxLayout* mainLayout;
 
-        QFrame* avatarFrame;
-        AvatarWidget* avatar;
-        QBoxLayout* avatarLayout;
+        ChatMessageAvatar* avatarFrame;
 
         ChatMessageContentWrapper* contentFrame;
         QBoxLayout* contentLayout;
@@ -552,15 +577,10 @@ void ChatMessage::construct()
     );
     pimpl->selector->setVisible(false);
 
-    pimpl->avatarFrame=new QFrame(pimpl->main);
+    pimpl->avatarFrame=new ChatMessageAvatar(pimpl->main);
     pimpl->avatarFrame->setObjectName("avatarFrame");
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
-
-    pimpl->avatarLayout=Layout::vertical(pimpl->avatarFrame);
-    pimpl->avatar=new AvatarWidget(pimpl->avatarFrame);
-    pimpl->avatar->setVisible(false);
-    pimpl->avatar->setObjectName("senderAvatar");
-    pimpl->avatarLayout->addWidget(pimpl->avatar);
+    pimpl->avatarFrame->avatar()->setVisible(false);
 
     pimpl->contentFrame=new ChatMessageContentWrapper(pimpl->main);
 
@@ -604,6 +624,8 @@ void ChatMessage::updateSelectionMode()
 void ChatMessage::updateSelection()
 {
     content()->setSelected(isSelected());
+    pimpl->avatarFrame->setSelected(isSelected());
+
     pimpl->selector->blockSignals(true);
     pimpl->selector->setChecked(isSelected());
     pimpl->selector->blockSignals(false);
@@ -620,7 +642,17 @@ void ChatMessage::updateTopSpaceVisible()
 
 void ChatMessage::updateLastInBatch()
 {
+    pimpl->avatarFrame->setLastInBatch(isLastInBatch());
+    setProperty("last",isLastInBatch());
+    Style::updateWidgetStyle(this);
+}
 
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateFirstInBatch()
+{
+    setProperty("first",isFirstInBatch());
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
@@ -638,25 +670,11 @@ void ChatMessage::updateContent()
     {
         content()->updateGeometry();
 
-        auto alignment=Qt::AlignLeft;
-        if (direction()==Direction::Sent && alignSent()==AlignSent::Right)
-        {
-            alignment=Qt::AlignRight;
-        }
+        content()->setSent(direction()==Direction::Sent);
 
-        if (content())
-        {
-            if (direction()==Direction::Sent)
-            {
-                content()->setSent(true);
-                pimpl->contentFrame->setRight(true);
-            }
-            else
-            {
-                content()->setSent(false);
-                pimpl->contentFrame->setRight(false);
-            }
-        }
+        pimpl->contentFrame->setRight(isRight());
+        pimpl->avatarFrame->setRight(isRight());
+        pimpl->avatarFrame->setSent(isRight());
 
         if (isSelectorOnLeft())
         {
@@ -664,7 +682,7 @@ void ChatMessage::updateContent()
         }
 
         pimpl->contentFrame->setContent(content());
-        if (alignment==Qt::AlignLeft)
+        if (!isRight())
         {
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
             pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
@@ -710,7 +728,7 @@ void ChatMessage::mousePressEvent(QMouseEvent* event)
 
 void ChatMessage::updateAvatarVisible()
 {
-    pimpl->avatar->setVisible(isAvatarVisible());
+    pimpl->avatarFrame->avatar()->setVisible(isAvatarVisible());
 }
 
 //--------------------------------------------------------------------------
@@ -750,28 +768,28 @@ int ChatMessage::bubbleOuterWidth() const
 
 void ChatMessage::setAvatarPath(WithPath path)
 {
-    pimpl->avatar->setAvatarPath(std::move(path));
+    pimpl->avatarFrame->avatar()->setAvatarPath(std::move(path));
 }
 
 //--------------------------------------------------------------------------
 
 WithPath ChatMessage::avatarPath() const
 {
-    return pimpl->avatar->avatarPath();
+    return pimpl->avatarFrame->avatar()->avatarPath();
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessage::setAvatarSource(std::shared_ptr<AvatarSource> avatarSource)
 {
-    pimpl->avatar->setAvatarSource(std::move(avatarSource));
+    pimpl->avatarFrame->avatar()->setAvatarSource(std::move(avatarSource));
 }
 
 //--------------------------------------------------------------------------
 
 std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
 {
-    return pimpl->avatar->avatarSource();
+    return pimpl->avatarFrame->avatar()->avatarSource();
 }
 
 //--------------------------------------------------------------------------
@@ -945,6 +963,64 @@ void ChatMessageBottom::setSent(bool enable)
     Style::updateWidgetStyle(this);
     Style::updateWidgetStyle(this,pimpl->time);
     Style::updateWidgetStyle(this,pimpl->edited);
+}
+
+/***************************ChatMessageAvatar*****************************/
+
+//--------------------------------------------------------------------------
+
+ChatMessageAvatar::ChatMessageAvatar(QWidget* parent)
+    : QFrame(parent)
+{
+    auto l=Layout::horizontal(this);
+    m_mask=new QFrame(this);
+    m_mask->setObjectName("mask");
+    m_mask->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    l->addWidget(m_mask);
+
+    m_layout=Layout::vertical(m_mask);
+    m_avatar=new AvatarWidget(m_mask);
+    m_layout->addWidget(m_avatar);
+
+    setStyleProperty("last",true);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setRight(bool enable)
+{
+    setStyleProperty("right",enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setSelected(bool enable)
+{
+    setStyleProperty("selected",enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setSent(bool enable)
+{
+    setStyleProperty("sent",enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setLastInBatch(bool enable)
+{
+    setStyleProperty("last",enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setStyleProperty(const char* name, bool enable)
+{
+    setProperty(name,enable);
+    m_mask->setProperty(name,enable);
+    Style::updateWidgetStyle(this);
+    Style::updateWidgetStyle(m_mask);
 }
 
 //--------------------------------------------------------------------------
