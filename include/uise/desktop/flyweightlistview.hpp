@@ -141,7 +141,7 @@ class FlyweightListView : public QFrame
          * This method must be called within beginUpdate() and endUpdate() section.
          * Inserted item will be auto sorted.
          */
-        void insertItem(const ItemT& item);
+        void insertItem(const ItemT& item, bool adjustMinMax=true);
 
         /**
          * @brief Insert items into the list.
@@ -152,14 +152,14 @@ class FlyweightListView : public QFrame
          */
         void insertItems(const std::vector<ItemT>& items, bool autoUpdate);
 
-        void reorderItem(const ItemT& item);
+        void reorderItem(const ItemT& item, bool adjustMinMax=true);
 
-        void reorderItem(const typename ItemT::IdType& id)
+        void reorderItem(const typename ItemT::IdType& id, bool adjustMinMax=true)
         {
             const auto* itm=item(id);
             if (itm!=nullptr)
             {
-                reorderItem(*itm);
+                reorderItem(*itm, adjustMinMax);
             }
         }
 

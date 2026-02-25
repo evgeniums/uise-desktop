@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
 
+
 #include <uise/desktop/detail/flyweightlistview_p.hpp>
 
 //#define UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
@@ -762,11 +763,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
     informViewportUpdated();
 
     m_checkItemCountTimer.shot(
-        10,
+        1000,
         [this]()
         {
             checkItemCount();
-        }
+        },
+        true
     );
 }
 
@@ -838,8 +840,7 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
         else
         {
             m_llist->takeWidget(item.widget());
-            Q_ASSERT(idx.replace(result.first,item));
-            result.first=idx.find(item.id());
+            idx.modify(result.first,[](auto&){});
         }
     }
     else
@@ -864,15 +865,39 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item)
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item, bool adjustMinMax)
 {
+    if (adjustMinMax)
+    {
+        if (m_orderComparer(item.sortValue(),m_minSortValue))
+        {
+            m_minSortValue=item.sortValue();
+        }
+        if (m_orderComparer(m_maxSortValue,item.sortValue()))
+        {
+            m_maxSortValue=item.sortValue();
+        }
+    }
+
     m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item)
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item, bool adjustMinMax)
 {
+    if (adjustMinMax)
+    {
+        if (m_orderComparer(item.sortValue(),m_minSortValue))
+        {
+            m_minSortValue=item.sortValue();
+        }
+        if (m_orderComparer(m_maxSortValue,item.sortValue()))
+        {
+            m_maxSortValue=item.sortValue();
+        }
+    }
+
     auto first=firstItem();
     auto last=lastItem();
 
@@ -889,7 +914,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
 
         return;
     }
-    else if (first!=nullptr && m_orderComparer(item.sortValue(),first->sortValue()))
+
+    if (first!=nullptr && m_orderComparer(item.sortValue(),first->sortValue()))
     {
         if (m_stick==Direction::HOME && isAtBegin())
         {
@@ -1411,12 +1437,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     auto prefetch=prefetchItemCountEffective();
 
     int hiddenBefore=0;
+    size_t from=0;
+    size_t to=0;
     auto first=firstItem();
     auto firstVisible=firstViewportItem();
     if (first&&firstVisible)
     {
-        auto from=m_llist->widgetSeqPos(first->widget());
-        auto to=m_llist->widgetSeqPos(firstVisible->widget());
+        from=m_llist->widgetSeqPos(first->widget());
+        to=m_llist->widgetSeqPos(firstVisible->widget());
         hiddenBefore=to-from;
     }
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
@@ -1424,6 +1452,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
              << " first->sortValue() "<<first->sortValue()
              << " m_minSortValue "<<m_minSortValue;
 #endif
+
     if (hiddenBefore<minPrefetch && first && m_orderComparer(m_minSortValue,first->sortValue()))
     {
         if (m_requestItemsCb)

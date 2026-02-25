@@ -136,10 +136,10 @@ class FlyweightListView_p : public OrientationInvariant
 
         size_t visibleCount() const noexcept;
 
-        void insertItem(const ItemT& item);
+        void insertItem(const ItemT& item, bool adjustMinMax=true);
         QWidget* insertItemToContainer(const ItemT& item, bool findAfterWidget=true);
 
-        void reorderItem(const ItemT& item);
+        void reorderItem(const ItemT& item, bool adjustMinMax=true);
 
         void setFlyweightEnabled(bool enable) noexcept;
 

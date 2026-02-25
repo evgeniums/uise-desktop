@@ -237,7 +237,7 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::v
 
     for (auto&& item:items)
     {
-        pimpl->insertItem(item);
+        pimpl->insertItem(item,false);
     }
 
     if (autoUpdate)
@@ -265,16 +265,16 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(co
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item)
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item, bool adjustMinMax)
 {
-    pimpl->insertItem(item);
+    pimpl->insertItem(item,adjustMinMax);
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item)
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item, bool adjustMinMax)
 {
-    pimpl->reorderItem(item);
+    pimpl->reorderItem(item,adjustMinMax);
 }
 
 //--------------------------------------------------------------------------
