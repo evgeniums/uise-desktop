@@ -435,7 +435,6 @@ void ChatMessageContent::updateLastInBatch()
 ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(parent)
 {
     m_timer=new SingleShotTimer(this);
-    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
@@ -465,6 +464,7 @@ void ChatMessageContentWrapper::updatePosition()
         return;
     }
 
+    m_content->resize(m_content->sizeHint());
     if (m_right)
     {
         m_content->move(width()+contentsMargins().left()-m_content->width(),0);
@@ -648,7 +648,7 @@ void ChatMessage::updateLastInBatch()
     pimpl->avatarFrame->setLastInBatch(isLastInBatch());
     pimpl->bottomSpace->setVisible(isLastInBatch());
     setProperty("last",isLastInBatch());
-    Style::updateWidgetStyle(this);    
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
