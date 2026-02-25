@@ -763,12 +763,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
     informViewportUpdated();
 
     m_checkItemCountTimer.shot(
-        1000,
+        10,
         [this]()
         {
             checkItemCount();
-        },
-        true
+        }
     );
 }
 
