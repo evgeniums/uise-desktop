@@ -1,4 +1,7 @@
-uise--AbstractChatMessagesView{
+uise--AbstractChatMessagesView,
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
+{
 background-color: #28282a; /* chat background */
 }
 
@@ -30,20 +33,12 @@ uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"]
 background-color: #4A70A9; /* selected message */
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask{
-background-color: #202426; /* chat background */
-}
-
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] {
 background-color: #355872;
 }
 
 uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]{
 background-color: #4A70A9; /* selected message */
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask{
-background-color: #202426; /* chat background */
 }
 
 uise--ChatMessageBottom QLabel {
