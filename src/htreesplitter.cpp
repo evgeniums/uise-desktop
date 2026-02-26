@@ -1152,7 +1152,20 @@ void HTreeSplitterInternal::truncate(int index)
                 this,
                 SLOT(onSectionDestroyed(QObject*))
             );
-            destroyWidget(qobject_cast<QWidget*>(obj));
+            auto widget=qobject_cast<QWidget*>(obj);
+            if (widget)
+            {
+                widget->setVisible(false);
+            }
+            // destroy later in order not to freeze the GUI in case of complicated nested widgets
+            QTimer::singleShot(
+                1,
+                this,
+                [widget]()
+                {
+                    destroyWidget(widget);
+                }
+            );
         }
     }
 
