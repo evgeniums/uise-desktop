@@ -101,12 +101,14 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_orderComparer(orderComparer),
         m_prefetchScreenCount(FlyweightListView<ItemT>::PrefetchScreensCountHint),
         m_prefetchThresholdRatio(FlyweightListView<ItemT>::PrefetchThresholdRatio),
+        m_maxHiddenRatio(FlyweightListView<ItemT>::MaxHiddenRatio),
         m_enableJumpEdgeControl(true),
         m_jumpEdge(nullptr),
         m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
         m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
         m_itemsAlignment(FlyweightListViewAlignment::Center)
 {
+    m_currentBatchCount=0;
 }
 
 //--------------------------------------------------------------------------
@@ -114,6 +116,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 FlyweightListView_p<ItemT,OrderComparer,IdComparer>::~FlyweightListView_p()
 {
     resetCallbacks();
+    clear();
 }
 
 //--------------------------------------------------------------------------
@@ -315,7 +318,7 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::autoPrefetchCount() 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::maxHiddenItemsBeyondEdge() noexcept
 {
-    return prefetchItemWindow()*m_prefetchScreenCount;
+    return prefetchItemWindow()*m_maxHiddenRatio;
 }
 
 //--------------------------------------------------------------------------
@@ -725,7 +728,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setOrientation(Qt::Ori
     updateScrollBarOrientation();
     updatePageStep();
     m_jumpEdge->setOrientation(orientation);
-    endUpdate();    
+    endUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -979,23 +982,29 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList()
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
 {
     const auto& order=itemOrder();
 
-    for (auto&& it : order)
+    if (!onDestroy)
     {
-        PointerHolder::clearProperty(it.widget(),ItemT::Property);
-        clearWidget(it.widget());
+        for (auto&& it : order)
+        {
+            PointerHolder::clearProperty(it.widget(),ItemT::Property);
+            clearWidget(it.widget());
+        }
     }
 
     m_llist->blockSignals(true);
     m_llist->clear(ItemT::dropWidgetHandler());
-    m_llist->move(0,0);
-    QSize newListSize;
-    setOProp(newListSize,OProp::size,oprop(m_llist->sizeHint(),OProp::size));
-    setOProp(newListSize,OProp::size,oprop(m_view,OProp::size,true),true);
-    m_llist->resize(newListSize);
+    if (!onDestroy)
+    {
+        m_llist->move(0,0);
+        QSize newListSize;
+        setOProp(newListSize,OProp::size,oprop(m_llist->sizeHint(),OProp::size));
+        setOProp(newListSize,OProp::size,oprop(m_view,OProp::size,true),true);
+        m_llist->resize(newListSize);
+    }
     m_llist->blockSignals(false);
 
     m_items.clear();
@@ -1013,6 +1022,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear()
     m_lastItem=nullptr;
     m_firstWidgetPos=0;
     m_prefetchItemWindow=m_prefetchItemWindowHint;
+    m_currentBatchCount=0;
 
     m_cleared=true;
     m_jumpEdge->setVisible(false);
@@ -1445,16 +1455,34 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         to=m_llist->widgetSeqPos(firstVisible->widget());
         hiddenBefore=to-from;
     }
+    bool canFetchBefore=first && m_orderComparer(m_minSortValue,first->sortValue());
+
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
-             << " first->sortValue() "<<first->sortValue()
-             << " m_minSortValue "<<m_minSortValue;
+    std::cout << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" minPrefetch "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+             << " m_prefetchItemWindow=" << m_prefetchItemWindow
+             << " visibleCount()=" << visibleCount()
+             << " m_prefetchScreenCount=" << m_prefetchScreenCount
+             << " m_prefetchThresholdRatio=" << m_prefetchThresholdRatio
+             << " prefetchItemWindow()="<<prefetchItemWindow()
+             << " m_prefetchScreenCount="<<m_prefetchScreenCount
+             << " m_currentBatchCount="<<m_currentBatchCount
+             << " from="<<from
+             << " to="<<to;
 #endif
 
-    if (hiddenBefore<minPrefetch && first && m_orderComparer(m_minSortValue,first->sortValue()))
+    if ((m_currentBatchCount>0 || hiddenBefore<minPrefetch) && canFetchBefore)
     {
         if (m_requestItemsCb)
         {
+            if (hiddenBefore<minPrefetch)
+            {
+                m_currentBatchCount=m_prefetchScreenCount;
+            }
+            m_currentBatchCount--;
+            if (m_currentBatchCount<0)
+            {
+                m_currentBatchCount=0;
+            }
             m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
         }
     }
@@ -1466,31 +1494,36 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     int hiddenAfter=0;
     auto last=lastItem();
     auto lastVisible=lastViewportItem();
+    size_t fromAfter=0;
+    size_t toAfter=0;
     if (last&&lastVisible)
     {
-        auto from=m_llist->widgetSeqPos(lastVisible->widget());
-        auto to=m_llist->widgetSeqPos(last->widget());
-        hiddenAfter=to-from;
+        fromAfter=m_llist->widgetSeqPos(lastVisible->widget());
+        toAfter=m_llist->widgetSeqPos(last->widget());
+        hiddenAfter=toAfter-fromAfter;
+    }
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << printCurrentDateTime() << ": Last from "<<lastVisible->sortValue()<<" to "<<last->sortValue();
+    std::cout << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenAfter "<<hiddenAfter
+             << " from="<<fromAfter
+             << " to="<<toAfter
+             << " itemCount="<<itemsCount();
 #endif
-    }
-    else
-    {
-#ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << printCurrentDateTime() << ": No last item or it is invisible";
-#endif
-    }
-#ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
-    qDebug() << printCurrentDateTime() << ": hiddenAfter "<<hiddenAfter<<" threshold "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
-             << " last->sortValue() "<<last->sortValue()
-             << " m_maxSortValue "<<m_maxSortValue;
-#endif
-    if (hiddenAfter<minPrefetch  && last && m_orderComparer(last->sortValue(),m_maxSortValue))
+
+    bool canFetchAfter=last && m_orderComparer(last->sortValue(),m_maxSortValue);
+    if ((m_currentBatchCount>0 || hiddenAfter<minPrefetch)  && canFetchAfter)
     {
         if (m_requestItemsCb)
         {
+            if (hiddenAfter<minPrefetch)
+            {
+                m_currentBatchCount=m_prefetchScreenCount;
+            }
+            m_currentBatchCount--;
+            if (m_currentBatchCount<0)
+            {
+                m_currentBatchCount=0;
+            }
             m_requestItemsCb(lastItem(),prefetch,Direction::END);
         }
     }
@@ -1498,10 +1531,125 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     {
         removeExtraItemsFromEnd(hiddenAfter-maxHidden);
     }
+
+    if (!canFetchBefore && !canFetchAfter)
+    {
+        m_currentBatchCount=0;
+    }
+}
+
+#if 0
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
+{
+    if (!m_enableFlyweight)
+    {
+        return;
+    }
+
+    if (itemsCount()==0)
+    {
+        // don't request items if the list was not loaded yet
+        return;
+    }
+
+    auto maxHidden=maxHiddenItemsBeyondEdge();
+    auto minPrefetch=prefetchThreshold();
+    auto prefetch=prefetchItemCountEffective();
+
+    int hiddenBefore=0;
+    size_t fromBefore=0;
+    size_t toBefore=0;
+    auto first=firstItem();
+    auto firstVisible=firstViewportItem();
+    if (first&&firstVisible)
+    {
+        fromBefore=m_llist->widgetSeqPos(first->widget());
+        toBefore=m_llist->widgetSeqPos(firstVisible->widget());
+        hiddenBefore=fromBefore-toBefore;
+    }
+
+    int hiddenAfter=0;
+    auto last=lastItem();
+    auto lastVisible=lastViewportItem();
+    if (last&&lastVisible)
+    {
+        auto from=m_llist->widgetSeqPos(lastVisible->widget());
+        auto to=m_llist->widgetSeqPos(last->widget());
+        hiddenAfter=to-from;
+    }
+
+    bool canFetchBefore=first && m_orderComparer(m_minSortValue,first->sortValue());
+    bool canFetchAfter=last && m_orderComparer(last->sortValue(),m_maxSortValue);
+    if (!canFetchBefore && !canFetchAfter)
+    {
+        m_currentBatchCount=0;
+    }
+
+// #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
+    qDebug() << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" minPrefetch "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
+             << " m_prefetchItemWindow=" << m_prefetchItemWindow
+             << " visibleCount()=" << visibleCount()
+             << " m_prefetchScreenCount=" << m_prefetchScreenCount
+             << " m_prefetchThresholdRatio=" << m_prefetchThresholdRatio
+             << " prefetchItemWindow()="<<prefetchItemWindow()
+             << " m_prefetchScreenCount="<<m_prefetchScreenCount
+             << " m_currentBatchCount="<<m_currentBatchCount
+             << " canFetchBefore="<<canFetchBefore
+             << " canFetchAfter="<<canFetchAfter
+             << " from="<<fromBefore
+             << " to="<<toBefore;
+// #endif
+
+    if ((m_currentBatchCount>0 || hiddenBefore<minPrefetch) && canFetchBefore)
+    {
+        if (m_requestItemsCb)
+        {
+            if (hiddenBefore<minPrefetch)
+            {
+                m_currentBatchCount=m_prefetchScreenCount;
+            }
+            m_currentBatchCount--;
+            if (m_currentBatchCount<0)
+            {
+                m_currentBatchCount=0;
+            }
+            m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
+        }
+    }
+    else if (hiddenBefore>maxHidden)
+    {
+        removeExtraItemsFromBegin(hiddenBefore-maxHidden);
+    }
+
+    if ((m_currentBatchCount>0 || hiddenAfter<minPrefetch)  && canFetchAfter)
+    {
+        if (m_requestItemsCb)
+        {
+            if (hiddenAfter<minPrefetch)
+            {
+                m_currentBatchCount=m_prefetchScreenCount;
+            }
+            m_currentBatchCount--;
+            if (m_currentBatchCount<0)
+            {
+                m_currentBatchCount=0;
+            }
+            m_requestItemsCb(lastItem(),prefetch,Direction::END);
+        }
+    }
+    else if (hiddenAfter>maxHidden)
+    {
+        removeExtraItemsFromEnd(hiddenAfter-maxHidden);
+    }
+
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
     qDebug() << printCurrentDateTime() << ":  item count "<<itemsCount();
 #endif
 }
+
+#endif
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>

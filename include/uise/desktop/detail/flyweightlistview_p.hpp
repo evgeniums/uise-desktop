@@ -147,7 +147,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         void insertContinuousItems(const std::vector<ItemT>& items);
 
-        void clear();
+        void clear(bool onDestroy=false);
 
         void scrollToEdge(Direction direction);
 
@@ -366,7 +366,10 @@ class FlyweightListView_p : public OrientationInvariant
 
         double m_prefetchScreenCount;
         double m_prefetchThresholdRatio;
+        double m_maxHiddenRatio;
         std::optional<size_t> m_prefetchItemCount;
+
+        int m_currentBatchCount;
 
         bool m_enableJumpEdgeControl;
         JumpEdge* m_jumpEdge;

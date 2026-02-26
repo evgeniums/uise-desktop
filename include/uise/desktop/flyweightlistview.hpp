@@ -94,6 +94,7 @@ class FlyweightListView : public QFrame
         inline static size_t PrefetchItemWindowHint=20;
         inline static double PrefetchScreensCountHint=2.0;
         inline static double PrefetchThresholdRatio=0.75;
+        inline static double MaxHiddenRatio=5;
         inline static size_t DefaultPageStep=10;
 
         inline static size_t DefaultJumpEdgeXOffset=10;
