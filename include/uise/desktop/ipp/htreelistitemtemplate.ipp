@@ -317,15 +317,21 @@ void HTreeListItemT<BaseT>::click()
         return;
     }
     setSelected(true);
-
-    if (pimpl->targetSubpath.isNull())
-    {
-        emit qobject()->openRequested(pathElement());
-    }
-    else
-    {
-        emit qobject()->openSubpathRequested(pimpl->targetSubpath);
-    }
+    QTimer::singleShot(
+        5,
+        qobject(),
+        [this]()
+        {
+            if (pimpl->targetSubpath.isNull())
+            {
+                emit qobject()->openRequested(pathElement());
+            }
+            else
+            {
+                emit qobject()->openSubpathRequested(pimpl->targetSubpath);
+            }
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
