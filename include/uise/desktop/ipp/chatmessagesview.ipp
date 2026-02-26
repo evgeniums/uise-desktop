@@ -45,6 +45,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 template <typename BaseMessageT, typename Traits>
 void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool enable, bool withYear)
 {
+    m_dtSepVisible=enable;
+
     AbstractChatSeparatorSection* dateSection=nullptr;
     auto sep=m_ui->topSeparator();
     if (sep==nullptr)
@@ -436,6 +438,7 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
 
     if (forLoad || jumpToEnd)
     {
+        m_listView->clear();
         adjustMessageList(messages);
 
         // process initial loading or jump-to-end
@@ -449,10 +452,8 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             m_listView->setMaxSortValue(messageItems.back().sortValue());
         }
 
-        m_listView->beginUpdate();
         adjustMessagesSizes(&messages);
-        m_listView->loadItems(messageItems,false);
-        m_listView->endUpdate();
+        m_listView->loadItems(messageItems);
 
         if (!forLoad)
         {
@@ -512,6 +513,7 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
 
             // insert items to the list
             adjustMessagesSizes(&messages);
+
             m_listView->insertContinuousItems(messageItems,false);
             m_listView->endUpdate();
         }

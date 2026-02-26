@@ -76,6 +76,11 @@ class ChatMessagesViewItem : public BaseMessageT
 
         void setDateSeparatorVisible(bool enable, bool withYear=false);
 
+        bool isDateSeparatorVisible() const
+        {
+            return m_dtSepVisible;
+        }
+
     protected:
 
         Widget* doCreateActualWidget(QWidget* parent) override;
@@ -84,6 +89,7 @@ class ChatMessagesViewItem : public BaseMessageT
 
         AbstractChatMessage* m_ui;
         BaseMessageT* m_msg;
+        bool m_dtSepVisible=false;
 };
 
 template <typename BaseMessageT, typename Traits>
