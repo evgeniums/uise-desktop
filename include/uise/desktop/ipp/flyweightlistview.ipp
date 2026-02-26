@@ -199,6 +199,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setOrientation(Qt::Orientation orientation)
 {
     pimpl->setOrientation(orientation);
+    pimpl->updateListAlignment();
 }
 
 //--------------------------------------------------------------------------
@@ -401,6 +402,7 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setStickMode(Direction m
 {
     pimpl->m_stick=mode;
     pimpl->m_jumpEdge->setDirection(mode);
+    pimpl->updateListAlignment();
 }
 
 //--------------------------------------------------------------------------

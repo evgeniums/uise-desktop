@@ -223,7 +223,7 @@ class LinkedListView_p
                 auto newItem=itemForWidget(newWidget);
                 newItem->setPrevAuto(lastItem);
 
-                layout->insertWidget(pos,newWidget);
+                layout->insertWidget(pos,newWidget,0,alignment);
                 newWidget->setVisible(true);
                 newItem->setPos(pos++);
 
@@ -269,9 +269,10 @@ class LinkedListView_p
 
         std::weak_ptr<LinkedListViewItem> head;
         QBoxLayout* layout;
-        bool blockUpdate;
+        bool blockUpdate;        
 
         std::vector<QWidget*> singleWidgetHelper;
+        Qt::Alignment alignment;
 };
 
 }
@@ -410,6 +411,18 @@ QWidget* LinkedListView::widgetAtSeqPos(size_t pos) const
         return nullptr;
     }
     return item->widget();
+}
+
+//--------------------------------------------------------------------------
+void LinkedListView::setAlignment(Qt::Alignment alignment) noexcept
+{
+    pimpl->alignment=alignment;
+}
+
+//--------------------------------------------------------------------------
+Qt::Alignment LinkedListView::alignment() const noexcept
+{
+    return pimpl->alignment;
 }
 
 //--------------------------------------------------------------------------

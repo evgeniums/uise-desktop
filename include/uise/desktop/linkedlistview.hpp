@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/enums.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -71,6 +72,9 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
 
         Qt::Orientation orientation() const noexcept;
         void setOrientation(Qt::Orientation orientation);
+
+        void setAlignment(Qt::Alignment alignment) noexcept;
+        Qt::Alignment alignment() const noexcept;
 
     signals:
 

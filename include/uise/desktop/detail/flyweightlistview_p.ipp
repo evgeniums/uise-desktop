@@ -108,7 +108,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
         m_itemsAlignment(FlyweightListViewAlignment::Center)
 {
-    m_currentBatchCount=0;
+    m_currentBatchCount=0;    
 }
 
 //--------------------------------------------------------------------------
@@ -199,6 +199,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
         }
     );
 
+    updateListAlignment();
     QTimer::singleShot(0,m_obj,[this](){onResized();});
 }
 
@@ -2080,6 +2081,48 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isVerticalScrollBarPlaceHolder() const
 {
     return m_vbarHolder->isHoldPlace();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateListAlignment()
+{
+    Qt::Alignment val;
+
+    if (m_llist->orientation()==Qt::Horizontal)
+    {
+        switch(m_stick)
+        {
+            case(Direction::HOME):
+                val=Qt::AlignLeft;
+                break;
+
+            case(Direction::END):
+                val=Qt::AlignRight;
+                break;
+
+            default:
+                break;
+        }
+    }
+    else
+    {
+        switch(m_stick)
+        {
+            case(Direction::HOME):
+                val=Qt::AlignTop;
+                break;
+
+            case(Direction::END):
+                val=Qt::AlignBottom;
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    m_llist->setAlignment(val);
 }
 
 //--------------------------------------------------------------------------

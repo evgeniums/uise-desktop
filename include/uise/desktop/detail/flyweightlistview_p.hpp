@@ -265,6 +265,8 @@ class FlyweightListView_p : public OrientationInvariant
         void setVerticalScrollBarPlaceHolder(bool enable);
         bool isVerticalScrollBarPlaceHolder() const;
 
+        void updateListAlignment();
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
