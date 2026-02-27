@@ -543,15 +543,6 @@ void HTreeNode::collapseNode()
         return;
     }
 
-#if 0
-    if (!isExclusivelyExpandable())
-    {
-        pimpl->prevMinWidth=minimumWidth();
-        destroyWidget(pimpl->widget);
-        pimpl->loaded=false;
-    }
-#endif
-
     pimpl->expanded=false;    
     pimpl->mainFrame->setVisible(false);
 
@@ -657,6 +648,13 @@ void HTreeNode::setExpanded(bool enable)
 
 //--------------------------------------------------------------------------
 
+void HTreeNode::informForDestroy()
+{
+    emit aboutToDestroy(this);
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeNode::setNextNode(HTreeNode* node)
 {
     if (pimpl->nextNode!=nullptr)
@@ -664,6 +662,12 @@ void HTreeNode::setNextNode(HTreeNode* node)
         disconnect(
             pimpl->nextNode,
             SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(nextNodeDestroyed(QObject*))
+        );
+        disconnect(
+            pimpl->nextNode,
+            SIGNAL(aboutToDestroy(QObject*)),
             this,
             SLOT(nextNodeDestroyed(QObject*))
         );
@@ -676,6 +680,12 @@ void HTreeNode::setNextNode(HTreeNode* node)
         connect(
             node,
             SIGNAL(destroyed(QObject*)),
+            this,
+            SLOT(nextNodeDestroyed(QObject*))
+        );
+        connect(
+            node,
+            SIGNAL(aboutToDestroy(QObject*)),
             this,
             SLOT(nextNodeDestroyed(QObject*))
         );
@@ -725,7 +735,13 @@ void HTreeNode::prepareForDestroy()
             SIGNAL(destroyed(QObject*)),
             this,
             SLOT(nextNodeDestroyed(QObject*))
-            );
+        );
+        disconnect(
+            pimpl->nextNode,
+            SIGNAL(aboutToDestroy(QObject*)),
+            this,
+            SLOT(nextNodeDestroyed(QObject*))
+        );
     }
 }
 

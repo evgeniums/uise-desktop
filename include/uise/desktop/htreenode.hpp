@@ -206,6 +206,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         bool isExclusivelyExpandable() const;
 
+        void informForDestroy();
+
     public slots:
 
         void setNodeName(const QString& val);
@@ -235,6 +237,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void toggleExpanded(bool enable);
 
         void initRequested();
+
+        void aboutToDestroy(QObject* obj);
 
         void closeHovered(UISE_DESKTOP_NAMESPACE::HTreeNode* node, bool enable);
 

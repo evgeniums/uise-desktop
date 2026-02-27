@@ -172,6 +172,10 @@ void HTreeTab_p::truncate(int index)
             auto n=qobject_cast<HTreeNode*>(s->widget());
             if (n!=nullptr)
             {
+                if (i==index)
+                {
+                    n->informForDestroy();
+                }
                 disconnectNode(n,true);
             }
         }
