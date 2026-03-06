@@ -215,8 +215,8 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             return m_editable;
         }
 
-        void setComment(const QString& comment);
-        QString comment() const;
+        void setComment(const QString& comment) override;
+        QString comment() const override;
 
         void setEditor(QWidget* widget)
         {

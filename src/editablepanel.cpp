@@ -450,12 +450,17 @@ int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
         );
     }
     const auto& config=widget->config();
+    auto comment=config.property(ValueWidgetProperty::Comment).toString();
+    if (!comment.isEmpty())
+    {
+        widget->setComment(comment);
+    }
     return addRow(
         config.property(ValueWidgetProperty::Label).toString(),
         widget,
         config.property(ValueWidgetProperty::ColumnSpan,1).toInt(),
-        static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::ColumnSpan,static_cast<int>(Qt::Alignment{})).toInt()),
-        config.property(ValueWidgetProperty::Comment).toString(),
+        static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::Alignment,static_cast<int>(Qt::Alignment{})).toInt()),
+        {},
         config.property(ValueWidgetProperty::RowSpan,1).toInt()
     );
 }

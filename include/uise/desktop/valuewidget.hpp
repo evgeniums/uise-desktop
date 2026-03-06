@@ -159,6 +159,9 @@ class AbstractValueWidget : public QWidget
             return m_requestGroupEditingEnabled;
         }
 
+        virtual void setComment(const QString& /*comment*/) {};
+        virtual QString comment() const {return QString{};};
+
     signals:
 
         void valueEdited();
