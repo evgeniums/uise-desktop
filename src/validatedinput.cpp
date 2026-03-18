@@ -117,6 +117,8 @@ void ValidatedInput::onTextChanged(QString text)
 
 void ValidatedInput::tryApply()
 {
+    m_error->clear();
+
     int pos=0;
     auto text=m_input->text();
     auto state=m_input->validator()->validate(text,pos);
