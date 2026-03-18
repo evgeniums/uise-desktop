@@ -1126,6 +1126,7 @@ void HTreeSplitterInternal::truncate(int index)
 {
     auto minW=minimumWidth();
     auto w=width();
+    int truncated=0;
 
     for (size_t i=m_sections.size()-1;i>=static_cast<size_t>(index);i--)
     {
@@ -1142,6 +1143,7 @@ void HTreeSplitterInternal::truncate(int index)
             w=0;
         }
         section->destroyed=true;
+        truncated++;
 
         auto obj=section->obj;
         if (obj!=nullptr)
@@ -1179,16 +1181,42 @@ void HTreeSplitterInternal::truncate(int index)
         }
     }
 
+    auto prevStretchLast=m_stretchLastSection;
+    m_stretchLastSection=true;
+
     // qDebug() << "HTreeSplitterInternal::truncate update minwidth from " << minimumWidth() << " to " << minW;
-    w=recalculateWidths(width());
+    if (truncated==1)
+    {
+        w=recalculateWidths(width());
+    }
+    else
+    {
+        w=recalculateWidths(width());
+    }
     updateMinWidth();
 
-    m_stretchLastSection=true;
+#if 0
+    if (m_sections.size()==2)
+    {
+        const auto& section=m_sections[0];
+        section->stretch=0;
+        auto widget=qobject_cast<QWidget*>(section->obj);
+        if (widget)
+        {
+            section->width=widget->minimumWidth();
+        }
+
+        const auto& section1=m_sections[1];
+        section1->width=width()-section->width;
+    }
+#endif
+
     resize(w,height());
     updatePositions();
     updateWidths();
     emit adjustViewPortRequested(m_splitter->viewPort()->width());
-    m_stretchLastSection=false;
+
+    m_stretchLastSection=prevStretchLast;
 }
 
 /**************************** HTreeSplitter *******************************/
