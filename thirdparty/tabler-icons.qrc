@@ -98,5 +98,7 @@
         <file>tabler-icons/outline/calendar-event.svg</file>
         <file>tabler-icons/outline/layout-sidebar-right.svg</file>
         <file>tabler-icons/outline/paperclip.svg</file>
+        <file>tabler-icons/outline/alert-circle.svg</file>
+        <file>tabler-icons/outline/clock.svg</file>
     </qresource>
 </RCC>
