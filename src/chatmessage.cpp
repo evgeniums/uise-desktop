@@ -861,6 +861,7 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
       pimpl(std::make_unique<ChatMessageBottom_p>())
 {
     auto l=Layout::horizontal(this);
+    l->addStretch(1);
 
     pimpl->seen=new IconTextButton(Style::instance().svgIconLocator().icon("ChatMessageBottom::seen"),this);
     pimpl->seen->setObjectName("seen");
@@ -880,6 +881,8 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
     pimpl->status->setObjectName("status");
     l->addWidget(pimpl->status,0,Qt::AlignRight);
     pimpl->status->setVisible(false);
+
+    setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
 }
 
 //--------------------------------------------------------------------------
@@ -899,8 +902,8 @@ void ChatMessageBottom::setTimeString(const QString& time, const QString& toolti
 
 void ChatMessageBottom::setStatusIcon(std::shared_ptr<SvgIcon> icon, const QString& tooltip)
 {
-    pimpl->status->setSvgIcon(std::move(icon));
     pimpl->status->setVisible(static_cast<bool>(icon));
+    pimpl->status->setSvgIcon(std::move(icon));
     pimpl->status->setToolTip(tooltip);
 }
 
