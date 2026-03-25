@@ -413,7 +413,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
 
 void NavigationBar::setItemName(int index, const QString& name)
 {
-    auto button=pimpl->buttons->button(index);
+    auto button=qobject_cast<NavigationBarItem*>(pimpl->buttons->button(index));
     if (button!=nullptr)
     {
         button->setText(name);
@@ -462,7 +462,7 @@ QString NavigationBar::itemName(int index) const
     auto button=pimpl->buttons->button(index);
     if (button!=nullptr)
     {
-        return button->text();
+        return button->text().replace("&&", "&");
     }
     return QString{};
 }

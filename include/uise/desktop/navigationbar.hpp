@@ -57,6 +57,11 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
             return m_hoveringCursor;
         }
 
+        void setText(QString value)
+        {
+            QToolButton::setText(value.replace("&", "&&"));
+        }
+
     protected:
 
         void enterEvent(QEnterEvent * event) override;
