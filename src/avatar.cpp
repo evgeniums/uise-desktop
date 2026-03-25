@@ -308,7 +308,7 @@ QString getFirstInitial(const QString &name)
     uint firstCodePoint = ucs4[0];
 
     // Use reinterpret_cast to satisfy the char32_t* overload
-    return QString::fromUcs4(reinterpret_cast<const char32_t*>(&firstCodePoint), 1);
+    return QString::fromUcs4(reinterpret_cast<const char32_t*>(&firstCodePoint), 1).toHtmlEscaped();
 }
 }
 
@@ -377,7 +377,7 @@ QPixmap Avatar::generatePixmap(const QSize& size) const
         y -= (fm.ascent() - visualHeight);
 
         // empiric offset
-        y+=2;
+        y+=1;
 
         painter.drawStaticText(0, y, text);
     }
