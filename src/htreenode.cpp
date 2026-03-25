@@ -759,10 +759,10 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
         pimpl->nextNode =nullptr;
         setExpanded(true);
         setCollapsible(false);
-    }
 
-    updateExclusivelyExpandable();
-    setNextNodeId(std::string{});
+        updateExclusivelyExpandable();
+        setNextNodeId(std::string{});
+    }
 }
 
 //--------------------------------------------------------------------------
