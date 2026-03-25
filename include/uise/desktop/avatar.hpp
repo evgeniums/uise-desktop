@@ -72,7 +72,7 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 {
     public:
 
-        constexpr static const double DefaultFontSizeRatio=0.37;
+        constexpr static const double DefaultFontSizeRatio=0.39;
         constexpr static QRgb DefaultFontColor=0x00FFFFFF;
 
         Avatar();

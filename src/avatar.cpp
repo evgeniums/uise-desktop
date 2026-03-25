@@ -299,6 +299,19 @@ std::shared_ptr<AvatarBackgroundGenerator> Avatar::backgroundColorGenerator() co
 
 //--------------------------------------------------------------------------
 
+namespace {
+QString getFirstInitial(const QString &name)
+{
+    if (name.isEmpty()) return QString();
+
+    QVector<uint> ucs4 = name.toUcs4();
+    uint firstCodePoint = ucs4[0];
+
+    // Use reinterpret_cast to satisfy the char32_t* overload
+    return QString::fromUcs4(reinterpret_cast<const char32_t*>(&firstCodePoint), 1);
+}
+}
+
 QPixmap Avatar::generatePixmap(const QSize& size) const
 {
     if (!size.isValid())
@@ -327,7 +340,7 @@ QPixmap Avatar::generatePixmap(const QSize& size) const
         painter.setRenderHints(QPainter::TextAntialiasing);
         painter.setPen(fontColor());
         auto fontSize=size.height()*fontSizeRatio();
-        QFont font{fontName};
+        QFont font;
         font.setPixelSize(qRound(fontSize));
         font.setStyleStrategy(QFont::PreferAntialias);
         font.setBold(true);
@@ -341,21 +354,32 @@ QPixmap Avatar::generatePixmap(const QSize& size) const
         QString letters;
         for (size_t i=0;i<words.count();i++)
         {
-            const auto& word=words.at(i);
-            letters+=word.front().toUpper();
+            auto& word=words.at(i);
+            letters+=getFirstInitial(word).toUpper();
         }
+        // 1. Get metrics for the font you are using
+        QFontMetrics fm(painter.font());
 
-        QFontMetrics metrics(font);
-        auto br=metrics.tightBoundingRect(letters);
-        auto bbr=metrics.boundingRect(letters);
-        auto fw=std::min(br.width(),bbr.width());
-        auto fh=br.height();
-        auto dy=metrics.ascent()-br.height();
-        auto x= size.width()/2 - qCeil(fw/2);
-        auto y= size.height()/2 - qCeil(fh/2);
-        auto bearing=metrics.leftBearing(letters[0]);
+        // 2. Calculate the VISUAL height of the letters (ignoring empty space)
+        int visualHeight = fm.capHeight();
 
-        painter.drawStaticText(x-bearing,y-dy,QStaticText{letters});
+        // 3. Prepare the text
+        QStaticText text("<div align='center'>" + letters + "</div>");
+        text.setTextWidth(size.width()); // Handles horizontal centering
+
+        // 4. THE FIX: The Vertical Offset
+        // We want the MIDDLE of the capHeight to be at the MIDDLE of the circle.
+        // Since drawStaticText draws from the TOP, we subtract the internal 'ascent'.
+        int y = (size.height() / 2) - (visualHeight / 2);
+
+        // 5. If it is still too low, it's because QStaticText adds a
+        // default 1-2px margin for HTML. Force it up:
+        y -= (fm.ascent() - visualHeight);
+
+        // empiric offset
+        y+=2;
+
+        painter.drawStaticText(0, y, text);
     }
     else if (m_avatarSource && m_avatarSource->noNameSvgIcon())
     {
