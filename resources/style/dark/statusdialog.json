@@ -32,7 +32,7 @@
                     "name" : "warning",
                     "modes" : {
                         "normal" : {
-                            "off" : { "currentColor" : "#FB8500" }
+                            "off" : { "currentColor" : "#FFDE42" }
                         }
                     }
                 },
@@ -40,7 +40,7 @@
                     "name" : "attention",
                     "modes" : {
                         "normal" : {
-                            "off" : { "currentColor" : "#FB8500" }
+                            "off" : { "currentColor" : "#FFDE42" }
                         }
                     }
                 }
