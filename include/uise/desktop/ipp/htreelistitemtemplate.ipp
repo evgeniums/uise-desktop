@@ -86,7 +86,7 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
             }
             else
             {
-                emit qobject()->openSubpathRequested(pimpl->targetSubpath);
+                emit qobject()->openSubpathRequested(pimpl->targetSubpath,residentPath());
             }
         }
     );
@@ -328,7 +328,7 @@ void HTreeListItemT<BaseT>::click()
             }
             else
             {
-                emit qobject()->openSubpathRequested(pimpl->targetSubpath);
+                emit qobject()->openSubpathRequested(pimpl->targetSubpath,residentPath());
             }
         }
     );

@@ -77,7 +77,7 @@ class UISE_DESKTOP_EXPORT HTreeBranch : public HTreeNode
         void openNextNodeInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
         void openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
 
-        void openNextNodes(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath);
+        void openNextNodes(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
         void openNextNodesInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
         void openNextNodesInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
 

@@ -132,10 +132,17 @@ void HTreeBranch::openNextNode(const HTreePathElement& pathElement, bool exclusi
 
 //--------------------------------------------------------------------------
 
-void HTreeBranch::openNextNodes(const HTreePath& subPath)
+void HTreeBranch::openNextNodes(const HTreePath& subPath, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath)
 {
-    auto p=path().copyAppend(subPath);
-    treeTab()->openPath(p);
+    if (!residentPath.isNull())
+    {
+        treeTab()->tree()->openPath(residentPath);
+    }
+    else
+    {
+        auto p=path().copyAppend(subPath);
+        treeTab()->openPath(p);
+    }
 }
 
 //--------------------------------------------------------------------------

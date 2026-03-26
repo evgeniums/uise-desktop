@@ -75,7 +75,7 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
-        void openSubpathRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&);
+        void openSubpathRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openSubpathInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openSubpathInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
