@@ -76,10 +76,6 @@ SearchLineEdit::SearchLineEdit(QWidget* parent)
             {
                 edit();
             }
-            else
-            {
-                doCancel(true);
-            }
         }
     );
 
