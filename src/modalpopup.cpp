@@ -155,7 +155,7 @@ void ModalPopup::updateWidgetGeometry()
         {
             x=margins.left();
         }
-        auto y=(h-height)/2+margins.top();
+        auto y=(h-height)/2+margins.top()-20;
         if (y<margins.top())
         {
             y=margins.top();
