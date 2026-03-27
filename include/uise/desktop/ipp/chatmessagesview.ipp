@@ -814,7 +814,7 @@ std::vector<typename Traits::Data> ChatMessagesView<BaseMessageT,Traits>::select
         v.reserve(m_selectedMessages.size());
         for (const auto& item : m_selectedMessages)
         {
-            v.emplace_back(item);
+            v.emplace_back(item.second);
         }
         std::sort(v.begin(),v.end(),[](const auto& l, const auto& r)
         {
@@ -904,7 +904,7 @@ void ChatMessagesView<BaseMessageT,Traits>::keyPressEvent(QKeyEvent* event)
     {
         if (isSelectionMode())
         {
-            //! @todo collect copy text from selected messages
+            emit copySelectedRequested();
         }
         else
         {

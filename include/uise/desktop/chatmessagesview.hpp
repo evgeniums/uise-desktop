@@ -137,6 +137,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         void reloadRequested();
         void selectionModeToggled(bool enable);
         void selectedCountChanged(size_t count);
+        void copySelectedRequested();
 };
 
 template <typename BaseMessageT, typename Traits>
