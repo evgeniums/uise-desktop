@@ -161,8 +161,10 @@ ChatMessageText::ChatMessageText(QWidget* parent)
 {
     pimpl->layout=Layout::horizontal(this);
 
-    pimpl->text=new ChatMessageTextBrowser(this);    
-    pimpl->layout->addWidget(pimpl->text);    
+    pimpl->text=new ChatMessageTextBrowser(this);
+    pimpl->layout->addWidget(pimpl->text);
+
+    pimpl->text->setContextMenuPolicy(Qt::NoContextMenu);
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
