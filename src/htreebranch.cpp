@@ -118,8 +118,14 @@ void HTreeBranch::closeNextNode()
 
 //--------------------------------------------------------------------------
 
-void HTreeBranch::openNextNode(const HTreePathElement& pathElement, bool exclusive)
+void HTreeBranch::openNextNode(const HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath, bool exclusive)
 {
+    if (!residentPath.isNull())
+    {
+        treeTab()->tree()->openPath(residentPath);
+        return;
+    }
+
     loadNextNode(pathElement);
     if (exclusive)
     {

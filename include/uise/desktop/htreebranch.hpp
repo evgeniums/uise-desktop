@@ -73,7 +73,7 @@ class UISE_DESKTOP_EXPORT HTreeBranch : public HTreeNode
 
     public slots:
 
-        void openNextNode(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, bool exclusive=false);
+        void openNextNode(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={}, bool exclusive=false);
         void openNextNodeInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
         void openNextNodeInNewTree(const UISE_DESKTOP_NAMESPACE::HTreePathElement& pathElement, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath={});
 

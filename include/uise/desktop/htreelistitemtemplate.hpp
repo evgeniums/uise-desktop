@@ -67,11 +67,46 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
             m_onDestroy=std::function<void()>{};
         }
 
+        void setPathElement(HTreePathElement pathElement)
+        {
+            m_pathElement=std::move(pathElement);
+        }
+
+        const HTreePathElement& pathElement() const noexcept
+        {
+            return m_pathElement;
+        }
+
+        void setResidentPath(HTreePath residentPath)
+        {
+            m_residentPath=std::move(residentPath);
+        }
+
+        const HTreePath& residentPath() const noexcept
+        {
+            return m_residentPath;
+        }
+
+        void setTargetSubpath(HTreePath targetPath)
+        {
+            m_targetSubpath=std::move(targetPath);
+        }
+
+        const HTreePath& targetSubpath() const noexcept
+        {
+            return m_targetSubpath;
+        }
+
+        std::string uniqueId() const
+        {
+            return pathElement().uniqueId();
+        }
+
     signals:
 
         void selectionChanged(bool);
 
-        void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, bool exclusive=false);
+        void openRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath, bool exclusive=false);
         void openInNewTabRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
         void openInNewTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePathElement&, const UISE_DESKTOP_NAMESPACE::HTreePath& residentPath);
 
@@ -84,6 +119,10 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
     private:
 
         std::function<void()> m_onDestroy;
+
+        HTreePathElement m_pathElement;
+        HTreePath m_residentPath;
+        HTreePath m_targetSubpath;
 };
 
 template <typename BaseT>
@@ -125,14 +164,35 @@ class HTreeListItemT : public BaseT
             return qobject_cast<T*>(widget());
         }
 
-        void setPathElement(HTreePathElement pathElement);
-        const HTreePathElement& pathElement() const noexcept;
+        void setPathElement(HTreePathElement pathElement)
+        {
+            m_qobject->setPathElement(std::move(pathElement));
+        }
 
-        void setResidentPath(HTreePath residentPath);
-        const HTreePath& residentPath() const noexcept;
+        const HTreePathElement& pathElement() const noexcept
+        {
+            return m_qobject->pathElement();
+        }
 
-        void setTargetSubpath(HTreePath targetPath);
-        const HTreePath& targetSubpath() const noexcept;
+        void setResidentPath(HTreePath residentPath)
+        {
+            m_qobject->setResidentPath(std::move(residentPath));
+        }
+
+        const HTreePath& residentPath() const noexcept
+        {
+            return m_qobject->residentPath();
+        }
+
+        void setTargetSubpath(HTreePath targetPath)
+        {
+            m_qobject->setTargetSubpath(std::move(targetPath));
+        }
+
+        const HTreePath& targetSubpath() const noexcept
+        {
+            return m_qobject->targetSubpath();
+        }
 
         void setSelected(bool enable);
         bool isSelected() const;
@@ -143,7 +203,10 @@ class HTreeListItemT : public BaseT
         void setOpenInWindowEnabled(bool val);
         bool isOpenInWindowEnabled() const noexcept;
 
-        std::string uniqueId() const;
+        std::string uniqueId() const
+        {
+            return m_qobject->uniqueId();
+        }
 
         HTreeListItemTQ* qobject() const
         {
