@@ -215,6 +215,8 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         SortValue lastViewportSortValue() const;
 
+        void setUnreadMessageCount(const QString& count);
+
     protected:
 
         void mouseMoveEvent(QMouseEvent *event) override;

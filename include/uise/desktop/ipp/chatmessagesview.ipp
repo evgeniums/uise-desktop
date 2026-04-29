@@ -950,6 +950,18 @@ typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseM
 
 //--------------------------------------------------------------------------
 
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setUnreadMessageCount(const QString& count)
+{
+    auto jumpControl=m_listView->jumpEdgeControl();
+    if (jumpControl!=nullptr)
+    {
+        jumpControl->setBadgeText(count);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_CHATMESSAGESVIEW_IPP
