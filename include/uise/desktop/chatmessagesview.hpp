@@ -138,6 +138,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         void selectionModeToggled(bool enable);
         void selectedCountChanged(size_t count);
         void copySelectedRequested();
+        void viewportUpdated();
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -211,6 +212,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         Message* message(const Id& id) const;
 
         std::vector<Data> selectedMessages() const;
+
+        SortValue lastViewportSortValue() const;
 
     protected:
 

@@ -247,6 +247,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                     m_chatUnderMouse=endItem->widget();
                 }
             }
+
+            emit viewportUpdated();
         }
     );
 }
@@ -930,6 +932,20 @@ void ChatMessagesView<BaseMessageT,Traits>::keyPressEvent(QKeyEvent* event)
         event->ignore();
     }
     return AbstractChatMessagesView::keyPressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseMessageT,Traits>::lastViewportSortValue() const
+{
+    auto lastViewportItem=m_listView->lastViewportItem();
+    if (lastViewportItem==nullptr)
+    {
+        return SortValue{};
+    }
+
+    return lastViewportItem->sortValue();
 }
 
 //--------------------------------------------------------------------------
