@@ -572,6 +572,8 @@ class FlyweightListView : public QFrame
         void setJumpEdgeInvisibleItemCount(size_t value);
         size_t jumpEdgeInvisibleItemCount() const;
 
+        void updateJumpEdgeVisibility();
+
         JumpEdge* jumpEdgeControl() const;
 
         bool eachItem(EachItemHandler handler);

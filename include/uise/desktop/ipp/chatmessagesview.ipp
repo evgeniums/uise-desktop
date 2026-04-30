@@ -957,6 +957,7 @@ void ChatMessagesView<BaseMessageT,Traits>::setUnreadMessageCount(const QString&
     if (jumpControl!=nullptr)
     {
         jumpControl->setBadgeText(count);
+        m_listView->updateJumpEdgeVisibility();
     }
 }
 

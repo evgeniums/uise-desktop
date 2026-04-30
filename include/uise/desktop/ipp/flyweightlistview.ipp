@@ -674,6 +674,13 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeInvisibleItem
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibility()
+{
+    pimpl->updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemCount() const
 {
     return pimpl->jumpEdgeInvisibleItemCount();

@@ -1873,6 +1873,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
     size_t invisibleCount=0;
     bool showControl=false;
 
+    auto jumpEdgeInvisibleItemCount=m_jumpEdge->badgeText().isEmpty()? m_jumpEdgeInvisibleItemCount : 2;
+
     if (m_stick==Direction::HOME)
     {
         auto it=order.find(m_firstViewportSortValue);
@@ -1881,7 +1883,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
             for (auto it1=order.begin();it1!=it;++it1)
             {
                 invisibleCount++;
-                if (invisibleCount==m_jumpEdgeInvisibleItemCount)
+                if (invisibleCount==jumpEdgeInvisibleItemCount)
                 {
                     showControl=true;
                     break;
@@ -1894,7 +1896,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
         for (auto it=order.find(m_lastViewportSortValue);it!=order.end();++it)
         {
             invisibleCount++;
-            if (invisibleCount==m_jumpEdgeInvisibleItemCount)
+            if (invisibleCount==jumpEdgeInvisibleItemCount)
             {
                 showControl=true;
                 break;
