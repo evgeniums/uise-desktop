@@ -155,6 +155,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         using MessageBuilder=std::function<Message* (const Data& data, QWidget* parent)>;
         using FuncItemsRequested=std::function<void (const SortValue& start, size_t maxCount, Direction direction)>;
 
+        using MessageHandler=std::function<bool (Message*)>;
+
         explicit ChatMessagesView(QWidget* parent=nullptr);
 
         ~ChatMessagesView();
@@ -216,6 +218,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         SortValue lastViewportSortValue() const;
 
         void setUnreadMessageCount(const QString& count);
+
+        bool eachMessage(MessageHandler handler);
 
     protected:
 

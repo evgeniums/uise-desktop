@@ -962,6 +962,19 @@ void ChatMessagesView<BaseMessageT,Traits>::setUnreadMessageCount(const QString&
 
 //--------------------------------------------------------------------------
 
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::eachMessage(MessageHandler handler)
+{
+    return m_listView->eachItem(
+        [handler](const auto* item)
+        {
+            return handler(item->item());
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_CHATMESSAGESVIEW_IPP
