@@ -81,6 +81,18 @@ class ChatMessagesViewItem : public BaseMessageT
             return m_dtSepVisible;
         }
 
+        void setUnreadSeparatorVisible(bool enable, const QString& text={});
+
+        bool isUnreadSeparatorVisible() const
+        {
+            return m_unreadSepVisible;
+        }
+
+        bool isTopSeparatorVisible() const
+        {
+            return isDateSeparatorVisible() || isUnreadSeparatorVisible();
+        }
+
     protected:
 
         Widget* doCreateActualWidget(QWidget* parent) override;
@@ -90,6 +102,7 @@ class ChatMessagesViewItem : public BaseMessageT
         AbstractChatMessage* m_ui;
         BaseMessageT* m_msg;
         bool m_dtSepVisible=false;
+        bool m_unreadSepVisible=false;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -131,6 +144,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         constexpr static const int MouseMoveDetectDelta=10;
 
         using QFrame::QFrame;
+
+        QString unreadSeparatorTitle() const;
 
     signals:
 
@@ -220,6 +235,8 @@ class ChatMessagesView : public AbstractChatMessagesView
         void setUnreadMessageCount(const QString& count);
 
         bool eachMessage(MessageHandler handler);
+
+        void readjustList();
 
     protected:
 

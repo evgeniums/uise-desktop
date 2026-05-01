@@ -76,6 +76,7 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
 
         constexpr static const char* TypeDate="date";
         constexpr static const char* TypeFolder="folder";
+        constexpr static const char* TypeUnreadMessages="unread";
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
@@ -98,9 +99,9 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         virtual bool isClickable() const=0;
 
         void setType(QString type)
-        {
-            m_type=std::move(type);
+        {            
             setProperty("separator_type",type);
+            m_type=std::move(type);
         }
 
         const QString& type() const

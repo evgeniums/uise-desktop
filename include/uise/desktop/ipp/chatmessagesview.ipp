@@ -87,6 +87,43 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool ena
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT, typename Traits>
+void ChatMessagesViewItem<BaseMessageT,Traits>::setUnreadSeparatorVisible(bool enable, const QString& text)
+{
+    m_unreadSepVisible=enable;
+
+    AbstractChatSeparatorSection* section=nullptr;
+    auto sep=m_ui->topSeparator();
+    if (sep==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        sep=m_msg->template makeWidget<AbstractChatSeparator,ChatSeparator>(m_ui);
+        m_ui->setTopSeparator(sep);
+    }
+
+    section=sep->section(AbstractChatSeparatorSection::TypeUnreadMessages);
+    if (section==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        section=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
+        section->setType(AbstractChatSeparatorSection::TypeUnreadMessages);
+        sep->insertSection(section,10);
+    }
+
+    section->setVisible(enable);
+    section->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT, typename Traits>
 Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget* parent)
 {
     m_ui=m_msg->template makeWidget<AbstractChatMessage,ChatMessage>(parent);
@@ -376,6 +413,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     );
     std::sort(messages.begin(),messages.end(),[](const auto& l, const auto& r) { return *l<*r;});
 
+    bool hasUnreadSep=false;
     bool prevLastInBatch=true;
     for (size_t i=0;i<messages.size();i++)
     {
@@ -399,8 +437,19 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         }
         msg->setDateSeparatorVisible(dateVisible,withYear);
 
+        // update unread separator
+        if (!hasUnreadSep && msg->isUnread())
+        {
+            msg->setUnreadSeparatorVisible(true,unreadSeparatorTitle());
+            hasUnreadSep=true;
+        }
+        else if (msg->isUnreadSeparatorVisible())
+        {
+            msg->setUnreadSeparatorVisible(false);
+        }
+
         // update last in batch for prev msg
-        if (dateVisible && i>0)
+        if (msg->isTopSeparatorVisible() && i>0)
         {
             prevLastInBatch=true;
             messages[i-1]->ui()->setLastInBatch(true);
@@ -571,6 +620,18 @@ void ChatMessagesView<BaseMessageT,Traits>::insertMessage(const Data& dbItem)
     m_listView->beginUpdate();
 
     doInsertMessage(dbItem);
+    adjustCurrentMessagesList();
+
+    m_listView->endUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::readjustList()
+{
+    m_listView->beginUpdate();
+
     adjustCurrentMessagesList();
 
     m_listView->endUpdate();
@@ -972,6 +1033,13 @@ bool ChatMessagesView<BaseMessageT,Traits>::eachMessage(MessageHandler handler)
             return handler(item->item());
         }
     );
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractChatMessagesView::unreadSeparatorTitle() const
+{
+    return tr("Unread messages");
 }
 
 //--------------------------------------------------------------------------
