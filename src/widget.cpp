@@ -66,6 +66,18 @@ void WidgetController::createActualWidget()
 
 //--------------------------------------------------------------------------
 
+void WidgetController::initWidget(QWidget* parent)
+{
+    if (parent==nullptr || m_widget!=nullptr)
+    {
+        return;
+    }
+    m_parentWidget=parent;
+    createActualWidget();
+}
+
+//--------------------------------------------------------------------------
+
 QWidget* WidgetController::qWidget()
 {
     if (m_widget==nullptr)

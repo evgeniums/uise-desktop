@@ -186,6 +186,9 @@ class UISE_DESKTOP_EXPORT WidgetController : public QObject,
             return m_widget;
         }
 
+        //! When \ref widget() is still null, sets the Qt parent and builds the surface via \ref doCreateActualWidget.
+        void initWidget(QWidget* parent);
+
     protected:
 
         virtual Widget* doCreateActualWidget(QWidget* parent)
