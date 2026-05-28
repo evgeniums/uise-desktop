@@ -5,6 +5,21 @@
             "aliases" : {
                 "seen" : "${uise-svg-icons-1}/eye"
             }
+        },
+        {
+            "name" : "ChatMessageCall",
+            "aliases" : {
+                "call" : "${uise-svg-icons-1}/phone",
+                "incoming" : "${uise-svg-icons-1}/arrow-big-right",
+                "outgoing" : "${uise-svg-icons-1}/arrow-left-right"
+            }
+        },
+        {
+            "name" : "ChatMessageCallFailed",
+            "aliases" : {
+                "incoming" : "${uise-svg-icons-1}/arrow-big-right",
+                "outgoing" : "${uise-svg-icons-1}/arrow-left-right"
+            }
         }
     ]
 }

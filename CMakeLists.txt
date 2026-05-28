@@ -177,7 +177,9 @@ SET (HEADERS
     include/uise/desktop/label.hpp
 
     include/uise/desktop/abstractchatmessage.hpp
+    include/uise/desktop/abstractchatmessagecall.hpp
     include/uise/desktop/chatmessagetext.hpp
+    include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
     include/uise/desktop/chatmessagesview.hpp
 
@@ -301,7 +303,9 @@ SET (SOURCES
     src/validatedinput.cpp
 
     src/label.cpp
+    src/abstractchatmessagecall.cpp
     src/chatmessagetext.cpp
+    src/chatmessagecall.cpp
     src/chatmessage.cpp
 
     src/messageeditor.cpp

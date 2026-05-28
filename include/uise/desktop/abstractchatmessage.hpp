@@ -421,6 +421,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_direction;
         }
 
+        bool isIncoming() const noexcept
+        {
+            return m_direction==Direction::Received;
+        }
+
         bool isContentVisible() const noexcept
         {
             return m_contentVisible;
