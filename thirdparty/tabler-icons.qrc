@@ -100,5 +100,6 @@
         <file>tabler-icons/outline/paperclip.svg</file>
         <file>tabler-icons/outline/alert-circle.svg</file>
         <file>tabler-icons/outline/clock.svg</file>
+        <file>tabler-icons/outline/phone-off.svg</file>
     </qresource>
 </RCC>
