@@ -438,7 +438,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         msg->setDateSeparatorVisible(dateVisible,withYear);
 
         // update unread separator
-        if (!hasUnreadSep && msg->isUnread())
+        if (!hasUnreadSep && msg->isUnread() && i<(messages.size()-1))
         {
             msg->setUnreadSeparatorVisible(true,unreadSeparatorTitle());
             hasUnreadSep=true;
