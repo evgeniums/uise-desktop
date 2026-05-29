@@ -41,7 +41,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageCall : public AbstractChatMessageBo
         {
             Missed,
             Complete,
-            Failed
+            Failed,
+            Declined
         };
 
         using AbstractChatMessageBody::AbstractChatMessageBody;
