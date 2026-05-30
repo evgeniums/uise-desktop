@@ -734,7 +734,12 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
 template <typename BaseMessageT,typename Traits>
 typename ChatMessagesView<BaseMessageT,Traits>::Message* ChatMessagesView<BaseMessageT,Traits>::message(const Id& id) const
 {
-    return m_listView->item(id)->item();
+    auto item=m_listView->item(id);
+    if (item==nullptr)
+    {
+        return nullptr;
+    }
+    return item->item();
 }
 
 //--------------------------------------------------------------------------
