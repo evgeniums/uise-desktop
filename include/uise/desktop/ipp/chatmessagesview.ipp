@@ -1017,6 +1017,25 @@ typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseM
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+typename ChatMessagesView<BaseMessageT,Traits>::Id ChatMessagesView<BaseMessageT,Traits>::lastViewportSeqId() const
+{
+    auto lastViewportItem=m_listView->lastViewportItem();
+    if (lastViewportItem==nullptr)
+    {
+        return Id{};
+    }
+
+    const auto* item=lastViewportItem->item();
+    if (item==nullptr)
+    {
+        return Id{};
+    }
+    return item->seqId();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::setUnreadMessageCount(const QString& count)
 {
     auto jumpControl=m_listView->jumpEdgeControl();
@@ -1033,6 +1052,19 @@ template <typename BaseMessageT,typename Traits>
 bool ChatMessagesView<BaseMessageT,Traits>::eachMessage(MessageHandler handler)
 {
     return m_listView->eachItem(
+        [handler](const auto* item)
+        {
+            return handler(item->item());
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::rEachMessage(MessageHandler handler)
+{
+    return m_listView->rEachItem(
         [handler](const auto* item)
         {
             return handler(item->item());

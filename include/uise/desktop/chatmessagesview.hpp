@@ -232,9 +232,13 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         SortValue lastViewportSortValue() const;
 
+        Id lastViewportSeqId() const;
+
         void setUnreadMessageCount(const QString& count);
 
         bool eachMessage(MessageHandler handler);
+
+        bool rEachMessage(MessageHandler handler);
 
         void readjustList();
 
