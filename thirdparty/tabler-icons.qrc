@@ -101,5 +101,7 @@
         <file>tabler-icons/outline/alert-circle.svg</file>
         <file>tabler-icons/outline/clock.svg</file>
         <file>tabler-icons/outline/phone-off.svg</file>
+        <file>tabler-icons/outline/phone-incoming.svg</file>
+        <file>tabler-icons/outline/phone-outgoing.svg</file>
     </qresource>
 </RCC>

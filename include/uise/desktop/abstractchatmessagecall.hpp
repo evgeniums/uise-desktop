@@ -75,6 +75,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageCall : public AbstractChatMessageBo
         QString formatText() const;
         QString formatDuration() const;
 
+        virtual void presetText(const QString& text) =0;
+        virtual void presetIcon(const QString& icon) =0;
+
     protected:
 
         virtual void updateDuration() =0;

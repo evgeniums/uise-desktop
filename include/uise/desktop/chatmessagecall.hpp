@@ -49,6 +49,9 @@ class UISE_DESKTOP_EXPORT ChatMessageCall : public AbstractChatMessageCall
         ChatMessageCall(ChatMessageCall&&)=delete;
         ChatMessageCall& operator=(ChatMessageCall&&)=delete;
 
+        void presetText(const QString& text) override;
+        void presetIcon(const QString& icon) override;
+
     protected:
 
         void updateDuration() override;
@@ -57,6 +60,8 @@ class UISE_DESKTOP_EXPORT ChatMessageCall : public AbstractChatMessageCall
         void updateChatMessage() override;
 
     private:
+
+        void updateIcon();
 
         std::unique_ptr<ChatMessageCall_p> pimpl;
 };

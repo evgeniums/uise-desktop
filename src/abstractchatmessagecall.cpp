@@ -57,11 +57,11 @@ QString AbstractChatMessageCall::formatText() const
     case Status::Complete:
         if (chatMessage()->isIncoming())
         {
-            return tr("Incoming call (%1)").arg(formatDuration());
+            return tr("Incoming call %1").arg(formatDuration());
         }
         else
         {
-            return tr("Outgoing call (%1)").arg(formatDuration());
+            return tr("Outgoing call %1").arg(formatDuration());
         }
         break;
     case Status::Declined:

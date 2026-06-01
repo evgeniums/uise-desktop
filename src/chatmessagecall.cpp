@@ -41,11 +41,7 @@ class ChatMessageCall_p
     public:
 
         QBoxLayout* layout=nullptr;
-
         WithRoundedImage* callIcon=nullptr;
-        WithRoundedImage* directionIcon=nullptr;
-        WithRoundedImage* failedDirectionIcon=nullptr;
-
         QLabel* text=nullptr;
 };
 
@@ -60,24 +56,12 @@ ChatMessageCall::ChatMessageCall(QWidget* parent)
     pimpl->callIcon=new WithRoundedImage(this);
     pimpl->callIcon->setObjectName("callIcon");
     pimpl->layout->addWidget(pimpl->callIcon);
-    pimpl->callIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageCall::call",this));
-
-    pimpl->directionIcon=new WithRoundedImage(this);
-    pimpl->directionIcon->setObjectName("directionIcon");
-    pimpl->layout->addWidget(pimpl->directionIcon);
-
-    pimpl->failedDirectionIcon=new WithRoundedImage(this);
-    pimpl->failedDirectionIcon->setObjectName("failedDirectionIcon");
-    pimpl->layout->addWidget(pimpl->failedDirectionIcon);
 
     pimpl->text=new QLabel(this);
     pimpl->text->setObjectName("text");
     pimpl->layout->addWidget(pimpl->text);
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
-
-    pimpl->directionIcon->setVisible(false);
-    pimpl->failedDirectionIcon->setVisible(false);
 }
 
 //--------------------------------------------------------------------------
@@ -99,25 +83,59 @@ void ChatMessageCall::updateDuration()
 void ChatMessageCall::updateStatus()
 {
     pimpl->text->setText(formatText());
-
-    pimpl->directionIcon->setVisible(status()==Status::Complete);
-    pimpl->failedDirectionIcon->setVisible(status()!=Status::Complete);
+    updateIcon();
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageCall::updateChatMessage()
 {
-    if (chatMessage()->isIncoming())
+    pimpl->text->setText(formatText());
+    updateIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageCall::updateIcon()
+{
+    QString icon;
+    if (status()==Status::Complete)
     {
-        pimpl->directionIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageCall::incoming",this));
-        pimpl->failedDirectionIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageCallFailed::incoming",this));
+        if (chatMessage()->isIncoming())
+        {
+            icon="CallIcon::incoming";
+        }
+        else
+        {
+            icon="CallIcon::outgoing";
+        }
     }
     else
     {
-        pimpl->directionIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageCall::outgoing",this));
-        pimpl->failedDirectionIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageCallFailed::outgoing",this));
+        if (chatMessage()->isIncoming())
+        {
+            icon="CallFailedIcon::incoming";
+        }
+        else
+        {
+            icon="CallFailedIcon::outgoing";
+        }
     }
+    pimpl->callIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon(icon,this));
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageCall::presetText(const QString& text)
+{
+    pimpl->text->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageCall::presetIcon(const QString& icon)
+{
+    pimpl->callIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon(icon,this));
 }
 
 //--------------------------------------------------------------------------
