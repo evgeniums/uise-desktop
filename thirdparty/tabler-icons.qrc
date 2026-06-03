@@ -103,5 +103,8 @@
         <file>tabler-icons/outline/phone-off.svg</file>
         <file>tabler-icons/outline/phone-incoming.svg</file>
         <file>tabler-icons/outline/phone-outgoing.svg</file>
+        <file>tabler-icons/outline/microphone-off.svg</file>
+        <file>tabler-icons/outline/microphone.svg</file>
+        <file>tabler-icons/outline/player-play.svg</file>
     </qresource>
 </RCC>
