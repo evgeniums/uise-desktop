@@ -127,3 +127,27 @@ width: 0px;
 QScrollBar::sub-line:horizontal {
 width: 0px;
 }
+
+QMainWindow {
+background-color: #343434;
+}
+
+QMenuBar {
+background-color: #343434;
+color: #EEEEEE;
+}
+
+QMenuBar::item:selected {
+background-color: #1e6091;
+}
+
+QStatusBar {
+background-color: #343434;
+color: #EEEEEE;
+}
+
+QToolTip {
+background-color: #262626;
+color: #EEEEEE;
+border: 1px solid #333333;
+}

@@ -1,0 +1,8 @@
+uise--LoadControl #sample{
+color: #219ebc;background-color: #BBBBBB;
+}
+
+uise--CircleBusy #sample {
+color: #777777;
+background-color: rgba(187,187,187,99);
+}

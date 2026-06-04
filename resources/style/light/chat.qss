@@ -1,0 +1,113 @@
+uise--AbstractChatMessagesView,
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
+{
+background-color: #FFFFFF; /* chat background */
+}
+
+uise--AbstractChatMessageContent {
+background-color: #E9EBEF; /* received message */
+}
+
+uise--AbstractChatMessageContent[selected="true"],
+uise--AbstractChatMessageContent[selected="true"][sent="true"]
+{
+background-color: #AFC8E8; /* selected message */
+}
+
+uise--AbstractChatMessageContent[sent="true"] {
+background-color: #D2E4F5; /* sent message */
+}
+
+uise--ChatMessageText uise--ChatMessageTextBrowser {
+background-color: transparent;
+border:none;
+selection-background-color: #AFC8E8; /* selected message */
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
+background-color: #E9EBEF;
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]{
+background-color: #AFC8E8; /* selected message */
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] {
+background-color: #D2E4F5;
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]{
+background-color: #AFC8E8; /* selected message */
+}
+
+uise--ChatMessageBottom QLabel {
+color: #888888;
+}
+
+uise--ChatMessageBottom QLabel[sent="true"]{
+color: #3F6FA0;
+}
+
+uise--ChatMessageBottom QLabel[selected="true"],
+uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
+color: #1e6091;
+}
+
+uise--ChatSeparatorSection uise--AvatarButton {
+background-color:#DDDDDD;
+}
+
+uise--ChatSeparatorSection[separator_type="unread"] {
+background-color:#DDDDDD;
+}
+
+uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
+background-color:transparent;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
+background-color: #CCCCCC;
+border: 2px solid #AAAAAA;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked{
+background-color: #4A70A9; /* selected message */
+border: 2px solid #AAAAAA;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:unchecked:hover {
+border: 2px solid #888888;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked:hover {
+border: 2px solid #4A70A9; /* selected message */
+}
+
+uise--MessageSelectionPanelUi #drawer {
+background-color: #DDDDDD; /* node top frame */
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+background-color: #4A70A9; /* selected message */
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
+background-color: transparent;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+color: #000000;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton:hover {
+color: #000000;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
+color: #1e6091;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton:hover {
+color: #0099b8;
+}

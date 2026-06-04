@@ -1,0 +1,12 @@
+uise--SimpleImageEditorWidget #freeHandDrawFrame {
+border: 1px solid #888888;
+background-color: #DDDDDD;
+}
+
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton
+{color: #444444;border: 1px solid #888888; background-color: transparent;}
+
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton:hover,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton:hover
+{color: #000000;border: 1px solid #000000;}

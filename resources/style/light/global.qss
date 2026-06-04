@@ -44,14 +44,16 @@ QLineEdit,
 QComboBox,
 QDateTimeEdit,
 QSpinBox,
-QDoubleSpinBox {
+QDoubleSpinBox,
+QTextEdit {
     padding:2px;
     border:2px solid transparent;
     border-radius:4px;
 }
 
 QComboBox {padding-left:4px;}
-QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus {border: 2px solid #D8D8D8;}
+QComboBox:hover,QDateTimeEdit:focus,QLineEdit:focus,QSpinBox:focus,QAbstractSpinBox:focus,
+QTextEdit:focus,QCheckBox:hover,QCheckBox:focus, QRadioButton:hover, QRadioButton:focus {border: 2px solid #D8D8D8;}
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button,
@@ -75,4 +77,25 @@ QDateTimeEdit::down-button {
     margin: 0px 0 1px 1px;
     subcontrol-position: bottom left;
     border:1px solid transparent;
+}
+
+uise--IconTextButton #text {
+color: #444444;
+}
+
+uise--IconTextButton #text[hovered="true"] {
+color: #000000;
+}
+
+QLineEdit, QTextEdit {
+placeholder-text-color: #888888;
+}
+
+uise--ButtonsList {
+background-color: #DDDDDD;
+}
+
+uise--ScrollArea {
+border:none;
+background-color: transparent;
 }

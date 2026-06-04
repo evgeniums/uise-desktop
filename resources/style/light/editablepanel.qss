@@ -3,31 +3,52 @@ border: 1px solid #CCCCCC;
 background-color: #F0F0F0;
 }
 
-uise--EditablePanel #bottomButtonsFrame QPushButton{color: #505050;border: 1px solid #909090; background-color: transparent;}
-uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #000000;border: 1px solid #000000;}
-
-uise--EditablePanel QLabel {
-color: #5C5C5C;
+uise--EditablePanel #contentFrame{
 }
 
-uise--EditablePanel uise--EditableLabel QLabel {
-background-color: #E4E4E4;
+uise--EditablePanel QLabel,
+uise--EditablePanel uise--EditableLabel QLabel#comment {
+color: #555555;
+}
+
+uise--EditablePanel QLabel:disabled,
+uise--EditablePanel uise--EditableLabel QLabel#comment:disabled {
+color: #777777;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel#label {
+background-color: #DDDDDD;
 color: #000000;
+}
+
+uise--EditablePanel uise--EditableLabel QLabel#label:disabled {
+color: #777777;
 }
 
 uise--EditablePanel uise--PushButton QPushButton
-{color: #555555;background-color: transparent;border: 1px solid #999999;}
+{color: #555555;background-color: transparent;border: 1px solid #888888;}
 
 uise--EditablePanel uise--PushButton QPushButton:hover
-{color: #444444;border: 1px solid #444444;}
+{color: #000000;border: 1px solid #000000;}
 
-uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonApply QPushButton,
-uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonCancel QPushButton {
-color: #555555;
-font-size: 17px;
+uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
+color: #000000;
+border:none;
 }
-uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonApply QPushButton:hover,
-uise--EditablePanel #topButtonsFrame uise--PushButton#topButtonCancel QPushButton:hover,
+
 uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {
 color: #000000;
+}
+
+uise--EditablePanel #bottomButtonsFrame QPushButton{color: #555555;border: 2px solid #888888; background-color: transparent;}
+uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #000000;border: 2px solid #000000;}
+
+uise--EditablePanel #statusFrame #statusText[status="error"]{
+color: #ff6677;
+}
+
+uise--EditablePanel #topButtonsFrame,
+uise--EditablePanel #bottomButtonsFrame,
+uise--EditablePanel #titleFrame {
+background-color:transparent;
 }

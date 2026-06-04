@@ -3,6 +3,7 @@ uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {color:#EEEEEE;}
 uise--HTreeNodeTitleBar {
     border: 1px solid #999999;
     background-color: #888888;
+    border-right:none;
 }
 
 uise--HTreeNodePlaceHolder {background-color: #C8C8C8;}
@@ -20,4 +21,37 @@ uise--HTreeSplitterLine {background-color:#DDDDDD;}
 
 uise--HTreeNode #nodeTopFrame {
     background-color: #DDDDDD;
+}
+
+uise--HTree,
+uise--HTreeNode {
+background-color: #F0F0F0;
+border:none;
+}
+
+uise--HTreeTab, uise--HTreeSideBar {
+border:none;
+}
+
+uise--HTreeTab #closeWarnFrame {
+border: 2px solid #FB9B8F;
+background-color: transparent;
+}
+
+uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{
+background-color:#FB9B8F;
+}
+
+uise--HTreeTab {
+margin-right: -2px;
+}
+
+uise--HTreeTab #hTreeTabs {
+border:none;
+}
+
+uise--AlignedStretchingWidget,
+uise--HTreeSplitterInternal,
+uise--HTreeSplitter {
+border:none;
 }

@@ -47,32 +47,46 @@
         <file>style/light/passworddialog.qss</file>
         <file>style/imageeditor.json</file>
         <file>style/dark/imageeditor.json</file>
+        <file>style/light/imageeditor.json</file>
         <file>style/dark/imageeditor.qss</file>
+        <file>style/light/imageeditor.qss</file>
         <file>style/imageeditor.qss</file>
         <file>style/flyweightlistview.json</file>
         <file>style/dark/flyweightlistview.json</file>
+        <file>style/light/flyweightlistview.json</file>
         <file>style/flyweightlistview.qss</file>
         <file>style/dark/flyweightlistview.qss</file>
+        <file>style/light/flyweightlistview.qss</file>
         <file>style/avatar.json</file>
         <file>style/dark/avatar.json</file>
+        <file>style/light/avatar.json</file>
         <file>style/toast.qss</file>
         <file>style/dark/toast.qss</file>
+        <file>style/light/toast.qss</file>
         <file>style/qrcodescanner.qss</file>
         <file>style/dark/qrcodescanner.qss</file>
+        <file>style/light/qrcodescanner.qss</file>
         <file>style/loadcontrol.json</file>
         <file>style/loadcontrol.qss</file>
         <file>style/dark/loadcontrol.json</file>
+        <file>style/light/loadcontrol.json</file>
         <file>style/dark/loadcontrol.qss</file>
+        <file>style/light/loadcontrol.qss</file>
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>
+        <file>style/light/lineedit.json</file>
         <file>style/buttonslist.qss</file>
         <file>style/inputwidgets.qss</file>
         <file>style/dark/inputwidgets.qss</file>
+        <file>style/light/inputwidgets.qss</file>
         <file>style/dark/reset.qss</file>
+        <file>style/light/reset.qss</file>
         <file>style/chat.json</file>
         <file>style/chat.qss</file>
         <file>style/dark/chat.json</file>
+        <file>style/light/chat.json</file>
         <file>style/dark/chat.qss</file>
+        <file>style/light/chat.qss</file>
     </qresource>
 </RCC>

@@ -1,0 +1,8 @@
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton
+{color: #444444;border: 1px solid #888888; background-color: transparent;}
+
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:hover
+{color: #000000;border: 1px solid #000000;}
+
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:disabled
+{color: #999999;border: 1px solid #BBBBBB;}

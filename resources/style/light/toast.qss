@@ -1,0 +1,7 @@
+uise--Toast {
+background-color: #C8C8C8;
+}
+
+uise--Toast QLabel {
+color: #000000;
+}

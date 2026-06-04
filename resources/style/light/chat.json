@@ -1,0 +1,29 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ChatMessageBottom",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            }
+        },
+        {
+            "name" : "ChatMessageCall",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            }
+        },
+        {
+            "name" : "ChatMessageCallFailed",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#ff6677" }
+                }
+            }
+        }
+    ]
+}

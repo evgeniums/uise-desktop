@@ -1,0 +1,13 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "Avatar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ImageEditor",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" },
+                    "on" : { "currentColor" : "#333333" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#333333" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        }
+    ]
+}

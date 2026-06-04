@@ -1,0 +1,21 @@
+uise--ValidatedInput QLineEdit[state="intermediate"]{
+color: #777777;
+}
+
+uise--ValidatedInput QLineEdit[state="invalid"]{
+color: #ff6677;
+}
+
+uise--ValidatedInput uise--PushButton QPushButton
+{color: #444444;border: 1px solid #888888; background-color: transparent;}
+
+uise--ValidatedInput uise--PushButton QPushButton:disabled,
+uise--ValidatedInput uise--PushButton QPushButton:disabled:hover
+{color: #999;border: none;}
+
+uise--ValidatedInput uise--PushButton QPushButton:hover
+{color: #000000;border: 1px solid #000000;}
+
+uise--ValidatedInput QLabel#error {
+color: #ff6677;
+}

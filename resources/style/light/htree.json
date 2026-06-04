@@ -34,6 +34,39 @@
                     "off" : { "currentColor" : "#000000" }
                 }
             }
+        },
+        {
+            "name" : "HTreeNodeTop",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        },
+        {
+            "name" : "HTreeNodeBottom",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        },
+        {
+            "name" : "HTreeTabCloseWarn",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                }
+            }
         }
     ]
 }
