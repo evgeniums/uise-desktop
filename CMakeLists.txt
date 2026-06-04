@@ -113,6 +113,7 @@ SET (HEADERS
     include/uise/desktop/htreelistitemtemplate.hpp
     include/uise/desktop/htreeflyweightlistitem.hpp
     include/uise/desktop/htreestandardlistitem.hpp
+    include/uise/desktop/htreecontrollerlistitem.hpp
     include/uise/desktop/htreelistwidget.hpp
     include/uise/desktop/htreelistflyweightview.hpp
 
