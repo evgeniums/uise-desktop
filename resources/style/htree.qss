@@ -23,6 +23,15 @@ uise--HTreeStandardListItem #hTreeItemPixmap QPushButton {
 uise--HTreeStandardListItem {padding:4px;}
 uise--HTreeStandardListItem QLabel{padding:0;margin:0;}
 
+uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap,
+uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap QPushButton {
+    max-width:0;
+    min-width:0;
+    padding:0;
+    margin:0;
+    border:none;
+}
+
 uise--HTreeSplitterSection {padding:0;}
 uise--HTreeSplitterLine {border:none;}
 

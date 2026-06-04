@@ -12,6 +12,10 @@ uise--HTreeStandardListItem QLabel {color:#000000;}
 uise--HTreeStandardListItem[hover="true"] {background-color:#ECECEC;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#CCCCCC;}
 
+uise--HTreeStandardListItem[htree_section_header="true"][hover="true"] {background-color:transparent;}
+uise--HTreeStandardListItem[htree_section_header="true"][selected="true"] {background-color:transparent;}
+uise--HTreeStandardListItem[htree_section_header="true"] QLabel {color:#999999;}
+
 uise--HTreeSplitterLine {background-color:#DDDDDD;}
 
 uise--HTreeNode #nodeTopFrame {
