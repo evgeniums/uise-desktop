@@ -106,5 +106,6 @@
         <file>tabler-icons/outline/microphone-off.svg</file>
         <file>tabler-icons/outline/microphone.svg</file>
         <file>tabler-icons/outline/player-play.svg</file>
+        <file>tabler-icons/outline/file-export.svg</file>
     </qresource>
 </RCC>
