@@ -107,5 +107,16 @@
         <file>tabler-icons/outline/microphone.svg</file>
         <file>tabler-icons/outline/player-play.svg</file>
         <file>tabler-icons/outline/file-export.svg</file>
+        <file>tabler-icons/outline/shield-lock.svg</file>
+        <file>tabler-icons/outline/eye-off.svg</file>
+        <file>tabler-icons/outline/world.svg</file>
+        <file>tabler-icons/outline/bell.svg</file>
+        <file>tabler-icons/outline/volume-2.svg</file>
+        <file>tabler-icons/outline/video.svg</file>
+        <file>tabler-icons/outline/folder.svg</file>
+        <file>tabler-icons/outline/palette.svg</file>
+        <file>tabler-icons/outline/list-details.svg</file>
+        <file>tabler-icons/outline/message-forward.svg</file>
+        <file>tabler-icons/outline/terminal-2.svg</file>
     </qresource>
 </RCC>
