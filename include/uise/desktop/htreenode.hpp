@@ -157,6 +157,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         HTreePath& mutablePath();
 
+        void setToParentPath(HTreePath path);
+        const HTreePath& toParentPath() const;
+
         void setParentNode(HTreeNode* node);
         HTreeNode* parentNode() const;
 
@@ -260,6 +263,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void otherNodeExpanded(bool);
 
         void onPlaceHolderExpandRequest();
+        void onToParentRequested();
 
     private:
 

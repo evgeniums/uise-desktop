@@ -240,6 +240,7 @@ class HTreeNode_p
         HTreeNode* node;
 
         HTreePath path;
+        HTreePath toParentPath;
 
         HTreeTab* treeTab=nullptr;
         HTreeNode* parentNode=nullptr;
@@ -350,7 +351,7 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         pimpl->titleBar,
         &HTreeNodeTitleBar::toParentRequested,
         this,
-        &HTreeNode::expandParentNode
+        &HTreeNode::onToParentRequested
     );
     connect(
         pimpl->titleBar,
@@ -422,6 +423,32 @@ const HTreePath& HTreeNode::path() const
 HTreePath& HTreeNode::mutablePath()
 {
     return pimpl->path;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setToParentPath(HTreePath path)
+{
+    pimpl->toParentPath=std::move(path);
+}
+
+//--------------------------------------------------------------------------
+
+const HTreePath& HTreeNode::toParentPath() const
+{
+    return pimpl->toParentPath;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::onToParentRequested()
+{
+    if (!pimpl->toParentPath.isNull())
+    {
+        treeTab()->openPath(pimpl->toParentPath);
+        return;
+    }
+    expandParentNode();
 }
 
 //--------------------------------------------------------------------------
