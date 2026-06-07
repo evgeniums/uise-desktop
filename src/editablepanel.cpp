@@ -42,6 +42,7 @@ class EditablePanel_p
         bool editable=true;
         bool editingMode=false;
         bool hovered=false;
+        bool keepEditingOnApply=false;
 
         QBoxLayout* layout=nullptr;
 
@@ -323,7 +324,24 @@ void EditablePanel::cancel()
 
 void EditablePanel::doCommitApply()
 {
-    setEditingMode(false);
+    if (!pimpl->keepEditingOnApply)
+    {
+        setEditingMode(false);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setKeepEditingOnApply(bool enable) noexcept
+{
+    pimpl->keepEditingOnApply = enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool EditablePanel::keepEditingOnApply() const noexcept
+{
+    return pimpl->keepEditingOnApply;
 }
 
 //--------------------------------------------------------------------------

@@ -267,6 +267,9 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void setWidget(QWidget* widget) override final;
 
+        void setKeepEditingOnApply(bool enable) noexcept;
+        bool keepEditingOnApply() const noexcept;
+
         void setBusyWaiting(bool) override;
 
         void showStatus(const QString& message, const QString& status) override;
