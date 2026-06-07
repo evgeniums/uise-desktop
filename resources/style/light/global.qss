@@ -49,6 +49,7 @@ QTextEdit {
     padding:2px;
     border:2px solid transparent;
     border-radius:4px;
+    background-color: #FFFFFF;
 }
 
 QComboBox {padding-left:4px;}
@@ -93,6 +94,14 @@ placeholder-text-color: #888888;
 
 uise--ButtonsList {
 background-color: #DDDDDD;
+}
+
+QScrollArea {
+background-color: #F0F0F0;
+}
+
+QScrollArea > QWidget > QWidget {
+background-color: #F0F0F0;
 }
 
 uise--ScrollArea {

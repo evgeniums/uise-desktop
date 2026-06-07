@@ -61,6 +61,18 @@
             }
         },
         {
+            "name" : "TabBarItem",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
             "name" : "HTreeTabCloseWarn",
             "modes" : {
                 "normal" : {
