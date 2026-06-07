@@ -271,7 +271,7 @@ class HTreeNode_p
 
         HTreeNodeLocator* nextNodeLocator=nullptr;
 
-        bool collapsiblePlaceholderVisible=true;
+        bool collapsiblePlaceholderVisible=false;
         bool loaded=false;
 
         void setCollapsePlaceholderVisible(bool enable)
@@ -956,7 +956,7 @@ bool HTreeNode::updateCollapsePlaceholder()
     {
         if (treeTab()->isSingleCollapsePlaceholder())
         {
-            bool visiblePlaceholder=true;
+            bool visiblePlaceholder=!treeTab()->isCollapsePlaceholderHidden();
             auto pNode=parentNode();
             if (pNode)
             {

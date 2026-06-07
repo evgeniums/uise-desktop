@@ -62,13 +62,42 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
             QToolButton::setText(value.replace("&", "&&"));
         }
 
+        void setOpenInTabEnabled(bool enable) noexcept
+        {
+            m_openInTabEnabled=enable;
+        }
+
+        bool isOpenInTabEnabled() const noexcept
+        {
+            return m_openInTabEnabled;
+        }
+
+        void setOpenInWindowEnabled(bool enable) noexcept
+        {
+            m_openInWindowEnabled=enable;
+        }
+
+        bool isOpenInWindowEnabled() const noexcept
+        {
+            return m_openInWindowEnabled;
+        }
+
+    signals:
+
+        void openInNewTabRequested();
+        void openInNewWindowRequested();
+
     protected:
 
         void enterEvent(QEnterEvent * event) override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void contextMenuEvent(QContextMenuEvent* event) override;
 
     private:
 
         Qt::CursorShape m_hoveringCursor;
+        bool m_openInTabEnabled=true;
+        bool m_openInWindowEnabled=true;
 };
 
 /**
@@ -107,6 +136,16 @@ class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
             return m_hoverCharacter;
         }
 
+        void setHoverCharacterClickable(bool enable)
+        {
+            m_hoverCharacterClickable=enable;
+        }
+
+        bool isHoverCharacterClickable() const
+        {
+            return m_hoverCharacterClickable;
+        }
+
         void setText(const QString& text)
         {
             m_fallbackCharacter=text;
@@ -129,6 +168,7 @@ class UISE_DESKTOP_EXPORT NavigationBarSeparator : public QLabel
         bool m_hoverCharacterEnabled;
         QString m_hoverCharacter;
         QString m_fallbackCharacter;
+        bool m_hoverCharacterClickable=true;
 };
 
 /**
@@ -268,6 +308,16 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setItemHoveringCursor(const Qt::CursorShape& cursor) noexcept;
         Qt::CursorShape itemHoveringCursor() const noexcept;
 
+        /**
+         * @brief Enable/disable "Open in new tab" for all items (default: true).
+         */
+        void setItemsOpenInTabEnabled(bool enable) noexcept;
+
+        /**
+         * @brief Enable/disable "Open in new window" for all items (default: true).
+         */
+        void setItemsOpenInWindowEnabled(bool enable) noexcept;
+
     public slots:
 
         /**
@@ -311,6 +361,11 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void idToggled(const QString& id, bool checked);
         void idSeparatorClicked(const QString& id);
         void idSeparatorHovered(const QString& id, bool enable);
+
+        void indexOpenInNewTabRequested(int index);
+        void indexOpenInNewWindowRequested(int index);
+        void idOpenInNewTabRequested(const QString& id);
+        void idOpenInNewWindowRequested(const QString& id);
 
     protected:
 

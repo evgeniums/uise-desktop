@@ -30,6 +30,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QCursor>
 #include <QTimer>
 #include <QMouseEvent>
+#include <QContextMenuEvent>
+#include <QMenu>
+#include <QApplication>
 #include <QStyle>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -80,6 +83,85 @@ void NavigationBarItem::enterEvent(QEnterEvent * event)
     }
 }
 
+//--------------------------------------------------------------------------
+
+void NavigationBarItem::mousePressEvent(QMouseEvent* event)
+{
+    // Middle click → open in new tab
+    if (event->button()==Qt::MiddleButton)
+    {
+        if (m_openInTabEnabled)
+        {
+            emit openInNewTabRequested();
+        }
+        event->accept();
+        return;
+    }
+
+    if (event->button()==Qt::LeftButton)
+    {
+        // Shift (or on macOS Alt+Ctrl) → open in new window
+        if (QApplication::keyboardModifiers() & Qt::ShiftModifier
+#ifdef Q_OS_MAC
+            ||
+            (
+                QApplication::keyboardModifiers() & Qt::AltModifier
+                &&
+                QApplication::keyboardModifiers() & Qt::ControlModifier
+            )
+#endif
+            )
+        {
+            if (m_openInWindowEnabled)
+            {
+                emit openInNewWindowRequested();
+            }
+            event->accept();
+            return;
+        }
+
+        // Ctrl → open in new tab
+        if (QApplication::keyboardModifiers() & Qt::ControlModifier)
+        {
+            if (m_openInTabEnabled)
+            {
+                emit openInNewTabRequested();
+            }
+            event->accept();
+            return;
+        }
+    }
+
+    QToolButton::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBarItem::contextMenuEvent(QContextMenuEvent* event)
+{
+    if (!m_openInTabEnabled && !m_openInWindowEnabled)
+    {
+        event->ignore();
+        return;
+    }
+
+    auto menu=new QMenu(this);
+
+    if (m_openInTabEnabled)
+    {
+        auto openInTab=menu->addAction(tr("Open in new tab","NavigationBarItem"));
+        connect(openInTab,&QAction::triggered,this,&NavigationBarItem::openInNewTabRequested);
+    }
+    if (m_openInWindowEnabled)
+    {
+        auto openInWindow=menu->addAction(tr("Open in new window","NavigationBarItem"));
+        connect(openInWindow,&QAction::triggered,this,&NavigationBarItem::openInNewWindowRequested);
+    }
+
+    menu->exec(event->globalPos());
+    event->accept();
+}
+
 /********************************NavigationBarSeparator**********************/
 
 NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
@@ -96,6 +178,7 @@ NavigationBarSeparator* NavigationBarSeparator::clone() const
     auto sep=new NavigationBarSeparator();
     sep->setHoverCharacterEnabled(isHoverCharacterEnabled());
     sep->setHoverCharacter(hoverCharacter());
+    sep->setHoverCharacterClickable(isHoverCharacterClickable());
 
     auto txt=text();
     if (!txt.isEmpty())
@@ -127,7 +210,7 @@ void NavigationBarSeparator::mousePressEvent(QMouseEvent* event)
 {
     QLabel::mousePressEvent(event);
 
-    if (event->button()==Qt::LeftButton)
+    if (m_hoverCharacterClickable && event->button()==Qt::LeftButton)
     {
         emit clicked();
     }
@@ -137,16 +220,15 @@ void NavigationBarSeparator::mousePressEvent(QMouseEvent* event)
 
 void NavigationBarSeparator::enterEvent(QEnterEvent* event)
 {
-    setProperty("hover",true);
-    style()->unpolish(this);
-    style()->polish(this);
-
     if (m_hoverCharacterEnabled)
     {
-        QLabel::setText(m_hoverCharacter);
-    }
+        setProperty("hover",true);
+        style()->unpolish(this);
+        style()->polish(this);
 
-    emit hovered(true);
+        QLabel::setText(m_hoverCharacter);
+        emit hovered(true);
+    }
 
     QLabel::enterEvent(event);
 }
@@ -204,6 +286,9 @@ class NavigationBar_p
 
         QFrame* leftFrame=nullptr;
         QBoxLayout* leftFrameLayout=nullptr;
+
+        bool openInTabEnabled=true;
+        bool openInWindowEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -342,9 +427,30 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         button->setProperty("id",id);
     }
     button->setText(name);
+    button->setOpenInTabEnabled(pimpl->openInTabEnabled);
+    button->setOpenInWindowEnabled(pimpl->openInWindowEnabled);
 
     auto prevButtons=pimpl->buttons->buttons();
     pimpl->buttons->addButton(button,prevButtons.count());
+
+    connect(button,&NavigationBarItem::openInNewTabRequested,this,
+        [this,button]()
+        {
+            int index=pimpl->buttons->id(button);
+            auto id=itemId(index);
+            emit indexOpenInNewTabRequested(index);
+            if (!id.isEmpty()) emit idOpenInNewTabRequested(id);
+        }
+    );
+    connect(button,&NavigationBarItem::openInNewWindowRequested,this,
+        [this,button]()
+        {
+            int index=pimpl->buttons->id(button);
+            auto id=itemId(index);
+            emit indexOpenInNewWindowRequested(index);
+            if (!id.isEmpty()) emit idOpenInNewWindowRequested(id);
+        }
+    );
 
     int w=0;
     if (!prevButtons.isEmpty())
@@ -685,6 +791,20 @@ void NavigationBar::setItemHoveringCursor(const Qt::CursorShape& cursor) noexcep
 Qt::CursorShape NavigationBar::itemHoveringCursor() const noexcept
 {
     return pimpl->hoveringCursor;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setItemsOpenInTabEnabled(bool enable) noexcept
+{
+    pimpl->openInTabEnabled=enable;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setItemsOpenInWindowEnabled(bool enable) noexcept
+{
+    pimpl->openInWindowEnabled=enable;
 }
 
 //--------------------------------------------------------------------------

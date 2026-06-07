@@ -94,11 +94,17 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setSingleCollapsePlaceholder(bool enable) noexcept;
         bool isSingleCollapsePlaceholder() const noexcept;
 
+        void setCollapsePlaceholderHidden(bool enable) noexcept;
+        bool isCollapsePlacehodlerHidden() const noexcept;
+
         void setExlusivelyExpandableNode(bool enable) noexcept;
         bool isExlusivelyExpandableNode() const noexcept;
 
         void setExpandableLastDepthOnNodeOpen(int) noexcept;
         int expandableLastDepthOnNodeOpen() const noexcept;
+
+        void setInternalNodeExpandable(bool enable) noexcept;
+        bool isInternalNodeExpandable() const noexcept;
 
     signals:
 

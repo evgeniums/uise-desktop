@@ -118,5 +118,6 @@
         <file>tabler-icons/outline/list-details.svg</file>
         <file>tabler-icons/outline/message-forward.svg</file>
         <file>tabler-icons/outline/terminal-2.svg</file>
+        <file>tabler-icons/outline/home.svg</file>
     </qresource>
 </RCC>

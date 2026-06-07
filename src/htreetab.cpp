@@ -350,7 +350,8 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     auto l=Layout::vertical(this);
 
     auto sep=new NavigationBarSeparator(this);
-    sep->setHoverCharacterEnabled(true);
+    sep->setHoverCharacterEnabled(pimpl->tree->isInternalNodeExpandable());
+    sep->setHoverCharacterClickable(pimpl->tree->isInternalNodeExpandable());
     pimpl->navbar=new NavigationBar(this);
     pimpl->navbar->setExclusive(false);
     pimpl->navbar->setSeparatorSample(sep);
@@ -480,6 +481,36 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 
                     pimpl->navbar->blockSignals(false);
                 }
+            }
+        }
+    );
+
+    connect(
+        pimpl->navbar,
+        &NavigationBar::indexOpenInNewTabRequested,
+        this,
+        [this](int index)
+        {
+            if (index<0 || index>=(int)pimpl->nodes.size()) return;
+            auto node=pimpl->nodes[index];
+            if (node!=nullptr)
+            {
+                pimpl->tree->openPath(node->path(),HTree::NewTabIndex);
+            }
+        }
+    );
+
+    connect(
+        pimpl->navbar,
+        &NavigationBar::indexOpenInNewWindowRequested,
+        this,
+        [this](int index)
+        {
+            if (index<0 || index>=(int)pimpl->nodes.size()) return;
+            auto node=pimpl->nodes[index];
+            if (node!=nullptr)
+            {
+                emit pimpl->tree->newTreeRequested(node->path());
             }
         }
     );
@@ -810,6 +841,13 @@ void HTreeTab::activate()
 bool HTreeTab::isSingleCollapsePlaceholder() const noexcept
 {
     return tree()->isSingleCollapsePlaceholder();
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::isCollapsePlaceholderHidden() const noexcept
+{
+    return tree()->isCollapsePlacehodlerHidden();
 }
 
 //--------------------------------------------------------------------------
