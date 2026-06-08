@@ -145,8 +145,6 @@ void PasswordDialog::setInformationImpl(const QString& message, const QString& t
         icon=Style::instance().svgIconLocator().icon("PasswordDialog::key",this);
     }
     setSvgIcon(std::move(icon));
-
-    setMinimumWidth(450);
     updateMinimumHeight();
 }
 
@@ -179,7 +177,7 @@ void PasswordDialog::setError(const QString& message)
 
 void PasswordDialog::updateMinimumHeight()
 {
-    auto newHeight=std::max(sizeHint().height(),150);
+    auto newHeight=150;//std::max(sizeHint().height(),150);
     if (newHeight>minimumHeight())
     {
         setMinimumHeight(newHeight);
