@@ -195,6 +195,16 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 
         virtual void setStatusFrameVisible(bool enable) =0;
 
+        void setBottomApply(bool enable) noexcept
+        {
+            m_bottomApply=enable;
+        }
+
+        bool isBottomApply() const noexcept
+        {
+            return m_bottomApply;
+        }
+
     signals:
 
         void editRequested();
@@ -226,6 +236,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         std::shared_ptr<Status> m_statusHelper;
         bool m_requestGroupEditingEnabled=false;
         Qt::Alignment m_labelAlignment=Qt::AlignRight | Qt::AlignVCenter;
+        bool m_bottomApply=false;
 };
 
 class EditablePanel_p;

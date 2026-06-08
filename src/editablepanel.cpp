@@ -350,7 +350,8 @@ void EditablePanel::updateState()
 {
     bool editing=isEditingMode();
     pimpl->titleFrame->setVisible(pimpl->titleVisible);
-    pimpl->bottomButtonsFrame->setVisible(isEditingMode() && buttonsMode()==ButtonsMode::BottomAlwaysVisible);
+    bool applyVisible=isEditingMode() && (buttonsMode()==ButtonsMode::BottomAlwaysVisible || isBottomApply());
+    pimpl->bottomButtonsFrame->setVisible(applyVisible);
 
     auto topButtonsVisible=
                           pimpl->editable
@@ -363,8 +364,10 @@ void EditablePanel::updateState()
     pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
     pimpl->topButtonEdit->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!editing);
-    pimpl->topButtonApply->setVisible(topButtonsVisible && editing);
+    pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !isBottomApply());
     pimpl->topButtonCancel->setVisible(topButtonsVisible && editing);
+
+    pimpl->bottomButtonApply->setVisible(applyVisible);
 
     if (!editing)
     {
