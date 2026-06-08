@@ -32,6 +32,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QDateEdit>
 #include <QTimeEdit>
 #include <QTextEdit>
@@ -59,6 +60,7 @@ class EditableLabelCombo;
 class EditableLabelDate;
 class EditableLabelTime;
 class EditableLabelDateTime;
+class EditableLabelBool;
 
 /**
  * @brief Type of label content.
@@ -78,6 +80,7 @@ enum class EditableLabelType : int
     UInt64,
 
     TextEdit,
+    Bool,
 
     Custom=0x10000
 };
@@ -833,6 +836,61 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     }
 };
 
+/**
+ * @brief Traits of editable label of bool type.
+ */
+template <>
+struct EditableLabelTraits<EditableLabel::Type::Bool>
+{
+    using type=EditableLabelBool;
+    using widgetType=QCheckBox;
+
+    static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
+    {
+        bool checked=widget->isChecked();
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Bool,bool>(
+            label,formatter,checked,
+            [](bool val)
+            {
+                return val ? QCoreApplication::translate("EditableLabelBool","On")
+                           : QCoreApplication::translate("EditableLabelBool","Off");
+            }
+        );
+    }
+
+    static auto value(const widgetType* widget)
+    {
+        return widget->isChecked();
+    }
+
+    static void setValue(widgetType* widget, bool value)
+    {
+        widget->setChecked(value);
+    }
+
+    static void updateConfig(widgetType* /*widget*/, const ValueWidgetConfig& /*config*/)
+    {
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &QCheckBox::toggled,
+            valueWidget,
+            [valueWidget](bool)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setChecked(false);
+    }
+};
+
 template <EditableLabel::Type TypeId>
 struct EditableLabelHelper
 {
@@ -1240,6 +1298,35 @@ class UISE_DESKTOP_EXPORT EditableLabelCombo: public EditableLabelTmpl<EditableL
         {
             emit indexChanged(editorWidget()->currentIndex());
             emit textChanged(editorWidget()->currentText());
+        }
+};
+
+/**
+ * @brief Editable bool (checkbox) label.
+ */
+class UISE_DESKTOP_EXPORT EditableLabelBool : public EditableLabelTmpl<EditableLabel::Type::Bool>
+{
+    Q_OBJECT
+
+    public:
+
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Bool>;
+
+        using baseType::baseType;
+
+    signals:
+
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
+        void valueChanged(bool value);
+
+    protected:
+
+        virtual void notifyValueChanged() override
+        {
+            emit valueChanged(editorWidget()->isChecked());
         }
 };
 

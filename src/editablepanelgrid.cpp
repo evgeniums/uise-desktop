@@ -59,6 +59,7 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
     {
         labelWidget=new Label(label,m_gridFrame);
         labelWidget->setObjectName("panelLabel");
+        labelWidget->setContentsMargins(0,0,0,4);
         m_layout->addWidget(labelWidget,count,column,labelAlignment());
         ++column;
     }
