@@ -109,6 +109,7 @@ void HTreeListWidget::onItemInsert(HTreeListItem* item)
         {
             if (selected)
             {
+                pimpl->nextNodeId = id;
                 for (auto& item1 : pimpl->items)
                 {
                     if (item1.first!=id)

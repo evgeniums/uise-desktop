@@ -26,8 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_HPP
 #define UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_HPP
 
+#include <functional>
 #include <memory>
 #include <QFrame>
+#include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -202,6 +204,12 @@ class HTreeListItemT : public BaseT
 
         void setOpenInWindowEnabled(bool val);
         bool isOpenInWindowEnabled() const noexcept;
+
+        void setNavigationHandler(
+            QObject* obj,
+            std::function<void(const HTreePathElement&,const HTreePath&)> openFn,
+            std::function<void(const HTreePath&,const HTreePath&)> openSubpathFn
+        );
 
         std::string uniqueId() const
         {

@@ -157,6 +157,12 @@ class HTreeListUiHelper
                         &HTreeBranch::openNextNodesInNewTree
                     );
 
+                    item->setNavigationHandler(
+                        node,
+                        [node](const HTreePathElement& el, const HTreePath& r){ node->openNextNode(el,r); },
+                        [node](const HTreePath& sub, const HTreePath& r){ node->openNextNodes(sub,r); }
+                    );
+
                     listWidget->onItemInsert(item);
                 }
             );

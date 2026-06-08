@@ -64,6 +64,10 @@ class HTreeListItemT_p
 
         bool openInTabEnabled=true;
         bool openInWindowEnabled=true;
+
+        QPointer<QObject> navigationObj;
+        std::function<void(const HTreePathElement&,const HTreePath&)> openFn;
+        std::function<void(const HTreePath&,const HTreePath&)> openSubpathFn;
 };
 
 //--------------------------------------------------------------------------
@@ -297,21 +301,47 @@ void HTreeListItemT<BaseT>::click()
         return;
     }
     setSelected(true);
-    QTimer::singleShot(
-        5,
-        qobject(),
-        [this]()
-        {
-            if (targetSubpath().isNull())
+    if (pimpl->navigationObj)
+    {
+        auto sub=targetSubpath();
+        auto el=pathElement();
+        auto resident=residentPath();
+        // Defer navigation by one short cycle so the selection highlight paints
+        // before a potentially heavy node starts loading (keeps GUI responsive).
+        // Path data is captured by value now so the lambda survives item
+        // destruction caused by a concurrent reload(); the branch node is used
+        // as context because it outlives individual list items.
+        QTimer::singleShot(
+            5,
+            pimpl->navigationObj,
+            [sub=std::move(sub),el=std::move(el),resident=std::move(resident),
+             openFn=pimpl->openFn,openSubpathFn=pimpl->openSubpathFn]() mutable
             {
-                emit qobject()->openRequested(pathElement(),residentPath());
+                if (sub.isNull())
+                    openFn(el,resident);
+                else
+                    openSubpathFn(sub,resident);
             }
-            else
+        );
+    }
+    else
+    {
+        QTimer::singleShot(
+            5,
+            qobject(),
+            [this]()
             {
-                emit qobject()->openSubpathRequested(targetSubpath(),residentPath());
+                if (targetSubpath().isNull())
+                {
+                    emit qobject()->openRequested(pathElement(),residentPath());
+                }
+                else
+                {
+                    emit qobject()->openSubpathRequested(targetSubpath(),residentPath());
+                }
             }
-        }
-    );
+        );
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -389,6 +419,20 @@ template <typename BaseT>
 bool HTreeListItemT<BaseT>::isOpenInWindowEnabled() const noexcept
 {
     return pimpl->openInWindowEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::setNavigationHandler(
+    QObject* obj,
+    std::function<void(const HTreePathElement&,const HTreePath&)> openFn,
+    std::function<void(const HTreePath&,const HTreePath&)> openSubpathFn
+)
+{
+    pimpl->navigationObj=obj;
+    pimpl->openFn=std::move(openFn);
+    pimpl->openSubpathFn=std::move(openSubpathFn);
 }
 
 //--------------------------------------------------------------------------
