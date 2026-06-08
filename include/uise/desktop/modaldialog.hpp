@@ -78,26 +78,6 @@ class ModalDialog : public FrameWithModalPopup,
             return this;
         }
 
-        void setPopupMaxWidth(int width)
-        {
-            m_defaultPopupMaxWidth=width;
-        }
-
-        void setPopupMaxHeight(int height)
-        {
-            m_defaultPopupMaxHeight=height;
-        }
-
-        void setPopupMaxWidthPercent(int value)
-        {
-            m_defaultMaxWidthPercent=value;
-        }
-
-        void setPopupMaxHeightPercent(int value)
-        {
-            m_defaultMaxHeightPercent=value;
-        }
-
         /**
          * @brief Open modal dialog.
          * @parame destroyOnCancel Destroy dialog if cancelled.
