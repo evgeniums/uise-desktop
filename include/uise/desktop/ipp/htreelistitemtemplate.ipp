@@ -263,12 +263,6 @@ void HTreeListItemT<BaseT>::leaveEvent(QEvent *event)
 template <typename BaseT>
 void HTreeListItemT<BaseT>::click()
 {
-    if (isSelected())
-    {
-        setSelected(false);
-        return;
-    }
-
     if (QApplication::keyboardModifiers() & Qt::ShiftModifier
 #ifdef Q_OS_MAC
         ||
