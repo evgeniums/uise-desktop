@@ -156,6 +156,7 @@ SET (HEADERS
     include/uise/desktop/jumpedge.hpp
 
     include/uise/desktop/newpasswordpanel.hpp
+    include/uise/desktop/newpassworddialog.hpp
     include/uise/desktop/toast.hpp
 
     include/uise/desktop/qrbarcode.hpp
@@ -286,6 +287,7 @@ SET (SOURCES
     src/jumpedge.cpp
 
     src/newpasswordpanel.cpp
+    src/newpassworddialog.cpp
     src/toast.cpp
 
     src/qrcodefromimage.cpp

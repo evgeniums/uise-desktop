@@ -142,7 +142,7 @@ class UISE_DESKTOP_EXPORT NewPasswordPanel : public AbstractNewPasswordPanel
 
         void setDefaultGenMaxLength(size_t max)
         {
-            m_defaultGenMaxLength=DefaultMaxPasswordLength;
+            m_defaultGenMaxLength=max;
         }
 
         size_t defaultGenMinLength() const
