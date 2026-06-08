@@ -40,8 +40,8 @@ uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {
 color: #000000;
 }
 
-uise--EditablePanel #bottomButtonsFrame QPushButton{color: #555555;border: 2px solid #888888; background-color: transparent;}
-uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #000000;border: 2px solid #000000;}
+uise--EditablePanel #bottomButtonsFrame QPushButton{color: #555555;border: 1px solid #888888; background-color: transparent;}
+uise--EditablePanel #bottomButtonsFrame QPushButton:hover{color: #000000;border: 1px solid #000000;}
 
 uise--EditablePanel #statusFrame #statusText[status="error"]{
 color: #ff6677;

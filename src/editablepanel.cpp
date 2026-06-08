@@ -65,6 +65,7 @@ class EditablePanel_p
         QFrame* bottomButtonsFrame=nullptr;
         QBoxLayout* bottomButtonsLayout=nullptr;
         PushButton* bottomButtonApply=nullptr;
+        PushButton* bottomButtonCancel=nullptr;
         bool bottomButtonsVisible=true;
 
         QFrame* statusFrame=nullptr;
@@ -132,6 +133,9 @@ EditablePanel::EditablePanel(
     pimpl->bottomButtonApply=new PushButton(tr("Apply"),pimpl->bottomButtonsFrame);
     pimpl->bottomButtonApply->setObjectName("bottomButtonsApply");
     pimpl->bottomButtonsLayout->addWidget(pimpl->bottomButtonApply);
+    pimpl->bottomButtonCancel=new PushButton(tr("Cancel"),pimpl->bottomButtonsFrame);
+    pimpl->bottomButtonCancel->setObjectName("bottomButtonsCancel");
+    pimpl->bottomButtonsLayout->addWidget(pimpl->bottomButtonCancel);
 
     connect(
         pimpl->topButtonEdit,
@@ -167,6 +171,15 @@ EditablePanel::EditablePanel(
         [this]()
         {
             apply();
+        }
+    );
+    connect(
+        pimpl->bottomButtonCancel,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            cancel();
         }
     );
 
@@ -285,6 +298,34 @@ std::shared_ptr<SvgIcon> EditablePanel::bottomApplyIcon() const
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::setBottomCancelText(const QString& text)
+{
+    pimpl->bottomButtonCancel->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+QString EditablePanel::bottomCancelText() const
+{
+    return pimpl->bottomButtonCancel->text();
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setBottomCancelIcon(std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->bottomButtonCancel->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> EditablePanel::bottomCancelIcon() const
+{
+    return pimpl->bottomButtonCancel->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
 void EditablePanel::setWidget(QWidget* widget)
 {
     destroyWidget(pimpl->contenWidget);
@@ -350,8 +391,10 @@ void EditablePanel::updateState()
 {
     bool editing=isEditingMode();
     pimpl->titleFrame->setVisible(pimpl->titleVisible);
-    bool applyVisible=isEditingMode() && (buttonsMode()==ButtonsMode::BottomAlwaysVisible || isBottomApply());
-    pimpl->bottomButtonsFrame->setVisible(applyVisible);
+    bool bottomForced=buttonsMode()==ButtonsMode::BottomAlwaysVisible || isForceBottomButtons();
+    bool applyVisible=isEditingMode() && bottomForced && isBottomButtonVisible(BottomButton::Apply);
+    bool cancelVisible=isEditingMode() && bottomForced && isBottomButtonVisible(BottomButton::Cancel);
+    pimpl->bottomButtonsFrame->setVisible(applyVisible || cancelVisible);
 
     auto topButtonsVisible=
                           pimpl->editable
@@ -364,10 +407,11 @@ void EditablePanel::updateState()
     pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
     pimpl->topButtonEdit->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!editing);
-    pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !isBottomApply());
+    pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !(isForceBottomButtons() && isBottomButtonVisible(BottomButton::Apply)));
     pimpl->topButtonCancel->setVisible(topButtonsVisible && editing);
 
     pimpl->bottomButtonApply->setVisible(applyVisible);
+    pimpl->bottomButtonCancel->setVisible(cancelVisible);
 
     if (!editing)
     {

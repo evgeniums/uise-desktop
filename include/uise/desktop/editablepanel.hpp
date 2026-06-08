@@ -94,6 +94,12 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         virtual void setBottomApplyIcon(std::shared_ptr<SvgIcon> icon)=0;
         virtual std::shared_ptr<SvgIcon> bottomApplyIcon() const=0;
 
+        virtual void setBottomCancelText(const QString& text)=0;
+        virtual QString bottomCancelText() const=0;
+
+        virtual void setBottomCancelIcon(std::shared_ptr<SvgIcon> icon)=0;
+        virtual std::shared_ptr<SvgIcon> bottomCancelIcon() const=0;
+
         virtual void setWidget(QWidget* widget)=0;
 
         int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={}, int rowSpan=1)
@@ -195,14 +201,33 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 
         virtual void setStatusFrameVisible(bool enable) =0;
 
-        void setBottomApply(bool enable) noexcept
+        enum class BottomButton
         {
-            m_bottomApply=enable;
+            Apply,
+            Cancel
+        };
+
+        void setForceBottomButtons(bool enable) noexcept
+        {
+            m_forceBottomButtons=enable;
         }
 
-        bool isBottomApply() const noexcept
+        bool isForceBottomButtons() const noexcept
         {
-            return m_bottomApply;
+            return m_forceBottomButtons;
+        }
+
+        void setBottomButtonVisible(BottomButton button, bool visible) noexcept
+        {
+            if (button==BottomButton::Apply)
+                m_bottomApplyVisible=visible;
+            else
+                m_bottomCancelVisible=visible;
+        }
+
+        bool isBottomButtonVisible(BottomButton button) const noexcept
+        {
+            return (button==BottomButton::Apply) ? m_bottomApplyVisible : m_bottomCancelVisible;
         }
 
     signals:
@@ -236,7 +261,9 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         std::shared_ptr<Status> m_statusHelper;
         bool m_requestGroupEditingEnabled=false;
         Qt::Alignment m_labelAlignment=Qt::AlignRight | Qt::AlignVCenter;
-        bool m_bottomApply=false;
+        bool m_forceBottomButtons=false;
+        bool m_bottomApplyVisible=true;
+        bool m_bottomCancelVisible=false;
 };
 
 class EditablePanel_p;
@@ -275,6 +302,12 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void setBottomApplyIcon(std::shared_ptr<SvgIcon> icon) override final;
         std::shared_ptr<SvgIcon> bottomApplyIcon() const override final;
+
+        void setBottomCancelText(const QString& text) override final;
+        QString bottomCancelText() const override final;
+
+        void setBottomCancelIcon(std::shared_ptr<SvgIcon> icon) override final;
+        std::shared_ptr<SvgIcon> bottomCancelIcon() const override final;
 
         void setWidget(QWidget* widget) override final;
 
