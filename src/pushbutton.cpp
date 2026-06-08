@@ -65,6 +65,11 @@ PushButton::PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool tool
 
 void PushButton::enterEvent(QEnterEvent* event)
 {
+    QFrame::enterEvent(event);
+    if (!isEnabled())
+    {
+        return;
+    }
     if (!m_parentHovered)
     {
         setProperty("hovered",true);
@@ -73,7 +78,6 @@ void PushButton::enterEvent(QEnterEvent* event)
             m_button->setIcon(m_icon->hoverIcon());
         }
     }
-    QFrame::enterEvent(event);
     Style::updateWidgetStyle(m_button);
     emit hovered(true);
 }
@@ -82,6 +86,11 @@ void PushButton::enterEvent(QEnterEvent* event)
 
 void PushButton::leaveEvent(QEvent* event)
 {
+    QFrame::leaveEvent(event);
+    if (!isEnabled())
+    {
+        return;
+    }
     if (!m_parentHovered)
     {
         setProperty("hovered",false);
@@ -90,8 +99,6 @@ void PushButton::leaveEvent(QEvent* event)
             m_button->setIcon(m_icon->icon());
         }
     }
-
-    QFrame::leaveEvent(event);
     Style::updateWidgetStyle(m_button);
     emit hovered(false);
 }
