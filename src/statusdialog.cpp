@@ -25,6 +25,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QLabel>
+#include <QCheckBox>
+#include <QFrame>
 #include <QSignalMapper>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -108,6 +110,8 @@ class StatusDialog_p
     public:
 
         QLabel* text;
+        QCheckBox* checkBox;
+        QFrame* checkBoxRow;
 };
 
 //--------------------------------------------------------------------------
@@ -116,13 +120,29 @@ StatusDialog::StatusDialog(QWidget* parent)
     : Base(parent),
       pimpl(std::make_unique<StatusDialog_p>())
 {
-    pimpl->text=new QLabel(this);
+    // Container holds the message text and an optional "Don't ask again" checkbox.
+    auto* container = new QFrame(this);
+    auto* cl = Layout::vertical(container);
+
+    pimpl->text=new QLabel(container);
     pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
     pimpl->text->setObjectName("text");
+    cl->addWidget(pimpl->text);
 
-    setWidget(pimpl->text);
+    pimpl->checkBox=new QCheckBox(container);
+    pimpl->checkBox->setObjectName("optionCheckBox");
+    pimpl->checkBox->setVisible(false);
+    // Center the checkbox horizontally via a wrapper row.
+    pimpl->checkBoxRow = new QFrame(container);
+    pimpl->checkBoxRow->setObjectName("checkBoxRow");
+    pimpl->checkBoxRow->setVisible(false);
+    auto* rl = Layout::horizontal(pimpl->checkBoxRow);
+    rl->addWidget(pimpl->checkBox);
+    cl->addWidget(pimpl->checkBoxRow);
+
+    setWidget(container);
     setMinimumWidth(400);
 }
 
@@ -141,6 +161,32 @@ QLabel* StatusDialog::textWidget() const
 
 //--------------------------------------------------------------------------
 
+void StatusDialog::setOptionCheckBox(const QString& text)
+{
+    pimpl->checkBox->setText(text);
+    pimpl->checkBox->setChecked(false);
+    pimpl->checkBox->setVisible(true);
+    pimpl->checkBoxRow->setVisible(true);
+}
+
+//--------------------------------------------------------------------------
+
+bool StatusDialog::isOptionChecked() const
+{
+    return pimpl->checkBoxRow->isVisible() && pimpl->checkBox->isChecked();
+}
+
+//--------------------------------------------------------------------------
+
+void StatusDialog::clearOptionCheckBox()
+{
+    pimpl->checkBoxRow->setVisible(false);
+    pimpl->checkBox->setVisible(false);
+    pimpl->checkBox->setChecked(false);
+}
+
+//--------------------------------------------------------------------------
+
 void StatusDialog::setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
     pimpl->text->setText(message);
@@ -152,6 +198,10 @@ void StatusDialog::setStatus(const QString& message, const QString& title, std::
 
 void StatusDialog::setStatus(const QString& message, Type type, const QString& title)
 {
+    // Always start with the checkbox hidden so callers that don't use the
+    // "Don't ask anymore" option never see a stray checkbox.
+    clearOptionCheckBox();
+
     auto titleText=title;
     pimpl->text->setProperty("status",statusString(type));
 

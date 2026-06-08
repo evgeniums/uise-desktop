@@ -170,6 +170,16 @@ class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog,
         virtual void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={})=0;
 
         virtual void setStatus(const QString& message, Type type, const QString& title={})=0;
+
+        /** Show an optional checkbox below the message text.
+         *  Call before popupStatus(); reset automatically by setStatus(). */
+        virtual void setOptionCheckBox(const QString& text)=0;
+
+        /** Returns true when the optional checkbox is visible and checked. */
+        virtual bool isOptionChecked() const=0;
+
+        /** Hide and uncheck the optional checkbox without changing the message. */
+        virtual void clearOptionCheckBox()=0;
 };
 
 #ifdef _MSC_VER
@@ -206,6 +216,12 @@ class UISE_DESKTOP_EXPORT StatusDialog : public Dialog<AbstractStatusDialog>
         void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={}) override;
 
         void setStatus(const QString& message, Type type, const QString& title={}) override;
+
+        void setOptionCheckBox(const QString& text) override;
+
+        bool isOptionChecked() const override;
+
+        void clearOptionCheckBox() override;
 
     private:
 

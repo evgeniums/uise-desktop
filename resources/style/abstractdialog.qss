@@ -13,3 +13,7 @@ uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:4px;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 2px 12px;}
 
 uise--AbstractDialog #contentFrame {padding: 16px 8px 8px 8px;}
+
+uise--AbstractDialog #checkBoxRow {
+padding: 6px 0;
+}
