@@ -64,7 +64,11 @@ Style::Style(
 //--------------------------------------------------------------------------
 bool Style::checkDarkTheme()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     m_darkTheme=QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+#else
+    m_darkTheme=QApplication::palette().color(QPalette::Window).lightness() < 128;
+#endif
     return m_darkTheme;
 }
 

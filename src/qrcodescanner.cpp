@@ -26,7 +26,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QCamera>
 #include <QVideoSink>
 #include <QMediaDevices>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
 #include <QPermission>
+#endif
 #include <QMediaCaptureSession>
 #include <QComboBox>
 
@@ -200,7 +202,7 @@ QrCodeScanner::~QrCodeScanner()
 
 void QrCodeScanner::init()
 {
-#if QT_CONFIG(permissions)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QCameraPermission cameraPermission;
     switch (qApp->checkPermission(cameraPermission))
     {
