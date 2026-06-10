@@ -72,6 +72,13 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             ButtonsInvisible
         };
 
+        enum class BottomButtonsMode : int
+        {
+            Ivisible,
+            EditingVisible,
+            AlwaysVisible
+        };
+
         using WidgetQFrame::WidgetQFrame;
 
         virtual void setEditable(bool enable)=0;
@@ -101,6 +108,10 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         virtual std::shared_ptr<SvgIcon> bottomCancelIcon() const=0;
 
         virtual void setWidget(QWidget* widget)=0;
+        virtual void setTopWidget(QWidget* widget, Qt::Alignment /*alignment*/={})
+        {}
+        virtual void setBottomWidget(QWidget* widget, Qt::Alignment /*alignlment*/={})
+        {}
 
         int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={}, int rowSpan=1)
         {
@@ -207,14 +218,15 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             Cancel
         };
 
-        void setForceBottomButtons(bool enable) noexcept
+        void setBottomButtonsMode(BottomButtonsMode mode) noexcept
         {
-            m_forceBottomButtons=enable;
+            m_bottomButtonsMode=mode;
+            setButtonsMode(buttonsMode());
         }
 
-        bool isForceBottomButtons() const noexcept
+        BottomButtonsMode bottomButtonsMode() const noexcept
         {
-            return m_forceBottomButtons;
+            return m_bottomButtonsMode;
         }
 
         void setBottomButtonVisible(BottomButton button, bool visible) noexcept
@@ -230,12 +242,18 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return (button==BottomButton::Apply) ? m_bottomApplyVisible : m_bottomCancelVisible;
         }
 
+        virtual void setBottomButtonEnabled(BottomButton /*button*/, bool /*enabled*/)
+        {}
+
     signals:
 
         void editRequested();
         void cancelRequested();
         void applyRequested();
         void applyCommited();
+
+        void bottomApplyClicked();
+        void bottomCancelClicked();
 
     public slots:
 
@@ -261,9 +279,9 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         std::shared_ptr<Status> m_statusHelper;
         bool m_requestGroupEditingEnabled=false;
         Qt::Alignment m_labelAlignment=Qt::AlignRight | Qt::AlignVCenter;
-        bool m_forceBottomButtons=false;
         bool m_bottomApplyVisible=true;
         bool m_bottomCancelVisible=false;
+        BottomButtonsMode m_bottomButtonsMode;
 };
 
 class EditablePanel_p;
@@ -311,6 +329,10 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void setWidget(QWidget* widget) override final;
 
+        void setTopWidget(QWidget* widget, Qt::Alignment alignment={}) override final;
+
+        void setBottomWidget(QWidget* widget, Qt::Alignment alignment={}) override final;
+
         void setKeepEditingOnApply(bool enable) noexcept;
         bool keepEditingOnApply() const noexcept;
 
@@ -319,6 +341,8 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
         void showStatus(const QString& message, const QString& status) override;
 
         void setStatusFrameVisible(bool enable) override;
+
+        void setBottomButtonEnabled(BottomButton button, bool enabled) override;
 
     public slots:
 

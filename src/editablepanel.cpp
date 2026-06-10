@@ -61,6 +61,8 @@ class EditablePanel_p
         QFrame* contentFrame=nullptr;
         QBoxLayout* contentLayout=nullptr;
         QWidget* contenWidget=nullptr;
+        QWidget* topWidget=nullptr;
+        QWidget* bottomWidget=nullptr;
 
         QFrame* bottomButtonsFrame=nullptr;
         QBoxLayout* bottomButtonsLayout=nullptr;
@@ -170,6 +172,7 @@ EditablePanel::EditablePanel(
         this,
         [this]()
         {
+            emit bottomApplyClicked();
             apply();
         }
     );
@@ -179,13 +182,12 @@ EditablePanel::EditablePanel(
         this,
         [this]()
         {
+            emit bottomCancelClicked();
             cancel();
         }
     );
 
     updateState();
-
-    // showStatus("One two three four five six seven eight nine ten","error");
 }
 
 //--------------------------------------------------------------------------
@@ -335,6 +337,26 @@ void EditablePanel::setWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+void EditablePanel::setTopWidget(QWidget* widget, Qt::Alignment alignment)
+{
+    destroyWidget(pimpl->topWidget);
+    pimpl->topWidget=widget;
+    pimpl->layout->insertWidget(1,widget,0,alignment);
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setBottomWidget(QWidget* widget, Qt::Alignment alignment)
+{
+    destroyWidget(pimpl->bottomWidget);
+    pimpl->bottomWidget=widget;
+    auto count=pimpl->layout->count();
+    auto index=count-2;
+    pimpl->layout->insertWidget(index,widget,0,alignment);
+}
+
+//--------------------------------------------------------------------------
+
 void EditablePanel::edit()
 {
     if (isEditingMode())
@@ -391,9 +413,9 @@ void EditablePanel::updateState()
 {
     bool editing=isEditingMode();
     pimpl->titleFrame->setVisible(pimpl->titleVisible);
-    bool bottomForced=buttonsMode()==ButtonsMode::BottomAlwaysVisible || isForceBottomButtons();
-    bool applyVisible=isEditingMode() && bottomForced && isBottomButtonVisible(BottomButton::Apply);
-    bool cancelVisible=isEditingMode() && bottomForced && isBottomButtonVisible(BottomButton::Cancel);
+    bool bottomsVisible=bottomButtonsMode()==BottomButtonsMode::AlwaysVisible || isEditingMode() &&  bottomButtonsMode()==BottomButtonsMode::EditingVisible;
+    bool applyVisible=bottomsVisible && isBottomButtonVisible(BottomButton::Apply);
+    bool cancelVisible=bottomsVisible && isBottomButtonVisible(BottomButton::Cancel);
     pimpl->bottomButtonsFrame->setVisible(applyVisible || cancelVisible);
 
     auto topButtonsVisible=
@@ -407,7 +429,7 @@ void EditablePanel::updateState()
     pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
     pimpl->topButtonEdit->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!editing);
-    pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !(isForceBottomButtons() && isBottomButtonVisible(BottomButton::Apply)));
+    pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !applyVisible);
     pimpl->topButtonCancel->setVisible(topButtonsVisible && editing);
 
     pimpl->bottomButtonApply->setVisible(applyVisible);
@@ -491,6 +513,16 @@ void EditablePanel::contentEdited()
 void EditablePanel::setStatusFrameVisible(bool enable)
 {
     pimpl->statusFrame->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::setBottomButtonEnabled(BottomButton button, bool enabled)
+{
+    if (button==BottomButton::Apply)
+        pimpl->bottomButtonApply->setEnabled(enabled);
+    else
+        pimpl->bottomButtonCancel->setEnabled(enabled);
 }
 
 //--------------------------------------------------------------------------
