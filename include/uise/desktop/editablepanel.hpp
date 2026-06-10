@@ -68,7 +68,6 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         {
             TopAlwaysVisible,
             TopOnHoverVisible,
-            BottomAlwaysVisible,
             ButtonsInvisible
         };
 
