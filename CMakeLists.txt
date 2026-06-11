@@ -125,6 +125,7 @@ SET (HEADERS
 
     include/uise/desktop/pushbutton.hpp
 
+    include/uise/desktop/audiodevicesetting.hpp
     include/uise/desktop/editablepanel.hpp
     include/uise/desktop/editablepanelgrid.hpp
     include/uise/desktop/editablepanels.hpp
@@ -248,6 +249,7 @@ SET (SOURCES
 
     src/pushbutton.cpp
 
+    src/audiodevicesetting.cpp
     src/editablepanel.cpp
     src/editablepanelgrid.cpp
     src/editablepanels.cpp
