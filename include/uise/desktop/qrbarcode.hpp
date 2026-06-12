@@ -29,7 +29,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <QList>
 
 #include <ReadBarcode.h>
-#include <ZXAlgorithms.h>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -64,7 +63,7 @@ class Barcode : private ZXing::Barcode
             : ZXing::Barcode(std::move(r))
         {
             m_text = QString::fromStdString(ZXing::Barcode::text());
-            m_bytes = QByteArray(reinterpret_cast<const char*>(ZXing::Barcode::bytes().data()), ZXing::Size(ZXing::Barcode::bytes()));
+            m_bytes = QByteArray(reinterpret_cast<const char*>(ZXing::Barcode::bytes().data()), static_cast<int>(ZXing::Barcode::bytes().size()));
             auto& pos = ZXing::Barcode::position();
             auto qp = [&pos](int i) { return QPoint(pos[i].x, pos[i].y); };
             m_position = {qp(0), qp(1), qp(2), qp(3)};
