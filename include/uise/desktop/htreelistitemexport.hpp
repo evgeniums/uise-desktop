@@ -29,7 +29,14 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-#ifdef _MSC_VER
+// Build side only: explicit instantiation definitions with dllexport.
+// On the consumer side the suppression is done by the extern template
+// declarations at the bottom of htreelistitemtemplate.hpp and
+// htreeflyweightlistitem.hpp, which every TU that can instantiate sees.
+// (The previous dllimport explicit instantiation here was an MSVC-only
+// idiom: clang-cl still emitted local definitions in TUs that did not
+// include this header, causing LNK2005 against the import library.)
+#if defined(_MSC_VER) && defined(UISE_DESKTOP_BUILD)
 template class UISE_DESKTOP_EXPORT HTreeListItemT<QFrame>;
 template class UISE_DESKTOP_EXPORT HTreeFlyweightListItem<QFrame>;
 #endif

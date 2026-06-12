@@ -247,6 +247,14 @@ class HTreeListItemT : public BaseT
         HTreeListItemTQ* m_qobject;
 };
 
+#if defined(_MSC_VER) && !defined(UISE_DESKTOP_BUILD)
+// The QFrame specialization is built into and exported from the uisedesktop
+// DLL (htreelistitemexport.hpp). Suppress implicit instantiation in consumer
+// TUs: clang-cl otherwise emits local copies of the inline members that
+// collide with the DLL-exported ones at link time (LNK2005).
+extern template class UISE_DESKTOP_EXPORT HTreeListItemT<QFrame>;
+#endif
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_HPP

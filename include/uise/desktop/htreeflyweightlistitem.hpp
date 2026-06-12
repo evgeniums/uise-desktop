@@ -155,6 +155,11 @@ class HTreeFlyweightListView : public HTreeListFlyweightView<HTreeFlyweightListI
         {}
 };
 
+#if defined(_MSC_VER) && !defined(UISE_DESKTOP_BUILD)
+// See the matching extern template in htreelistitemtemplate.hpp.
+extern template class UISE_DESKTOP_EXPORT HTreeFlyweightListItem<QFrame>;
+#endif
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_HPP
