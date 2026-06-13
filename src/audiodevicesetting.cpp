@@ -46,6 +46,7 @@ class AudioDeviceSetting_p
         PushButton* typeButton=nullptr;
         QComboBox* combo=nullptr;
         QString defaultDeviceName;
+        QString comment;
         Label* commentLabel=nullptr;
         PushButton* testButton=nullptr;
         QProgressBar* volumeBar=nullptr;
@@ -167,11 +168,12 @@ void AudioDeviceSetting::updateDefaultName()
 {
     if (isDefaultSelected())
     {
-        setComment(pimpl->defaultDeviceName);
+        pimpl->commentLabel->setText(pimpl->defaultDeviceName);
     }
     else
     {
-        setComment({});
+        auto comment=pimpl->comment.isEmpty()?" ":pimpl->comment;
+        pimpl->commentLabel->setText(comment);
     }
 }
 
@@ -305,7 +307,9 @@ bool AudioDeviceSetting::isTesting() const
 
 void AudioDeviceSetting::setComment(const QString& text)
 {
+    pimpl->comment=text;
     pimpl->commentLabel->setText(text);
+    updateDefaultName();
 }
 
 //--------------------------------------------------------------------------
