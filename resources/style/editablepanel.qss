@@ -40,7 +40,7 @@ uise--EditablePanel uise--PushButton QPushButton
 {border-radius: 6px; padding: 4px 12px;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton {
-margin: 8px 0;
+margin: 8px 4px;
 }
 
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
