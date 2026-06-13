@@ -13,7 +13,7 @@ color: #555555;
 
 uise--EditablePanel QLabel:disabled,
 uise--EditablePanel uise--EditableLabel QLabel#comment:disabled {
-color: #777777;
+color: #999999;
 }
 
 uise--EditablePanel uise--EditableLabel QLabel#label {
@@ -22,11 +22,15 @@ color: #000000;
 }
 
 uise--EditablePanel uise--EditableLabel QLabel#label:disabled {
-color: #777777;
+color: #999999;
 }
 
 uise--EditablePanel uise--PushButton QPushButton
 {color: #555555;background-color: transparent;border: 1px solid #888888;}
+
+uise--EditablePanel #bottomButtonsFrame QPushButton:disabled,
+uise--EditablePanel #bottomButtonsFrame QPushButton:hover:disabled
+{color: #999999;border: 1px solid #BBBBBB;}
 
 uise--EditablePanel uise--PushButton QPushButton:hover
 {color: #000000;border: 1px solid #000000;}
