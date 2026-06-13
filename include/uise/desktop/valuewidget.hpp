@@ -82,7 +82,13 @@ class ValueWidgetConfig
             return property(static_cast<int>(propertyId),std::move(defaultValue));
         }
 
-        void setProperty(int id, QVariant& value)
+        template <typename T, typename V>
+        void setProperty(T id, V value)
+        {
+            setProperty(static_cast<int>(id),QVariant{std::move(value)});
+        }
+
+        void setProperty(int id, QVariant value)
         {
             m_properties.emplace(id,std::move(value));
         }
