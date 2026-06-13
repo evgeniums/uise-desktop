@@ -1,5 +1,11 @@
 <RCC>
     <qresource prefix="/uise/desktop">
+        <file>style/audiodevicesetting.qss</file>
+        <file>style/audiodevicesetting.json</file>
+        <file>style/dark/audiodevicesetting.qss</file>
+        <file>style/dark/audiodevicesetting.json</file>
+        <file>style/light/audiodevicesetting.qss</file>
+        <file>style/light/audiodevicesetting.json</file>
         <file>style/dark/spinner.qss</file>
         <file>style/htree.qss</file>
         <file>style/dark/htree.qss</file>

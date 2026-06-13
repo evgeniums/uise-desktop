@@ -1,0 +1,29 @@
+uise--AudioDeviceSetting #defaultName
+{
+    color: #999999;
+}
+
+uise--AudioDeviceSetting #testButton QPushButton
+{
+    color: #CCCCCC;
+    background-color: transparent;
+}
+
+uise--AudioDeviceSetting #testButton QPushButton:hover
+{
+    color: #EEEEEE;
+}
+
+uise--AudioDeviceSetting #volumeBar
+{
+    background-color: #333333;
+}
+
+uise--AudioDeviceSetting #volumeBar::chunk
+{
+    background-color: #4caf7d;
+}
+
+uise--AudioDeviceSetting #commentLabel {
+color: #888888;
+}

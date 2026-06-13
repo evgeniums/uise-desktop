@@ -1,0 +1,21 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "AudioDeviceSetting",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" : { "currentColor" : "#CCCCCC" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#666666" }
+                }
+            }
+        }
+    ]
+}

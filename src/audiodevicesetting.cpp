@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/audiodevicesetting.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -44,22 +45,15 @@ class AudioDeviceSetting_p
 
         PushButton* typeButton=nullptr;
         QComboBox* combo=nullptr;
-        QLabel* defaultName=nullptr;
-        QLabel* commentLabel=nullptr;
+        QString defaultDeviceName;
+        Label* commentLabel=nullptr;
         PushButton* testButton=nullptr;
         QProgressBar* volumeBar=nullptr;
-
-        QString defaultDeviceName;
 
         std::shared_ptr<SvgIcon> micIcon;
         std::shared_ptr<SvgIcon> speakerIcon;
         std::shared_ptr<SvgIcon> playIcon;
         std::shared_ptr<SvgIcon> stopIcon;
-
-        QString defaultText() const
-        {
-            return defaultDeviceName.isEmpty() ? QObject::tr("Default") : defaultDeviceName;
-        }
 };
 
 //--------------------------------------------------------------------------
@@ -85,14 +79,21 @@ AudioDeviceSetting::AudioDeviceSetting(AudioDeviceType type, QWidget* parent)
 
     pimpl->typeButton=new PushButton(deviceRow);
     pimpl->typeButton->setObjectName("typeButton");
-    deviceL->addWidget(pimpl->typeButton);
+    deviceL->addWidget(pimpl->typeButton,0,Qt::AlignTop);
+    pimpl->typeButton->setEnabled(false);
+
+    auto comboFrame=new QFrame(deviceRow);
+    comboFrame->setObjectName("comboFrame");
+    auto comboL=Layout::vertical(comboFrame);
+    deviceL->addWidget(comboFrame);
 
     pimpl->combo=new QComboBox(deviceRow);
     pimpl->combo->setObjectName("deviceCombo");
-    deviceL->addWidget(pimpl->combo,1);
+    pimpl->combo->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    comboL->addWidget(pimpl->combo);
 
     // implicit Default entry always kept at index 0
-    pimpl->combo->addItem(pimpl->defaultText(),QString{});
+    pimpl->combo->addItem(defaultText(),QString{});
 
     connect(
         pimpl->combo,
@@ -100,29 +101,16 @@ AudioDeviceSetting::AudioDeviceSetting(AudioDeviceType type, QWidget* parent)
         this,
         [this](int)
         {
-            pimpl->defaultName->setVisible(isDefaultSelected());
+            updateDefaultName();
             emit deviceChanged(currentDevice());
         }
     );
 
-    // row 2 - default device name
-    auto defaultRow=new QFrame(this);
-    defaultRow->setObjectName("defaultRow");
-    auto defaultL=Layout::horizontal(defaultRow);
-    mainL->addWidget(defaultRow);
-
-    pimpl->defaultName=new QLabel(defaultRow);
-    pimpl->defaultName->setObjectName("defaultName");
-    pimpl->defaultName->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    pimpl->defaultName->setWordWrap(true);
-    defaultL->addWidget(pimpl->defaultName,1);
-
     // row between device and test rows - status comment (hidden by default)
-    pimpl->commentLabel=new QLabel(this);
+    pimpl->commentLabel=new Label(this);
     pimpl->commentLabel->setObjectName("commentLabel");
     pimpl->commentLabel->setWordWrap(true);
-    pimpl->commentLabel->setVisible(false);
-    mainL->addWidget(pimpl->commentLabel);
+    comboL->addWidget(pimpl->commentLabel);
 
     // row 3 - test button + volume meter
     auto testRow=new QFrame(this);
@@ -158,7 +146,7 @@ AudioDeviceSetting::AudioDeviceSetting(AudioDeviceType type, QWidget* parent)
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
     setDeviceType(type);
-    pimpl->defaultName->setVisible(isDefaultSelected());
+    updateDefaultName();
 }
 
 //--------------------------------------------------------------------------
@@ -171,6 +159,20 @@ AudioDeviceSetting::~AudioDeviceSetting()
 AudioDeviceType AudioDeviceSetting::deviceType() const
 {
     return pimpl->type;
+}
+
+//--------------------------------------------------------------------------
+
+void AudioDeviceSetting::updateDefaultName()
+{
+    if (isDefaultSelected())
+    {
+        setComment(pimpl->defaultDeviceName);
+    }
+    else
+    {
+        setComment({});
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -189,7 +191,7 @@ void AudioDeviceSetting::setDevices(const QVector<AudioDevice>& devices)
     const auto previousId=currentDevice().id;
 
     pimpl->combo->clear();
-    pimpl->combo->addItem(pimpl->defaultText(),QString{});
+    pimpl->combo->addItem(defaultText(),QString{});
     for (const auto& device : devices)
     {
         if (device.id.isEmpty())
@@ -200,6 +202,7 @@ void AudioDeviceSetting::setDevices(const QVector<AudioDevice>& devices)
     }
 
     setCurrentDevice(previousId);
+    updateDefaultName();
 }
 
 //--------------------------------------------------------------------------
@@ -219,9 +222,9 @@ void AudioDeviceSetting::clearDevices()
 {
     const QSignalBlocker blocker{pimpl->combo};
     pimpl->combo->clear();
-    pimpl->combo->addItem(pimpl->defaultText(),QString{});
+    pimpl->combo->addItem(defaultText(),QString{});
     pimpl->combo->setCurrentIndex(0);
-    pimpl->defaultName->setVisible(isDefaultSelected());
+    updateDefaultName();
     emit deviceChanged(currentDevice());
 }
 
@@ -260,11 +263,7 @@ bool AudioDeviceSetting::isDefaultSelected() const
 void AudioDeviceSetting::setDefaultDeviceName(const QString& name)
 {
     pimpl->defaultDeviceName=name;
-    pimpl->defaultName->setText(name);
-    if (pimpl->combo->count()>0)
-    {
-        pimpl->combo->setItemText(0,pimpl->defaultText());
-    }
+    updateDefaultName();
 }
 
 //--------------------------------------------------------------------------
@@ -307,7 +306,13 @@ bool AudioDeviceSetting::isTesting() const
 void AudioDeviceSetting::setComment(const QString& text)
 {
     pimpl->commentLabel->setText(text);
-    pimpl->commentLabel->setVisible(!text.isEmpty());
+}
+
+//--------------------------------------------------------------------------
+
+QString AudioDeviceSetting::defaultText() const
+{
+    return tr("Default");
 }
 
 //--------------------------------------------------------------------------

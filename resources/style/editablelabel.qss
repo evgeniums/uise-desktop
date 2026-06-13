@@ -7,8 +7,3 @@ uise--EditableLabel #comment
 {
     margin-right: 2px;
 }
-
-uise--EditableLabel #comment
-{
-    margin-right: 2px;
-}

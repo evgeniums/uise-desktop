@@ -1,0 +1,13 @@
+{
+    "contexts" : [
+        {
+            "name" : "AudioDeviceSetting",
+            "aliases" : {
+                "capture"  : "${uise-svg-icons-1}/microphone",
+                "playback" : "${uise-svg-icons-1}/volume",
+                "test"     : "${uise-svg-icons-1}/player-play",
+                "stop"     : "${uise-svg-icons-1}/player-stop"
+            }
+        }
+    ]
+}

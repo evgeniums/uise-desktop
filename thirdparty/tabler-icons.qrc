@@ -120,5 +120,7 @@
         <file>tabler-icons/outline/message-forward.svg</file>
         <file>tabler-icons/outline/terminal-2.svg</file>
         <file>tabler-icons/outline/home.svg</file>
+        <file>tabler-icons/outline/volume.svg</file>
+        <file>tabler-icons/outline/player-stop.svg</file>
     </qresource>
 </RCC>

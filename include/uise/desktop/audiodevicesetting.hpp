@@ -104,23 +104,25 @@ class UISE_DESKTOP_EXPORT AudioDeviceSetting : public QFrame
 
         bool isTesting() const;
 
+        QString defaultText() const;
+
     signals:
 
         //! Emitted when the selected device changes.
-        void deviceChanged(const AudioDevice& device);
+        void deviceChanged(const uise::AudioDevice& device);
 
         //! Emitted when the Test button is toggled.
         void testToggled(bool testing);
 
     public slots:
 
-        void setDeviceType(AudioDeviceType type);
+        void setDeviceType(uise::AudioDeviceType type);
 
         //! Replace the device list. The supplied list must not contain the implicit "Default" entry.
-        void setDevices(const QVector<AudioDevice>& devices);
+        void setDevices(const QVector<uise::AudioDevice>& devices);
 
         //! Append a single device. An entry with an empty id is ignored.
-        void addDevice(const AudioDevice& device);
+        void addDevice(const uise::AudioDevice& device);
 
         //! Remove all devices (the implicit "Default" entry is kept).
         void clearDevices();
@@ -128,10 +130,12 @@ class UISE_DESKTOP_EXPORT AudioDeviceSetting : public QFrame
         //! Select the entry whose id matches; an empty id selects the "Default" entry.
         void setCurrentDevice(const QString& id);
 
-        void setCurrentDevice(const AudioDevice& device)
+        void setCurrentDevice(const uise::AudioDevice& device)
         {
             setCurrentDevice(device.id);
         }
+
+        void updateDefaultName();
 
         //! Set the OS default device name shown in row 2 and on the "Default" combo entry.
         void setDefaultDeviceName(const QString& name);

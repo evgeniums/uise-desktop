@@ -1,0 +1,71 @@
+/* Layout and metrics for AudioDeviceSetting (theme-neutral). */
+
+uise--AudioDeviceSetting #deviceRow,
+uise--AudioDeviceSetting #defaultRow,
+uise--AudioDeviceSetting #testRow
+{
+    margin: 0;
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+uise--AudioDeviceSetting #commentLabel
+{
+    margin: 0;
+    padding: 0;
+    margin-bottom: 3px;
+}
+
+uise--AudioDeviceSetting #testRow
+{
+    padding-right: 2px;
+}
+
+/* Device-type indicator button: svg only, no border/background. */
+uise--AudioDeviceSetting #typeButton QPushButton
+{
+    border: none;
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    margin-right: 6px;
+    icon-size: 28px;
+}
+
+uise--AudioDeviceSetting #deviceCombo
+{
+    min-width: 160px;
+}
+
+uise--AudioDeviceSetting #defaultName
+{
+    margin-left: 2px;
+}
+
+uise--AudioDeviceSetting #testButton QPushButton,
+uise--AudioDeviceSetting #testButton
+{
+    border:none;
+    padding:0;
+}
+
+uise--AudioDeviceSetting #testButton
+{
+    margin-left:2px;
+    margin-right:2px;
+}
+
+/* Dashed (chunked) volume meter: separate segments via chunk width + margin. */
+uise--AudioDeviceSetting #volumeBar
+{
+    min-height: 12px;
+    max-height: 12px;
+    border: none;
+    padding: 0;
+}
+
+uise--AudioDeviceSetting #volumeBar::chunk
+{
+    width: 6px;
+    margin: 1px;
+}
