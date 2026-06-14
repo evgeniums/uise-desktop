@@ -155,11 +155,14 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         virtual void setBusyWaiting(bool)
         {}
 
-        virtual void showStatus(const QString& message, const QString& status)
+        virtual void showStatus(const QString& message, const QString& status="info")
         {
             std::ignore=message;
             std::ignore=status;;
         }
+
+        virtual void resetStatus()
+        {}
 
         template <typename T>
         void showStatus(const QString& message, T status)
@@ -337,11 +340,16 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void setBusyWaiting(bool) override;
 
-        void showStatus(const QString& message, const QString& status) override;
+        void showStatus(const QString& message, const QString& status="info") override;
 
         void setStatusFrameVisible(bool enable) override;
 
         void setBottomButtonEnabled(BottomButton button, bool enabled) override;
+
+        void resetStatus() override
+        {
+            doResetStatus();
+        }
 
     public slots:
 
@@ -361,7 +369,7 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
     private:
 
-        void resetStatus();
+        void doResetStatus();
         void setEditingMode(bool enable);
         void updateState();
 

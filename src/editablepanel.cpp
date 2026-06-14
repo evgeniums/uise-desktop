@@ -126,6 +126,7 @@ EditablePanel::EditablePanel(
     pimpl->statusText->setObjectName("statusText");
     pimpl->statusText->setWordWrap(true);
     pimpl->statusText->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    pimpl->statusText->setAlignment(Qt::AlignCenter);
     pimpl->statusLayout->addWidget(pimpl->statusText);
 
     pimpl->bottomButtonsFrame=new QFrame(this);
@@ -437,7 +438,7 @@ void EditablePanel::updateState()
 
     if (!editing)
     {
-        resetStatus();
+        doResetStatus();
     }
 }
 
@@ -472,13 +473,13 @@ void EditablePanel::setBusyWaiting(bool enable)
     pimpl->loadingFrame->setBusyWaiting(enable);
     if (enable)
     {
-        resetStatus();
+        doResetStatus();
     }
 }
 
 //--------------------------------------------------------------------------
 
-void EditablePanel::resetStatus()
+void EditablePanel::doResetStatus()
 {
     pimpl->statusText->setText(" ");
     pimpl->statusText->setProperty("status",QVariant{});
@@ -498,14 +499,14 @@ void EditablePanel::showStatus(const QString& message, const QString& status)
 
 void EditablePanel::doBeginApply()
 {
-    resetStatus();
+    doResetStatus();
 }
 
 //--------------------------------------------------------------------------
 
 void EditablePanel::contentEdited()
 {
-    resetStatus();
+    doResetStatus();
 }
 
 //--------------------------------------------------------------------------
