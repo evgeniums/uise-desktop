@@ -54,9 +54,9 @@ class HTreePathElementConfig
             return m_width;
         }
 
-        void setExpanded(bool m_expanded) noexcept
+        void setExpanded(bool expanded) noexcept
         {
-            m_expanded=m_expanded;
+            m_expanded=expanded;
         }
 
         void setWidth(int width) noexcept
