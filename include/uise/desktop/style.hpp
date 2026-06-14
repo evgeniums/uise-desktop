@@ -130,6 +130,15 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         }
 
         /**
+         * @brief Start tracking OS color scheme changes.
+         *
+         * When enabled, a live OS light/dark switch automatically re-applies the
+         * stylesheet while in StyleSheetMode::Auto. Idempotent; must be called after
+         * QApplication exists. No-op for Qt < 6.5.
+         */
+        void enableSystemColorSchemeTracking();
+
+        /**
          * @brief Get style sheet paths.
          * @return Query result.
          *
@@ -445,6 +454,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         bool m_darkTheme;
         StyleSheetMode m_darkStyleSheetMode;
+        bool m_systemColorSchemeTracking=false;
 
         std::map<QString,QString> m_colorMap;
 

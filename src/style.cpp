@@ -406,4 +406,29 @@ void Style::updateWidgetStyle(QWidget* source, QWidget* target)
 
 //--------------------------------------------------------------------------
 
+void Style::enableSystemColorSchemeTracking()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    if (m_systemColorSchemeTracking)
+    {
+        return;
+    }
+    m_systemColorSchemeTracking=true;
+    QObject::connect(
+        QGuiApplication::styleHints(),
+        &QStyleHints::colorSchemeChanged,
+        qApp,
+        [](Qt::ColorScheme)
+        {
+            auto& style=Style::instance();
+            if (style.styleSheetMode()==StyleSheetMode::Auto)
+            {
+                style.applyStyleSheet(true);
+            }
+        });
+#endif
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
