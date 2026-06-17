@@ -48,9 +48,9 @@ struct SvgIconConfig
     SizeSet sizes;
 
     SvgIconConfig(QString name, SvgIconColorMaps modes=SvgIconColorMaps{}, aliasModesT aliases={}, SizeSet sizes={})
-        : name(std::move(name)),
-        modes(std::move(modes)),
+        : name(std::move(name)),        
         aliases(std::move(aliases)),
+        modes(std::move(modes)),
         sizes(std::move(sizes))
     {}
 };

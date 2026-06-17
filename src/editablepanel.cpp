@@ -414,7 +414,7 @@ void EditablePanel::updateState()
 {
     bool editing=isEditingMode();
     pimpl->titleFrame->setVisible(pimpl->titleVisible);
-    bool bottomsVisible=bottomButtonsMode()==BottomButtonsMode::AlwaysVisible || isEditingMode() &&  bottomButtonsMode()==BottomButtonsMode::EditingVisible;
+    bool bottomsVisible=bottomButtonsMode()==BottomButtonsMode::AlwaysVisible || (isEditingMode() && bottomButtonsMode()==BottomButtonsMode::EditingVisible);
     bool applyVisible=bottomsVisible && isBottomButtonVisible(BottomButton::Apply);
     bool cancelVisible=bottomsVisible && isBottomButtonVisible(BottomButton::Cancel);
     pimpl->bottomButtonsFrame->setVisible(applyVisible || cancelVisible);

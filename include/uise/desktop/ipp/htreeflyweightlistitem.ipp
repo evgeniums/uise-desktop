@@ -90,7 +90,7 @@ HTreeFlyweightListItemView<ItemT,OrderComparer,IdComparer>::HTreeFlyweightListIt
 /************************* HTreeStandardListView ***********************/
 
 template <typename ItemT, typename BaseT, typename OrderComparer, typename IdComparer>
-HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::HTreeFlyweightListView(QWidget* parent,
+HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::HTreeFlyweightListView(QWidget* /*parent*/,
                                                       OrderComparer orderComparer,
                                                       IdComparer idComparer,
                                                       int minimumWidth)

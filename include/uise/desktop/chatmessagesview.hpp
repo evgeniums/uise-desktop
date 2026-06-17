@@ -50,8 +50,8 @@ class ChatMessagesViewItem : public BaseMessageT
 
         explicit ChatMessagesViewItem(QWidget* parent=nullptr) :
             BaseMessageT(parent),
-            m_msg(this),
-            m_ui(nullptr)
+            m_ui(nullptr),
+            m_msg(this)
         {}
 
         AbstractChatMessage* ui() override

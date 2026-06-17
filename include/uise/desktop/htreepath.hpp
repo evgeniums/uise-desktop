@@ -165,7 +165,7 @@ class HTreePathElement
             setData(m);
         }
 
-        QVariant data(const QString& key,const QVariant& defaultValue={}) const
+        QVariant data(const QString& key,const QVariant& /*defaultValue*/={}) const
         {
             return dataMap().value(key);
         }

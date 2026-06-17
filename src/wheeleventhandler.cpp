@@ -33,8 +33,8 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 WheelEventHandler::WheelEventHandler(
         int scrollStep
-    ) : m_scrollStep(scrollStep),
-        m_offsetAccumulated(0)
+    ) : m_offsetAccumulated(0),
+        m_scrollStep(scrollStep)
 {}
 
 //--------------------------------------------------------------------------

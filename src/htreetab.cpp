@@ -157,13 +157,13 @@ void HTreeTab_p::disconnectNode(HTreeNode* node, bool beforeDestroy)
 
 void HTreeTab_p::truncate(int index)
 {
-    if (index<0 || index>=nodes.size())
+    if (index<0 || index>=static_cast<int>(nodes.size()))
     {
         return;
     }
 
-    auto lastIndex=nodes.size()-1;
-    for (auto i=lastIndex;i>=index;i--)
+    int lastIndex=static_cast<int>(nodes.size())-1;
+    for (int i=lastIndex;i>=index;i--)
     {
         auto w=splitter->widget(i);
         auto s=qobject_cast<HTreeSplitterSection*>(w);
@@ -859,7 +859,7 @@ void HTreeTab::adjustWidthsAndPositions()
 
 //--------------------------------------------------------------------------
 
-void HTreeTab::nodeCloseHovered(HTreeNode* node, bool enable)
+void HTreeTab::nodeCloseHovered(HTreeNode* /*node*/, bool /*enable*/)
 {
 //! @todo Configure close frame display
 #if 0

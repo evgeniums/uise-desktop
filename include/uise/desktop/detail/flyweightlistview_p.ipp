@@ -78,6 +78,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_atBegin(true),
         m_atEnd(true),
         m_firstWidgetPos(0),
+        m_firstItem(nullptr),
+        m_lastItem(nullptr),
         m_singleStep(10),
         m_pageStep(FlyweightListView<ItemT>::DefaultPageStep),
         m_minPageStep(FlyweightListView<ItemT>::DefaultPageStep),
@@ -85,8 +87,6 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_wheelOffsetAccumulatedOther(0.0f),
         m_ignoreUpdates(false),
         m_cleared(false),
-        m_firstItem(nullptr),
-        m_lastItem(nullptr),
         m_maxSortValue(ItemT::defaultSortValue()),
         m_minSortValue(ItemT::defaultSortValue()),
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
@@ -563,14 +563,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     auto edge=endItemEdge();
     bool moveEnd=edge==(oldViewSize-1)
             ||
-            (edge>(viewSize-1)) && (viewSize<oldViewSize)
+            ((edge>(viewSize-1)) && (viewSize<oldViewSize))
             ||
-            (edge<(viewSize-1)) && (viewSize>oldViewSize)
+            ((edge<(viewSize-1)) && (viewSize>oldViewSize))
     ;
     bool moveBegin=(edge<(viewSize-1)) && (viewSize>oldViewSize);
 
     // if size of viewport changed then list will try to fit the viewport as much as possible
-    if (m_stick==Direction::HOME && moveBegin || m_stick==Direction::END && moveEnd)
+    if ((m_stick==Direction::HOME && moveBegin) || (m_stick==Direction::END && moveEnd))
     {
         auto delta=viewSize-oldViewSize;
         auto newPos=oprop(m_llist,OProp::pos)+delta;
@@ -1445,7 +1445,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     auto minPrefetch=prefetchThreshold();
     auto prefetch=prefetchItemCountEffective();
 
-    int hiddenBefore=0;
+    size_t hiddenBefore=0;
     size_t from=0;
     size_t to=0;
     auto first=firstItem();
@@ -1492,7 +1492,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         removeExtraItemsFromBegin(hiddenBefore-maxHidden);
     }
 
-    int hiddenAfter=0;
+    size_t hiddenAfter=0;
     auto last=lastItem();
     auto lastVisible=lastViewportItem();
     size_t fromAfter=0;
@@ -1559,7 +1559,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     auto minPrefetch=prefetchThreshold();
     auto prefetch=prefetchItemCountEffective();
 
-    int hiddenBefore=0;
+    size_t hiddenBefore=0;
     size_t fromBefore=0;
     size_t toBefore=0;
     auto first=firstItem();
@@ -1571,7 +1571,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenBefore=fromBefore-toBefore;
     }
 
-    int hiddenAfter=0;
+    size_t hiddenAfter=0;
     auto last=lastItem();
     auto lastVisible=lastViewportItem();
     if (last&&lastVisible)

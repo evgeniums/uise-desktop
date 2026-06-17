@@ -168,7 +168,7 @@ void StackWithNavigationBar::setCurrentWidget(UISE_DESKTOP_NAMESPACE::FrameWithR
 
 void StackWithNavigationBar::truncate(int index)
 {
-    if (index<0 || index>=count())
+    if (index<0 || index>=static_cast<int>(count()))
     {
         return;
     }

@@ -212,7 +212,7 @@ void HTreeStandardListItem::setExpandVisible(bool enable)
 
 //--------------------------------------------------------------------------
 
-template class UISE_DESKTOP_EXPORT FlyweightListItemTraits<HTreeStandardListItem*,HTreeListItem,std::string,std::string>;
+template struct UISE_DESKTOP_EXPORT FlyweightListItemTraits<HTreeStandardListItem*,HTreeListItem,std::string,std::string>;
 template class UISE_DESKTOP_EXPORT FlyweightListItem<HTreeStandardListItemTraits>;
 template class UISE_DESKTOP_EXPORT FlyweightListView<HTreeStansardListIemWrapper>;
 

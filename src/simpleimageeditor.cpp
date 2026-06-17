@@ -429,7 +429,7 @@ QPixmap SimpleImageEditor::editedImage()
 
     QRectF croppedRect;
     auto items=m_widget->pimpl->scene->items();
-    for (size_t i=0; i<items.count();i++)
+    for (qsizetype i=0; i<items.count();i++)
     {
         auto* item=items.at(i);
         if (item->type()==CropRectItem::Type)

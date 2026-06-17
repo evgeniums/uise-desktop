@@ -85,7 +85,6 @@ class StyleContext
 
             std::array<const QObject*,64> chain;
 
-            size_t index=0;
             size_t depth=0;
             uint64_t mask=0;
 

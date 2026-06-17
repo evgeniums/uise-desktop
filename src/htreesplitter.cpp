@@ -225,7 +225,6 @@ void HTreeSplitterInternal::updateSize(int w)
         {
             // update manual widths
             double ratio=double(vw)/double(m_prevViewportWidth);
-            int i=0;
             for (auto& section: m_sections)
             {
                 auto w=qobject_cast<QWidget*>(section->obj);
@@ -302,7 +301,6 @@ QSize HTreeSplitterInternal::sizeHint() const
 {
     int h=0;
     int w=0;
-    int i=0;
     for (auto& it: m_sections)
     {
         if (!it->destroyed)
@@ -503,7 +501,6 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     int minTotalWidth=0;
     int hintTotalWidth=0;
     int totalStretch=0;
-    int i=0;
     for (auto& section: m_sections)
     {
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
@@ -558,7 +555,6 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
         }
     }
 
-    i=0;
     for (auto& section: m_sections)
     {
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
@@ -626,7 +622,6 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
         {
             precalculatedWidths.push_back(0);
         }
-        i++;
     }
 
     if (stretchLastSection)
@@ -655,7 +650,6 @@ int HTreeSplitterInternal::recalculateWidths(int totalWidth)
     // << ", precalculatedExtraWidth="<<precalculatedExtraWidth
     // << " ratio="<<wRatio;
 
-    int accumulatedStretch=0;
     int accumulatedWidth=0;
     for (size_t i=0;i<m_sections.size();i++)
     {
@@ -755,13 +749,10 @@ void HTreeSplitterInternal::updateMinWidth()
 {
     auto prev=minimumWidth();
     int current=0;
-    auto sectionWidth=0;
-    int i=0;
     for (auto& section: m_sections)
     {
         if (section->destroyed)
         {
-            i++;
             continue;
         }
 
@@ -772,15 +763,9 @@ void HTreeSplitterInternal::updateMinWidth()
             if (w->isExpanded())
             {
                 diff=std::max(section->minWidth,section->manualWidth);
-
-                // qDebug() << "HTreeSplitterInternal::updateMinWidth() section->minWidth="<<diff  << " swidth=" << section->width << " i="<<i
-                // << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
-                // sectionWidth+=section->width;
             }
         }
         current+=diff;
-
-        i++;
     }
     // auto prevWidth=width();
     if (prev!=current)
@@ -828,15 +813,12 @@ void HTreeSplitterInternal::updatePositions()
 
 void HTreeSplitterInternal::updateWidths()
 {
-    size_t index=0;
-
     auto margins=contentsMargins();
     auto h=height()-margins.top()-margins.bottom();
     for (auto& section: m_sections)
     {
         if (section->destroyed)
         {
-            index++;
             continue;
         }
         auto w=qobject_cast<HTreeSplitterSection*>(section->obj);
@@ -854,8 +836,6 @@ void HTreeSplitterInternal::updateWidths()
                 w->setVisible(false);
             }
         }
-
-        index++;
     }
 }
 
@@ -1072,7 +1052,7 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
         s->width=w->width();
     }
 
-    if (index==m_sections.size()-1)
+    if (index==static_cast<int>(m_sections.size())-1)
     {
         if (expanded)
         {

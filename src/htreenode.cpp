@@ -794,7 +794,7 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
 
 //--------------------------------------------------------------------------
 
-void HTreeNode::otherNodeExpanded(bool enable)
+void HTreeNode::otherNodeExpanded(bool /*enable*/)
 {
     if (pimpl->prepareForDestroy)
     {

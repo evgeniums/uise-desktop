@@ -37,7 +37,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  */
 struct makeNullWidgetT
 {
-    QWidget* operator()(QWidget* parent=nullptr) const
+    QWidget* operator()(QWidget* /*parent*/=nullptr) const
     {
         return nullptr;
     }

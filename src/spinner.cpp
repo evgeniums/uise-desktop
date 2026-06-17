@@ -99,7 +99,7 @@ void Spinner::setStyleSample(QWidget *widget)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::paintEvent(QPaintEvent *event)
+void Spinner::paintEvent(QPaintEvent* /*event*/)
 {
     auto w = width();
     auto widgetHeight=height();
@@ -345,7 +345,7 @@ void Spinner::leaveEvent(QEvent *)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::enterEvent(QEnterEvent *event)
+void Spinner::enterEvent(QEnterEvent* /*event*/)
 {
     pimpl->sectionUnderCursor=sectionUnderCursor();
     resetWheel();
@@ -367,7 +367,7 @@ void Spinner::mousePressEvent(QMouseEvent *event)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::mouseReleaseEvent(QMouseEvent *event)
+void Spinner::mouseReleaseEvent(QMouseEvent* /*event*/)
 {
     pimpl->mousePressed=false;
 

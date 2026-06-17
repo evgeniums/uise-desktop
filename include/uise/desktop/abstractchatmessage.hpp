@@ -128,7 +128,7 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChil
 
         void insertSection(AbstractChatSeparatorSection* section, int index=-1)
         {
-            if (index>=0 && index<m_sections.size())
+            if (index>=0 && index<static_cast<int>(m_sections.size()))
             {
                 auto pos=m_sections.begin()+index;
                 m_sections.emplace(pos,section);
@@ -148,7 +148,7 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChil
 
         AbstractChatSeparatorSection* section(int index) const
         {
-            if (index<0 || index>=m_sections.size())
+            if (index<0 || index>=static_cast<int>(m_sections.size()))
             {
                 return nullptr;
             }
@@ -248,8 +248,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
-        virtual void setSeen(const QString& text, const QString& /*tooltip*/={}) {}
-        virtual void setEdited(const QString& text, const QString& /*tooltip*/={}) {}
+        virtual void setSeen(const QString& /*text*/, const QString& /*tooltip*/={}) {}
+        virtual void setEdited(const QString& /*text*/, const QString& /*tooltip*/={}) {}
         virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
 };

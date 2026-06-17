@@ -164,7 +164,7 @@ void NavigationBarItem::contextMenuEvent(QContextMenuEvent* event)
 
 /********************************NavigationBarSeparator**********************/
 
-NavigationBarSeparator::NavigationBarSeparator(QWidget* parent)
+NavigationBarSeparator::NavigationBarSeparator(QWidget* /*parent*/)
     : m_hoverCharacterEnabled(false),
       m_hoverCharacter(DefaultHoverCharacter)
 {
@@ -646,7 +646,7 @@ bool NavigationBar::isItemChecked(int index) const
 
 void NavigationBar::setSeparatorTooltip(int index, const QString& val)
 {
-    if (index < pimpl->separators.size() && index>=0)
+    if (index>=0 && index<static_cast<int>(pimpl->separators.size()))
     {
         auto sep=pimpl->separators[index];
         sep->setToolTip(val);
@@ -657,7 +657,7 @@ void NavigationBar::setSeparatorTooltip(int index, const QString& val)
 
 QString NavigationBar::separatorTooltip(int index) const
 {
-    if (index < pimpl->separators.size() && index>=0)
+    if (index>=0 && index<static_cast<int>(pimpl->separators.size()))
     {
         auto sep=pimpl->separators[index];
         return sep->toolTip();
@@ -681,7 +681,7 @@ void NavigationBar::truncate(int index)
     pimpl->buttons->blockSignals(true);
 
     auto buttons=pimpl->buttons->buttons();
-    for (size_t i=index;i<buttons.count();i++)
+    for (qsizetype i=static_cast<qsizetype>(index);i<buttons.count();i++)
     {
         auto button=buttons[i];
         w-=button->sizeHint().width();

@@ -542,7 +542,7 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             adjustMessageList(messages);
 
             // adjust min and max sort values
-            if (messageItems.size()<wasRequestedMaxCount)
+            if (messageItems.size()<static_cast<size_t>(wasRequestedMaxCount))
             {
                 if (wasRequestedDirection==Direction::END)
                 {
@@ -977,7 +977,7 @@ void ChatMessagesView<BaseMessageT,Traits>::keyPressEvent(QKeyEvent* event)
         else
         {
             QString selectedText;
-            bool noneSelected=m_listView->eachItem(
+            [[maybe_unused]] bool noneSelected=m_listView->eachItem(
                 [&selectedText](const auto* item)
                 {
                     selectedText=item->item()->ui()->selectedText();

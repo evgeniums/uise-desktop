@@ -383,6 +383,17 @@ ENDIF()
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC QtColorWidgets)
 
+IF (NOT MSVC)
+    TARGET_COMPILE_OPTIONS(${PROJECT_NAME} PRIVATE
+        -Wextra
+        -Wall
+        -Wnon-virtual-dtor
+        -Wreorder-ctor
+        -Wno-unused-lambda-capture
+        -Wunused-variable
+    )
+ENDIF (NOT MSVC)
+
 IF (UISE_DESKTOP_DEMO)
     ADD_SUBDIRECTORY(demo)
 ENDIF (UISE_DESKTOP_DEMO)

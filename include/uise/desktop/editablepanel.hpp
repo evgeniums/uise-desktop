@@ -107,12 +107,12 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         virtual std::shared_ptr<SvgIcon> bottomCancelIcon() const=0;
 
         virtual void setWidget(QWidget* widget)=0;
-        virtual void setTopWidget(QWidget* widget, Qt::Alignment /*alignment*/={})
+        virtual void setTopWidget(QWidget* /*widget*/, Qt::Alignment /*alignment*/={})
         {}
-        virtual void setBottomWidget(QWidget* widget, Qt::Alignment /*alignlment*/={})
+        virtual void setBottomWidget(QWidget* /*widget*/, Qt::Alignment /*alignlment*/={})
         {}
 
-        int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={}, int rowSpan=1)
+        int addRow(const QString& label, QWidget* widget, int columnSpan=1, Qt::Alignment alignment=Qt::Alignment{}, const QString& comment={}, int /*rowSpan*/=1)
         {
             return addRow(label,{Item{widget,alignment,columnSpan,1}},comment);
         }

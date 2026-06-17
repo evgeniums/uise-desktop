@@ -100,7 +100,7 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             return m_imageKeys.at(index);
         }
 
-        QPixmap imagePixmap(size_t index) const
+        QPixmap imagePixmap(size_t /*index*/) const
         {
             auto key=currentImageKey();
             return imagePixmap(key);

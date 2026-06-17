@@ -173,7 +173,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         virtual void rotate() {}
         virtual void rotateClockwise() {}
 
-        virtual void setFreeHandDrawMode(bool enable) {}
+        virtual void setFreeHandDrawMode(bool /*enable*/) {}
 
     protected:
 

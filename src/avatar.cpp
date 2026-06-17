@@ -352,7 +352,7 @@ QPixmap Avatar::generatePixmap(const QSize& size) const
         auto count=std::min(words.size(),qsizetype(maxLetters));
         words.resize(count);
         QString letters;
-        for (size_t i=0;i<words.count();i++)
+        for (qsizetype i=0;i<words.count();i++)
         {
             auto& word=words.at(i);
             letters+=getFirstInitial(word).toUpper();
@@ -626,7 +626,7 @@ void AvatarWidget::generateLetters(QPainter* painter) const
     auto count=std::min(words.size(),qsizetype(maxLetters));
     words.resize(count);
     QString letters;
-    for (size_t i=0;i<words.count();i++)
+    for (qsizetype i=0;i<words.count();i++)
     {
         const auto& word=words.at(i);
         letters+=word.front().toUpper();

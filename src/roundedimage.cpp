@@ -259,7 +259,7 @@ IconMode RoundedImage::currentSvgIconMode() const
 
 //--------------------------------------------------------------------------
 
-void RoundedImage::paintEvent(QPaintEvent *event)
+void RoundedImage::paintEvent(QPaintEvent* /*event*/)
 {
     // update image size
     auto imageSizeMatch=isDeviceImageSizeEqual(size());
