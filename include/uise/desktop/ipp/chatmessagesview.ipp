@@ -1074,13 +1074,6 @@ bool ChatMessagesView<BaseMessageT,Traits>::rEachMessage(MessageHandler handler)
 
 //--------------------------------------------------------------------------
 
-QString AbstractChatMessagesView::unreadSeparatorTitle() const
-{
-    return tr("Unread messages");
-}
-
-//--------------------------------------------------------------------------
-
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_CHATMESSAGESVIEW_IPP

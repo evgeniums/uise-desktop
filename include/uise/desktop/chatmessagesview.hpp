@@ -145,7 +145,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
 
         using QFrame::QFrame;
 
-        QString unreadSeparatorTitle() const;
+        QString unreadSeparatorTitle() const { return tr("Unread messages"); }
 
     signals:
 
