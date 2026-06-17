@@ -439,6 +439,16 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         static void updateWidgetStyle(QWidget* source, QWidget* target=nullptr);
 
+        /**
+         * @brief Repolish a widget and all of its descendants.
+         *
+         * On Windows Qt does not automatically repolish widgets that are inserted
+         * into the tree after qApp->setStyleSheet() was already called, so QSS rules
+         * (e.g. min/max-width on uise--RoundedImage, EditablePanel borders) are not
+         * applied. Calling this on a freshly inserted subtree restores them.
+         */
+        static void repolishRecursive(QWidget* widget);
+
     private:
 
         QString m_qss;

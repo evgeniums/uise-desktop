@@ -406,6 +406,22 @@ void Style::updateWidgetStyle(QWidget* source, QWidget* target)
 
 //--------------------------------------------------------------------------
 
+void Style::repolishRecursive(QWidget* widget)
+{
+    if (widget==nullptr)
+    {
+        return;
+    }
+    updateWidgetStyle(widget);
+    const auto children=widget->findChildren<QWidget*>();
+    for (QWidget* c : children)
+    {
+        updateWidgetStyle(c);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void Style::enableSystemColorSchemeTracking()
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)

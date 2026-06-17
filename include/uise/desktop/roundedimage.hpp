@@ -257,6 +257,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         void paintEvent(QPaintEvent *event) override;
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
+        void changeEvent(QEvent* event) override;
 
         virtual void doPaint(QPainter*)
         {}

@@ -545,6 +545,23 @@ void HTreeNode::setContentWidget(QWidget* widget)
 
     setMinimumWidth(widget->minimumWidth());
     setMaximumWidth(widget->maximumWidth());
+
+#ifdef Q_OS_WIN
+    // On Windows Qt does not repolish widgets inserted into the tree after
+    // qApp->setStyleSheet() was already called at startup, so QSS rules on the
+    // freshly inserted content (e.g. EditablePanel borders, min/max-width on
+    // uise--RoundedImage icon buttons) are not applied. Force a deferred recursive
+    // repolish so the content is styled on first paint, matching macOS behaviour.
+    QPointer<QWidget> contentWidget=widget;
+    QTimer::singleShot(0, this, [contentWidget]()
+    {
+        if (!contentWidget)
+        {
+            return;
+        }
+        Style::repolishRecursive(contentWidget);
+    });
+#endif
 }
 
 //--------------------------------------------------------------------------

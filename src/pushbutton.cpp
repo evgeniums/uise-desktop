@@ -31,10 +31,10 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 PushButton::PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool toolButton)
-    : QFrame(parent),
-    m_icon(std::move(icon)),
+    : QFrame(parent),    
     m_pushButton(nullptr),
     m_toolButton(nullptr),
+    m_icon(std::move(icon)),
     m_parentHovered(false)
 {
     auto l=Layout::vertical(this);

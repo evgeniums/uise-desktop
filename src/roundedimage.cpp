@@ -356,6 +356,23 @@ void RoundedImage::leaveEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
+void RoundedImage::changeEvent(QEvent* event)
+{
+    QLabel::changeEvent(event);
+
+    // When the effective style changes (e.g. a QSS repolish applied min/max-width
+    // after this widget was inserted into the tree), the size derived from
+    // minimumSize() in createPixmapConsumer() may now differ. Rebuild the pixmap
+    // consumer so the icon is rendered at the freshly-applied size. The call is
+    // idempotent: it reuses the existing consumer when size and path are unchanged.
+    if (event->type()==QEvent::StyleChange)
+    {
+        createPixmapConsumer();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void RoundedImage::setParentHovered(bool enable)
 {
     m_parentHovered=enable;
