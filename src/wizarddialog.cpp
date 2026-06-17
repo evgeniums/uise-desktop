@@ -98,8 +98,8 @@ void WizardDialog::setCurrentIndex(int index)
     setSvgIcon(std::move(icon));
 
     setButtonVisible(StandardButton::Back,index!=0 && pimpl->icons.size()>1);
-    setButtonVisible(StandardButton::Next,index!=(pimpl->icons.size()-1));
-    setButtonVisible(StandardButton::Complete,index==pimpl->icons.size()-1);
+    setButtonVisible(StandardButton::Next,static_cast<size_t>(index)!=(pimpl->icons.size()-1));
+    setButtonVisible(StandardButton::Complete,static_cast<size_t>(index)==pimpl->icons.size()-1);
 }
 
 //--------------------------------------------------------------------------

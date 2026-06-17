@@ -56,7 +56,7 @@ JumpEdge::JumpEdge(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
-void JumpEdge::paintEvent(QPaintEvent *event)
+void JumpEdge::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter p;
     p.begin(this);

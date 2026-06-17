@@ -60,7 +60,7 @@ CircleBusy::CircleBusy(QWidget *parent,
 
 //--------------------------------------------------------------------------
 
-void CircleBusy::paintEvent(QPaintEvent *event)
+void CircleBusy::paintEvent(QPaintEvent * /*event*/)
 {
     updatePosition();
 

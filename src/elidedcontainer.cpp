@@ -139,7 +139,6 @@ void ElidedContainer::updateSize(const QSize& newSize)
         }
     }
 
-    int accElidedWidth=0;
     int pos=margins.left();
     int y=margins.top();
     for (size_t i=0;i<m_widgets.size();i++)
@@ -259,7 +258,7 @@ void ElidedContainer::onWidgetAdded(Widget w)
 
 //--------------------------------------------------------------------------
 
-bool ElidedContainer::eventFilter(QObject *watched, QEvent *event)
+bool ElidedContainer::eventFilter(QObject * /*watched*/, QEvent *event)
 {
     if (event->type()==QEvent::Show || event->type()==QEvent::Hide)
     {

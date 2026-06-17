@@ -50,7 +50,7 @@ LoadControl::LoadControl(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
-void LoadControl::paintEvent(QPaintEvent *event)
+void LoadControl::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter p;
     p.begin(this);
