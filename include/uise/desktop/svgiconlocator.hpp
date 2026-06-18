@@ -241,7 +241,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             return contextColorMaps(this,context);
         }
 
-        void reset();
+        void reset(bool presetDefault=true);
 
         void clearIconDirs()
         {
@@ -261,7 +261,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         void addIconDirSubstitution(QString original, QString subst)
         {
-            m_iconDirSubstitutions.emplace(std::move(original),std::move(subst));
+            m_iconDirSubstitutions[std::move(original)]=std::move(subst);
         }
 
         QString iconDirSubstitution(const QString& original) const

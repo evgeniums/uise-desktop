@@ -383,14 +383,17 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const
 
 //--------------------------------------------------------------------------
 
-void SvgIconLocator::reset()
+void SvgIconLocator::reset(bool presetDefault)
 {
     clearIconDirs();
     clearCache();
-    addIconDir(":/icons");
-    addIconDirSubstitution("${uise-svg-icons-1}","tabler-icons/outline");
-    addIconDirSubstitution("${uise-svg-icons-2}","tabler-icons/filled");
-    addIconDirSubstitution("${uise-svg-icons-3}","reshot");
+    if (presetDefault)
+    {
+        addIconDir(":/icons");
+        addIconDirSubstitution("${uise-svg-icons-1}","tabler-icons/outline");
+        addIconDirSubstitution("${uise-svg-icons-2}","tabler-icons/filled");
+        addIconDirSubstitution("${uise-svg-icons-3}","reshot");
+    }
 }
 
 //--------------------------------------------------------------------------
