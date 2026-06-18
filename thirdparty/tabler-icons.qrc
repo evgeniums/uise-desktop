@@ -125,5 +125,8 @@
         <file>tabler-icons/outline/loader.svg</file>
         <file>tabler-icons/outline/progress-alert.svg</file>
         <file>tabler-icons/outline/progress-x.svg</file>
+        <file>tabler-icons/outline/circle-dashed.svg</file>
+        <file>tabler-icons/outline/circle-off.svg</file>
+        <file>tabler-icons/outline/circle.svg</file>
     </qresource>
 </RCC>
