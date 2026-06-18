@@ -122,5 +122,8 @@
         <file>tabler-icons/outline/home.svg</file>
         <file>tabler-icons/outline/volume.svg</file>
         <file>tabler-icons/outline/player-stop.svg</file>
+        <file>tabler-icons/outline/loader.svg</file>
+        <file>tabler-icons/outline/progress-alert.svg</file>
+        <file>tabler-icons/outline/progress-x.svg</file>
     </qresource>
 </RCC>
