@@ -827,7 +827,7 @@ void NavigationBar::setItemsOpenInWindowEnabled(bool enable) noexcept
 
 void NavigationBar::addLeadingWidget(QWidget* widget)
 {
-    pimpl->leftFrameLayout->addWidget(widget);
+    pimpl->leftFrameLayout->addWidget(widget,0,Qt::AlignLeft);
 }
 
 //--------------------------------------------------------------------------

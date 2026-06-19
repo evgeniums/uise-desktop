@@ -5,26 +5,47 @@ uise--NavigationBarItem #text {font-size:12px; text-decoration:underline;}
 uise--NavigationBarItem[checked="true"] #text {text-decoration:none;}
 uise--NavigationBar QScrollBar {margin:0;padding:0;}
 
-uise--NavigationBar uise--IconTextButton uise--RoundedImage{
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton uise--RoundedImage{
 min-width:12px;
 max-width:12px;
 min-height:12px;
 max-height:12px;
 }
 
-uise--NavigationBar uise--IconTextButton #icon {
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #icon {
 margin-right: 3px;
 margin-top: 2px;
 }
 
-uise--NavigationBar uise--IconTextButton #trailingIcon uise--RoundedImage{
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #trailingIcon uise--RoundedImage{
 min-width:14px;
 max-width:14px;
 min-height:14px;
 max-height:14px;
 }
 
-uise--NavigationBar uise--IconTextButton #trailingIcon {
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #trailingIcon {
 margin-left: 3px;
 margin-top: 2px;
 }
+
+uise--NavigationBar #leftFrame {
+padding-left: 6px;
+}
+
+uise--NavigationBar #leftFrame uise--IconTextButton {
+}
+
+uise--NavigationBar #leftFrame uise--IconTextButton uise--WithRoundedImage,
+uise--NavigationBar #leftFrame uise--IconTextButton uise--RoundedImage {
+min-width: 24px;
+max-width: 24px;
+min-height: 24px;
+max-height: 24px;
+}
+/*
+uise--NavigationBar #leftFrame uise--IconTextButton {
+margin-left: 8px;
+}
+*/
+

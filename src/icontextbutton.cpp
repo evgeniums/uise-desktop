@@ -61,6 +61,7 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
     m_text->setObjectName("text");
     setIconPosition(iconPosition);
     setSvgIcon(std::move(icon));
+    m_text->setVisible(false);
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }
@@ -167,6 +168,7 @@ QString IconTextButton::text() const
 void IconTextButton::setText(const QString& text)
 {
     m_text->setText(text);
+    m_text->setVisible(!text.isEmpty());
 }
 
 //--------------------------------------------------------------------------
