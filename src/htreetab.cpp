@@ -260,6 +260,15 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             navbar->setItemIcon(index,std::move(icon));
         }
     );
+    node->connect(
+        node,
+        &HTreeNode::trailingIconUpdated,
+        self,
+        [this,index](std::shared_ptr<SvgIcon> icon)
+        {
+            navbar->setItemTrailingIcon(index,std::move(icon));
+        }
+    );
 
     // watch if node is expanded
     node->connect(

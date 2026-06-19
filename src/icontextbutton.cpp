@@ -39,6 +39,7 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
       m_iconPosition(iconPosition),
       m_layout(nullptr),
       m_icon(nullptr),
+      m_trailingIcon(nullptr),
       m_text(nullptr),
       m_parentHovered(false),
       m_checked(false),
@@ -49,6 +50,13 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
 
     m_icon=wrapper->image();
     m_icon->setDisableHover(true);
+
+    auto trailingWrapper=new WithRoundedImage(this);
+    trailingWrapper->setObjectName("trailingIcon");
+    m_trailingIcon=trailingWrapper->image();
+    m_trailingIcon->setDisableHover(true);
+    trailingWrapper->setVisible(false);
+
     m_text=new QLabel(this);
     m_text->setObjectName("text");
     setIconPosition(iconPosition);
@@ -61,10 +69,11 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
 
 void IconTextButton::setHovered(bool enable)
 {
-    setProperty("hovered",enable);    
+    setProperty("hovered",enable);
     m_text->setProperty("hovered",enable);
     Style::updateWidgetStyle(m_text);
     m_icon->setParentHovered(enable);
+    m_trailingIcon->setParentHovered(enable);
     m_text->repaint();
 }
 
@@ -118,10 +127,12 @@ void IconTextButton::setChecked(bool enable)
     m_checked=enable;
     setProperty("checked",enable);
     m_icon->setSelected(enable);
+    m_trailingIcon->setSelected(enable);
     m_text->setProperty("checked",enable);
     Style::updateWidgetStyle(this);
     Style::updateWidgetStyle(m_text);
     Style::updateWidgetStyle(m_icon);
+    Style::updateWidgetStyle(m_trailingIcon);
 
     if (prevChecked!=m_checked)
     {
@@ -174,16 +185,35 @@ std::shared_ptr<SvgIcon> IconTextButton::svgIcon() const
 
 //--------------------------------------------------------------------------
 
+void IconTextButton::setTrailingSvgIcon(std::shared_ptr<SvgIcon> icon)
+{
+    m_trailingIcon->setSvgIcon(icon);
+    m_trailingIcon->parentWidget()->setVisible(icon != nullptr);
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> IconTextButton::trailingSvgIcon() const
+{
+    return m_trailingIcon->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
 void IconTextButton::setIconPosition(IconPosition iconPosition)
 {
     if (m_layout)
     {
         m_layout->removeWidget(m_icon->parentWidget());
         m_layout->removeWidget(m_text);
+        m_layout->removeWidget(m_trailingIcon->parentWidget());
     }
 
     m_iconPosition=iconPosition;
     m_icon->setVisible(true);
+
+    // trailing icon visibility is preserved across layout rebuilds
+    bool trailingVisible=m_trailingIcon->parentWidget()->isVisible();
 
     switch (m_iconPosition)
     {
@@ -192,6 +222,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_layout=Layout::horizontal(this);
             m_layout->addWidget(m_icon->parentWidget());
             m_layout->addWidget(m_text);
+            m_layout->addWidget(m_trailingIcon->parentWidget());
             m_text->setProperty("position","after");
         }
         break;
@@ -201,6 +232,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_layout=Layout::horizontal(this);
             m_layout->addWidget(m_text);
             m_layout->addWidget(m_icon->parentWidget());
+            m_layout->addWidget(m_trailingIcon->parentWidget());
             m_text->setProperty("position","before");
         }
         break;
@@ -210,6 +242,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_layout=Layout::vertical(this);
             m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
+            m_layout->addWidget(m_trailingIcon->parentWidget(),0,Qt::AlignCenter);
             m_text->setProperty("position","below");
         }
         break;
@@ -219,6 +252,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_layout=Layout::vertical(this);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
             m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
+            m_layout->addWidget(m_trailingIcon->parentWidget(),0,Qt::AlignCenter);
             m_text->setProperty("position","above");
         }
         break;
@@ -228,11 +262,14 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
             m_layout=Layout::horizontal(this);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
             m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
+            m_layout->addWidget(m_trailingIcon->parentWidget(),0,Qt::AlignCenter);
             m_text->setProperty("position",QVariant{});
             m_icon->setVisible(false);
         }
         break;
     }
+
+    m_trailingIcon->parentWidget()->setVisible(trailingVisible);
 }
 
 //--------------------------------------------------------------------------

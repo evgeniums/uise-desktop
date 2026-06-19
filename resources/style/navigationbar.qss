@@ -16,3 +16,15 @@ uise--NavigationBar uise--IconTextButton #icon {
 margin-right: 3px;
 margin-top: 2px;
 }
+
+uise--NavigationBar uise--IconTextButton #trailingIcon uise--RoundedImage{
+min-width:14px;
+max-width:14px;
+min-height:14px;
+max-height:14px;
+}
+
+uise--NavigationBar uise--IconTextButton #trailingIcon {
+margin-left: 3px;
+margin-top: 2px;
+}

@@ -593,6 +593,15 @@ void NavigationBar::setItemIcon(int index, std::shared_ptr<SvgIcon> icon)
 
 //--------------------------------------------------------------------------
 
+void NavigationBar::setItemTrailingIcon(int index, std::shared_ptr<SvgIcon> icon)
+{
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setTrailingSvgIcon(std::move(icon));
+    pimpl->updateScrollArea();
+}
+
+//--------------------------------------------------------------------------
+
 QString NavigationBar::itemName(int index) const
 {
     if (index<0 || index>=static_cast<int>(pimpl->items.size())) return QString{};

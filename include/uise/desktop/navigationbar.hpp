@@ -246,6 +246,13 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setItemIcon(int index, std::shared_ptr<SvgIcon> icon);
 
         /**
+         * @brief Set trailing (post-text) SVG icon for an existing item.
+         * @param index Item index.
+         * @param icon SVG icon (null to hide the trailing icon).
+         */
+        void setItemTrailingIcon(int index, std::shared_ptr<SvgIcon> icon);
+
+        /**
          * @brief Find item by ID
          * @param id ID to look for.
          * @return Id of found item or -1 if such id not found.

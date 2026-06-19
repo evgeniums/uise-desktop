@@ -240,6 +240,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void iconUpdated(const QIcon&);
 
         void titleIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
+        void trailingIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         void toggleExpanded(bool enable);
 

@@ -72,6 +72,10 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         std::shared_ptr<SvgIcon> svgIcon() const;
 
+        void setTrailingSvgIcon(std::shared_ptr<SvgIcon> icon);
+
+        std::shared_ptr<SvgIcon> trailingSvgIcon() const;
+
         void setParentHovered(bool enable);
 
         bool isParentHovered() const noexcept
@@ -137,6 +141,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         QBoxLayout* m_layout;
         RoundedImage* m_icon;
+        RoundedImage* m_trailingIcon;
         QLabel* m_text;
 
         bool m_parentHovered;
