@@ -44,7 +44,10 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
       m_checked(false),
       m_checkable(false)
 {
-    m_icon=new RoundedImage(this);
+    auto wrapper=new WithRoundedImage(this);
+    wrapper->setObjectName("icon");
+
+    m_icon=wrapper->image();
     m_icon->setDisableHover(true);
     m_text=new QLabel(this);
     m_text->setObjectName("text");
@@ -175,7 +178,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
 {
     if (m_layout)
     {
-        m_layout->removeWidget(m_icon);
+        m_layout->removeWidget(m_icon->parentWidget());
         m_layout->removeWidget(m_text);
     }
 
@@ -187,7 +190,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         case (IconPosition::BeforeText):
         {
             m_layout=Layout::horizontal(this);
-            m_layout->addWidget(m_icon);
+            m_layout->addWidget(m_icon->parentWidget());
             m_layout->addWidget(m_text);
             m_text->setProperty("position","after");
         }
@@ -197,7 +200,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         {
             m_layout=Layout::horizontal(this);
             m_layout->addWidget(m_text);
-            m_layout->addWidget(m_icon);
+            m_layout->addWidget(m_icon->parentWidget());
             m_text->setProperty("position","before");
         }
         break;
@@ -205,7 +208,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         case IconPosition::AboveText:
         {
             m_layout=Layout::vertical(this);
-            m_layout->addWidget(m_icon,0,Qt::AlignCenter);
+            m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
             m_text->setProperty("position","below");
         }
@@ -215,7 +218,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         {
             m_layout=Layout::vertical(this);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
-            m_layout->addWidget(m_icon,0,Qt::AlignCenter);
+            m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
             m_text->setProperty("position","above");
         }
         break;
@@ -224,7 +227,7 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         {
             m_layout=Layout::horizontal(this);
             m_layout->addWidget(m_text,0,Qt::AlignCenter);
-            m_layout->addWidget(m_icon,0,Qt::AlignCenter);
+            m_layout->addWidget(m_icon->parentWidget(),0,Qt::AlignCenter);
             m_text->setProperty("position",QVariant{});
             m_icon->setVisible(false);
         }
