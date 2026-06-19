@@ -99,7 +99,7 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
     {
         if (m_newLineOnEnter)
         {
-            if (event->modifiers()&Qt::ControlModifier)
+            if (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier))
             {
                 emit returnPressed();
                 return;
@@ -107,13 +107,13 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
         }
         else
         {
-            if (!(event->modifiers()&Qt::ControlModifier))
+            if (!(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)))
             {
                 emit returnPressed();
                 return;
             }
         }
-        event->setModifiers(event->modifiers()&~Qt::ControlModifier);
+        event->setModifiers(event->modifiers() & ~(Qt::ControlModifier | Qt::ShiftModifier));
     }
 
     QTextEdit::keyPressEvent(event);
