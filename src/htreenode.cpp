@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMenu>
 #include <QCursor>
 #include <QTimer>
+#include <QShortcut>
 
 #include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -369,6 +370,15 @@ HTreeNode::HTreeNode(HTreeTab* treeTab, QWidget* parent)
         this,
         &HTreeNode::onPlaceHolderExpandRequest
     );
+
+    auto* closeShortcut=new QShortcut(QKeySequence::Close,this);
+    closeShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(closeShortcut,&QShortcut::activated,this,[this](){
+        if (isClosable() && isCloseEnabled())
+        {
+            closeNode();
+        }
+    });
 
     setCollapsible(false);
     setClosable(false);
