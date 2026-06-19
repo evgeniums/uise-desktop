@@ -849,7 +849,7 @@ class ChatMessageBottom_p
     public:
 
         QLabel* time;
-        IconTextButton* status;
+        WithRoundedImage* status;
         IconTextButton* seen;
         QLabel* edited;
 };
@@ -877,7 +877,7 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
     pimpl->time->setObjectName("time");
     l->addWidget(pimpl->time,0,Qt::AlignRight);
 
-    pimpl->status=new IconTextButton(this);
+    pimpl->status=new WithRoundedImage(this);
     pimpl->status->setObjectName("status");
     l->addWidget(pimpl->status,0,Qt::AlignRight);
     pimpl->status->setVisible(false);
@@ -903,7 +903,7 @@ void ChatMessageBottom::setTimeString(const QString& time, const QString& toolti
 void ChatMessageBottom::setStatusIcon(std::shared_ptr<SvgIcon> icon, const QString& tooltip)
 {
     pimpl->status->setVisible(static_cast<bool>(icon));
-    pimpl->status->setSvgIcon(std::move(icon));
+    pimpl->status->image()->setSvgIcon(std::move(icon));
     pimpl->status->setToolTip(tooltip);
 }
 
