@@ -107,6 +107,25 @@ height:14px;
 border-radius: 9px;
 }
 
+uise--ChatMessageBottom uise--IconTextButton #icon,
+uise--ChatMessageBottom uise--IconTextButton #text{
+margin:0;
+padding:0;
+}
+
+uise--ChatMessageBottom #status {
+margin-left:8px;
+margin-right:0;
+}
+
+uise--ChatMessageBottom uise--WithRoundedImage,
+uise--ChatMessageBottom uise--RoundedImage {
+min-width: 16px;
+max-width: 16px;
+min-height: 16px;
+max-height: 16px;
+}
+
 uise--MessageSelectionPanelUi #drawer {
 padding: 0 4px;
 }
