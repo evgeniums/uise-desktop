@@ -1,11 +1,18 @@
 uise--NavigationBarPanel {padding:0;margin:0;}
 uise--NavigationBar {padding:0; margin:0;}
-uise--NavigationBar QToolButton{
-    padding:4px;
-    margin:4px;
-    border:none;
-    font-size:12px;
-    text-decoration:underline;
-}
-uise--NavigationBar QToolButton:checked {text-decoration:none;}
+uise--NavigationBarItem {padding:4px; margin:4px; border:none;}
+uise--NavigationBarItem #text {font-size:12px; text-decoration:underline;}
+uise--NavigationBarItem[checked="true"] #text {text-decoration:none;}
 uise--NavigationBar QScrollBar {margin:0;padding:0;}
+
+uise--NavigationBar uise--IconTextButton uise--RoundedImage{
+min-width:12px;
+max-width:12px;
+min-height:12px;
+max-height:12px;
+}
+
+uise--NavigationBar uise--IconTextButton #icon {
+margin-right: 3px;
+margin-top: 2px;
+}

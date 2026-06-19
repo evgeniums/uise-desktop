@@ -128,5 +128,6 @@
         <file>tabler-icons/outline/circle-dashed.svg</file>
         <file>tabler-icons/outline/circle-off.svg</file>
         <file>tabler-icons/outline/circle.svg</file>
+        <file>tabler-icons/filled/circle.svg</file>
     </qresource>
 </RCC>

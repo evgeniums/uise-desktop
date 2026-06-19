@@ -38,6 +38,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class SvgIcon;
+
 class HTreeTab;
 
 class HTreeNode;
@@ -236,6 +238,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void nameUpdated(const QString&);
         void tooltipUpdated(const QString&);
         void iconUpdated(const QIcon&);
+
+        void titleIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         void toggleExpanded(bool enable);
 

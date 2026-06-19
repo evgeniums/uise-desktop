@@ -251,6 +251,15 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             self->nodeCloseHovered(node,enable);
         }
     );
+    node->connect(
+        node,
+        &HTreeNode::titleIconUpdated,
+        self,
+        [this,index](std::shared_ptr<SvgIcon> icon)
+        {
+            navbar->setItemIcon(index,std::move(icon));
+        }
+    );
 
     // watch if node is expanded
     node->connect(

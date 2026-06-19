@@ -400,6 +400,7 @@ WithRoundedImage::WithRoundedImage(QWidget *parent)
     m_img=new RoundedImage(this);
     auto l=Layout::vertical(this);
     l->addWidget(m_img);
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------

@@ -25,7 +25,6 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QScrollBar>
 #include <QScrollArea>
-#include <QButtonGroup>
 #include <QEnterEvent>
 #include <QCursor>
 #include <QTimer>
@@ -47,13 +46,13 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-NavigationBarItem::NavigationBarItem(QWidget* parent, bool chackable)
-    : QToolButton(parent),
+NavigationBarItem::NavigationBarItem(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool checkable)
+    : IconTextButton(icon, parent, icon ? IconTextButton::IconPosition::BeforeText : IconTextButton::IconPosition::Invisible),
       m_hoveringCursor(NavigationBar::DefaultHoveringCursor)
 {
-    setCheckable(chackable);
+    setCheckable(checkable);
 
-    connect(this,&QToolButton::toggled,this,
+    connect(this,&IconTextButton::toggled,this,
         [this](bool checked)
         {
             if (!checked)
@@ -72,10 +71,10 @@ NavigationBarItem::NavigationBarItem(QWidget* parent, bool chackable)
 
 void NavigationBarItem::enterEvent(QEnterEvent * event)
 {
-    QToolButton::enterEvent(event);
+    IconTextButton::enterEvent(event);
     if (!isChecked())
     {
-        setCursor(Qt::PointingHandCursor);
+        setCursor(m_hoveringCursor);
     }
     else
     {
@@ -130,9 +129,17 @@ void NavigationBarItem::mousePressEvent(QMouseEvent* event)
             event->accept();
             return;
         }
+
+        // In exclusive mode: clicking the already-checked item fires clicked() but does not uncheck it
+        if (m_noToggleOff && isChecked())
+        {
+            emit clicked();
+            event->accept();
+            return;
+        }
     }
 
-    QToolButton::mousePressEvent(event);
+    IconTextButton::mousePressEvent(event);
 }
 
 //--------------------------------------------------------------------------
@@ -265,9 +272,20 @@ class NavigationBar_p
         NavigationBarPanel* panel=nullptr;
         QHBoxLayout* layout=nullptr;
 
-        QButtonGroup* buttons;
-
+        std::vector<NavigationBarItem*> items;
         std::vector<NavigationBarSeparator*> separators;
+
+        bool exclusive=true;
+        bool updating=false;
+
+        int indexOf(NavigationBarItem* btn) const
+        {
+            for (int i=0;i<static_cast<int>(items.size());i++)
+            {
+                if (items[i]==btn) return i;
+            }
+            return -1;
+        }
 
         void updateScrollArea(int addWidth=0);
 
@@ -334,39 +352,6 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->layout=Layout::horizontal(pimpl->panel);
     pimpl->scArea->setWidget(pimpl->panel);
 
-    pimpl->buttons=new QButtonGroup(pimpl->panel);
-    pimpl->buttons->setExclusive(true);
-    connect(pimpl->buttons,&QButtonGroup::idToggled,this,
-        [this](int index, bool checked)
-        {
-            auto id=itemId(index);
-            if (checked)
-            {
-                emit indexSelected(index);                
-                if (!id.isEmpty())
-                {
-                    emit idSelected(id);
-                }
-            }
-            emit indexToggled(index,checked);
-            if (!id.isEmpty())
-            {
-                emit idToggled(id,checked);
-            }
-        }
-    );
-    connect(pimpl->buttons,&QButtonGroup::idClicked,this,
-        [this](int index)
-        {
-            emit indexClicked(index);
-            auto id=itemId(index);
-            if (!id.isEmpty())
-            {
-                emit idClicked(id);
-            }
-        }
-    );
-
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     pimpl->panel->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     pimpl->scArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
@@ -409,14 +394,15 @@ void  NavigationBar::showEvent(QShowEvent* event)
 
 //--------------------------------------------------------------------------
 
-void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id)
+void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id, std::shared_ptr<SvgIcon> icon)
 {
     if (pimpl->layout->count()>2)
     {
         delete pimpl->layout->takeAt(pimpl->layout->count()-1);
     }
 
-    auto button=new NavigationBarItem(this,pimpl->checkable);
+    auto button=new NavigationBarItem(std::move(icon),this,pimpl->checkable);
+    button->setNoToggleOff(pimpl->exclusive);
     button->setHoveringCursor(pimpl->hoveringCursor);
     if (!tooltip.isEmpty())
     {
@@ -430,30 +416,76 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
     button->setOpenInTabEnabled(pimpl->openInTabEnabled);
     button->setOpenInWindowEnabled(pimpl->openInWindowEnabled);
 
-    auto prevButtons=pimpl->buttons->buttons();
-    pimpl->buttons->addButton(button,prevButtons.count());
+    auto prevCount=static_cast<int>(pimpl->items.size());
+    pimpl->items.push_back(button);
 
+    connect(button,&IconTextButton::clicked,this,
+        [this,button]()
+        {
+            int idx=pimpl->indexOf(button);
+            if (idx<0) return;
+            emit indexClicked(idx);
+            auto btnId=itemId(idx);
+            if (!btnId.isEmpty()) emit idClicked(btnId);
+        }
+    );
+    connect(button,&IconTextButton::toggled,this,
+        [this,button](bool checked)
+        {
+            if (pimpl->updating) return;
+            int idx=pimpl->indexOf(button);
+            if (idx<0) return;
+            auto btnId=itemId(idx);
+
+            if (pimpl->exclusive && checked)
+            {
+                pimpl->updating=true;
+                for (auto* other : pimpl->items)
+                {
+                    if (other!=button && other->isChecked())
+                    {
+                        int otherIdx=pimpl->indexOf(other);
+                        auto otherId=itemId(otherIdx);
+                        other->setChecked(false);
+                        emit indexToggled(otherIdx,false);
+                        if (!otherId.isEmpty()) emit idToggled(otherId,false);
+                    }
+                }
+                pimpl->updating=false;
+            }
+
+            emit indexToggled(idx,checked);
+            if (!btnId.isEmpty()) emit idToggled(btnId,checked);
+            if (checked)
+            {
+                emit indexSelected(idx);
+                if (!btnId.isEmpty()) emit idSelected(btnId);
+            }
+        }
+    );
     connect(button,&NavigationBarItem::openInNewTabRequested,this,
         [this,button]()
         {
-            int index=pimpl->buttons->id(button);
-            auto id=itemId(index);
-            emit indexOpenInNewTabRequested(index);
-            if (!id.isEmpty()) emit idOpenInNewTabRequested(id);
+            int idx=pimpl->indexOf(button);
+            if (idx<0) return;
+            auto btnId=itemId(idx);
+            emit indexOpenInNewTabRequested(idx);
+            if (!btnId.isEmpty()) emit idOpenInNewTabRequested(btnId);
         }
     );
     connect(button,&NavigationBarItem::openInNewWindowRequested,this,
         [this,button]()
         {
-            int index=pimpl->buttons->id(button);
-            auto id=itemId(index);
-            emit indexOpenInNewWindowRequested(index);
-            if (!id.isEmpty()) emit idOpenInNewWindowRequested(id);
+            int idx=pimpl->indexOf(button);
+            if (idx<0) return;
+            auto btnId=itemId(idx);
+            emit indexOpenInNewWindowRequested(idx);
+            if (!btnId.isEmpty()) emit idOpenInNewWindowRequested(btnId);
         }
     );
 
     int w=0;
-    if (!prevButtons.isEmpty())
+    if (prevCount>0)
     {
         NavigationBarSeparator* sep=nullptr;
         if (pimpl->sepSample!=nullptr)
@@ -462,7 +494,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         }
         else
         {
-            sep=new NavigationBarSeparator(pimpl->panel);            
+            sep=new NavigationBarSeparator(pimpl->panel);
         }
         sep->setBuddy(button);
         pimpl->layout->addWidget(sep);
@@ -475,14 +507,14 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         {
             sep->hide();
         }
-        int index=static_cast<int>(pimpl->separators.size())-1;
+        int sepIndex=static_cast<int>(pimpl->separators.size())-1;
         connect(
             sep,
             &NavigationBarSeparator::clicked,
             this,
-            [this,index,id]()
+            [this,sepIndex,id]()
             {
-                emit indexSeparatorClicked(index);
+                emit indexSeparatorClicked(sepIndex);
                 emit idSeparatorClicked(id);
             }
         );
@@ -490,14 +522,14 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
             sep,
             &NavigationBarSeparator::hovered,
             this,
-            [this,index,id](bool enable)
+            [this,sepIndex,id](bool enable)
             {
-                emit indexSeparatorHovered(index,enable);
+                emit indexSeparatorHovered(sepIndex,enable);
                 emit idSeparatorHovered(id,enable);
             }
         );
 
-        setSeparatorTooltip(index,pimpl->checkedSepTooltip);
+        setSeparatorTooltip(sepIndex,pimpl->checkedSepTooltip);
     }
 
     pimpl->layout->addWidget(button,0,Qt::AlignCenter);
@@ -512,19 +544,15 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
             pimpl->scArea->horizontalScrollBar()->setValue(pimpl->scArea->horizontalScrollBar()->maximum());
          },
          true
-    );        
+    );
 }
 
 //--------------------------------------------------------------------------
 
 void NavigationBar::setItemName(int index, const QString& name)
 {
-    auto button=qobject_cast<NavigationBarItem*>(pimpl->buttons->button(index));
-    if (button!=nullptr)
-    {
-        button->setText(name);
-    }
-
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setText(name);
     pimpl->updateScrollArea();
 }
 
@@ -532,81 +560,67 @@ void NavigationBar::setItemName(int index, const QString& name)
 
 void NavigationBar::setItemTooltip(int index, const QString& tooltip)
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setToolTip(tooltip);
-    }
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setToolTip(tooltip);
 }
 
 //--------------------------------------------------------------------------
 
 void NavigationBar::setItemId(int index, const QString& id)
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setProperty("id",id);
-    }
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setProperty("id",id);
 }
 
 //--------------------------------------------------------------------------
 
 void NavigationBar::setItemData(int index, QVariant data)
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setProperty("data",std::move(data));
-    }
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setProperty("data",std::move(data));
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setItemIcon(int index, std::shared_ptr<SvgIcon> icon)
+{
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    auto button=pimpl->items[index];
+    button->setSvgIcon(icon);
+    button->setIconPosition(icon ? IconTextButton::IconPosition::BeforeText : IconTextButton::IconPosition::Invisible);
+    pimpl->updateScrollArea();
 }
 
 //--------------------------------------------------------------------------
 
 QString NavigationBar::itemName(int index) const
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        return button->text().replace("&&", "&");
-    }
-    return QString{};
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return QString{};
+    return pimpl->items[index]->text();
 }
 
 //--------------------------------------------------------------------------
 
 QString NavigationBar::itemTooltip(int index) const
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        return button->toolTip();
-    }
-    return QString{};
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return QString{};
+    return pimpl->items[index]->toolTip();
 }
 
 //--------------------------------------------------------------------------
 
 QString NavigationBar::itemId(int index) const
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        return button->property("id").toString();
-    }
-    return QString{};
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return QString{};
+    return pimpl->items[index]->property("id").toString();
 }
 
 //--------------------------------------------------------------------------
 
 QVariant NavigationBar::itemData(int index) const
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        return button->property("data");
-    }
-    return QVariant{};
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return QVariant{};
+    return pimpl->items[index]->property("data");
 }
 
 //--------------------------------------------------------------------------
@@ -620,12 +634,8 @@ void NavigationBar::setCurrentIndex(int index)
 
 void NavigationBar::setItemChecked(int index, bool checked)
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        button->setChecked(checked);
-    }
-
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setChecked(checked);
     pimpl->updateScrollArea();
 }
 
@@ -633,13 +643,8 @@ void NavigationBar::setItemChecked(int index, bool checked)
 
 bool NavigationBar::isItemChecked(int index) const
 {
-    auto button=pimpl->buttons->button(index);
-    if (button!=nullptr)
-    {
-        return button->isChecked();
-    }
-
-    return false;
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return false;
+    return pimpl->items[index]->isChecked();
 }
 
 //--------------------------------------------------------------------------
@@ -678,32 +683,31 @@ void NavigationBar::truncate(int index)
 {
     int w=0;
 
-    pimpl->buttons->blockSignals(true);
-
-    auto buttons=pimpl->buttons->buttons();
-    for (qsizetype i=static_cast<qsizetype>(index);i<buttons.count();i++)
+    for (int i=static_cast<int>(pimpl->items.size())-1;i>=index;i--)
     {
-        auto button=buttons[i];
+        auto button=pimpl->items[i];
         w-=button->sizeHint().width();
-        pimpl->buttons->removeButton(button);
+        button->disconnect(this);
         destroyWidget(button);
 
         if (i>0)
         {
-            auto sep=pimpl->separators[i-1];
+            auto sep=pimpl->separators[static_cast<size_t>(i)-1];
             w-=sep->sizeHint().width();
             destroyWidget(sep);
         }
     }
+
+    pimpl->items.erase(pimpl->items.begin()+index,pimpl->items.end());
+
     if (index>0)
     {
-        pimpl->separators.resize(index-1);
+        pimpl->separators.resize(static_cast<size_t>(index)-1);
     }
     else
     {
         pimpl->separators.clear();
     }
-    pimpl->buttons->blockSignals(false);
 
     pimpl->updateScrollArea(w);
 }
@@ -740,14 +744,18 @@ bool NavigationBar::isSeparatorsVisible() const noexcept
 
 void NavigationBar::setExclusive(bool enable)
 {
-    pimpl->buttons->setExclusive(enable);
+    pimpl->exclusive=enable;
+    for (auto* item : pimpl->items)
+    {
+        item->setNoToggleOff(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
 
 bool NavigationBar::isExclusive() const
 {
-    return pimpl->buttons->exclusive();
+    return pimpl->exclusive;
 }
 
 //--------------------------------------------------------------------------
@@ -768,8 +776,7 @@ bool NavigationBar::isCheckable() const
 
 int NavigationBar::indexForId(const QString& id) const
 {
-    auto buttons=pimpl->buttons->buttons();
-    for (int i=0;i<buttons.count();i++)
+    for (int i=0;i<static_cast<int>(pimpl->items.size());i++)
     {
         if (id==itemId(i))
         {

@@ -29,23 +29,23 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
-#include <QToolButton>
 #include <QLabel>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /**
  * @brief Item widget of navigation bar.
  */
-class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
+class UISE_DESKTOP_EXPORT NavigationBarItem : public IconTextButton
 {
     Q_OBJECT
 
     public:
 
-        NavigationBarItem(QWidget* parent=nullptr, bool chackable=true);
+        NavigationBarItem(std::shared_ptr<SvgIcon> icon={}, QWidget* parent=nullptr, bool checkable=true);
 
         void setHoveringCursor(const Qt::CursorShape& cursor) noexcept
         {
@@ -57,9 +57,14 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
             return m_hoveringCursor;
         }
 
-        void setText(QString value)
+        void setNoToggleOff(bool enable) noexcept
         {
-            QToolButton::setText(value.replace("&", "&&"));
+            m_noToggleOff=enable;
+        }
+
+        bool isNoToggleOff() const noexcept
+        {
+            return m_noToggleOff;
         }
 
         void setOpenInTabEnabled(bool enable) noexcept
@@ -96,6 +101,7 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public QToolButton
     private:
 
         Qt::CursorShape m_hoveringCursor;
+        bool m_noToggleOff=false;
         bool m_openInTabEnabled=true;
         bool m_openInWindowEnabled=true;
 };
@@ -223,13 +229,21 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
          * @param name Item name.
          * @param tooltip Item tooltip.
          * @param id Item id.
+         * @param icon Optional SVG icon displayed before the text.
          */
-        void addItem(const QString& name, const QString& tooltip=QString{}, const QString& id={});
+        void addItem(const QString& name, const QString& tooltip=QString{}, const QString& id={}, std::shared_ptr<SvgIcon> icon={});
 
         QString itemName(int index) const;
         QString itemId(int index) const;
         QString itemTooltip(int index) const;
         QVariant itemData(int index) const;
+
+        /**
+         * @brief Set SVG icon for an existing item.
+         * @param index Item index.
+         * @param icon SVG icon (null to hide the icon).
+         */
+        void setItemIcon(int index, std::shared_ptr<SvgIcon> icon);
 
         /**
          * @brief Find item by ID
