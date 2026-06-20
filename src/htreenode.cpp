@@ -717,6 +717,10 @@ void HTreeNode::setNextNode(HTreeNode* node)
     {
         setCloseEnabled(false);
     }
+    if (!treeTab()->tree()->isInternalNodeExpandable())
+    {
+        pimpl->titleBar->pimpl->expandExclusive->setVisible(false);
+    }
 
     if (pimpl->nextNode!=nullptr)
     {
@@ -1158,6 +1162,12 @@ bool HTreeNode::isAtListOneNodeExpanded() const
 
 void HTreeNode::updateExclusivelyExpandable()
 {
+    if (!treeTab()->tree()->isInternalNodeExpandable() && nextNode()!=nullptr)
+    {
+        pimpl->titleBar->pimpl->expandExclusive->setVisible(false);
+        return;
+    }
+
     pimpl->titleBar->pimpl->expandExclusive->setVisible(
         parentNode() != nullptr && isAtListOneNodeExpanded() && !isExclusivelyExpandable()
     );
