@@ -276,6 +276,7 @@ class HTreeNode_p
         bool loaded=false;
 
         std::function<void ()> navbarActivateAction;
+        std::function<void()> toParentAction;
 
         void setCollapsePlaceholderVisible(bool enable)
         {
@@ -455,6 +456,12 @@ const HTreePath& HTreeNode::toParentPath() const
 
 void HTreeNode::onToParentRequested()
 {
+    if (pimpl->toParentAction)
+    {
+        pimpl->toParentAction();
+        return;
+    }
+
     if (!pimpl->toParentPath.isNull())
     {
         treeTab()->openPath(pimpl->toParentPath);
@@ -1192,6 +1199,20 @@ void HTreeNode::setNavbarActivateAction(std::function<void ()> action)
 std::function<void ()> HTreeNode::navbarActivateAction() const
 {
     return pimpl->navbarActivateAction;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setToParentAction(std::function<void ()> action)
+{
+    pimpl->toParentAction=action;
+}
+
+//--------------------------------------------------------------------------
+
+std::function<void ()> HTreeNode::toParentAction() const
+{
+    return pimpl->toParentAction;
 }
 
 //--------------------------------------------------------------------------

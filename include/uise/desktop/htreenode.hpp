@@ -162,6 +162,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setToParentPath(HTreePath path);
         const HTreePath& toParentPath() const;
 
+        void setToParentAction(std::function<void()>);
+        std::function<void()> toParentAction() const;
+
         void setParentNode(HTreeNode* node);
         HTreeNode* parentNode() const;
 
