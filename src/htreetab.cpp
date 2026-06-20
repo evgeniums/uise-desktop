@@ -409,29 +409,37 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
             {
                 if (checked)
                 {
-                    if (pimpl->tree->expandableLastDepthOnNodeOpen()==0)
+                    auto customAction=node->navbarActivateAction();
+                    if (customAction)
                     {
-                        node->setExpanded(true);
+                        customAction();
                     }
                     else
                     {
-                        auto next=node->nextNode();
-                        if (next!=nullptr)
+                        if (pimpl->tree->expandableLastDepthOnNodeOpen()==0)
                         {
-                            QTimer::singleShot(
-                            10,
-                            this,
-                            [next=QPointer<HTreeNode>{next}]()
-                            {
-                                if (next)
-                                {
-                                    next->expandParentNode();
-                                }
-                            });
+                            node->setExpanded(true);
                         }
                         else
                         {
-                            node->setExpanded(true);
+                            auto next=node->nextNode();
+                            if (next!=nullptr)
+                            {
+                                QTimer::singleShot(
+                                    10,
+                                    this,
+                                    [next=QPointer<HTreeNode>{next}]()
+                                    {
+                                        if (next)
+                                        {
+                                            next->expandParentNode();
+                                        }
+                                    });
+                            }
+                            else
+                            {
+                                node->setExpanded(true);
+                            }
                         }
                     }
                 }

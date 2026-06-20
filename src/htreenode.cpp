@@ -84,7 +84,7 @@ class HTreeNodeTitleBar_p
         PushButton* toParentNode=nullptr;
         PushButton* expandExclusive=nullptr;
 
-        ElidedLabel* title=nullptr;
+        ElidedLabel* title=nullptr;        
 };
 
 //--------------------------------------------------------------------------
@@ -274,6 +274,8 @@ class HTreeNode_p
 
         bool collapsiblePlaceholderVisible=false;
         bool loaded=false;
+
+        std::function<void ()> navbarActivateAction;
 
         void setCollapsePlaceholderVisible(bool enable)
         {
@@ -711,6 +713,11 @@ void HTreeNode::informForDestroy()
 
 void HTreeNode::setNextNode(HTreeNode* node)
 {
+    if (!treeTab()->tree()->isInternalNodeClosable())
+    {
+        setCloseEnabled(false);
+    }
+
     if (pimpl->nextNode!=nullptr)
     {
         disconnect(
@@ -816,6 +823,11 @@ void HTreeNode::nextNodeDestroyed(QObject* obj)
 
         updateExclusivelyExpandable();
         setNextNodeId(std::string{});
+
+        if (!treeTab()->tree()->isInternalNodeClosable())
+        {
+            setCloseEnabled(true);
+        }
     }
 }
 
@@ -1156,6 +1168,20 @@ void HTreeNode::updateExclusivelyExpandable()
 bool HTreeNode::isExclusivelyExpandable() const
 {
     return treeTab()->tree()->isExlusivelyExpandableNode();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNavbarActivateAction(std::function<void ()> action)
+{
+    pimpl->navbarActivateAction=action;
+}
+
+//--------------------------------------------------------------------------
+
+std::function<void ()> HTreeNode::navbarActivateAction() const
+{
+    return pimpl->navbarActivateAction;
 }
 
 //--------------------------------------------------------------------------

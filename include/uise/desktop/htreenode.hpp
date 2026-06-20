@@ -213,6 +213,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void informForDestroy();
 
+        void setNavbarActivateAction(std::function<void ()>);
+        std::function<void ()> navbarActivateAction() const;
+
     public slots:
 
         void setNodeName(const QString& val);
