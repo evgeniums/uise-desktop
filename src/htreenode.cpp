@@ -278,6 +278,8 @@ class HTreeNode_p
         std::function<void ()> navbarActivateAction;
         std::function<void()> toParentAction;
 
+        QPointer<QWidget> nodeControllerUi;
+
         void setCollapsePlaceholderVisible(bool enable)
         {
             collapsiblePlaceholderVisible=enable;
@@ -588,6 +590,20 @@ void HTreeNode::setContentWidget(QWidget* widget)
 QWidget* HTreeNode::contentWidget() const
 {
     return pimpl->widget;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setNodeControllerUi(QWidget* widget)
+{
+    pimpl->nodeControllerUi=widget;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeNode::nodeControllerUi() const
+{
+    return pimpl->nodeControllerUi.get();
 }
 
 //--------------------------------------------------------------------------

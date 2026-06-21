@@ -219,6 +219,15 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setNavbarActivateAction(std::function<void ()>);
         std::function<void ()> navbarActivateAction() const;
 
+        void setNodeControllerUi(QWidget* widget);
+        QWidget* nodeControllerUi() const;
+
+        template <typename T>
+        T* nodeControllerUiT() const
+        {
+            return qobject_cast<T*>(nodeControllerUi());
+        }
+
     public slots:
 
         void setNodeName(const QString& val);
