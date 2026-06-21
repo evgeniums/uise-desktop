@@ -69,6 +69,7 @@ background-color:transparent;
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
 background-color: #CCCCCC;
 border: 2px solid #8FABD4;
+image: none;
 }
 
 uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked{

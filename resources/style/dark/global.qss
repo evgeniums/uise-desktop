@@ -109,3 +109,43 @@ uise--ScrollArea {
 border:none;
 background-color: transparent;
 }
+
+QCheckBox::indicator {
+    background-color: #000000;
+    border: 2px solid #555555;
+}
+QCheckBox::indicator:unchecked:hover {
+    border-color: #777777;
+}
+QCheckBox::indicator:checked {
+    background-color: #4A70A9;
+    border-color: #4A70A9;
+    image: url(:/uise/desktop/style/dark/check.svg);
+}
+QCheckBox::indicator:checked:hover {
+    background-color: #5A80B9;
+    border-color: #5A80B9;
+}
+QCheckBox::indicator:disabled {
+    background-color: #1A1A1A;
+    border-color: #333333;
+}
+
+QRadioButton::indicator {
+    background-color: #000000;
+    border: 2px solid #555555;
+    image: none;
+}
+QRadioButton::indicator:unchecked:hover {
+    border-color: #777777;
+}
+QRadioButton::indicator:checked {
+    border-color: #4A70A9;
+    image: url(:/uise/desktop/style/radio-dot.svg);
+}
+QRadioButton::indicator:checked:hover {
+    border-color: #5A80B9;
+}
+QRadioButton::indicator:disabled {
+    border: 2px solid #333333;
+}

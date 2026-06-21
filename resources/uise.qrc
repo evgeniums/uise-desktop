@@ -94,5 +94,8 @@
         <file>style/light/chat.json</file>
         <file>style/dark/chat.qss</file>
         <file>style/light/chat.qss</file>
+        <file>style/dark/check.svg</file>
+        <file>style/light/check.svg</file>
+        <file>style/radio-dot.svg</file>
     </qresource>
 </RCC>
