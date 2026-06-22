@@ -52,7 +52,7 @@ uise--AudioDeviceSetting #testButton
 uise--AudioDeviceSetting #testButton
 {
     margin-left:2px;
-    margin-right:2px;
+    margin-right:4px;
 }
 
 /* Dashed (chunked) volume meter: separate segments via chunk width + margin. */
