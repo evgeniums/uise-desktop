@@ -152,8 +152,10 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             std::ignore=status;
         }
 
-        virtual void setBusyWaiting(bool)
-        {}
+        virtual void setBusyWaiting(bool, bool forLoading=false)
+        {
+            std::ignore=forLoading;
+        }
 
         virtual void showStatus(const QString& message, const QString& status="info")
         {
@@ -338,7 +340,7 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
         void setKeepEditingOnApply(bool enable) noexcept;
         bool keepEditingOnApply() const noexcept;
 
-        void setBusyWaiting(bool) override;
+        void setBusyWaiting(bool, bool forLoading=false) override;
 
         void showStatus(const QString& message, const QString& status="info") override;
 

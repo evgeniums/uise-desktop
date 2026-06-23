@@ -468,9 +468,9 @@ void EditablePanel::leaveEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
-void EditablePanel::setBusyWaiting(bool enable)
+void EditablePanel::setBusyWaiting(bool enable, bool forLoading)
 {
-    pimpl->loadingFrame->setBusyWaiting(enable);
+    pimpl->loadingFrame->setBusyWaiting(enable, forLoading);
     if (enable)
     {
         doResetStatus();
