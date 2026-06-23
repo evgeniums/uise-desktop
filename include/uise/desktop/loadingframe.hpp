@@ -30,11 +30,11 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/modalpopup.hpp>
+#include <uise/desktop/abstractloadingwidget.hpp>
 #include <uise/desktop/frame.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class BusyWaiting;
 class LoadingFrame_p;
 
 /**
@@ -66,7 +66,8 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
         void setCancellableBusyWaiting(bool enable);
         bool isCancellableBusyWaiting() const;
 
-        BusyWaiting* busyWaitingWidget() const;
+        AbstractLoadingWidget* loadingWidget() const;
+        void setLoadingWidget(AbstractLoadingWidget* widget);
 
         virtual void construct() override;
 

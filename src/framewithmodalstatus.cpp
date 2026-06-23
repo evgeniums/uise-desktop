@@ -28,7 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
-#include <uise/desktop/busywaiting.hpp>
+#include <uise/desktop/abstractloadingwidget.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
 
@@ -45,8 +45,8 @@ class FrameWithModalStatus_p
         bool cancellableBusyWaiting=false;
 
         QFrame* popupWidget=nullptr;
-        QPointer<BusyWaiting> busyWaiting;
-        QPointer<QFrame> busyWaitingFrame;
+        QBoxLayout* popupLayout=nullptr;
+        QPointer<AbstractLoadingWidget> loadingWidget;
         QPointer<AbstractStatusDialog> statusDialog;
 
         PushButton* cancelButton=nullptr;
@@ -68,27 +68,23 @@ void FrameWithModalStatus::construct()
 {
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
-    auto l=Layout::vertical(pimpl->popupWidget);
-    l->addStretch(1000);
+    pimpl->popupLayout=Layout::vertical(pimpl->popupWidget);
+    pimpl->popupLayout->addStretch(1000);
 
-    pimpl->busyWaitingFrame=new QFrame(pimpl->popupWidget);
-    pimpl->busyWaitingFrame->setObjectName("busyWaitingFrame");
-    pimpl->busyWaiting=new BusyWaiting(pimpl->busyWaitingFrame,true,false);
-    l->addWidget(pimpl->busyWaitingFrame,0,Qt::AlignCenter);
-    connect(
-        pimpl->busyWaiting,
-        &BusyWaiting::sizeUpdated,
-        this,
-        [this](QSize size)
-        {
-            pimpl->busyWaitingFrame->setFixedSize(size);
-        }
-        );
-    pimpl->busyWaitingFrame->setFixedSize(pimpl->busyWaiting->size());
+    if (pimpl->loadingWidget==nullptr)
+    {
+        pimpl->loadingWidget=makeWidget<AbstractLoadingWidget>(pimpl->popupWidget);
+    }
+    else
+    {
+        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+    }
+    Q_ASSERT(pimpl->loadingWidget);
+    pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
 
     pimpl->statusDialog=makeWidget<AbstractStatusDialog>(pimpl->popupWidget);
     Q_ASSERT(pimpl->statusDialog);
-    l->addWidget(pimpl->statusDialog);
+    pimpl->popupLayout->addWidget(pimpl->statusDialog);
 
     auto btFrame=new QFrame(pimpl->popupWidget);
     btFrame->setObjectName("buttonsFrame");
@@ -97,9 +93,9 @@ void FrameWithModalStatus::construct()
     pimpl->cancelButton->setObjectName("cancelBusyButton");
     btL->addWidget(pimpl->cancelButton,0,Qt::AlignHCenter);
     pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
-    l->addWidget(btFrame);
+    pimpl->popupLayout->addWidget(btFrame);
 
-    l->addStretch(1000);
+    pimpl->popupLayout->addStretch(1000);
 
     setPopupWidget(pimpl->popupWidget);
 
@@ -175,7 +171,7 @@ void FrameWithModalStatus::popupBusyWaiting()
         return;
     }
 
-    pimpl->busyWaiting->setVisible(true);
+    pimpl->loadingWidget->setVisible(true);
     pimpl->statusDialog->setVisible(false);
     if (pimpl->cancellableBusyWaiting)
     {
@@ -184,7 +180,7 @@ void FrameWithModalStatus::popupBusyWaiting()
     pimpl->busyWaitingMode=true;
     setShortcutEnabled(pimpl->cancellableBusyWaiting);
     pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
-    pimpl->busyWaiting->start();
+    pimpl->loadingWidget->start();
     popup();
 }
 
@@ -208,8 +204,8 @@ void FrameWithModalStatus::popupStatus(const QString& message, StatusDialog::Typ
 
 void FrameWithModalStatus::showStatus()
 {
-    pimpl->busyWaiting->stop();
-    pimpl->busyWaiting->setVisible(false);
+    pimpl->loadingWidget->stop();
+    pimpl->loadingWidget->setVisible(false);
     pimpl->statusDialog->setVisible(true);
     pimpl->cancelButton->setVisible(false);
     pimpl->busyWaitingMode=false;
@@ -230,15 +226,51 @@ void FrameWithModalStatus::cancel()
 void FrameWithModalStatus::finish()
 {
     pimpl->busyWaitingMode=false;
-    pimpl->busyWaiting->stop();
+    pimpl->loadingWidget->stop();
     closePopup();
 }
 
 //--------------------------------------------------------------------------
 
-BusyWaiting* FrameWithModalStatus::busyWaitingWidget() const
+AbstractLoadingWidget* FrameWithModalStatus::loadingWidget() const
 {
-    return pimpl->busyWaiting;
+    return pimpl->loadingWidget;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalStatus::setLoadingWidget(AbstractLoadingWidget* widget)
+{
+    if (widget==pimpl->loadingWidget)
+    {
+        return;
+    }
+
+    if (pimpl->loadingWidget!=nullptr)
+    {
+        if (pimpl->popupLayout!=nullptr)
+        {
+            pimpl->popupLayout->removeWidget(pimpl->loadingWidget);
+        }
+        pimpl->loadingWidget->deleteLater();
+    }
+
+    pimpl->loadingWidget=widget;
+
+    if (pimpl->loadingWidget==nullptr)
+    {
+        return;
+    }
+
+    if (pimpl->popupWidget!=nullptr)
+    {
+        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+    }
+
+    if (pimpl->popupLayout!=nullptr)
+    {
+        pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget,0,Qt::AlignCenter);
+    }
 }
 
 //--------------------------------------------------------------------------

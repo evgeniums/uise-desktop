@@ -31,12 +31,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/modalpopup.hpp>
 #include <uise/desktop/statusdialog.hpp>
+#include <uise/desktop/abstractloadingwidget.hpp>
 
 class QLabel;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class BusyWaiting;
 class FrameWithModalStatus_p;
 
 /**
@@ -71,7 +71,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
         void setCancellableBusyWaiting(bool enable);
         bool isCancellableBusyWaiting() const;
 
-        BusyWaiting* busyWaitingWidget() const;
+        AbstractLoadingWidget* loadingWidget() const;
+        void setLoadingWidget(AbstractLoadingWidget* widget);
         AbstractStatusDialog* statusDialog() const;
 
         virtual void construct() override;
@@ -89,7 +90,7 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
 
         void popupBusyWaiting();
         void popupStatus(const QString& message, const QString& title, std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon={});
-        void popupStatus(const QString& message, StatusDialog::Type type, const QString& title={});
+        void popupStatus(const QString& message, UISE_DESKTOP_NAMESPACE::StatusDialog::Type type, const QString& title={});
 
         void cancel();
         void finish();

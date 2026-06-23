@@ -28,7 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
-#include <uise/desktop/busywaiting.hpp>
+#include <uise/desktop/abstractloadingwidget.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/loadingframe.hpp>
 
@@ -45,8 +45,8 @@ class LoadingFrame_p
         bool cancellableBusyWaiting=false;
 
         QFrame* popupWidget=nullptr;
-        QPointer<BusyWaiting> busyWaiting;
-        QPointer<QFrame> busyWaitingFrame;
+        QBoxLayout* popupLayout=nullptr;
+        QPointer<AbstractLoadingWidget> loadingWidget;
 
         bool busyWaitingMode=false;
         QBoxLayout* layout=nullptr;
@@ -67,25 +67,21 @@ void LoadingFrame::construct()
 {
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
-    auto l=Layout::vertical(pimpl->popupWidget);
-    l->addStretch(1000);
+    pimpl->popupLayout=Layout::vertical(pimpl->popupWidget);
+    pimpl->popupLayout->addStretch(1000);
 
-    pimpl->busyWaitingFrame=new QFrame(pimpl->popupWidget);
-    pimpl->busyWaitingFrame->setObjectName("busyWaitingFrame");
-    pimpl->busyWaiting=new BusyWaiting(pimpl->busyWaitingFrame,true,false);
-    l->addWidget(pimpl->busyWaitingFrame,0,Qt::AlignCenter);
-    connect(
-        pimpl->busyWaiting,
-        &BusyWaiting::sizeUpdated,
-        this,
-        [this](QSize size)
-        {
-            pimpl->busyWaitingFrame->setFixedSize(size);
-        }
-        );
-    pimpl->busyWaitingFrame->setFixedSize(pimpl->busyWaiting->size());
+    if (pimpl->loadingWidget==nullptr)
+    {
+        pimpl->loadingWidget=makeWidget<AbstractLoadingWidget>(pimpl->popupWidget);
+    }
+    else
+    {
+        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+    }
+    Q_ASSERT(pimpl->loadingWidget);
+    pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
 
-    l->addStretch(1000);
+    pimpl->popupLayout->addStretch(1000);
     setPopupWidget(pimpl->popupWidget);
 
     connect(
@@ -130,10 +126,9 @@ void LoadingFrame::popupBusyWaiting()
         return;
     }
 
-    pimpl->busyWaiting->setVisible(true);
     pimpl->busyWaitingMode=true;
     setShortcutEnabled(pimpl->cancellableBusyWaiting);
-    pimpl->busyWaiting->start();
+    pimpl->loadingWidget->start();
     popup();
 }
 
@@ -170,15 +165,51 @@ void LoadingFrame::finish()
     }
 
     pimpl->busyWaitingMode=false;
-    pimpl->busyWaiting->stop();
+    pimpl->loadingWidget->stop();
     closePopup();
 }
 
 //--------------------------------------------------------------------------
 
-BusyWaiting* LoadingFrame::busyWaitingWidget() const
+AbstractLoadingWidget* LoadingFrame::loadingWidget() const
 {
-    return pimpl->busyWaiting;
+    return pimpl->loadingWidget;
+}
+
+//--------------------------------------------------------------------------
+
+void LoadingFrame::setLoadingWidget(AbstractLoadingWidget* widget)
+{
+    if (widget==pimpl->loadingWidget)
+    {
+        return;
+    }
+
+    if (pimpl->loadingWidget!=nullptr)
+    {
+        if (pimpl->popupLayout!=nullptr)
+        {
+            pimpl->popupLayout->removeWidget(pimpl->loadingWidget);
+        }
+        pimpl->loadingWidget->deleteLater();
+    }
+
+    pimpl->loadingWidget=widget;
+
+    if (pimpl->loadingWidget==nullptr)
+    {
+        return;
+    }
+
+    if (pimpl->popupWidget!=nullptr)
+    {
+        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+    }
+
+    if (pimpl->popupLayout!=nullptr)
+    {
+        pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget,0,Qt::AlignCenter);
+    }
 }
 
 //--------------------------------------------------------------------------

@@ -79,6 +79,8 @@ SET (HEADERS
     include/uise/desktop/spinnersection.hpp
 
     include/uise/desktop/busywaiting.hpp
+    include/uise/desktop/abstractloadingwidget.hpp
+    include/uise/desktop/busywaitingframe.hpp
 
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
@@ -222,6 +224,8 @@ SET (SOURCES
     src/spinnersection.cpp
     src/wheeleventhandler.cpp
     src/busywaiting.cpp
+    src/abstractloadingwidget.cpp
+    src/busywaitingframe.cpp
     src/modalpopup.cpp
     src/drawer.cpp
     src/scrollarea.cpp
