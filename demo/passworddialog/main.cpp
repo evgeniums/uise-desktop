@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
                     dialogFrame->dialog(),
                     &PasswordDialog::passwordEntered,
                     testWidget,
-                    &FrameWithModalStatus::popupBusyWaiting
+                    [testWidget](){ testWidget->popupBusyWaiting(); }
                 );
             }
         }

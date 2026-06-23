@@ -131,11 +131,32 @@ int main(int argc, char *argv[])
     l->addWidget(bottomFrame);
     auto bl=Layout::horizontal(bottomFrame,false);
 
+    auto loaderLabel=new QLabel("Loading widget:");
+    bl->addWidget(loaderLabel);
+    auto loaderType=new QComboBox();
+    loaderType->addItems({"Spinner","Circle","Skeleton"});
+    bl->addWidget(loaderType);
+    QObject::connect(loaderType,&QComboBox::currentTextChanged,testWidget,
+        [testWidget](const QString& name)
+        {
+            // Spinner/Circle swap the operation slot; Skeleton uses the pre-built panel slot.
+            if (name=="Circle")
+            {
+                testWidget->setLoadingWidget(new CircleBusyFrame(nullptr,true,false),false);
+            }
+            else if (name=="Spinner")
+            {
+                testWidget->setLoadingWidget(new BusyWaitingFrame(nullptr,true,false),false);
+            }
+            // Skeleton: panel slot is already constructed from factory – nothing to replace.
+        }
+    );
+
     auto start=new QPushButton("Show busy");
     bl->addWidget(start);
     QObject::connect(start,&QPushButton::clicked,testWidget,
-    [testWidget](){
-            testWidget->popupBusyWaiting();
+        [testWidget,loaderType](){
+            testWidget->popupBusyWaiting(loaderType->currentText()=="Skeleton");
         }
     );
 
@@ -158,31 +179,6 @@ int main(int argc, char *argv[])
         testWidget->setCancellableBusyWaiting(enable);
     });
     bl->addWidget(cancellableButton);
-
-    auto loaderLabel=new QLabel("Loading widget:");
-    bl->addWidget(loaderLabel);
-    auto loaderType=new QComboBox();
-    loaderType->addItems({"Spinner","Circle","Skeleton"});
-    bl->addWidget(loaderType);
-    QObject::connect(loaderType,&QComboBox::currentTextChanged,testWidget,
-        [testWidget](const QString& name)
-        {
-            AbstractLoadingWidget* w=nullptr;
-            if (name=="Skeleton")
-            {
-                w=new Skeleton();
-            }
-            else if (name=="Circle")
-            {
-                w=new CircleBusyFrame(nullptr,true,false);
-            }
-            else
-            {
-                w=new BusyWaitingFrame(nullptr,true,false);
-            }
-            testWidget->setLoadingWidget(w);
-        }
-    );
 
     auto statusType=new QComboBox();
     bl->addWidget(statusType);

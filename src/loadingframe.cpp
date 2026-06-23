@@ -46,7 +46,10 @@ class LoadingFrame_p
 
         QFrame* popupWidget=nullptr;
         QBoxLayout* popupLayout=nullptr;
-        QPointer<AbstractLoadingWidget> loadingWidget;
+
+        QPointer<AbstractLoadingWidget> operationWidget;
+        QPointer<AbstractLoadingWidget> panelWidget;
+        bool usingPanelWidget=false;
 
         bool busyWaitingMode=false;
         QBoxLayout* layout=nullptr;
@@ -63,34 +66,46 @@ LoadingFrame::LoadingFrame(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+AbstractLoadingWidget* LoadingFrame::activeLoadingWidget() const
+{
+    return pimpl->usingPanelWidget ? pimpl->panelWidget.data() : pimpl->operationWidget.data();
+}
+
+//--------------------------------------------------------------------------
+
+AbstractLoadingWidget* LoadingFrame::inactiveLoadingWidget() const
+{
+    return pimpl->usingPanelWidget ? pimpl->operationWidget.data() : pimpl->panelWidget.data();
+}
+
+//--------------------------------------------------------------------------
+
 void LoadingFrame::reconfigurePopupLayout()
 {
-    if (pimpl->popupLayout==nullptr || pimpl->loadingWidget==nullptr)
+    auto* w = activeLoadingWidget();
+    if (pimpl->popupLayout==nullptr || w==nullptr)
     {
         return;
     }
 
-    // Clear every item (spacers are deleted; widgets are only removed).
     while (pimpl->popupLayout->count()>0)
     {
         delete pimpl->popupLayout->takeAt(0);
     }
 
-    if (pimpl->loadingWidget->isCenterAligned())
+    if (w->isCenterAligned())
     {
-        // Spinner-style: center the widget inside the (size-constrained) popup.
         pimpl->popupLayout->addStretch(1000);
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
+        pimpl->popupLayout->addWidget(w,0,Qt::AlignCenter);
         pimpl->popupLayout->addStretch(1000);
         setMaxWidthPercent(FrameWithModalPopup::DefaultMaxWidthPercent);
         setMaxHeightPercent(FrameWithModalPopup::DefaultMaxHeightPercent);
     }
     else
     {
-        // Skeleton-style: widget expands to fill the entire LoadingFrame.
         pimpl->popupLayout->setContentsMargins(0,0,0,0);
         pimpl->popupLayout->setSpacing(0);
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget,1);
+        pimpl->popupLayout->addWidget(w,1);
         setMaxWidthPercent(100);
         setMaxHeightPercent(100);
     }
@@ -104,15 +119,29 @@ void LoadingFrame::construct()
     pimpl->popupWidget->setObjectName("popupFrame");
     pimpl->popupLayout=Layout::vertical(pimpl->popupWidget);
 
-    if (pimpl->loadingWidget==nullptr)
+    if (pimpl->operationWidget==nullptr)
     {
-        pimpl->loadingWidget=makeWidget<AbstractLoadingWidget>(pimpl->popupWidget);
+        pimpl->operationWidget=makeWidget<AbstractOperationLoadingWidget>(pimpl->popupWidget);
     }
     else
     {
-        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+        pimpl->operationWidget->setParent(pimpl->popupWidget);
     }
-    Q_ASSERT(pimpl->loadingWidget);
+    Q_ASSERT(pimpl->operationWidget);
+
+    if (pimpl->panelWidget==nullptr)
+    {
+        pimpl->panelWidget=makeWidget<AbstractPanelLoadingWidget>(pimpl->popupWidget);
+    }
+    else
+    {
+        pimpl->panelWidget->setParent(pimpl->popupWidget);
+    }
+    Q_ASSERT(pimpl->panelWidget);
+
+    pimpl->usingPanelWidget=false;
+    pimpl->panelWidget->setVisible(false);
+
     reconfigurePopupLayout();
     setPopupWidget(pimpl->popupWidget);
 
@@ -153,15 +182,46 @@ bool LoadingFrame::isCancellableBusyWaiting() const
 
 void LoadingFrame::popupBusyWaiting()
 {
-    if (pimpl->busyWaitingMode)
+    popupBusyWaiting(false);
+}
+
+//--------------------------------------------------------------------------
+
+void LoadingFrame::popupBusyWaiting(bool forLoading)
+{
+    bool needSwitch=(forLoading!=pimpl->usingPanelWidget);
+    bool wasShowing=pimpl->busyWaitingMode;
+
+    if (wasShowing && !needSwitch)
     {
         return;
     }
 
+    if (wasShowing)
+    {
+        activeLoadingWidget()->stop();
+        activeLoadingWidget()->setVisible(false);
+    }
+
+    pimpl->usingPanelWidget=forLoading;
+
+    auto* inactive=inactiveLoadingWidget();
+    if (inactive)
+    {
+        inactive->setVisible(false);
+    }
+
+    reconfigurePopupLayout();
+
     pimpl->busyWaitingMode=true;
     setShortcutEnabled(pimpl->cancellableBusyWaiting);
-    pimpl->loadingWidget->start();
-    popup();
+    activeLoadingWidget()->setVisible(true);
+    activeLoadingWidget()->start();
+
+    if (!wasShowing)
+    {
+        popup();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -197,48 +257,57 @@ void LoadingFrame::finish()
     }
 
     pimpl->busyWaitingMode=false;
-    pimpl->loadingWidget->stop();
+    activeLoadingWidget()->stop();
     closePopup();
 }
 
 //--------------------------------------------------------------------------
 
-AbstractLoadingWidget* LoadingFrame::loadingWidget() const
+AbstractLoadingWidget* LoadingFrame::loadingWidget(bool forLoading) const
 {
-    return pimpl->loadingWidget;
+    return forLoading ? pimpl->panelWidget.data() : pimpl->operationWidget.data();
 }
 
 //--------------------------------------------------------------------------
 
-void LoadingFrame::setLoadingWidget(AbstractLoadingWidget* widget)
+void LoadingFrame::setLoadingWidget(AbstractLoadingWidget* widget, bool forLoading)
 {
-    if (widget==pimpl->loadingWidget)
+    auto& slot=forLoading ? pimpl->panelWidget : pimpl->operationWidget;
+
+    if (widget==slot)
     {
         return;
     }
 
-    if (pimpl->loadingWidget!=nullptr)
+    if (slot!=nullptr)
     {
         if (pimpl->popupLayout!=nullptr)
         {
-            pimpl->popupLayout->removeWidget(pimpl->loadingWidget);
+            pimpl->popupLayout->removeWidget(slot);
         }
-        pimpl->loadingWidget->deleteLater();
+        slot->deleteLater();
     }
 
-    pimpl->loadingWidget=widget;
+    slot=widget;
 
-    if (pimpl->loadingWidget==nullptr)
+    if (slot==nullptr)
     {
         return;
     }
 
     if (pimpl->popupWidget!=nullptr)
     {
-        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+        slot->setParent(pimpl->popupWidget);
     }
 
-    reconfigurePopupLayout();
+    if (forLoading==pimpl->usingPanelWidget)
+    {
+        reconfigurePopupLayout();
+    }
+    else
+    {
+        slot->setVisible(false);
+    }
 }
 
 //--------------------------------------------------------------------------

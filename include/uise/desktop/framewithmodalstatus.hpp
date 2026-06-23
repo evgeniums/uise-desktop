@@ -71,8 +71,18 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
         void setCancellableBusyWaiting(bool enable);
         bool isCancellableBusyWaiting() const;
 
-        AbstractLoadingWidget* loadingWidget() const;
-        void setLoadingWidget(AbstractLoadingWidget* widget);
+        /**
+         * @brief Return the loading widget for the given slot.
+         * @param forLoading false = operation-wait slot (spinner); true = panel-loading slot (skeleton).
+         */
+        AbstractLoadingWidget* loadingWidget(bool forLoading=false) const;
+
+        /**
+         * @brief Replace the loading widget in the given slot.
+         * @param forLoading false = operation-wait slot; true = panel-loading slot.
+         */
+        void setLoadingWidget(AbstractLoadingWidget* widget, bool forLoading=false);
+
         AbstractStatusDialog* statusDialog() const;
 
         virtual void construct() override;
@@ -82,6 +92,18 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
             return this;
         }
 
+        /**
+         * @brief Show or hide the loading overlay for the given slot.
+         * @param forLoading false = operation-wait slot; true = panel-loading slot.
+         */
+        void setBusyWaiting(bool enable, bool forLoading=false)
+        {
+            if (enable)
+                popupBusyWaiting(forLoading);
+            else
+                finish();
+        }
+
     signals:
 
         void cancelled();
@@ -89,6 +111,13 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
     public slots:
 
         void popupBusyWaiting();
+
+        /**
+         * @brief Show the loading overlay, selecting the widget by slot type.
+         * @param forLoading false = operation-wait widget (default); true = panel-loading widget.
+         */
+        void popupBusyWaiting(bool forLoading);
+
         void popupStatus(const QString& message, const QString& title, std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon={});
         void popupStatus(const QString& message, UISE_DESKTOP_NAMESPACE::StatusDialog::Type type, const QString& title={});
 
@@ -97,6 +126,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
 
     private:
 
+        AbstractLoadingWidget* activeLoadingWidget() const;
+        AbstractLoadingWidget* inactiveLoadingWidget() const;
         void showStatus();
         void reconfigureForLoading();
         void reconfigureForStatus();

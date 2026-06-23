@@ -46,7 +46,11 @@ class FrameWithModalStatus_p
 
         QFrame* popupWidget=nullptr;
         QBoxLayout* popupLayout=nullptr;
-        QPointer<AbstractLoadingWidget> loadingWidget;
+
+        QPointer<AbstractLoadingWidget> operationWidget;
+        QPointer<AbstractLoadingWidget> panelWidget;
+        bool usingPanelWidget=false;
+
         QPointer<AbstractStatusDialog> statusDialog;
 
         QFrame* btFrame=nullptr;
@@ -54,7 +58,6 @@ class FrameWithModalStatus_p
 
         bool busyWaitingMode=false;
 
-        // saved on first construct() to restore after full-frame loading mode
         QMargins originalMargins;
         int originalSpacing=-1;
 };
@@ -69,26 +72,39 @@ FrameWithModalStatus::FrameWithModalStatus(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+AbstractLoadingWidget* FrameWithModalStatus::activeLoadingWidget() const
+{
+    return pimpl->usingPanelWidget ? pimpl->panelWidget.data() : pimpl->operationWidget.data();
+}
+
+//--------------------------------------------------------------------------
+
+AbstractLoadingWidget* FrameWithModalStatus::inactiveLoadingWidget() const
+{
+    return pimpl->usingPanelWidget ? pimpl->operationWidget.data() : pimpl->panelWidget.data();
+}
+
+//--------------------------------------------------------------------------
+
 void FrameWithModalStatus::reconfigureForLoading()
 {
-    if (pimpl->popupLayout==nullptr || pimpl->loadingWidget==nullptr)
+    auto* active=activeLoadingWidget();
+    if (pimpl->popupLayout==nullptr || active==nullptr)
     {
         return;
     }
 
-    // Clear every item (spacers deleted, widgets only removed from layout).
     while (pimpl->popupLayout->count()>0)
     {
         delete pimpl->popupLayout->takeAt(0);
     }
 
-    if (pimpl->loadingWidget->isCenterAligned())
+    if (active->isCenterAligned())
     {
-        // Centered spinner: all items in one layout, visibility toggled in popupBusyWaiting/showStatus.
         pimpl->popupLayout->setContentsMargins(pimpl->originalMargins);
         pimpl->popupLayout->setSpacing(pimpl->originalSpacing);
         pimpl->popupLayout->addStretch(1000);
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
+        pimpl->popupLayout->addWidget(active,0,Qt::AlignCenter);
         pimpl->popupLayout->addWidget(pimpl->statusDialog);
         pimpl->popupLayout->addWidget(pimpl->btFrame);
         pimpl->popupLayout->addStretch(1000);
@@ -98,10 +114,9 @@ void FrameWithModalStatus::reconfigureForLoading()
     }
     else
     {
-        // Full-frame skeleton: loading widget expands to fill the entire LoadingFrame.
         pimpl->popupLayout->setContentsMargins(0,0,0,0);
         pimpl->popupLayout->setSpacing(0);
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget,1);
+        pimpl->popupLayout->addWidget(active,1);
         setMaxWidthPercent(100);
         setMaxHeightPercent(100);
         pimpl->popupWidget->setMaximumWidth(QWIDGETSIZE_MAX);
@@ -117,13 +132,11 @@ void FrameWithModalStatus::reconfigureForStatus()
         return;
     }
 
-    // Clear every item.
     while (pimpl->popupLayout->count()>0)
     {
         delete pimpl->popupLayout->takeAt(0);
     }
 
-    // Status dialog always appears in a constrained, centered popup.
     pimpl->popupLayout->setContentsMargins(pimpl->originalMargins);
     pimpl->popupLayout->setSpacing(pimpl->originalSpacing);
     pimpl->popupLayout->addStretch(1000);
@@ -143,20 +156,31 @@ void FrameWithModalStatus::construct()
     pimpl->popupWidget->setObjectName("popupFrame");
     pimpl->popupLayout=Layout::vertical(pimpl->popupWidget);
 
-    // Save the layout's default margins/spacing so we can restore them after
-    // switching back from full-frame loading mode.
     pimpl->originalMargins=pimpl->popupLayout->contentsMargins();
     pimpl->originalSpacing=pimpl->popupLayout->spacing();
 
-    if (pimpl->loadingWidget==nullptr)
+    if (pimpl->operationWidget==nullptr)
     {
-        pimpl->loadingWidget=makeWidget<AbstractLoadingWidget>(pimpl->popupWidget);
+        pimpl->operationWidget=makeWidget<AbstractOperationLoadingWidget>(pimpl->popupWidget);
     }
     else
     {
-        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+        pimpl->operationWidget->setParent(pimpl->popupWidget);
     }
-    Q_ASSERT(pimpl->loadingWidget);
+    Q_ASSERT(pimpl->operationWidget);
+
+    if (pimpl->panelWidget==nullptr)
+    {
+        pimpl->panelWidget=makeWidget<AbstractPanelLoadingWidget>(pimpl->popupWidget);
+    }
+    else
+    {
+        pimpl->panelWidget->setParent(pimpl->popupWidget);
+    }
+    Q_ASSERT(pimpl->panelWidget);
+
+    pimpl->usingPanelWidget=false;
+    pimpl->panelWidget->setVisible(false);
 
     pimpl->statusDialog=makeWidget<AbstractStatusDialog>(pimpl->popupWidget);
     Q_ASSERT(pimpl->statusDialog);
@@ -237,32 +261,60 @@ bool FrameWithModalStatus::isCancellableBusyWaiting() const
 
 void FrameWithModalStatus::popupBusyWaiting()
 {
-    if (pimpl->busyWaitingMode)
+    popupBusyWaiting(false);
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalStatus::popupBusyWaiting(bool forLoading)
+{
+    bool needSwitch=(forLoading!=pimpl->usingPanelWidget);
+    bool wasShowing=pimpl->busyWaitingMode;
+
+    if (wasShowing && !needSwitch)
     {
         return;
     }
 
-    if (pimpl->loadingWidget->isCenterAligned())
+    if (wasShowing)
     {
-        // Centered mode: show/hide within the existing layout.
-        pimpl->loadingWidget->setVisible(true);
+        activeLoadingWidget()->stop();
+        activeLoadingWidget()->setVisible(false);
+    }
+
+    pimpl->usingPanelWidget=forLoading;
+
+    auto* inactive=inactiveLoadingWidget();
+    if (inactive)
+    {
+        inactive->setVisible(false);
+    }
+
+    auto* active=activeLoadingWidget();
+    bool centered=active->isCenterAligned();
+
+    if (!centered)
+    {
         pimpl->statusDialog->setVisible(false);
-        pimpl->cancelButton->setVisible(pimpl->cancellableBusyWaiting);
+        pimpl->btFrame->setVisible(false);
     }
     else
     {
-        // Full-frame mode: layout may have been reconfigured for status; rebuild for loading.
         pimpl->statusDialog->setVisible(false);
-        pimpl->btFrame->setVisible(false);
-        reconfigureForLoading();
-        pimpl->loadingWidget->setVisible(true);
-        pimpl->cancelButton->setVisible(false);
     }
+
+    reconfigureForLoading();
+    active->setVisible(true);
+    pimpl->cancelButton->setVisible(centered && pimpl->cancellableBusyWaiting);
 
     pimpl->busyWaitingMode=true;
     setShortcutEnabled(pimpl->cancellableBusyWaiting);
-    pimpl->loadingWidget->start();
-    popup();
+    active->start();
+
+    if (!wasShowing)
+    {
+        popup();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -285,21 +337,13 @@ void FrameWithModalStatus::popupStatus(const QString& message, StatusDialog::Typ
 
 void FrameWithModalStatus::showStatus()
 {
-    pimpl->loadingWidget->stop();
+    activeLoadingWidget()->stop();
 
-    if (pimpl->loadingWidget->isCenterAligned())
-    {
-        // Centered mode: show/hide within the existing layout.
-        pimpl->loadingWidget->setVisible(false);
-        pimpl->statusDialog->setVisible(true);
-    }
-    else
-    {
-        // Full-frame mode: switch popup to a constrained status layout.
-        pimpl->loadingWidget->setVisible(false);
-        reconfigureForStatus();
-        pimpl->statusDialog->setVisible(true);
-    }
+    pimpl->operationWidget->setVisible(false);
+    pimpl->panelWidget->setVisible(false);
+
+    reconfigureForStatus();
+    pimpl->statusDialog->setVisible(true);
 
     pimpl->cancelButton->setVisible(false);
     pimpl->busyWaitingMode=false;
@@ -320,48 +364,57 @@ void FrameWithModalStatus::cancel()
 void FrameWithModalStatus::finish()
 {
     pimpl->busyWaitingMode=false;
-    pimpl->loadingWidget->stop();
+    activeLoadingWidget()->stop();
     closePopup();
 }
 
 //--------------------------------------------------------------------------
 
-AbstractLoadingWidget* FrameWithModalStatus::loadingWidget() const
+AbstractLoadingWidget* FrameWithModalStatus::loadingWidget(bool forLoading) const
 {
-    return pimpl->loadingWidget;
+    return forLoading ? pimpl->panelWidget.data() : pimpl->operationWidget.data();
 }
 
 //--------------------------------------------------------------------------
 
-void FrameWithModalStatus::setLoadingWidget(AbstractLoadingWidget* widget)
+void FrameWithModalStatus::setLoadingWidget(AbstractLoadingWidget* widget, bool forLoading)
 {
-    if (widget==pimpl->loadingWidget)
+    auto& slot=forLoading ? pimpl->panelWidget : pimpl->operationWidget;
+
+    if (widget==slot)
     {
         return;
     }
 
-    if (pimpl->loadingWidget!=nullptr)
+    if (slot!=nullptr)
     {
         if (pimpl->popupLayout!=nullptr)
         {
-            pimpl->popupLayout->removeWidget(pimpl->loadingWidget);
+            pimpl->popupLayout->removeWidget(slot);
         }
-        pimpl->loadingWidget->deleteLater();
+        slot->deleteLater();
     }
 
-    pimpl->loadingWidget=widget;
+    slot=widget;
 
-    if (pimpl->loadingWidget==nullptr)
+    if (slot==nullptr)
     {
         return;
     }
 
     if (pimpl->popupWidget!=nullptr)
     {
-        pimpl->loadingWidget->setParent(pimpl->popupWidget);
+        slot->setParent(pimpl->popupWidget);
     }
 
-    reconfigureForLoading();
+    if (forLoading==pimpl->usingPanelWidget)
+    {
+        reconfigureForLoading();
+    }
+    else
+    {
+        slot->setVisible(false);
+    }
 }
 
 //--------------------------------------------------------------------------

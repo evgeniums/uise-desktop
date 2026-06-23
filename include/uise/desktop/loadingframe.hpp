@@ -66,8 +66,17 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
         void setCancellableBusyWaiting(bool enable);
         bool isCancellableBusyWaiting() const;
 
-        AbstractLoadingWidget* loadingWidget() const;
-        void setLoadingWidget(AbstractLoadingWidget* widget);
+        /**
+         * @brief Return the loading widget for the given slot.
+         * @param forLoading false = operation-wait slot (spinner); true = panel-loading slot (skeleton).
+         */
+        AbstractLoadingWidget* loadingWidget(bool forLoading=false) const;
+
+        /**
+         * @brief Replace the loading widget in the given slot.
+         * @param forLoading false = operation-wait slot; true = panel-loading slot.
+         */
+        void setLoadingWidget(AbstractLoadingWidget* widget, bool forLoading=false);
 
         virtual void construct() override;
 
@@ -76,16 +85,16 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
             return this;
         }
 
-        void setBusyWaiting(bool enable)
+        /**
+         * @brief Show or hide the loading overlay for the given slot.
+         * @param forLoading false = operation-wait slot; true = panel-loading slot.
+         */
+        void setBusyWaiting(bool enable, bool forLoading=false)
         {
             if (enable)
-            {
-                popupBusyWaiting();
-            }
+                popupBusyWaiting(forLoading);
             else
-            {
                 finish();
-            }
         }
 
         void setWidget(QWidget*);
@@ -100,11 +109,19 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
 
         virtual void popupBusyWaiting();
 
+        /**
+         * @brief Show the loading overlay, selecting the widget by slot type.
+         * @param forLoading false = operation-wait widget (default); true = panel-loading widget.
+         */
+        virtual void popupBusyWaiting(bool forLoading);
+
         virtual void cancel();
         virtual void finish();
 
     private:
 
+        AbstractLoadingWidget* activeLoadingWidget() const;
+        AbstractLoadingWidget* inactiveLoadingWidget() const;
         void reconfigurePopupLayout();
 
         std::unique_ptr<LoadingFrame_p> pimpl;
