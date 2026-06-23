@@ -196,7 +196,7 @@ class DirListItem : public HTreeStandardListItem
                 {
                     if (entry.is_directory())
                     {
-                        emit qobject()->openRequested(pathElement(),true);
+                        emit qobject()->openRequested(pathElement(),{},true);
                         return;
                     }
 

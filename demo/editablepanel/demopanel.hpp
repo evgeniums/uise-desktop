@@ -101,6 +101,11 @@ class DemoPanel : public WidgetQFrame
             m_panel->setButtonsMode(mode);
         }
 
+        void setBottomButtonsMode(AbstractEditablePanel::BottomButtonsMode mode)
+        {
+            m_panel->setBottomButtonsMode(mode);
+        }
+
         void edit()
         {
             m_panel->edit();

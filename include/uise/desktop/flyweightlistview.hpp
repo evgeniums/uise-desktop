@@ -151,7 +151,7 @@ class FlyweightListView : public QFrame
          *
          * Inserted items will be auto sorted.
          */
-        void insertItems(const std::vector<ItemT>& items, bool autoUpdate);
+        void insertItems(const std::vector<ItemT>& items, bool autoUpdate=true);
 
         void reorderItem(const ItemT& item, bool adjustMinMax=true);
 

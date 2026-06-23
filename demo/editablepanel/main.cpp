@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     auto panel3= new DemoPanel();
     panels->addPanel(panel3);
     panel3->setTitle("Panel 3");
-    panel3->setButtonsMode(EditablePanel::ButtonsMode::BottomAlwaysVisible);
+    panel3->setBottomButtonsMode(EditablePanel::BottomButtonsMode::AlwaysVisible);
     panel3->edit();
     QObject::connect(
         panel3->panel(),
