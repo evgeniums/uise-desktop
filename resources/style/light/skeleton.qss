@@ -1,0 +1,11 @@
+/*
+ * Skeleton shimmer placeholder – light theme colors.
+ *
+ * background-color         → QPalette::Base      – placeholder shape fill
+ * selection-background-color → QPalette::Highlight – shimmer band highlight
+ */
+
+uise--Skeleton *[style-sample="true"] {
+    background-color:           #d8d8d8;
+    selection-background-color: #ffffff;
+}

@@ -1,0 +1,9 @@
+/*
+ * Skeleton shimmer placeholder – neutral / geometry rules.
+ * Color overrides live in dark/skeleton.qss and light/skeleton.qss.
+ */
+
+uise--Skeleton {
+    min-width:  120px;
+    min-height: 80px;
+}

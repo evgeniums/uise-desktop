@@ -50,6 +50,11 @@ class UISE_DESKTOP_EXPORT AbstractLoadingWidget : public WidgetQFrame
          */
         virtual bool isRunning() const noexcept =0;
 
+        virtual bool isCenterAligned() const
+        {
+            return true;
+        }
+
     signals:
 
         void cancelled();

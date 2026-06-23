@@ -5,7 +5,7 @@ This software is dual-licensed. Choose the appropriate license for your project.
 
 1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
-    
+
 2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
      (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
 
@@ -79,7 +79,14 @@ void LoadingFrame::construct()
         pimpl->loadingWidget->setParent(pimpl->popupWidget);
     }
     Q_ASSERT(pimpl->loadingWidget);
-    pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
+    if (pimpl->loadingWidget->isCenterAligned())
+    {
+        pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
+    }
+    else
+    {
+        pimpl->popupLayout->addWidget(pimpl->loadingWidget);
+    }
 
     pimpl->popupLayout->addStretch(1000);
     setPopupWidget(pimpl->popupWidget);
@@ -208,7 +215,14 @@ void LoadingFrame::setLoadingWidget(AbstractLoadingWidget* widget)
 
     if (pimpl->popupLayout!=nullptr)
     {
-        pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget,0,Qt::AlignCenter);
+        if (pimpl->loadingWidget->isCenterAligned())
+        {
+            pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget,0,Qt::AlignCenter);
+        }
+        else
+        {
+            pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget);
+        }
     }
 }
 

@@ -81,6 +81,7 @@ SET (HEADERS
     include/uise/desktop/busywaiting.hpp
     include/uise/desktop/abstractloadingwidget.hpp
     include/uise/desktop/busywaitingframe.hpp
+    include/uise/desktop/skeleton.hpp
 
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
@@ -226,6 +227,7 @@ SET (SOURCES
     src/busywaiting.cpp
     src/abstractloadingwidget.cpp
     src/busywaitingframe.cpp
+    src/skeleton.cpp
     src/modalpopup.cpp
     src/drawer.cpp
     src/scrollarea.cpp

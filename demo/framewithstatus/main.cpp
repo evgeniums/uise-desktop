@@ -40,6 +40,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
+#include <uise/desktop/busywaitingframe.hpp>
+#include <uise/desktop/skeleton.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -155,6 +157,27 @@ int main(int argc, char *argv[])
         testWidget->setCancellableBusyWaiting(enable);
     });
     bl->addWidget(cancellableButton);
+
+    auto loaderLabel=new QLabel("Loading widget:");
+    bl->addWidget(loaderLabel);
+    auto loaderType=new QComboBox();
+    loaderType->addItems({"Spinner","Skeleton"});
+    bl->addWidget(loaderType);
+    QObject::connect(loaderType,&QComboBox::currentTextChanged,testWidget,
+        [testWidget](const QString& name)
+        {
+            AbstractLoadingWidget* w=nullptr;
+            if (name=="Skeleton")
+            {
+                w=new Skeleton();
+            }
+            else
+            {
+                w=new BusyWaitingFrame(nullptr,true,false);
+            }
+            testWidget->setLoadingWidget(w);
+        }
+    );
 
     auto statusType=new QComboBox();
     bl->addWidget(statusType);
