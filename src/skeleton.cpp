@@ -98,7 +98,7 @@ static constexpr int DefaultAvatarSize = 36;
 // ---------------------------------------------------------------------------
 
 Skeleton::Skeleton(QWidget* parent)
-    : AbstractLoadingWidget(parent),
+    : AbstractPanelLoadingWidget(parent),
       pimpl(std::make_unique<Skeleton_p>())
 {
     setObjectName("skeleton");
@@ -354,10 +354,20 @@ void Skeleton::paintEvent(QPaintEvent* /*event*/)
     // Read theme colors from the hidden style-sample child.
     const QColor baseColor = pimpl->styleSample->palette().color(QPalette::Base);
     QColor shimmerColor    = pimpl->styleSample->palette().color(QPalette::Highlight);
+    // `background-color` on uise--Skeleton itself drives the overall overlay fill
+    // (QPalette::Window for QFrame subclasses).
+    const QColor bgColor = palette().color(QPalette::Window);
 
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(Qt::NoPen);
+
+    // Fill the entire widget area first so the skeleton is an opaque overlay
+    // (important when used as a full-frame loading overlay in LoadingFrame).
+    if (bgColor.isValid() && bgColor.alpha() > 0)
+    {
+        painter.fillRect(rect(), bgColor);
+    }
 
     const int radius = pimpl->cornerRadius;
 

@@ -33,4 +33,12 @@ AbstractLoadingWidget::~AbstractLoadingWidget() = default;
 
 //--------------------------------------------------------------------------
 
+AbstractOperationLoadingWidget::~AbstractOperationLoadingWidget() = default;
+
+//--------------------------------------------------------------------------
+
+AbstractPanelLoadingWidget::~AbstractPanelLoadingWidget() = default;
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

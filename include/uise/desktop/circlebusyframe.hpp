@@ -15,16 +15,16 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/busywaitingframe.hpp
+/** @file uise/desktop/circlebusyframe.hpp
 *
-*  Declares BusyWaitingFrame.
+*  Declares CircleBusyFrame.
 *
 */
 
 /****************************************************************************/
 
-#ifndef UISE_DESKTOP_BUSY_WAITING_FRAME_HPP
-#define UISE_DESKTOP_BUSY_WAITING_FRAME_HPP
+#ifndef UISE_DESKTOP_CIRCLE_BUSY_FRAME_HPP
+#define UISE_DESKTOP_CIRCLE_BUSY_FRAME_HPP
 
 #include <QPointer>
 
@@ -33,24 +33,24 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class BusyWaiting;
+class CircleBusy;
 
 /**
- * @brief Frame wrapping BusyWaiting with automatic size adjustment.
+ * @brief Frame wrapping CircleBusy that implements AbstractOperationLoadingWidget.
  */
-class UISE_DESKTOP_EXPORT BusyWaitingFrame : public AbstractOperationLoadingWidget
+class UISE_DESKTOP_EXPORT CircleBusyFrame : public AbstractOperationLoadingWidget
 {
     Q_OBJECT
 
     public:
 
-        explicit BusyWaitingFrame(QWidget* parent=nullptr,
-                                  bool centerOnParent=true,
-                                  bool disableParentWhenSpinning=false);
+        explicit CircleBusyFrame(QWidget* parent=nullptr,
+                                 bool centerOnParent=true,
+                                 bool disableParentWhenSpinning=false);
 
-        ~BusyWaitingFrame() override;
+        ~CircleBusyFrame() override;
 
-        BusyWaiting* busyWaitingWidget() const;
+        CircleBusy* circleBusyWidget() const;
 
         bool isRunning() const noexcept override;
 
@@ -61,9 +61,9 @@ class UISE_DESKTOP_EXPORT BusyWaitingFrame : public AbstractOperationLoadingWidg
 
     private:
 
-        QPointer<BusyWaiting> m_busyWaiting;
+        QPointer<CircleBusy> m_circleBusy;
 };
 
 UISE_DESKTOP_NAMESPACE_END
 
-#endif // UISE_DESKTOP_BUSY_WAITING_FRAME_HPP
+#endif // UISE_DESKTOP_CIRCLE_BUSY_FRAME_HPP

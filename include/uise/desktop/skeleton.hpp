@@ -56,7 +56,7 @@ class Skeleton_p;
  * When no items are added the widget renders a built-in default template
  * (avatar circle + three text-line rows) so it looks good immediately.
  */
-class UISE_DESKTOP_EXPORT Skeleton : public AbstractLoadingWidget
+class UISE_DESKTOP_EXPORT Skeleton : public AbstractPanelLoadingWidget
 {
     Q_OBJECT
 

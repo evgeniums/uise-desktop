@@ -85,6 +85,8 @@ class UISE_DESKTOP_EXPORT CircleBusy : public QFrame
 
         QEasingCurve easingCurve() const;
 
+        bool isRunning() const noexcept;
+
     public slots:
 
         void start();

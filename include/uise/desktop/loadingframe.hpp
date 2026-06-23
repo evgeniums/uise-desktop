@@ -105,6 +105,8 @@ class UISE_DESKTOP_EXPORT LoadingFrame : public FrameWithModalPopup,
 
     private:
 
+        void reconfigurePopupLayout();
+
         std::unique_ptr<LoadingFrame_p> pimpl;
 };
 

@@ -72,6 +72,42 @@ class UISE_DESKTOP_EXPORT AbstractLoadingWidget : public WidgetQFrame
         virtual void stop() =0;
 };
 
+/**
+ * @brief Factory selector for operation-wait indicators (e.g. spinners).
+ *
+ * Register a concrete widget under this type in the WidgetFactory to provide
+ * the default busy-waiting indicator used by LoadingFrame / FrameWithModalStatus.
+ * Use makeWidget<AbstractOperationLoadingWidget>() to create one.
+ */
+class UISE_DESKTOP_EXPORT AbstractOperationLoadingWidget : public AbstractLoadingWidget
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractLoadingWidget::AbstractLoadingWidget;
+
+        ~AbstractOperationLoadingWidget() override;
+};
+
+/**
+ * @brief Factory selector for panel-content loading indicators (e.g. skeleton shimmer).
+ *
+ * Register a concrete widget under this type in the WidgetFactory to provide
+ * the default skeleton/placeholder widget used when panel content is loading.
+ * Use makeWidget<AbstractPanelLoadingWidget>() to create one.
+ */
+class UISE_DESKTOP_EXPORT AbstractPanelLoadingWidget : public AbstractLoadingWidget
+{
+    Q_OBJECT
+
+    public:
+
+        using AbstractLoadingWidget::AbstractLoadingWidget;
+
+        ~AbstractPanelLoadingWidget() override;
+};
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_ABSTRACT_LOADING_WIDGET_HPP

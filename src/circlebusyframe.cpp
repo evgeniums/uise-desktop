@@ -15,85 +15,80 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-/** @file uise/desktop/busywaitingframe.cpp
+/** @file uise/desktop/src/circlebusyframe.cpp
 *
-*  Defines BusyWaitingFrame.
+*  Defines CircleBusyFrame.
 *
 */
 
 /****************************************************************************/
 
-#include <uise/desktop/busywaiting.hpp>
-#include <uise/desktop/busywaitingframe.hpp>
+#include <QVBoxLayout>
+
+#include <uise/desktop/circlebusy.hpp>
+#include <uise/desktop/circlebusyframe.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-BusyWaitingFrame::BusyWaitingFrame(QWidget* parent,
-                                   bool centerOnParent,
-                                   bool disableParentWhenSpinning)
+CircleBusyFrame::CircleBusyFrame(QWidget* parent,
+                                 bool /*centerOnParent*/,
+                                 bool disableParentWhenSpinning)
     : AbstractOperationLoadingWidget(parent)
 {
-    setObjectName("busyWaitingFrame");
-    m_busyWaiting=new BusyWaiting(this,centerOnParent,disableParentWhenSpinning);
-    connect(
-        m_busyWaiting,
-        &BusyWaiting::sizeUpdated,
-        this,
-        [this](QSize size)
-        {
-            setFixedSize(size);
-        }
-        );
-    connect(
-        m_busyWaiting,
-        &BusyWaiting::cancelled,
-        this,
-        &AbstractLoadingWidget::cancelled
-        );
-    setFixedSize(m_busyWaiting->size());
+    setObjectName("circleBusyFrame");
+
+    m_circleBusy = new CircleBusy(this, false, disableParentWhenSpinning);
+
+    auto l = new QVBoxLayout(this);
+    l->setContentsMargins(0, 0, 0, 0);
+    l->setSpacing(0);
+    l->addWidget(m_circleBusy);
+
+    // CircleBusy auto-starts in its constructor; keep the frame idle until start() is called.
+    m_circleBusy->stop();
 }
 
 //--------------------------------------------------------------------------
 
-BusyWaitingFrame::~BusyWaitingFrame() = default;
+CircleBusyFrame::~CircleBusyFrame() = default;
 
 //--------------------------------------------------------------------------
 
-BusyWaiting* BusyWaitingFrame::busyWaitingWidget() const
+CircleBusy* CircleBusyFrame::circleBusyWidget() const
 {
-    return m_busyWaiting;
+    return m_circleBusy;
 }
 
 //--------------------------------------------------------------------------
 
-bool BusyWaitingFrame::isRunning() const noexcept
+bool CircleBusyFrame::isRunning() const noexcept
 {
-    if (m_busyWaiting==nullptr)
+    if (m_circleBusy == nullptr)
     {
         return false;
     }
-    return m_busyWaiting->isRunning();
+    return m_circleBusy->isRunning();
 }
 
 //--------------------------------------------------------------------------
 
-void BusyWaitingFrame::start()
+void CircleBusyFrame::start()
 {
-    if (m_busyWaiting!=nullptr)
+    if (m_circleBusy != nullptr)
     {
-        m_busyWaiting->start();
+        m_circleBusy->start();
     }
 }
 
 //--------------------------------------------------------------------------
 
-void BusyWaitingFrame::stop()
+void CircleBusyFrame::stop()
 {
-    if (m_busyWaiting!=nullptr)
+    if (m_circleBusy != nullptr)
     {
-        m_busyWaiting->stop();
+        m_circleBusy->stop();
     }
 }
 

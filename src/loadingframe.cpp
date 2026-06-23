@@ -63,12 +63,46 @@ LoadingFrame::LoadingFrame(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+void LoadingFrame::reconfigurePopupLayout()
+{
+    if (pimpl->popupLayout==nullptr || pimpl->loadingWidget==nullptr)
+    {
+        return;
+    }
+
+    // Clear every item (spacers are deleted; widgets are only removed).
+    while (pimpl->popupLayout->count()>0)
+    {
+        delete pimpl->popupLayout->takeAt(0);
+    }
+
+    if (pimpl->loadingWidget->isCenterAligned())
+    {
+        // Spinner-style: center the widget inside the (size-constrained) popup.
+        pimpl->popupLayout->addStretch(1000);
+        pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
+        pimpl->popupLayout->addStretch(1000);
+        setMaxWidthPercent(FrameWithModalPopup::DefaultMaxWidthPercent);
+        setMaxHeightPercent(FrameWithModalPopup::DefaultMaxHeightPercent);
+    }
+    else
+    {
+        // Skeleton-style: widget expands to fill the entire LoadingFrame.
+        pimpl->popupLayout->setContentsMargins(0,0,0,0);
+        pimpl->popupLayout->setSpacing(0);
+        pimpl->popupLayout->addWidget(pimpl->loadingWidget,1);
+        setMaxWidthPercent(100);
+        setMaxHeightPercent(100);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void LoadingFrame::construct()
 {
     pimpl->popupWidget=new QFrame();
     pimpl->popupWidget->setObjectName("popupFrame");
     pimpl->popupLayout=Layout::vertical(pimpl->popupWidget);
-    pimpl->popupLayout->addStretch(1000);
 
     if (pimpl->loadingWidget==nullptr)
     {
@@ -79,16 +113,7 @@ void LoadingFrame::construct()
         pimpl->loadingWidget->setParent(pimpl->popupWidget);
     }
     Q_ASSERT(pimpl->loadingWidget);
-    if (pimpl->loadingWidget->isCenterAligned())
-    {
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget,0,Qt::AlignCenter);
-    }
-    else
-    {
-        pimpl->popupLayout->addWidget(pimpl->loadingWidget);
-    }
-
-    pimpl->popupLayout->addStretch(1000);
+    reconfigurePopupLayout();
     setPopupWidget(pimpl->popupWidget);
 
     connect(
@@ -213,17 +238,7 @@ void LoadingFrame::setLoadingWidget(AbstractLoadingWidget* widget)
         pimpl->loadingWidget->setParent(pimpl->popupWidget);
     }
 
-    if (pimpl->popupLayout!=nullptr)
-    {
-        if (pimpl->loadingWidget->isCenterAligned())
-        {
-            pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget,0,Qt::AlignCenter);
-        }
-        else
-        {
-            pimpl->popupLayout->insertWidget(1,pimpl->loadingWidget);
-        }
-    }
+    reconfigurePopupLayout();
 }
 
 //--------------------------------------------------------------------------

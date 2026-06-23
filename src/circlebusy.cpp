@@ -97,6 +97,13 @@ void CircleBusy::paintEvent(QPaintEvent * /*event*/)
 
 //--------------------------------------------------------------------------
 
+bool CircleBusy::isRunning() const noexcept
+{
+    return m_timeLine.state() == QTimeLine::Running;
+}
+
+//--------------------------------------------------------------------------
+
 void CircleBusy::start()
 {
     if(parentWidget() && m_disableParentWhenSpinning)

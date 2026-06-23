@@ -41,6 +41,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
 #include <uise/desktop/busywaitingframe.hpp>
+#include <uise/desktop/circlebusyframe.hpp>
 #include <uise/desktop/skeleton.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -161,7 +162,7 @@ int main(int argc, char *argv[])
     auto loaderLabel=new QLabel("Loading widget:");
     bl->addWidget(loaderLabel);
     auto loaderType=new QComboBox();
-    loaderType->addItems({"Spinner","Skeleton"});
+    loaderType->addItems({"Spinner","Circle","Skeleton"});
     bl->addWidget(loaderType);
     QObject::connect(loaderType,&QComboBox::currentTextChanged,testWidget,
         [testWidget](const QString& name)
@@ -170,6 +171,10 @@ int main(int argc, char *argv[])
             if (name=="Skeleton")
             {
                 w=new Skeleton();
+            }
+            else if (name=="Circle")
+            {
+                w=new CircleBusyFrame(nullptr,true,false);
             }
             else
             {

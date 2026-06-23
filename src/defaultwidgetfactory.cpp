@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/simpleimageeditor.hpp>
 #include <uise/desktop/newpasswordpanel.hpp>
 #include <uise/desktop/busywaitingframe.hpp>
+#include <uise/desktop/skeleton.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -43,6 +44,8 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
 
     factory->registerBuilder<AbstractStatusDialog>([](QWidget* parent){return new StatusDialog(parent);});
     factory->registerBuilder<AbstractLoadingWidget>([](QWidget* parent){return new BusyWaitingFrame(parent,true,false);});
+    factory->registerBuilder<AbstractOperationLoadingWidget>([](QWidget* parent){return new BusyWaitingFrame(parent,true,false);});
+    factory->registerBuilder<AbstractPanelLoadingWidget>([](QWidget* parent){return new Skeleton(parent);});
     factory->registerBuilder<AbstractEditablePanel>([](QWidget* parent){return new EditablePanelGrid(parent);});
     factory->registerBuilder<AbstractEditablePanels>([](QWidget* parent){return new EditablePanels(parent);});
 

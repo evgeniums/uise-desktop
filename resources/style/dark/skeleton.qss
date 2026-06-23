@@ -1,9 +1,14 @@
 /*
  * Skeleton shimmer placeholder – dark theme colors.
  *
- * background-color         → QPalette::Base      – placeholder shape fill
- * selection-background-color → QPalette::Highlight – shimmer band highlight
+ * uise--Skeleton background-color          → QPalette::Window    – full overlay fill
+ * style-sample background-color            → QPalette::Base      – placeholder shape fill
+ * style-sample selection-background-color  → QPalette::Highlight – shimmer band highlight
  */
+
+uise--Skeleton {
+    background-color: #1c1c1c;
+}
 
 uise--Skeleton *[style-sample="true"] {
     background-color:           #2a2a2a;

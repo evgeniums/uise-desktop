@@ -98,6 +98,8 @@ class UISE_DESKTOP_EXPORT FrameWithModalStatus : public FrameWithModalPopup,
     private:
 
         void showStatus();
+        void reconfigureForLoading();
+        void reconfigureForStatus();
 
         std::unique_ptr<FrameWithModalStatus_p> pimpl;
 };
