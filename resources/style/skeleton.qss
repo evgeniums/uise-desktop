@@ -3,7 +3,15 @@
  * Color overrides live in dark/skeleton.qss and light/skeleton.qss.
  */
 
+/*
+ * qproperty-itemSpacing    – px gap between items and rows (default 12)
+ * qproperty-cornerRadius   – corner radius for line/block shapes in px (default 6)
+ * qproperty-shimmerDurationMs – duration of one shimmer sweep cycle in ms (default 1200)
+ */
 uise--Skeleton {
     min-width:  120px;
     min-height: 80px;
+    qproperty-itemSpacing:      12;
+    qproperty-cornerRadius:     6;
+    qproperty-shimmerDurationMs: 1200;
 }

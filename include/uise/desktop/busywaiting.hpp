@@ -67,6 +67,15 @@ class UISE_DESKTOP_EXPORT BusyWaiting : public QFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(qreal roundness READ roundness WRITE setRoundness)
+    Q_PROPERTY(qreal minimumTrailOpacity READ minimumTrailOpacity WRITE setMinimumTrailOpacity)
+    Q_PROPERTY(qreal trailFadePercentage READ trailFadePercentage WRITE setTrailFadePercentage)
+    Q_PROPERTY(qreal revolutionsPerSecond READ revolutionsPersSecond WRITE setRevolutionsPerSecond)
+    Q_PROPERTY(int numberOfLines READ numberOfLines WRITE setNumberOfLines)
+    Q_PROPERTY(int lineLength READ lineLength WRITE setLineLength)
+    Q_PROPERTY(int lineWidth READ lineWidth WRITE setLineWidth)
+    Q_PROPERTY(int innerRadius READ innerRadius WRITE setInnerRadius)
+
     public:
 
         /**

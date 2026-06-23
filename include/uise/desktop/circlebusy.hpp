@@ -40,6 +40,9 @@ class UISE_DESKTOP_EXPORT CircleBusy : public QFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(qreal circlePercent READ circlePercent WRITE setCirclePercent)
+    Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
+
     public:
 
         constexpr static const qreal DefaultCirclePercent=15.0;
@@ -84,6 +87,16 @@ class UISE_DESKTOP_EXPORT CircleBusy : public QFrame
         void setEasingCurve(const QEasingCurve& curve);
 
         QEasingCurve easingCurve() const;
+
+        int easingCurveType() const noexcept
+        {
+            return static_cast<int>(m_timeLine.easingCurve().type());
+        }
+
+        void setEasingCurveType(int type)
+        {
+            setEasingCurve(static_cast<QEasingCurve::Type>(type));
+        }
 
         bool isRunning() const noexcept;
 

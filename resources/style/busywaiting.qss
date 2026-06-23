@@ -1,0 +1,25 @@
+/*
+ * BusyWaiting spinner – configurable parameters.
+ *
+ * All values here match the C++ defaults; override per-application or per-theme.
+ *
+ * qproperty-roundness           – line-cap roundness  (0 = square, 100 = round)
+ * qproperty-minimumTrailOpacity – opacity floor for faded trail lines (radians, π ≈ 3.14)
+ * qproperty-trailFadePercentage – fraction of lines that fade (0-100)
+ * qproperty-revolutionsPerSecond– spin speed (π/2 ≈ 1.57 rev/s)
+ * qproperty-numberOfLines       – spoke count
+ * qproperty-lineLength          – length of each spoke in px
+ * qproperty-lineWidth           – width of each spoke in px
+ * qproperty-innerRadius         – hub radius in px (determines overall widget size)
+ */
+
+uise--BusyWaiting {
+    qproperty-roundness:            100;
+    qproperty-minimumTrailOpacity:  3.14;
+    qproperty-trailFadePercentage:  80;
+    qproperty-revolutionsPerSecond: 1.57;
+    qproperty-numberOfLines:        20;
+    qproperty-lineLength:           10;
+    qproperty-lineWidth:            2;
+    qproperty-innerRadius:          10;
+}

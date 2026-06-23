@@ -7,3 +7,15 @@ uise--LoadControl #sample,
 uise--CircleBusy #sample {
 min-width:10px;border: 4px solid transparent;
 }
+
+/*
+ * CircleBusy configurable parameters.
+ *
+ * qproperty-circlePercent  – arc length as % of full circle (0-100)
+ * qproperty-easingCurveType – QEasingCurve::Type as int
+ *                             (17=InSine 18=OutSine 19=InOutSine 20=OutInSine)
+ */
+uise--CircleBusy {
+    qproperty-circlePercent:   15;
+    qproperty-easingCurveType: 19;
+}

@@ -60,6 +60,10 @@ class UISE_DESKTOP_EXPORT Skeleton : public AbstractPanelLoadingWidget
 {
     Q_OBJECT
 
+    Q_PROPERTY(int itemSpacing READ itemSpacing WRITE setItemSpacing)
+    Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius)
+    Q_PROPERTY(int shimmerDurationMs READ shimmerDurationMs WRITE setShimmerDurationMs)
+
     public:
 
         explicit Skeleton(QWidget* parent=nullptr);

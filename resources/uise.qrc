@@ -6,6 +6,7 @@
         <file>style/dark/audiodevicesetting.json</file>
         <file>style/light/audiodevicesetting.qss</file>
         <file>style/light/audiodevicesetting.json</file>
+        <file>style/busywaiting.qss</file>
         <file>style/skeleton.qss</file>
         <file>style/dark/skeleton.qss</file>
         <file>style/light/skeleton.qss</file>
