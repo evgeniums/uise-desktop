@@ -1,11 +1,11 @@
 uise--LoadControl,
 uise--CircleBusy {
-min-width:44px;min-height:44px;max-width:44px;max-height:44px;
+min-width:56px;min-height:56px;max-width:56px;max-height:56px;
 }
 
 uise--LoadControl #sample,
 uise--CircleBusy #sample {
-min-width:10px;border: 4px solid transparent;
+border: 6px solid transparent;
 }
 
 /*

@@ -3,7 +3,7 @@ color: #219ebc;background-color: #999999;
 }
 
 uise--CircleBusy #sample {
-color: #999999;
-background-color: rgba(99,99,99,99);
+color: #CCCCCC;
+background-color: #2C2C2C;
 }
 
