@@ -4,6 +4,6 @@ color: #219ebc;background-color: #999999;
 
 uise--CircleBusy #sample {
 color: #CCCCCC;
-background-color: #2C2C2C;
+background-color: #343434;
 }
 
