@@ -8,6 +8,14 @@
                     "off" : { "currentColor" : "#EEEEEE" }
                 }
             }
+        },
+        {
+            "name" : "AvatarCorner",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#999999" }
+                }
+            }
         }
     ]
 }

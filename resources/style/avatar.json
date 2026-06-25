@@ -3,7 +3,12 @@
         {
             "name" : "Avatar",
             "aliases" : {
-                "noname" : "${uise-svg-icons-2}/user",
+                "noname" : "${uise-svg-icons-2}/user"
+            }
+        },
+        {
+            "name" : "AvatarCorner",
+            "aliases" : {
                 "camera" : "${uise-svg-icons-2}/camera"
             }
         }
