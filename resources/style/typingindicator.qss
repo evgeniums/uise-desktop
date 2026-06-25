@@ -1,0 +1,21 @@
+/*
+ * TypingIndicator – animated dots + text label.
+ * Neutral geometry and qproperty defaults (theme-agnostic).
+ * Colour overrides live in light/typingindicator.qss and dark/typingindicator.qss.
+ *
+ * qproperty-dotRadius          – base radius of each dot in pixels (default 4)
+ * qproperty-dotSpacing         – gap between adjacent dot centres minus 2*radius (default 10)
+ * qproperty-dotCount           – number of dots (default 3)
+ * qproperty-activeScale        – peak scale factor applied to the highlighted dot (default 1.8)
+ * qproperty-animationDurationMs – duration of one left-to-right cycle in ms (default 1000)
+ * qproperty-spacing            – gap between dots area and text label in pixels (default 8)
+ */
+
+uise--TypingIndicator {
+    qproperty-dotRadius:           2;
+    qproperty-dotSpacing:          3;
+    qproperty-dotCount:            3;
+    qproperty-activeScale:         1.6;
+    qproperty-animationDurationMs: 1000;
+    qproperty-spacing:             1;
+}

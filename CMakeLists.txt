@@ -83,6 +83,7 @@ SET (HEADERS
     include/uise/desktop/busywaitingframe.hpp
     include/uise/desktop/circlebusyframe.hpp
     include/uise/desktop/skeleton.hpp
+    include/uise/desktop/typingindicator.hpp
 
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
@@ -230,6 +231,7 @@ SET (SOURCES
     src/busywaitingframe.cpp
     src/circlebusyframe.cpp
     src/skeleton.cpp
+    src/typingindicator.cpp
     src/modalpopup.cpp
     src/drawer.cpp
     src/scrollarea.cpp

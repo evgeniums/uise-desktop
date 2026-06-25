@@ -10,6 +10,9 @@
         <file>style/skeleton.qss</file>
         <file>style/dark/skeleton.qss</file>
         <file>style/light/skeleton.qss</file>
+        <file>style/typingindicator.qss</file>
+        <file>style/dark/typingindicator.qss</file>
+        <file>style/light/typingindicator.qss</file>
         <file>style/dark/spinner.qss</file>
         <file>style/htree.qss</file>
         <file>style/dark/htree.qss</file>

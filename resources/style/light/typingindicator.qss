@@ -1,0 +1,17 @@
+/*
+ * TypingIndicator – light theme colours.
+ *
+ * qproperty-dotColor        – base dot colour (pale blue, clearly distinct from active)
+ * qproperty-activeDotColor  – highlighted dot colour (deep vivid blue for strong contrast)
+ * QLabel colour             – text label foreground
+ */
+
+uise--TypingIndicator {
+    qproperty-dotColor:       #b3d1f0;
+    qproperty-activeDotColor: #1a6bc4;
+}
+
+uise--TypingIndicator QLabel {
+    color: #1a6bc4;
+    background-color: transparent;
+}
