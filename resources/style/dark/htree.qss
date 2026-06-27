@@ -12,6 +12,11 @@ uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C0;}
 uise--HTreeStandardListItem[hover="true"] {background-color:#3A3A3A;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#606060;}
 
+/* Update-ready list item — amber text to match the navbar button */
+uise--HTreeStandardListItem[update_highlight="true"] QLabel {color:#E8A020; font-weight:bold;}
+uise--HTreeStandardListItem[update_highlight="true"][hover="true"] {background-color:#4A3A00;}
+uise--HTreeStandardListItem[update_highlight="true"][selected="true"] {background-color:#6A5200;}
+
 uise--HTreeStandardListItem[htree_section_header="true"][hover="true"] {background-color:transparent;}
 uise--HTreeStandardListItem[htree_section_header="true"][selected="true"] {background-color:transparent;}
 uise--HTreeStandardListItem[htree_section_header="true"] QLabel {color:#777777;}

@@ -13,6 +13,11 @@ uise--HTreeStandardListItem QLabel {color:#000000;}
 uise--HTreeStandardListItem[hover="true"] {background-color:#ECECEC;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#CCCCCC;}
 
+/* Update-ready list item — amber text to match the navbar button */
+uise--HTreeStandardListItem[update_highlight="true"] QLabel {color:#B06000; font-weight:bold;}
+uise--HTreeStandardListItem[update_highlight="true"][hover="true"] {background-color:#FFF0CC;}
+uise--HTreeStandardListItem[update_highlight="true"][selected="true"] {background-color:#FFE0A0;}
+
 uise--HTreeStandardListItem[htree_section_header="true"][hover="true"] {background-color:transparent;}
 uise--HTreeStandardListItem[htree_section_header="true"][selected="true"] {background-color:transparent;}
 uise--HTreeStandardListItem[htree_section_header="true"] QLabel {color:#999999;}

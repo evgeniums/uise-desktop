@@ -7,3 +7,7 @@ uise--NavigationBarItem[checked="true"] #text {color:#BBBBBB;}
 uise--NavigationBarPanel {background-color: #444444; border:none;}
 
 uise--NavigationBar {border:none;}
+
+/* Update-ready button — highlighted in amber to draw attention */
+uise--NavigationBarPanel uise--IconTextButton#updateButton #text {color:#E8A020; font-weight:bold;}
+uise--NavigationBarPanel uise--IconTextButton#updateButton:hover #text {color:#F0B840;}
