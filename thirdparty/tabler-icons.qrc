@@ -131,5 +131,6 @@
         <file>tabler-icons/filled/circle.svg</file>
         <file>tabler-icons/filled/mail.svg</file>
         <file>tabler-icons/outline/arrow-up-circle.svg</file>
+        <file>tabler-icons/outline/cloud-download.svg</file>
     </qresource>
 </RCC>

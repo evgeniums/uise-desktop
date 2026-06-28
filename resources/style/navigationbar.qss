@@ -48,4 +48,6 @@ uise--NavigationBar #leftFrame uise--IconTextButton {
 margin-right: 4px;
 }
 
-
+uise--NavigationBarPanel uise--IconTextButton#updateButton {
+margin-left: 8px;
+}
