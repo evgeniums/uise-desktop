@@ -178,6 +178,13 @@ void HTreeStandardListItem::doSetSelected(bool enable)
 
 //--------------------------------------------------------------------------
 
+void HTreeStandardListItem::doClick()
+{
+    emit clicked();
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeStandardListItem::setExpandVisible(bool enable)
 {
     destroyWidget(m_expand);

@@ -75,6 +75,11 @@ class HTreeListItemT_p
 template <typename BaseT>
 void HTreeListItemT<BaseT>::showMenu(const QPoint&)
 {
+    if (m_buttonMode)
+    {
+        return;
+    }
+
     auto menu=new QMenu(this);
 
     auto open=menu->addAction(QObject::tr("Open","HTreeListItem"));
@@ -267,6 +272,12 @@ void HTreeListItemT<BaseT>::leaveEvent(QEvent *event)
 template <typename BaseT>
 void HTreeListItemT<BaseT>::click()
 {
+    doClick();
+    if (m_buttonMode)
+    {
+        return;
+    }
+
     if (QApplication::keyboardModifiers() & Qt::ShiftModifier
 #ifdef Q_OS_MAC
         ||

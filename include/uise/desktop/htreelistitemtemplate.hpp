@@ -223,6 +223,16 @@ class HTreeListItemT : public BaseT
 
         void click();
 
+        void setButtonMode(bool enable)
+        {
+            m_buttonMode=enable;
+        }
+
+        bool isButtonMode() const
+        {
+            return m_buttonMode;
+        }
+
     protected:
 
         void enterEvent(QEnterEvent *event) override;
@@ -237,6 +247,9 @@ class HTreeListItemT : public BaseT
         virtual void doSetHovered(bool enable);
         virtual void doSetSelected(bool enable);
 
+        virtual void doClick()
+        {}
+
     private:
 
         template <typename BaseT1>
@@ -245,6 +258,7 @@ class HTreeListItemT : public BaseT
         std::unique_ptr<HTreeListItemT_p<BaseT>> pimpl;
 
         HTreeListItemTQ* m_qobject;
+        bool m_buttonMode=false;
 };
 
 #if defined(_MSC_VER) && !defined(UISE_DESKTOP_BUILD)

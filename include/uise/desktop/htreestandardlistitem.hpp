@@ -75,6 +75,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
     signals:
 
         void iconClicked();
+        void clicked();
 
     public slots:
 
@@ -85,6 +86,8 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
 
         void doSetHovered(bool enable) override;
         void doSetSelected(bool enable) override;
+
+        void doClick() override;
 
     private:
 
