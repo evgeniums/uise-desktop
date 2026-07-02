@@ -81,7 +81,10 @@ class HTreeTab_p
                 if (node)
                 {
                     disconnectNode(node,true);
-                    node->disconnect();
+                    // do not call argument-less node->disconnect() here: it would sever
+                    // Qt's internal destroyed->QStyleSheetStyleCaches connection, leaving
+                    // a dangling pointer in the stylesheet caches that crashes the next
+                    // qApp->setStyleSheet()
                 }
             }
         }
