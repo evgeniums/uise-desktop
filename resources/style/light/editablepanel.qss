@@ -1,5 +1,5 @@
-uise--EditablePanel {
-border: 1px solid #CCCCCC;
+uise--AbstractEditablePanel {
+border: 1px solid #DDDDDD;
 background-color: #F0F0F0;
 }
 

@@ -3,7 +3,7 @@ uise--PushButton QPushButton {
 }
 
 QCheckBox, QRadioButton {
-padding: 2px 0;
+padding: 2px 2px;
 border-radius: 2px;
 border: 2px solid transparent;
 spacing: 8px;
@@ -34,4 +34,10 @@ margin-left: 0;
 uise--IconTextButton QLabel[position="after"] {
 margin-right: 0;
 margin-left: 2px;
+}
+
+QTabBar {
+qproperty-drawBase: false;
+background: transparent;
+border:none;
 }

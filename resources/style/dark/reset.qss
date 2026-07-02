@@ -34,11 +34,6 @@ color: #ffffff;
 border: 1px solid #333;
 }
 
-QTabBar {
-background-color: #343434;
-border:none;
-}
-
 QTabBar::tab:disabled
 {
 background-color: #656565;
@@ -54,28 +49,26 @@ QTabBar::tab:selected
 {
 background-color: #1e6091;
 color: #EEEEEE;
+border-top-left-radius: 4px;
+border-top-right-radius: 4px;
 }
 
 QTabBar::tab:selected:disabled
 {
 background-color: #404040;
 color: #656565;
+border-top-left-radius: 4px;
+border-top-right-radius: 4px;
+
 }
 
 QTabBar::tab
 {
-/*background-color: #262626;*/
 color: #CCCCCC;
 border: 1px solid #333;
 padding: 6px 10px;
 border-bottom: none;
 }
-/*
-QTabBar::tab:!selected
-{
-background-color: #262626;
-}
-*/
 
 QTabBar::tab:top, QTabBar::tab:bottom
 {
