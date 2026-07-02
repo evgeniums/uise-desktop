@@ -66,7 +66,8 @@ class HTreeTab_p
         QSignalMapper* nodeDestroyedMapper;
 
         std::vector<HTreeNode*> nodes;
-        SingleShotTimer* scrolTimer;
+        SingleShotTimer* scrollTimer;
+        SingleShotTimer* reconfigureTimer;
 
         bool closeWarnDisable=false;
         QFrame* closeWarnFrame;
@@ -220,6 +221,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         [this,index](const QString& val)
         {
             navbar->setItemName(index,val);
+            self->emitNodesReconfigured();
         }
     );
     node->connect(
@@ -235,11 +237,21 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         node,
         &HTreeNode::toggleExpanded,
         self,
-        [this,index](bool enable)
+        [this,index,node](bool enable)
         {
             navbar->blockSignals(true);
             navbar->setItemChecked(index,enable);
             navbar->blockSignals(false);
+
+            auto w=splitter->widget(index);
+            if (w!=nullptr)
+            {
+                w->setMinimumWidth(node->minimumWidth()+splitter->sectionLineWidth());
+                w->setMaximumWidth(std::min(QWIDGETSIZE_MAX,(node->maximumWidth()+splitter->sectionLineWidth())));
+                splitter->toggleSectionExpanded(index,enable,node->isNodeVisible());
+            }
+
+            self->emitNodesReconfigured();
         }
     );
     node->connect(
@@ -270,23 +282,6 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         }
     );
 
-    // watch if node is expanded
-    node->connect(
-        node,
-        &HTreeNode::toggleExpanded,
-        self,
-        [this,index,node](bool enable)
-        {
-            auto w=splitter->widget(index);
-            if (w!=nullptr)
-            {
-                w->setMinimumWidth(node->minimumWidth()+splitter->sectionLineWidth());
-                w->setMaximumWidth(std::min(QWIDGETSIZE_MAX,(node->maximumWidth()+splitter->sectionLineWidth())));
-                splitter->toggleSectionExpanded(index,enable,node->isNodeVisible());
-            }
-        }
-    );
-
     // update last node
     updateLastNode();
 
@@ -305,7 +300,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     }
     else
     {
-        scrolTimer->shot(50,
+        scrollTimer->shot(50,
             [this,node=QPointer<HTreeNode>{node}]
             {
                 if (node)
@@ -316,6 +311,8 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             true
         );
     }
+
+    self->emitNodesReconfigured();
 }
 
 //--------------------------------------------------------------------------
@@ -363,7 +360,8 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 {
     pimpl->self=this;
     pimpl->tree=tree;
-    pimpl->scrolTimer=new SingleShotTimer(this);
+    pimpl->scrollTimer=new SingleShotTimer(this);
+    pimpl->reconfigureTimer=new SingleShotTimer(this);
 
     auto l=Layout::vertical(this);
 
@@ -395,6 +393,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
                 }
             }
             pimpl->truncate(index+1);
+            emitNodesReconfigured();
         }
     );
 
@@ -562,8 +561,9 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
 
 HTreeTab::~HTreeTab()
 {
+    disconnect(SIGNAL(nodesReconfigured()));
     pimpl->nodeDestroyedMapper->blockSignals(true);
-    pimpl->scrolTimer->clear();
+    pimpl->scrollTimer->clear();
 }
 
 //--------------------------------------------------------------------------
@@ -683,7 +683,7 @@ bool HTreeTab::openPath(HTreePath path)
 
             if (lastInPath)
             {
-                pimpl->scrolTimer->shot(50,
+                pimpl->scrollTimer->shot(50,
                     [this,node=QPointer<HTreeNode>{nod}]
                     {
                         if (node)
@@ -769,6 +769,10 @@ HTreePath HTreeTab::path() const
 void HTreeTab::appendNode(HTreeNode* node)
 {
     pimpl->appendNode(node);
+    if (!tree()->isNodeHeaderVisible())
+    {
+        node->setHeaderVisible(false);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -951,6 +955,26 @@ void HTreeTab::nodeCloseHovered(HTreeNode* /*node*/, bool /*enable*/)
         );
     }
 #endif
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<HTreeNode*> HTreeTab::nodes() const
+{
+    return pimpl->nodes;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::emitNodesReconfigured()
+{
+    pimpl->reconfigureTimer->shot(55,
+                                  [this]()
+                                  {
+                                      emit nodesReconfigured();
+                                  },
+                                  true
+                            );
 }
 
 //--------------------------------------------------------------------------

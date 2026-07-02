@@ -81,7 +81,7 @@ class HTreeNodeTitleBar_p
         PushButton* close=nullptr;
         PushButton* collapse=nullptr;
         PushButton* refresh=nullptr;
-        PushButton* toParentNode=nullptr;
+        PushButton* toParentNode=nullptr;        
         PushButton* expandExclusive=nullptr;
 
         ElidedLabel* title=nullptr;        
@@ -275,8 +275,11 @@ class HTreeNode_p
         bool collapsiblePlaceholderVisible=false;
         bool loaded=false;
 
+        bool headerVisible=true;
+
         std::function<void ()> navbarActivateAction;
         std::function<void()> toParentAction;
+        bool toParentVisible=false;
 
         QPointer<QWidget> nodeControllerUi;
 
@@ -870,7 +873,8 @@ void HTreeNode::otherNodeExpanded(bool /*enable*/)
     auto p=parentNode();
     if (p)
     {
-        pimpl->titleBar->pimpl->toParentNode->setVisible(!p->isExpanded());
+        pimpl->toParentVisible=!p->isExpanded();
+        pimpl->titleBar->pimpl->toParentNode->setVisible(pimpl->toParentVisible);
     }
 
     setClosable(p!=nullptr);
@@ -1229,6 +1233,42 @@ void HTreeNode::setToParentAction(std::function<void ()> action)
 std::function<void ()> HTreeNode::toParentAction() const
 {
     return pimpl->toParentAction;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setHeaderVisible(bool enable)
+{
+    pimpl->headerVisible=enable;
+    pimpl->titleBar->setVisible(pimpl->headerVisible);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isHeaderVisible() const
+{
+    return pimpl->headerVisible;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isToParentVisible() const
+{
+    return pimpl->toParentVisible;
+}
+
+//--------------------------------------------------------------------------
+
+QString HTreeNode::toParentTooltip() const
+{
+    return pimpl->titleBar->pimpl->toParentNode->toolTip();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::activateToParent()
+{
+    pimpl->titleBar->pimpl->toParentNode->click();
 }
 
 //--------------------------------------------------------------------------

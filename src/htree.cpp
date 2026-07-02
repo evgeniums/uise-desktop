@@ -60,6 +60,7 @@ class HTree_p
         bool collapsePlaceholderHidden=true;
         bool internalNodeExpandable=false;
         bool internalNodeClosable=false;
+        bool nodesHeaderVisible=true;
 
         int expandLastDepthOnOpen=0;
 };
@@ -454,6 +455,20 @@ void HTree::setInternalNodeClosable(bool enable) noexcept
 bool HTree::isInternalNodeClosable() const noexcept
 {
     return pimpl->internalNodeClosable;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setNodeHeaderVisible(bool enable)
+{
+    pimpl->nodesHeaderVisible=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTree::isNodeHeaderVisible() const noexcept
+{
+    return pimpl->nodesHeaderVisible;
 }
 
 //--------------------------------------------------------------------------

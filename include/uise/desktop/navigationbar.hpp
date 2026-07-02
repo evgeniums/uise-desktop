@@ -186,7 +186,16 @@ class UISE_DESKTOP_EXPORT NavigationBarPanel : public QFrame
 
     public:
 
-        using QFrame::QFrame;
+        explicit NavigationBarPanel(QWidget* parent=nullptr);
+
+        QHBoxLayout* hLayout() const
+        {
+            return m_layout;
+        }
+
+    private:
+
+        QHBoxLayout* m_layout=nullptr;
 };
 
 class NavigationBar_p;

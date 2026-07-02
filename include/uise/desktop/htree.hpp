@@ -109,6 +109,9 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setInternalNodeClosable(bool enable) noexcept;
         bool isInternalNodeClosable() const noexcept;
 
+        void setNodeHeaderVisible(bool enable);
+        bool isNodeHeaderVisible() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);

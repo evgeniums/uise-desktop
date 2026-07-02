@@ -334,6 +334,15 @@ void NavigationBar_p::updateScrollArea(int addWidth)
 
 //--------------------------------------------------------------------------
 
+NavigationBarPanel::NavigationBarPanel(QWidget* parent)
+    : QFrame(parent)
+{
+    m_layout=Layout::horizontal(this);
+    setObjectName("NavigationBarPanel");
+}
+
+//--------------------------------------------------------------------------
+
 NavigationBar::NavigationBar(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<NavigationBar_p>())
@@ -349,7 +358,7 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->scArea->setWidgetResizable(true);
 
     pimpl->panel=new NavigationBarPanel(pimpl->scArea);
-    pimpl->layout=Layout::horizontal(pimpl->panel);
+    pimpl->layout=pimpl->panel->hLayout();
     pimpl->scArea->setWidget(pimpl->panel);
 
     setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);

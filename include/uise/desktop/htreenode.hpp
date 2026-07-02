@@ -228,6 +228,12 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
             return qobject_cast<T*>(nodeControllerUi());
         }
 
+        void setHeaderVisible(bool enable);
+        bool isHeaderVisible() const;
+
+        bool isToParentVisible() const;
+        QString toParentTooltip() const;
+
     public slots:
 
         void setNodeName(const QString& val);
@@ -247,6 +253,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void expandParentNode();
 
         void expandExclusive(int depth=0);
+
+        void activateToParent();
 
     signals:
 

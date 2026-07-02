@@ -88,6 +88,8 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         bool isSingleCollapsePlaceholder() const noexcept;
         bool isCollapsePlaceholderHidden() const noexcept;
 
+        std::vector<HTreeNode*> nodes() const;
+
     public slots:
 
         void activate();
@@ -100,6 +102,8 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         void nodeUpdated(const UISE_DESKTOP_NAMESPACE::HTreePath&);
 
+        void nodesReconfigured();
+
     private slots:
 
         void nodeCloseHovered(UISE_DESKTOP_NAMESPACE::HTreeNode*, bool);
@@ -107,6 +111,7 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
     private:
 
         void adjustWidthsAndPositions();
+        void emitNodesReconfigured();
 
         friend class HTree;
         friend class HTreeNode;
