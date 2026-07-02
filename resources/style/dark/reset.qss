@@ -38,15 +38,6 @@ background-color: #343434;
 border:none;
 }
 
-QTabBar::tab
-{
-background-color: #262626;
-color: #CCCCCC;
-border: 1px solid #333;
-padding: 6px 10px;
-border-bottom: none;
-}
-
 QTabBar::tab:disabled
 {
 background-color: #656565;
@@ -70,10 +61,20 @@ background-color: #404040;
 color: #656565;
 }
 
+QTabBar::tab
+{
+/*background-color: #262626;*/
+color: #CCCCCC;
+border: 1px solid #333;
+padding: 6px 10px;
+border-bottom: none;
+}
+/*
 QTabBar::tab:!selected
 {
 background-color: #262626;
 }
+*/
 
 QTabBar::tab:top, QTabBar::tab:bottom
 {

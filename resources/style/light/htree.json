@@ -92,6 +92,20 @@
                     "on" :  { "currentColor" : "#E07800" }
                 }
             }
+        },
+        {
+            "name" : "NavigationBarDisabled",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                }
+            }
         }
     ]
 }
