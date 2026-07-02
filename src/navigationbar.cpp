@@ -347,6 +347,8 @@ NavigationBar::NavigationBar(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<NavigationBar_p>())
 {
+    setObjectName("NavigationBar");
+
     pimpl->self=this;
     auto vl=Layout::vertical(this);
 
@@ -378,6 +380,7 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->layout->addStretch(1);
 
     pimpl->scrollTimer=new SingleShotTimer(this);
+    setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
 //--------------------------------------------------------------------------
