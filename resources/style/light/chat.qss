@@ -2,43 +2,35 @@ uise--AbstractChatMessagesView,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
 {
-background-color: #FFFFFF; /* chat background */
+background-color: #F8FFFF; /* chat background */
 }
 
-uise--AbstractChatMessageContent {
-background-color: #E9EBEF; /* received message */
+uise--AbstractChatMessageContent,
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
+background-color: #DFF1F1; /* received message */
 }
 
 uise--AbstractChatMessageContent[selected="true"],
-uise--AbstractChatMessageContent[selected="true"][sent="true"]
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]
 {
-background-color: #AFC8E8; /* selected message */
+background-color: #C1EBE9; /* selected received message */
 }
 
-uise--AbstractChatMessageContent[sent="true"] {
-background-color: #D2E4F5; /* sent message */
+uise--AbstractChatMessageContent[sent="true"],
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"]{
+background-color: #D0E8F8; /* sent message */
+}
+
+uise--AbstractChatMessageContent[selected="true"][sent="true"],
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]
+{
+background-color: #AEE2FF; /* selected sent message */
 }
 
 uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
 selection-background-color: #AFC8E8; /* selected message */
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
-background-color: #E9EBEF;
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]{
-background-color: #AFC8E8; /* selected message */
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] {
-background-color: #D2E4F5;
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]{
-background-color: #AFC8E8; /* selected message */
 }
 
 uise--ChatMessageBottom QLabel {

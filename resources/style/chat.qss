@@ -128,12 +128,14 @@ max-height: 16px;
 
 uise--MessageSelectionPanelUi #drawer {
 padding: 0 4px;
+border-top-left-radius: 4px;
+border-bottom-left-radius: 4px;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 margin: 0 6px;
 padding: 6px 10px;
-border-radius: 2px;
+border-radius: 6px;
 min-width:100px;
 }
 
