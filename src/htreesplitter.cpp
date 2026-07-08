@@ -26,9 +26,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTimer>
 #include <QScrollBar>
 #include <QMouseEvent>
+#include <QPaintEvent>
 #include <QApplication>
 #include <QScrollBar>
 #include <QDateTime>
+#include <QDebug>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -40,6 +42,21 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreesplitter.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+bool htreeDebug()
+{
+    static bool enabled=qEnvironmentVariableIsSet("UISE_HTREE_DEBUG");
+    return enabled;
+}
+
+QString htreeDebugTs()
+{
+    return QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
+}
+
+}
 
 /************************ HTreeSplitterLine *******************************/
 
@@ -164,6 +181,7 @@ HTreeSplitterInternal::HTreeSplitterInternal(HTreeSplitter* splitter, QWidget* p
 {
     m_blockResizeTimer=new SingleShotTimer(this);
     m_emitMinMaxSizeTimer=new SingleShotTimer(this);
+    m_delayedResizeTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -182,6 +200,38 @@ HTreeSplitterInternal::~HTreeSplitterInternal()
             );
         }
     }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitterInternal::debugState(const char* tag) const
+{
+    if (!htreeDebug())
+    {
+        return;
+    }
+    QString widths;
+    for (const auto& s : m_sections)
+    {
+        widths+=QString("%1%2/%3s%4 ").arg(s->destroyed?"x":"").arg(s->width).arg(s->minWidth).arg(s->stretch);
+    }
+    qDebug().noquote() << htreeDebugTs() << tag
+        << "internalW=" << width()
+        << "minW=" << minimumWidth()
+        << "viewportW=" << m_splitter->viewPort()->width()
+        << "prevViewportW=" << m_prevViewportWidth
+        << "sections=[" << widths.trimmed() << "]";
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitterInternal::paintEvent(QPaintEvent* event)
+{
+    if (htreeDebug())
+    {
+        debugState("PAINT");
+    }
+    QFrame::paintEvent(event);
 }
 
 //--------------------------------------------------------------------------
@@ -263,10 +313,18 @@ void HTreeSplitterInternal::splitterResized(QResizeEvent* event, bool withDelaye
     updateSize(w);
     if (withDelayedReadjust)
     {
-        QTimer::singleShot(10,this,[this,w]()
-                           {
-                               updateSize(w);
-                           });
+        // coalesce delayed readjusts and use the live width at fire time:
+        // stacked timers with widths captured from transient resize events would
+        // otherwise re-apply stale geometry and produce flickering
+        m_delayedResizeTimer->shot(10,
+            [this]()
+            {
+                debugState("DEFERRED(10ms) before updateSize");
+                updateSize(width());
+                debugState("DEFERRED(10ms) after updateSize");
+            },
+            true
+        );
     }
 }
 
@@ -782,6 +840,7 @@ void HTreeSplitterInternal::updateMinWidth()
     m_emitMinMaxSizeTimer->shot(11,
         [this]()
         {
+            debugState("DEFERRED(11ms) minMaxSizeUpdated");
             emit minMaxSizeUpdated();
         },
         true
@@ -949,7 +1008,17 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
     updateStretches(s.get(),stretch);
     m_sections.push_back(std::move(s));
 
-    auto newWidth=recalculateWidths(width());
+    // clamp to the live viewport width so that the first synchronous pass already
+    // computes the final geometry, otherwise the frame is transiently sized from
+    // stale width/size hints and visibly readjusted by the deferred timers
+    auto viewportWidth=m_splitter->viewPort()->width();
+    auto targetWidth=width();
+    if (viewportWidth>0)
+    {
+        m_prevViewportWidth=viewportWidth;
+        targetWidth=viewportWidth;
+    }
+    auto newWidth=recalculateWidths(targetWidth);
 
     // qDebug() << "HTreeSplitterInternal::addWidget update minwidth from " << minimumWidth() << " to " << newWidth
     //     << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");;
@@ -957,6 +1026,8 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
     resize(newWidth,height());
     updatePositions();
     updateWidths();
+
+    debugState("addWidget end");
 
     connect(
         section,
@@ -1087,17 +1158,20 @@ void HTreeSplitterInternal::toggleSectionExpanded(int index, bool expanded, bool
         }
     }
 
-    recalculateWidths(m_prevViewportWidth);
+    auto newWidth=recalculateWidths(m_prevViewportWidth);
 #if 0
-    auto accWidth=recalculateWidths(m_prevViewportWidth);
     auto ww=width();
-    qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth m_prevViewportWidth="<<m_prevViewportWidth << " accWidth="<<accWidth << " width=" << ww
+    qDebug() << "HTreeSplitterInternal::toggleSectionExpanded index="<<index <<" expanded="<<expanded << " visible="<< visible << " update minwidth m_prevViewportWidth="<<m_prevViewportWidth << " accWidth="<<newWidth << " width=" << ww
         << " " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
 #endif
 
     updateMinWidth();
+    // resize synchronously, otherwise the frame keeps the stale width until deferred timers fire
+    resize(newWidth,height());
     updatePositions();
     updateWidths();
+
+    debugState("toggleSectionExpanded end");
 }
 
 //--------------------------------------------------------------------------
@@ -1106,7 +1180,6 @@ void HTreeSplitterInternal::truncate(int index)
 {
     auto minW=minimumWidth();
     auto w=width();
-    int truncated=0;
 
     for (size_t i=m_sections.size()-1;i>=static_cast<size_t>(index);i--)
     {
@@ -1123,7 +1196,6 @@ void HTreeSplitterInternal::truncate(int index)
             w=0;
         }
         section->destroyed=true;
-        truncated++;
 
         auto obj=section->obj;
         if (obj!=nullptr)
@@ -1165,14 +1237,17 @@ void HTreeSplitterInternal::truncate(int index)
     m_stretchLastSection=true;
 
     // qDebug() << "HTreeSplitterInternal::truncate update minwidth from " << minimumWidth() << " to " << minW;
-    if (truncated==1)
+
+    // clamp to the live viewport width so that the first synchronous pass already
+    // computes the final geometry (see addWidget)
+    auto viewportWidth=m_splitter->viewPort()->width();
+    auto targetWidth=width();
+    if (viewportWidth>0)
     {
-        w=recalculateWidths(width());
+        m_prevViewportWidth=viewportWidth;
+        targetWidth=viewportWidth;
     }
-    else
-    {
-        w=recalculateWidths(width());
-    }
+    w=recalculateWidths(targetWidth);
     updateMinWidth();
 
 #if 0
@@ -1197,6 +1272,8 @@ void HTreeSplitterInternal::truncate(int index)
     emit adjustViewPortRequested(m_splitter->viewPort()->width());
 
     m_stretchLastSection=prevStretchLast;
+
+    debugState("truncate end");
 }
 
 /**************************** HTreeSplitter *******************************/
@@ -1274,6 +1351,7 @@ int HTreeSplitter::count() const
 void HTreeSplitter::addWidget(QWidget* widget, int stretch, bool scrollTo)
 {
     pimpl->content->addWidget(widget,stretch);
+    syncWrapper();
 
     if (scrollTo)
     {
@@ -1328,6 +1406,7 @@ QWidget* HTreeSplitter::viewPort() const
 void HTreeSplitter::toggleSectionExpanded(int index, bool expanded, bool visible)
 {
     pimpl->content->toggleSectionExpanded(index,expanded,visible);
+    syncWrapper();
 }
 
 //--------------------------------------------------------------------------
@@ -1337,7 +1416,33 @@ void HTreeSplitter::adjustWidthsAndPositions()
     pimpl->content->recalculateWidths(width());
     pimpl->content->updatePositions();
     pimpl->content->updateWidths();
+    syncWrapper();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::syncWrapper()
+{
+    // reconcile the wrapper with the content synchronously so that nothing is left
+    // for the deferred minMaxSizeUpdated emission to visibly readjust;
+    // a plain updateMinMaxSize() cannot shrink a stale-wide wrapper because
+    // AlignedStretchingWidget::updateSize() bounds the content to the wrapper width
+    auto targetWidth=std::max(viewPort()->width(),pimpl->content->minimumWidth());
+    pimpl->wrapper->setMinimumWidth(0);
+    pimpl->wrapper->resize(targetWidth,pimpl->wrapper->height());
     pimpl->wrapper->updateMinMaxSize();
+
+    if (htreeDebug())
+    {
+        qDebug().noquote() << htreeDebugTs() << "syncWrapper"
+            << "wrapperW=" << pimpl->wrapper->width()
+            << "wrapperMinW=" << pimpl->wrapper->minimumWidth()
+            << "contentW=" << pimpl->content->width()
+            << "contentMinW=" << pimpl->content->minimumWidth()
+            << "viewportW=" << viewPort()->width()
+            << "hbarMax=" << pimpl->scArea->horizontalScrollBar()->maximum()
+            << "hbarVal=" << pimpl->scArea->horizontalScrollBar()->value();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1368,6 +1473,17 @@ void HTreeSplitter::scrollToIndex(int index, int xmargin)
     }
 
     pimpl->scArea->horizontalScrollBar()->setValue(pos);
+
+    if (htreeDebug())
+    {
+        qDebug().noquote() << htreeDebugTs() << "scrollToIndex"
+            << "index=" << index
+            << "requestedPos=" << pos
+            << "hbarMax=" << pimpl->scArea->horizontalScrollBar()->maximum()
+            << "hbarVal=" << pimpl->scArea->horizontalScrollBar()->value()
+            << "wrapperW=" << pimpl->wrapper->width()
+            << "viewportW=" << viewPort()->width();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1375,9 +1491,14 @@ void HTreeSplitter::scrollToIndex(int index, int xmargin)
 void HTreeSplitter::truncate(int index)
 {
     pimpl->content->truncate(index);
+    syncWrapper();
     pimpl->scrollToEndTimer->shot(20,
         [this]()
         {
+            if (htreeDebug())
+            {
+                qDebug().noquote() << htreeDebugTs() << "DEFERRED(20ms) truncate scrollToEnd";
+            }
             scrollToIndex(count()-1);
         }
     );

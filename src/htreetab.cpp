@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScrollBar>
 #include <QSplitter>
 #include <QSignalMapper>
+#include <QDateTime>
+#include <QDebug>
 
 #include <uise/desktop/utils/assert.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -49,6 +51,21 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/detail/htreesplitter_p.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+bool htreeTabDebug()
+{
+    static bool enabled=qEnvironmentVariableIsSet("UISE_HTREE_DEBUG");
+    return enabled;
+}
+
+QString htreeTabDebugTs()
+{
+    return QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
+}
+
+}
 
 //--------------------------------------------------------------------------
 
@@ -308,6 +325,10 @@ void HTreeTab_p::appendNode(HTreeNode* node)
             {
                 if (node)
                 {
+                    if (htreeTabDebug())
+                    {
+                        qDebug().noquote() << htreeTabDebugTs() << "DEFERRED(50ms) appendNode scrollToNode";
+                    }
                     scrollToNode(node);
                 }
             },
@@ -691,6 +712,10 @@ bool HTreeTab::openPath(HTreePath path)
                     {
                         if (node)
                         {
+                            if (htreeTabDebug())
+                            {
+                                qDebug().noquote() << htreeTabDebugTs() << "DEFERRED(50ms) openPath scrollToNode";
+                            }
                             pimpl->scrollToNode(node);
                         }
                     },
@@ -730,6 +755,10 @@ bool HTreeTab::openPath(HTreePath path)
 
     if (nod!=nullptr)
     {
+        if (htreeTabDebug())
+        {
+            qDebug().noquote() << htreeTabDebugTs() << "openPath final sync scrollToNode";
+        }
         pimpl->scrollToNode(nod);
     }
     return true;

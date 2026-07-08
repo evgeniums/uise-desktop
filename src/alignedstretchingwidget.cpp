@@ -25,12 +25,24 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QVariant>
 #include <QResizeEvent>
+#include <QDateTime>
+#include <QDebug>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/alignedstretchingwidget.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+bool aswDebug()
+{
+    static bool enabled=qEnvironmentVariableIsSet("UISE_HTREE_DEBUG");
+    return enabled;
+}
+
+}
 
 //--------------------------------------------------------------------------
 AlignedStretchingWidget::AlignedStretchingWidget(QWidget *parent)
@@ -208,6 +220,16 @@ void AlignedStretchingWidget::updateSize()
     if (move)
     {
         m_widget->move(pos);
+    }
+
+    if (aswDebug())
+    {
+        qDebug().noquote() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
+            << "AlignedStretchingWidget::updateSize"
+            << "selfW=" << width()
+            << "widgetW=" << m_widget->width()
+            << "widgetX=" << m_widget->x()
+            << "minW=" << minimumWidth();
     }
 
     // after move there can be artefacts, repaint widget to get rid of them

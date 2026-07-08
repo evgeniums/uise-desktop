@@ -99,6 +99,8 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
     private:
 
+        void syncWrapper();
+
         std::unique_ptr<HTreeSplitter_p> pimpl;
 };
 

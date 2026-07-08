@@ -189,6 +189,9 @@ class HTreeSplitterInternal : public QFrame
         void updateStretches(Section* section, int stretch=0);
         Section* section(int index) const;
 
+        void debugState(const char* tag) const;
+        void paintEvent(QPaintEvent* event) override;
+
         void splitterResized(QResizeEvent* event, bool withDelayedReadjust=true);
 
         QHBoxLayout* m_layout;
@@ -198,6 +201,7 @@ class HTreeSplitterInternal : public QFrame
         bool m_blockResizeEvent;
         SingleShotTimer* m_blockResizeTimer;
         SingleShotTimer* m_emitMinMaxSizeTimer;
+        SingleShotTimer* m_delayedResizeTimer;
         int m_resizingIndex;
         int m_prevViewportWidth;
 
