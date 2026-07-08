@@ -98,6 +98,11 @@ class ModalDialog : public FrameWithModalPopup,
             m_defaultMaxHeightPercent=value;
         }
 
+        void setPopupAutoHeight(bool enable)
+        {
+            FrameWithModalPopup::setPopupAutoHeight(enable);
+        }
+
         /**
          * @brief Open modal dialog.
          * @parame destroyOnCancel Destroy dialog if cancelled.

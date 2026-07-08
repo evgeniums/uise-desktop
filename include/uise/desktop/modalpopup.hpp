@@ -68,6 +68,7 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
+        bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
 
@@ -160,6 +161,25 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
 
         void setAutoColor(bool enable);
         bool isAutoColor() const;
+
+        /**
+         * @brief Enable/disable fitting popup height to its content.
+         *
+         * When enabled the popup height is computed from the content widget's preferred
+         * height (heightForWidth of the resolved width, falling back to sizeHint), bounded
+         * below by the widget's minimumHeight and above by maxHeightPercent of the parent
+         * frame (and by the widget's maximumHeight if a smaller explicit cap is set). The
+         * popup also reflows automatically whenever the content requests a new layout, so a
+         * dialog that grows (e.g. a wrapped multiline error) resizes to fit while visible.
+         * @param enable
+         */
+        void setPopupAutoHeight(bool enable);
+
+        /**
+         * @brief Check whether fitting popup height to content is enabled.
+         * @return Operation result.
+         */
+        bool isPopupAutoHeight() const;
 
         void setContentWidget(QWidget* widget);
 

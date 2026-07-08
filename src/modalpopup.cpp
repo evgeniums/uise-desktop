@@ -23,6 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QEvent>
 #include <QResizeEvent>
 #include <QShortcut>
 #include <QPalette>
@@ -48,7 +49,8 @@ class ModalPopup_p
         QShortcut* shortcut=nullptr;
 
         bool shortcutEnabled=true;
-        bool autoDestroy=false;        
+        bool autoDestroy=false;
+        bool inUpdate=false;
 };
 
 //--------------------------------------------------------------------------
@@ -84,6 +86,24 @@ void ModalPopup::setWidget(QWidget* widget, bool autoDestroy)
     pimpl->autoDestroy=autoDestroy;
     pimpl->widget=widget;
     pimpl->widget->setParent(this);
+    pimpl->widget->installEventFilter(this);
+}
+
+//--------------------------------------------------------------------------
+
+bool ModalPopup::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==pimpl->widget
+        && event->type()==QEvent::LayoutRequest
+        && pimpl->parent->isPopupAutoHeight()
+        && isVisible()
+        && !pimpl->inUpdate)
+    {
+        // content requested a new layout (e.g. a wrapped multiline error appeared) -
+        // refit the popup to the new content height
+        updateWidgetGeometry();
+    }
+    return QFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------
@@ -184,7 +204,28 @@ void ModalPopup::updateWidgetGeometry()
         newW=minSize.width();
     }
 
-    if (maxSize.height()>0 && newH>maxSize.height())
+    if (pimpl->parent->isPopupAutoHeight())
+    {
+        // fit height to content at the resolved width
+        auto contentH=pimpl->widget->heightForWidth(newW);
+        if (contentH<=0)
+        {
+            contentH=pimpl->widget->sizeHint().height();
+        }
+        newH=contentH;
+
+        // upper bound: percent of parent (screen safety), or the explicit max height if smaller
+        auto cap=h * pimpl->parent->maxHeightPercent()/100;
+        if (maxSize.height()>0 && maxSize.height()<cap)
+        {
+            cap=maxSize.height();
+        }
+        if (newH>cap)
+        {
+            newH=cap;
+        }
+    }
+    else if (maxSize.height()>0 && newH>maxSize.height())
     {
         newH=maxSize.height();
     }
@@ -193,7 +234,9 @@ void ModalPopup::updateWidgetGeometry()
         newH=minSize.height();
     }
 
+    pimpl->inUpdate=true;
     pimpl->widget->resize(newW,newH);
+    pimpl->inUpdate=false;
     setPos(newW,newH);
 }
 
@@ -224,6 +267,7 @@ class FrameWithModalPopup_p
         bool locked=false;
         bool autoDestroy=true;
         bool autoColor=false;
+        bool autoHeight=false;
         QBoxLayout* layout=nullptr;
         QPointer<QWidget> contentWidget;
 
@@ -365,6 +409,20 @@ void FrameWithModalPopup::setAutoColor(bool enable)
 bool FrameWithModalPopup::isAutoColor() const
 {
     return pimpl->autoColor;
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setPopupAutoHeight(bool enable)
+{
+    pimpl->autoHeight=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPopup::isPopupAutoHeight() const
+{
+    return pimpl->autoHeight;
 }
 
 //--------------------------------------------------------------------------
