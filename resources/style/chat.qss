@@ -140,7 +140,9 @@ min-width:100px;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+/*
 font-size: 18px;
+*/
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {

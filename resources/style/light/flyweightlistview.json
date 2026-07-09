@@ -5,8 +5,8 @@
             "name" : "JumpEdge",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" },
-                    "on" :  { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#777777" },
+                    "on" :  { "currentColor" : "#777777" }
                 },
                 "hovered" : {
                     "off" : { "currentColor" : "#000000" },
