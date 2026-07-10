@@ -238,6 +238,11 @@ int RoundedImage::yRadius() const
 
 IconMode RoundedImage::currentSvgIconMode() const
 {
+    if (!isEnabled())
+    {
+        return IconMode::Disabled;
+    }
+
     auto mode=IconMode::Normal;
     if (m_hovered||m_parentHovered)
     {
