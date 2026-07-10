@@ -67,6 +67,24 @@ AvatarButton::AvatarButton(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+AvatarButton::AvatarButton(std::shared_ptr<SvgIcon> icon, QWidget* parent)
+    : AvatarButton(parent)
+{
+    setAvatarOnly(static_cast<bool>(icon));
+    m_avatar->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarButton::setAvatarOnly(bool enable)
+{
+    m_avatarOnly=enable;
+    m_avatar->setVisible(enable);
+    m_text->setVisible(!enable);
+}
+
+//--------------------------------------------------------------------------
+
 void AvatarButton::setHovered(bool enable)
 {
     setProperty("hovered",enable);    

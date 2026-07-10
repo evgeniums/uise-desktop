@@ -49,6 +49,8 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
     
         AvatarButton(QWidget* parent=nullptr);
 
+        AvatarButton(std::shared_ptr<SvgIcon> icon, QWidget* parent=nullptr);
+
         void setParentHovered(bool enable);
 
         bool isParentHovered() const noexcept
@@ -83,6 +85,17 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
         void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource);
         std::shared_ptr<AvatarSource> avatarSource() const;
 
+        AvatarWidget* avatar() const
+        {
+            return m_avatar;
+        }
+
+        void setAvatarOnly(bool enable);
+        bool isAvatarOnly() const
+        {
+            return m_avatarOnly;
+        }
+
     signals:
 
         void clicked();
@@ -112,6 +125,7 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
         AvatarWidget* m_avatar;
         RoundedImage* m_tailIcon;
         QLabel* m_text;
+        bool m_avatarOnly;
 
         bool m_parentHovered;
         bool m_checked;
