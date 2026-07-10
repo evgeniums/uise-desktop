@@ -376,33 +376,33 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
             return m_rightBottomCircle;
         }
 
-        void setRightBottomPixmap(QPixmap pixmap)
+        void setCornerPixmap(QPixmap pixmap)
         {
-            m_rightBottomPixmap=std::move(pixmap);
+            m_cornerPixmap=std::move(pixmap);
             update();
         }
 
-        QPixmap rightBottomWidget() const
+        QPixmap cornerWidget() const
         {
-            return m_rightBottomPixmap;
+            return m_cornerPixmap;
         }
 
-        void setRightBottomSvgIcon(std::shared_ptr<SvgIcon> icon)
+        void setCornerSvgIcon(std::shared_ptr<SvgIcon> icon)
         {
-            m_rightBottomSvgIcon=std::move(icon);
+            m_cornerSvgIcon=std::move(icon);
             update();
         }
 
-        std::shared_ptr<SvgIcon> rightBottomSvgIcon() const
+        std::shared_ptr<SvgIcon> cornerSvgIcon() const
         {
-            return m_rightBottomSvgIcon;
+            return m_cornerSvgIcon;
         }
 
-        void clearRightBottomCorner()
+        void clearCorner()
         {
             m_rightBottomCircle=false;
-            m_rightBottomSvgIcon.reset();
-            m_rightBottomPixmap=QPixmap{};
+            m_cornerSvgIcon.reset();
+            m_cornerPixmap=QPixmap{};
             update();
         }
 
@@ -543,6 +543,17 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 
         QPixmap nonamePixmap(const QSize& size, QRect* rect=nullptr) const;
 
+        Qt::Corner cornerImagePosition() const
+        {
+            return m_cornerImagePosition;
+        }
+
+        void setCornerImagePosition(Qt::Corner corner)
+        {
+            m_cornerImagePosition=corner;
+            update();
+        }
+
     signals:
 
         void clicked();
@@ -563,8 +574,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         void generateLetters(QPainter* painter) const;
 
         bool m_rightBottomCircle=false;
-        QPixmap m_rightBottomPixmap;
-        std::shared_ptr<SvgIcon> m_rightBottomSvgIcon;
+        QPixmap m_cornerPixmap;
+        std::shared_ptr<SvgIcon> m_cornerSvgIcon;
         double m_cornerImageSizeRatio=CornerImageSizeRatio;
         QColor m_rightBottomCircleColor=DefaultCornerCircleColor;
 
@@ -582,6 +593,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         bool m_bottomPixmapHoverVisible=false;
         bool m_hovered=false;
         bool m_clickable=false;
+
+        Qt::Corner m_cornerImagePosition=Qt::BottomRightCorner;
 };
 
 UISE_DESKTOP_NAMESPACE_END

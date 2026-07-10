@@ -108,7 +108,9 @@ int main(int argc, char *argv[])
                                    "noname",
                                    "one more missing.png",
                                    "александр сергеевич.png",
-                                   "noname"};
+                                   "noname",
+                                   "3.jpg"
+                                   };
     std::vector<QSize> sizes{QSize{64,64},QSize{128,128},QSize{150,150}};
 
     for (size_t i=0;i<names.size();i++)
@@ -178,11 +180,26 @@ int main(int argc, char *argv[])
 
                 img->setRightBottomCircleColor(0x0038b000);
             }
-            if (i==3)
+            if (i==3 || i==9)
             {
                 auto svgIcon=std::make_shared<SvgIcon>();
                 svgIcon->addFile(":/uise/icons/ext/classic/cpp.svg");
-                img->setRightBottomSvgIcon(std::move(svgIcon));
+                img->setCornerSvgIcon(std::move(svgIcon));
+                if (i==9)
+                {
+                    if (size.width()==64)
+                    {
+                        img->setCornerImagePosition(Qt::TopLeftCorner);
+                    }
+                    else if (size.width()==128)
+                    {
+                        img->setCornerImagePosition(Qt::TopRightCorner);
+                    }
+                    else if (size.width()==150)
+                    {
+                        img->setCornerImagePosition(Qt::BottomLeftCorner);
+                    }
+                }
             }
         }
     }

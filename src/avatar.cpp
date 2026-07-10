@@ -502,19 +502,41 @@ void AvatarWidget::doPaint(QPainter* painter)
 
     int w=qRound(width() * m_cornerImageSizeRatio);
     int h=qRound(height() * m_cornerImageSizeRatio);
-    int x=width() - w - m_cornerImageXOffset;
-    int y=height() - h - m_cornerImageYOffset;
+
+    int x=0;
+    int y=0;
+
+    switch (m_cornerImagePosition)
+    {
+        case Qt::TopLeftCorner:
+            x=m_cornerImageXOffset;
+            y=m_cornerImageYOffset;
+            break;
+        case Qt::TopRightCorner:
+            x=width() - w - m_cornerImageXOffset;
+            y=m_cornerImageYOffset;
+            break;
+        case Qt::BottomLeftCorner:
+            x=m_cornerImageXOffset;
+            y=height() - h - m_cornerImageYOffset;
+            break;
+        case Qt::BottomRightCorner:
+            x=width() - w - m_cornerImageXOffset;
+            y=height() - h - m_cornerImageYOffset;
+            break;
+    }
+
     QRect rect{x,y,w,h};
     auto sz=QSize{w,h};
 
     if (!m_bottomPixmapHoverVisible || m_hovered)
     {
-        auto pixmap=m_rightBottomPixmap;
-        if (pixmap.isNull() && m_rightBottomSvgIcon)
+        auto pixmap=m_cornerPixmap;
+        if (pixmap.isNull() && m_cornerSvgIcon)
         {
             const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
             sz=sz*pixelRatio;
-            pixmap=m_rightBottomSvgIcon->pixmap(sz,currentSvgIconMode());
+            pixmap=m_cornerSvgIcon->pixmap(sz,currentSvgIconMode());
         }
         if (pixmap.isNull())
         {
