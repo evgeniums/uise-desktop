@@ -47,6 +47,8 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
 
         void addPushButton(PushButton* button);
 
+        void setSearchButtonVisible(bool enable);
+
     public slots:
 
         void cancel();
@@ -71,6 +73,7 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
         QShortcut* m_cancelShortcut;
 
         bool m_editing;
+        bool m_searchButtonVisible=true;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -100,7 +100,7 @@ void SearchLineEdit::doCancel(bool keepFocus)
 
     m_editing=false;
     clear();
-    m_searchButton->setVisible(true);
+    m_searchButton->setVisible(m_searchButtonVisible);
     m_cancelButton->setVisible(false);
     updateButtonPositions();
     emit editingModeChanged(m_editing);
@@ -155,6 +155,14 @@ void SearchLineEdit::leaveEvent(QEvent* event)
 {
     m_searchButton->setParentHovered(false);
     LineEdit::leaveEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void SearchLineEdit::setSearchButtonVisible(bool enable)
+{
+    m_searchButtonVisible=enable;
+    m_searchButton->setVisible(m_searchButtonVisible && !m_editing);
 }
 
 //--------------------------------------------------------------------------
