@@ -54,6 +54,11 @@ class HTreePathElementConfig
             return m_width;
         }
 
+        bool isForceVisibleInNavbar() const noexcept
+        {
+            return m_forceVisibleInNavbar;
+        }
+
         void setExpanded(bool expanded) noexcept
         {
             m_expanded=expanded;
@@ -64,10 +69,16 @@ class HTreePathElementConfig
             m_width=width;
         }
 
+        void setForceVisibleInNavbar(bool enable) noexcept
+        {
+            m_forceVisibleInNavbar=enable;
+        }
+
     private:
 
         bool m_expanded;
         int m_width;
+        bool m_forceVisibleInNavbar=false;
 };
 
 class HTreePathElement
@@ -120,6 +131,11 @@ class HTreePathElement
         }
 
         const HTreePathElementConfig& config() const noexcept
+        {
+            return m_config;
+        }
+
+        HTreePathElementConfig& config() noexcept
         {
             return m_config;
         }

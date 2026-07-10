@@ -274,6 +274,7 @@ class NavigationBar_p
 
         std::vector<NavigationBarItem*> items;
         std::vector<NavigationBarSeparator*> separators;
+        NavigationBarItem* placeHolder=nullptr;
 
         bool exclusive=true;
         bool updating=false;
@@ -307,6 +308,8 @@ class NavigationBar_p
 
         bool openInTabEnabled=true;
         bool openInWindowEnabled=true;
+
+        bool singleItemVisibleMode=false;
 };
 
 //--------------------------------------------------------------------------
@@ -377,6 +380,10 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->leftFrameLayout=Layout::horizontal(pimpl->leftFrame);
     pimpl->leftFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
+    pimpl->placeHolder=new NavigationBarItem();
+    pimpl->placeHolder->setText(" ");
+    pimpl->placeHolder->setVisible(false);
+    pimpl->layout->addWidget(pimpl->placeHolder);
     pimpl->layout->addStretch(1);
 
     pimpl->scrollTimer=new SingleShotTimer(this);
@@ -408,14 +415,21 @@ void  NavigationBar::showEvent(QShowEvent* event)
 
 void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id, std::shared_ptr<SvgIcon> icon)
 {
-    if (pimpl->layout->count()>2)
+    if (pimpl->layout->count()>3)
     {
         delete pimpl->layout->takeAt(pimpl->layout->count()-1);
     }
 
     auto button=new NavigationBarItem(std::move(icon),this,pimpl->checkable);
     button->setNoToggleOff(pimpl->exclusive);
-    button->setHoveringCursor(pimpl->hoveringCursor);
+    if (!pimpl->singleItemVisibleMode)
+    {
+        button->setHoveringCursor(pimpl->hoveringCursor);
+    }
+    else
+    {
+        button->setHoveringCursor(Qt::ArrowCursor);
+    }
     if (!tooltip.isEmpty())
     {
         button->setToolTip(tooltip);
@@ -511,7 +525,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         sep->setBuddy(button);
         pimpl->layout->addWidget(sep);
         pimpl->separators.emplace_back(sep);
-        if (pimpl->sepsVisible)
+        if (pimpl->sepsVisible && !pimpl->singleItemVisibleMode)
         {
             w+=sep->sizeHint().width();
         }
@@ -557,6 +571,8 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
          },
          true
     );
+
+    updateSingleItemVisibleMode();
 }
 
 //--------------------------------------------------------------------------
@@ -731,6 +747,8 @@ void NavigationBar::truncate(int index)
     }
 
     pimpl->updateScrollArea(w);
+
+    updateSingleItemVisibleMode();
 }
 
 //--------------------------------------------------------------------------
@@ -840,6 +858,76 @@ void NavigationBar::setItemsOpenInWindowEnabled(bool enable) noexcept
 void NavigationBar::addLeadingWidget(QWidget* widget)
 {
     pimpl->leftFrameLayout->addWidget(widget,0,Qt::AlignLeft);
+}
+
+//--------------------------------------------------------------------------
+
+bool NavigationBar::isSingleVisibleMode() const
+{
+    return pimpl->singleItemVisibleMode;
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setSingleVisibleMode(bool enable)
+{
+    pimpl->singleItemVisibleMode=enable;
+    updateSingleItemVisibleMode();
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::updateSingleItemVisibleMode()
+{
+    bool forceVisibleFound=false;
+    for (auto& item: pimpl->items)
+    {
+        if (pimpl->singleItemVisibleMode)
+        {
+            if (item->isForceVisible())
+            {
+                forceVisibleFound=true;
+                item->setVisible(true);
+            }
+            else
+            {
+                item->setVisible(false);
+            }
+        }
+        else
+        {
+            item->setVisible(true);
+        }
+    }
+
+    pimpl->placeHolder->setVisible(pimpl->singleItemVisibleMode);
+    if (pimpl->singleItemVisibleMode && !forceVisibleFound)
+    {
+        if (!pimpl->items.empty())
+        {
+            auto last=pimpl->items.back();
+            last->setVisible(true);
+        }
+    }
+
+    pimpl->updateScrollArea();
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBar::setForceSingleItemVisible(int index, bool enable)
+{
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
+    pimpl->items[index]->setForceVisible(enable);
+    updateSingleItemVisibleMode();
+}
+
+//--------------------------------------------------------------------------
+
+bool NavigationBar::isForceSingleItemVisible(int index) const
+{
+    if (index<0 || index>=static_cast<int>(pimpl->items.size())) return false;
+    return pimpl->items[index]->isForceVisible();
 }
 
 //--------------------------------------------------------------------------

@@ -87,6 +87,16 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public IconTextButton
             return m_openInWindowEnabled;
         }
 
+        void setForceVisible(bool enable) noexcept
+        {
+            m_forceVisible=enable;
+        }
+
+        bool isForceVisible() const noexcept
+        {
+            return m_forceVisible;
+        }
+
     signals:
 
         void openInNewTabRequested();
@@ -104,6 +114,7 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public IconTextButton
         bool m_noToggleOff=false;
         bool m_openInTabEnabled=true;
         bool m_openInWindowEnabled=true;
+        bool m_forceVisible=false;
 };
 
 /**
@@ -348,6 +359,12 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
          */
         void setItemsOpenInWindowEnabled(bool enable) noexcept;
 
+        void setSingleVisibleMode(bool enable);
+        bool isSingleVisibleMode() const;
+
+        void setForceSingleItemVisible(int index, bool enable=true);
+        bool isForceSingleItemVisible(int index) const;
+
     public slots:
 
         /**
@@ -401,6 +418,8 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
 
         void resizeEvent(QResizeEvent* event) override;
         void showEvent(QShowEvent* event) override;
+
+        void updateSingleItemVisibleMode();
 
     private:
 

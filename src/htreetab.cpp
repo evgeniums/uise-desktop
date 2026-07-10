@@ -233,6 +233,12 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     navbar->addItem(node->name(),node->nodeTooltip(),node->id());
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
+
+    if (node->path().last()->config().isForceVisibleInNavbar())
+    {
+        navbar->setForceSingleItemVisible(index,true);
+    }
+
     navbar->blockSignals(false);
     node->connect(
         node,
@@ -395,6 +401,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
     pimpl->navbar=new NavigationBar(this);
     pimpl->navbar->setExclusive(false);
     pimpl->navbar->setSeparatorSample(sep);
+    pimpl->navbar->setSingleVisibleMode(tree->isNavbarSingleVisibleMode());
     l->addWidget(pimpl->navbar);
 
     pimpl->splitter=new HTreeSplitter(this);

@@ -112,6 +112,9 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setNodeHeaderVisible(bool enable);
         bool isNodeHeaderVisible() const noexcept;
 
+        void setNavbarSingleVisibleMode(bool enable);
+        bool isNavbarSingleVisibleMode() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
