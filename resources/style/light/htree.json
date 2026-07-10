@@ -31,7 +31,12 @@
                     "on" : { "currentColor" : "#000000" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#000000" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#AAAAAA" },
+                    "on" : { "currentColor" : "#AAAAAA" }
                 }
             }
         },

@@ -35,7 +35,8 @@
                     "off" : { "currentColor" : "#FFFFFF" }
                 },
                 "disabled" : {
-                    "off" : { "currentColor" : "#999999" }
+                    "off" : { "currentColor" : "#999999" },
+                    "on" : { "currentColor" : "#999999" }
                 }
             }
         },

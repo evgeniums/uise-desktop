@@ -24,7 +24,7 @@ min-height:14px;
 max-height:14px;
 }
 
-uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #trailingIcon {
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #trailingIcon{
 margin-left: 3px;
 margin-top: 2px;
 }
@@ -33,19 +33,23 @@ uise--NavigationBar #leftFrame {
 padding-left: 6px;
 }
 
-uise--NavigationBar #leftFrame uise--IconTextButton {
-}
-
 uise--NavigationBar #leftFrame uise--IconTextButton uise--WithRoundedImage,
-uise--NavigationBar #leftFrame uise--IconTextButton uise--RoundedImage {
+uise--NavigationBar #leftFrame uise--IconTextButton uise--RoundedImage,
+uise--NavigationBar #leftFrame uise--AvatarButton uise--RoundedImage {
 min-width: 18px;
 max-width: 18px;
 min-height: 18px;
 max-height: 18px;
 }
 
-uise--NavigationBar #leftFrame uise--IconTextButton {
+uise--NavigationBar #leftFrame uise--IconTextButton{
 margin-right: 4px;
+padding: 0;
+}
+
+uise--NavigationBar #leftFrame uise--AvatarButton {
+margin-right: 6px;
+margin-top: 2px;
 }
 
 uise--NavigationBarPanel uise--IconTextButton#updateButton {
