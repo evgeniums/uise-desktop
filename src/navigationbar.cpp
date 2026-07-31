@@ -899,8 +899,10 @@ void NavigationBar::updateSingleItemVisibleMode()
             item->setVisible(true);
         }
     }
-
+//! @todo Check if place holder still required
+#if 0
     pimpl->placeHolder->setVisible(pimpl->singleItemVisibleMode);
+#endif
     if (pimpl->singleItemVisibleMode && !forceVisibleFound)
     {
         if (!pimpl->items.empty())
