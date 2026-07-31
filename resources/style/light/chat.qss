@@ -47,11 +47,11 @@ color: #1e6091;
 }
 
 uise--ChatSeparatorSection uise--AvatarButton {
-background-color:#DDDDDD;
+background-color:#EBEBEB;
 }
 
 uise--ChatSeparatorSection[separator_type="unread"] {
-background-color:#DDDDDD;
+background-color:#EBEBEB;
 }
 
 uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
