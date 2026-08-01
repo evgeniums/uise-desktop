@@ -85,6 +85,12 @@
         <file>style/light/loadcontrol.json</file>
         <file>style/dark/loadcontrol.qss</file>
         <file>style/light/loadcontrol.qss</file>
+        <file>style/fastswitchbutton.json</file>
+        <file>style/fastswitchbutton.qss</file>
+        <file>style/dark/fastswitchbutton.json</file>
+        <file>style/light/fastswitchbutton.json</file>
+        <file>style/dark/fastswitchbutton.qss</file>
+        <file>style/light/fastswitchbutton.qss</file>
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>

@@ -170,6 +170,7 @@ SET (HEADERS
 
     include/uise/desktop/icontextbutton.hpp
     include/uise/desktop/loadcontrol.hpp
+    include/uise/desktop/fastswitchbutton.hpp
 
     include/uise/desktop/abstractimageviewer.hpp
     include/uise/desktop/imageviewer.hpp
@@ -305,6 +306,7 @@ SET (SOURCES
     src/qrcodefromimage.cpp
     src/icontextbutton.cpp
     src/loadcontrol.cpp
+    src/fastswitchbutton.cpp
 
     src/abstractimageviewer.cpp
     src/imageviewer.cpp

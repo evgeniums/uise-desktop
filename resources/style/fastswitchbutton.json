@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "FastSwitchButton",
+            "aliases" : {
+                "chats" : "${uise-svg-icons-1}/messages",
+                "chevron" : "${uise-svg-icons-1}/chevron-down",
+                "back" : "${uise-svg-icons-1}/arrow-left",
+                "home" : "${uise-svg-icons-1}/home",
+                "lock" : "${uise-svg-icons-1}/lock",
+                "quit" : "${uise-svg-icons-1}/logout"
+            }
+        }
+    ]
+}

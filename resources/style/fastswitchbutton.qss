@@ -1,0 +1,76 @@
+uise--FastSwitchButton {
+padding:0;
+margin:0;
+border:none;
+qproperty-extraSpacing: 2;
+qproperty-dropdownOffsetX: 0;
+qproperty-dropdownOffsetY: 4;
+qproperty-extraSlideDurationMs: 150;
+qproperty-dropdownAnimationDurationMs: 150;
+qproperty-extraEasingCurveType: 6;
+qproperty-dropdownEasingCurveType: 6;
+qproperty-hoverEnterDelayMs: 0;
+qproperty-hoverLeaveDelayMs: 120;
+}
+
+uise--FastSwitchButton #extraClip {
+padding:0;
+margin:0;
+}
+
+/* padding and border are declared explicitly and unconditionally (identical whether
+   checked or not) so that adding a checked-state background-color below never changes
+   this widget's effective box model -- only its color -- and never shifts its siblings */
+uise--FastSwitchButton #mainButton {
+border-radius:4px;
+border:1px solid transparent;
+padding:2px;
+}
+
+uise--FastSwitchButton uise--IconTextButton uise--RoundedImage,
+uise--FastSwitchButton uise--AvatarButton uise--RoundedImage {
+min-width:18px;
+max-width:18px;
+min-height:18px;
+max-height:18px;
+}
+
+uise--FastSwitchButtonDropdown {
+border:1px solid;
+border-radius:6px;
+padding:8px;
+}
+
+uise--FastSwitchButtonDropdown #dropdownContent {
+padding:0;
+margin:0;
+}
+
+uise--FastSwitchButtonDropdown #separator {
+min-height:1px;
+max-height:1px;
+border:none;
+margin-top:4px;
+margin-bottom:4px;
+}
+
+/* The dropdown is parented to the control's top-level window, not to
+   uise--FastSwitchButton itself, so it needs its own icon-size rule -- the
+   uise--FastSwitchButton-scoped one above never reaches this subtree. */
+uise--FastSwitchButtonDropdown uise--IconTextButton uise--RoundedImage,
+uise--FastSwitchButtonDropdown uise--AvatarButton uise--RoundedImage {
+min-width:20px;
+max-width:20px;
+min-height:20px;
+max-height:20px;
+}
+
+uise--FastSwitchButtonDropdown uise--IconTextButton #text,
+uise--FastSwitchButtonDropdown uise--AvatarButton #text {
+margin-left:8px;
+}
+
+uise--FastSwitchButtonDropdown uise--IconTextButton {
+padding:6px 8px;
+border-radius:4px;
+}

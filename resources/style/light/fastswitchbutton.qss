@@ -1,0 +1,12 @@
+uise--FastSwitchButtonDropdown {
+background-color: #FFFFFF;
+border-color: #D0D0D0;
+}
+
+uise--FastSwitchButtonDropdown #separator {
+background-color: #E0E0E0;
+}
+
+uise--FastSwitchButton #mainButton[checked="true"] {
+background-color: rgba(10,102,194,40);
+}

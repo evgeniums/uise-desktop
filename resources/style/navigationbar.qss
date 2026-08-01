@@ -55,3 +55,25 @@ margin-top: 2px;
 uise--NavigationBarPanel uise--IconTextButton#updateButton {
 margin-left: 8px;
 }
+
+uise--NavigationBar #leftFrame uise--FastSwitchButton {
+margin-right: 4px;
+padding: 0;
+}
+
+/* #mainButton simultaneously matches the generic "uise--NavigationBar #leftFrame
+   uise--IconTextButton" rule above (margin-right:4px; padding:0;) and
+   fastswitchbutton.qss's "uise--FastSwitchButton #mainButton" rule (padding:2px;
+   border:1px solid transparent;) -- two rules, from two different files, of ambiguous
+   relative specificity, both targeting the same box-model properties on the same widget.
+   That ambiguity is unstable: it can resolve differently across repolish events (e.g. the
+   one triggered whenever the neighboring extra widget's clip is hidden/shown), which reads
+   as mainButton's padding briefly flipping and snapping back. Pin the complete box model
+   explicitly here, at a selector chain long/specific enough to leave nothing for the
+   generic rule above to contest. */
+uise--NavigationBar #leftFrame uise--FastSwitchButton #mainButton {
+margin: 0;
+padding: 2px;
+border: 1px solid transparent;
+border-radius: 4px;
+}
