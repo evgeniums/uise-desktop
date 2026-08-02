@@ -151,6 +151,14 @@ void RoundedImage::createPixmapConsumer()
 #if 0
         qDebug() << "RoundedImage::createPixmapConsumer() not ready" << " " << printCurrentDateTime();
 #endif
+        // m_prevPixmapConsumer may have just been aliased to m_pixmapConsumer above (same
+        // pointer) when there is no legitimate new consumer to transition to here — clear the
+        // alias first so it is not left dangling once m_pixmapConsumer is deleted below, and so
+        // a later swap (or ~RoundedImage) does not double-delete it.
+        if (m_prevPixmapConsumer==m_pixmapConsumer)
+        {
+            m_prevPixmapConsumer=nullptr;
+        }
         delete m_pixmapConsumer;
         m_pixmapConsumer=nullptr;
         return;
