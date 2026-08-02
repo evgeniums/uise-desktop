@@ -664,16 +664,6 @@ void FastSwitchButton::setExtraWidgetHovered(QWidget* widget, bool hovered)
         return;
     }
 
-    if (auto* btn=qobject_cast<IconTextButton*>(widget))
-    {
-        btn->setParentHovered(hovered);
-        return;
-    }
-    if (auto* btn=qobject_cast<AvatarButton*>(widget))
-    {
-        btn->setParentHovered(hovered);
-        return;
-    }
     widget->setProperty("hovered",hovered);
     Style::updateWidgetStyle(widget);
 }
@@ -825,6 +815,29 @@ void FastSwitchButton::measureExtra()
 
     fillExtraWidget(pimpl->extraWidget);
     Style::repolishRecursive(pimpl->extraWidget);
+
+    // QStyle::polish() above (what repolishRecursive() calls) does not itself invalidate any
+    // nested layout's cached sizeHint, and font resolution (QWidget::ensurePolished()) is a
+    // separate mechanism again -- both must run before sizeHint() below, exactly as
+    // measureDropdown() already has to (see its comments) for the same reason: a freshly
+    // created extra widget with its own internal layout (e.g. an AvatarButton subclass, whose
+    // avatar/text spacing comes entirely from a QSS margin on its #text label) can otherwise
+    // measure too narrow on the very first fill and never grow to actually show that margin.
+    pimpl->extraWidget->ensurePolished();
+    const auto extraDescendants=pimpl->extraWidget->findChildren<QWidget*>();
+    for (auto* w : extraDescendants)
+    {
+        w->ensurePolished();
+        if (w->layout()!=nullptr)
+        {
+            w->layout()->invalidate();
+        }
+    }
+    if (pimpl->extraWidget->layout()!=nullptr)
+    {
+        pimpl->extraWidget->layout()->invalidate();
+    }
+
     pimpl->extraWidget->adjustSize();
 
     auto hint=pimpl->extraWidget->sizeHint();
@@ -835,6 +848,13 @@ void FastSwitchButton::measureExtra()
     pimpl->extraFullSize=hint;
 
     pimpl->extraWidget->setGeometry(pimpl->extraSpacing,0,pimpl->extraFullSize.width(),pimpl->extraFullSize.height());
+    if (pimpl->extraWidget->layout()!=nullptr)
+    {
+        // Lay children out synchronously against the final rect -- the extra widget becomes
+        // visible synchronously right after this function returns, so a deferred layout pass
+        // (which a plain resize would only schedule) is too late.
+        pimpl->extraWidget->layout()->activate();
+    }
     pimpl->extraClip->setFixedHeight(pimpl->extraFullSize.height());
 }
 
