@@ -72,6 +72,11 @@ void IconTextButton::setHovered(bool enable)
 {
     setProperty("hovered",enable);
     m_text->setProperty("hovered",enable);
+    // Without repolishing `this` too, a QSS rule keyed on this widget's own [hovered="true"]
+    // (e.g. a background-color on the button itself, as opposed to on #text) never takes
+    // effect: a dynamic property change alone does not invalidate Qt's cached style
+    // evaluation for the widget it was set on -- setChecked() below already gets this right.
+    Style::updateWidgetStyle(this);
     Style::updateWidgetStyle(m_text);
     m_icon->setParentHovered(enable);
     m_trailingIcon->setParentHovered(enable);
