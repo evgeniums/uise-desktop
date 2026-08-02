@@ -50,6 +50,14 @@ class UISE_DESKTOP_EXPORT ButtonsList : public QFrame
         QBoxLayout* m_layout;
 };
 
+/**
+ * @brief Plain, unanchored, unanimated Qt::Popup showing a ButtonsList at the cursor position.
+ *
+ * Prefer DropdownMenu (dropdownmenu.hpp) for new code: it anchors to a trigger widget or a
+ * position, animates its open/close, and supports checkable items and icons. This class is
+ * kept as-is for existing consumers -- it is not reimplemented on top of DropdownMenu, since
+ * a Qt::Popup has different focus/grab semantics than DropdownFrame's window-parented overlay.
+ */
 class UISE_DESKTOP_EXPORT PopupButtonsList : public QFrame
 {
     Q_OBJECT
