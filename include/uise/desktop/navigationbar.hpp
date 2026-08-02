@@ -243,6 +243,7 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         NavigationBar& operator=(NavigationBar&&)=delete;
 
         void addLeadingWidget(QWidget* widget);
+        void addTrailingWidget(QWidget* widget);
 
         /**
          * @brief Add item to the bar.

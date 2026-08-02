@@ -273,8 +273,7 @@ class NavigationBar_p
         QHBoxLayout* layout=nullptr;
 
         std::vector<NavigationBarItem*> items;
-        std::vector<NavigationBarSeparator*> separators;
-        NavigationBarItem* placeHolder=nullptr;
+        std::vector<NavigationBarSeparator*> separators;        
 
         bool exclusive=true;
         bool updating=false;
@@ -305,6 +304,9 @@ class NavigationBar_p
 
         QFrame* leftFrame=nullptr;
         QBoxLayout* leftFrameLayout=nullptr;
+
+        QFrame* rightFrame=nullptr;
+        QBoxLayout* rightFrameLayout=nullptr;
 
         bool openInTabEnabled=true;
         bool openInWindowEnabled=true;
@@ -380,11 +382,14 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->leftFrameLayout=Layout::horizontal(pimpl->leftFrame);
     pimpl->leftFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
-    pimpl->placeHolder=new NavigationBarItem();
-    pimpl->placeHolder->setText(" ");
-    pimpl->placeHolder->setVisible(false);
-    pimpl->layout->addWidget(pimpl->placeHolder);
     pimpl->layout->addStretch(1);
+    pimpl->layout->addStretch(1);
+
+    pimpl->rightFrame=new QFrame(pimpl->panel);
+    pimpl->rightFrame->setObjectName("rightFrame");
+    pimpl->layout->addWidget(pimpl->rightFrame,0,Qt::AlignRight | Qt::AlignVCenter);
+    pimpl->rightFrameLayout=Layout::horizontal(pimpl->rightFrame);
+    pimpl->rightFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     pimpl->scrollTimer=new SingleShotTimer(this);
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
@@ -415,10 +420,7 @@ void  NavigationBar::showEvent(QShowEvent* event)
 
 void NavigationBar::addItem(const QString& name, const QString& tooltip, const QString& id, std::shared_ptr<SvgIcon> icon)
 {
-    if (pimpl->layout->count()>3)
-    {
-        delete pimpl->layout->takeAt(pimpl->layout->count()-1);
-    }
+    auto index=pimpl->layout->count()-2;
 
     auto button=new NavigationBarItem(std::move(icon),this,pimpl->checkable);
     button->setNoToggleOff(pimpl->exclusive);
@@ -523,7 +525,10 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
             sep=new NavigationBarSeparator(pimpl->panel);
         }
         sep->setBuddy(button);
-        pimpl->layout->addWidget(sep);
+
+        pimpl->layout->insertWidget(index,sep);
+        index++;
+
         pimpl->separators.emplace_back(sep);
         if (pimpl->sepsVisible && !pimpl->singleItemVisibleMode)
         {
@@ -558,8 +563,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         setSeparatorTooltip(sepIndex,pimpl->checkedSepTooltip);
     }
 
-    pimpl->layout->addWidget(button,0,Qt::AlignCenter);
-    pimpl->layout->addStretch(1);
+    pimpl->layout->insertWidget(index,button,0,Qt::AlignCenter);
     w+=button->sizeHint().width();
 
     pimpl->updateScrollArea(w);
@@ -862,6 +866,13 @@ void NavigationBar::addLeadingWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+void NavigationBar::addTrailingWidget(QWidget* widget)
+{
+    pimpl->rightFrameLayout->addWidget(widget,0,Qt::AlignRight);
+}
+
+//--------------------------------------------------------------------------
+
 bool NavigationBar::isSingleVisibleMode() const
 {
     return pimpl->singleItemVisibleMode;
@@ -899,10 +910,7 @@ void NavigationBar::updateSingleItemVisibleMode()
             item->setVisible(true);
         }
     }
-//! @todo Check if place holder still required
-#if 0
-    pimpl->placeHolder->setVisible(pimpl->singleItemVisibleMode);
-#endif
+
     if (pimpl->singleItemVisibleMode && !forceVisibleFound)
     {
         if (!pimpl->items.empty())

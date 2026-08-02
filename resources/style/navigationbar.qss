@@ -35,19 +35,25 @@ padding-left: 6px;
 
 uise--NavigationBar #leftFrame uise--IconTextButton uise--WithRoundedImage,
 uise--NavigationBar #leftFrame uise--IconTextButton uise--RoundedImage,
-uise--NavigationBar #leftFrame uise--AvatarButton uise--RoundedImage {
+uise--NavigationBar #leftFrame uise--AvatarButton uise--RoundedImage,
+uise--NavigationBar #rightFrame uise--IconTextButton uise--WithRoundedImage,
+uise--NavigationBar #rightFrame uise--IconTextButton uise--RoundedImage,
+uise--NavigationBar #rightFrame uise--AvatarButton uise--RoundedImage
+{
 min-width: 18px;
 max-width: 18px;
 min-height: 18px;
 max-height: 18px;
 }
 
-uise--NavigationBar #leftFrame uise--IconTextButton{
+uise--NavigationBar #leftFrame uise--IconTextButton,
+uise--NavigationBar #rightFrame uise--IconTextButton {
 margin-right: 4px;
 padding: 0;
 }
 
-uise--NavigationBar #leftFrame uise--AvatarButton {
+uise--NavigationBar #leftFrame uise--AvatarButton,
+uise--NavigationBar #rightFrame uise--AvatarButton {
 margin-right: 6px;
 margin-top: 2px;
 }
