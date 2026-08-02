@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "DropdownMenu",
+            "aliases" : {
+                "check" : "${uise-svg-icons-1}/check",
+                "rename" : "${uise-svg-icons-1}/pencil",
+                "delete" : "${uise-svg-icons-1}/trash",
+                "highQuality" : "${uise-svg-icons-1}/badge-hd",
+                "documents" : "${uise-svg-icons-1}/files",
+                "group" : "${uise-svg-icons-1}/layout-grid"
+            }
+        }
+    ]
+}

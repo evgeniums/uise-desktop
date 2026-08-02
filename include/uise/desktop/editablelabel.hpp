@@ -270,6 +270,17 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             setEditing(true);
         }
 
+        void setEditButtonAlwaysHidden(bool enable)
+        {
+            m_editButtonAlwaysHidden=enable;
+            updateControls();
+        }
+
+        bool isEditButtonAlwaysHidden() const
+        {
+            return m_editButtonAlwaysHidden;
+        }
+
     signals:
 
         /**
@@ -290,7 +301,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         {
             m_label->setVisible(!m_editable || !m_editing);
             m_buttonsFrame->setVisible(m_editable && !m_inGroup);
-            m_editButton->setVisible(m_editable && !m_editing);
+            m_editButton->setVisible(!m_editButtonAlwaysHidden && m_editable && !m_editing);
             m_cancelButton->setVisible(m_editable && m_editing);
             m_applyButton->setVisible(m_editable && m_editing);
         }
@@ -316,6 +327,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         AbstractEditablePanel* m_panel;
         bool m_editable;
+        bool m_editButtonAlwaysHidden;
 
         QLabel* m_comment;
         QWidget* m_editor;

@@ -51,7 +51,8 @@ EditableLabel::EditableLabel(
         m_editing(false),
         m_inGroup(inGroup),
         m_panel(nullptr),
-        m_editable(true)
+        m_editable(true),
+        m_editButtonAlwaysHidden(false)
 {
     m_mainLayout=Layout::vertical(this);
 

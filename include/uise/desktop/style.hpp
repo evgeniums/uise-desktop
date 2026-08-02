@@ -89,6 +89,12 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         /**
          * @brief Query if current style is in dark theme.
          * @return Query result.
+         *
+         * In StyleSheetMode::Auto this re-detects the OS/application palette (see
+         * checkDarkTheme()). Otherwise it reflects styleSheetMode() directly -- NOT
+         * m_darkTheme, which is only ever written by checkDarkTheme()'s own OS-palette
+         * detection and is never synced to an explicitly-set mode; using it here would make
+         * an explicit setStyleSheetMode(Light) on a dark-OS machine keep reporting dark.
          */
         bool isDarkTheme() const noexcept
         {
@@ -97,7 +103,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
                 return const_cast<Style*>(this)->checkDarkTheme();
             }
 
-            return m_darkTheme;
+            return m_darkStyleSheetMode==StyleSheetMode::Dark;
         }
 
         /**

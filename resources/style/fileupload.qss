@@ -1,0 +1,126 @@
+uise--FileUploadListItem {
+border-radius:8px;
+padding:6px;
+border:1px solid transparent;
+}
+
+uise--FileUploadListItem #rowPage,
+uise--FileUploadListItem #imagePage {
+padding:0;
+margin:0;
+}
+
+uise--FileUploadListItem #textColumn {
+padding:0;
+margin-left:8px;
+}
+
+uise--FileUploadListItem #infoLabel {
+font-size:11px;
+margin-left: 4px;
+}
+
+uise--FileUploadListItem #itemButtons {
+padding:0;
+margin:0;
+}
+
+uise--FileUploadListItem[view="row"] #itemButtons {
+margin-left:8px;
+}
+
+/* IconTextButton's icon has no sensible default size of its own -- it must be set explicitly
+   per container, same as fastswitchbutton.qss/dropdownmenu.qss do for their own icon buttons */
+uise--FileUploadListItem uise--IconTextButton uise--RoundedImage {
+min-width:18px;
+max-width:18px;
+min-height:18px;
+max-height:18px;
+}
+
+uise--FileUploadListItem uise--IconTextButton {
+padding:6px;
+border-radius:4px;
+border:1px solid transparent;
+}
+
+/* the buttons block floats over arbitrary photo content in View::Image, so it always gets a
+   translucent backing to keep the (theme-colored) icons visible against arbitrary photo
+   content -- color picked per theme in dark/light.qss, since the icons themselves are light
+   in dark theme and dark in light theme and need contrasting, not matching, backing */
+uise--FileUploadListItem[view="image"] #itemButtons {
+border-radius:6px;
+padding:2px;
+}
+
+/* border declared explicitly and unconditionally (transparent by default) so the drop-target
+   border set below never shifts the widget's contents, only its color */
+uise--FileUploadWidget {
+padding:0;
+margin:0;
+border:1px dashed transparent;
+border-radius:8px;
+qproperty-minListAreaHeight: 88;
+qproperty-maxListAreaHeight: 360;
+qproperty-maxCommentsHeight: 110;
+qproperty-maxCommentLength: 1000;
+}
+
+/* explicitly transparent, same as FileUploadListItem below -- the header then always shows
+   the same background as the item list, whatever that happens to be in the surrounding
+   context (a plain color, or nothing at all), rather than standing out as its own band.
+   min-height is set explicitly so the row does not shrink when #headerMenuButton is hidden
+   (no image in the list) -- a QBoxLayout excludes a hidden widget from space allocation
+   entirely, so without a floor here the header would visibly change height as items with/
+   without an image come and go. */
+uise--FileUploadWidget #headerFrame {
+padding:0 10px 6px 10px;
+margin-bottom:6px;
+background-color: transparent;
+min-height:36px;
+}
+
+/* scoped by the button's own type+objectName, not by a #headerFrame/uise--FileUploadWidget
+   ancestor: FileUploadDialog reparents this exact button into the dialog's own title bar (see
+   Dialog::setTitleControl()), and it must keep the same appearance under either parent chain */
+uise--IconTextButton#headerMenuButton uise--RoundedImage {
+min-width:14px;
+max-width:14px;
+min-height:14px;
+max-height:14px;
+}
+
+uise--IconTextButton#headerMenuButton {
+padding:4px;
+border-radius:4px;
+border:1px solid transparent;
+}
+
+uise--FileUploadWidget #caption {
+font-weight:bold;
+font-size:13px;
+}
+
+uise--FileUploadWidget #listArea {
+border:none;
+}
+
+uise--FileUploadWidget #commentsTitle {
+font-weight:bold;
+margin-top:12px;
+}
+
+uise--FileUploadWidget #buttonsFrame {
+padding-top:4px;
+}
+
+/* same treatment as abstractdialog.qss's #dialogButtonsFrame, so these read as dialog
+   buttons even though this widget is not itself a Dialog<> */
+uise--FileUploadWidget #buttonsFrame uise--PushButton {
+margin:4px;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
+border-radius:4px;
+padding:2px 12px;
+}

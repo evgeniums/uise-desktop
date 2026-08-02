@@ -132,5 +132,31 @@
         <file>tabler-icons/filled/mail.svg</file>
         <file>tabler-icons/outline/arrow-up-circle.svg</file>
         <file>tabler-icons/outline/cloud-download.svg</file>
+        <file>tabler-icons/outline/badge-hd.svg</file>
+        <file>tabler-icons/outline/photo.svg</file>
+        <file>tabler-icons/outline/trash.svg</file>
+        <file>tabler-icons/outline/files.svg</file>
+        <file>tabler-icons/outline/layout-grid.svg</file>
+        <file>tabler-icons/outline/photo-edit.svg</file>
+        <file>tabler-icons/outline/file-type-pdf.svg</file>
+        <file>tabler-icons/outline/file-type-doc.svg</file>
+        <file>tabler-icons/outline/file-type-docx.svg</file>
+        <file>tabler-icons/outline/file-type-xls.svg</file>
+        <file>tabler-icons/outline/file-type-ppt.svg</file>
+        <file>tabler-icons/outline/file-type-txt.svg</file>
+        <file>tabler-icons/outline/file-type-csv.svg</file>
+        <file>tabler-icons/outline/file-type-zip.svg</file>
+        <file>tabler-icons/outline/file-type-html.svg</file>
+        <file>tabler-icons/outline/file-type-css.svg</file>
+        <file>tabler-icons/outline/file-type-js.svg</file>
+        <file>tabler-icons/outline/file-type-jsx.svg</file>
+        <file>tabler-icons/outline/file-type-ts.svg</file>
+        <file>tabler-icons/outline/file-type-tsx.svg</file>
+        <file>tabler-icons/outline/file-type-xml.svg</file>
+        <file>tabler-icons/outline/file-type-svg.svg</file>
+        <file>tabler-icons/outline/file-type-php.svg</file>
+        <file>tabler-icons/outline/file-type-sql.svg</file>
+        <file>tabler-icons/outline/file-type-rs.svg</file>
+        <file>tabler-icons/outline/file-type-vue.svg</file>
     </qresource>
 </RCC>

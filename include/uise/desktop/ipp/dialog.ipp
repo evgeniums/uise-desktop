@@ -55,6 +55,8 @@ class Dialog_p
         QBoxLayout* titleLayout;
         QLabel* title;
         PushButton* titleClose;
+        QLabel* placeHolder=nullptr;
+        QPointer<QWidget> titleControl;
 
         QFrame* contentFrame;
         QBoxLayout* contentLayout;
@@ -92,6 +94,7 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
     auto tl=Layout::horizontal(pimpl->titleFrame);
+    pimpl->titleLayout=tl;
     pimpl->layout->addWidget(pimpl->titleFrame);
     pimpl->titleClose=new PushButton(Style::instance().svgIconLocator().icon("DialogTitle::close",this),pimpl->titleFrame);
     pimpl->titleClose->setToolTip(AbstractDialog::tr("Close","dialog"));
@@ -101,9 +104,9 @@ Dialog<BaseT>::Dialog(QWidget* parent)
 #ifdef Q_OS_MACOS
     tl->addWidget(pimpl->titleClose,0);
     tl->addWidget(pimpl->title,1);
-    auto placeHolder=new QLabel();
-    placeHolder->setObjectName("placeHolder");
-    tl->addWidget(placeHolder);
+    pimpl->placeHolder=new QLabel();
+    pimpl->placeHolder->setObjectName("placeHolder");
+    tl->addWidget(pimpl->placeHolder);
 #else
     tl->addWidget(pimpl->title,1);
     tl->addWidget(pimpl->titleClose);
@@ -302,6 +305,40 @@ template <typename BaseT>
 std::shared_ptr<SvgIcon> Dialog<BaseT>::svgIcon() const
 {
     return pimpl->icon->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::setTitleControl(QWidget* widget)
+{
+    if (!pimpl->titleControl.isNull())
+    {
+        destroyWidget(pimpl->titleControl);
+    }
+    pimpl->titleControl=widget;
+
+#ifdef Q_OS_MACOS
+    // placeHolder exists solely to balance titleClose's width on the other side so the title
+    // stays visually centered (see the ctor); a real title control sits at the same trailing
+    // position and is close enough in size to serve that same balancing role on its own, so
+    // the placeholder would otherwise just be dead space stacked after it, pushing it further
+    // from the actual right edge than necessary. QBoxLayout gives a hidden widget zero space
+    // (see doUpdateListAreaHeight()'s header-height comment for the same rule elsewhere in
+    // this library), so hiding it -- rather than removing it from the layout -- is enough.
+    pimpl->placeHolder->setVisible(widget==nullptr);
+#endif
+
+    if (widget==nullptr)
+    {
+        return;
+    }
+
+    // inserted just before the layout's last item -- titleClose on most platforms, the
+    // (now hidden) placeHolder on macOS -- so it always lands right after the title text,
+    // flush against the trailing edge on either layout
+    widget->setParent(pimpl->titleFrame);
+    pimpl->titleLayout->insertWidget(pimpl->titleLayout->count()-1,widget);
 }
 
 //--------------------------------------------------------------------------

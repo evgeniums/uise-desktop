@@ -91,6 +91,18 @@
         <file>style/light/fastswitchbutton.json</file>
         <file>style/dark/fastswitchbutton.qss</file>
         <file>style/light/fastswitchbutton.qss</file>
+        <file>style/dropdownmenu.json</file>
+        <file>style/dropdownmenu.qss</file>
+        <file>style/dark/dropdownmenu.json</file>
+        <file>style/light/dropdownmenu.json</file>
+        <file>style/dark/dropdownmenu.qss</file>
+        <file>style/light/dropdownmenu.qss</file>
+        <file>style/fileupload.json</file>
+        <file>style/fileupload.qss</file>
+        <file>style/dark/fileupload.json</file>
+        <file>style/light/fileupload.json</file>
+        <file>style/dark/fileupload.qss</file>
+        <file>style/light/fileupload.qss</file>
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>

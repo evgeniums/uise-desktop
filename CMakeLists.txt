@@ -59,6 +59,7 @@ SET (HEADERS
     include/uise/desktop/utils/withpathandsize.hpp
     include/uise/desktop/utils/enums.hpp
     include/uise/desktop/utils/datetime.hpp
+    include/uise/desktop/utils/filesizeformat.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -170,7 +171,14 @@ SET (HEADERS
 
     include/uise/desktop/icontextbutton.hpp
     include/uise/desktop/loadcontrol.hpp
+    include/uise/desktop/dropdownframe.hpp
+    include/uise/desktop/dropdownmenu.hpp
     include/uise/desktop/fastswitchbutton.hpp
+    include/uise/desktop/fileuploaditem.hpp
+    include/uise/desktop/fileuploadlistitem.hpp
+    include/uise/desktop/abstractfileuploadwidget.hpp
+    include/uise/desktop/fileuploadwidget.hpp
+    include/uise/desktop/fileuploaddialog.hpp
 
     include/uise/desktop/abstractimageviewer.hpp
     include/uise/desktop/imageviewer.hpp
@@ -306,7 +314,13 @@ SET (SOURCES
     src/qrcodefromimage.cpp
     src/icontextbutton.cpp
     src/loadcontrol.cpp
+    src/dropdownframe.cpp
+    src/dropdownmenu.cpp
     src/fastswitchbutton.cpp
+    src/fileuploaditem.cpp
+    src/fileuploadlistitem.cpp
+    src/fileuploadwidget.cpp
+    src/fileuploaddialog.cpp
 
     src/abstractimageviewer.cpp
     src/imageviewer.cpp

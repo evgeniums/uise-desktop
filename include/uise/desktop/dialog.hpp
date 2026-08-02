@@ -66,6 +66,20 @@ class Dialog : public BaseT
         void setSvgIcon(std::shared_ptr<SvgIcon> icon);
         std::shared_ptr<SvgIcon> svgIcon() const;
 
+        /**
+         * @brief Place a custom control in the title bar, between the title text and the
+         *  close button.
+         *
+         * For a widget (e.g. AbstractFileUploadWidget) that owns its own header controls but
+         * hides that header when embedded in a dialog (its caption being redundant with
+         * setTitle()), this lets a control that has no dialog-level equivalent -- a
+         * drop-down menu button, say -- be relocated into the title bar instead of simply
+         * disappearing. Reparents widget into the title bar; pass nullptr to remove whatever
+         * control is currently set. A second call destroys the previous control before
+         * installing the new one.
+         */
+        void setTitleControl(QWidget* widget);
+
         void setClosable(bool enable) override;
 
         void setButtonsStyle(ButtonsStyle style) override;

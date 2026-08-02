@@ -1,0 +1,20 @@
+{
+    "contexts" : [
+        {
+            "name" : "FileUpload",
+            "aliases" : {
+                "menu" : "${uise-svg-icons-1}/dots-vertical",
+                "remove" : "${uise-svg-icons-1}/x",
+                "delete" : "${uise-svg-icons-1}/trash",
+                "rename" : "${uise-svg-icons-1}/pencil",
+                "editImage" : "${uise-svg-icons-1}/photo-edit",
+                "add" : "${uise-svg-icons-1}/paperclip",
+                "file" : "${uise-svg-icons-1}/file",
+                "image" : "${uise-svg-icons-1}/photo",
+                "highQuality" : "${uise-svg-icons-1}/badge-hd",
+                "documents" : "${uise-svg-icons-1}/files",
+                "group" : "${uise-svg-icons-1}/layout-grid"
+            }
+        }
+    ]
+}

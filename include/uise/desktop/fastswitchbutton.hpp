@@ -33,104 +33,29 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/dropdownframe.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class IconTextButton;
 
-class FastSwitchButtonDropdown_p;
-
 /**
  * @brief Overlay frame used by FastSwitchButton to present its drop-down content.
  *
- * The dropdown is parented to the top-level window of its owning FastSwitchButton rather
- * than being a Qt::Popup: a native popup cannot animate its own dismissal (ignoring its
- * QCloseEvent to run a shrink would leave it holding the application-wide popup mouse grab),
- * so parenting to the window is what makes the animated close required by the task possible.
- *
- * The frame intentionally has NO QLayout. Its content() widget is sized once per opening and
- * never touched again; growing/shrinking the frame with setGeometry() therefore clips the
- * content instead of relaying it out, which is what makes the width+height animation a clip
- * rather than a squeeze. Do not add a layout to this class.
+ * A plain, unstyled-beyond-its-own-QSS-class subclass of DropdownFrame: FastSwitchButton keeps
+ * driving content creation/fill/clear itself (see ensureDropdownContent()/fillDropdownContent()/
+ * clearDropdownContent()) rather than through DropdownFrame's fillContent()/clearContent()
+ * hooks, so this class has nothing of its own to add. It exists so QSS type selectors can keep
+ * targeting `uise--FastSwitchButtonDropdown` specifically (see resources/style/
+ * fastswitchbutton.qss) without those rules also matching every other DropdownFrame consumer.
  */
-class UISE_DESKTOP_EXPORT FastSwitchButtonDropdown : public QFrame
+class UISE_DESKTOP_EXPORT FastSwitchButtonDropdown : public DropdownFrame
 {
     Q_OBJECT
 
     public:
 
-        /**
-         * @brief Constructor.
-         * @param parent Parent widget (normally the owning FastSwitchButton's window()).
-         */
-        FastSwitchButtonDropdown(QWidget* parent=nullptr);
-
-        ~FastSwitchButtonDropdown();
-
-        FastSwitchButtonDropdown(const FastSwitchButtonDropdown&)=delete;
-        FastSwitchButtonDropdown(FastSwitchButtonDropdown&&)=delete;
-        FastSwitchButtonDropdown& operator=(const FastSwitchButtonDropdown&)=delete;
-        FastSwitchButtonDropdown& operator=(FastSwitchButtonDropdown&&)=delete;
-
-        /**
-         * @brief Set content widget.
-         * @param content Widget to show in the dropdown, reparented to this frame.
-         *
-         * The previous content widget, if any, is destroyed with destroyWidget().
-         */
-        void setContent(QWidget* content);
-
-        /**
-         * @brief Get content widget.
-         * @return Operation result, may be nullptr.
-         */
-        QWidget* content() const;
-
-        /**
-         * @brief Detach content widget without destroying it.
-         * @return Detached widget, may be nullptr.
-         */
-        QWidget* takeContent();
-
-        /**
-         * @brief Set corner the dropdown grows from/is anchored to.
-         * @param corner Qt::TopLeftCorner or Qt::TopRightCorner.
-         *
-         * Only the top corners are meaningful because the dropdown is always positioned
-         * below its owning button.
-         */
-        void setAnchorCorner(Qt::Corner corner);
-
-        Qt::Corner anchorCorner() const noexcept;
-
-        /**
-         * @brief Set full (unclipped, natural) size of the dropdown.
-         * @param size Full size to animate towards/from.
-         */
-        void setFullSize(const QSize& size);
-
-        QSize fullSize() const noexcept;
-
-    signals:
-
-        /**
-         * @brief Emitted right before the frame becomes hidden, for any reason.
-         *
-         * FastSwitchButton normally drives dismissal itself (see returnToNormal()), so under
-         * normal operation this signal arrives after the control has already left the
-         * Dropdown state and is a no-op observer. It exists as a defensive recovery path for
-         * cases the control does not initiate itself, e.g. the host window being hidden.
-         */
-        void aboutToHide();
-
-    protected:
-
-        void resizeEvent(QResizeEvent* event) override;
-        void hideEvent(QHideEvent* event) override;
-
-    private:
-
-        std::unique_ptr<FastSwitchButtonDropdown_p> pimpl;
+        using DropdownFrame::DropdownFrame;
 };
 
 class FastSwitchButton_p;
@@ -438,7 +363,6 @@ class UISE_DESKTOP_EXPORT FastSwitchButton : public QFrame
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
-        bool eventFilter(QObject* obj, QEvent* event) override;
 
     private:
 
@@ -446,19 +370,27 @@ class UISE_DESKTOP_EXPORT FastSwitchButton : public QFrame
         void ensureDropdown();
         void ensureDropdownContent();
         void measureExtra();
-        void measureDropdown();
 
         void setState(State state);
 
         void animateExtraWidget(bool forward, bool immediate);
-        void animateDropdownFrame(bool forward, bool immediate);
-
         void finishExtraAnimation(bool forward);
-        void finishDropdownAnimation(bool forward);
 
     private slots:
 
         void onExtraWidgetClicked();
+
+        /**
+         * @brief React to the drop-down closing itself (Escape, outside click, trigger
+         *  click, or the host window being deactivated/moved/resized).
+         *
+         * DropdownFrame owns the actual close animation and its own escape/outside-click
+         * detection; this control still needs to keep its own state (mainButton's checked
+         * state, the extra widget) in sync whenever that happens, without re-entering the
+         * frame's own close -- see the definition for why this must NOT call
+         * dropdown()->closeDropdown() itself.
+         */
+        void onDropdownSelfClosed();
 
     private:
 

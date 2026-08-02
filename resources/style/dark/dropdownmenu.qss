@@ -1,0 +1,16 @@
+uise--DropdownMenu {
+background-color: #2B2B2B;
+border-color: #444444;
+}
+
+uise--DropdownMenu #separator {
+background-color: #555555;
+}
+
+uise--DropdownMenu uise--IconTextButton[hovered="true"] {
+background-color: rgba(255,255,255,15);
+}
+
+/* checkable items are marked by their trailing check icon alone (see DropdownMenu::
+   onItemToggled()) -- no extra "selected" background, it would be redundant next to the
+   checkmark and makes hover state (above) harder to read on a checked row */

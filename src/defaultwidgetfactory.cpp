@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/newpasswordpanel.hpp>
 #include <uise/desktop/circlebusyframe.hpp>
 #include <uise/desktop/skeleton.hpp>
+#include <uise/desktop/fileuploadwidget.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -52,6 +53,7 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     factory->registerBuilder<LoadingFrame>([](QWidget* parent){return new LoadingFrame(parent);});
     factory->registerBuilder<AbstractImageEditor>([](QWidget* parent){return new SimpleImageEditor(parent);});
     factory->registerBuilder<AbstractNewPasswordPanel>([](QWidget* parent){return new NewPasswordPanel(parent);});
+    factory->registerBuilder<AbstractFileUploadWidget>([](QWidget* parent){return new FileUploadWidget(parent);});
 
     return factory;
 }

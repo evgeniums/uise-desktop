@@ -1,0 +1,53 @@
+uise--FileUploadListItem {
+background-color: transparent;
+}
+
+uise--FileUploadListItem:hover {
+background-color: rgba(0,0,0,6);
+}
+
+uise--FileUploadListItem #infoLabel {
+color: #666666;
+}
+
+uise--FileUploadListItem uise--IconTextButton[hovered="true"],
+uise--IconTextButton#headerMenuButton[hovered="true"] {
+background-color: rgba(0,0,0,8);
+}
+
+uise--FileUploadWidget[dropActive="true"] {
+border-color: #0A66C2;
+background-color: rgba(10,102,194,15);
+}
+
+/* icons in the floating item-buttons block are dark (see fileupload.json's light mode
+   colors), so the backing that keeps them visible over arbitrary photo content needs to be
+   light for contrast -- a dark backing here (as dark theme uses) would leave a dark icon on
+   a dark patch, hardly visible */
+uise--FileUploadListItem[view="image"] #itemButtons {
+background-color: rgba(255,255,255,190);
+}
+
+/* header has no background of its own (see fileupload.qss -- it is explicitly transparent,
+   same as FileUploadListItem, so it always matches whatever shows through the item list);
+   the caption still needs an explicit color since it's no longer sitting on a colored band */
+uise--FileUploadWidget #caption {
+color: #444444;
+}
+
+/* bottom buttons, same treatment as abstractdialog.qss's #dialogButtonsFrame */
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
+color: #555555;
+border: 1px solid #999999;
+background-color: transparent;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:hover {
+color: #444444;
+border: 1px solid #444444;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:disabled {
+color: #999999;
+border: 1px solid #BBBBBB;
+}

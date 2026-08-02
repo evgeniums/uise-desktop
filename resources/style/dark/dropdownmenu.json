@@ -1,0 +1,26 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "DropdownMenu",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                }
+            }
+        }
+    ]
+}
