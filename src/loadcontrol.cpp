@@ -28,6 +28,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QEnterEvent>
 #include <QPalette>
+#include <QVariantAnimation>
+#include <QShowEvent>
+#include <QHideEvent>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/loadcontrol.hpp>
@@ -38,7 +41,10 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 LoadControl::LoadControl(QWidget* parent)
     : AbstractLoadControl(parent),
-      m_hovered(false)
+      m_hovered(false),
+      m_rotationPhase(0.0),
+      m_circlePercent(DefaultCirclePercent),
+      m_animationDuration(DefaultAnimationDuration)
 {
     m_sample=new QFrame(this);
     m_sample->setObjectName("sample");
@@ -54,6 +60,27 @@ LoadControl::LoadControl(QWidget* parent)
     // QEvent::Polish path that palette/font resolution goes through.
     Style::updateWidgetStyle(m_sample);
     m_sample->ensurePolished();
+
+    // Drives the circulating arc in ProgressMode::Indeterminate/AnimatedProgress. Not started
+    // here -- the default mode is Static, so the animation only starts once a non-Static mode is
+    // set (see updateProgressMode()) and only while the control is actually visible (see
+    // showEvent()/hideEvent()), same reasoning TypingIndicator/Skeleton apply to their loops.
+    m_anim=new QVariantAnimation(this);
+    m_anim->setStartValue(0.0);
+    m_anim->setEndValue(1.0);
+    m_anim->setLoopCount(-1);
+    m_anim->setDuration(m_animationDuration);
+    m_anim->setEasingCurve(DefaultEasingCurve);
+    connect(
+        m_anim,
+        &QVariantAnimation::valueChanged,
+        this,
+        [this](const QVariant& value)
+        {
+            m_rotationPhase=value.toDouble();
+            update();
+        }
+    );
 
     setCursor(Qt::PointingHandCursor);
     setState(state());
@@ -88,11 +115,35 @@ void LoadControl::paintEvent(QPaintEvent * /*event*/)
     p.drawEllipse(circleRect);
 
     // draw progress
+    //
+    // startAngle/spanAngle default to the Static look (fixed 12-o'clock start, span grows with
+    // progress()); Indeterminate/AnimatedProgress override one or both from m_rotationPhase, which
+    // is driven by m_anim while a non-Static mode is active (see updateProgressMode()).
     p.setBrush(Qt::NoBrush);
     auto progressColor=m_sample->palette().color(QPalette::Text);
     p.setPen(QPen{progressColor,qreal(borderWidth)});
     int startAngle = 90 * 16;
     int spanAngle = -static_cast<int>((progress()/ 100.0) * 360 * 16);
+    switch (progressMode())
+    {
+        case ProgressMode::Static:
+        {
+        }
+        break;
+
+        case ProgressMode::Indeterminate:
+        {
+            startAngle=qRound((90.0-m_rotationPhase*360.0)*16);
+            spanAngle=-static_cast<int>((m_circlePercent/100.0)*360*16);
+        }
+        break;
+
+        case ProgressMode::AnimatedProgress:
+        {
+            startAngle=qRound((90.0-m_rotationPhase*360.0)*16);
+        }
+        break;
+    }
     p.drawArc(circleRect,startAngle,spanAngle);
 
     // draw icon, centered within the circle (not the control's full rect) -- sized relative
@@ -171,6 +222,84 @@ void LoadControl::mousePressEvent(QMouseEvent* event)
 void LoadControl::updateProgress()
 {
     update();
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::updateProgressMode()
+{
+    m_rotationPhase=0.0;
+    updateAnimation();
+    update();
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::updateAnimation()
+{
+    // The animation only ever runs for a non-Static mode, and only while the control is on
+    // screen -- LoadControl is created per chat file/image item inside a scrolled list (see
+    // ChatMessageFileItem/ChatMessageImageItem), so leaving timers running on off-screen items
+    // would be a real, avoidable CPU cost.
+    auto shouldRun=progressMode()!=ProgressMode::Static && isVisible();
+    if (shouldRun)
+    {
+        if (m_anim->state()!=QAbstractAnimation::Running)
+        {
+            m_anim->start();
+        }
+    }
+    else
+    {
+        m_anim->stop();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::setAnimationDuration(int ms)
+{
+    m_animationDuration=ms;
+    auto wasRunning=(m_anim->state()==QAbstractAnimation::Running);
+    if (wasRunning)
+    {
+        m_anim->stop();
+    }
+    m_anim->setDuration(m_animationDuration);
+    if (wasRunning)
+    {
+        m_anim->start();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::setEasingCurve(const QEasingCurve& curve)
+{
+    m_anim->setEasingCurve(curve);
+}
+
+//--------------------------------------------------------------------------
+
+QEasingCurve LoadControl::easingCurve() const
+{
+    return m_anim->easingCurve();
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::showEvent(QShowEvent* event)
+{
+    QFrame::showEvent(event);
+    updateAnimation();
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::hideEvent(QHideEvent* event)
+{
+    QFrame::hideEvent(event);
+    updateAnimation();
 }
 
 //--------------------------------------------------------------------------

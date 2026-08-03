@@ -56,6 +56,16 @@ class UISE_DESKTOP_EXPORT AbstractLoadControl : public QFrame
             Waiting,
             Running
         };
+        Q_ENUM(State)
+
+        //! Mode of drawing the progress arc.
+        enum class ProgressMode
+        {
+            Static,             //!< Arc starts at 12 o'clock, span grows with progress() (default).
+            Indeterminate,      //!< Fixed-span arc circulating around the circle; progress() ignored.
+            AnimatedProgress    //!< Span follows progress(), but the start angle circulates.
+        };
+        Q_ENUM(ProgressMode)
 
         using QFrame::QFrame;
 
@@ -73,6 +83,22 @@ class UISE_DESKTOP_EXPORT AbstractLoadControl : public QFrame
         State state() const noexcept
         {
             return m_state;
+        }
+
+        void setProgressMode(ProgressMode mode)
+        {
+            auto changed=(m_progressMode!=mode);
+            m_progressMode=mode;
+            updateProgressMode();
+            if (changed)
+            {
+                emit progressModeChanged(m_progressMode);
+            }
+        }
+
+        ProgressMode progressMode() const noexcept
+        {
+            return m_progressMode;
         }
 
         void setProgress(qreal value)
@@ -109,15 +135,19 @@ class UISE_DESKTOP_EXPORT AbstractLoadControl : public QFrame
 
         void stateChanged(State state);
 
+        void progressModeChanged(ProgressMode mode);
+
     protected:
 
         virtual void updateState() =0;
         virtual void updateProgress() =0;
+        virtual void updateProgressMode() =0;
 
     private:
 
         State m_state=State::CanDownload;
         qreal m_progress=0.0;
+        ProgressMode m_progressMode=ProgressMode::Static;
 };
 
 UISE_DESKTOP_NAMESPACE_END

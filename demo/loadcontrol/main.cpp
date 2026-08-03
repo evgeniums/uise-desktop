@@ -106,10 +106,86 @@ int main(int argc, char *argv[])
         }
     );
 
+    auto progressMode=new QComboBox();
+    progressMode->addItems({"Static","Indeterminate","Animated progress"});
+    cl->addWidget(progressMode);
+    QObject::connect(
+        progressMode,
+        &QComboBox::currentIndexChanged,
+        loadControl,
+        [loadControl](int index)
+        {
+            auto mode=static_cast<LoadControl::ProgressMode>(index);
+            loadControl->setProgressMode(mode);
+        }
+    );
+
+    auto circlePercent=new QSlider();
+    circlePercent->setOrientation(Qt::Horizontal);
+    circlePercent->setMinimum(1);
+    circlePercent->setMaximum(100);
+    circlePercent->setValue(static_cast<int>(LoadControl::DefaultCirclePercent));
+    cl->addWidget(circlePercent);
+    QObject::connect(
+        circlePercent,
+        &QSlider::valueChanged,
+        loadControl,
+        [loadControl](int value)
+        {
+            loadControl->setCirclePercent(value);
+        }
+    );
+
+    auto animationDuration=new QSlider();
+    animationDuration->setOrientation(Qt::Horizontal);
+    animationDuration->setMinimum(200);
+    animationDuration->setMaximum(5000);
+    animationDuration->setValue(LoadControl::DefaultAnimationDuration);
+    cl->addWidget(animationDuration);
+    QObject::connect(
+        animationDuration,
+        &QSlider::valueChanged,
+        loadControl,
+        [loadControl](int value)
+        {
+            loadControl->setAnimationDuration(value);
+        }
+    );
+
+    auto curve=new QComboBox();
+    curve->addItems(
+        QList<QString>{
+        "Linear",
+        "InQuad", "OutQuad", "InOutQuad", "OutInQuad",
+        "InCubic", "OutCubic", "InOutCubic", "OutInCubic",
+        "InQuart", "OutQuart", "InOutQuart", "OutInQuart",
+        "InQuint", "OutQuint", "InOutQuint", "OutInQuint",
+        "InSine", "OutSine", "InOutSine", "OutInSine",
+        "InExpo", "OutExpo", "InOutExpo", "OutInExpo",
+        "InCirc", "OutCirc", "InOutCirc", "OutInCirc",
+        "InElastic", "OutElastic", "InOutElastic", "OutInElastic",
+        "InBack", "OutBack", "InOutBack", "OutInBack",
+        "InBounce", "OutBounce", "InOutBounce", "OutInBounce",
+        "InCurve", "OutCurve", "SineCurve", "CosineCurve",
+        "BezierSpline", "TCBSpline", "Custom", "NCurveTypes"
+        }
+    );
+    curve->setCurrentIndex(static_cast<int>(LoadControl::DefaultEasingCurve));
+    cl->addWidget(curve);
+    QObject::connect(
+        curve,
+        &QComboBox::currentIndexChanged,
+        loadControl,
+        [loadControl](int value)
+        {
+            loadControl->setEasingCurve(static_cast<QEasingCurve::Type>(value));
+        }
+    );
+
     cl->addStretch(1);
 
     w.setCentralWidget(mainFrame);
-    w.resize(300,400);
+    w.resize(900,400);
     w.setWindowTitle("Load Control Demo");
     w.show();
     auto ret=app.exec();

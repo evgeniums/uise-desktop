@@ -19,3 +19,17 @@ uise--CircleBusy {
     qproperty-circlePercent:   15;
     qproperty-easingCurveType: 19;
 }
+
+/*
+ * LoadControl animated-mode parameters, used when progressMode() is Indeterminate or
+ * AnimatedProgress (ignored in the default Static mode).
+ *
+ * qproperty-circlePercent     – arc length as % of full circle in Indeterminate mode
+ * qproperty-animationDuration – ms per full revolution of the circulating arc
+ * qproperty-easingCurveType   – QEasingCurve::Type as int (0=Linear, 19=InOutSine)
+ */
+uise--LoadControl {
+    qproperty-circlePercent:     15;
+    qproperty-animationDuration: 1000;
+    qproperty-easingCurveType:   19;
+}

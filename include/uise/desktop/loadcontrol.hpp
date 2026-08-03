@@ -27,17 +27,24 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_LOAD_CONTROL_HPP
 
 #include <QFrame>
+#include <QEasingCurve>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/utils/enums.hpp>
 #include <uise/desktop/abstractloadcontrol.hpp>
 
+class QVariantAnimation;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
 {
     Q_OBJECT
+
+    Q_PROPERTY(qreal circlePercent READ circlePercent WRITE setCirclePercent)
+    Q_PROPERTY(int animationDuration READ animationDuration WRITE setAnimationDuration)
+    Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
 
     public:
 
@@ -47,7 +54,47 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         //! control itself -- the icon shrinks/grows along with the circle.
         constexpr static const qreal IconRadiusRatio=0.65;
 
+        //! Default arc length, as a percentage of the full circle, used in ProgressMode::Indeterminate.
+        constexpr static const qreal DefaultCirclePercent=15.0;
+        //! Default duration of a full revolution of the circulating arc, in milliseconds.
+        constexpr static const int DefaultAnimationDuration=1000;
+        //! Default easing curve of the circulating arc -- matches CircleBusy's default breathing
+        //! accelerate/decelerate motion rather than a mechanical constant-speed spin.
+        constexpr static const QEasingCurve::Type DefaultEasingCurve=QEasingCurve::InOutSine;
+
         LoadControl(QWidget* parent=nullptr);
+
+        void setCirclePercent(qreal circlePercent)
+        {
+            m_circlePercent=circlePercent;
+            update();
+        }
+
+        qreal circlePercent() const noexcept
+        {
+            return m_circlePercent;
+        }
+
+        void setAnimationDuration(int ms);
+
+        int animationDuration() const noexcept
+        {
+            return m_animationDuration;
+        }
+
+        void setEasingCurve(const QEasingCurve& curve);
+
+        QEasingCurve easingCurve() const;
+
+        int easingCurveType() const noexcept
+        {
+            return static_cast<int>(easingCurve().type());
+        }
+
+        void setEasingCurveType(int type)
+        {
+            setEasingCurve(static_cast<QEasingCurve::Type>(type));
+        }
 
     protected:
 
@@ -55,19 +102,28 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void showEvent(QShowEvent* event) override;
+        void hideEvent(QHideEvent* event) override;
 
         void updateState() override;
         void updateProgress() override;
+        void updateProgressMode() override;
 
     private:
 
         void updateIcon(const QString name={});
+        void updateAnimation();
 
         std::shared_ptr<SvgIcon> m_icon;
 
         QFrame* m_sample;
 
         bool m_hovered;
+
+        QVariantAnimation* m_anim;
+        qreal m_rotationPhase;
+        qreal m_circlePercent;
+        int m_animationDuration;
 };
 
 UISE_DESKTOP_NAMESPACE_END
