@@ -1,0 +1,23 @@
+uise--ChatMessageFileItem {
+background-color: transparent;
+}
+
+uise--ChatMessageFileItem:hover {
+background-color: rgba(0,0,0,6);
+}
+
+uise--ChatMessageFileItem #infoLabel {
+color: #666666;
+}
+
+uise--ChatMessageFileItem uise--IconTextButton[hovered="true"],
+uise--ChatMessageImageItem uise--IconTextButton[hovered="true"] {
+background-color: rgba(0,0,0,8);
+}
+
+/* icons here are dark (see chatmessagefiles.json's light mode colors), so the backing behind
+   the image-tile menu button needs to be light for contrast -- a dark backing here (as dark
+   theme uses) would leave a dark icon on a dark patch, hardly visible */
+uise--ChatMessageImageItem #menuButton {
+background-color: rgba(255,255,255,190);
+}

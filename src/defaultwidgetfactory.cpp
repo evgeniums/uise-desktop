@@ -32,6 +32,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/circlebusyframe.hpp>
 #include <uise/desktop/skeleton.hpp>
 #include <uise/desktop/fileuploadwidget.hpp>
+#include <uise/desktop/loadcontrol.hpp>
+#include <uise/desktop/chatmessagefiles.hpp>
+#include <uise/desktop/chatmessageimages.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -54,6 +57,9 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     factory->registerBuilder<AbstractImageEditor>([](QWidget* parent){return new SimpleImageEditor(parent);});
     factory->registerBuilder<AbstractNewPasswordPanel>([](QWidget* parent){return new NewPasswordPanel(parent);});
     factory->registerBuilder<AbstractFileUploadWidget>([](QWidget* parent){return new FileUploadWidget(parent);});
+    factory->registerBuilder<AbstractLoadControl>([](QWidget* parent){return new LoadControl(parent);});
+    factory->registerBuilder<AbstractChatMessageFiles>([](QWidget* parent){return new ChatMessageFiles(parent);});
+    factory->registerBuilder<AbstractChatMessageImages>([](QWidget* parent){return new ChatMessageImages(parent);});
 
     return factory;
 }

@@ -23,6 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QtGlobal>
 #include <QLabel>
 #include <QPainter>
 #include <QEnterEvent>
@@ -36,16 +37,26 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**************************** LoadControl ***********************************/
 
 LoadControl::LoadControl(QWidget* parent)
-    : QFrame(parent),
-      m_state(State::CanDownload),
+    : AbstractLoadControl(parent),
       m_hovered(false)
 {
     m_sample=new QFrame(this);
     m_sample->setObjectName("sample");
     m_sample->setVisible(false);
+    // m_sample is only ever used as a hidden style reference (its palette -- background/
+    // progress colors from loadcontrol.qss's light/dark #sample rules -- is read in
+    // paintEvent(), it is never actually shown) -- being permanently hidden, it never goes
+    // through Qt's normal show-triggered polish, so its QSS-driven palette would silently stay
+    // at its unstyled default without this. Same idiom as ChatMessage::construct() forcing
+    // polish on its own hidden avatarFramePlaceholder. Both polish mechanisms are needed, same
+    // as DropdownFrame::measureContentSize()'s handling of the same class of issue:
+    // Style::updateWidgetStyle() drives QStyle::polish(); ensurePolished() drives the separate
+    // QEvent::Polish path that palette/font resolution goes through.
+    Style::updateWidgetStyle(m_sample);
+    m_sample->ensurePolished();
 
     setCursor(Qt::PointingHandCursor);
-    setState(m_state);
+    setState(state());
 }
 
 //--------------------------------------------------------------------------
@@ -58,45 +69,46 @@ void LoadControl::paintEvent(QPaintEvent * /*event*/)
     auto r=rect();
 
     // draw circle background
-    auto w=r.width();
+    //
+    // The circle (and, below, the icon within it) are sized as a ratio of the control's own
+    // rect, not the rect itself minus a near-zero style-metric inset -- CircleWidthRatio/
+    // IconRadiusRatio exist for exactly this (previously declared but never actually read
+    // here, which is why the circle used to fill ~100% of the control regardless of their
+    // value). borderWidth is unrelated to sizing -- it is only the pen width used to stroke
+    // the circle/arc outlines below.
     int borderWidth = style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, m_sample);
-    auto circleWidth=w-borderWidth*2;
-    auto outerWidth=w-circleWidth;
-    auto halfOuterWidth=outerWidth/2;
-    auto x=r.left()+halfOuterWidth;
-    auto y=r.height()-halfOuterWidth-circleWidth;
+    auto circleWidth=qRound(qMin(r.width(),r.height())*CircleWidthRatio);
+    auto x=r.left()+(r.width()-circleWidth)/2;
+    auto y=r.top()+(r.height()-circleWidth)/2;
     QRect circleRect{x,y,circleWidth,circleWidth};
     auto backgroundColor=m_sample->palette().color(QPalette::Window);
-    p.setBrush(backgroundColor);    
+    p.setBrush(backgroundColor);
     p.setPen(QPen{backgroundColor,qreal(borderWidth)});
     p.setRenderHints(QPainter::Antialiasing);
     p.drawEllipse(circleRect);
 
     // draw progress
     p.setBrush(Qt::NoBrush);
-    auto progressColor=m_sample->palette().color(QPalette::Text);    
+    auto progressColor=m_sample->palette().color(QPalette::Text);
     p.setPen(QPen{progressColor,qreal(borderWidth)});
     int startAngle = 90 * 16;
-    int spanAngle = -static_cast<int>((m_progress/ 100.0) * 360 * 16);
+    int spanAngle = -static_cast<int>((progress()/ 100.0) * 360 * 16);
     p.drawArc(circleRect,startAngle,spanAngle);
 
-    // draw icon
+    // draw icon, centered within the circle (not the control's full rect) -- sized relative
+    // to circleWidth so it shrinks/grows along with the circle rather than staying anchored
+    // to the control's outer bounds
     if (m_icon)
     {
         p.setPen(Qt::NoPen);
 
-        // encode configurable parameters in QSS using properties:
-        //  *min-width is for base padding of icon
-        auto m=m_sample->contentsMargins();
-        auto basePadding=m_sample->minimumWidth()-m.left()-m.right();
-
-        auto iconOuterWidth=2*basePadding;
-        auto iconWidth=w-iconOuterWidth;
-
-        auto leftPadding=basePadding;
-        auto bottomPadding=basePadding;
-
-        QRect iconRect{r.left()+leftPadding,r.bottom()-iconWidth-bottomPadding,iconWidth,iconWidth};
+        auto iconWidth=qRound(circleWidth*IconRadiusRatio);
+        QRect iconRect{
+            circleRect.left()+(circleWidth-iconWidth)/2,
+            circleRect.top()+(circleWidth-iconWidth)/2,
+            iconWidth,
+            iconWidth
+        };
 
         auto mode=IconMode::Normal;
         if (m_hovered)
@@ -156,20 +168,17 @@ void LoadControl::mousePressEvent(QMouseEvent* event)
 
 //--------------------------------------------------------------------------
 
-void LoadControl::setProgress(qreal value)
+void LoadControl::updateProgress()
 {
-    m_progress=value;
     update();
 }
 
 //--------------------------------------------------------------------------
 
-void LoadControl::setState(State state)
+void LoadControl::updateState()
 {
-    m_state=state;
-
     QString iconName;
-    switch (state)
+    switch (state())
     {
         case State::None:
         {

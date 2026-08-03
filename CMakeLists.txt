@@ -60,6 +60,8 @@ SET (HEADERS
     include/uise/desktop/utils/enums.hpp
     include/uise/desktop/utils/datetime.hpp
     include/uise/desktop/utils/filesizeformat.hpp
+    include/uise/desktop/utils/filetypeicon.hpp
+    include/uise/desktop/utils/albumlayout.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -170,6 +172,7 @@ SET (HEADERS
     include/uise/desktop/qrcodefromimage.hpp
 
     include/uise/desktop/icontextbutton.hpp
+    include/uise/desktop/abstractloadcontrol.hpp
     include/uise/desktop/loadcontrol.hpp
     include/uise/desktop/dropdownframe.hpp
     include/uise/desktop/dropdownmenu.hpp
@@ -199,6 +202,14 @@ SET (HEADERS
     include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
     include/uise/desktop/chatmessagesview.hpp
+
+    include/uise/desktop/chatfileitem.hpp
+    include/uise/desktop/chatmessagefileitem.hpp
+    include/uise/desktop/abstractchatmessagefiles.hpp
+    include/uise/desktop/chatmessagefiles.hpp
+    include/uise/desktop/chatmessageimageitem.hpp
+    include/uise/desktop/abstractchatmessageimages.hpp
+    include/uise/desktop/chatmessageimages.hpp
 
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
@@ -317,6 +328,7 @@ SET (SOURCES
     src/dropdownframe.cpp
     src/dropdownmenu.cpp
     src/fastswitchbutton.cpp
+    src/filetypeicon.cpp
     src/fileuploaditem.cpp
     src/fileuploadlistitem.cpp
     src/fileuploadwidget.cpp
@@ -338,6 +350,13 @@ SET (SOURCES
     src/chatmessagetext.cpp
     src/chatmessagecall.cpp
     src/chatmessage.cpp
+
+    src/albumlayout.cpp
+    src/chatfileitem.cpp
+    src/chatmessagefileitem.cpp
+    src/chatmessagefiles.cpp
+    src/chatmessageimageitem.cpp
+    src/chatmessageimages.cpp
 
     src/messageeditor.cpp
     src/messageselectionpanel.cpp

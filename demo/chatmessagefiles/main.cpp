@@ -1,0 +1,388 @@
+/**
+@copyright Evgeny Sidorov 2026
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+*/
+
+/****************************************************************************/
+
+/** @file demo/chatmessagefiles/main.cpp
+*
+*  Demo application of ChatMessageFiles and ChatMessageImages.
+*
+*/
+
+/****************************************************************************/
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QLabel>
+#include <QPushButton>
+#include <QSlider>
+#include <QPlainTextEdit>
+#include <QScrollArea>
+#include <QPainter>
+#include <QImage>
+#include <QPixmap>
+#include <QTimer>
+#include <QDateTime>
+
+#include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
+#include <uise/desktop/chatmessage.hpp>
+#include <uise/desktop/chatmessagefiles.hpp>
+#include <uise/desktop/chatmessageimages.hpp>
+
+using namespace UISE_DESKTOP_NAMESPACE;
+
+//--------------------------------------------------------------------------
+
+namespace {
+
+// bubble content width negotiated in this demo -- a real host (ChatMessagesView) recomputes
+// this from the viewport width on every resize (see chatmessagesview.ipp), which this
+// standalone demo has no viewport to derive from
+constexpr int DemoBubbleWidth=380;
+
+QImage makeSampleImage(const QSize& size, const QColor& c1, const QColor& c2, const QString& label)
+{
+    QImage img(size,QImage::Format_ARGB32);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::Antialiasing);
+    QLinearGradient grad(0,0,size.width(),size.height());
+    grad.setColorAt(0,c1);
+    grad.setColorAt(1,c2);
+    p.fillRect(img.rect(),grad);
+    p.setPen(Qt::white);
+    auto font=p.font();
+    font.setPointSize(14);
+    p.setFont(font);
+    p.drawText(img.rect(),Qt::AlignCenter,label);
+    p.end();
+    return img;
+}
+
+ChatFileItem makeFileEntry(QString name, qint64 size, ChatFileTransferState state)
+{
+    ChatFileItem item;
+    item.setFileName(std::move(name));
+    item.setSize(size);
+    item.setState(state);
+    if (state==ChatFileTransferState::Running)
+    {
+        item.setTransferred(size/3);
+    }
+    return item;
+}
+
+ChatFileItem makeImageEntry(const QSize& pixelSize, const QColor& c1, const QColor& c2, const QString& label, ChatFileTransferState state)
+{
+    ChatFileItem item;
+    item.setFileName(label+QStringLiteral(".png"));
+    item.setMimeType(QStringLiteral("image/png"));
+    item.setPixelSize(pixelSize);
+    item.setSize(static_cast<qint64>(pixelSize.width())*pixelSize.height()*3);
+    item.setState(state);
+    if (state==ChatFileTransferState::Running)
+    {
+        item.setTransferred(item.size()/4);
+    }
+    if (state==ChatFileTransferState::Ready)
+    {
+        item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
+    }
+    return item;
+}
+
+// Builds a real ChatMessage/ChatMessageContent bubble around `body`, so bubble-width
+// negotiation is genuinely exercised rather than looking at `body` in isolation -- exactly the
+// two-line sequence uichatmessage.cpp's doInit() uses (content->setChatMessage() BEFORE
+// setWidgets(), so body->setChatMessage(content->chatMessage()) resolves to the real message
+// rather than staying null).
+// msg is typed as AbstractChatMessage*, not ChatMessage*, so that construct() resolves
+// against WidgetBase::construct()'s public declaration (found by starting name lookup at
+// AbstractChatMessage, which does not itself override it) rather than ChatMessage's own
+// override, which is protected -- virtual dispatch still calls ChatMessage::construct() either
+// way, only the compile-time access check differs.
+AbstractChatMessage* makeMessage(QWidget* parent, AbstractChatMessage::Direction direction, AbstractChatMessageBody* body)
+{
+    AbstractChatMessage* msg=new ChatMessage(parent);
+    msg->construct();
+    msg->setDirection(direction);
+    msg->setDateTime(QDateTime::currentDateTime());
+
+    auto content=new ChatMessageContent(msg);
+    content->setChatMessage(msg);
+
+    auto bottom=new ChatMessageBottom(content);
+    bottom->setTimeString(QDateTime::currentDateTime().toString(QStringLiteral("hh:mm")));
+
+    content->setWidgets(body,nullptr,bottom);
+    msg->setContent(content);
+
+    content->updateBubbleWidth(DemoBubbleWidth);
+
+    return msg;
+}
+
+}
+
+//--------------------------------------------------------------------------
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc,argv);
+
+    Style::instance().applyStyleSheet();
+    Style::instance().setStyleSheetMode(
+        Style::instance().isDarkTheme() ? Style::StyleSheetMode::Dark : Style::StyleSheetMode::Light
+    );
+
+    QMainWindow w;
+
+    auto* mainFrame=new QScrollArea();
+    mainFrame->setWidgetResizable(true);
+    auto* central=new QFrame(mainFrame);
+    auto* rootLayout=Layout::vertical(central,false);
+    mainFrame->setWidget(central);
+
+    auto* log=new QPlainTextEdit();
+    log->setReadOnly(true);
+    auto logMsg=[log](const QString& text)
+    {
+        log->appendPlainText(text);
+    };
+
+    rootLayout->addWidget(new QLabel(QStringLiteral("File messages:")));
+
+    // --- 1. incoming file message: mixed transfer states, with a comment ---
+
+    ChatFileItems fileItems1{
+        makeFileEntry(QStringLiteral("quarterly-report.pdf"),842*1024,ChatFileTransferState::Ready),
+        makeFileEntry(QStringLiteral("a-very-long-descriptive-filename-that-needs-eliding-in-the-middle.docx"),1024*1024,ChatFileTransferState::NotLoaded),
+        makeFileEntry(QStringLiteral("archive.zip"),12*1024*1024,ChatFileTransferState::Running)
+    };
+    auto* fileBody1=new ChatMessageFiles();
+    fileBody1->setItems(fileItems1);
+    fileBody1->setComment(QStringLiteral("Here are the files you asked for."));
+    auto* fileMsg1=makeMessage(central,AbstractChatMessage::Direction::Received,fileBody1);
+    rootLayout->addWidget(fileMsg1);
+
+    // --- 2. outgoing file message: no comment, one failed transfer, one item whose progress
+    // is driven manually by the slider added further down ---
+
+    ChatFileItems fileItems2{
+        makeFileEntry(QStringLiteral("photo-original.jpg"),3*1024*1024,ChatFileTransferState::Ready),
+        makeFileEntry(QStringLiteral("notes.txt"),4*1024,ChatFileTransferState::Failed),
+        makeFileEntry(QStringLiteral("manual-control.bin"),8*1024*1024,ChatFileTransferState::Running)
+    };
+    fileItems2[2].setTransferred(0);
+    auto manualItemId=fileItems2[2].id();
+    auto* fileBody2=new ChatMessageFiles();
+    fileBody2->setItems(fileItems2);
+    auto* fileMsg2=makeMessage(central,AbstractChatMessage::Direction::Sent,fileBody2);
+    rootLayout->addWidget(fileMsg2);
+
+    // slider placed right under the message it controls, not scrolled away at the bottom
+    auto* manualProgressFrame=new QFrame(central);
+    auto* manualProgressLayout=Layout::horizontal(manualProgressFrame);
+    rootLayout->addWidget(manualProgressFrame);
+
+    manualProgressLayout->addWidget(new QLabel(QStringLiteral("manual-control.bin progress:")));
+
+    auto* manualSlider=new QSlider(Qt::Horizontal);
+    manualSlider->setRange(0,100);
+    manualSlider->setValue(0);
+    manualProgressLayout->addWidget(manualSlider,1);
+
+    auto* manualPercentLabel=new QLabel(QStringLiteral("0%"));
+    manualProgressLayout->addWidget(manualPercentLabel);
+
+    QObject::connect(
+        manualSlider,
+        &QSlider::valueChanged,
+        fileBody2,
+        [fileBody2,manualItemId,manualPercentLabel](int value)
+        {
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    auto updated=it;
+                    updated.setTransferred(static_cast<qint64>(updated.size())*value/100);
+                    fileBody2->updateItem(manualItemId,updated);
+                    break;
+                }
+            }
+            manualPercentLabel->setText(QString("%1%").arg(value));
+        }
+    );
+
+    rootLayout->addSpacing(8);
+    rootLayout->addWidget(new QLabel(QStringLiteral("Image messages (one per album template):")));
+
+    // --- 3. single image ---
+
+    auto* imgBody1=new ChatMessageImages();
+    imgBody1->setItems({
+        makeImageEntry(QSize(480,270),QColor("#4C9AFF"),QColor("#0A66C2"),QStringLiteral("1"),ChatFileTransferState::Ready)
+    });
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody1));
+
+    // --- 4. two images (both wide) ---
+
+    auto* imgBody2=new ChatMessageImages();
+    imgBody2->setItems({
+        makeImageEntry(QSize(480,270),QColor("#FF8A65"),QColor("#D84315"),QStringLiteral("2a"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(480,220),QColor("#4DB6AC"),QColor("#00695C"),QStringLiteral("2b"),ChatFileTransferState::Ready)
+    });
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody2));
+
+    // --- 5. three images (one wide + two below), with a comment and one still transferring ---
+
+    auto* imgBody3=new ChatMessageImages();
+    imgBody3->setItems({
+        makeImageEntry(QSize(480,270),QColor("#BA68C8"),QColor("#6A1B9A"),QStringLiteral("3a"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(240,320),QColor("#4FC3F7"),QColor("#0277BD"),QStringLiteral("3b"),ChatFileTransferState::Running),
+        makeImageEntry(QSize(240,320),QColor("#AED581"),QColor("#558B2F"),QStringLiteral("3c"),ChatFileTransferState::Ready)
+    });
+    imgBody3->setComment(QStringLiteral("From the trip last weekend."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody3));
+
+    // --- 6. four images (one wide + three below) ---
+
+    auto* imgBody4=new ChatMessageImages();
+    imgBody4->setItems({
+        makeImageEntry(QSize(480,240),QColor("#FFD54F"),QColor("#F57F17"),QStringLiteral("4a"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(240,240),QColor("#F06292"),QColor("#AD1457"),QStringLiteral("4b"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(240,240),QColor("#7986CB"),QColor("#283593"),QStringLiteral("4c"),ChatFileTransferState::NotLoaded),
+        makeImageEntry(QSize(240,240),QColor("#4DD0E1"),QColor("#00838F"),QStringLiteral("4d"),ChatFileTransferState::Ready)
+    });
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody4));
+
+    // --- 7. seven images -- exercises the justified-rows fallback (n>=5) ---
+
+    ChatFileItems sevenImages;
+    for (int i=0;i<7;++i)
+    {
+        auto hue=(i*47)%360;
+        auto c1=QColor::fromHsv(hue,180,230);
+        auto c2=QColor::fromHsv(hue,220,140);
+        auto w=200+(i%3)*90;
+        auto h=200+((i+1)%3)*90;
+        sevenImages.push_back(makeImageEntry(QSize(w,h),c1,c2,QString::number(i+1),ChatFileTransferState::Ready));
+    }
+    auto* imgBody5=new ChatMessageImages();
+    imgBody5->setItems(sevenImages);
+    imgBody5->setComment(QStringLiteral("**Seven** images, justified-rows fallback."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody5));
+
+    // --- wire up logging for every signal on every body ---
+
+    auto logId=[logMsg](const QString& label, const QString& signalName, const QUuid& id)
+    {
+        logMsg(QString("%1: %2(%3)").arg(label,signalName,id.toString(QUuid::WithoutBraces)));
+    };
+
+    auto wireFiles=[&logId](AbstractChatMessageFiles* body, const QString& label)
+    {
+        QObject::connect(body,&AbstractChatMessageFiles::itemClicked,body,[label,&logId](const QUuid& id){logId(label,"itemClicked",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::loadControlClicked,body,[label,&logId](const QUuid& id){logId(label,"loadControlClicked",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::openRequested,body,[label,&logId](const QUuid& id){logId(label,"openRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::saveAsRequested,body,[label,&logId](const QUuid& id){logId(label,"saveAsRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::forwardRequested,body,[label,&logId](const QUuid& id){logId(label,"forwardRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::showInFolderRequested,body,[label,&logId](const QUuid& id){logId(label,"showInFolderRequested",id);});
+    };
+    wireFiles(fileBody1,QStringLiteral("file1"));
+    wireFiles(fileBody2,QStringLiteral("file2"));
+
+    auto wireImages=[&logId](AbstractChatMessageImages* body, const QString& label)
+    {
+        QObject::connect(body,&AbstractChatMessageImages::itemClicked,body,[label,&logId](const QUuid& id){logId(label,"itemClicked",id);});
+        QObject::connect(body,&AbstractChatMessageImages::loadControlClicked,body,[label,&logId](const QUuid& id){logId(label,"loadControlClicked",id);});
+        QObject::connect(body,&AbstractChatMessageImages::openWithRequested,body,[label,&logId](const QUuid& id){logId(label,"openWithRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::saveAsRequested,body,[label,&logId](const QUuid& id){logId(label,"saveAsRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::forwardRequested,body,[label,&logId](const QUuid& id){logId(label,"forwardRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::showInFolderRequested,body,[label,&logId](const QUuid& id){logId(label,"showInFolderRequested",id);});
+    };
+    wireImages(imgBody1,QStringLiteral("img1"));
+    wireImages(imgBody2,QStringLiteral("img2"));
+    wireImages(imgBody3,QStringLiteral("img3"));
+    wireImages(imgBody4,QStringLiteral("img4"));
+    wireImages(imgBody5,QStringLiteral("img5"));
+
+    // --- a timer driving the two "Running" items to completion, so the load-control arc and
+    // the "x of y" size text are visible progressing, not just a static snapshot ---
+
+    auto runningFileId=fileItems1[2].id();
+    auto runningImageId=imgBody3->items()[1].id();
+
+    auto* progressTimer=new QTimer(&app);
+    progressTimer->setInterval(400);
+    QObject::connect(
+        progressTimer,
+        &QTimer::timeout,
+        &app,
+        [fileBody1,imgBody3,runningFileId,runningImageId,progressTimer]()
+        {
+            auto advance=[](auto* body, const QUuid& id, auto& items)
+            {
+                for (const auto& it : items)
+                {
+                    if (it.id()==id)
+                    {
+                        auto updated=it;
+                        auto transferred=updated.transferred()+updated.size()/8;
+                        if (transferred>=updated.size())
+                        {
+                            updated.setTransferred(updated.size());
+                            updated.setState(ChatFileTransferState::Ready);
+                        }
+                        else
+                        {
+                            updated.setTransferred(transferred);
+                        }
+                        body->updateItem(id,updated);
+                        return updated.state()==ChatFileTransferState::Ready;
+                    }
+                }
+                return true;
+            };
+
+            auto fileDone=advance(fileBody1,runningFileId,fileBody1->items());
+            auto imageDone=advance(imgBody3,runningImageId,imgBody3->items());
+            if (fileDone && imageDone)
+            {
+                progressTimer->stop();
+            }
+        }
+    );
+    progressTimer->start();
+
+    // --- log ---
+
+    rootLayout->addSpacing(8);
+    rootLayout->addWidget(new QLabel(QStringLiteral("Log:")));
+    log->setMinimumHeight(200);
+    rootLayout->addWidget(log,1);
+
+    w.setCentralWidget(mainFrame);
+    w.resize(700,900);
+    w.setWindowTitle("ChatMessageFiles / ChatMessageImages Demo");
+    w.show();
+
+    auto ret=app.exec();
+    return ret;
+}
+
+//--------------------------------------------------------------------------

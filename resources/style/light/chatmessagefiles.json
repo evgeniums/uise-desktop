@@ -1,0 +1,16 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ChatMessageFiles",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#444444" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        }
+    ]
+}

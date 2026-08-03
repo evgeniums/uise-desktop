@@ -1,0 +1,130 @@
+/**
+@copyright Evgeny Sidorov 2026
+
+This software is dual-licensed. Choose the appropriate license for your project.
+
+1. The GNU GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-GPLv3.md](LICENSE-GPLv3.md) or copy at https://www.gnu.org/licenses/gpl-3.0.txt)
+
+2. The GNU LESSER GENERAL PUBLIC LICENSE, Version 3.0
+     (see accompanying file [LICENSE-LGPLv3.md](LICENSE-LGPLv3.md) or copy at https://www.gnu.org/licenses/lgpl-3.0.txt).
+
+You may select, at your option, one of the above-listed licenses.
+
+*/
+
+/****************************************************************************/
+
+/** @file uise/desktop/chatmessageimageitem.hpp
+*
+*  Declares ChatMessageImageItem.
+*
+*/
+
+/****************************************************************************/
+
+#ifndef UISE_DESKTOP_CHATMESSAGEIMAGEITEM_HPP
+#define UISE_DESKTOP_CHATMESSAGEIMAGEITEM_HPP
+
+#include <memory>
+
+#include <QFrame>
+
+#include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/chatfileitem.hpp>
+
+UISE_DESKTOP_NAMESPACE_BEGIN
+
+class IconTextButton;
+class AbstractLoadControl;
+
+class ChatMessageImageItem_p;
+
+/**
+ * @brief One tile of an image chat message's album grid.
+ *
+ * A clickable, center-cropped preview filling whatever rect the owning ChatMessageImages gives
+ * it (see albumLayout()), with a drop-down menu button floating over its top-right corner and,
+ * while the image is not yet transferred, an AbstractLoadControl centered on top of it.
+ */
+class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
+{
+    Q_OBJECT
+
+    public:
+
+        ChatMessageImageItem(QWidget* parent=nullptr);
+
+        ~ChatMessageImageItem();
+
+        ChatMessageImageItem(const ChatMessageImageItem&)=delete;
+        ChatMessageImageItem(ChatMessageImageItem&&)=delete;
+        ChatMessageImageItem& operator=(const ChatMessageImageItem&)=delete;
+        ChatMessageImageItem& operator=(ChatMessageImageItem&&)=delete;
+
+        /**
+         * @brief Set the item to display.
+         * @param item New item content.
+         * @param incoming Direction of the owning message -- selects CanDownload vs CanUpload
+         *  for the load control of a not-yet-transferred item.
+         */
+        void setItem(const ChatFileItem& item, bool incoming);
+
+        const ChatFileItem& item() const;
+
+        bool isIncoming() const noexcept;
+
+        /**
+         * @brief Re-read item() into the preview/load-control/menu widgets.
+         */
+        void refresh();
+
+        AbstractLoadControl* loadControl() const;
+
+        IconTextButton* menuButton() const;
+
+        /**
+         * @brief Close the per-item drop-down menu if open, without animation.
+         *
+         * See ChatMessageFileItem::closeMenu() -- same rationale.
+         */
+        void closeMenu();
+
+    signals:
+
+        /**
+         * @brief Emitted when the preview is clicked.
+         */
+        void clicked();
+
+        void loadControlClicked();
+
+        /**
+         * @brief Emitted when a drop-down menu entry is triggered.
+         * @param action One of ChatFileMenuAction.
+         */
+        void menuTriggered(int action);
+
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
+        bool eventFilter(QObject* obj, QEvent* event) override;
+
+    private:
+
+        void rebuildMenu();
+        void updatePreview();
+        void repositionOverlays();
+
+    private slots:
+
+        void onMenuItemTriggered(int id);
+
+    private:
+
+        std::unique_ptr<ChatMessageImageItem_p> pimpl;
+};
+
+UISE_DESKTOP_NAMESPACE_END
+
+#endif // UISE_DESKTOP_CHATMESSAGEIMAGEITEM_HPP

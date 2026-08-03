@@ -103,6 +103,12 @@
         <file>style/light/fileupload.json</file>
         <file>style/dark/fileupload.qss</file>
         <file>style/light/fileupload.qss</file>
+        <file>style/chatmessagefiles.json</file>
+        <file>style/chatmessagefiles.qss</file>
+        <file>style/dark/chatmessagefiles.json</file>
+        <file>style/light/chatmessagefiles.json</file>
+        <file>style/dark/chatmessagefiles.qss</file>
+        <file>style/light/chatmessagefiles.qss</file>
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>

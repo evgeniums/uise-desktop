@@ -1,0 +1,65 @@
+uise--ChatMessageFiles,
+uise--ChatMessageImages {
+padding:0;
+margin:0;
+}
+
+uise--ChatMessageFiles #contents {
+padding:0;
+margin:0;
+}
+
+uise--ChatMessageFileItem {
+border-radius:8px;
+padding:4px 0;
+}
+
+uise--ChatMessageFileItem #iconSlot {
+padding:0;
+margin:0;
+}
+
+uise--ChatMessageFileItem #textColumn {
+padding:0;
+margin-left:8px;
+}
+
+uise--ChatMessageFileItem #infoLabel {
+font-size:11px;
+margin-left:2px;
+}
+
+/* IconTextButton's icon has no sensible default size of its own -- it must be set explicitly
+   per container, same as fileupload.qss/dropdownmenu.qss do for their own icon buttons */
+uise--ChatMessageFileItem uise--IconTextButton uise--RoundedImage,
+uise--ChatMessageImageItem uise--IconTextButton uise--RoundedImage {
+min-width:18px;
+max-width:18px;
+min-height:18px;
+max-height:18px;
+}
+
+uise--ChatMessageFileItem uise--IconTextButton,
+uise--ChatMessageImageItem uise--IconTextButton {
+padding:6px;
+border-radius:4px;
+border:1px solid transparent;
+}
+
+uise--ChatMessageImages #grid {
+padding:0;
+margin:0;
+background-color: transparent;
+}
+
+uise--ChatMessageImageItem {
+border-radius:8px;
+}
+
+/* the menu button floats over arbitrary photo content, same rationale as fileupload.qss's
+   [view="image"] #itemButtons -- it always gets a translucent backing so the (theme-colored)
+   icon stays visible against arbitrary photo content; color picked per theme in dark/light.qss */
+uise--ChatMessageImageItem #menuButton {
+border-radius:6px;
+padding:4px;
+}
