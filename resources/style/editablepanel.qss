@@ -2,6 +2,19 @@ uise--EditablePanel {
   margin: 6px 12px 2px 12px;
   border-radius: 8px;
   padding: 6px;
+
+/* Title and bottom buttons row alignment (applied at polish time; uncomment to override
+ * the C++ defaults from setTitleAlignment() / setBottomButtonsAlignment()).
+ *
+ * Space-separated tokens. ALWAYS QUOTE the value -- Qt's CSS tokenizer splits an unquoted
+ * multi-token value and only the first token survives.
+ *   "left" | "right" | "hcenter" | "justify"
+ *   "stretch" -- the title / bottom buttons row spans the full panel width
+ * "" or "default" restores the Qt::AlignHCenter default.
+ *
+ * qproperty-titleAlignment:         "left";
+ * qproperty-bottomButtonsAlignment: "right";
+ */
 }
 
 uise--EditablePanel uise--EditableLabel QLabel {

@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QLabel>
+#include <QPointer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -108,10 +109,10 @@ EditablePanel::EditablePanel(
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
     pimpl->titleLayout=Layout::horizontal(pimpl->titleFrame);
-    pimpl->layout->addWidget(pimpl->titleFrame,0,Qt::AlignHCenter);
+    pimpl->layout->addWidget(pimpl->titleFrame);
     pimpl->title=new Label(pimpl->titleFrame);
     pimpl->title->setObjectName("panelTitle");
-    pimpl->titleLayout->addWidget(pimpl->title,0,Qt::AlignHCenter);
+    pimpl->titleLayout->addWidget(pimpl->title);
 
     pimpl->contentFrame=new QFrame(this);
     pimpl->contentFrame->setObjectName("contentFrame");
@@ -132,7 +133,7 @@ EditablePanel::EditablePanel(
     pimpl->bottomButtonsFrame=new QFrame(this);
     pimpl->bottomButtonsFrame->setObjectName("bottomButtonsFrame");
     pimpl->bottomButtonsLayout=Layout::horizontal(pimpl->bottomButtonsFrame);
-    pimpl->layout->addWidget(pimpl->bottomButtonsFrame,0,Qt::AlignCenter);
+    pimpl->layout->addWidget(pimpl->bottomButtonsFrame);
     pimpl->bottomButtonApply=new PushButton(tr("Apply"),pimpl->bottomButtonsFrame);
     pimpl->bottomButtonApply->setObjectName("bottomButtonsApply");
     pimpl->bottomButtonsLayout->addWidget(pimpl->bottomButtonApply);
@@ -189,6 +190,7 @@ EditablePanel::EditablePanel(
     );
 
     updateState();
+    updateAlignments();
 }
 
 //--------------------------------------------------------------------------
@@ -354,6 +356,23 @@ void EditablePanel::setBottomWidget(QWidget* widget, Qt::Alignment alignment)
     auto count=pimpl->layout->count();
     auto index=count-2;
     pimpl->layout->insertWidget(index,widget,0,alignment);
+}
+
+//--------------------------------------------------------------------------
+
+void EditablePanel::updateAlignments()
+{
+    const auto titleAlign=titleAlignment();
+    // With a horizontal flag the frame shrinks to its content and is placed at that side;
+    // with Qt::Alignment{} it spans the full panel width.
+    // setAlignment() rather than remove+addWidget: keeps the frames' positions in the
+    // vertical stack, which setTopWidget()/setBottomWidget() address by index.
+    pimpl->layout->setAlignment(pimpl->titleFrame,titleAlign);
+    pimpl->titleLayout->setAlignment(pimpl->title,titleAlign);
+    // Text alignment inside the label only matters when the label itself is stretched.
+    pimpl->title->setAlignment(titleAlign|Qt::AlignVCenter);
+
+    pimpl->layout->setAlignment(pimpl->bottomButtonsFrame,bottomButtonsAlignment());
 }
 
 //--------------------------------------------------------------------------
@@ -560,6 +579,142 @@ int AbstractEditablePanel::addValueWidget(AbstractValueWidget* widget)
         static_cast<Qt::Alignment>(config.property(ValueWidgetProperty::Alignment,static_cast<int>(Qt::Alignment{})).toInt()),
         {},
         config.property(ValueWidgetProperty::RowSpan,1).toInt()
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::setTitleAlignment(Qt::Alignment alignment)
+{
+    alignment&=Qt::AlignHorizontal_Mask;
+    if (m_titleAlignment==alignment)
+    {
+        return;
+    }
+    m_titleAlignment=alignment;
+    scheduleAlignmentsUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::resetTitleAlignment()
+{
+    setTitleAlignment(Qt::AlignHCenter);
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment AbstractEditablePanel::titleAlignment() const noexcept
+{
+    return m_titleAlignment;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::setBottomButtonsAlignment(Qt::Alignment alignment)
+{
+    alignment&=Qt::AlignHorizontal_Mask;
+    if (m_bottomButtonsAlignment==alignment)
+    {
+        return;
+    }
+    m_bottomButtonsAlignment=alignment;
+    scheduleAlignmentsUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::resetBottomButtonsAlignment()
+{
+    setBottomButtonsAlignment(Qt::AlignHCenter);
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment AbstractEditablePanel::bottomButtonsAlignment() const noexcept
+{
+    return m_bottomButtonsAlignment;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::setTitleAlignmentName(const QString& name)
+{
+    if (isDefaultStyleToken(name))
+    {
+        resetTitleAlignment();
+        return;
+    }
+
+    bool ok=false;
+    auto alignment=alignmentFromString(name,&ok);
+    if (!ok && alignment==Qt::Alignment{})
+    {
+        // every token failed to parse -- nothing usable, keep the previous value
+        return;
+    }
+    setTitleAlignment(alignment);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractEditablePanel::titleAlignmentName() const
+{
+    return alignmentToString(titleAlignment());
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::setBottomButtonsAlignmentName(const QString& name)
+{
+    if (isDefaultStyleToken(name))
+    {
+        resetBottomButtonsAlignment();
+        return;
+    }
+
+    bool ok=false;
+    auto alignment=alignmentFromString(name,&ok);
+    if (!ok && alignment==Qt::Alignment{})
+    {
+        // every token failed to parse -- nothing usable, keep the previous value
+        return;
+    }
+    setBottomButtonsAlignment(alignment);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractEditablePanel::bottomButtonsAlignmentName() const
+{
+    return alignmentToString(bottomButtonsAlignment());
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractEditablePanel::scheduleAlignmentsUpdate()
+{
+    if (m_alignmentsUpdateScheduled)
+    {
+        return;
+    }
+    m_alignmentsUpdateScheduled=true;
+
+    QPointer<AbstractEditablePanel> guard(this);
+    QMetaObject::invokeMethod(
+        this,
+        [guard]()
+        {
+            if (guard.isNull())
+            {
+                return;
+            }
+            // cleared BEFORE the update so a legitimate later request is not swallowed;
+            // updateAlignments() itself must never call back into here synchronously
+            guard->m_alignmentsUpdateScheduled=false;
+            guard->updateAlignments();
+        },
+        Qt::QueuedConnection
     );
 }
 

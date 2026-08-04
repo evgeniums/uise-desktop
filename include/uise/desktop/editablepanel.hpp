@@ -43,6 +43,11 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 {
     Q_OBJECT
 
+    //! QSS: qproperty-titleAlignment: "left";
+    Q_PROPERTY(QString titleAlignment READ titleAlignmentName WRITE setTitleAlignmentName)
+    //! QSS: qproperty-bottomButtonsAlignment: "right";
+    Q_PROPERTY(QString bottomButtonsAlignment READ bottomButtonsAlignmentName WRITE setBottomButtonsAlignmentName)
+
     public:
 
         struct Item
@@ -214,6 +219,24 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return m_labelAlignment;
         }
 
+        //! Horizontal alignment of the panel title. Default Qt::AlignHCenter.
+        //! Vertical flags are dropped; Qt::Alignment{} ("stretch") makes the title span
+        //! the full panel width.
+        void setTitleAlignment(Qt::Alignment alignment);
+        void resetTitleAlignment();
+        Qt::Alignment titleAlignment() const noexcept;
+
+        //! Horizontal alignment of the bottom buttons row. Default Qt::AlignHCenter.
+        void setBottomButtonsAlignment(Qt::Alignment alignment);
+        void resetBottomButtonsAlignment();
+        Qt::Alignment bottomButtonsAlignment() const noexcept;
+
+        //! QSS-friendly string forms, see alignmentFromString(); "" / "default" resets.
+        void setTitleAlignmentName(const QString& name);
+        QString titleAlignmentName() const;
+        void setBottomButtonsAlignmentName(const QString& name);
+        QString bottomButtonsAlignmentName() const;
+
         virtual void setStatusFrameVisible(bool enable) =0;
 
         enum class BottomButton
@@ -278,6 +301,18 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         virtual void doBeginApply()
         {}
 
+        //! Re-apply titleAlignment()/bottomButtonsAlignment() to the existing layouts.
+        //! No-op in the base class.
+        virtual void updateAlignments()
+        {}
+
+        //! Request updateAlignments() on the next event loop turn, coalescing repeats.
+        //! Deferral is mandatory: the setters above are Q_PROPERTY writers and Qt's style
+        //! engine calls them DURING polish -- see the same guard and its rationale in
+        //! AbstractDialog::scheduleButtonsLayoutUpdate() and
+        //! FileUploadWidget::deferListAreaHeightUpdate().
+        void scheduleAlignmentsUpdate();
+
     private:
 
         std::shared_ptr<Status> m_statusHelper;
@@ -286,6 +321,9 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         bool m_bottomApplyVisible=true;
         bool m_bottomCancelVisible=false;
         BottomButtonsMode m_bottomButtonsMode;
+        Qt::Alignment m_titleAlignment=Qt::AlignHCenter;
+        Qt::Alignment m_bottomButtonsAlignment=Qt::AlignHCenter;
+        bool m_alignmentsUpdateScheduled=false;
 };
 
 class EditablePanel_p;
@@ -368,6 +406,8 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
         void doCommitApply() override;
 
         void doBeginApply() override;
+
+        void updateAlignments() override;
 
     private:
 
