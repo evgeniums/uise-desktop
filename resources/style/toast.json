@@ -1,0 +1,13 @@
+{
+    "contexts" : [
+        {
+            "name" : "Toast",
+            "aliases" : {
+                "error" : "${uise-svg-icons-1}/alert-hexagon",
+                "warning" : "${uise-svg-icons-1}/alert-triangle",
+                "info" : "${uise-svg-icons-1}/info-circle",
+                "success" : "${uise-svg-icons-1}/check"
+            }
+        }
+    ]
+}

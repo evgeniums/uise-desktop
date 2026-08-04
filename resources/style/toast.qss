@@ -1,7 +1,30 @@
 uise--Toast {
 border-radius: 10px;
+
+/* Positioning (applied at polish time; uncomment to override the C++ defaults set by
+ * setVerticalPosition()/setHorizontalPosition()).
+ * verticalPosition:   "vcenter" | "top" | "bottom"
+ * horizontalPosition: "hcenter" | "left" | "right"
+ * offsets are in px and are ignored on a centered axis
+ *
+ * qproperty-verticalPosition:   "bottom";
+ * qproperty-horizontalPosition: "hcenter";
+ * qproperty-verticalOffset:     30;
+ * qproperty-horizontalOffset:   30;
+ */
 }
 
-uise--Toast QLabel {
+uise--Toast #text {
 padding: 10px;
+}
+
+uise--Toast #icon {
+margin-left: 10px;
+}
+
+uise--Toast #icon uise--RoundedImage {
+min-width: 24px;
+max-width: 24px;
+min-height: 24px;
+max-height: 24px;
 }

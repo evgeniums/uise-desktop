@@ -1,0 +1,39 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "Toast",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            },
+            "icons" : [
+                {
+                    "name" : "error",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#BB4444" }
+                        }
+                    }
+                },
+                {
+                    "name" : "warning",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#FB8500" }
+                        }
+                    }
+                },
+                {
+                    "name" : "success",
+                    "modes" : {
+                        "normal" : {
+                            "off" : { "currentColor" : "#2E8B2E" }
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

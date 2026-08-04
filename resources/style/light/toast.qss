@@ -2,6 +2,6 @@ uise--Toast {
 background-color: #C8C8C8;
 }
 
-uise--Toast QLabel {
+uise--Toast #text {
 color: #000000;
 }

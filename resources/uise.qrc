@@ -76,6 +76,9 @@
         <file>style/toast.qss</file>
         <file>style/dark/toast.qss</file>
         <file>style/light/toast.qss</file>
+        <file>style/toast.json</file>
+        <file>style/dark/toast.json</file>
+        <file>style/light/toast.json</file>
         <file>style/qrcodescanner.qss</file>
         <file>style/dark/qrcodescanner.qss</file>
         <file>style/light/qrcodescanner.qss</file>
