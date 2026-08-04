@@ -33,6 +33,10 @@ uise--NavigationBar #leftFrame {
 padding-left: 6px;
 }
 
+uise--NavigationBar #rightFrame {
+padding-right: 6px;
+}
+
 uise--NavigationBar #leftFrame uise--IconTextButton uise--WithRoundedImage,
 uise--NavigationBar #leftFrame uise--IconTextButton uise--RoundedImage,
 uise--NavigationBar #leftFrame uise--AvatarButton uise--RoundedImage,
