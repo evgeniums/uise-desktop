@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_ABSTRACT_DIALOG_HPP
 #define UISE_DESKTOP_ABSTRACT_DIALOG_HPP
 
+#include <optional>
+
 #include <QFrame>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -39,6 +41,12 @@ class SvgIcon;
 class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
 {
     Q_OBJECT
+
+    //! QSS: qproperty-buttonsOrientation: "vertical";
+    Q_PROPERTY(QString buttonsOrientation READ buttonsOrientationName WRITE setButtonsOrientationName)
+    //! QSS: qproperty-buttonsAlignment: "right bottom";  -- ALWAYS quote a multi-token
+    //! value, Qt's CSS tokenizer otherwise splits it and only the first token survives.
+    Q_PROPERTY(QString buttonsAlignment READ buttonsAlignmentName WRITE setButtonsAlignmentName)
 
     public:
 
@@ -120,8 +128,43 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
             std::ignore=enable;
         }
 
-        virtual void setButtonsStyle(ButtonsStyle style) =0;
-        virtual void resetButtonsStyle() =0;
+        /**
+         * @brief Override the whole ButtonsStyle for this dialog.
+         *
+         * Layers over the global Style::buttonsStyle(buttonsStyleContext(), this) but
+         * BELOW the per-axis overrides set by setButtonsOrientation()/setButtonsAlignment()
+         * and by the buttonsOrientation/buttonsAlignment QSS properties.
+         *
+         * Schedules a deferred relayout of the already-created buttons, so unlike before
+         * it no longer needs to be called before setButtons(). Note that showText/showIcon
+         * still only affect buttons created AFTER this call -- they are consumed by
+         * standardButton() when a ButtonConfig is built, not at layout time.
+         */
+        virtual void setButtonsStyle(ButtonsStyle style);
+        virtual void resetButtonsStyle();
+
+        //! Effective style: global default -> setButtonsStyle() -> per-axis overrides.
+        ButtonsStyle effectiveButtonsStyle() const;
+
+        //! Per-axis override of ButtonsStyle::orientation.
+        void setButtonsOrientation(Qt::Orientation orientation);
+        void resetButtonsOrientation();
+        //! Effective (resolved) orientation, not the raw override.
+        Qt::Orientation buttonsOrientation() const;
+
+        //! Per-axis override of ButtonsStyle::alignment.
+        void setButtonsAlignment(Qt::Alignment alignment);
+        void resetButtonsAlignment();
+        //! Effective (resolved) alignment, not the raw override.
+        Qt::Alignment buttonsAlignment() const;
+
+        //! QSS-friendly string form: "horizontal" | "vertical"; "" / "default" resets.
+        void setButtonsOrientationName(const QString& name);
+        QString buttonsOrientationName() const;
+
+        //! QSS-friendly string form, see alignmentFromString(); "" / "default" resets.
+        void setButtonsAlignmentName(const QString& name);
+        QString buttonsAlignmentName() const;
 
     signals:
 
@@ -141,6 +184,43 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         virtual void doActivateButton(int id)=0;
         virtual void doSetButtonEnabled(int id, bool enable)=0;
         virtual void doSetButtonVisible(int id, bool enable)=0;
+
+        /**
+         * @brief Re-apply the effective ButtonsStyle to the already-created buttons.
+         *
+         * Implementations must NOT destroy/recreate the buttons: callers set per-button
+         * enabled/visible state after setButtons() (see
+         * whitemdesktop/ui/uiapplock.cpp, which hides a button right after setButtons()),
+         * and that state would be lost. No-op in the base class.
+         */
+        virtual void updateButtonsLayout()
+        {}
+
+        /**
+         * @brief Request updateButtonsLayout() on the next event loop turn, coalescing
+         *        multiple requests into one.
+         *
+         * Deferral is mandatory, not an optimisation: setButtonsOrientationName()/
+         * setButtonsAlignmentName() are Q_PROPERTY writers and Qt's style engine calls them
+         * DURING polish. Relayouting + repolishing this same widget tree synchronously from
+         * inside that call re-enters the style sheet engine on a widget it is still
+         * polishing, which crashes -- see the identical guard and its comment in
+         * FileUploadWidget::deferListAreaHeightUpdate(), src/fileuploadwidget.cpp.
+         */
+        void scheduleButtonsLayoutUpdate();
+
+        //! Context name passed to Style::buttonsStyle(). "Dialog" by default.
+        virtual QString buttonsStyleContext() const
+        {
+            return QStringLiteral("Dialog");
+        }
+
+    private:
+
+        std::optional<ButtonsStyle> m_forceButtonsStyle;
+        std::optional<Qt::Orientation> m_buttonsOrientation;
+        std::optional<Qt::Alignment> m_buttonsAlignment;
+        bool m_buttonsLayoutUpdateScheduled=false;
 };
 
 UISE_DESKTOP_NAMESPACE_END

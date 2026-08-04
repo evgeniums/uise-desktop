@@ -1,4 +1,24 @@
-uise--AbstractDialog {border-radius: 8px;}
+uise--AbstractDialog {
+border-radius: 8px;
+
+/* Bottom buttons row (applied at polish time; uncomment to override the C++ defaults
+ * from ButtonsStyle / setButtonsOrientation() / setButtonsAlignment()).
+ *
+ * buttonsOrientation: "horizontal" | "vertical"
+ *
+ * buttonsAlignment: space-separated tokens. ALWAYS QUOTE the value -- Qt's CSS tokenizer
+ *   splits an unquoted `right bottom` into two values and only the first survives.
+ *     horizontal: "left" | "right" | "hcenter" | "justify"
+ *     vertical:   "top" | "bottom" | "vcenter" | "baseline"
+ *     shorthand:  "center" (== "hcenter vcenter")
+ *     no flags:   "stretch" -- in vertical orientation the column spans the full dialog
+ *                 width and every button is stretched to it
+ *   "" or "default" restores the inherited ButtonsStyle value.
+ *
+ * qproperty-buttonsOrientation: "vertical";
+ * qproperty-buttonsAlignment:   "right bottom";
+ */
+}
 
 uise--AbstractDialog #dialogIcon QPushButton {icon-size:40px;border:none;}
 uise--AbstractDialog #dialogIcon {padding:0 8px;}
@@ -11,6 +31,18 @@ uise--AbstractDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}
 uise--AbstractDialog #dialogButtonsFrame {padding: 0 4px 4px 4px}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:4px;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 2px 12px;}
+
+/* Vertical button column. The frame carries a dynamic "vertical" property (set in
+ * Dialog<>::applyButtonsLayout()) so the stacked form can be tuned independently of the
+ * default row. */
+uise--AbstractDialog #dialogButtonsFrame[vertical="true"] {padding: 0 8px 8px 8px;}
+uise--AbstractDialog #dialogButtonsFrame[vertical="true"] uise--PushButton {margin:2px 0;}
+
+/* PushButton pins its inner QPushButton to sizeHint and centers it, so equal-width
+ * stacked buttons are a QSS opt-in rather than a C++ default:
+ *
+ * uise--AbstractDialog #dialogButtonsFrame[vertical="true"] uise--PushButton QPushButton {min-width: 140px;}
+ */
 
 uise--AbstractDialog #contentFrame {padding: 16px 8px 8px 8px;}
 

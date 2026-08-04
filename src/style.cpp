@@ -32,6 +32,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStyleHints>
+#include <QRegularExpression>
+#include <QDebug>
 
 #include <uise/desktop/htree.hpp>
 
@@ -443,6 +445,180 @@ void Style::enableSystemColorSchemeTracking()
             }
         });
 #endif
+}
+
+//--------------------------------------------------------------------------
+
+bool isDefaultStyleToken(const QString& str)
+{
+    auto s=str.trimmed();
+    return s.isEmpty()
+           || s.compare(QLatin1String("default"),Qt::CaseInsensitive)==0
+           || s.compare(QLatin1String("inherit"),Qt::CaseInsensitive)==0;
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment alignmentFromString(const QString& str, bool* ok)
+{
+    if (ok!=nullptr)
+    {
+        *ok=true;
+    }
+
+    Qt::Alignment alignment;
+
+    static const QRegularExpression separator(QStringLiteral("[\\s,|;]+"));
+    const auto tokens=str.split(separator,Qt::SkipEmptyParts);
+    for (auto token: tokens)
+    {
+        token=token.toLower();
+        if (token.startsWith(QLatin1String("align")))
+        {
+            token=token.mid(5);
+        }
+
+        if (token==QLatin1String("left"))
+        {
+            alignment|=Qt::AlignLeft;
+        }
+        else if (token==QLatin1String("right"))
+        {
+            alignment|=Qt::AlignRight;
+        }
+        else if (token==QLatin1String("hcenter"))
+        {
+            alignment|=Qt::AlignHCenter;
+        }
+        else if (token==QLatin1String("justify"))
+        {
+            alignment|=Qt::AlignJustify;
+        }
+        else if (token==QLatin1String("top"))
+        {
+            alignment|=Qt::AlignTop;
+        }
+        else if (token==QLatin1String("bottom"))
+        {
+            alignment|=Qt::AlignBottom;
+        }
+        else if (token==QLatin1String("vcenter"))
+        {
+            alignment|=Qt::AlignVCenter;
+        }
+        else if (token==QLatin1String("baseline"))
+        {
+            alignment|=Qt::AlignBaseline;
+        }
+        else if (token==QLatin1String("center"))
+        {
+            alignment|=Qt::AlignCenter;
+        }
+        else if (token==QLatin1String("stretch") || token==QLatin1String("none"))
+        {
+            // explicit "no flags" -- nothing to OR in
+        }
+        else
+        {
+            qWarning() << "uise: unknown alignment token" << token;
+            if (ok!=nullptr)
+            {
+                *ok=false;
+            }
+        }
+    }
+
+    return alignment;
+}
+
+//--------------------------------------------------------------------------
+
+QString alignmentToString(Qt::Alignment alignment)
+{
+    QStringList parts;
+
+    const auto h=alignment & Qt::AlignHorizontal_Mask;
+    const auto v=alignment & Qt::AlignVertical_Mask;
+
+    if (h==Qt::AlignHCenter && v==Qt::AlignVCenter)
+    {
+        return QStringLiteral("center");
+    }
+
+    if (h==Qt::AlignLeft)
+    {
+        parts << QStringLiteral("left");
+    }
+    else if (h==Qt::AlignRight)
+    {
+        parts << QStringLiteral("right");
+    }
+    else if (h==Qt::AlignHCenter)
+    {
+        parts << QStringLiteral("hcenter");
+    }
+    else if (h==Qt::AlignJustify)
+    {
+        parts << QStringLiteral("justify");
+    }
+
+    if (v==Qt::AlignTop)
+    {
+        parts << QStringLiteral("top");
+    }
+    else if (v==Qt::AlignBottom)
+    {
+        parts << QStringLiteral("bottom");
+    }
+    else if (v==Qt::AlignVCenter)
+    {
+        parts << QStringLiteral("vcenter");
+    }
+    else if (v==Qt::AlignBaseline)
+    {
+        parts << QStringLiteral("baseline");
+    }
+
+    if (parts.isEmpty())
+    {
+        return QStringLiteral("stretch");
+    }
+
+    return parts.join(QLatin1Char(' '));
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Orientation orientationFromString(const QString& str, bool* ok)
+{
+    auto s=str.trimmed().toLower();
+    if (ok!=nullptr)
+    {
+        *ok=true;
+    }
+
+    if (s==QLatin1String("vertical") || s==QLatin1String("v"))
+    {
+        return Qt::Vertical;
+    }
+    if (s==QLatin1String("horizontal") || s==QLatin1String("h"))
+    {
+        return Qt::Horizontal;
+    }
+
+    qWarning() << "uise: unknown orientation" << str;
+    if (ok!=nullptr)
+    {
+        *ok=false;
+    }
+    return Qt::Horizontal;
+}
+
+//--------------------------------------------------------------------------
+
+QString orientationToString(Qt::Orientation orientation)
+{
+    return orientation==Qt::Vertical ? QStringLiteral("vertical") : QStringLiteral("horizontal");
 }
 
 //--------------------------------------------------------------------------

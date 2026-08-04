@@ -42,11 +42,16 @@ class DropdownFrame_p;
  *  anchored below (or, when there is not enough room, above) a trigger widget.
  *
  * This is the machinery originally built for FastSwitchButtonDropdown, extracted so it can be
- * reused by any anchored, animated popup (see DropdownMenu). The frame is parented to the
- * top-level window() of whatever widget it is anchored to rather than being a Qt::Popup: a
- * native popup cannot animate its own dismissal (ignoring its QCloseEvent to run a shrink would
- * leave it holding the application-wide popup mouse grab), so parenting to the window is what
- * makes the animated close possible.
+ * reused by any anchored, animated popup (see DropdownMenu). The frame is a genuine top-level
+ * window (Qt::Tool | Qt::FramelessWindowHint, translucent background), not embedded into the
+ * anchor/trigger's own window, so it can grow past the edges of the host window exactly like a
+ * native menu -- it is positioned in global (screen) coordinates and never clipped by the host
+ * window's bounds, only by the screen's available geometry. It deliberately does not use
+ * Qt::Popup: a native popup cannot animate its own dismissal (ignoring its QCloseEvent to run a
+ * shrink would leave it holding the application-wide popup mouse grab), so this frame drives its
+ * own dismissal instead (see eventFilter()). Qt::WA_ShowWithoutActivating keeps the host window
+ * active while the frame is open, so opening it never triggers the frame's own
+ * CloseReason::WindowChanged dismissal.
  *
  * The frame intentionally has NO QLayout. Its content() widget is sized once per opening and
  * never touched again; growing/shrinking the frame with setGeometry() therefore clips the
@@ -90,8 +95,10 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
 
         /**
          * @brief Constructor.
-         * @param parent Parent widget. Normally left null: popupBelow()/popupAt() reparent the
-         *  frame to the relevant window() lazily, on first opening.
+         * @param parent Owning widget, purely for Qt object-tree bookkeeping -- the frame is
+         *  always a top-level window regardless, and never relies on parent for positioning.
+         *  Normally left null; callers manage the frame's lifetime explicitly (see
+         *  utils/destroywidget.hpp) rather than relying on Qt parent-child deletion.
          */
         DropdownFrame(QWidget* parent=nullptr);
 
@@ -199,7 +206,13 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
 
         /**
          * @brief Open the frame anchored below (or, if flipped, above) the given widget.
-         * @param anchor Widget to anchor to. The frame is reparented to anchor->window().
+         * @param anchor Widget to anchor to.
+         *
+         * Anchored at the anchor's bottom-left corner by default, like a native menu; flips to
+         * the anchor's bottom-right corner only if the frame would not fit within the anchor's
+         * screen otherwise (see isVerticalFlipEnabled() for the analogous vertical flip). The
+         * frame is free to extend past the edges of anchor->window() -- only the screen's
+         * available geometry bounds it.
          *
          * If the frame is already open (e.g. mid-close-animation from a very quick toggle),
          * content is not re-filled and geometry is not re-measured -- the open animation simply
@@ -211,8 +224,14 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
          * @brief Open the frame anchored at a global position, e.g. the cursor position.
          * @param globalPos Global position of the frame's top-left corner (before any flip).
          *
+         * Anchored with its top-left corner at globalPos by default, like a native context menu;
+         * flips to top-right only if the frame would not fit within globalPos's screen otherwise.
+         * The frame is free to extend past the edges of the host window -- only the screen's
+         * available geometry bounds it.
+         *
          * Uses triggerWidget()->window() as the host if a trigger widget is set, otherwise the
-         * application's active window.
+         * application's active window -- the host is only used for WindowChanged dismissal and
+         * for restoring focus on close, not for clipping or positioning.
          */
         void popupAt(const QPoint& globalPos);
 
@@ -294,12 +313,26 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
 
         void resizeEvent(QResizeEvent* event) override;
         void hideEvent(QHideEvent* event) override;
+
+        /**
+         * @brief Explicitly paint the QSS "background-color"/"border"/"border-radius" box for
+         *  this frame (see uise--DropdownMenu in dropdownmenu.qss).
+         *
+         * QFrame's own default paintEvent()/CE_ShapedFrame drawing is not reliably composited
+         * on a Qt::WA_TranslucentBackground top-level window (the same reason Toast, BusyWaiting
+         * and TypingIndicator each paint their own background manually rather than depending on
+         * the default) -- explicitly invoking PE_Widget here is the standard Qt technique for
+         * making a subclassed widget's stylesheet box model apply reliably, and keeps the
+         * background/border/radius QSS-driven (and thus per-theme) rather than hardcoded.
+         */
+        void paintEvent(QPaintEvent* event) override;
+
         bool eventFilter(QObject* obj, QEvent* event) override;
 
     private:
 
         void beginOpen(QWidget* host);
-        void ensureParented(QWidget* host);
+        void trackHost(QWidget* host);
         QSize measureContentSize(QMargins& outMargins);
         void measure(QWidget* anchor);
         void measureAt(const QPoint& globalPos);

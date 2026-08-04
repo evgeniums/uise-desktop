@@ -199,7 +199,24 @@ int main(int argc, char *argv[])
 
     auto buttonsAlignment=new QComboBox();
     bl->addWidget(buttonsAlignment);
-    buttonsAlignment->addItems({"Right","Center","Left"});
+    buttonsAlignment->addItems({"Right","Center","Left","Stretch"});
+
+    auto buttonsOrientation=new QComboBox();
+    bl->addWidget(buttonsOrientation);
+    buttonsOrientation->addItems({"Horizontal","Vertical"});
+
+    // exercises the deferred relayout path (the same one QSS uses) on an already-open dialog
+    QObject::connect(
+        buttonsOrientation,
+        &QComboBox::currentTextChanged,
+        testWidget,
+        [testWidget](const QString& text)
+        {
+            testWidget->statusDialog()->setButtonsOrientation(
+                text=="Vertical" ? Qt::Vertical : Qt::Horizontal
+            );
+        }
+    );
 
     auto showStatus=new QPushButton("Show status");
     QObject::connect(
@@ -209,7 +226,7 @@ int main(int argc, char *argv[])
         [testWidget,message,statusType
          ,acceptButton,okButton,ignoreButton,cancelButton,closeButton
          ,skipButton,retryButton,yesButton,noButton,
-        buttonsAlignment
+        buttonsAlignment,buttonsOrientation
         ]()
         {
             ButtonsStyle buttonStyle;
@@ -224,6 +241,13 @@ int main(int argc, char *argv[])
             {
                 buttonStyle.alignment=Qt::AlignCenter;
             }
+            else if (buttonsAlignment->currentText()=="Stretch")
+            {
+                buttonStyle.alignment=Qt::Alignment{};
+            }
+            buttonStyle.orientation=(buttonsOrientation->currentText()=="Vertical")
+                                         ? Qt::Vertical
+                                         : Qt::Horizontal;
             Style::instance().setDefaultButtonsStyle(buttonStyle);
 
             auto statusDialog=testWidget->statusDialog();

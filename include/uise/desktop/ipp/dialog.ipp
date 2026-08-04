@@ -61,23 +61,19 @@ class Dialog_p
         QFrame* contentFrame;
         QBoxLayout* contentLayout;
 
-        QFrame* buttonsFrame;
-        QBoxLayout* buttonLayout;
+        QFrame* buttonsFrame=nullptr;
+        QBoxLayout* buttonLayout=nullptr;
 
         QSignalMapper* buttonGroup;
 
         std::map<int,PushButton*> buttons;
+        //! Insertion order -- std::map above is ordered by button id, not insertion order,
+        //! so a relayout driven off it would silently reorder the row.
+        std::vector<PushButton*> orderedButtons;
 
         QFrame* dialogFrame;
         PushButton* icon;
         QBoxLayout* dialogLayout;
-
-        std::optional<ButtonsStyle> forceButtonsStyle;
-
-        const auto& buttonsStyle() const
-        {
-            return Style::instance().buttonsStyle("Dialog",widget);
-        }
 };
 
 //--------------------------------------------------------------------------
@@ -185,32 +181,24 @@ void Dialog<BaseT>::setButtons(std::vector<AbstractDialog::ButtonConfig> buttons
 template <typename BaseT>
 void Dialog<BaseT>::doSetButtons(std::vector<AbstractDialog::ButtonConfig> buttons)
 {
-    for (auto& button: pimpl->buttons)
+    for (auto* bt: pimpl->orderedButtons)
     {
-        destroyWidget(button.second);
+        destroyWidget(bt);
     }
+    pimpl->orderedButtons.clear();
     pimpl->buttons.clear();
 
     destroyWidget(pimpl->buttonsFrame);
 
-    const auto* buttonsStyle=&pimpl->buttonsStyle();
-
-    if (pimpl->forceButtonsStyle)
-    {
-        buttonsStyle=&pimpl->forceButtonsStyle.value();
-    }
-
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("dialogButtonsFrame");
-    pimpl->buttonLayout=Layout::horizontal(pimpl->buttonsFrame);
-    pimpl->layout->addWidget(pimpl->buttonsFrame,0,buttonsStyle->alignment);
-    pimpl->buttonsFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    pimpl->buttonLayout=nullptr; // created by applyButtonsLayout() below
+    pimpl->layout->addWidget(pimpl->buttonsFrame); // alignment applied by applyButtonsLayout()
 
     for (const auto& button: buttons)
     {
         auto bt=new PushButton(button.text,button.icon,pimpl->buttonsFrame);
         bt->setObjectName(button.name);
-        pimpl->buttonLayout->addWidget(bt,0,buttonsStyle->alignment | Qt::AlignBottom);
         pimpl->buttonGroup->setMapping(bt,button.id);
         QObject::connect(
             bt,
@@ -219,6 +207,84 @@ void Dialog<BaseT>::doSetButtons(std::vector<AbstractDialog::ButtonConfig> butto
             SLOT(map())
         );
         pimpl->buttons.emplace(button.id,bt);
+        pimpl->orderedButtons.push_back(bt);
+    }
+
+    // the frame is brand new and has never been polished, so the dynamic "vertical"
+    // property set below will be picked up by its first polish -- no repolish needed, and
+    // repolishing a widget from inside the Dialog constructor is best avoided
+    applyButtonsLayout(false);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::updateButtonsLayout()
+{
+    applyButtonsLayout(true);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void Dialog<BaseT>::applyButtonsLayout(bool repolish)
+{
+    if (pimpl->buttonsFrame==nullptr)
+    {
+        return;
+    }
+
+    const auto style=this->effectiveButtonsStyle();
+    const bool vertical=style.orientation==Qt::Vertical;
+    const auto hAlign=style.alignment & Qt::AlignHorizontal_Mask;
+    const auto vAlign=style.alignment & Qt::AlignVertical_Mask;
+
+    // Layout::box() deletes the previous layout first; deleting a QLayout does not delete
+    // the widgets it managed, they just stay children of the frame until re-added below.
+    pimpl->buttonLayout=Layout::box(pimpl->buttonsFrame,style.orientation);
+
+    // Horizontal: the legacy rule was `alignment | Qt::AlignBottom`, which produced a
+    // contradictory AlignVCenter|AlignBottom for callers passing Qt::AlignCenter.
+    // Qt::AlignBottom is now only the DEFAULT vertical flag, used when the style names none,
+    // so every horizontal-only alignment (AlignRight, AlignLeft, AlignHCenter) behaves
+    // exactly as before.
+    // Vertical: only the horizontal flag is meaningful per item, and its absence makes
+    // QBoxLayout stretch every button to the column width.
+    const Qt::Alignment itemAlignment = vertical
+                                             ? hAlign
+                                             : (hAlign | (vAlign ? vAlign : Qt::AlignBottom));
+
+    const bool stretchButtons = vertical && hAlign==Qt::Alignment{};
+    for (auto* bt: pimpl->orderedButtons)
+    {
+        pimpl->buttonLayout->addWidget(bt,0,itemAlignment);
+        // PushButton pins its inner QPushButton to sizeHint and centers it, so stretching
+        // the frame alone would not widen the visible button -- let it fill the frame too.
+        bt->setContentAlignment(stretchButtons ? Qt::AlignVCenter : Qt::AlignCenter);
+    }
+
+    // Horizontal mode keeps the historical Fixed width. Vertical mode needs Preferred: with
+    // a Fixed policy and no horizontal alignment flag, QWidgetItem::setGeometry() clamps the
+    // frame to its sizeHint and centers it, making a full-width column impossible. Preferred
+    // still hugs sizeHint whenever a horizontal flag is present, because aligned items are
+    // clamped to their sizeHint anyway.
+    pimpl->buttonsFrame->setSizePolicy(vertical?QSizePolicy::Preferred:QSizePolicy::Fixed,
+                                       QSizePolicy::Fixed);
+
+    // setAlignment() rather than remove+addWidget: keeps the frame's position in the dialog
+    // layout and avoids a spurious hide/show.
+    pimpl->layout->setAlignment(pimpl->buttonsFrame,style.alignment);
+
+    // dynamic property so QSS can style the two forms differently:
+    //   #dialogButtonsFrame[vertical="true"] { ... }
+    const auto prev=pimpl->buttonsFrame->property("vertical");
+    const bool changed=!prev.isValid() || prev.toBool()!=vertical;
+    pimpl->buttonsFrame->setProperty("vertical",vertical);
+    if (repolish && changed)
+    {
+        // recursive: a rule like #dialogButtonsFrame[vertical="true"] uise--PushButton is
+        // only re-evaluated when the CHILD is repolished, not the ancestor
+        Style::repolishRecursive(pimpl->buttonsFrame);
     }
 }
 
@@ -272,22 +338,6 @@ template <typename BaseT>
 void Dialog<BaseT>::setClosable(bool enable)
 {
     pimpl->titleClose->setVisible(enable);
-}
-
-//--------------------------------------------------------------------------
-
-template <typename BaseT>
-void Dialog<BaseT>::setButtonsStyle(ButtonsStyle style)
-{
-    pimpl->forceButtonsStyle=std::move(style);
-}
-
-//--------------------------------------------------------------------------
-
-template <typename BaseT>
-void Dialog<BaseT>::resetButtonsStyle()
-{
-    pimpl->forceButtonsStyle.reset();
 }
 
 //--------------------------------------------------------------------------

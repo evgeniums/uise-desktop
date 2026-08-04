@@ -172,4 +172,188 @@ void AbstractDialog::closeDialog()
 
 //--------------------------------------------------------------------------
 
+void AbstractDialog::setButtonsStyle(ButtonsStyle style)
+{
+    m_forceButtonsStyle=std::move(style);
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::resetButtonsStyle()
+{
+    m_forceButtonsStyle.reset();
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+ButtonsStyle AbstractDialog::effectiveButtonsStyle() const
+{
+    // 1) global default / per-context entry
+    ButtonsStyle style=Style::instance().buttonsStyle(buttonsStyleContext(),this);
+    // 2) whole-struct per-dialog override
+    if (m_forceButtonsStyle)
+    {
+        style=m_forceButtonsStyle.value();
+    }
+    // 3) per-axis overrides (typed C++ setters AND QSS qproperty- share this storage)
+    if (m_buttonsOrientation)
+    {
+        style.orientation=m_buttonsOrientation.value();
+    }
+    if (m_buttonsAlignment)
+    {
+        style.alignment=m_buttonsAlignment.value();
+    }
+    return style;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::setButtonsOrientation(Qt::Orientation orientation)
+{
+    if (m_buttonsOrientation && m_buttonsOrientation.value()==orientation)
+    {
+        return;
+    }
+    m_buttonsOrientation=orientation;
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::resetButtonsOrientation()
+{
+    if (!m_buttonsOrientation)
+    {
+        return;
+    }
+    m_buttonsOrientation.reset();
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Orientation AbstractDialog::buttonsOrientation() const
+{
+    return effectiveButtonsStyle().orientation;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::setButtonsAlignment(Qt::Alignment alignment)
+{
+    if (m_buttonsAlignment && m_buttonsAlignment.value()==alignment)
+    {
+        return;
+    }
+    m_buttonsAlignment=alignment;
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::resetButtonsAlignment()
+{
+    if (!m_buttonsAlignment)
+    {
+        return;
+    }
+    m_buttonsAlignment.reset();
+    scheduleButtonsLayoutUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment AbstractDialog::buttonsAlignment() const
+{
+    return effectiveButtonsStyle().alignment;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::setButtonsOrientationName(const QString& name)
+{
+    if (isDefaultStyleToken(name))
+    {
+        resetButtonsOrientation();
+        return;
+    }
+
+    bool ok=false;
+    auto orientation=orientationFromString(name,&ok);
+    if (!ok)
+    {
+        // orientationFromString() already warned; keep the previous value rather than
+        // silently resetting to the default on a typo
+        return;
+    }
+    setButtonsOrientation(orientation);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractDialog::buttonsOrientationName() const
+{
+    return orientationToString(buttonsOrientation());
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::setButtonsAlignmentName(const QString& name)
+{
+    if (isDefaultStyleToken(name))
+    {
+        resetButtonsAlignment();
+        return;
+    }
+
+    bool ok=false;
+    auto alignment=alignmentFromString(name,&ok);
+    if (!ok && alignment==Qt::Alignment{})
+    {
+        // every token failed to parse -- nothing usable, keep the previous value
+        return;
+    }
+    setButtonsAlignment(alignment);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractDialog::buttonsAlignmentName() const
+{
+    return alignmentToString(buttonsAlignment());
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractDialog::scheduleButtonsLayoutUpdate()
+{
+    if (m_buttonsLayoutUpdateScheduled)
+    {
+        return;
+    }
+    m_buttonsLayoutUpdateScheduled=true;
+
+    QPointer<AbstractDialog> guard(this);
+    QMetaObject::invokeMethod(
+        this,
+        [guard]()
+        {
+            if (guard.isNull())
+            {
+                return;
+            }
+            // cleared BEFORE the update so a legitimate later request is not swallowed;
+            // updateButtonsLayout() itself must never call back into here synchronously
+            guard->m_buttonsLayoutUpdateScheduled=false;
+            guard->updateButtonsLayout();
+        },
+        Qt::QueuedConnection
+    );
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

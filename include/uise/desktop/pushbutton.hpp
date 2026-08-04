@@ -131,6 +131,21 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
 
         void resetHover();
 
+        /**
+         * @brief Set alignment of the inner button within this frame.
+         *
+         * Default Qt::AlignCenter pins the inner button to its sizeHint, centered -- the
+         * historical behaviour. Dropping the horizontal flag (e.g. Qt::AlignVCenter) lets
+         * the inner button fill the frame's width, which is what a stretched vertical
+         * dialog-buttons column needs (see Dialog<>::applyButtonsLayout()).
+         */
+        void setContentAlignment(Qt::Alignment alignment);
+
+        Qt::Alignment contentAlignment() const noexcept
+        {
+            return m_contentAlignment;
+        }
+
     signals:
 
         void clicked();
@@ -163,6 +178,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
 
         std::shared_ptr<SvgIcon> m_icon;
         bool m_parentHovered;
+        Qt::Alignment m_contentAlignment=Qt::AlignCenter;
 };
 
 UISE_DESKTOP_NAMESPACE_END

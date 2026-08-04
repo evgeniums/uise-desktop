@@ -30,8 +30,13 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVariantAnimation>
 #include <QPointer>
 #include <QApplication>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QTimer>
 #include <QLayout>
+#include <QPainter>
+#include <QStyleOption>
+#include <QStyle>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -51,6 +56,11 @@ class DropdownFrame_p
         QRect fullRect;
 
         QPointer<QWidget> triggerWidget;
+
+        // the window whose deactivate/move/resize should auto-dismiss the frame -- tracked
+        // explicitly because the frame is its own top-level window (window()==this), it is no
+        // longer a child of this window the way it would be if it were embedded
+        QPointer<QWidget> hostWindow;
 
         QVariantAnimation* anim=nullptr;
         qreal t=0.0;
@@ -121,6 +131,15 @@ DropdownFrame::DropdownFrame(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<DropdownFrame_p>())
 {
+    // a real top-level window, not embedded into the host: Qt::Tool keeps it out of the
+    // taskbar/window switcher and (with WA_ShowWithoutActivating below) out of the way of the
+    // host window's own activation, FramelessWindowHint drops the native title bar/border, and
+    // WA_TranslucentBackground lets the QSS-drawn rounded corners show whatever is actually
+    // behind the frame instead of an opaque square -- all necessary because, unlike an embedded
+    // child widget, a top-level window no longer shares the host's backing store
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_ShowWithoutActivating);
     setFocusPolicy(Qt::NoFocus);
     setAttribute(Qt::WA_NoMousePropagation,true);
     setVisible(false);
@@ -153,7 +172,10 @@ DropdownFrame::DropdownFrame(QWidget* parent)
     );
 
     pimpl->escShortcut=new QShortcut(Qt::Key_Escape,this);
-    pimpl->escShortcut->setContext(Qt::WindowShortcut);
+    // Qt::WindowShortcut would require this frame's own window to be the active one, which
+    // WA_ShowWithoutActivating above deliberately prevents (the host window stays active) --
+    // Qt::ApplicationShortcut fires regardless of which of the app's windows is active
+    pimpl->escShortcut->setContext(Qt::ApplicationShortcut);
     pimpl->escShortcut->setEnabled(false);
     connect(
         pimpl->escShortcut,
@@ -391,17 +413,21 @@ void DropdownFrame::hideEvent(QHideEvent* event)
 
 //--------------------------------------------------------------------------
 
-void DropdownFrame::ensureParented(QWidget* host)
+void DropdownFrame::paintEvent(QPaintEvent* event)
 {
-    if (host==nullptr)
-    {
-        return;
-    }
-    if (parentWidget()!=host)
-    {
-        hide();
-        setParent(host);
-    }
+    Q_UNUSED(event)
+
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter painter(this);
+    style()->drawPrimitive(QStyle::PE_Widget,&opt,&painter,this);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::trackHost(QWidget* host)
+{
+    pimpl->hostWindow=host;
 }
 
 //--------------------------------------------------------------------------
@@ -514,20 +540,21 @@ void DropdownFrame::measure(QWidget* anchor)
     auto natural=measureContentSize(m);
     QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
 
-    auto* host=parentWidget();
-    auto avail=host->rect();
+    // bounded by the anchor's screen, not the host window: the frame is a top-level window free
+    // to extend past the host window's own edges, like a native menu
+    auto* screen=anchor->screen();
+    auto avail=screen!=nullptr ? screen->availableGeometry() : QGuiApplication::primaryScreen()->availableGeometry();
 
     // horizontal anchor: below-left by default, flip to below-right if it would overflow the
-    // host's right edge
+    // screen's right edge
     auto belowLeftGlobal=anchor->mapToGlobal(QPoint(pimpl->offsetX,anchor->height()+pimpl->offsetY));
-    auto p=host->mapFromGlobal(belowLeftGlobal);
 
-    int x=p.x();
+    int x=belowLeftGlobal.x();
     bool rightAnchored=false;
     if (x+full.width()>avail.right())
     {
         auto rightGlobalX=anchor->mapToGlobal(QPoint(anchor->width(),0)).x();
-        x=host->mapFromGlobal(QPoint(rightGlobalX,0)).x()-full.width();
+        x=rightGlobalX-full.width();
         rightAnchored=true;
     }
     x=qMax(avail.left(),x);
@@ -535,20 +562,19 @@ void DropdownFrame::measure(QWidget* anchor)
     // vertical anchor: below by default; flip above the anchor when there is not enough room
     // below but there is more room above (e.g. a per-item menu button near the bottom of a
     // scrolling list)
-    int y=p.y();
+    int y=belowLeftGlobal.y();
     bool bottomAnchored=false;
-    auto availableBelow=qMax(1,avail.bottom()-p.y());
+    auto availableBelow=qMax(1,avail.bottom()-y);
 
     if (full.height()>availableBelow && pimpl->verticalFlipEnabled)
     {
         auto aboveGlobalY=anchor->mapToGlobal(QPoint(0,-pimpl->offsetY)).y();
-        auto aboveHostY=host->mapFromGlobal(QPoint(0,aboveGlobalY)).y();
-        auto availableAbove=qMax(1,aboveHostY-avail.top());
+        auto availableAbove=qMax(1,aboveGlobalY-avail.top());
         if (availableAbove>availableBelow)
         {
             bottomAnchored=true;
             full.setHeight(qMin(full.height(),availableAbove));
-            y=aboveHostY-full.height();
+            y=aboveGlobalY-full.height();
         }
         else
         {
@@ -579,11 +605,16 @@ void DropdownFrame::measureAt(const QPoint& globalPos)
     auto natural=measureContentSize(m);
     QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
 
-    auto* host=parentWidget();
-    auto avail=host->rect();
-    auto p=host->mapFromGlobal(globalPos);
+    // bounded by globalPos's own screen, not the host window: the frame is a top-level window
+    // free to extend past the host window's own edges, like a native context menu
+    auto* screen=QGuiApplication::screenAt(globalPos);
+    if (screen==nullptr)
+    {
+        screen=!pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->screen() : QGuiApplication::primaryScreen();
+    }
+    auto avail=screen!=nullptr ? screen->availableGeometry() : QRect(globalPos,QSize(1,1));
 
-    int x=p.x();
+    int x=globalPos.x();
     bool rightAnchored=false;
     if (x+full.width()>avail.right())
     {
@@ -592,18 +623,18 @@ void DropdownFrame::measureAt(const QPoint& globalPos)
     }
     x=qMax(avail.left(),x);
 
-    int y=p.y();
+    int y=globalPos.y();
     bool bottomAnchored=false;
-    auto availableBelow=qMax(1,avail.bottom()-p.y());
+    auto availableBelow=qMax(1,avail.bottom()-y);
 
     if (full.height()>availableBelow && pimpl->verticalFlipEnabled)
     {
-        auto availableAbove=qMax(1,p.y()-avail.top());
+        auto availableAbove=qMax(1,y-avail.top());
         if (availableAbove>availableBelow)
         {
             bottomAnchored=true;
             full.setHeight(qMin(full.height(),availableAbove));
-            y=p.y()-full.height();
+            y-=full.height();
         }
         else
         {
@@ -733,7 +764,7 @@ void DropdownFrame::popupBelow(QWidget* anchor)
     }
 
     auto* host=anchor->window();
-    ensureParented(host);
+    trackHost(host);
 
     // If the frame is still visible here, this open is reversing a close animation that a
     // previous, very quick toggle interrupted mid-flight (see the animStopGuard comment).
@@ -760,7 +791,7 @@ void DropdownFrame::popupAt(const QPoint& globalPos)
     {
         return;
     }
-    ensureParented(host);
+    trackHost(host);
 
     if (!isVisible())
     {
@@ -857,7 +888,11 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
 
         case (QEvent::WindowDeactivate):
         {
-            if (obj==window())
+            // the frame is its own top-level window (window()==this), no longer a child of the
+            // host the way an embedded popup would be -- watch the tracked host explicitly
+            // instead. WA_ShowWithoutActivating (see the constructor) keeps the host active
+            // while the frame itself opens, so this does not fire as a side effect of that.
+            if (obj==pimpl->hostWindow.data())
             {
                 emit closeRequested(CloseReason::WindowChanged);
                 closeDropdown();
@@ -868,7 +903,7 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
         case (QEvent::Move): [[fallthrough]];
         case (QEvent::Resize):
         {
-            if (obj==window())
+            if (obj==pimpl->hostWindow.data())
             {
                 emit closeRequested(CloseReason::WindowChanged);
                 closeDropdown(true);

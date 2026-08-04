@@ -144,4 +144,12 @@ void PushButton::resetHover()
 
 //--------------------------------------------------------------------------
 
+void PushButton::setContentAlignment(Qt::Alignment alignment)
+{
+    m_contentAlignment=alignment;
+    layout()->setAlignment(m_button,alignment);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

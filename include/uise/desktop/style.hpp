@@ -41,7 +41,36 @@ struct ButtonsStyle
     Qt::Alignment alignment=Qt::AlignRight;
     bool showText=true;
     bool showIcon=false;
+    //! Orientation of the buttons row/column. Must stay LAST: callers use positional
+    //! aggregate init, e.g. ButtonsStyle{Qt::AlignCenter,true,false}.
+    Qt::Orientation orientation=Qt::Horizontal;
 };
+
+/**
+ * @brief Parse a QSS/human friendly alignment string into Qt::Alignment.
+ * @param str Whitespace-, comma- or '|'-separated tokens, case insensitive. An optional
+ *            leading "align" is stripped, so Qt's own spelling ("AlignRight") works too.
+ * @param ok Set to false if a token was not recognized (that token is ignored).
+ *
+ *   horizontal: left | right | hcenter | justify
+ *   vertical:   top | bottom | vcenter | baseline
+ *   shorthand:  center  (== hcenter vcenter)
+ *   no flags:   stretch | none   -> Qt::Alignment{}, the item fills its cell
+ */
+UISE_DESKTOP_EXPORT Qt::Alignment alignmentFromString(const QString& str, bool* ok=nullptr);
+
+//! Canonical space-separated inverse of alignmentFromString(); Qt::Alignment{} -> "stretch".
+UISE_DESKTOP_EXPORT QString alignmentToString(Qt::Alignment alignment);
+
+//! "horizontal"|"h" / "vertical"|"v", case insensitive; ok=false on anything else.
+UISE_DESKTOP_EXPORT Qt::Orientation orientationFromString(const QString& str, bool* ok=nullptr);
+
+//! Canonical string form of Qt::Orientation: "horizontal" | "vertical".
+UISE_DESKTOP_EXPORT QString orientationToString(Qt::Orientation orientation);
+
+//! True for "", "default", "inherit" (case insensitive) -- the "clear the override"
+//! spelling, needed because QSS has no way to *remove* a qproperty- once written.
+UISE_DESKTOP_EXPORT bool isDefaultStyleToken(const QString& str);
 
 class WidgetFactory;
 

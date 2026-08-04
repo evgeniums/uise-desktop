@@ -82,15 +82,15 @@ class Dialog : public BaseT
 
         void setClosable(bool enable) override;
 
-        void setButtonsStyle(ButtonsStyle style) override;
-        void resetButtonsStyle() override;
-
     protected:
 
         void doActivateButton(int id) override;
         void doSetButtonEnabled(int id, bool enable) override;
         void doSetButtonVisible(int id, bool enable) override;
         void doSetButtons(std::vector<AbstractDialog::ButtonConfig> buttons);
+
+        void updateButtonsLayout() override;
+        void applyButtonsLayout(bool repolish);
 
     private:
 
