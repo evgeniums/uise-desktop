@@ -158,5 +158,6 @@
         <file>tabler-icons/outline/file-type-sql.svg</file>
         <file>tabler-icons/outline/file-type-rs.svg</file>
         <file>tabler-icons/outline/file-type-vue.svg</file>
+        <file>tabler-icons/outline/logout.svg</file>
     </qresource>
 </RCC>
