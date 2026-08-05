@@ -1,0 +1,67 @@
+/*
+ * RippleOverlay configurable parameters. Colour lives in light/ripple.qss and
+ * dark/ripple.qss -- everything else (geometry, timing, per-widget-type clip shape) is
+ * theme-independent and declared here.
+ *
+ * qproperty-rippleEnabled         – false disables the effect entirely for the matched
+ *                                   overlay, with no other C++/QSS change needed
+ * qproperty-rippleOpacity         – peak alpha, as a 0-1 fraction of rippleColor's own alpha
+ * qproperty-rippleDurationMs      – grow animation duration, ms
+ * qproperty-rippleFadeDurationMs  – fade-out animation duration, ms
+ * qproperty-rippleEasingCurveType – QEasingCurve::Type as int (6=OutCubic)
+ * qproperty-rippleRadiusScaleX    – horizontal multiplier on the radius needed to just cover
+ *                                   the widget from the origin; equal to rippleRadiusScaleY
+ *                                   draws a true circle, unequal draws a flattened ellipse
+ * qproperty-rippleRadiusScaleY    – vertical counterpart of rippleRadiusScaleX
+ * qproperty-rippleHoldOnPress     – true: stay at full size while pressed, fade on release;
+ *                                   false: fade immediately once the grow finishes
+ * qproperty-rippleOrigin          – "cursor" (grows from the press point) | "center"
+ * qproperty-rippleClip            – "rect" | "rounded" | "ellipse"
+ * qproperty-rippleCornerRadius    – used when rippleClip is "rounded"; keep in step with the
+ *                                   host's own border-radius, Qt does not expose a way to read
+ *                                   that back in C++
+ */
+uise--RippleOverlay {
+    qproperty-rippleDurationMs:      150;
+    qproperty-rippleFadeDurationMs:  50;
+    qproperty-rippleEasingCurveType: 6;
+}
+
+/* IconTextButton covers the whole button, padding included (see icontextbutton.cpp) --
+ * centred rather than cursor-origin, so the ripple is unaffected by where within the button
+ * the press landed.
+ *
+ * Base case, applies whenever text is visible (iconOnly=="false", see the more specific rule
+ * below for icon-only buttons): a wide, flat ellipse -- radiusScaleX close to 1 reaches the
+ * button's own left/right edges, radiusScaleY well under 1 keeps it from growing into a
+ * circle, so it reads as a horizontal sweep across the button rather than a Material-style
+ * blob. Clipped to "rounded" with a 4px corner radius, matching the FastSwitchButton/
+ * AbstractDialog button chrome default elsewhere in this stylesheet set -- override
+ * rippleCornerRadius alongside any QSS rule that gives an IconTextButton a different
+ * border-radius. */
+uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+    qproperty-rippleOrigin: "center";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 0.35;
+}
+
+/* Icon-only buttons (no text -- see IconTextButton::setText()) get a circular halo instead:
+ * clipped to an ellipse, which -- because these buttons are typically styled square (see the
+ * icon-only rules in demo/ripple/main.cpp) -- draws as a true circle, and equal X/Y radius
+ * scale lets it grow larger than the icon itself and reach all the way to the button's own
+ * edges (padding included), rather than staying pinned to the icon's own small bounds. */
+uise--IconTextButton[iconOnly="true"] uise--RippleOverlay {
+    qproperty-rippleClip: "ellipse";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}
+
+/* dayLabel is the round 28x28 day marker (border-radius: 14px in calendar.qss) -- an ellipse
+ * clip fits it exactly, and centering the ripple reads better than a cursor-origin one on a
+ * cell this small. */
+uise--CalendarDay uise--RippleOverlay {
+    qproperty-rippleClip: "ellipse";
+    qproperty-rippleOrigin: "center";
+}

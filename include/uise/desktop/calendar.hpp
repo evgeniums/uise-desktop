@@ -41,6 +41,7 @@ class QLabel;
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class Calendar_p;
+class RippleOverlay;
 
 /**
  * @brief Interaction mode of a Calendar.
@@ -128,6 +129,12 @@ class UISE_DESKTOP_EXPORT CalendarDay : public Frame
 
         QLabel* dayLabel() const noexcept;
 
+        /** @brief The click-ripple overlay installed on dayLabel(), see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     signals:
 
         /** @brief Plain press+release on this cell with no drag in between. */
@@ -160,6 +167,7 @@ class UISE_DESKTOP_EXPORT CalendarDay : public Frame
     private:
 
         QLabel* m_label=nullptr;
+        RippleOverlay* m_ripple=nullptr;
         QDate m_date;
         bool m_adjacent=false;
         bool m_outOfRange=false;

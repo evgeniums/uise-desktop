@@ -178,6 +178,7 @@ SET (HEADERS
     include/uise/desktop/qrcodefromimage.hpp
 
     include/uise/desktop/icontextbutton.hpp
+    include/uise/desktop/ripple.hpp
     include/uise/desktop/abstractloadcontrol.hpp
     include/uise/desktop/loadcontrol.hpp
     include/uise/desktop/dropdownframe.hpp
@@ -339,6 +340,7 @@ SET (SOURCES
 
     src/qrcodefromimage.cpp
     src/icontextbutton.cpp
+    src/ripple.cpp
     src/loadcontrol.cpp
     src/dropdownframe.cpp
     src/dropdownmenu.cpp

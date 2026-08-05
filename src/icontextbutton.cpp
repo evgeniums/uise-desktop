@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/roundedimage.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -43,7 +44,8 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
       m_text(nullptr),
       m_parentHovered(false),
       m_checked(false),
-      m_checkable(false)
+      m_checkable(false),
+      m_ripple(nullptr)
 {
     auto wrapper=new WithRoundedImage(this);
     wrapper->setObjectName("icon");
@@ -64,6 +66,18 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
     m_text->setVisible(false);
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+
+    // Covers the whole button, padding included -- not just the icon -- so it reads as a halo
+    // around the icon (icon-only buttons) or a horizontal spread across the whole button (once
+    // text is visible), see ripple.qss and the iconOnly property in setText() below. Installed
+    // last so it ends up on top of the icon/text children above -- see RippleOverlay::install().
+    // Auto-trigger stays on: the whole button is clickable, unlike CalendarDay which must gate
+    // the ripple on isSelectable().
+    m_ripple=RippleOverlay::install(this);
+
+    // Default state before any setText() call is icon-only -- m_text is already empty and
+    // hidden above.
+    setProperty("iconOnly",true);
 }
 
 //--------------------------------------------------------------------------
@@ -100,9 +114,9 @@ void IconTextButton::enterEvent(QEnterEvent* event)
 //--------------------------------------------------------------------------
 
 void IconTextButton::leaveEvent(QEvent* event)
-{    
+{
     if (!m_parentHovered)
-    {        
+    {
         setHovered(false);
         emit hovered(false);
         event->accept();
@@ -174,6 +188,11 @@ void IconTextButton::setText(const QString& text)
 {
     m_text->setText(text);
     m_text->setVisible(!text.isEmpty());
+
+    // Drives ripple.qss's choice between a centred halo (icon-only) and a horizontal spread
+    // (text visible) -- see uise--IconTextButton[iconOnly="..."] uise--RippleOverlay there.
+    setProperty("iconOnly",text.isEmpty());
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------

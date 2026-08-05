@@ -1,0 +1,11 @@
+/*
+ * RippleOverlay – dark theme colour.
+ *
+ * qproperty-rippleColor   – light ink, low alpha reads as a soft highlight on dark backgrounds
+ * qproperty-rippleOpacity – peak alpha, as a 0-1 fraction of rippleColor's own alpha
+ */
+
+uise--RippleOverlay {
+    qproperty-rippleColor:   #ffffff;
+    qproperty-rippleOpacity: 0.02;
+}

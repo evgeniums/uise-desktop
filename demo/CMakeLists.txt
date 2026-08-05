@@ -33,6 +33,7 @@ ADD_SUBDIRECTORY(imageviewer)
 ADD_SUBDIRECTORY(datetimepicker)
 ADD_SUBDIRECTORY(datetimepickersimple)
 ADD_SUBDIRECTORY(calendar)
+ADD_SUBDIRECTORY(ripple)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)

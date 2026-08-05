@@ -37,6 +37,7 @@ class QLabel;
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class RoundedImage;
+class RippleOverlay;
 
 class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 {
@@ -112,6 +113,12 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void setTextInteractionFlags(Qt::TextInteractionFlags flags);
         Qt::TextInteractionFlags textInteractionFlags() const;
 
+        /** @brief The click-ripple overlay installed on this button, see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     signals:
 
         void clicked();
@@ -147,6 +154,8 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_parentHovered;
         bool m_checked;
         bool m_checkable;
+
+        RippleOverlay* m_ripple;
 };
 
 UISE_DESKTOP_NAMESPACE_END

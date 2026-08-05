@@ -47,6 +47,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/datetimepicker.hpp>
 #include <uise/desktop/datetimeinput.hpp>
 
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/calendar.hpp>
 #include <uise/desktop/detail/calendar_p.hpp>
 
@@ -175,6 +176,14 @@ CalendarDay::CalendarDay(QWidget* parent)
     m_label->setObjectName(QStringLiteral("dayLabel"));
     m_label->setAlignment(Qt::AlignCenter);
     l->addWidget(m_label,0,Qt::AlignCenter);
+
+    // Installed on the label, not on the cell itself: dayLabel is the round 28x28 marker (see
+    // calendar.qss), while the outer CalendarDay frame is the whole 34x34 grid cell including
+    // the band background -- an ellipse ripple belongs on the marker, not the square cell.
+    // Manually triggered (see mousePressEvent()/mouseReleaseEvent()/leaveEvent() below) rather
+    // than auto-triggered, because a ripple must only ever appear on a selectable day.
+    m_ripple=RippleOverlay::install(m_label);
+    m_ripple->setAutoTrigger(false);
 
     applyState();
 }
@@ -397,6 +406,10 @@ void CalendarDay::leaveEvent(QEvent* event)
         setCursor(Qt::ArrowCursor);
         emit hovered(m_date,false);
     }
+    // A no-op when nothing is held -- but a held ripple must not survive the cursor leaving the
+    // cell mid-press (e.g. a press that turns into a drag out of this cell without a matching
+    // release ever reaching it).
+    m_ripple->release();
     Frame::leaveEvent(event);
 }
 
@@ -410,6 +423,7 @@ void CalendarDay::mousePressEvent(QMouseEvent* event)
         m_pressed=true;
         m_dragged=false;
         m_lastDragDate=m_date;
+        m_ripple->start(m_label->mapFromParent(event->pos()));
         emit dragStarted(m_date,event->modifiers());
         return;
     }
@@ -446,6 +460,7 @@ void CalendarDay::mouseReleaseEvent(QMouseEvent* event)
     if (event->button()==Qt::LeftButton && m_pressed)
     {
         m_pressed=false;
+        m_ripple->release();
 
         auto day=calendarDayAt(event->globalPosition().toPoint());
         auto finalDate=(day!=nullptr && day->isSelectable()) ? day->date() : m_date;
