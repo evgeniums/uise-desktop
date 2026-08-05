@@ -17,3 +17,11 @@ uise--RippleOverlay {
 uise--PushButton uise--RippleOverlay {
     qproperty-rippleOpacity: 0.20;
 }
+
+/* DropdownMenu rows are IconTextButtons (see dropdownmenu.cpp), so they inherit ripple
+ * automatically -- but at the 0.02 global default they are effectively invisible, same root
+ * cause as PushButton above. Kept below PushButton's boost since IconTextButton chrome is
+ * busier (icon + text + hover background all competing for attention already). */
+uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleOpacity: 0.10;
+}
