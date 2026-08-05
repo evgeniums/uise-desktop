@@ -123,6 +123,15 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         virtual void setDialogFocus()
         {}
 
+        /**
+         * @brief Widget a host can drag the dialog by, e.g. FloatingDialogFrame.
+         * @return The dialog's title bar, or nullptr if this implementation has none.
+         */
+        virtual QWidget* titleBar() const
+        {
+            return nullptr;
+        }
+
         virtual void setClosable(bool enable)
         {
             std::ignore=enable;
