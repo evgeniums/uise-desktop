@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/pushbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -59,6 +60,12 @@ PushButton::PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool tool
 
     connect(m_button,&QPushButton::clicked,this,&PushButton::clicked);
     connect(m_button,&QPushButton::toggled,this,&PushButton::toggled);
+
+    // Installed on the inner button, not on this outer frame -- m_button is the actual
+    // clickable widget (it receives real mouse press/release/leave events itself, so the
+    // default auto-trigger just works), whereas this frame only wraps/aligns it and may be
+    // larger or smaller than the button's own clickable area (see setContentAlignment()).
+    m_ripple=RippleOverlay::install(m_button);
 }
 
 //--------------------------------------------------------------------------

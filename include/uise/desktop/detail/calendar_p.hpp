@@ -52,6 +52,7 @@ class ElidedLabel;
 class PushButton;
 class DateTimePickerDropdown;
 class ScrollArea;
+class RippleOverlay;
 
 /**
  * @brief Small frame wrapping a single child widget that unconditionally accepts and reports
@@ -160,6 +161,7 @@ class CalendarDateRow : public Frame
         QDate m_date;
         Label* m_label=nullptr;
         PushButton* m_removeButton=nullptr;
+        RippleOverlay* m_ripple=nullptr;
 };
 
 /**

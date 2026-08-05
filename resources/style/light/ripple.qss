@@ -9,3 +9,11 @@ uise--RippleOverlay {
     qproperty-rippleColor:   #000000;
     qproperty-rippleOpacity: 0.02;
 }
+
+/* The global default above is tuned for large, already-busy button chrome (icon + text +
+ * hover background) -- PushButton is comparatively plain (native QPushButton/QToolButton
+ * chrome, no competing hover fill of its own in most consuming stylesheets), so it reads
+ * better boosted well above that baseline. */
+uise--PushButton uise--RippleOverlay {
+    qproperty-rippleOpacity: 0.15;
+}

@@ -544,6 +544,13 @@ CalendarDateRow::CalendarDateRow(const QDate& date, const QString& text, QWidget
 
     setCursor(Qt::PointingHandCursor);
 
+    // Auto-trigger stays on (unlike CalendarDay's ripple): every row here already represents an
+    // existing selected date, so there is no isSelectable()-style condition to gate on -- the
+    // whole row is always clickable, matching mouseReleaseEvent()'s own unconditional handling
+    // below. m_removeButton (a PushButton) already gets its own ripple independently, see
+    // pushbutton.cpp.
+    m_ripple=RippleOverlay::install(this);
+
     connect(m_removeButton,&PushButton::clicked,this,[this]()
     {
         emit removeRequested(m_date);

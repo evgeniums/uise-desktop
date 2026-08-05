@@ -37,6 +37,15 @@ padding: 0;
 margin: 0;
 }
 
+/* The ripple (see ripple.qss's base uise--PushButton rule) installs on this same QPushButton,
+ * whose own rect is just its tight text bounds -- no padding, unlike a normal chrome button --
+ * so at the global default opacity (2%, tuned for ordinary padded buttons) it is basically
+ * imperceptible here. Boosted well above that default to actually read on this small a target. */
+uise--Calendar #rangeFromButton QPushButton uise--RippleOverlay,
+uise--Calendar #rangeToButton QPushButton uise--RippleOverlay {
+qproperty-rippleOpacity: 0.35;
+}
+
 uise--Calendar #rangeDashLabel {
 background-color: transparent;
 padding: 0;
@@ -175,6 +184,13 @@ background-color: transparent;
 icon-size: 14px;
 margin: 0;
 padding: 0;
+}
+
+/* Same reasoning as the rangeFromButton/rangeToButton boost above: no padding means this
+ * button's own rect is just its tight 14px icon, too small for the global default ripple
+ * opacity to read at all. */
+uise--CalendarDateRow #dateRowRemoveButton QPushButton uise--RippleOverlay {
+qproperty-rippleOpacity: 0.35;
 }
 
 /* --- input --- */

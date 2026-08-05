@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatar.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/avatarbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -63,6 +64,17 @@ AvatarButton::AvatarButton(QWidget* parent)
     m_layout->addWidget(m_tailIcon);
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+
+    // Covers the whole button, padding included -- same reasoning as IconTextButton's ripple
+    // (see icontextbutton.cpp): a halo around the avatar in avatar-only mode, a horizontal
+    // spread across the whole button once text is visible, see ripple.qss and the avatarOnly
+    // property in setAvatarOnly() below. Installed last so it ends up on top of the avatar/
+    // text/tailIcon children above.
+    m_ripple=RippleOverlay::install(this);
+
+    // Default state before any setAvatarOnly() call is text-visible -- m_avatar is already
+    // hidden above and m_text is unhidden.
+    setProperty("avatarOnly",false);
 }
 
 //--------------------------------------------------------------------------
@@ -81,6 +93,11 @@ void AvatarButton::setAvatarOnly(bool enable)
     m_avatarOnly=enable;
     m_avatar->setVisible(enable);
     m_text->setVisible(!enable);
+
+    // Drives ripple.qss's choice between a centred halo (avatar-only) and a horizontal spread
+    // (text visible) -- see uise--AvatarButton[avatarOnly="..."] uise--RippleOverlay there.
+    setProperty("avatarOnly",enable);
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------

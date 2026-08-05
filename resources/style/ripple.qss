@@ -65,3 +65,48 @@ uise--CalendarDay uise--RippleOverlay {
     qproperty-rippleClip: "ellipse";
     qproperty-rippleOrigin: "center";
 }
+
+/* CalendarDateRow (a row of the multiple-selection dates-management dropdown) covers its whole
+ * row, matching its own 4px border-radius (see calendar.qss) -- left at rippleOrigin's default
+ * ("cursor") since, unlike CalendarDay, there is no natural single point (e.g. an icon) to
+ * centre on. */
+uise--CalendarDateRow uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+}
+
+/* PushButton wraps a real QPushButton/QToolButton (m_button) -- the ripple installs directly
+ * on that inner widget (see pushbutton.cpp), which is the actual clickable element regardless
+ * of how PushButton's own outer frame aligns/pads around it. Left at rippleOrigin's default
+ * ("cursor") since PushButton has no fixed icon-only/text-only split to reason about the way
+ * IconTextButton does -- a classic press-point ripple suits every combination it can show
+ * (icon only, text only, or both). Clipped to "rounded" with the same 4px corner radius used
+ * across the FastSwitchButton/AbstractDialog button chrome elsewhere in this stylesheet set --
+ * override rippleCornerRadius alongside any QSS rule that gives a PushButton a different
+ * border-radius. */
+uise--PushButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+}
+
+/* AvatarButton mirrors IconTextButton's treatment exactly (see above) -- covers the whole
+ * button, padding included, centred rather than cursor-origin.
+ *
+ * Base case, applies whenever text is visible (avatarOnly=="false", see the more specific rule
+ * below for avatar-only buttons): the same wide, flat horizontal-sweep ellipse. */
+uise--AvatarButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+    qproperty-rippleOrigin: "center";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 0.35;
+}
+
+/* Avatar-only buttons (see AvatarButton::setAvatarOnly()) get a circular halo instead, same
+ * reasoning as IconTextButton's icon-only rule -- avatars are round already (see avatar.qss),
+ * so an ellipse clip on a square avatar-only button draws as a true circle. */
+uise--AvatarButton[avatarOnly="true"] uise--RippleOverlay {
+    qproperty-rippleClip: "ellipse";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}

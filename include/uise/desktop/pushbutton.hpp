@@ -36,6 +36,8 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class RippleOverlay;
+
 class UISE_DESKTOP_EXPORT PushButton : public QFrame
 {
     Q_OBJECT
@@ -146,6 +148,13 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             return m_contentAlignment;
         }
 
+        /** @brief The click-ripple overlay installed on this button's inner QPushButton/
+         *  QToolButton, see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     signals:
 
         void clicked();
@@ -179,6 +188,8 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
         std::shared_ptr<SvgIcon> m_icon;
         bool m_parentHovered;
         Qt::Alignment m_contentAlignment=Qt::AlignCenter;
+
+        RippleOverlay* m_ripple=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END

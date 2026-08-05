@@ -40,6 +40,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class RoundedImage;
 class AvatarWidget;
 class AvatarSource;
+class RippleOverlay;
 
 class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
 {
@@ -96,6 +97,12 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
             return m_avatarOnly;
         }
 
+        /** @brief The click-ripple overlay installed on this button, see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     signals:
 
         void clicked();
@@ -130,6 +137,8 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
         bool m_parentHovered;
         bool m_checked;
         bool m_checkable;
+
+        RippleOverlay* m_ripple=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END
