@@ -1,0 +1,5 @@
+/* The floating frame is a translucent top-level window with no chrome of its own -- the
+ * hosted uise--AbstractDialog content paints its own background, border and rounded corners
+ * (see abstractdialog.qss), so the frame itself must stay fully transparent or it would show
+ * as an opaque square around the dialog's rounded corners. */
+uise--FloatingDialogFrame {background-color: transparent; border: none; padding: 0;}
