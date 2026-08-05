@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QHideEvent>
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/loadcontrol.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -84,6 +85,14 @@ LoadControl::LoadControl(QWidget* parent)
 
     setCursor(Qt::PointingHandCursor);
     setState(state());
+
+    // LoadControl paints its own circle directly in paintEvent() rather than through a child
+    // widget, so the whole (square, per loadcontrol.qss's 56x56 pin shared with CircleBusy)
+    // frame is the ripple host -- ellipse-clipped and centred, same halo treatment as an
+    // icon-only IconTextButton, see ripple.qss. Unlike JumpEdge, LoadControl's own drawn circle
+    // is centred within a genuinely square widget, so an ellipse clip on the whole frame draws
+    // a true circle, not a distorted oval.
+    m_ripple=RippleOverlay::install(this);
 }
 
 //--------------------------------------------------------------------------

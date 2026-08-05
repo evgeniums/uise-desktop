@@ -110,3 +110,23 @@ uise--AvatarButton[avatarOnly="true"] uise--RippleOverlay {
     qproperty-rippleRadiusScaleX: 1.0;
     qproperty-rippleRadiusScaleY: 1.0;
 }
+
+/* LoadControl paints its own circle directly in paintEvent() rather than through a child
+ * widget, so the ripple installs on the whole frame -- genuinely square (56x56, shared with
+ * CircleBusy in loadcontrol.qss), so an ellipse clip on it draws a true circle, same halo
+ * treatment as an icon-only IconTextButton. Centred rather than cursor-origin to match. */
+uise--LoadControl uise--RippleOverlay {
+    qproperty-rippleClip: "ellipse";
+    qproperty-rippleOrigin: "center";
+}
+
+/* JumpEdge also paints its own circle directly in paintEvent() rather than through a child
+ * widget, but unlike LoadControl is NOT square as a whole (flyweightlistview.qss pins it at
+ * 44x64: a 44x44 circle at the bottom plus a strip above reserved for the optional badge
+ * counter). The ripple installs on m_rippleArea, a plain child JumpEdge keeps sized to exactly
+ * that bottom 44x44 sub-rect (see jumpedge.cpp) -- since THAT sub-widget genuinely is square,
+ * the same ellipse-clip halo treatment applies, without spilling into the badge strip. */
+uise--JumpEdge uise--RippleOverlay {
+    qproperty-rippleClip: "ellipse";
+    qproperty-rippleOrigin: "center";
+}

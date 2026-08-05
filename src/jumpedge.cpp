@@ -26,10 +26,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QPainter>
 #include <QEnterEvent>
+#include <QResizeEvent>
 #include <QPalette>
 #include <QStaticText>
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/jumpedge.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -52,6 +54,27 @@ JumpEdge::JumpEdge(QWidget* parent)
 
     setCursor(Qt::PointingHandCursor);
     updateIcon();
+
+    // JumpEdge paints its own circle directly in paintEvent() rather than through a child
+    // widget, and (per flyweightlistview.qss) is NOT square -- it is pinned at 44x64, with the
+    // circle itself only occupying the bottom 44x44 (see paintEvent()) and the remaining top
+    // strip reserved for the optional badge counter. Installing the ripple on `this` and
+    // ellipse-clipping the whole frame would draw a flattened oval spanning badge strip and
+    // circle alike -- the same distortion NavigationBar's icon-only buttons had before their
+    // margin fix. Instead, m_rippleArea is a plain, invisible child kept in sync with exactly
+    // that bottom circleWidth-square sub-rect (see updateRippleGeometry(), called from
+    // resizeEvent()), and the ripple installs on IT -- same reasoning as CalendarDay installing
+    // its ripple on the inner dayLabel rather than the whole cell.
+    m_rippleArea=new QWidget(this);
+    m_rippleArea->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_rippleArea->setAttribute(Qt::WA_NoSystemBackground);
+    updateRippleGeometry();
+
+    // Manually triggered (autoTrigger off): real clicks are handled by JumpEdge's own
+    // mousePressEvent()/mouseReleaseEvent() below, for the whole 44x64 frame -- not just the
+    // circle sub-area m_rippleArea covers.
+    m_ripple=RippleOverlay::install(m_rippleArea);
+    m_ripple->setAutoTrigger(false);
 }
 
 //--------------------------------------------------------------------------
@@ -185,6 +208,31 @@ void JumpEdge::leaveEvent(QEvent* event)
     m_hovered=false;
     QFrame::leaveEvent(event);
     update();
+
+    // A no-op when nothing is held -- but a held ripple must not survive the cursor leaving
+    // the frame mid-press (e.g. a press-drag out without a matching release ever reaching it).
+    m_ripple->release();
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::resizeEvent(QResizeEvent* event)
+{
+    QFrame::resizeEvent(event);
+    updateRippleGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::updateRippleGeometry()
+{
+    // Mirrors paintEvent()'s own circleRect computation exactly (circleWidth==width(),
+    // bottom-anchored) -- kept as a single source of truth here rather than shared with
+    // paintEvent() since that method's version also has to fold in the (always-zero, given
+    // circleWidth==w) halfOuterWidth terms that make sense as general-shape scaffolding there
+    // but only add noise here.
+    auto w=width();
+    m_rippleArea->setGeometry(0,height()-w,w,w);
 }
 
 //--------------------------------------------------------------------------
@@ -217,7 +265,23 @@ void JumpEdge::mousePressEvent(QMouseEvent* event)
     QFrame::mousePressEvent(event);
     if (event->button()==Qt::LeftButton)
     {
+        // The whole frame is clickable, not just the circle m_rippleArea covers -- so the
+        // press position is mapped into its coordinate space rather than requiring the press
+        // to land on the circle itself. Ignored anyway since ripple.qss centres this ripple,
+        // regardless of where within the frame it was actually clicked.
+        m_ripple->start(m_rippleArea->mapFrom(this,event->pos()));
         emit clicked();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::mouseReleaseEvent(QMouseEvent* event)
+{
+    QFrame::mouseReleaseEvent(event);
+    if (event->button()==Qt::LeftButton)
+    {
+        m_ripple->release();
     }
 }
 

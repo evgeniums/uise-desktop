@@ -36,6 +36,8 @@ class QLabel;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class RippleOverlay;
+
 class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 {
     Q_OBJECT
@@ -83,6 +85,13 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
             return m_iconDirection;
         }
 
+        /** @brief The click-ripple overlay installed on this widget's main circle area (not
+         *  the optional badge strip above it), see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     signals:
 
         void clicked();
@@ -97,11 +106,14 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
 
     private:
 
         void updateIcon();
         void renderBadgeText(QPainter& p);
+        void updateRippleGeometry();
 
         QLabel* m_badgeText;
         bool m_hovered;
@@ -112,6 +124,9 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
         QFrame* m_sample;
         IconDirection m_iconDirection;
+
+        QWidget* m_rippleArea=nullptr;
+        RippleOverlay* m_ripple=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END

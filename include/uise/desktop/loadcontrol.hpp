@@ -38,6 +38,8 @@ class QVariantAnimation;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class RippleOverlay;
+
 class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
 {
     Q_OBJECT
@@ -96,6 +98,12 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
             setEasingCurve(static_cast<QEasingCurve::Type>(type));
         }
 
+        /** @brief The click-ripple overlay installed on this widget, see RippleOverlay. */
+        RippleOverlay* rippleOverlay() const noexcept
+        {
+            return m_ripple;
+        }
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;
@@ -124,6 +132,8 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         qreal m_rotationPhase;
         qreal m_circlePercent;
         int m_animationDuration;
+
+        RippleOverlay* m_ripple=nullptr;
 };
 
 UISE_DESKTOP_NAMESPACE_END
