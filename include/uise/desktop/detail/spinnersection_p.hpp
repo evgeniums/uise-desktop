@@ -29,8 +29,6 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/singleshottimer.hpp>
 
-class Spinner;
-
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace detail
@@ -51,8 +49,6 @@ class SpinnerSection_p
         bool circular=false;
         int animationVal=0;
         bool firstIndexUpdating=true;
-
-        Spinner *spinner;
 
         QPointer<QWidget> leftBarLabel;
         QPointer<QWidget> rightBarLabel;

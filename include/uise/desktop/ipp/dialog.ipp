@@ -343,6 +343,14 @@ void Dialog<BaseT>::setClosable(bool enable)
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
+QWidget* Dialog<BaseT>::titleBar() const
+{
+    return pimpl->titleFrame;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
 void Dialog<BaseT>::setSvgIcon(std::shared_ptr<SvgIcon> icon)
 {
     pimpl->icon->setVisible(static_cast<bool>(icon));

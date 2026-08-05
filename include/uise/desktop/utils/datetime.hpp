@@ -44,6 +44,14 @@ inline QString dateAsMonthAndDay(const QDateTime& dt, const QLocale& locale=QLoc
     return locale.toString(dt,dateFormat);
 }
 
+inline QString dateAsMonthAndYear(const QDate& date, const QLocale& locale=QLocale{})
+{
+    static QRegularExpression rx("[,./-]*\\s?d+\\s?[,./-]*",QRegularExpression::CaseInsensitiveOption);
+    QString localeFormat = locale.dateFormat(QLocale::LongFormat);
+    QString dateFormat = localeFormat.remove(rx).trimmed();
+    return locale.toString(date,dateFormat);
+}
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_DATETIME_HPP

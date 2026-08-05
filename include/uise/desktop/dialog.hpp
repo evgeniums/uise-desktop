@@ -63,6 +63,8 @@ class Dialog : public BaseT
 
         void setTitle(const QString& title) override;
 
+        QWidget* titleBar() const override;
+
         void setSvgIcon(std::shared_ptr<SvgIcon> icon);
         std::shared_ptr<SvgIcon> svgIcon() const;
 

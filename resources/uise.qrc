@@ -18,6 +18,12 @@
         <file>style/dark/htree.qss</file>
         <file>style/light/htree.qss</file>
         <file>style/light/spinner.qss</file>
+        <file>style/datetimepicker.qss</file>
+        <file>style/datetimepicker.json</file>
+        <file>style/dark/datetimepicker.qss</file>
+        <file>style/dark/datetimepicker.json</file>
+        <file>style/light/datetimepicker.qss</file>
+        <file>style/light/datetimepicker.json</file>
         <file>style/navigationbar.qss</file>
         <file>style/dark/navigationbar.qss</file>
         <file>style/light/navigationbar.qss</file>
@@ -55,6 +61,7 @@
         <file>style/dark/passworddialog.json</file>
         <file>style/dark/passworddialog.qss</file>
         <file>style/wizarddialog.qss</file>
+        <file>style/floatingdialog.qss</file>
         <file>style/light/passworddialog.json</file>
         <file>style/light/abstractdialog.qss</file>
         <file>style/light/passworddialog.qss</file>

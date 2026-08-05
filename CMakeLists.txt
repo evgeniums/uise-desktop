@@ -80,6 +80,9 @@ SET (HEADERS
 
     include/uise/desktop/spinner.hpp
     include/uise/desktop/spinnersection.hpp
+    include/uise/desktop/datetimepickersimple.hpp
+    include/uise/desktop/datetimepicker.hpp
+    include/uise/desktop/datetimeinput.hpp
 
     include/uise/desktop/busywaiting.hpp
     include/uise/desktop/abstractloadingwidget.hpp
@@ -94,6 +97,7 @@ SET (HEADERS
     include/uise/desktop/abstractdialog.hpp
     include/uise/desktop/dialog.hpp
     include/uise/desktop/modaldialog.hpp
+    include/uise/desktop/floatingdialog.hpp
     include/uise/desktop/statusdialog.hpp
 
     include/uise/desktop/framewithmodalstatus.hpp
@@ -223,6 +227,7 @@ SET (HEADERS ${HEADERS}
     include/uise/desktop/detail/flyweightlistview_p.ipp
 
     include/uise/desktop/detail/spinnersection_p.hpp
+    include/uise/desktop/detail/datetimepicker_p.hpp
 
     include/uise/desktop/detail/htreesplitter_p.hpp
 )
@@ -245,6 +250,9 @@ SET (SOURCES
     src/style.cpp
     src/spinner.cpp
     src/spinnersection.cpp
+    src/datetimepickersimple.cpp
+    src/datetimepicker.cpp
+    src/datetimeinput.cpp
     src/wheeleventhandler.cpp
     src/busywaiting.cpp
     src/abstractloadingwidget.cpp
@@ -285,6 +293,7 @@ SET (SOURCES
     src/editablepanels.cpp
 
     src/abstractdialog.cpp
+    src/floatingdialog.cpp
     src/statusdialog.cpp
 
     src/framewithmodalstatus.cpp

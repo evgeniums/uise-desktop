@@ -28,7 +28,6 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QApplication>
 #include <QMainWindow>
 #include <QDateTime>
-#include <QCalendarWidget>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -74,15 +73,15 @@ int main(int argc, char *argv[])
 
     auto dateTime = new EditableLabelDateTime(mainFrame);
     dateTime->setValue(QDateTime::currentDateTime());
-    dateTime->editorWidget()->setCalendarPopup(true);
-    dateTime->editorWidget()->setCalendarWidget(new QCalendarWidget());
     l->addWidget(dateTime);
 
     auto date= new EditableLabelDate(mainFrame);
     date->setValue(QDate::currentDate());
-    date->editorWidget()->setCalendarPopup(true);
-    date->editorWidget()->setCalendarWidget(new QCalendarWidget());
     l->addWidget(date);
+
+    auto month= new EditableLabelMonth(mainFrame);
+    month->setValue(QDate::currentDate());
+    l->addWidget(month);
 
     auto time= new EditableLabelTime(mainFrame);
     time->setValue(QTime::currentTime());

@@ -1,0 +1,21 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "DateTimePicker",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#333333" },
+                    "on" :  { "currentColor" : "#000000" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#AAAAAA" },
+                    "on" :  { "currentColor" : "#AAAAAA" }
+                }
+            }
+        }
+    ]
+}

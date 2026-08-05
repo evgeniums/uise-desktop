@@ -1,0 +1,38 @@
+uise--DateTimePicker {
+qproperty-visibleRows: 5;
+/* Fixed, spinner-demo-style sizing for now rather than font-metric-based auto-sizing --
+   see DateTimePicker::setItemHeight()/setItemWidth() docs. 0 re-enables auto-measurement. */
+qproperty-itemHeight: 50;
+qproperty-itemWidth: 100;
+qproperty-itemHPadding: 10;
+qproperty-itemVPadding: 6;
+padding: 4px;
+}
+
+uise--DateTimePicker uise--Spinner QLabel {
+background-color: transparent;
+}
+
+uise--DateTimePicker uise--Spinner #barLabel {
+background-color: transparent;
+}
+
+uise--DateTimePickerDropdown {
+padding: 6px;
+border: 1px solid;
+border-radius: 6px;
+qproperty-offsetY: 4;
+qproperty-animationDurationMs: 150;
+}
+
+uise--DateTimePickerDropdown #buttonsFrame {
+margin-top: 4px;
+}
+
+uise--DateTimeInput #pickerButton QPushButton {
+border: none;
+background-color: transparent;
+icon-size: 18px;
+margin: 0;
+padding: 0;
+}

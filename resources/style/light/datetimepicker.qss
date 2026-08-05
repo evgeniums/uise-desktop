@@ -1,0 +1,21 @@
+uise--DateTimePicker uise--Spinner * {
+color: #000000;
+}
+
+uise--DateTimePicker uise--Spinner QLabel[outOfRange="true"] {
+color: #b0b0b0;
+}
+
+uise--DateTimePicker uise--Spinner #barLabel {
+color: #808080;
+}
+
+uise--DateTimePicker uise--Spinner *[style-sample="true"] {
+background-color: #ffffff;
+selection-background-color: #d3d3d3;
+}
+
+uise--DateTimePickerDropdown {
+background-color: #ffffff;
+border-color: #d0d0d0;
+}

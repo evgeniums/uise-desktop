@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "DateTimePicker",
+            "aliases" : {
+                "calendar" : "${uise-svg-icons-1}/calendar",
+                "calendarMonth" : "${uise-svg-icons-1}/calendar-month",
+                "clock" : "${uise-svg-icons-1}/clock",
+                "calendarTime" : "${uise-svg-icons-1}/calendar-time",
+                "apply" : "${uise-svg-icons-1}/check",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        }
+    ]
+}

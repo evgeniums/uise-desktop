@@ -33,10 +33,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QDoubleSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
-#include <QDateEdit>
-#include <QTimeEdit>
 #include <QTextEdit>
-#include <QDateTimeEdit>
 #include <QCoreApplication>
 #include <QPushButton>
 
@@ -47,6 +44,8 @@ You may select, at your option, one of the above-comboed licenses.
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/editablepanel.hpp>
+#include <uise/desktop/datetimeinput.hpp>
+#include <uise/desktop/utils/datetime.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -58,6 +57,7 @@ class EditableLabelInt;
 class EditableLabelDouble;
 class EditableLabelCombo;
 class EditableLabelDate;
+class EditableLabelMonth;
 class EditableLabelTime;
 class EditableLabelDateTime;
 class EditableLabelBool;
@@ -81,6 +81,7 @@ enum class EditableLabelType : int
 
     TextEdit,
     Bool,
+    Month,
 
     Custom=0x10000
 };
@@ -699,7 +700,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::Date>
 {
     using type=EditableLabelDate;
-    using widgetType=QDateEdit;
+    using widgetType=DateInput;
 
     static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
@@ -729,7 +730,58 @@ struct EditableLabelTraits<EditableLabel::Type::Date>
     {
         widget->connect(
             widget,
-            &QDateEdit::dateChanged,
+            &DateInput::dateChanged,
+            valueWidget,
+            [valueWidget](const QDate&)
+            {
+                emit valueWidget->valueEdited();
+            }
+        );
+    }
+
+    static void clear(widgetType* widget)
+    {
+        widget->setDate(QDate::currentDate());
+    }
+};
+
+/**
+ * @brief Traits of editable label of month type (year+month, no day -- month-selection mode).
+ */
+template <>
+struct EditableLabelTraits<EditableLabel::Type::Month>
+{
+    using type=EditableLabelMonth;
+    using widgetType=MonthInput;
+
+    static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
+    {
+        using valueType=decltype(widget->date());
+
+        EditableLabelFormatter::loadLabel<EditableLabel::Type::Month,valueType>(label,formatter,widget->date(),[](const valueType& val){return dateAsMonthAndYear(val);});
+    }
+
+    static auto value(const widgetType* widget)
+    {
+        return widget->date();
+    }
+
+    static void setValue(widgetType* widget, const QDate& value)
+    {
+        widget->setDate(value);
+    }
+
+    static void updateConfig(widgetType* widget, const ValueWidgetConfig& config)
+    {
+        std::ignore=widget;
+        std::ignore=config;
+    }
+
+    static void watchValueEditing(AbstractValueWidget* valueWidget, widgetType* widget)
+    {
+        widget->connect(
+            widget,
+            &MonthInput::dateChanged,
             valueWidget,
             [valueWidget](const QDate&)
             {
@@ -751,7 +803,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::Time>
 {
     using type=EditableLabelTime;
-    using widgetType=QTimeEdit;
+    using widgetType=TimeInput;
 
     static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
@@ -781,7 +833,7 @@ struct EditableLabelTraits<EditableLabel::Type::Time>
     {
         widget->connect(
             widget,
-            &QTimeEdit::timeChanged,
+            &TimeInput::timeChanged,
             valueWidget,
             [valueWidget](const QTime&)
             {
@@ -803,7 +855,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::DateTime>
 {
     using type=EditableLabelDateTime;
-    using widgetType=QDateTimeEdit;
+    using widgetType=DateTimeInput;
 
     static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
@@ -833,7 +885,7 @@ struct EditableLabelTraits<EditableLabel::Type::DateTime>
     {
         widget->connect(
             widget,
-            &QDateTimeEdit::dateTimeChanged,
+            &DateTimeInput::dateTimeChanged,
             valueWidget,
             [valueWidget](const QDateTime&)
             {
@@ -1200,6 +1252,35 @@ class UISE_DESKTOP_EXPORT EditableLabelDate : public EditableLabelTmpl<EditableL
     public:
 
         using baseType = EditableLabelTmpl<EditableLabel::Type::Date>;
+
+        using baseType::baseType;
+
+    signals:
+
+        /**
+         * @brief Signal that value of the label was changed.
+         * @param value New value.
+         */
+        void valueChanged(const QDate& value);
+
+    protected:
+
+        virtual void notifyValueChanged() override
+        {
+            emit valueChanged(editorWidget()->date());
+        }
+};
+
+/**
+ * @brief Editable month label (year+month, no day -- month-selection mode).
+ */
+class UISE_DESKTOP_EXPORT EditableLabelMonth : public EditableLabelTmpl<EditableLabel::Type::Month>
+{
+    Q_OBJECT
+
+    public:
+
+        using baseType = EditableLabelTmpl<EditableLabel::Type::Month>;
 
         using baseType::baseType;
 

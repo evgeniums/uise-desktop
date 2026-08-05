@@ -23,8 +23,6 @@ You may select, at your option, one of the above-comboed licenses.
 #ifndef UISE_DESKTOP_DEMO_PANEL_HPP
 #define UISE_DESKTOP_DEMO_PANEL_HPP
 
-#include <QCalendarWidget>
-
 #include <uise/desktop/editablelabel.hpp>
 #include <uise/desktop/editablepanelgrid.hpp>
 
@@ -66,15 +64,15 @@ class DemoPanel : public WidgetQFrame
 
             auto dateTime = new EditableLabelDateTime(m_panel);
             dateTime->setValue(QDateTime::currentDateTime());
-            dateTime->editorWidget()->setCalendarPopup(true);
-            dateTime->editorWidget()->setCalendarWidget(new QCalendarWidget());
             m_panel->addRow("Date and time",dateTime);
 
             auto date= new EditableLabelDate(m_panel);
             date->setValue(QDate::currentDate());
-            date->editorWidget()->setCalendarPopup(true);
-            date->editorWidget()->setCalendarWidget(new QCalendarWidget());
             m_panel->addRow("Date",date);
+
+            auto month= new EditableLabelMonth(m_panel);
+            month->setValue(QDate::currentDate());
+            m_panel->addRow("Month",month);
 
             auto time= new EditableLabelTime(m_panel);
             time->setValue(QTime::currentTime());
