@@ -108,6 +108,8 @@ class FlyweightListView : public QFrame
         using InsertItemCb=std::function<void (ItemT*)>;
         using RemoveItemCb=std::function<void (typename ItemT::WidgetType*)>;
 
+        using ScrollCb=std::function<void ()>;
+
         using EachItemHandler=std::function<bool (const ItemT*)>;
 
         /**
@@ -258,6 +260,17 @@ class FlyweightListView : public QFrame
          * @param cb Callback function.
          */
         void setViewportChangedCb(ItemRangeCb cb) noexcept;
+
+        /**
+         * @brief Set callback function invoked when the user scrolled the view (wheel, keyboard or scrollbar)
+         * and the content actually moved.
+         *
+         * Programmatic scrolling and jumps (e.g. scrollToEdge(), scrollToItem(), sticking to an edge
+         * after inserting items) do not invoke this callback.
+         *
+         * @param cb Callback function.
+         */
+        void setUserScrolledCb(ScrollCb cb) noexcept;
 
         /**
          * @brief Set callback function used to report that range of items loaded to the view was changed.
@@ -548,6 +561,17 @@ class FlyweightListView : public QFrame
          * @return Query value.
          */
         QSize viewportSize() const noexcept;
+
+        /**
+         * @brief Get the viewport frame that hosts the scrolling content.
+         *
+         * Useful as a parent for overlay widgets that must be positioned over the actually
+         * visible/scrolling area rather than over the whole FlyweightListView (which may include
+         * scrollbars and padding).
+         *
+         * @return Viewport frame.
+         */
+        QFrame* viewportFrame() const noexcept;
 
         void resetCallbacks();
 

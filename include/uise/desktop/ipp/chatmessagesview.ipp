@@ -156,6 +156,15 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setStickMode(Direction::END);
     m_listView->setVerticalScrollBarPlaceHolder(true);
 
+    m_dateSubtitle=new ChatDateSubtitle(m_listView->viewportFrame());
+
+    m_listView->setUserScrolledCb(
+        [this]()
+        {
+            onUserScrolled();
+        }
+    );
+
     m_listView->setInsertItemCb(
         [this](auto itemW)
         {
@@ -283,6 +292,11 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                     }
                     m_chatUnderMouse=endItem->widget();
                 }
+            }
+
+            if (m_dateSubtitleEnabled)
+            {
+                updateDateSubtitleText();
             }
 
             emit viewportUpdated();
@@ -593,6 +607,7 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::clear()
 {
     m_listView->clear();
+    m_dateSubtitle->hideNow();
 }
 
 //--------------------------------------------------------------------------
@@ -1070,6 +1085,36 @@ bool ChatMessagesView<BaseMessageT,Traits>::rEachMessage(MessageHandler handler)
             return handler(item->item());
         }
     );
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::onUserScrolled()
+{
+    if (!m_dateSubtitleEnabled)
+    {
+        return;
+    }
+
+    updateDateSubtitleText();
+    m_dateSubtitle->notifyScrolled();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateDateSubtitleText()
+{
+    auto item=m_listView->firstViewportItem();
+    if (item==nullptr)
+    {
+        return;
+    }
+
+    auto dt=item->item()->msg()->dateTime();
+    bool withYear=dt.date().year()!=QDate::currentDate().year();
+    m_dateSubtitle->setDateTime(dt,withYear);
 }
 
 //--------------------------------------------------------------------------

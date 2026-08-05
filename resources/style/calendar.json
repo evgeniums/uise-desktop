@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "Calendar",
+            "aliases" : {
+                "prev" : "${uise-svg-icons-1}/chevron-up",
+                "next" : "${uise-svg-icons-1}/chevron-down",
+                "clear" : "${uise-svg-icons-1}/x",
+                "input" : "${uise-svg-icons-1}/calendar-event",
+                "apply" : "${uise-svg-icons-1}/check",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        }
+    ]
+}

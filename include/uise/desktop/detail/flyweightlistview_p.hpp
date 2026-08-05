@@ -307,6 +307,7 @@ class FlyweightListView_p : public OrientationInvariant
         typename FlyweightListView<ItemT>::RequestItemsCb m_requestItemsCb;
         typename FlyweightListView<ItemT>::ItemRangeCb m_viewportChangedCb;
         typename FlyweightListView<ItemT>::ItemRangeCb m_itemRangeChangedCb;
+        typename FlyweightListView<ItemT>::ScrollCb m_userScrolledCb;
 
         typename FlyweightListView<ItemT>::RequestJumpCb m_homeRequestCb;
         typename FlyweightListView<ItemT>::RequestJumpCb m_endRequestCb;

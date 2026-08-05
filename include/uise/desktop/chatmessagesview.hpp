@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/flyweightlistitem.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
+#include <uise/desktop/chatdatesubtitle.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -242,6 +243,25 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void readjustList();
 
+        ChatDateSubtitle* dateSubtitle() const
+        {
+            return m_dateSubtitle;
+        }
+
+        void setDateSubtitleEnabled(bool enable)
+        {
+            m_dateSubtitleEnabled=enable;
+            if (!enable)
+            {
+                m_dateSubtitle->hideNow();
+            }
+        }
+
+        bool isDateSubtitleEnabled() const noexcept
+        {
+            return m_dateSubtitleEnabled;
+        }
+
     protected:
 
         void mouseMoveEvent(QMouseEvent *event) override;
@@ -255,6 +275,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         QBoxLayout* m_layout=nullptr;
         ChatMessagesViewWidget<BaseMessageT,Traits>* m_listView;
         bool m_selectionMode=false;
+
+        ChatDateSubtitle* m_dateSubtitle=nullptr;
+        bool m_dateSubtitleEnabled=true;
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
@@ -292,6 +315,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         int messageContentWidth() const;
         int defaultMessageContentWidth() const;
         void adjustMesssageSize(Message* msg);
+
+        void onUserScrolled();
+        void updateDateSubtitleText();
 };
 
 UISE_DESKTOP_NAMESPACE_END

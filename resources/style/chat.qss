@@ -75,6 +75,21 @@ uise--AbstractChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
 
+/*
+ * ChatDateSubtitle - floating date pill over the chat messages viewport.
+ * Colours come from the uise--ChatSeparatorSection rules in light/chat.qss and dark/chat.qss,
+ * inherited through the ChatSeparatorSection it wraps.
+ */
+uise--ChatDateSubtitle {
+qproperty-showDelayMs: 150;
+qproperty-hideDelayMs: 1200;
+qproperty-fadeInDurationMs: 150;
+qproperty-fadeOutDurationMs: 300;
+qproperty-topOffset: 0;
+background-color: transparent;
+border: none;
+}
+
 uise--AbstractChatMessagesView #uiseFlyweightListViewV{
 max-width: 1000px;
 }

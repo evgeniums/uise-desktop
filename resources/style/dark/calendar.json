@@ -1,0 +1,21 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "Calendar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#555555" },
+                    "on" :  { "currentColor" : "#555555" }
+                }
+            }
+        }
+    ]
+}

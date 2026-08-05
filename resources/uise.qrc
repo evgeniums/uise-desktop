@@ -24,6 +24,12 @@
         <file>style/dark/datetimepicker.json</file>
         <file>style/light/datetimepicker.qss</file>
         <file>style/light/datetimepicker.json</file>
+        <file>style/calendar.qss</file>
+        <file>style/calendar.json</file>
+        <file>style/dark/calendar.qss</file>
+        <file>style/dark/calendar.json</file>
+        <file>style/light/calendar.qss</file>
+        <file>style/light/calendar.json</file>
         <file>style/navigationbar.qss</file>
         <file>style/dark/navigationbar.qss</file>
         <file>style/light/navigationbar.qss</file>

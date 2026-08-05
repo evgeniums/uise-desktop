@@ -1,0 +1,40 @@
+uise--Calendar #titleLabel { color: #000000; }
+uise--Calendar #titleLabel QLabel { color: #000000; }
+uise--Calendar #titleFrame[checked="true"] { background-color: #dde7f3; }
+uise--Calendar #rangeFromButton QPushButton,
+uise--Calendar #rangeToButton QPushButton { color: #000000; }
+uise--Calendar #rangeFromButton QPushButton:hover,
+uise--Calendar #rangeToButton QPushButton:hover { color: #2a5da0; text-decoration: underline; }
+uise--Calendar #rangeDashLabel { color: #808080; }
+uise--Calendar #monthLabel { color: #808080; }
+uise--Calendar #weekDayLabel { color: #808080; }
+uise--Calendar #weekDayLabel[weekend="true"] { color: #b05050; }
+
+uise--CalendarDay #dayLabel { color: #333333; }
+uise--CalendarDay[weekend="true"] #dayLabel { color: #a04040; }
+uise--CalendarDay[today="true"] #dayLabel { color: #000000; font-weight: bold; }
+uise--CalendarDay[adjacent="true"] #dayLabel { color: #b0b0b0; }
+uise--CalendarDay[outOfRange="true"] #dayLabel { color: #b0b0b0; }
+
+uise--CalendarDay[band="band"] { background-color: #dde7f3; }
+uise--CalendarDay[band="band"] #dayLabel { color: #000000; }
+
+uise--CalendarDay[hovered="true"] #dayLabel { color: #000000; background-color: #e6e6e6; }
+
+uise--CalendarDay #dayLabel[marked="point"],
+uise--CalendarDay #dayLabel[marked="endpoint"] { background-color: #4a70a9; color: #ffffff; }
+
+uise--CalendarDay[hovered="true"] #dayLabel[marked="point"],
+uise--CalendarDay[hovered="true"] #dayLabel[marked="endpoint"] { background-color: #5a80b9; }
+
+uise--CalendarDropdown { background-color: #ffffff; border-color: #d0d0d0; }
+uise--CalendarDropdown #calendarDropdownContent { background-color: transparent; }
+
+uise--CalendarDatesDropdown { background-color: #ffffff; border-color: #d0d0d0; }
+uise--CalendarDatesDropdown #calendarDatesDropdownContent { background-color: transparent; }
+uise--CalendarDatesDropdown #datesTitleLabel { color: #666666; }
+uise--CalendarDatesDropdown #datesSeparator { background-color: #e0e0e0; }
+
+uise--CalendarDateRow #dateRowLabel { color: #333333; }
+uise--CalendarDateRow[hovered="true"] { background-color: #f0f0f0; }
+uise--CalendarDateRow[hovered="true"] #dateRowLabel { color: #000000; }

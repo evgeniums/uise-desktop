@@ -152,6 +152,13 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setViewportChangedCb(Ite
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setUserScrolledCb(ScrollCb cb) noexcept
+{
+    pimpl->m_userScrolledCb=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setItemRangeChangedCb(ItemRangeCb cb) noexcept
 {
     pimpl->m_itemRangeChangedCb=std::move(cb);
@@ -585,6 +592,13 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 QSize FlyweightListView<ItemT,OrderComparer,IdComparer>::viewportSize() const noexcept
 {
     return pimpl->m_view->size();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+QFrame* FlyweightListView<ItemT,OrderComparer,IdComparer>::viewportFrame() const noexcept
+{
+    return pimpl->m_view;
 }
 
 //--------------------------------------------------------------------------

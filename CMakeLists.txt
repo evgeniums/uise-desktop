@@ -83,6 +83,8 @@ SET (HEADERS
     include/uise/desktop/datetimepickersimple.hpp
     include/uise/desktop/datetimepicker.hpp
     include/uise/desktop/datetimeinput.hpp
+    include/uise/desktop/calendar.hpp
+    include/uise/desktop/calendarinput.hpp
 
     include/uise/desktop/busywaiting.hpp
     include/uise/desktop/abstractloadingwidget.hpp
@@ -205,6 +207,7 @@ SET (HEADERS
     include/uise/desktop/chatmessagetext.hpp
     include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
+    include/uise/desktop/chatdatesubtitle.hpp
     include/uise/desktop/chatmessagesview.hpp
 
     include/uise/desktop/chatfileitem.hpp
@@ -228,6 +231,7 @@ SET (HEADERS ${HEADERS}
 
     include/uise/desktop/detail/spinnersection_p.hpp
     include/uise/desktop/detail/datetimepicker_p.hpp
+    include/uise/desktop/detail/calendar_p.hpp
 
     include/uise/desktop/detail/htreesplitter_p.hpp
 )
@@ -253,6 +257,8 @@ SET (SOURCES
     src/datetimepickersimple.cpp
     src/datetimepicker.cpp
     src/datetimeinput.cpp
+    src/calendar.cpp
+    src/calendarinput.cpp
     src/wheeleventhandler.cpp
     src/busywaiting.cpp
     src/abstractloadingwidget.cpp
@@ -359,6 +365,7 @@ SET (SOURCES
     src/chatmessagetext.cpp
     src/chatmessagecall.cpp
     src/chatmessage.cpp
+    src/chatdatesubtitle.cpp
 
     src/albumlayout.cpp
     src/chatfileitem.cpp

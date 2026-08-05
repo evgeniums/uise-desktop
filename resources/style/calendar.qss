@@ -1,0 +1,187 @@
+uise--Calendar {
+qproperty-cellWidth: 34;
+qproperty-cellHeight: 34;
+qproperty-weekDayRowHeight: 22;
+qproperty-monthLabelHeight: 18;
+qproperty-headerSpacing: 4;
+qproperty-maxTitleDates: 0;
+padding: 6px;
+}
+
+uise--Calendar #headerFrame {
+padding: 2px 0 4px 0;
+}
+
+uise--Calendar #titleFrame {
+padding: 0;
+margin: 0;
+border: none;
+background-color: transparent;
+border-radius: 4px;
+}
+
+uise--Calendar #titleLabel {
+padding: 0;
+margin: 0;
+}
+
+uise--Calendar #titleLabel QLabel {
+background-color: transparent;
+}
+
+uise--Calendar #rangeFromButton QPushButton,
+uise--Calendar #rangeToButton QPushButton {
+border: none;
+background-color: transparent;
+padding: 0;
+margin: 0;
+}
+
+uise--Calendar #rangeDashLabel {
+background-color: transparent;
+padding: 0;
+margin: 0 4px;
+}
+
+uise--Calendar #weekDaysFrame {
+padding: 0;
+margin: 0;
+}
+
+uise--Calendar #weekDayLabel {
+background-color: transparent;
+padding: 0;
+margin: 0;
+}
+
+uise--Calendar #monthLabel {
+background-color: transparent;
+padding: 0;
+margin: 0;
+}
+
+uise--Calendar #daysFrame {
+padding: 0;
+margin: 0;
+background-color: transparent;
+}
+
+uise--Calendar #prevButton QPushButton,
+uise--Calendar #nextButton QPushButton,
+uise--Calendar #clearButton QPushButton {
+border: none;
+background-color: transparent;
+icon-size: 16px;
+margin: 0;
+padding: 0;
+}
+
+/* --- day cell: the OUTER frame paints the continuous range band --- */
+/* border MUST stay none: a visible border plus per-corner radii produces hairline
+   artefacts at the seams between adjacent band cells. */
+uise--CalendarDay {
+border: none;
+margin: 0;
+padding: 0;
+background-color: transparent;
+border-radius: 0;
+}
+
+uise--CalendarDay[band="band"][bandEdge="left"] {
+border-top-left-radius: 17px;
+border-bottom-left-radius: 17px;
+}
+
+uise--CalendarDay[band="band"][bandEdge="right"] {
+border-top-right-radius: 17px;
+border-bottom-right-radius: 17px;
+}
+
+uise--CalendarDay[band="band"][bandEdge="both"] {
+border-radius: 17px;
+}
+
+/* --- day label: the INNER marker, inset so consecutive marked days show a gap --- */
+uise--CalendarDay #dayLabel {
+min-width: 28px;
+max-width: 28px;
+min-height: 28px;
+max-height: 28px;
+border: none;
+margin: 0;
+padding: 0;
+background-color: transparent;
+border-radius: 14px;
+}
+
+/* --- dropdowns --- */
+uise--CalendarDropdown {
+padding: 6px;
+border: 1px solid;
+border-radius: 6px;
+qproperty-offsetY: 4;
+qproperty-animationDurationMs: 150;
+}
+
+uise--CalendarDropdown #buttonsFrame {
+margin-top: 4px;
+}
+
+uise--CalendarDatesDropdown {
+padding: 8px 8px 8px 10px;
+border: 1px solid;
+border-radius: 8px;
+qproperty-offsetY: 4;
+qproperty-animationDurationMs: 150;
+}
+
+uise--CalendarDatesDropdown #datesTitleLabel {
+font-weight: bold;
+padding: 0 4px 6px 0;
+margin: 0;
+background-color: transparent;
+}
+
+uise--CalendarDatesDropdown #datesSeparator {
+border: none;
+margin: 0 4px 6px 0;
+}
+
+uise--CalendarDatesDropdown #datesScrollArea {
+border: none;
+background-color: transparent;
+}
+
+uise--CalendarDatesDropdown #datesListFrame {
+background-color: transparent;
+}
+
+uise--CalendarDateRow {
+border: none;
+border-radius: 4px;
+padding: 6px 8px 6px 4px;
+margin: 0 4px 0 0;
+}
+
+uise--CalendarDateRow #dateRowLabel {
+background-color: transparent;
+padding: 0;
+margin: 0;
+}
+
+uise--CalendarDateRow #dateRowRemoveButton QPushButton {
+border: none;
+background-color: transparent;
+icon-size: 14px;
+margin: 0;
+padding: 0;
+}
+
+/* --- input --- */
+uise--CalendarInput #pickerButton QPushButton {
+border: none;
+background-color: transparent;
+icon-size: 18px;
+margin: 0;
+padding: 0;
+}

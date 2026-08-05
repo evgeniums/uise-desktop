@@ -127,6 +127,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resetCallbacks()
     m_requestItemsCb=decltype(m_requestItemsCb){};
     m_viewportChangedCb=decltype(m_viewportChangedCb){};
     m_itemRangeChangedCb=decltype(m_itemRangeChangedCb){};
+    m_userScrolledCb=decltype(m_userScrolledCb){};
     m_homeRequestCb=decltype(m_homeRequestCb){};
     m_endRequestCb=decltype(m_endRequestCb){};
     m_insertItemCb=decltype(m_insertItemCb){};
@@ -1033,6 +1034,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scroll(int delta)
 {
+    auto oldPos=oprop(m_llist,OProp::pos);
+
     auto cb=[delta](int minPos, int maxPos, int oldPos)
     {
         std::ignore=minPos;
@@ -1041,6 +1044,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scroll(int delta)
     };
 
     scrollTo(cb);
+
+    if (m_userScrolledCb && oprop(m_llist,OProp::pos)!=oldPos)
+    {
+        m_userScrolledCb();
+    }
 }
 
 //--------------------------------------------------------------------------
