@@ -233,7 +233,25 @@ std::vector<detail::ColumnPlan> DateTimePicker_p::buildColumnPlan() const
             p.token=offs[i].token;
             if (i+1<offs.size() && offs[i].end>=0 && offs[i+1].start>offs[i].end)
             {
-                p.rightBarText=fmt.mid(offs[i].end,offs[i+1].start-offs[i].end);
+                // the raw text between two ENABLED fields may still contain format tokens of
+                // DISABLED fields -- e.g. month mode (YearMonth) with en_US "M/d/yy" has "/d/"
+                // between month and year. Strip format-letter runs and keep only the first
+                // literal chunk, so the separator shows "/" and not "/d/".
+                auto between=fmt.mid(offs[i].end,offs[i+1].start-offs[i].end);
+                QString sep;
+                for (auto ch:between)
+                {
+                    if (ch.isLetter())
+                    {
+                        if (!sep.isEmpty())
+                        {
+                            break;
+                        }
+                        continue;
+                    }
+                    sep.append(ch);
+                }
+                p.rightBarText=sep;
             }
             plan.push_back(p);
         }
@@ -258,6 +276,15 @@ std::vector<detail::ColumnPlan> DateTimePicker_p::buildColumnPlan() const
     if (!dateWanted.empty())
     {
         auto datePlan=scanGroup(locale.dateFormat(QLocale::ShortFormat),dateWanted);
+        if (!dateSeparatorOverride.isEmpty())
+        {
+            // explicit separator overrides the locale-derived text on every inner boundary
+            // of the date group
+            for (size_t i=0;i+1<datePlan.size();++i)
+            {
+                datePlan[i].rightBarText=dateSeparatorOverride;
+            }
+        }
         plan.insert(plan.end(),datePlan.begin(),datePlan.end());
     }
 
@@ -281,6 +308,23 @@ std::vector<detail::ColumnPlan> DateTimePicker_p::buildColumnPlan() const
     if (!timeWanted.empty())
     {
         auto timePlan=scanGroup(locale.timeFormat(QLocale::ShortFormat),timeWanted);
+        if (!timeSeparatorOverride.isEmpty())
+        {
+            // explicit separator overrides the locale-derived text, but only between the
+            // numeric time columns -- the boundary around AM/PM keeps its locale text
+            // (usually a space), because "12:30:PM" would be wrong in any locale
+            auto isNumericTime=[](detail::Token token)
+            {
+                return token==detail::Token::Hour || token==detail::Token::Minute || token==detail::Token::Second;
+            };
+            for (size_t i=0;i+1<timePlan.size();++i)
+            {
+                if (isNumericTime(timePlan[i].token) && isNumericTime(timePlan[i+1].token))
+                {
+                    timePlan[i].rightBarText=timeSeparatorOverride;
+                }
+            }
+        }
         plan.insert(plan.end(),timePlan.begin(),timePlan.end());
     }
 
@@ -874,7 +918,7 @@ void DateTimePicker_p::rebuild()
         section->setCircular(col.circular);
         section->setItems(items);
 
-        if (!col.rightBarText.isEmpty())
+        if (separatorsVisible && !col.rightBarText.isEmpty())
         {
             auto barLabel=new Label(col.rightBarText,spinner);
             barLabel->setObjectName(QStringLiteral("barLabel"));
@@ -1160,6 +1204,63 @@ void DateTimePicker::setCircularFields(DateTimeFields fields)
 DateTimeFields DateTimePicker::circularFields() const noexcept
 {
     return pimpl->circularFields;
+}
+
+//--------------------------------------------------------------------------
+
+void DateTimePicker::setSeparatorsVisible(bool enable)
+{
+    if (pimpl->separatorsVisible==enable)
+    {
+        return;
+    }
+    pimpl->separatorsVisible=enable;
+    pimpl->rebuild();
+}
+
+//--------------------------------------------------------------------------
+
+bool DateTimePicker::separatorsVisible() const noexcept
+{
+    return pimpl->separatorsVisible;
+}
+
+//--------------------------------------------------------------------------
+
+void DateTimePicker::setDateSeparator(const QString& text)
+{
+    if (pimpl->dateSeparatorOverride==text)
+    {
+        return;
+    }
+    pimpl->dateSeparatorOverride=text;
+    pimpl->rebuild();
+}
+
+//--------------------------------------------------------------------------
+
+QString DateTimePicker::dateSeparator() const
+{
+    return pimpl->dateSeparatorOverride;
+}
+
+//--------------------------------------------------------------------------
+
+void DateTimePicker::setTimeSeparator(const QString& text)
+{
+    if (pimpl->timeSeparatorOverride==text)
+    {
+        return;
+    }
+    pimpl->timeSeparatorOverride=text;
+    pimpl->rebuild();
+}
+
+//--------------------------------------------------------------------------
+
+QString DateTimePicker::timeSeparator() const
+{
+    return pimpl->timeSeparatorOverride;
 }
 
 //--------------------------------------------------------------------------

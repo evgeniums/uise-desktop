@@ -71,9 +71,10 @@ Q_DECLARE_FLAGS(DateTimeFields,DateTimeField)
  * wheels are shown is controlled by setFields(); DatePicker, MonthPicker and TimePicker are
  * thin presets of the most common combinations.
  *
- * Column order and separators are derived from the current locale's short date/time format
- * (see setLocale()), so e.g. a German locale shows "day.month.year" while a US locale shows
- * "month/day/year".
+ * Column order is derived from the current locale's short date/time format (see setLocale()),
+ * so e.g. a German locale shows "day.month.year" while a US locale shows "month/day/year".
+ * Separator labels between the columns (the locale's "." or "/" or ":") are available via
+ * setSeparatorsVisible() and are hidden by default.
  */
 class UISE_DESKTOP_EXPORT DateTimePicker : public Frame
 {
@@ -84,6 +85,9 @@ class UISE_DESKTOP_EXPORT DateTimePicker : public Frame
     Q_PROPERTY(int visibleRows READ visibleRows WRITE setVisibleRows)
     Q_PROPERTY(int itemHPadding READ itemHPadding WRITE setItemHPadding)
     Q_PROPERTY(int itemVPadding READ itemVPadding WRITE setItemVPadding)
+    Q_PROPERTY(bool separatorsVisible READ separatorsVisible WRITE setSeparatorsVisible)
+    Q_PROPERTY(QString dateSeparator READ dateSeparator WRITE setDateSeparator)
+    Q_PROPERTY(QString timeSeparator READ timeSeparator WRITE setTimeSeparator)
 
     public:
 
@@ -197,6 +201,40 @@ class UISE_DESKTOP_EXPORT DateTimePicker : public Frame
         void setCircularFields(DateTimeFields fields);
 
         DateTimeFields circularFields() const noexcept;
+
+        /**
+         * @brief Show or hide separator labels between the columns.
+         * @param enable Whether to show the separators.
+         *
+         * Separator text is taken from the locale's short date/time format (e.g. "/" or "."
+         * between date columns, ":" between hour and minute). Hidden by default.
+         */
+        void setSeparatorsVisible(bool enable);
+
+        bool separatorsVisible() const noexcept;
+
+        /**
+         * @brief Override the separator text between date columns.
+         * @param text Separator text; empty string (default) means derive from the locale's
+         *  short date format (e.g. "/" for en_US, "." for de_DE).
+         *
+         * Only rendered when separators are visible, see setSeparatorsVisible().
+         */
+        void setDateSeparator(const QString& text);
+
+        QString dateSeparator() const;
+
+        /**
+         * @brief Override the separator text between hour/minute/second columns.
+         * @param text Separator text; empty string (default) means derive from the locale's
+         *  short time format (usually ":"). The separator around the AM/PM column always
+         *  comes from the locale format.
+         *
+         * Only rendered when separators are visible, see setSeparatorsVisible().
+         */
+        void setTimeSeparator(const QString& text);
+
+        QString timeSeparator() const;
 
         /**
          * @brief Set locale used to derive column order, month/AM-PM names and 12/24-hour mode.

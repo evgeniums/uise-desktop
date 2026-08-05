@@ -354,6 +354,24 @@ int main(int argc, char *argv[])
     }
     cl->addWidget(circularGroup);
 
+    // -- separators --
+    auto separatorsGroup = new QGroupBox("Separators");
+    auto sgl = Layout::horizontal(separatorsGroup, false);
+    auto separatorsCheck = new QCheckBox("Show column separators");
+    sgl->addWidget(separatorsCheck);
+    QObject::connect(separatorsCheck, &QCheckBox::toggled, [allPickers, allInputs](bool enable)
+    {
+        for (auto* p: allPickers)
+        {
+            p->setSeparatorsVisible(enable);
+        }
+        for (auto* i: allInputs)
+        {
+            i->picker()->setSeparatorsVisible(enable);
+        }
+    });
+    cl->addWidget(separatorsGroup);
+
     // -- popup buttons --
     auto buttonsGroup = new QGroupBox("Input popup");
     auto bgl = Layout::horizontal(buttonsGroup, false);

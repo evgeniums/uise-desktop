@@ -122,6 +122,9 @@ class DateTimePicker_p
         int minuteStep=1;
         int secondStep=1;
         DateTimePicker::MonthFormat monthFormat=DateTimePicker::MonthFormat::LongName;
+        bool separatorsVisible=false;
+        QString dateSeparatorOverride;
+        QString timeSeparatorOverride;
 
         QLocale locale;
 
