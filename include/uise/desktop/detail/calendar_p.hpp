@@ -196,20 +196,6 @@ class CalendarDatesDropdown : public DropdownFrame
         void fillContent() override;
         void clearContent() override;
 
-        /**
-         * @brief Keep a click inside this popup from dismissing it via the host's
-         *  WindowDeactivate.
-         *
-         * This popup is its own top-level Qt::Tool window; on macOS a click inside such a window
-         * makes it the key window, so the HOST window receives WindowDeactivate -- which
-         * DropdownFrame::eventFilter() treats as "close the dropdown". The primary fix is the
-         * Qt::WindowDoesNotAcceptFocus flag set in the constructor (the popup then never takes
-         * activation at all); this override is the fallback: when a WindowDeactivate arrives
-         * while this popup IS the active window, the deactivation was caused by the popup
-         * itself, not by the user switching away, and the base class's close path is skipped.
-         */
-        bool eventFilter(QObject* watched, QEvent* event) override;
-
     private:
 
         void updateMaxHeight();
@@ -246,7 +232,6 @@ class Calendar_p
         QDate rangeAnchor;
         bool rangePending=false;                        // first click done, waiting for second
         std::set<QDate> multiple;
-        bool updatingPicker=false;
         QDate dragAnchor;                               // cell a drag gesture started on
         bool dragActive=false;                          // a real (cross-cell) drag is underway
 

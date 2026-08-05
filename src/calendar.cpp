@@ -347,7 +347,17 @@ void CalendarDay::applyState()
     setProperty(PropBandEdge,QString::fromLatin1(bandEdgeName(m_bandEdge)));
     m_label->setProperty(PropMarked,QString::fromLatin1(markedName(m_marked)));
 
-    setCursor(isSelectable() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    // Only touch the cursor for the cell actually under the mouse right now (m_hovered), not
+    // for the other ~41 during a full-page rebuild (month navigation, incl. the month picker's
+    // Apply). Cells persist across page changes (see the class doc comment) and keep real
+    // screen geometry even while completely covered by an open dropdown popup; unconditionally
+    // calling setCursor() here on macOS was observed to bleed a PointingHandCursor through to
+    // the popup on top of them, even though the mouse was never over these cells at all.
+    // leaveEvent() below resets the cursor explicitly on the one genuine hover-exit transition.
+    if (m_hovered)
+    {
+        setCursor(isSelectable() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    }
 
     Style::repolishRecursive(this);
 }
@@ -382,6 +392,9 @@ void CalendarDay::leaveEvent(QEvent* event)
         m_hovered=false;
         m_dirty=true;
         applyState();
+        // applyState() above only updates the cursor while m_hovered is true (see its own
+        // comment), so the transition back to not-hovered needs an explicit reset here.
+        setCursor(Qt::ArrowCursor);
         emit hovered(m_date,false);
     }
     Frame::leaveEvent(event);
@@ -572,15 +585,6 @@ CalendarDatesDropdown::CalendarDatesDropdown(Calendar* owner, QWidget* parent)
     : DropdownFrame(parent),
       m_owner(owner)
 {
-    // This popup is its own top-level Qt::Tool window. On macOS a mouse press inside such a
-    // window makes it the key (active) window -- WA_ShowWithoutActivating only prevents
-    // activation when it is SHOWN, not when it is clicked -- so the host window receives
-    // WindowDeactivate, which DropdownFrame::eventFilter() treats as "host lost focus, close
-    // the dropdown" (CloseReason::WindowChanged). Net effect without this flag: ANY click
-    // anywhere inside the popup dismissed it before the press was even delivered. Nothing in
-    // this popup needs keyboard focus, so simply never accept window activation at all.
-    setWindowFlag(Qt::WindowDoesNotAcceptFocus,true);
-
     auto content=new QFrame(this);
     content->setObjectName(QStringLiteral("calendarDatesDropdownContent"));
     auto l=Layout::vertical(content);
@@ -645,24 +649,6 @@ CalendarDatesDropdown::CalendarDatesDropdown(Calendar* owner, QWidget* parent)
             rebuildRows();
         }
     },Qt::QueuedConnection);
-}
-
-//--------------------------------------------------------------------------
-
-bool CalendarDatesDropdown::eventFilter(QObject* watched, QEvent* event)
-{
-    if (event->type()==QEvent::WindowDeactivate && isActiveWindow())
-    {
-        // The host window is being deactivated because THIS popup just became the active
-        // window (a click inside it -- see the WindowDoesNotAcceptFocus comment in the
-        // constructor for the full mechanism; this guard is the fallback for any path where
-        // the platform still shifts activation to the popup despite that flag). Activation
-        // moving from the host to the popup itself is not "the user switched away", so skip
-        // DropdownFrame::eventFilter()'s WindowDeactivate close path entirely. A genuine
-        // switch to some OTHER window leaves isActiveWindow() false here and still closes.
-        return QFrame::eventFilter(watched,event);
-    }
-    return DropdownFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------
@@ -1281,11 +1267,9 @@ void Calendar_p::updateClearButton()
 
 void Calendar_p::applyLimits()
 {
-    updatingPicker=true;
     monthDropdown->picker()->setDateRange(
         minDate.isValid() ? minDate : QDate(1900,1,1),
         maxDate.isValid() ? maxDate : QDate(2999,12,31));
-    updatingPicker=false;
 
     bool changed=false;
     bool multipleChanged=false;
@@ -1706,18 +1690,23 @@ void Calendar::construct(CalendarMode mode)
     // lifetime is managed explicitly via destroyWidget() in the destructor, matching the
     // DateTimeInput precedent
     pimpl->monthDropdown=new DateTimePickerDropdown(DateTimeField::YearMonth);
-    pimpl->monthDropdown->setButtonsVisible(false);
+    // Buttons visible rather than a live-updating wheel: the picker's own value follows the
+    // wheel as it scrolls (that's intrinsic to DateTimePicker, not something to suppress), but
+    // forwarding every intermediate value straight into the Calendar's own displayed month made
+    // the grid behind the popup repage continuously while merely scrolling to a destination --
+    // jarring, and gave the user no way to back out mid-scroll. Apply/Cancel already exist on
+    // DateTimePickerDropdown for exactly this: Cancel restores the wheel to the value it had on
+    // open (its own internal snapshot) with no effect on the Calendar at all; Apply is the one
+    // moment the picked month is actually committed, via the connection below.
+    pimpl->monthDropdown->setButtonsVisible(true);
     pimpl->monthDropdown->setTriggerWidget(pimpl->header);
 
     pimpl->datesDropdown=new CalendarDatesDropdown(this);
     pimpl->datesDropdown->setTriggerWidget(pimpl->titleFrame);
 
-    connect(pimpl->monthDropdown->picker(),&DateTimePicker::dateChanged,this,[this](const QDate& d)
+    connect(pimpl->monthDropdown,&DateTimePickerDropdown::applied,this,[this]()
     {
-        if (pimpl->updatingPicker)
-        {
-            return;
-        }
+        auto d=pimpl->monthDropdown->picker()->date();
         setDisplayedMonth(QDate{d.year(),d.month(),1});
     });
 
@@ -2153,9 +2142,7 @@ void Calendar::setDisplayedMonth(const QDate& month)
     pimpl->displayed=normalized;
     pimpl->rebuildPage();
 
-    pimpl->updatingPicker=true;
     pimpl->monthDropdown->picker()->setDate(pimpl->displayed);
-    pimpl->updatingPicker=false;
 
     emit displayedMonthChanged(pimpl->displayed);
 }
