@@ -91,10 +91,7 @@ class UISE_DESKTOP_EXPORT PushButton : public QFrame
             return m_button->isChecked();
         }
 
-        void setCheckable(bool enable)
-        {
-            m_button->setCheckable(enable);
-        }
+        void setCheckable(bool enable);
 
         bool isCheckable() const
         {

@@ -135,6 +135,19 @@ void IconTextButton::setParentHovered(bool enable)
 
 //--------------------------------------------------------------------------
 
+void IconTextButton::setCheckable(bool enable) noexcept
+{
+    m_checkable=enable;
+
+    // A checkable button already gives persistent feedback via its own checked state (see
+    // setChecked()'s background/icon/text styling) -- a transient ripple on top of that reads
+    // as noisy rather than helpful, so it is switched off for as long as the button stays
+    // checkable. setRippleEnabled(false) also cancels any ripple currently in flight.
+    m_ripple->setRippleEnabled(!enable);
+}
+
+//--------------------------------------------------------------------------
+
 void IconTextButton::setChecked(bool enable)
 {
     if (!m_checkable)

@@ -155,6 +155,19 @@ void AvatarButton::setParentHovered(bool enable)
 
 //--------------------------------------------------------------------------
 
+void AvatarButton::setCheckable(bool enable) noexcept
+{
+    m_checkable=enable;
+
+    // Same reasoning as IconTextButton::setCheckable(): a checkable button already gives
+    // persistent feedback via its own checked state, so the transient ripple is switched off
+    // for as long as it stays checkable. setRippleEnabled(false) also cancels any ripple
+    // currently in flight.
+    m_ripple->setRippleEnabled(!enable);
+}
+
+//--------------------------------------------------------------------------
+
 void AvatarButton::setChecked(bool enable)
 {
     if (!m_checkable)

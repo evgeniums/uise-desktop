@@ -64,10 +64,7 @@ class UISE_DESKTOP_EXPORT AvatarButton : public QFrame
             return m_checked;
         }
 
-        void setCheckable(bool enable) noexcept
-        {
-            m_checkable=enable;
-        }
+        void setCheckable(bool enable) noexcept;
 
         bool isCheckable() const noexcept
         {

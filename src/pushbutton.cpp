@@ -140,6 +140,19 @@ void PushButton::setChecked(bool enable)
 
 //--------------------------------------------------------------------------
 
+void PushButton::setCheckable(bool enable)
+{
+    m_button->setCheckable(enable);
+
+    // Same reasoning as IconTextButton::setCheckable()/AvatarButton::setCheckable(): a
+    // checkable button already gives persistent feedback via its own checked state, so the
+    // transient ripple is switched off for as long as it stays checkable. setRippleEnabled(false)
+    // also cancels any ripple currently in flight.
+    m_ripple->setRippleEnabled(!enable);
+}
+
+//--------------------------------------------------------------------------
+
 void PushButton::resetHover()
 {
     setProperty("hovered",false);
