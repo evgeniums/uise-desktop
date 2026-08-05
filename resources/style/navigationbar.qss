@@ -30,7 +30,7 @@ margin-top: 2px;
 }
 
 uise--NavigationBar #leftFrame {
-padding-left: 6px;
+padding-left: 0;
 }
 
 uise--NavigationBar #rightFrame {
@@ -52,8 +52,19 @@ max-height: 18px;
 
 uise--NavigationBar #leftFrame uise--IconTextButton,
 uise--NavigationBar #rightFrame uise--IconTextButton {
-margin-right: 4px;
-padding: 0;
+padding: 4px;
+}
+
+uise--NavigationBar uise--NavigationBarPanel #leftFrame uise--IconTextButton #icon,
+uise--NavigationBar uise--NavigationBarPanel #rightFrame uise--IconTextButton #icon {
+margin-right: 0;
+margin-top: 0;
+}
+
+uise--NavigationBar uise--NavigationBarPanel #leftFrame uise--IconTextButton #trailingIcon,
+uise--NavigationBar uise--NavigationBarPanel #rightFrame uise--IconTextButton #trailingIcon {
+margin-right: 0;
+margin-top: 0;
 }
 
 uise--NavigationBar #leftFrame uise--AvatarButton,
