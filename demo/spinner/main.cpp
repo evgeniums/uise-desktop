@@ -48,9 +48,27 @@ int main(int argc, char *argv[])
     auto mainFrame=new QFrame();
 
     auto l = Layout::vertical(mainFrame);
+#if 0
+    // debugging spinner whithin outer frames
+    auto vf=new QFrame(mainFrame);
+    auto vl1=Layout::vertical(vf);
+    l->addWidget(vf);
 
+    vl1->addWidget(new QLabel("Line 1"));
+    vl1->addWidget(new QLabel("Line 2"));
+
+    auto hf=new QFrame(vf);
+    auto hl1=Layout::horizontal(hf);
+    vl1->addWidget(hf);
+
+    hl1->addWidget(new QLabel("Left"));
+
+    auto spinner = new Spinner(hf);
+    hl1->addWidget(spinner);
+#else
     auto spinner = new Spinner(mainFrame);
     l->addWidget(spinner);
+#endif
 
     int itemHeight=50;
 

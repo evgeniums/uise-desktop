@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <stdexcept>
 
 #include <QApplication>
+#include <QtMath>
 #include <QPalette>
 #include <QStyle>
 #include <QResizeEvent>
@@ -110,12 +111,38 @@ void Spinner::paintEvent(QPaintEvent* /*event*/)
     painter.setPen(Qt::NoPen);
 
     // draw background
+    // NOTE: must be rect() (local, always (0,0,width,height)), not geometry() (this widget's
+    // position+size IN ITS PARENT's coordinate system) -- QPainter here already operates in
+    // local widget coordinates, so drawing geometry() shifts the background fill by however far
+    // this Spinner sits from its parent's origin, which grows with any surrounding layout
+    // (titles, sibling widgets, margins) and reproduces as the whole "columns/rows shifted"
+    // family of bugs.
     painter.setBrush(pimpl->styleSample->palette().color(QPalette::Base));
-    painter.drawRect(geometry());
+    painter.drawRect(rect());
 
     // draw highliting
     painter.setBrush(pimpl->styleSample->palette().color(QPalette::Highlight));
     painter.drawRoundedRect(sel,3,3);
+
+    // NOTE: child widgets must not be drawn with widget->render(&painter,QPoint(x,y)) here.
+    // That call applies the offset in the coordinate system of the painter's paint DEVICE --
+    // inside a paintEvent that is the whole window's backing store, not this widget (Qt only
+    // compensates for the widget->backing-store redirection when the device is itself a
+    // QWidget, see QWidgetPrivate::render() in qwidget.cpp), so everything lands shifted by
+    // this spinner's position within the window; the shift is invisible only when the spinner
+    // sits at the window origin. Rendering each child into a pixmap and drawing it with
+    // painter.drawPixmap() routes the offset through the painter's full transform stack
+    // (redirection AND high-dpi scaling), which is correct on every path: on-screen paint,
+    // grab(), any devicePixelRatio.
+    const auto dpr=painter.device()->devicePixelRatioF();
+    auto renderWidget=[&painter,dpr](QWidget* widget, const QPoint& pos)
+    {
+        QPixmap pix(qCeil(widget->width()*dpr),qCeil(widget->height()*dpr));
+        pix.setDevicePixelRatio(dpr);
+        pix.fill(Qt::transparent);
+        widget->render(&pix);
+        painter.drawPixmap(pos,pix);
+    };
 
     // draw sections
     auto x=sel.left();
@@ -125,7 +152,7 @@ void Spinner::paintEvent(QPaintEvent* /*event*/)
         if (section->pimpl->leftBarLabel!=nullptr)
         {
             auto labelY = (widgetHeight-section->pimpl->leftBarLabel->height())/2;
-            section->pimpl->leftBarLabel->render(&painter,QPoint(x,labelY));
+            renderWidget(section->pimpl->leftBarLabel,QPoint(x,labelY));
         }
         x+=section->pimpl->leftBarWidth;
 
@@ -135,11 +162,14 @@ void Spinner::paintEvent(QPaintEvent* /*event*/)
         auto sel = selectionRect(h,offset);
 
         // render items
-        auto renderItems=[this,h,section,&x,&y,&painter,&sel,&offset](int from, int to)
+        auto renderItems=[this,h,section,&x,&y,&sel,&offset,&renderWidget](int from, int to)
         {
             for (int i=from;i<to;i++)
             {
-                section->pimpl->items[i]->render(&painter,QPoint(x,y));
+                if (y+pimpl->itemHeight>offset)
+                {
+                    renderWidget(section->pimpl->items[i],QPoint(x,y));
+                }
                 y+=pimpl->itemHeight;
 
                 if (y>(offset+h))
@@ -162,7 +192,7 @@ void Spinner::paintEvent(QPaintEvent* /*event*/)
         if (section->pimpl->rightBarLabel!=nullptr)
         {
             auto labelY = (widgetHeight-section->pimpl->rightBarLabel->height())/2;
-            section->pimpl->rightBarLabel->render(&painter,QPoint(x,labelY));
+            renderWidget(section->pimpl->rightBarLabel,QPoint(x,labelY));
         }
         x+=section->pimpl->rightBarWidth;
     }
@@ -404,6 +434,15 @@ void Spinner::mouseMoveEvent(QMouseEvent *event)
 //--------------------------------------------------------------------------
 void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 {
+    for (auto&& section:pimpl->sections)
+    {
+        // animation is a child of adjustTimer, so delete it first
+        delete section->pimpl->animation;
+        delete section->pimpl->adjustTimer;
+        delete section->pimpl->selectionTimer;
+        delete section->pimpl->notifyTimer;
+    }
+
     pimpl->sections=std::move(sections);
     int i=0;
     for (auto&& section:pimpl->sections)
@@ -421,16 +460,16 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         {
             item->setParent(this);
             item->setVisible(false);
-            if (section->pimpl->leftBarLabel)
-            {
-                section->pimpl->leftBarLabel->setParent(this);
-                section->pimpl->leftBarLabel->setVisible(false);
-            }
-            if (section->pimpl->rightBarLabel)
-            {
-                section->pimpl->rightBarLabel->setParent(this);
-                section->pimpl->rightBarLabel->setVisible(false);
-            }
+        }
+        if (section->pimpl->leftBarLabel)
+        {
+            section->pimpl->leftBarLabel->setParent(this);
+            section->pimpl->leftBarLabel->setVisible(false);
+        }
+        if (section->pimpl->rightBarLabel)
+        {
+            section->pimpl->rightBarLabel->setParent(this);
+            section->pimpl->rightBarLabel->setVisible(false);
         }
 
         selectItem(section.get(),0);
@@ -749,15 +788,21 @@ std::tuple<int,int,int,int> Spinner::calcTopItem(SpinnerSection *section) const
 //--------------------------------------------------------------------------
 void Spinner::updateCurrentIndex(SpinnerSection *section)
 {
+    // set offset for the first run -- must happen BEFORE calcTopItem() below: calcTopItem()
+    // reads section->pimpl->currentOffset, which for a freshly created section is still its
+    // default (0), not yet centered on the index selectItem() set. Correcting the offset only
+    // after computing topItemIndex/y from the stale value would make the render/tracking loop
+    // below walk from item 0 regardless of which index was actually selected, clobbering
+    // currentItemIndex back to whichever row lands in the middle of the (wrongly offset) view.
+    if (section->pimpl->firstIndexUpdating)
+    {
+        auto h=sectionHeight(section);
+        section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
+    }
+
     int topItemIndex,offset,y,h;
     std::tie(topItemIndex,offset,y,h) = calcTopItem(section);
     auto sel = selectionRect(h,offset);
-
-    // set offset for the first run
-    if (section->pimpl->firstIndexUpdating)
-    {
-        section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
-    }
 
     // render items
     auto renderItems=[this,h,section,&y,&sel,&offset](int from, int to)
