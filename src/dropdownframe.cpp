@@ -138,6 +138,14 @@ DropdownFrame::DropdownFrame(QWidget* parent)
     // behind the frame instead of an opaque square -- all necessary because, unlike an embedded
     // child widget, a top-level window no longer shares the host's backing store
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+    // A click inside a top-level Qt::Tool window makes it the key window on macOS, which
+    // deactivates the host and trips the WindowDeactivate close path in eventFilter() below --
+    // WA_ShowWithoutActivating only covers being SHOWN, not being clicked. Nothing in a dropdown
+    // ever needs keyboard focus (focus policy is NoFocus below, the Escape shortcut is
+    // deliberately Qt::ApplicationShortcut, and restoreFocus assumes focus stays in the host), so
+    // simply never accept window activation. Must come after setWindowFlags() above, which would
+    // otherwise clear it.
+    setWindowFlag(Qt::WindowDoesNotAcceptFocus,true);
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setFocusPolicy(Qt::NoFocus);
@@ -888,6 +896,16 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
 
         case (QEvent::WindowDeactivate):
         {
+            if (isActiveWindow())
+            {
+                // the host is deactivating because THIS popup just took activation, not because
+                // the user switched away -- fallback for any platform path where the
+                // Qt::WindowDoesNotAcceptFocus flag set in the constructor is not honoured. A
+                // genuine switch to some other window leaves isActiveWindow() false here and
+                // still closes below.
+                break;
+            }
+
             // the frame is its own top-level window (window()==this), no longer a child of the
             // host the way an embedded popup would be -- watch the tracked host explicitly
             // instead. WA_ShowWithoutActivating (see the constructor) keeps the host active

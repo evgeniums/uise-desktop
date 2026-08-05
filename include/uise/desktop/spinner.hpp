@@ -63,6 +63,7 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
         inline static int DefaultPageScrollStep=60;
         inline static int DefaultSingleScrollStep=4;
         inline static int WheelScrollStep=4;
+        inline static int ClickScrollDurationMs=200;
 
         /**
          * @brief Constructor.
@@ -230,6 +231,16 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
         void scrollTo(SpinnerSection* section, int pos);
         int selectedItemIndex(SpinnerSection* section) const;
         void selectItem(SpinnerSection* section, int index);
+
+        /** @brief Clamp a candidate offset into range for a non-circular section (a no-op for a
+         *  circular one). Shared by scrollTo() and the click-to-scroll animation. */
+        int clampOffset(SpinnerSection* section, int pos) const;
+
+        /** @brief Animate currentOffset from wherever it is now to targetOffset, in response to
+         *  a click on a visible item -- see mousePressEvent()/mouseReleaseEvent(). Deliberately
+         *  does NOT call updateCurrentIndex() while in flight (see paintEvent()/calcTopItem()),
+         *  so only one itemChanged() fires, at the end. */
+        void animateScrollTo(SpinnerSection* section, int targetOffset);
 
         QRect selectionRect() const;
         QRect selectionRect(int height, int offset) const;

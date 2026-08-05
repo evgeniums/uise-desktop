@@ -58,6 +58,13 @@ class SpinnerSection_p
         QPointer<SingleShotTimer> selectionTimer;
         QPointer<SingleShotTimer> notifyTimer;
 
+        // click-to-scroll: a separate animation object from `animation` above, which
+        // adjustPosition() unconditionally stops/disconnects on every call -- see
+        // Spinner::animateScrollTo(). clickScrolling gates adjustPosition() so its post-scroll
+        // snap does not fight this animation mid-flight (see Spinner::adjustPosition()).
+        QPointer<QVariantAnimation> clickAnimation;
+        bool clickScrolling=false;
+
         QList<QWidget*> items;
 };
 

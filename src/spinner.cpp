@@ -55,7 +55,10 @@ class Spinner_p
             mousePressed(false),
             keyPressed(false),
             selectionHeight(0),
-            itemHeight(0)
+            itemHeight(0),
+            dragged(false),
+            clickPending(false),
+            clickTargetOffset(0)
         {}
 
         QWidget* styleSample;
@@ -70,6 +73,14 @@ class Spinner_p
         std::shared_ptr<SpinnerSection> sectionUnderCursor;
         int selectionHeight;
         int itemHeight;
+
+        // click-to-scroll press-tracking (see Spinner::mousePressEvent/mouseMoveEvent/
+        // mouseReleaseEvent and Spinner::animateScrollTo())
+        QPoint pressPos;
+        bool dragged;
+        bool clickPending;
+        int clickTargetOffset;
+        std::shared_ptr<SpinnerSection> pressSection;
 };
 
 //--------------------------------------------------------------------------
@@ -254,7 +265,10 @@ QRect Spinner::selectionRect(int height, int offset) const
 std::shared_ptr<SpinnerSection> Spinner::sectionUnderCursor() const
 {
     auto pos = QCursor::pos();
-    int x=mapToGlobal(QPoint(0,0)).x();
+    // sections are painted starting at selectionRect().left(), not at the widget origin (see
+    // paintEvent()) -- walking from 0 hit-tests every column 5px left of where it is actually
+    // drawn, misresolving clicks/drags near a column boundary in a multi-section spinner
+    int x=mapToGlobal(QPoint(selectionRect().left(),0)).x();
 
     for (auto&& sec:pimpl->sections)
     {
@@ -326,37 +340,54 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 }
 
 //--------------------------------------------------------------------------
-void Spinner::scrollTo(SpinnerSection* section, int pos)
+int Spinner::clampOffset(SpinnerSection* section, int pos) const
 {
-    auto h=sectionHeight(section);
-    if (!section->pimpl->circular)
+    if (section->pimpl->circular)
     {
-        auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
-        if (pos<0)
-        {
-            // down
+        return pos;
+    }
 
-            auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
-            if (qAbs(pos)>edge)
-            {
-                pos=-edge;
-            }
-        }
-        else
-        {
-            // up
+    auto h=sectionHeight(section);
+    auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
+    if (pos<0)
+    {
+        // down
 
-            auto edge=h/2 - pimpl->itemHeight/2;
-            if (pos>edge)
-            {
-                pos=edge;
-            }
+        auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
+        if (qAbs(pos)>edge)
+        {
+            pos=-edge;
         }
     }
+    else
+    {
+        // up
+
+        auto edge=h/2 - pimpl->itemHeight/2;
+        if (pos>edge)
+        {
+            pos=edge;
+        }
+    }
+    return pos;
+}
+
+//--------------------------------------------------------------------------
+void Spinner::scrollTo(SpinnerSection* section, int pos)
+{
+    pos=clampOffset(section,pos);
 
     if (section->pimpl->currentOffset==pos)
     {
         return;
+    }
+
+    // an explicit scroll (wheel/drag/selectItem) supersedes an in-flight click-scroll rather
+    // than fighting it -- see animateScrollTo()
+    if (section->pimpl->clickScrolling)
+    {
+        section->pimpl->clickScrolling=false;
+        section->pimpl->clickAnimation->stop();
     }
 
     section->pimpl->currentOffset=pos;
@@ -365,6 +396,52 @@ void Spinner::scrollTo(SpinnerSection* section, int pos)
     repaint();
 
     adjustPosition(section);
+}
+
+//--------------------------------------------------------------------------
+void Spinner::animateScrollTo(SpinnerSection* section, int targetOffset)
+{
+    auto target=clampOffset(section,targetOffset);
+    if (section->pimpl->currentOffset==target)
+    {
+        return;
+    }
+
+    // take the snap machinery out of play: adjustPosition()'s 100 ms timer would stop() us
+    // mid-flight (see its own clickScrolling guard), and this animation lands exactly on the
+    // grid by construction anyway
+    section->pimpl->animation->stop();
+    section->pimpl->adjustTimer->clear();
+
+    auto anim=section->pimpl->clickAnimation;
+    anim->stop();
+    anim->disconnect(this);
+    anim->setDuration(ClickScrollDurationMs);
+    anim->setEasingCurve(QEasingCurve::OutQuad);
+    anim->setStartValue(section->pimpl->currentOffset);
+    anim->setEndValue(target);
+
+    connect(anim,&QVariantAnimation::valueChanged,this,[this,section](const QVariant& val)
+    {
+        // only currentOffset drives painting (see paintEvent()/calcTopItem()), so deliberately
+        // do NOT call updateCurrentIndex() here -- that would emit intermediate itemChanged()
+        // signals and let consumers like DateTimePicker call selectItem() back into us
+        // mid-animation, fighting this very scroll
+        section->pimpl->currentOffset=val.toInt();
+        repaint();
+    });
+    connect(anim,&QVariantAnimation::finished,this,[this,section]()
+    {
+        section->pimpl->clickScrolling=false;
+        updateCurrentIndex(section);
+        repaint();
+        // land exactly on the grid: updateCurrentIndex() only assigns currentItemIndex when an
+        // item's top is exactly at sel.top()
+        adjustPosition(section,false,true);
+    });
+
+    section->pimpl->clickScrolling=true;
+    anim->start();
 }
 
 //--------------------------------------------------------------------------
@@ -384,13 +461,37 @@ void Spinner::enterEvent(QEnterEvent* /*event*/)
 //--------------------------------------------------------------------------
 void Spinner::mousePressEvent(QMouseEvent *event)
 {
-    if (!pimpl->sectionUnderCursor)
+    auto section=sectionUnderCursor();
+    pimpl->sectionUnderCursor=section;
+    if (!section)
     {
         return;
     }
 
     pimpl->mousePressed=true;
+    pimpl->dragged=false;
+    pimpl->pressPos=event->position().toPoint();
     pimpl->lastMousePos.setY(event->position().y());
+    pimpl->pressSection=section;
+    pimpl->clickPending=false;
+
+    // Capture the aim point at PRESS time and store it as an ABSOLUTE target offset, so a few
+    // pixels of jitter-scroll between press and release cannot shift where the click lands.
+    // Items sit on a grid of pitch itemHeight whose phase is pinned by the selection band, so
+    // the item distance is just the banded-relative row index. firstIndexUpdating means the
+    // section has not settled its first index yet, so a click is ignored rather than acting on
+    // a not-yet-meaningful offset.
+    if (!section->pimpl->firstIndexUpdating && pimpl->itemHeight>0)
+    {
+        auto sel=selectionRect(section.get());
+        auto k=qFloor(double(pimpl->pressPos.y()-sel.top())/pimpl->itemHeight);
+        if (k!=0)
+        {
+            pimpl->clickTargetOffset=section->pimpl->currentOffset-k*pimpl->itemHeight;
+            pimpl->clickPending=true;
+        }
+    }
+
     QCursor cursor;
     cursor.setShape(Qt::OpenHandCursor);
     setCursor(cursor);
@@ -404,6 +505,16 @@ void Spinner::mouseReleaseEvent(QMouseEvent* /*event*/)
     QCursor cursor;
     cursor.setShape(Qt::ArrowCursor);
     setCursor(cursor);
+
+    auto section=pimpl->pressSection;
+    const bool click=pimpl->clickPending && !pimpl->dragged && section;
+    pimpl->clickPending=false;
+    pimpl->pressSection.reset();
+
+    if (click)
+    {
+        animateScrollTo(section.get(),pimpl->clickTargetOffset);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -426,6 +537,15 @@ void Spinner::mouseMoveEvent(QMouseEvent *event)
         return;
     }
 
+    // promote to a real drag once movement passes Qt's standard threshold, which cancels the
+    // pending click -- see mousePressEvent()/mouseReleaseEvent()
+    if (!pimpl->dragged
+        && (event->position().toPoint()-pimpl->pressPos).manhattanLength()>=QApplication::startDragDistance())
+    {
+        pimpl->dragged=true;
+        pimpl->clickPending=false;
+    }
+
     auto y=event->position().y();
     scroll(section.get(),pimpl->lastMousePos.y()-y);
     pimpl->lastMousePos.setY(y);
@@ -436,8 +556,9 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
 {
     for (auto&& section:pimpl->sections)
     {
-        // animation is a child of adjustTimer, so delete it first
+        // animation/clickAnimation are children of adjustTimer, so delete them first
         delete section->pimpl->animation;
+        delete section->pimpl->clickAnimation;
         delete section->pimpl->adjustTimer;
         delete section->pimpl->selectionTimer;
         delete section->pimpl->notifyTimer;
@@ -455,6 +576,8 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
         section->pimpl->animation=new QVariantAnimation(section->pimpl->adjustTimer);
         section->pimpl->animation->setDuration(300);
         section->pimpl->animation->setEasingCurve(QEasingCurve::OutQuad);
+        section->pimpl->clickAnimation=new QVariantAnimation(section->pimpl->adjustTimer);
+        section->pimpl->clickScrolling=false;
 
         for (auto&& item:section->pimpl->items)
         {
@@ -526,6 +649,16 @@ void Spinner::selectItem(SpinnerSection *section, int index)
 //--------------------------------------------------------------------------
 void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay)
 {
+    if (section->pimpl->clickScrolling)
+    {
+        // a click-to-scroll animation is in flight (see animateScrollTo()) -- its own finish
+        // handler calls adjustPosition(section,false,true) once currentOffset is already exactly
+        // on the grid, so there is nothing for the snap to do here, and letting it run mid-flight
+        // would stop() the click animation (QAbstractAnimation::stop() emits finished(), so this
+        // guard also protects against that re-entrancy)
+        return;
+    }
+
     if (section->pimpl->currentItemPosition<0)
     {
         return;
