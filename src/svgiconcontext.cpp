@@ -161,7 +161,7 @@ bool SvgIconTheme::loadFromJson(const QString& json, QString* errorMessage)
                 return mustBeArray(path);
             }
             auto selectorArr=selector.toArray();
-            for (qsizetype j=0;i<selectorArr.count();j++)
+            for (qsizetype j=0;j<selectorArr.count();j++)
             {
                 auto selectorItem=selectorArr.at(j);
                 if (!selectorItem.isString())
