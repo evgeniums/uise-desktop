@@ -38,6 +38,32 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class RippleOverlay;
 
+/**
+ * @brief A QFrame wrapper embedding a real QPushButton/QToolButton, styled via QSS.
+ *
+ * Styling contract between the outer PushButton frame and its inner QPushButton/QToolButton
+ * (see qPushButton()/qToolButton()):
+ *
+ * - The inner button owns `padding`, `border`, `border-radius` and `background` in QSS -- it is
+ *   the whole visible button, and RippleOverlay::install() puts the click-ripple on it (see
+ *   rippleOverlay()), so whatever the inner button's border box covers is exactly what the
+ *   ripple fills.
+ * - The outer frame supports only `margin` in QSS, for spacing between adjacent PushButtons.
+ *   `padding` on the outer frame is inert: the constructor resets this frame's own QVBoxLayout
+ *   contents margins to 0 (via Layout::vertical(), see Layout::clear()), and an explicit
+ *   QLayout::setContentsMargins() call overrides whatever QSS padding would otherwise feed into
+ *   it. `border`/`background` on the outer frame would not line up with the ripple or the inner
+ *   button's own border, since the inner button is pinned to its sizeHint and centered inside
+ *   the frame (see setContentAlignment()) -- the frame can be larger than the button.
+ * - `margin` on the *inner* button is unsupported: use `padding` on the inner button, or
+ *   `margin` on the outer frame, instead.
+ * - A `margin` on the outer frame does not need RippleOverlay's rippleInset* compensation --
+ *   because the inner button is pinned to its sizeHint, a wrapper margin never enlarges the
+ *   button's own rect(), so it can never reach the ripple host and never lets the ripple bleed
+ *   into it. rippleInset* is only for QSS rules that grow the ripple *host's own* rect (a
+ *   `margin` on a widget whose ripple installs on itself, e.g. IconTextButton/AvatarButton) or
+ *   for hosts that need trimming for other reasons (e.g. shape correction).
+ */
 class UISE_DESKTOP_EXPORT PushButton : public QFrame
 {
     Q_OBJECT

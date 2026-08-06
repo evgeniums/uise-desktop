@@ -147,18 +147,20 @@ border-top-left-radius: 4px;
 border-bottom-left-radius: 4px;
 }
 
-uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
+uise--MessageSelectionPanelUi #drawer uise--PushButton {
 margin: 0 6px;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 padding: 6px 10px;
 border-radius: 6px;
 min-width:100px;
 }
 
-/* margin: 0 6px above grows this inner QPushButton's own rect() 6px wider on both left and
- * right -- rippleInsetLeft/Right compensate, keeping this in step with the margin above. */
-uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 6;
-qproperty-rippleInsetRight: 6;
+/* border-radius above is 6px, not the 4px ripple.qss assumes for uise--PushButton -- override
+ * rippleCornerRadius to match so the rounded ripple clip lines up with the button's own corners. */
+uise--MessageSelectionPanelUi #drawer uise--PushButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 6;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {

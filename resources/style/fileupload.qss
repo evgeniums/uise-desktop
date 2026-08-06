@@ -120,16 +120,6 @@ uise--FileUploadWidget #buttonsFrame uise--PushButton {
 margin:4px;
 }
 
-/* margin:4px above grows each button's rect() 4px on every side -- rippleInset* on every side
- * compensate, keeping this in step with the margin above (same treatment as
- * abstractdialog.qss's #dialogButtonsFrame). */
-uise--FileUploadWidget #buttonsFrame uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 4;
-qproperty-rippleInsetTop: 4;
-qproperty-rippleInsetRight: 4;
-qproperty-rippleInsetBottom: 4;
-}
-
 uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
 border-radius:4px;
 padding:2px 12px;

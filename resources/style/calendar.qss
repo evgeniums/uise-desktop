@@ -34,7 +34,6 @@ uise--Calendar #rangeToButton QPushButton {
 border: none;
 background-color: transparent;
 padding: 0;
-margin: 0;
 }
 
 /* The ripple (see ripple.qss's base uise--PushButton rule) installs on this same QPushButton,
@@ -81,7 +80,6 @@ uise--Calendar #clearButton QPushButton {
 border: none;
 background-color: transparent;
 icon-size: 16px;
-margin: 0;
 padding: 0;
 }
 
@@ -189,7 +187,6 @@ uise--CalendarDateRow #dateRowRemoveButton QPushButton {
 border: none;
 background-color: transparent;
 icon-size: 14px;
-margin: 0;
 padding: 0;
 }
 
@@ -205,6 +202,5 @@ uise--CalendarInput #pickerButton QPushButton {
 border: none;
 background-color: transparent;
 icon-size: 18px;
-margin: 0;
 padding: 0;
 }

@@ -1,7 +1,7 @@
 uise--HTree #hTreeSplitterScArea {border:none;}
 
 uise--HTreeNode {padding:0;margin:0;}
-uise--HTreeNodeTitleBar QPushButton {margin:0;padding:4px 0;border:none;icon-size:16px;}
+uise--HTreeNodeTitleBar QPushButton {padding:4px 0;border:none;icon-size:16px;}
 uise--HTreeNodeTitleBar uise--ElidedLabel {margin:0;}
 uise--HTreeNodeTitleBar uise--ElidedLabel QLabel {font-size: 14px;}
 uise--HTreeNodeTitleBar {
@@ -15,17 +15,8 @@ uise--HTreeNodePlaceHolder {min-width:8px;max-width:8px;padding: 0 1px;}
 uise--HTreeNodePlaceHolder QPushButton {border:none;icon-size: 20px 6px;}
 
 uise--HTreeStandardListItem #hTreeItemPixmap QPushButton {
-    margin-right:4px;
-    padding:4px;
+    padding: 4px 8px 4px 4px;
     icon-size:24px;
-}
-
-/* margin-right:4px above grows this inner QPushButton's own rect() 4px wider on the right --
- * rippleInsetRight compensates, keeping this in step with the margin above. hTreeItemPixmap is
- * checkable (see htreestandardlistitem.cpp), which normally disables the ripple entirely, but
- * the inset is kept correct here so nothing needs revisiting if that ever changes. */
-uise--HTreeStandardListItem #hTreeItemPixmap QPushButton uise--RippleOverlay {
-    qproperty-rippleInsetRight: 4;
 }
 
 uise--HTreeStandardListItem {padding:4px;}
@@ -36,14 +27,7 @@ uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap QPushB
     max-width:0;
     min-width:0;
     padding:0;
-    margin:0;
     border:none;
-}
-
-/* margin:0 above resets the margin-right:4px set for the generic case -- rippleInsetRight
- * resets to match. */
-uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap QPushButton uise--RippleOverlay {
-    qproperty-rippleInsetRight: 0;
 }
 
 uise--HTreeSplitterSection {padding:0;}
@@ -67,15 +51,6 @@ uise--HTreeTab #closeWarnFrame uise--PushButton {
 margin: 10px;
 }
 
-/* margin:10px above grows each button's rect() 10px on every side -- rippleInset* on every
- * side compensate, keeping this in step with the margin above. */
-uise--HTreeTab #closeWarnFrame uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 10;
-qproperty-rippleInsetTop: 10;
-qproperty-rippleInsetRight: 10;
-qproperty-rippleInsetBottom: 10;
-}
-
 uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{
 icon-size: 30px;
 padding-top:2px;
@@ -83,4 +58,10 @@ padding-bottom:2px;
 padding-left:0px;
 padding-right:0px;
 border-radius:16px;
+}
+
+/* border-radius above is 16px, not the 4px ripple.qss assumes for uise--PushButton -- override
+ * rippleCornerRadius to match so the rounded ripple clip lines up with the button's own corners. */
+uise--HTreeTab #closeWarnFrame uise--PushButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 16;
 }

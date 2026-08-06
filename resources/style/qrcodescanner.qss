@@ -7,13 +7,6 @@ margin-left: 8px;
 margin-right: 8px;
 }
 
-/* margin-left/right:8px above grow each button's rect() 8px wider on both sides --
- * rippleInsetLeft/Right compensate, keeping this in step with the margin above. */
-uise--QrCodeScanner #buttonsFrame uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 8;
-qproperty-rippleInsetRight: 8;
-}
-
 uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton
 {
 border-radius: 4px;
