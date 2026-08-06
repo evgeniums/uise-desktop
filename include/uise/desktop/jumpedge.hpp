@@ -124,6 +124,7 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
         QFrame* m_sample;
         IconDirection m_iconDirection;
+        bool m_pressed=false;
 
         QWidget* m_rippleArea=nullptr;
         RippleOverlay* m_ripple=nullptr;

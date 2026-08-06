@@ -226,11 +226,31 @@ void AvatarButton::setText(const QString& text)
 
 void AvatarButton::mousePressEvent(QMouseEvent* event)
 {
+    // Matches QAbstractButton/CalendarDay: a press only marks the button down, it does not
+    // fire the click by itself -- that lets a press dragged out of the button before release
+    // cancel it, same as every other button in this library (PushButton wraps a real
+    // QAbstractButton, which already has this behaviour natively; CalendarDay has its own hand
+    // -rolled version, see calendar.cpp).
     if (event->button()==Qt::LeftButton)
     {
-        click();
+        m_pressed=true;
     }
     QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarButton::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton && m_pressed)
+    {
+        m_pressed=false;
+        if (rect().contains(event->pos()))
+        {
+            click();
+        }
+    }
+    QFrame::mouseReleaseEvent(event);
 }
 
 //--------------------------------------------------------------------------

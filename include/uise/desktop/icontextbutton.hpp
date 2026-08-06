@@ -136,6 +136,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void leaveEvent(QEvent* event) override;
 
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
 
     private:
 
@@ -151,6 +152,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_parentHovered;
         bool m_checked;
         bool m_checkable;
+        bool m_pressed=false;
 
         RippleOverlay* m_ripple;
 };

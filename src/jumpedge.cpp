@@ -265,12 +265,16 @@ void JumpEdge::mousePressEvent(QMouseEvent* event)
     QFrame::mousePressEvent(event);
     if (event->button()==Qt::LeftButton)
     {
+        // Matches QAbstractButton/CalendarDay: a press only marks the frame down and starts
+        // the ripple -- it does not fire clicked() by itself, so a press dragged out of the
+        // frame before release cancels it, same as every other button in this library.
+        m_pressed=true;
+
         // The whole frame is clickable, not just the circle m_rippleArea covers -- so the
         // press position is mapped into its coordinate space rather than requiring the press
         // to land on the circle itself. Ignored anyway since ripple.qss centres this ripple,
         // regardless of where within the frame it was actually clicked.
         m_ripple->start(m_rippleArea->mapFrom(this,event->pos()));
-        emit clicked();
     }
 }
 
@@ -282,6 +286,12 @@ void JumpEdge::mouseReleaseEvent(QMouseEvent* event)
     if (event->button()==Qt::LeftButton)
     {
         m_ripple->release();
+
+        if (m_pressed && rect().contains(event->pos()))
+        {
+            emit clicked();
+        }
+        m_pressed=false;
     }
 }
 

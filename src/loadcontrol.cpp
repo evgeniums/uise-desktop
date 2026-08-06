@@ -220,9 +220,27 @@ void LoadControl::leaveEvent(QEvent* event)
 void LoadControl::mousePressEvent(QMouseEvent* event)
 {
     QFrame::mousePressEvent(event);
+    // Matches QAbstractButton/CalendarDay: a press only marks the control down, it does not
+    // fire clicked() by itself -- that lets a press dragged out of the control before release
+    // cancel it, same as every other button in this library.
     if (event->button()==Qt::LeftButton)
     {
-        emit clicked();
+        m_pressed=true;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void LoadControl::mouseReleaseEvent(QMouseEvent* event)
+{
+    QFrame::mouseReleaseEvent(event);
+    if (event->button()==Qt::LeftButton && m_pressed)
+    {
+        m_pressed=false;
+        if (rect().contains(event->pos()))
+        {
+            emit clicked();
+        }
     }
 }
 

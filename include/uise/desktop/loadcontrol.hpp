@@ -110,6 +110,7 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
         void showEvent(QShowEvent* event) override;
         void hideEvent(QHideEvent* event) override;
 
@@ -132,6 +133,7 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         qreal m_rotationPhase;
         qreal m_circlePercent;
         int m_animationDuration;
+        bool m_pressed=false;
 
         RippleOverlay* m_ripple=nullptr;
 };
