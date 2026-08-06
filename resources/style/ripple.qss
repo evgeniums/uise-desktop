@@ -20,6 +20,14 @@
  * qproperty-rippleCornerRadius    – used when rippleClip is "rounded"; keep in step with the
  *                                   host's own border-radius, Qt does not expose a way to read
  *                                   that back in C++
+ * qproperty-rippleInsetLeft/Top/Right/Bottom – shrinks the overlay within the host by this
+ *                                   many px on that side (default 0, i.e. covers host->rect()
+ *                                   exactly). Qt's box model makes a QSS "margin" on the host
+ *                                   part of the host's own size, unlike CSS -- set these to
+ *                                   match the host's own margin so the ripple stops at the
+ *                                   border+padding+content box instead of growing into that
+ *                                   (transparent) margin band. Same "Qt does not expose a way
+ *                                   to read that back" caveat as rippleCornerRadius.
  */
 uise--RippleOverlay {
     qproperty-rippleDurationMs:      150;

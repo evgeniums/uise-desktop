@@ -54,6 +54,10 @@ class RippleOverlay_p
         RippleOverlay::Origin origin=RippleOverlay::DefaultOrigin;
         RippleOverlay::Clip clip=RippleOverlay::DefaultClip;
         int cornerRadius=RippleOverlay::DefaultCornerRadius;
+        int insetLeft=RippleOverlay::DefaultInset;
+        int insetTop=RippleOverlay::DefaultInset;
+        int insetRight=RippleOverlay::DefaultInset;
+        int insetBottom=RippleOverlay::DefaultInset;
 
         QPointF originPoint;
         bool held=false;
@@ -203,7 +207,9 @@ void RippleOverlay::updateGeometryFromHost()
     auto h=host();
     if (h!=nullptr)
     {
-        setGeometry(QRect(QPoint(0,0),h->size()));
+        auto w=qMax(0,h->width()-pimpl->insetLeft-pimpl->insetRight);
+        auto hgt=qMax(0,h->height()-pimpl->insetTop-pimpl->insetBottom);
+        setGeometry(QRect(QPoint(pimpl->insetLeft,pimpl->insetTop),QSize(w,hgt)));
     }
 }
 
@@ -442,6 +448,66 @@ int RippleOverlay::rippleCornerRadius() const noexcept
 
 //--------------------------------------------------------------------------
 
+void RippleOverlay::setRippleInsetLeft(int px) noexcept
+{
+    pimpl->insetLeft=px;
+    updateGeometryFromHost();
+}
+
+//--------------------------------------------------------------------------
+
+int RippleOverlay::rippleInsetLeft() const noexcept
+{
+    return pimpl->insetLeft;
+}
+
+//--------------------------------------------------------------------------
+
+void RippleOverlay::setRippleInsetTop(int px) noexcept
+{
+    pimpl->insetTop=px;
+    updateGeometryFromHost();
+}
+
+//--------------------------------------------------------------------------
+
+int RippleOverlay::rippleInsetTop() const noexcept
+{
+    return pimpl->insetTop;
+}
+
+//--------------------------------------------------------------------------
+
+void RippleOverlay::setRippleInsetRight(int px) noexcept
+{
+    pimpl->insetRight=px;
+    updateGeometryFromHost();
+}
+
+//--------------------------------------------------------------------------
+
+int RippleOverlay::rippleInsetRight() const noexcept
+{
+    return pimpl->insetRight;
+}
+
+//--------------------------------------------------------------------------
+
+void RippleOverlay::setRippleInsetBottom(int px) noexcept
+{
+    pimpl->insetBottom=px;
+    updateGeometryFromHost();
+}
+
+//--------------------------------------------------------------------------
+
+int RippleOverlay::rippleInsetBottom() const noexcept
+{
+    return pimpl->insetBottom;
+}
+
+//--------------------------------------------------------------------------
+
 void RippleOverlay::start(const QPoint& pos)
 {
     if (!pimpl->rippleEnabled)
@@ -554,7 +620,11 @@ bool RippleOverlay::eventFilter(QObject* watched, QEvent* event)
                 auto mouseEvent=static_cast<QMouseEvent*>(event);
                 if (mouseEvent->button()==Qt::LeftButton)
                 {
-                    start(mouseEvent->pos());
+                    // mouseEvent->pos() is in the HOST's own local coordinates; this overlay's
+                    // own (0,0) sits inset pixels away from the host's, whenever a non-zero
+                    // rippleInset is set (see updateGeometryFromHost()) -- translate so a
+                    // cursor-origin ripple still starts exactly under the press.
+                    start(mouseEvent->pos()-QPoint(pimpl->insetLeft,pimpl->insetTop));
                 }
             }
         }

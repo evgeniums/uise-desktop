@@ -76,6 +76,10 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
     //! QSS: qproperty-rippleClip: "rect" | "rounded" | "ellipse";
     Q_PROPERTY(QString rippleClip            READ rippleClipName        WRITE setRippleClipName)
     Q_PROPERTY(int     rippleCornerRadius    READ rippleCornerRadius    WRITE setRippleCornerRadius)
+    Q_PROPERTY(int     rippleInsetLeft       READ rippleInsetLeft       WRITE setRippleInsetLeft)
+    Q_PROPERTY(int     rippleInsetTop        READ rippleInsetTop        WRITE setRippleInsetTop)
+    Q_PROPERTY(int     rippleInsetRight      READ rippleInsetRight      WRITE setRippleInsetRight)
+    Q_PROPERTY(int     rippleInsetBottom     READ rippleInsetBottom     WRITE setRippleInsetBottom)
 
     public:
 
@@ -104,6 +108,7 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
         constexpr static const qreal DefaultRadiusScaleX=1.0;
         constexpr static const qreal DefaultRadiusScaleY=1.0;
         constexpr static const int DefaultCornerRadius=0;
+        constexpr static const int DefaultInset=0;
         constexpr static const Origin DefaultOrigin=Origin::Cursor;
         constexpr static const Clip DefaultClip=Clip::Rect;
 
@@ -207,6 +212,27 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
          *  host's own QSS border-radius -- Qt does not expose a way to read that back in C++. */
         void setRippleCornerRadius(int radius) noexcept;
         int rippleCornerRadius() const noexcept;
+
+        /**
+         * @brief Per-side inset shrinking the overlay's own geometry within its host, in
+         * pixels each. All default to 0 (the overlay exactly covers host->rect()).
+         *
+         * Qt's box model, unlike CSS, makes a QSS "margin" on the host part of the host's own
+         * size (see host->size() / host->rect()) rather than external spacing outside it -- so
+         * with no inset, a ripple installed on a host styled with e.g. "margin: 4px;" visibly
+         * grows into that transparent margin band. Setting the insets to match (keep in step
+         * with the host's own QSS margin -- Qt does not expose a way to read that back in C++,
+         * the same reasoning as rippleCornerRadius above) confines the ripple to the host's
+         * border+padding+content box instead, i.e. everything except the margin.
+         */
+        void setRippleInsetLeft(int px) noexcept;
+        int rippleInsetLeft() const noexcept;
+        void setRippleInsetTop(int px) noexcept;
+        int rippleInsetTop() const noexcept;
+        void setRippleInsetRight(int px) noexcept;
+        int rippleInsetRight() const noexcept;
+        void setRippleInsetBottom(int px) noexcept;
+        int rippleInsetBottom() const noexcept;
 
     public slots:
 
