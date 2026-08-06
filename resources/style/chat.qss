@@ -154,6 +154,13 @@ border-radius: 6px;
 min-width:100px;
 }
 
+/* margin: 0 6px above grows this inner QPushButton's own rect() 6px wider on both left and
+ * right -- rippleInsetLeft/Right compensate, keeping this in step with the margin above. */
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 6;
+qproperty-rippleInsetRight: 6;
+}
+
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 /*
 font-size: 18px;

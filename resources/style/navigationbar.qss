@@ -1,6 +1,18 @@
 uise--NavigationBarPanel {padding:0;margin:0;}
 uise--NavigationBar {padding:0; margin:0;}
 uise--NavigationBarItem {padding:4px; margin:4px; border:none;}
+
+/* margin:4px above grows every nav item's rect() 4px on every side (Qt's box model, unlike
+ * CSS, makes margin part of the widget's own size) -- rippleInset* on every side compensate,
+ * keeping this in step with the margin above. NavigationBarItem is an IconTextButton subclass,
+ * so the ripple installs directly on it (see icontextbutton.cpp). */
+uise--NavigationBarItem uise--RippleOverlay {
+qproperty-rippleInsetLeft: 4;
+qproperty-rippleInsetTop: 4;
+qproperty-rippleInsetRight: 4;
+qproperty-rippleInsetBottom: 4;
+}
+
 uise--NavigationBarItem #text {font-size:12px; text-decoration:underline;}
 uise--NavigationBarItem[checked="true"] #text {text-decoration:none;}
 uise--NavigationBar QScrollBar {margin:0;padding:0;}
@@ -73,14 +85,37 @@ margin-right: 6px;
 margin-top: 2px;
 }
 
+/* margin-right:6px/margin-top:2px above is asymmetric, which would otherwise break the
+ * true-circle capsule clip that ripple.qss gives an avatar-only AvatarButton (see
+ * uise--AvatarButton[avatarOnly="true"] uise--RippleOverlay there) by making its rect() wider
+ * on the right and taller on the top than the other two sides. rippleInsetRight/Top compensate,
+ * restoring the square rect the capsule clip needs -- keep in step with the margin above. */
+uise--NavigationBar #leftFrame uise--AvatarButton uise--RippleOverlay,
+uise--NavigationBar #rightFrame uise--AvatarButton uise--RippleOverlay {
+qproperty-rippleInsetRight: 6;
+qproperty-rippleInsetTop: 2;
+}
+
 uise--NavigationBarPanel uise--IconTextButton#updateButton {
 margin-left: 8px;
+}
+
+/* margin-left:8px above grows this button's rect() 8px wider on the left -- rippleInsetLeft
+ * compensates, keeping this in step with the margin above. */
+uise--NavigationBarPanel uise--IconTextButton#updateButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 8;
 }
 
 uise--NavigationBar #leftFrame uise--FastSwitchButton {
 margin-right: 4px;
 padding: 0;
 }
+
+/* No matching rippleInsetRight here: FastSwitchButton is not itself a ripple host -- the
+ * overlay lives on its #mainButton (an IconTextButton), which the #mainButton rule below pins
+ * to margin:0 and which fastswitchbutton.cpp anchors to the frame's left edge with a trailing
+ * stretch item. An inset on FastSwitchButton itself would just clip the ripple inside
+ * #mainButton rather than confine it to the margin band, so there is nothing to compensate. */
 
 /* #mainButton simultaneously matches the generic "uise--NavigationBar #leftFrame
    uise--IconTextButton" rule above (margin-right:4px; padding:0;) and

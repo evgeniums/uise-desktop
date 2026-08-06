@@ -56,6 +56,15 @@ uise--EditablePanel #bottomButtonsFrame uise--PushButton {
 margin: 8px 4px;
 }
 
+/* margin: 8px 4px above grows each button's rect() 8px top/bottom and 4px left/right --
+ * rippleInset* on every side compensate, keeping this in step with the margin above. */
+uise--EditablePanel #bottomButtonsFrame uise--PushButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 4;
+qproperty-rippleInsetTop: 8;
+qproperty-rippleInsetRight: 4;
+qproperty-rippleInsetBottom: 8;
+}
+
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
 color:transparent;
 }

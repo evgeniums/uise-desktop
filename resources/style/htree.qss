@@ -20,6 +20,14 @@ uise--HTreeStandardListItem #hTreeItemPixmap QPushButton {
     icon-size:24px;
 }
 
+/* margin-right:4px above grows this inner QPushButton's own rect() 4px wider on the right --
+ * rippleInsetRight compensates, keeping this in step with the margin above. hTreeItemPixmap is
+ * checkable (see htreestandardlistitem.cpp), which normally disables the ripple entirely, but
+ * the inset is kept correct here so nothing needs revisiting if that ever changes. */
+uise--HTreeStandardListItem #hTreeItemPixmap QPushButton uise--RippleOverlay {
+    qproperty-rippleInsetRight: 4;
+}
+
 uise--HTreeStandardListItem {padding:4px;}
 uise--HTreeStandardListItem QLabel{padding:0;margin:0;}
 
@@ -30,6 +38,12 @@ uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap QPushB
     padding:0;
     margin:0;
     border:none;
+}
+
+/* margin:0 above resets the margin-right:4px set for the generic case -- rippleInsetRight
+ * resets to match. */
+uise--HTreeStandardListItem[htree_section_header="true"] #hTreeItemPixmap QPushButton uise--RippleOverlay {
+    qproperty-rippleInsetRight: 0;
 }
 
 uise--HTreeSplitterSection {padding:0;}
@@ -51,6 +65,15 @@ uise--HTree QTabWidget::pane {padding:0;}
 
 uise--HTreeTab #closeWarnFrame uise--PushButton {
 margin: 10px;
+}
+
+/* margin:10px above grows each button's rect() 10px on every side -- rippleInset* on every
+ * side compensate, keeping this in step with the margin above. */
+uise--HTreeTab #closeWarnFrame uise--PushButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 10;
+qproperty-rippleInsetTop: 10;
+qproperty-rippleInsetRight: 10;
+qproperty-rippleInsetBottom: 10;
 }
 
 uise--HTreeTab #closeWarnFrame uise--PushButton QPushButton{

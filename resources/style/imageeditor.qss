@@ -5,6 +5,13 @@ padding:4px;
 icon-size:24px;
 }
 
+/* margin-right:4px above grows each inner QPushButton's own rect() 4px wider on the right --
+ * rippleInsetRight compensates, keeping this in step with the margin above. */
+uise--SimpleImageEditorWidget uise--PushButton QPushButton uise--RippleOverlay,
+uise--ImageViewerWidget uise--PushButton QPushButton uise--RippleOverlay{
+qproperty-rippleInsetRight: 4;
+}
+
 uise--SimpleImageEditorWidget uise--PushButton {
 }
 
@@ -35,6 +42,16 @@ padding-bottom:4px;
 uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton,
 uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton{
 border-radius: 4px; padding: 2px 12px; margin-left: 4px;
+}
+
+/* margin-left:4px above adds a left margin on top of the general uise--PushButton rule above
+ * -- rippleInsetLeft compensates here; SimpleImageEditorWidget's fileBrowserFrame buttons also
+ * match the general rule's margin-right:4px/rippleInsetRight:4 above (DirectoryImagesViewer's
+ * do not, since it isn't in that rule's selector), so the two blocks combine correctly for
+ * each. Keep in step with the margins above. */
+uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton uise--RippleOverlay,
+uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton uise--RippleOverlay{
+qproperty-rippleInsetLeft: 4;
 }
 
 uise--SimpleImageEditorWidget #fileBrowserFrame QLineEdit,

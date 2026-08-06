@@ -172,6 +172,13 @@ padding: 6px 8px 6px 4px;
 margin: 0 4px 0 0;
 }
 
+/* margin: 0 4px 0 0 above grows this row's own rect() 4px wider on the right (Qt's box model,
+ * unlike CSS, makes margin part of the widget's own size) -- rippleInsetRight compensates,
+ * keeping this in step with the margin above. */
+uise--CalendarDateRow uise--RippleOverlay {
+qproperty-rippleInsetRight: 4;
+}
+
 uise--CalendarDateRow #dateRowLabel {
 background-color: transparent;
 padding: 0;
