@@ -106,6 +106,7 @@ class UISE_DESKTOP_EXPORT NavigationBarItem : public IconTextButton
 
         void enterEvent(QEnterEvent * event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
 
     private:

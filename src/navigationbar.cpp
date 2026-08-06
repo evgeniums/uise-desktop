@@ -130,16 +130,31 @@ void NavigationBarItem::mousePressEvent(QMouseEvent* event)
             return;
         }
 
-        // In exclusive mode: clicking the already-checked item fires clicked() but does not uncheck it
-        if (m_noToggleOff && isChecked())
-        {
-            emit clicked();
-            event->accept();
-            return;
-        }
+        // Exclusive-mode re-click on the already-checked item is handled on release, see
+        // mouseReleaseEvent() below -- fall through to the base class here so the press is
+        // recorded (m_pressed) like any other left click.
     }
 
     IconTextButton::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void NavigationBarItem::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton && m_pressed && m_noToggleOff && isChecked()
+        && rect().contains(event->pos()))
+    {
+        // In exclusive mode, re-clicking the already-checked item fires clicked() without
+        // unchecking it -- deliberately not delegating to IconTextButton::mouseReleaseEvent(),
+        // whose click() would toggle() the item off.
+        m_pressed=false;
+        emit clicked();
+        event->accept();
+        return;
+    }
+
+    IconTextButton::mouseReleaseEvent(event);
 }
 
 //--------------------------------------------------------------------------
