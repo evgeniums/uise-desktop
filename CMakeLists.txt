@@ -180,6 +180,9 @@ SET (HEADERS
 
     include/uise/desktop/icontextbutton.hpp
     include/uise/desktop/ripple.hpp
+    include/uise/desktop/abstractcheckbox.hpp
+    include/uise/desktop/checkbox.hpp
+    include/uise/desktop/radiobox.hpp
     include/uise/desktop/abstractloadcontrol.hpp
     include/uise/desktop/loadcontrol.hpp
     include/uise/desktop/dropdownframe.hpp
@@ -343,6 +346,9 @@ SET (SOURCES
     src/qrcodefromimage.cpp
     src/icontextbutton.cpp
     src/ripple.cpp
+    src/abstractcheckbox.cpp
+    src/checkbox.cpp
+    src/radiobox.cpp
     src/loadcontrol.cpp
     src/dropdownframe.cpp
     src/dropdownmenu.cpp

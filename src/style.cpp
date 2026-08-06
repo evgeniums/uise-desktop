@@ -623,4 +623,128 @@ QString orientationToString(Qt::Orientation orientation)
 
 //--------------------------------------------------------------------------
 
+Qt::CursorShape cursorShapeFromString(const QString& str, bool* ok)
+{
+    if (ok!=nullptr)
+    {
+        *ok=true;
+    }
+
+    auto s=str.trimmed().toLower();
+    if (s.startsWith(QLatin1String("qt::")))
+    {
+        s=s.mid(4);
+    }
+    if (s.endsWith(QLatin1String("cursor")))
+    {
+        s.chop(6);
+    }
+
+    if (s==QLatin1String("arrow"))
+    {
+        return Qt::ArrowCursor;
+    }
+    if (s==QLatin1String("pointer") || s==QLatin1String("pointinghand") || s==QLatin1String("pointing-hand"))
+    {
+        return Qt::PointingHandCursor;
+    }
+    if (s==QLatin1String("hand") || s==QLatin1String("openhand"))
+    {
+        return Qt::OpenHandCursor;
+    }
+    if (s==QLatin1String("closedhand"))
+    {
+        return Qt::ClosedHandCursor;
+    }
+    if (s==QLatin1String("ibeam") || s==QLatin1String("text"))
+    {
+        return Qt::IBeamCursor;
+    }
+    if (s==QLatin1String("wait") || s==QLatin1String("busy"))
+    {
+        return Qt::WaitCursor;
+    }
+    if (s==QLatin1String("cross") || s==QLatin1String("crosshair"))
+    {
+        return Qt::CrossCursor;
+    }
+    if (s==QLatin1String("whatsthis"))
+    {
+        return Qt::WhatsThisCursor;
+    }
+    if (s==QLatin1String("forbidden") || s==QLatin1String("not-allowed"))
+    {
+        return Qt::ForbiddenCursor;
+    }
+    if (s==QLatin1String("sizeall"))
+    {
+        return Qt::SizeAllCursor;
+    }
+    if (s==QLatin1String("sizehor"))
+    {
+        return Qt::SizeHorCursor;
+    }
+    if (s==QLatin1String("sizever"))
+    {
+        return Qt::SizeVerCursor;
+    }
+    if (s==QLatin1String("sizefdiag"))
+    {
+        return Qt::SizeFDiagCursor;
+    }
+    if (s==QLatin1String("sizebdiag"))
+    {
+        return Qt::SizeBDiagCursor;
+    }
+    if (s==QLatin1String("splith"))
+    {
+        return Qt::SplitHCursor;
+    }
+    if (s==QLatin1String("splitv"))
+    {
+        return Qt::SplitVCursor;
+    }
+    if (s==QLatin1String("blank") || s==QLatin1String("none"))
+    {
+        return Qt::BlankCursor;
+    }
+
+    qWarning() << "uise: unknown cursor shape" << str;
+    if (ok!=nullptr)
+    {
+        *ok=false;
+    }
+    return Qt::ArrowCursor;
+}
+
+//--------------------------------------------------------------------------
+
+QString cursorShapeToString(Qt::CursorShape shape)
+{
+    switch (shape)
+    {
+        case (Qt::ArrowCursor): return QStringLiteral("arrow");
+        case (Qt::PointingHandCursor): return QStringLiteral("pointer");
+        case (Qt::OpenHandCursor): return QStringLiteral("hand");
+        case (Qt::ClosedHandCursor): return QStringLiteral("closedhand");
+        case (Qt::IBeamCursor): return QStringLiteral("ibeam");
+        case (Qt::WaitCursor): return QStringLiteral("wait");
+        case (Qt::CrossCursor): return QStringLiteral("cross");
+        case (Qt::WhatsThisCursor): return QStringLiteral("whatsthis");
+        case (Qt::ForbiddenCursor): return QStringLiteral("forbidden");
+        case (Qt::SizeAllCursor): return QStringLiteral("sizeall");
+        case (Qt::SizeHorCursor): return QStringLiteral("sizehor");
+        case (Qt::SizeVerCursor): return QStringLiteral("sizever");
+        case (Qt::SizeFDiagCursor): return QStringLiteral("sizefdiag");
+        case (Qt::SizeBDiagCursor): return QStringLiteral("sizebdiag");
+        case (Qt::SplitHCursor): return QStringLiteral("splith");
+        case (Qt::SplitVCursor): return QStringLiteral("splitv");
+        case (Qt::BlankCursor): return QStringLiteral("blank");
+        default: break;
+    }
+    return QStringLiteral("arrow");
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

@@ -66,22 +66,21 @@ uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
 background-color:transparent;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOff {
 background-color: #CCC;
 border: 2px solid #222;
-image: none;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked{
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOn {
 background-color: #4A70A9; /* selected message */
 border: 2px solid #222;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:unchecked:hover {
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOff[hovered="true"] {
 border: 2px solid #CCC;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator:checked:hover {
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOn[hovered="true"] {
 border: 2px solid #4A70A9; /* selected message */
 }
 

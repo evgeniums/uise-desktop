@@ -24,7 +24,6 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QPointer>
-#include <QCheckBox>
 #include <QMouseEvent>
 #include <QLabel>
 #include <QLocale>
@@ -35,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/avatarbutton.hpp>
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/checkbox.hpp>
 #include <uise/desktop/chatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -814,13 +814,15 @@ ChatMessageSelector::ChatMessageSelector(QWidget* parent) : AbstractChatMessageS
 {
     m_layout=Layout::horizontal(this);
 
-    m_checkBox=new QCheckBox(this);
-    m_checkBox->setCursor(Qt::PointingHandCursor);
+    // No explicit setCursor() here any more -- CheckBox already defaults
+    // qproperty-cursorShape to "pointer" (see checkbox.qss), and hardcoding it here would
+    // silently defeat that QSS knob for this particular selector.
+    m_checkBox=new CheckBox(this);
     m_layout->addWidget(m_checkBox,0,Qt::AlignCenter);
 
     connect(
         m_checkBox,
-        &QCheckBox::toggled,
+        &QAbstractButton::toggled,
         this,
         &ChatMessageSelector::toggled
     );

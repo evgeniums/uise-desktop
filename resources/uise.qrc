@@ -16,6 +16,12 @@
         <file>style/ripple.qss</file>
         <file>style/dark/ripple.qss</file>
         <file>style/light/ripple.qss</file>
+        <file>style/checkbox.qss</file>
+        <file>style/checkbox.json</file>
+        <file>style/dark/checkbox.qss</file>
+        <file>style/dark/checkbox.json</file>
+        <file>style/light/checkbox.qss</file>
+        <file>style/light/checkbox.json</file>
         <file>style/dark/spinner.qss</file>
         <file>style/htree.qss</file>
         <file>style/dark/htree.qss</file>

@@ -167,3 +167,18 @@ uise--JumpEdge uise--RippleOverlay {
     qproperty-rippleClip: "capsule";
     qproperty-rippleOrigin: "center";
 }
+
+/* AbstractCheckBox (CheckBox/RadioBox) installs the ripple on #indicator -- a deliberately
+ * oversized, transparent container around the 20px indicator box (see checkbox.qss), so the
+ * ripple reads as a Material halo around the box rather than a wash across the whole label.
+ * #indicator is square, so "capsule" draws a true circle. Centred rather than cursor-origin
+ * because the effect is driven from QAbstractButton::pressed()/released() with
+ * RippleOverlay::setAutoTrigger(false) (see abstractcheckbox.cpp), not from mouse
+ * coordinates -- a press on the text, and a Space-key activation, must both produce exactly
+ * the same halo as a press on the box itself. */
+uise--AbstractCheckBox uise--RippleOverlay {
+    qproperty-rippleClip: "capsule";
+    qproperty-rippleOrigin: "center";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}

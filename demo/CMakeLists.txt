@@ -35,6 +35,7 @@ ADD_SUBDIRECTORY(datetimepicker)
 ADD_SUBDIRECTORY(datetimepickersimple)
 ADD_SUBDIRECTORY(calendar)
 ADD_SUBDIRECTORY(ripple)
+ADD_SUBDIRECTORY(checkbox)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)

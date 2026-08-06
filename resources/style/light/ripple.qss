@@ -25,3 +25,9 @@ uise--PushButton uise--RippleOverlay {
 uise--IconTextButton uise--RippleOverlay {
     qproperty-rippleOpacity: 0.08;
 }
+
+/* Same reasoning as PushButton/IconTextButton above: the 0.02 global default is invisible
+ * against the plain indicator chrome (see checkbox.qss). */
+uise--AbstractCheckBox uise--RippleOverlay {
+    qproperty-rippleOpacity: 0.10;
+}

@@ -1,0 +1,132 @@
+/*
+ * AbstractCheckBox / CheckBox / RadioBox -- geometry and timing. Colours live in
+ * light/checkbox.qss and dark/checkbox.qss; the SVG mark's per-mode colours live in
+ * light/checkbox.json and dark/checkbox.json (icon aliases in checkbox.json).
+ *
+ * Widget structure (see abstractcheckbox.cpp):
+ *   uise--CheckBox / uise--RadioBox   the QAbstractButton itself; its own background/border
+ *                             are painted by AbstractCheckBox::paintEvent() via PE_Widget, so
+ *                             :hover / :focus / :disabled / :checked / :pressed all work here
+ *     #indicator              transparent halo container; the RippleOverlay installs on
+ *                             THIS, so its surplus size over #indicatorOff/#indicatorOn is
+ *                             the halo band. Note Qt's box model: "padding" here does NOT
+ *                             inset the layers (QStyleSheetStyle never touches
+ *                             contentsMargins) -- it GROWS this container (min/max go
+ *                             through QRenderRule::boxSize()), and the layers, being centred
+ *                             at their own size, end up inset symmetrically. Asymmetric
+ *                             padding will not produce an asymmetric inset -- use a margin
+ *                             plus rippleInsetLeft/Top/Right/Bottom on the RippleOverlay
+ *                             instead (see ripple.qss).
+ *       #indicatorOff          the unchecked box: its own border/background/border-radius
+ *       #indicatorOn           the checked box, same geometry, cross-faded over
+ *                             #indicatorOff with a QGraphicsOpacityEffect (0 <-> 1)
+ *         #markIcon             SVG mode: a RoundedImage rendering the SvgIcon
+ *         #mark                 QSS-only mode: a plain QFrame. For a solid shape (e.g.
+ *                             RadioBox's dot) style it with background-color. For a
+ *                             glyph/asset (e.g. CheckBox's check mark, see light|dark/
+ *                             checkbox.qss) use "border-image", NOT "background-image" or
+ *                             "image" -- QRenderRule::drawRule() only draws background+border
+ *                             (so plain "image" is silently ignored on a QFrame), and
+ *                             "background-image" draws the pixmap at its own native size
+ *                             with no scaling at all, whereas "border-image" stretch-fits
+ *                             the whole image into the box (see the comment on #mark in
+ *                             light/checkbox.qss)
+ *     #text                   the QLabel
+ *
+ * Hover: use ":hover" on uise--CheckBox/uise--RadioBox itself, but [hovered="true"] on the
+ * PARTS -- every part carries Qt::WA_TransparentForMouseEvents (so a click on the text still
+ * toggles the button and the ripple stays anchored on the indicator), which means the parts
+ * never receive Enter/Leave and ":hover" can never match on them. Same contract as
+ * IconTextButton.
+ *
+ * qproperty-checkAnimationEnabled         - false switches instantly, no cross-fade
+ * qproperty-checkAnimationDurationMs      - cross-fade duration, ms
+ * qproperty-checkAnimationEasingCurveType - QEasingCurve::Type as int (6=OutCubic)
+ * qproperty-cursorShape                   - "pointer" | "arrow" | "text" | "wait" | ... , see
+ *                                           style.hpp's cursorShapeFromString() for the full
+ *                                           vocabulary; "default"/"inherit"/"" clears the
+ *                                           override
+ * qproperty-disabledCursorShape           - same vocabulary, used while the widget is disabled
+ * qproperty-indicatorMode                 - "auto" (svg when a mark icon is set, qss
+ *                                           otherwise) | "svg" | "qss"
+ * qproperty-indicatorShape                - "box" | "circle"; also mirrored onto every part
+ *                                           as the [shape] dynamic property, see the rules
+ *                                           below
+ * qproperty-textPosition                  - "after" | "before" the indicator
+ */
+uise--AbstractCheckBox {
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 2px;
+    qproperty-checkAnimationEnabled: true;
+    qproperty-checkAnimationDurationMs: 120;
+    qproperty-checkAnimationEasingCurveType: 6;
+    qproperty-cursorShape: "pointer";
+    qproperty-disabledCursorShape: "arrow";
+    qproperty-indicatorMode: "auto";
+    qproperty-textPosition: "after";
+}
+
+uise--CheckBox { qproperty-indicatorShape: "box"; }
+uise--RadioBox { qproperty-indicatorShape: "circle"; }
+
+/* 16px content + 2px border on each layer = a 20px box, identical to the native
+ * QCheckBox::indicator; 6px padding here turns the container into 32x32, i.e. a 6px halo
+ * band all round for the ripple. */
+uise--AbstractCheckBox #indicator {
+    min-width: 20px;  max-width: 20px;
+    min-height: 20px; max-height: 20px;
+    padding: 6px;
+    border: none;
+    background: transparent;
+}
+
+uise--AbstractCheckBox #indicatorOff,
+uise--AbstractCheckBox #indicatorOn {
+    min-width: 16px;  max-width: 16px;
+    min-height: 16px; max-height: 16px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+}
+
+/* RadioBox (and anything given qproperty-indicatorShape: "circle") -- 10px on a 20px box is
+ * the same value the native QRadioButton::indicator rule uses. */
+uise--AbstractCheckBox[shape="circle"] #indicatorOff,
+uise--AbstractCheckBox[shape="circle"] #indicatorOn {
+    border-radius: 10px;
+}
+
+/* Mark: a check glyph fills nearly the whole box (a 1px margin on each side, inside the
+ * 16px #indicatorOff/#indicatorOn content box, so the icon doesn't touch the border) -- a
+ * radio dot is much smaller, see the [shape="circle"] override below. */
+uise--AbstractCheckBox #markIcon,
+uise--AbstractCheckBox #mark {
+    min-width: 16px;  max-width: 16px;
+    min-height: 16px; max-height: 16px;
+    border: none;
+    background: transparent;
+}
+uise--AbstractCheckBox[shape="circle"] #markIcon,
+uise--AbstractCheckBox[shape="circle"] #mark {
+    min-width: 8px;  max-width: 8px;
+    min-height: 8px;  max-height: 8px;
+    border-radius: 4px;
+}
+
+/* Matches the native QCheckBox "spacing: 8px" -- but only 2px of that is this margin. The
+ * other 6px is already there for free: #indicator's own padding (see above) leaves a 6px
+ * halo of empty space between the visible 20px indicator box and #indicator's own 32px
+ * container edge (the halo the ripple grows into), and #text starts right after THAT edge,
+ * not after the visible box. 2px margin + 6px halo = the same 8px total gap native gives. */
+uise--AbstractCheckBox #text {
+    margin-left: 2px;
+    margin-right: 0;
+}
+uise--AbstractCheckBox[textPosition="before"] #text {
+    margin-left: 0;
+    margin-right: 2px;
+}
+uise--AbstractCheckBox[textEmpty="true"] #text {
+    margin-left: 0;
+    margin-right: 0;
+}

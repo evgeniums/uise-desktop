@@ -32,7 +32,6 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QComboBox>
-#include <QCheckBox>
 #include <QTextEdit>
 #include <QCoreApplication>
 
@@ -41,6 +40,7 @@ You may select, at your option, one of the above-comboed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/checkbox.hpp>
 #include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/datetimeinput.hpp>
@@ -906,7 +906,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::Bool>
 {
     using type=EditableLabelBool;
-    using widgetType=QCheckBox;
+    using widgetType=CheckBox;
 
     static void loadLabel(QLabel* label, const widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
@@ -939,7 +939,7 @@ struct EditableLabelTraits<EditableLabel::Type::Bool>
     {
         widget->connect(
             widget,
-            &QCheckBox::toggled,
+            &QAbstractButton::toggled,
             valueWidget,
             [valueWidget](bool)
             {

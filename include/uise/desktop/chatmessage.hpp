@@ -31,9 +31,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 
 class QBoxLayout;
-class QCheckBox;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+class CheckBox;
 
 //--------------------------------------------------------------------------
 
@@ -175,7 +176,7 @@ class UISE_DESKTOP_EXPORT ChatMessageSelector : public AbstractChatMessageSelect
     private:
 
         QBoxLayout* m_layout;
-        QCheckBox* m_checkBox;
+        CheckBox* m_checkBox;
 };
 
 class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame

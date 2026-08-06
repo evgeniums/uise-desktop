@@ -1,0 +1,91 @@
+/* Colours only; geometry and timing are in ../checkbox.qss. Values are lifted verbatim from
+ * dark/global.qss's QCheckBox/QRadioButton rules so a uise--CheckBox/uise--RadioBox is
+ * pixel-comparable with a native QCheckBox/QRadioButton out of the box. */
+
+uise--AbstractCheckBox {
+    border-color: transparent;
+}
+/* Hover only, deliberately not ":focus" -- AbstractCheckBox sets Qt::StrongFocus (so
+ * Space/Tab keyboard activation works), which unlike a native QCheckBox's default focus
+ * policy also grants focus on a plain mouse click. Focus persists after the click (it does
+ * not clear on mouse-leave), so including ":focus" here would leave this border stuck on
+ * long after the mouse has actually left -- not the reference native-QCheckBox behaviour,
+ * which only ever shows this border while the cursor is literally over it. */
+uise--AbstractCheckBox:hover,
+uise--AbstractCheckBox[hovered="true"] {
+    border: 2px solid #777777;
+}
+
+uise--AbstractCheckBox #text {
+    color: #EEEEEE;
+}
+uise--AbstractCheckBox #text[hovered="true"] {
+    color: #FFFFFF;
+}
+/* [disabled="true"], not ":disabled" -- see the comment on AbstractCheckBox::applyPartState()
+ * in abstractcheckbox.cpp for why a native pseudo-class used as an ancestor qualifier for a
+ * descendant combinator (uise--AbstractCheckBox:disabled #text) is unreliable here. */
+uise--AbstractCheckBox[disabled="true"] #text {
+    color: #999999;
+}
+
+uise--AbstractCheckBox #indicatorOff {
+    background-color: #000000;
+    border: 2px solid #555555;
+}
+uise--AbstractCheckBox #indicatorOff[hovered="true"] {
+    border-color: #777777;
+}
+uise--AbstractCheckBox #indicatorOff:disabled {
+    background-color: #1A1A1A;
+    border-color: #333333;
+}
+
+/* CheckBox: a filled blue box carrying a white check glyph. */
+uise--CheckBox #indicatorOn {
+    background-color: #4A70A9;
+    border: 2px solid #4A70A9;
+}
+uise--CheckBox #indicatorOn[hovered="true"] {
+    background-color: #5A80B9;
+    border-color: #5A80B9;
+}
+uise--CheckBox #indicatorOn:disabled {
+    background-color: #333333;
+    border-color: #333333;
+}
+/* QSS-only mode fallback (qproperty-indicatorMode: "qss"): reuses the same asset the native
+ * QCheckBox::indicator:checked rule uses, via "border-image" rather than "background-image" --
+ * a QFrame's QSS is drawn by QRenderRule::drawRule(), which only paints background + border
+ * (border-image is part of the border paint step), and unlike "background-image" (drawn at
+ * the pixmap's own native size, centred, with no scaling at all -- QRenderRule::
+ * drawBackgroundImage()), "border-image" stretch-fits the whole image into the widget's box
+ * (QRenderRule::drawBorderImage() -> qDrawBorderPixmap(), StretchTile mode). The "0" cuts
+ * disable 9-slice slicing, so the entire glyph is the one stretched region -- exactly the fit
+ * #markIcon already gets for free from SvgIcon::pixmap(m_size, mode) in "svg" mode. */
+uise--CheckBox #mark {
+    border-image: url(:/uise/desktop/style/dark/check.svg) 0 stretch;
+}
+
+/* RadioBox: a black ring with a blue dot -- matches QRadioButton::indicator:checked, which
+ * only recolours the border and drops in radio-dot.svg. */
+uise--RadioBox #indicatorOn {
+    background-color: #000000;
+    border: 2px solid #4A70A9;
+}
+uise--RadioBox #indicatorOn[hovered="true"] {
+    border-color: #5A80B9;
+}
+uise--RadioBox #indicatorOn:disabled {
+    background-color: #1A1A1A;
+    border-color: #333333;
+}
+uise--RadioBox #mark {
+    background-color: #4A70A9;
+}
+uise--RadioBox #mark[hovered="true"] {
+    background-color: #5A80B9;
+}
+uise--RadioBox #mark:disabled {
+    background-color: #333333;
+}

@@ -25,7 +25,6 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QLabel>
-#include <QCheckBox>
 #include <QFrame>
 #include <QSignalMapper>
 
@@ -33,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/checkbox.hpp>
 #include <uise/desktop/statusdialog.hpp>
 
 #include <uise/desktop/ipp/dialog.ipp>
@@ -110,7 +110,7 @@ class StatusDialog_p
     public:
 
         QLabel* text;
-        QCheckBox* checkBox;
+        CheckBox* checkBox;
         QFrame* checkBoxRow;
 };
 
@@ -131,7 +131,7 @@ StatusDialog::StatusDialog(QWidget* parent)
     pimpl->text->setObjectName("text");
     cl->addWidget(pimpl->text);
 
-    pimpl->checkBox=new QCheckBox(container);
+    pimpl->checkBox=new CheckBox(container);
     pimpl->checkBox->setObjectName("optionCheckBox");
     pimpl->checkBox->setVisible(false);
     // Center the checkbox horizontally via a wrapper row.

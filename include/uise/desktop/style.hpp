@@ -72,6 +72,35 @@ UISE_DESKTOP_EXPORT QString orientationToString(Qt::Orientation orientation);
 //! spelling, needed because QSS has no way to *remove* a qproperty- once written.
 UISE_DESKTOP_EXPORT bool isDefaultStyleToken(const QString& str);
 
+/**
+ * @brief Parse a QSS/human friendly cursor shape string into Qt::CursorShape.
+ * @param str Qt's own enumerator spelling (an optional leading "Qt::" and/or trailing
+ *            "Cursor" is stripped, so "PointingHandCursor" works) plus common CSS aliases,
+ *            case insensitive:
+ *              "arrow"
+ *              "pointer" | "pointinghand" | "pointing-hand"
+ *              "hand" | "openhand"
+ *              "closedhand"
+ *              "ibeam" | "text"
+ *              "wait" | "busy"
+ *              "cross" | "crosshair"
+ *              "whatsthis"
+ *              "forbidden" | "not-allowed"
+ *              "sizeall" | "sizehor" | "sizever" | "sizefdiag" | "sizebdiag"
+ *              "splith" | "splitv"
+ *              "blank" | "none"
+ * @param ok Set to false if the token was not recognized (Qt::ArrowCursor is returned then).
+ *
+ * Qt's own QWidget::cursor Q_PROPERTY cannot be set from QSS -- QStyleSheetStyle::setProperties()
+ * has no QCursor branch and QSS has no CSS-style "cursor:" property either -- so a widget that
+ * wants a QSS-settable cursor exposes a QString property using this vocabulary instead, the
+ * same pattern as RippleOverlay's rippleOrigin/rippleClip. See AbstractCheckBox::cursorShape.
+ */
+UISE_DESKTOP_EXPORT Qt::CursorShape cursorShapeFromString(const QString& str, bool* ok=nullptr);
+
+//! Canonical inverse of cursorShapeFromString().
+UISE_DESKTOP_EXPORT QString cursorShapeToString(Qt::CursorShape shape);
+
 class WidgetFactory;
 
 /**

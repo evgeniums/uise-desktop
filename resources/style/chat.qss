@@ -108,18 +108,33 @@ qproperty-selectorPositionLeft: false;
 min-width: 400px;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox{
+/* ChatMessageSelector is a uise--CheckBox styled as a round, glyph-less selection dot -- see
+ * checkbox.qss for the #indicator/#indicatorOff/#indicatorOn/#markIcon/#mark structure this
+ * overrides. The mark is collapsed to zero size (there is no glyph here, just a filled dot,
+ * matching the previous QCheckBox::indicator's "image: none") rather than hidden, so it never
+ * affects the layout regardless of indicatorMode. */
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox,
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox:hover {
 border:none;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox:hover{
-border:none;
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicator {
+min-width:18px; max-width:18px;
+min-height:18px; max-height:18px;
+padding:5px;
 }
 
-uise--AbstractChatMessage uise--ChatMessageSelector QCheckBox::indicator{
-width:14px;
-height:14px;
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOff,
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOn {
+min-width:14px; max-width:14px;
+min-height:14px; max-height:14px;
 border-radius: 9px;
+}
+
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #markIcon,
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #mark {
+min-width:0; max-width:0;
+min-height:0; max-height:0;
 }
 
 uise--ChatMessageBottom uise--IconTextButton #icon,

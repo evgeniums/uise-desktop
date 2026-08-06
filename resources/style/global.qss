@@ -2,6 +2,10 @@ uise--PushButton QPushButton {
     padding: 2px;
 }
 
+/* Native QCheckBox/QRadioButton rules -- still needed for Qt's own dialogs (QFileDialog, ...)
+ * and for third-party widgets, so kept in place. uise's own checkbox/radio widgets are
+ * CheckBox/RadioBox (see checkbox.qss) -- these numbers are intentionally duplicated there so
+ * the two look identical, not accidentally out of sync. */
 QCheckBox, QRadioButton {
 padding: 2px 2px;
 border-radius: 2px;

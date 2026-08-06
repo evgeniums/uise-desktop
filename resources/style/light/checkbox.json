@@ -1,0 +1,45 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "CheckBox",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#F0F0F0" }
+                }
+            }
+        },
+        {
+            "name" : "RadioBox",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#4A70A9" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#5A80B9" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#4A70A9" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#5A80B9" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#D8D8D8" }
+                }
+            }
+        }
+    ]
+}

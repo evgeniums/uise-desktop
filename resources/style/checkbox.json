@@ -1,0 +1,16 @@
+{
+    "contexts" : [
+        {
+            "name" : "CheckBox",
+            "aliases" : {
+                "mark" : "${uise-svg-icons-1}/check"
+            }
+        },
+        {
+            "name" : "RadioBox",
+            "aliases" : {
+                "mark" : "${uise-svg-icons-2}/circle"
+            }
+        }
+    ]
+}
