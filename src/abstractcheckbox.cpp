@@ -126,7 +126,19 @@ AbstractCheckBox::AbstractCheckBox(QWidget* parent)
     // ":hover" -- setting it here keeps ":hover" on uise--CheckBox working even for a
     // consuming stylesheet that has no :hover rule of its own but does key on [hovered="true"].
     setAttribute(Qt::WA_Hover,true);
-    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    // Matches QAbstractButtonPrivate::init()'s own default (QSizePolicy::Minimum horizontally,
+    // Fixed vertically) rather than (Fixed,Fixed) -- QCheckBox/QRadioButton never override
+    // this, so it is the real native baseline this widget replaces. Horizontally Fixed (the
+    // original choice here) stops the widget from ever growing past its own sizeHint, which
+    // in a layout that gives the row more width than the checkbox needs (e.g. an
+    // EditablePanelGrid column, sized by the panel's widest row) leaves nothing to anchor the
+    // row's own alignment to -- the whole panel shrinks to the checkbox's own narrow width and
+    // then gets centred as a block by whatever outer layout places the panel, instead of the
+    // checkbox filling its row and staying left-anchored the way a native QCheckBox does.
+    // #indicator/#text are packed from pimpl->boxLayout's left edge with no trailing stretch,
+    // so any extra width Minimum now lets this widget claim just becomes harmless blank space
+    // after the (still left-anchored) text -- exactly how native left-aligns too.
+    setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 
     pimpl->boxLayout=Layout::horizontal(this);
 
