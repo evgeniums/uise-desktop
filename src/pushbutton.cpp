@@ -144,11 +144,10 @@ void PushButton::setCheckable(bool enable)
 {
     m_button->setCheckable(enable);
 
-    // Same reasoning as IconTextButton::setCheckable()/AvatarButton::setCheckable(): a
-    // checkable button already gives persistent feedback via its own checked state, so the
-    // transient ripple is switched off for as long as it stays checkable. setRippleEnabled(false)
-    // also cancels any ripple currently in flight.
-    m_ripple->setRippleEnabled(!enable);
+    // The ripple stays on regardless of checkable -- same reasoning as
+    // IconTextButton::setCheckable()/AvatarButton::setCheckable(): the inner QAbstractButton
+    // activates on release, so the ripple is the only press-down feedback the button gives; the
+    // checked state is a separate, persistent signal that only appears once the click completes.
 }
 
 //--------------------------------------------------------------------------

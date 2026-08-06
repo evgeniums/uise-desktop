@@ -159,11 +159,10 @@ void AvatarButton::setCheckable(bool enable) noexcept
 {
     m_checkable=enable;
 
-    // Same reasoning as IconTextButton::setCheckable(): a checkable button already gives
-    // persistent feedback via its own checked state, so the transient ripple is switched off
-    // for as long as it stays checkable. setRippleEnabled(false) also cancels any ripple
-    // currently in flight.
-    m_ripple->setRippleEnabled(!enable);
+    // The ripple stays on regardless of checkable -- same reasoning as
+    // IconTextButton::setCheckable(): activation happens on mouseReleaseEvent, so the ripple is
+    // the only press-down feedback the button gives; the checked state is a separate, persistent
+    // signal that only appears once the click completes.
 }
 
 //--------------------------------------------------------------------------

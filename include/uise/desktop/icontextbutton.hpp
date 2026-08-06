@@ -138,6 +138,17 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
+        /**
+         * @brief Whether a left-button press is currently held down inside this button.
+         *
+         * Set by mousePressEvent(), cleared by mouseReleaseEvent() right before it decides
+         * whether to click() -- protected rather than private because a subclass that overrides
+         * mouseReleaseEvent() to intercept the release itself (see NavigationBarItem's
+         * exclusive-mode re-click) must clear it too, or the next unrelated release would still
+         * see it set.
+         */
+        bool m_pressed=false;
+
     private:
 
         void setHovered(bool enable);
@@ -152,7 +163,6 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_parentHovered;
         bool m_checked;
         bool m_checkable;
-        bool m_pressed=false;
 
         RippleOverlay* m_ripple;
 };

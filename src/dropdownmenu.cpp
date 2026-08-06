@@ -285,11 +285,12 @@ void DropdownMenu::attachTo(QWidget* trigger)
                 }
             }
         );
-        // the trigger toggles its OWN checked state on click before this connection even
-        // runs (see IconTextButton::mousePressEvent), so the very first open is already
-        // reflected; these two just keep it correct for every close, including the ones
-        // DropdownFrame drives on its own (Escape/outside click/re-click) that the trigger
-        // never sees a matching click for
+        // the trigger's own click() toggles its checked state synchronously (see
+        // IconTextButton::click(), invoked from mouseReleaseEvent since the button activates on
+        // release) before control returns here, so the very first open is already reflected;
+        // these two just keep it correct for every close, including the ones DropdownFrame
+        // drives on its own (Escape/outside click/re-click) that the trigger never sees a
+        // matching click for
         connect(
             this,
             &DropdownFrame::shown,

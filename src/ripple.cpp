@@ -515,7 +515,12 @@ int RippleOverlay::rippleInsetBottom() const noexcept
 
 void RippleOverlay::start(const QPoint& pos)
 {
-    if (!pimpl->rippleEnabled)
+    // A disabled host still reaches here: QWidget::event() drops mouse events for a disabled
+    // widget, but only after its event filters -- including this overlay's own, see
+    // eventFilter() below -- have already run, so a press on a disabled host is still delivered
+    // to us even though the host itself never sees or acts on it.
+    auto h=host();
+    if (!pimpl->rippleEnabled || h==nullptr || !h->isEnabled())
     {
         return;
     }
