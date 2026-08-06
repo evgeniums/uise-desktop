@@ -358,6 +358,7 @@ void RoundedImage::leaveEvent(QEvent* event)
 
     if (!m_parentHovered)
     {
+        m_hovered=false;
         QFrame::leaveEvent(event);
         event->accept();
         update();

@@ -156,6 +156,7 @@ SET (HEADERS
 
     include/uise/desktop/pixmapproducer.hpp
     include/uise/desktop/roundedimage.hpp
+    include/uise/desktop/imagelabel.hpp
     include/uise/desktop/avatar.hpp
     include/uise/desktop/avatarbutton.hpp
 
@@ -320,6 +321,7 @@ SET (SOURCES
 
     src/pixmapproducer.cpp
     src/roundedimage.cpp
+    src/imagelabel.cpp
     src/avatar.cpp
     src/avatarbutton.cpp
 

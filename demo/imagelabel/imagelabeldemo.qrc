@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/uise/desktop/demo/imagelabel">
+        <file>assets/animated.gif</file>
+        <file>assets/still.png</file>
+    </qresource>
+</RCC>
