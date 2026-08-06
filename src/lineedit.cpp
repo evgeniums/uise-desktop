@@ -148,7 +148,15 @@ void LineEdit::addPushButton(PushButton* button, QLineEdit::ActionPosition posit
     button->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     button->setCursor(Qt::ArrowCursor);
     button->qPushButton()->installEventFilter(this);
+    // NoFocus on the wrapper frame alone is not enough -- the inner QPushButton keeps
+    // QPushButton's default StrongFocus and stays a tab stop, so Tab lands on the embedded
+    // clear/unmask icons before moving to the next input. These are decorations of the line
+    // edit (same role as QLineEdit's own built-in clear button, which is never a tab stop).
     button->setFocusPolicy(Qt::NoFocus);
+    if (auto* inner=button->qPushButton())
+    {
+        inner->setFocusPolicy(Qt::NoFocus);
+    }
 }
 
 //--------------------------------------------------------------------------

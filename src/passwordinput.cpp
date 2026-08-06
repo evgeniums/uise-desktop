@@ -57,6 +57,11 @@ PasswordInput::PasswordInput(QWidget* parent)
     pimpl->title=new QLabel(this);
     pimpl->title->setObjectName("title");
     pimpl->title->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    // Qt auto-promotes a QLabel to StrongFocus whenever its interaction flags include
+    // TextSelectableByKeyboard (which TextBrowserInteraction does) -- without this, the title
+    // becomes an invisible tab stop sitting right before the editor below, breaking the natural
+    // Tab order between password fields.
+    pimpl->title->setFocusPolicy(Qt::NoFocus);
     pimpl->title->setWordWrap(true);
     mainL->addWidget(pimpl->title);
 
