@@ -413,6 +413,10 @@ void RippleOverlay::setRippleClipName(const QString& name)
     {
         setRippleClip(Clip::Rounded);
     }
+    else if (name.compare(QStringLiteral("capsule"),Qt::CaseInsensitive)==0)
+    {
+        setRippleClip(Clip::Capsule);
+    }
     else
     {
         setRippleClip(Clip::Rect);
@@ -427,6 +431,7 @@ QString RippleOverlay::rippleClipName() const
     {
         case Clip::Ellipse: return QStringLiteral("ellipse");
         case Clip::Rounded: return QStringLiteral("rounded");
+        case Clip::Capsule: return QStringLiteral("capsule");
         case Clip::Rect: break;
     }
     return QStringLiteral("rect");
@@ -694,6 +699,13 @@ void RippleOverlay::paintEvent(QPaintEvent* /*event*/)
         case (Clip::Ellipse):
         {
             clipPath.addEllipse(r);
+        }
+        break;
+
+        case (Clip::Capsule):
+        {
+            auto radius=qMin(r.width(),r.height())/2.0;
+            clipPath.addRoundedRect(r,radius,radius);
         }
         break;
 

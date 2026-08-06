@@ -73,7 +73,7 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
     Q_PROPERTY(bool    rippleHoldOnPress     READ isRippleHoldOnPress   WRITE setRippleHoldOnPress)
     //! QSS: qproperty-rippleOrigin: "cursor" | "center";
     Q_PROPERTY(QString rippleOrigin          READ rippleOriginName      WRITE setRippleOriginName)
-    //! QSS: qproperty-rippleClip: "rect" | "rounded" | "ellipse";
+    //! QSS: qproperty-rippleClip: "rect" | "rounded" | "ellipse" | "capsule";
     Q_PROPERTY(QString rippleClip            READ rippleClipName        WRITE setRippleClipName)
     Q_PROPERTY(int     rippleCornerRadius    READ rippleCornerRadius    WRITE setRippleCornerRadius)
     Q_PROPERTY(int     rippleInsetLeft       READ rippleInsetLeft       WRITE setRippleInsetLeft)
@@ -95,7 +95,18 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
         {
             Rect,       //!< the overlay's full rect, square corners
             Rounded,    //!< the overlay's rect with rounded corners, see rippleCornerRadius()
-            Ellipse     //!< inscribed ellipse -- for round hosts, e.g. a CalendarDay label
+            Ellipse,    //!< inscribed ellipse -- for round hosts, e.g. a CalendarDay label
+            /**
+             * Rounded rect whose corner radius is always min(width,height)/2, ignoring
+             * rippleCornerRadius() -- a true circle when the host's rect is square, a clean
+             * straight-edged stadium/pill otherwise. Prefer this over Ellipse for any host
+             * that is *intended* to look circular (an icon-only button, an avatar) but isn't
+             * guaranteed pixel-perfect square: unlike an inscribed ellipse, whose curved
+             * boundary tapers to a point at the left/right (or top/bottom) extremes on a
+             * non-square rect, a capsule's straight edges stay uniform-height/width right up
+             * to the rounded ends, with no per-host rippleCornerRadius tuning needed.
+             */
+            Capsule
         };
 
         constexpr static const bool DefaultRippleEnabled=true;
@@ -204,7 +215,7 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
 
         void setRippleClip(Clip clip) noexcept;
         Clip rippleClip() const noexcept;
-        //! QSS-friendly string form: "rect" | "rounded" | "ellipse".
+        //! QSS-friendly string form: "rect" | "rounded" | "ellipse" | "capsule".
         void setRippleClipName(const QString& name);
         QString rippleClipName() const;
 

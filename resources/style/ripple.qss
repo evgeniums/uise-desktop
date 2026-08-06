@@ -16,8 +16,16 @@
  * qproperty-rippleHoldOnPress     – true: stay at full size while pressed, fade on release;
  *                                   false: fade immediately once the grow finishes
  * qproperty-rippleOrigin          – "cursor" (grows from the press point) | "center"
- * qproperty-rippleClip            – "rect" | "rounded" | "ellipse"
- * qproperty-rippleCornerRadius    – used when rippleClip is "rounded"; keep in step with the
+ * qproperty-rippleClip            – "rect" | "rounded" | "ellipse" | "capsule". Prefer
+ *                                   "capsule" over "ellipse" for anything meant to look
+ *                                   circular (icon-only, avatar-only, ...): a capsule's
+ *                                   corner radius is always min(width,height)/2, so it's a
+ *                                   true circle on a square rect and a clean straight-edged
+ *                                   pill otherwise, whereas an inscribed ellipse tapers to a
+ *                                   point at the extremes on anything not pixel-perfect
+ *                                   square.
+ * qproperty-rippleCornerRadius    – used when rippleClip is "rounded" (ignored by "capsule",
+ *                                   which always computes its own); keep in step with the
  *                                   host's own border-radius, Qt does not expose a way to read
  *                                   that back in C++
  * qproperty-rippleInsetLeft/Top/Right/Bottom – shrinks the overlay within the host by this
@@ -56,21 +64,24 @@ uise--IconTextButton uise--RippleOverlay {
 }
 
 /* Icon-only buttons (no text -- see IconTextButton::setText()) get a circular halo instead:
- * clipped to an ellipse, which -- because these buttons are typically styled square (see the
+ * clipped to a capsule, which -- because these buttons are typically styled square (see the
  * icon-only rules in demo/ripple/main.cpp) -- draws as a true circle, and equal X/Y radius
  * scale lets it grow larger than the icon itself and reach all the way to the button's own
- * edges (padding included), rather than staying pinned to the icon's own small bounds. */
+ * edges (padding included), rather than staying pinned to the icon's own small bounds. Not
+ * every icon-only IconTextButton ends up pixel-perfect square in practice (e.g. an asymmetric
+ * QSS margin used to offset it within a row) -- capsule degrades to a straight-edged pill in
+ * that case instead of an ellipse's tapered point, see ripple.hpp's Clip::Capsule doc. */
 uise--IconTextButton[iconOnly="true"] uise--RippleOverlay {
-    qproperty-rippleClip: "ellipse";
+    qproperty-rippleClip: "capsule";
     qproperty-rippleRadiusScaleX: 1.0;
     qproperty-rippleRadiusScaleY: 1.0;
 }
 
-/* dayLabel is the round 28x28 day marker (border-radius: 14px in calendar.qss) -- an ellipse
- * clip fits it exactly, and centering the ripple reads better than a cursor-origin one on a
- * cell this small. */
+/* dayLabel is the round 28x28 day marker (border-radius: 14px in calendar.qss) -- a capsule
+ * clip fits it exactly (true circle on this square label), and centering the ripple reads
+ * better than a cursor-origin one on a cell this small. */
 uise--CalendarDay uise--RippleOverlay {
-    qproperty-rippleClip: "ellipse";
+    qproperty-rippleClip: "capsule";
     qproperty-rippleOrigin: "center";
 }
 
@@ -112,19 +123,19 @@ uise--AvatarButton uise--RippleOverlay {
 
 /* Avatar-only buttons (see AvatarButton::setAvatarOnly()) get a circular halo instead, same
  * reasoning as IconTextButton's icon-only rule -- avatars are round already (see avatar.qss),
- * so an ellipse clip on a square avatar-only button draws as a true circle. */
+ * so a capsule clip on a square avatar-only button draws as a true circle. */
 uise--AvatarButton[avatarOnly="true"] uise--RippleOverlay {
-    qproperty-rippleClip: "ellipse";
+    qproperty-rippleClip: "capsule";
     qproperty-rippleRadiusScaleX: 1.0;
     qproperty-rippleRadiusScaleY: 1.0;
 }
 
 /* LoadControl paints its own circle directly in paintEvent() rather than through a child
  * widget, so the ripple installs on the whole frame -- genuinely square (56x56, shared with
- * CircleBusy in loadcontrol.qss), so an ellipse clip on it draws a true circle, same halo
+ * CircleBusy in loadcontrol.qss), so a capsule clip on it draws a true circle, same halo
  * treatment as an icon-only IconTextButton. Centred rather than cursor-origin to match. */
 uise--LoadControl uise--RippleOverlay {
-    qproperty-rippleClip: "ellipse";
+    qproperty-rippleClip: "capsule";
     qproperty-rippleOrigin: "center";
 }
 
@@ -133,8 +144,8 @@ uise--LoadControl uise--RippleOverlay {
  * 44x64: a 44x44 circle at the bottom plus a strip above reserved for the optional badge
  * counter). The ripple installs on m_rippleArea, a plain child JumpEdge keeps sized to exactly
  * that bottom 44x44 sub-rect (see jumpedge.cpp) -- since THAT sub-widget genuinely is square,
- * the same ellipse-clip halo treatment applies, without spilling into the badge strip. */
+ * the same capsule-clip halo treatment applies, without spilling into the badge strip. */
 uise--JumpEdge uise--RippleOverlay {
-    qproperty-rippleClip: "ellipse";
+    qproperty-rippleClip: "capsule";
     qproperty-rippleOrigin: "center";
 }

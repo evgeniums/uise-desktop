@@ -28,13 +28,13 @@ You may select, at your option, one of the above-listed licenses.
 #include <algorithm>
 
 #include <QLabel>
-#include <QPushButton>
 #include <QClipboard>
 #include <QGuiApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/passwordinput.hpp>
 #include <uise/desktop/toast.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/newpasswordpanel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -102,9 +102,9 @@ class NewPasswordPanel_p
 
         QFrame* buttonsFrame;
 
-        QPushButton* genButton;
-        QPushButton* copyButton;
-        QPushButton* clearButton;
+        IconTextButton* genButton;
+        IconTextButton* copyButton;
+        IconTextButton* clearButton;
 
         QLabel* error;
 
@@ -145,15 +145,15 @@ void NewPasswordPanel::construct()
     auto bl=Layout::horizontal(pimpl->buttonsFrame);
     l->addWidget(pimpl->buttonsFrame);
 
-    pimpl->genButton=new QPushButton(tr("Generate"),pimpl->buttonsFrame);
+    pimpl->genButton=new IconTextButton(tr("Generate"),pimpl->buttonsFrame,IconTextButton::IconPosition::Invisible);
     pimpl->genButton->setObjectName("generate");
     pimpl->genButton->setCursor(Qt::PointingHandCursor);
     bl->addWidget(pimpl->genButton);
-    pimpl->copyButton=new QPushButton(tr("Copy"),pimpl->buttonsFrame);
+    pimpl->copyButton=new IconTextButton(tr("Copy"),pimpl->buttonsFrame,IconTextButton::IconPosition::Invisible);
     pimpl->copyButton->setObjectName("copy");
     pimpl->copyButton->setCursor(Qt::PointingHandCursor);
     bl->addWidget(pimpl->copyButton);
-    pimpl->clearButton=new QPushButton(tr("Clear"),pimpl->buttonsFrame);
+    pimpl->clearButton=new IconTextButton(tr("Clear"),pimpl->buttonsFrame,IconTextButton::IconPosition::Invisible);
     pimpl->clearButton->setObjectName("clear");
     pimpl->clearButton->setCursor(Qt::PointingHandCursor);
     bl->addWidget(pimpl->clearButton);
@@ -209,7 +209,7 @@ void NewPasswordPanel::construct()
 
     connect(
         pimpl->copyButton,
-        &QPushButton::clicked,
+        &IconTextButton::clicked,
         this,
         [this]()
         {
@@ -233,7 +233,7 @@ void NewPasswordPanel::construct()
 
     connect(
         pimpl->clearButton,
-        &QPushButton::clicked,
+        &IconTextButton::clicked,
         this,
         [this]()
         {
@@ -243,7 +243,7 @@ void NewPasswordPanel::construct()
 
     connect(
         pimpl->genButton,
-        &QPushButton::clicked,
+        &IconTextButton::clicked,
         this,
         [this]()
         {

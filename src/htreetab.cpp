@@ -23,7 +23,6 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <QPushButton>
 #include <QTextBrowser>
 
 #include <QScrollBar>

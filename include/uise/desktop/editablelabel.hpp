@@ -35,7 +35,6 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QCheckBox>
 #include <QTextEdit>
 #include <QCoreApplication>
-#include <QPushButton>
 
 #include <QBoxLayout>
 #include <QEvent>
