@@ -5,25 +5,4 @@ uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton,
 uise--FrameWithModalStatus #busyWaitingFrame uise--PushButton QPushButton
 {border-radius: 4px; padding: 2px 12px;}
 
-/* margin:4px above grows each button's rect() 4px on every side -- rippleInset* on every side
- * compensate, keeping this in step with the margin above. */
-uise--FrameWithModalStatus #buttonsFrame uise--PushButton uise--RippleOverlay,
-uise--FrameWithModalStatus #busyWaitingFrame uise--PushButton uise--RippleOverlay
-{
-qproperty-rippleInsetLeft: 4;
-qproperty-rippleInsetTop: 4;
-qproperty-rippleInsetRight: 4;
-qproperty-rippleInsetBottom: 4;
-}
-
 uise--FrameWithModalStatus #buttonsFrame #cancelBusyButton {margin:8px 0 0 0;}
-
-/* margin:8px 0 0 0 above overrides the #buttonsFrame uise--PushButton rule above (top only) --
- * rippleInsetTop follows, and left/right/bottom reset to 0 to override the 4px insets set
- * above for the generic case. */
-uise--FrameWithModalStatus #buttonsFrame #cancelBusyButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 0;
-qproperty-rippleInsetTop: 8;
-qproperty-rippleInsetRight: 0;
-qproperty-rippleInsetBottom: 0;
-}

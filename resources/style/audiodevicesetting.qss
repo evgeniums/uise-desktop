@@ -26,17 +26,8 @@ uise--AudioDeviceSetting #typeButton QPushButton
 {
     border: none;
     background-color: transparent;
-    padding: 0;
-    margin: 0;
-    margin-right: 6px;
+    padding: 0 6px 0 0;
     icon-size: 28px;
-}
-
-/* margin-right:6px above grows this inner QPushButton's own rect() 6px wider on the right --
- * rippleInsetRight compensates, keeping this in step with the margin above. */
-uise--AudioDeviceSetting #typeButton QPushButton uise--RippleOverlay
-{
-    qproperty-rippleInsetRight: 6;
 }
 
 uise--AudioDeviceSetting #deviceCombo
@@ -60,16 +51,6 @@ uise--AudioDeviceSetting #testButton
 {
     margin-left:2px;
     margin-right:4px;
-}
-
-/* margin-left:2px/margin-right:4px above grow this PushButton's own rect() on both sides --
- * rippleInsetLeft/Right compensate, keeping this in step with the margin above. testButton is
- * checkable (see audiodevicesetting.cpp), which normally disables the ripple entirely, but the
- * insets are kept correct here so nothing needs revisiting if that ever changes. */
-uise--AudioDeviceSetting #testButton uise--RippleOverlay
-{
-    qproperty-rippleInsetLeft: 2;
-    qproperty-rippleInsetRight: 4;
 }
 
 /* Dashed (chunked) volume meter: separate segments via chunk width + margin. */

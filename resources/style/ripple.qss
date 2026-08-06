@@ -36,6 +36,18 @@
  *                                   border+padding+content box instead of growing into that
  *                                   (transparent) margin band. Same "Qt does not expose a way
  *                                   to read that back" caveat as rippleCornerRadius.
+ *
+ *                                   Only relevant when the ripple installs on the styled widget
+ *                                   itself (IconTextButton, AvatarButton, CalendarDateRow,
+ *                                   LoadControl -- see each widget's RippleOverlay::install()
+ *                                   call): a margin on THAT widget grows its own rect(), which
+ *                                   is what the overlay is sized from. It is a no-op for a
+ *                                   wrapper that installs the ripple on an inner CHILD instead
+ *                                   (PushButton -> its inner QPushButton/QToolButton, see
+ *                                   pushbutton.hpp's styling contract) -- a margin on the
+ *                                   wrapper never enlarges the child's own rect(), so the
+ *                                   wrapper's margin can never reach the ripple and needs no
+ *                                   inset compensation.
  */
 uise--RippleOverlay {
     qproperty-rippleDurationMs:      150;
@@ -102,7 +114,13 @@ uise--CalendarDateRow uise--RippleOverlay {
  * (icon only, text only, or both). Clipped to "rounded" with the same 4px corner radius used
  * across the FastSwitchButton/AbstractDialog button chrome elsewhere in this stylesheet set --
  * override rippleCornerRadius alongside any QSS rule that gives a PushButton a different
- * border-radius. */
+ * border-radius.
+ *
+ * Styling contract (see pushbutton.hpp): the inner QPushButton/QToolButton owns padding/border/
+ * border-radius/background -- it is the whole visible button, and this ripple fills its border
+ * box exactly. A "margin" on the outer uise--PushButton frame (used for spacing between
+ * adjacent buttons) never reaches this ripple, since the inner button is pinned to its sizeHint
+ * -- do not add rippleInset* to compensate for it. */
 uise--PushButton uise--RippleOverlay {
     qproperty-rippleClip: "rounded";
     qproperty-rippleCornerRadius: 4;

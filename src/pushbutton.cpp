@@ -38,6 +38,9 @@ PushButton::PushButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, bool tool
     m_icon(std::move(icon)),
     m_parentHovered(false)
 {
+    // reset=true (the default) zeroes this frame's own contents margins, which is what makes
+    // QSS padding on the outer uise--PushButton frame inert -- see the class-level styling
+    // contract comment in pushbutton.hpp.
     auto l=Layout::vertical(this);
 
     if (toolButton)

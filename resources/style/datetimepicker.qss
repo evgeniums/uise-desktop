@@ -33,6 +33,5 @@ uise--DateTimeInput #pickerButton QPushButton {
 border: none;
 background-color: transparent;
 icon-size: 18px;
-margin: 0;
 padding: 0;
 }

@@ -33,7 +33,6 @@ max-height: 50px;
 uise--FrameWithModalStatus uise--EditableLabel uise--PushButton QPushButton {
 border:none;
 padding: 2px;
-margin:0;
 }
 
 uise--FrameWithModalStatus uise--EditableLabel uise--PushButton {
@@ -52,17 +51,14 @@ font-size:16px;
 uise--EditablePanel uise--PushButton QPushButton
 {border-radius: 6px; padding: 4px 12px;}
 
-uise--EditablePanel #bottomButtonsFrame uise--PushButton {
-margin: 8px 4px;
+/* border-radius above is 6px, not the 4px ripple.qss assumes for uise--PushButton -- override
+ * rippleCornerRadius to match so the rounded ripple clip lines up with the button's own corners. */
+uise--EditablePanel uise--PushButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 6;
 }
 
-/* margin: 8px 4px above grows each button's rect() 8px top/bottom and 4px left/right --
- * rippleInset* on every side compensate, keeping this in step with the margin above. */
-uise--EditablePanel #bottomButtonsFrame uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 4;
-qproperty-rippleInsetTop: 8;
-qproperty-rippleInsetRight: 4;
-qproperty-rippleInsetBottom: 8;
+uise--EditablePanel #bottomButtonsFrame uise--PushButton {
+margin: 8px 4px;
 }
 
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {

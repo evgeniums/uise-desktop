@@ -32,31 +32,15 @@ uise--AbstractDialog #dialogButtonsFrame {padding: 0 4px 4px 4px}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:4px;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 2px 12px;}
 
-/* margin:4px above grows each button's rect() 4px on every side (Qt's box model, unlike CSS,
- * makes margin part of the widget's own size), letting the ripple bleed into the gap between
- * adjacent buttons and past the frame's own edge. rippleInset* on every side keeps it confined
- * to the button's own padding+content box -- keep in step with the margin above. */
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 4;
-qproperty-rippleInsetTop: 4;
-qproperty-rippleInsetRight: 4;
-qproperty-rippleInsetBottom: 4;
-}
+/* margin:4px above only grows the wrapper's own rect() -- PushButton pins its inner QPushButton
+ * to sizeHint and centers it (see pushbutton.cpp), so this margin never reaches the ripple host
+ * and needs no rippleInset* compensation; the ripple fills the button's border box exactly. */
 
 /* Vertical button column. The frame carries a dynamic "vertical" property (set in
  * Dialog<>::applyButtonsLayout()) so the stacked form can be tuned independently of the
  * default row. */
 uise--AbstractDialog #dialogButtonsFrame[vertical="true"] {padding: 0 8px 8px 8px;}
 uise--AbstractDialog #dialogButtonsFrame[vertical="true"] uise--PushButton {margin:2px 0;}
-
-/* margin:2px 0 above is L/R 0, T/B 2 -- reset the horizontal insets from the base rule above
- * back to 0 (this row has no horizontal gap to guard against) and match the 2px top/bottom. */
-uise--AbstractDialog #dialogButtonsFrame[vertical="true"] uise--PushButton uise--RippleOverlay {
-qproperty-rippleInsetLeft: 0;
-qproperty-rippleInsetTop: 2;
-qproperty-rippleInsetRight: 0;
-qproperty-rippleInsetBottom: 2;
-}
 
 /* PushButton pins its inner QPushButton to sizeHint and centers it, so equal-width
  * stacked buttons are a QSS opt-in rather than a C++ default:

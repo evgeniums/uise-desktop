@@ -1,11 +1,9 @@
-uise--ValidatedInput uise--PushButton QPushButton{
-border-radius: 4px; padding: 2px 12px; margin-left: 4px;
+uise--ValidatedInput uise--PushButton{
+margin-left: 4px;
 }
 
-/* margin-left:4px above grows this inner QPushButton's own rect() 4px wider on the left --
- * rippleInsetLeft compensates, keeping this in step with the margin above. */
-uise--ValidatedInput uise--PushButton QPushButton uise--RippleOverlay{
-qproperty-rippleInsetLeft: 4;
+uise--ValidatedInput uise--PushButton QPushButton{
+border-radius: 4px; padding: 2px 12px;
 }
 
 uise--ValidatedInput QLineEdit{
