@@ -132,6 +132,11 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
             return addRow("",widget,1,Qt::Alignment{},comment);
         }
 
+        int addRow(QWidget* widget, Qt::Alignment alignment)
+        {
+            return addRow("",widget,1,alignment);
+        }
+
         int addRow(std::vector<Item> items, const QString& comment={})
         {
             return addRow("",std::move(items),comment);
