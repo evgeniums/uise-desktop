@@ -55,20 +55,6 @@ uise--NavigationBar #rightFrame uise--IconTextButton {
 padding: 4px;
 }
 
-/* margin-right above makes this button's own rect() 16px wider on the right only (Qt's box
- * model, unlike CSS, makes margin part of the widget's own size) -- without this, the ripple's
- * ellipse clip inscribes into that now-non-square rect and draws a squashed oval instead of a
- * circle. rippleInsetRight shrinks the ripple back down to the button's actual
- * icon+padding square (18px icon + 4px padding each side = 26x26), matching margin-right
- * exactly; see ripple.qss's rippleInsetLeft/Top/Right/Bottom docs -- keep this in step with
- * margin-right above, Qt does not expose a way to read it back in C++. */
- /*
-uise--NavigationBar #leftFrame uise--IconTextButton uise--RippleOverlay,
-uise--NavigationBar #rightFrame uise--IconTextButton uise--RippleOverlay {
-qproperty-rippleInsetRight: 16;
-}
-*/
-
 uise--NavigationBar uise--NavigationBarPanel #leftFrame uise--IconTextButton #icon,
 uise--NavigationBar uise--NavigationBarPanel #rightFrame uise--IconTextButton #icon {
 margin-right: 0;
