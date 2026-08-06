@@ -85,6 +85,49 @@ QString plainName(const QString& name)
 
 //--------------------------------------------------------------------------
 
+template <typename ContextT>
+QString SvgIconLocator::resolvePath(ContextT* ctx, const QString& name) const
+{
+    // 1. Explicit per-icon file override keyed by the exact requested (context-qualified)
+    //    name, e.g. a "paths" entry for "HTreeStandardListItem::username" set by a label
+    //    style dir. This lets a label pin a single icon to a file without touching the
+    //    alias, which may be shared by other icon names resolving to the same SVG.
+    auto path=namePath(ctx,name);
+    if (!path.isEmpty())
+    {
+        return path;
+    }
+
+    // 2. Regular alias resolution: name -> actual (icon-dir-relative) name, then either an
+    //    explicit "paths" entry keyed by the resolved name, or a direct file lookup.
+    auto actualName=nameMapping(ctx,name);
+    path=namePath(ctx,actualName);
+    if (path.isEmpty())
+    {
+        path=existingFileName(actualName,extension(),m_iconDirs);
+    }
+    if (!path.isEmpty())
+    {
+        return path;
+    }
+
+    // 3. Second chance: split a hierarchical "Context::alias" name and retry with the plain
+    //    alias alone. Matches pre-existing behavior: the retry always consults the global
+    //    (this-scoped) "paths" map, not the selector context passed in as ctx.
+    auto pName=plainName(name);
+    if (pName!=name)
+    {
+        path=namePath(pName);
+    }
+    if (path.isEmpty())
+    {
+        path=existingFileName(pName,extension(),m_iconDirs);
+    }
+    return path;
+}
+
+//--------------------------------------------------------------------------
+
 std::shared_ptr<SvgIcon> SvgIconLocator::icon(const QString& name, const StyleContext& context) const
 {
     if (context.object()==nullptr)
@@ -112,34 +155,15 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
         return std::shared_ptr<SvgIcon>{};
     }
 
-    // find actual name
-    auto actualName=nameMapping(name);
-
     // create new icon if not found in cache
 
-    // find icon path
-    auto path=namePath(actualName);
+    // find icon path (checks "paths" overrides before/after alias resolution, then a
+    // hierarchical-name retry; see resolvePath())
+    auto path=resolvePath(this,name);
     if (path.isEmpty())
     {
-        path=existingFileName(actualName,extension(),m_iconDirs);
-        if (path.isEmpty())
-        {
-            // try to split hierarchical name and find path again
-            auto pName=plainName(name);
-            if (pName!=name)
-            {
-                path=namePath(pName);
-            }
-            if (path.isEmpty())
-            {
-                path=existingFileName(pName,extension(),m_iconDirs);
-            }
-            if (path.isEmpty())
-            {
-                qWarning() << "Failed to find icon file for " << name;
-                return m_fallbackIcon;
-            }
-        }
+        qWarning() << "Failed to find icon file for " << name;
+        return m_fallbackIcon;
     }
 
     const colorMapsT* maps=contextColorMaps(nameContext(name));
@@ -218,34 +242,15 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconForContext(const QString& name, con
         return std::shared_ptr<SvgIcon>{};
     }
 
-    // find actual name
-    auto actualName=nameMapping(bestSelectorContext,name);
-
     // create new icon if not found in caches
 
-    // figure out icon path
-    auto path=namePath(bestSelectorContext,actualName);
+    // figure out icon path (checks "paths" overrides before/after alias resolution, then a
+    // hierarchical-name retry; see resolvePath())
+    auto path=resolvePath(bestSelectorContext,name);
     if (path.isEmpty())
     {
-        path=existingFileName(actualName,extension(),m_iconDirs);
-        if (path.isEmpty())
-        {
-            // try to split hierarchical name and find path again
-            auto pName=plainName(name);
-            if (pName!=name)
-            {
-                path=namePath(pName);
-            }
-            if (path.isEmpty())
-            {
-                path=existingFileName(pName,extension(),m_iconDirs);
-            }
-            if (path.isEmpty())
-            {
-                qWarning() << "Failed to find icon file " << path;
-                return m_fallbackIcon;
-            }
-        }
+        qWarning() << "Failed to find icon file for " << name;
+        return m_fallbackIcon;
     }
 
     // figure out color map
@@ -326,25 +331,20 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const
         // add file for each alias
         for (const auto& it0: aliasModes)
         {
-            // find actualName
+            // find alias
             auto alias=it0.first;
             if (it0.first.isEmpty())
             {
                 // use name as alias if alias is empty
                 alias=iconConfig.name;
             }
-            auto actualName=nameMapping(alias);
-
-            // find file path
-            auto path=namePath(actualName);
+            // find file path (checks "paths" overrides before/after alias resolution, then a
+            // hierarchical-name retry; see resolvePath())
+            auto path=resolvePath(this,alias);
             if (path.isEmpty())
             {
-                path=existingFileName(actualName,extension(),m_iconDirs);
-                if (path.isEmpty())
-                {
-                    qWarning() << "Failed to find icon file " << path << " for icon " << iconConfig.name;
-                    continue;
-                }
+                qWarning() << "Failed to find icon file for " << alias << " for icon " << iconConfig.name;
+                continue;
             }
 
             // add file
@@ -374,7 +374,7 @@ void SvgIconLocator::loadIcons(const std::vector<IconConfig>& iconConfigs, const
                     qWarning() << "Selector contexts should be initialized before loading icon configurations";
                     selectorCtx=addSelectorContext(selector);
                 }
-                selectorCtx->m_icons.emplace(iconConfig.name,icon);
+                selectorCtx->m_icons.insert_or_assign(iconConfig.name,icon);
                 m_contextIconCache.emplace(std::piecewise_construct,std::forward_as_tuple(pathHash.first),std::forward_as_tuple(iconConfig.name,pathHash.second,icon,selector));
             }
         }
@@ -498,34 +498,15 @@ std::shared_ptr<SvgIcon> SvgIconLocator::recreateContextIcon(size_t hash, const 
         return it->second;
     }
 
-    // find actual name
-    auto actualName=nameMapping(bestSelectorContext,prevIcon.name);
-
     // create new icon if not found in cache
 
-    // find icon path
-    auto path=namePath(bestSelectorContext,actualName);
+    // find icon path (checks "paths" overrides before/after alias resolution, then a
+    // hierarchical-name retry; see resolvePath())
+    auto path=resolvePath(bestSelectorContext,prevIcon.name);
     if (path.isEmpty())
     {
-        path=existingFileName(actualName,extension(),m_iconDirs);
-        if (path.isEmpty())
-        {
-            // try to split hierarchical name and find path again
-            auto pName=plainName(prevIcon.name);
-            if (pName!=prevIcon.name)
-            {
-                path=namePath(pName);
-            }
-            if (path.isEmpty())
-            {
-                path=existingFileName(pName,extension(),m_iconDirs);
-            }
-            if (path.isEmpty())
-            {
-                qWarning() << "Failed to find icon file " << path;
-                return m_fallbackIcon;
-            }
-        }
+        qWarning() << "Failed to find icon file for " << prevIcon.name;
+        return m_fallbackIcon;
     }
 
     const colorMapsT* maps=contextColorMaps(bestSelectorContext,nameContext(prevIcon.name));

@@ -118,16 +118,26 @@ class StyleContext
 
                 const auto nextSelector=selector.at(i);
 
-                // check matching starting from found object
-                for (size_t j=depth-1;j>=0;)
+                // check matching starting from found object, walking the chain from
+                // depth-1 down to and including 0 (post-decrement keeps j in range for
+                // the unsigned type and terminates the loop once index 0 is consumed).
+                bool nextMatched=false;
+                for (size_t j=depth;j-- >0;)
                 {
                     auto nextMask=matches(chain[j],nextSelector,depth);
                     if (nextMask!=0)
                     {
                         mask|=nextMask;
                         depth=j;
+                        nextMatched=true;
                         break;
                     }
+                }
+
+                if (!nextMatched)
+                {
+                    // this part of the selector did not match anything in the chain
+                    return 0;
                 }
             }
 

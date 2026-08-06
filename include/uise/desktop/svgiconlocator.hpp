@@ -59,7 +59,10 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             QString name
             )
         {
-            ctx->m_namesMap.emplace(std::move(alias),std::move(name));
+            // insert_or_assign (not emplace): a later-loaded theme (e.g. a label style dir
+            // registered after the built-in uise defaults) must be able to override an
+            // alias/name mapping defined by an earlier one.
+            ctx->m_namesMap.insert_or_assign(std::move(alias),std::move(name));
         }
 
         template <typename ContextT>
@@ -80,7 +83,8 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             QString path
             )
         {
-            ctx->m_namePaths.emplace(std::move(name),std::move(path));
+            // insert_or_assign: same override rule as addNameMapping() above.
+            ctx->m_namePaths.insert_or_assign(std::move(name),std::move(path));
         }
 
         template <typename ContextT>
@@ -99,7 +103,8 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         {
             if (context.isEmpty())
             {
-                ctx->m_defaultColorMapsPtr->emplace(mode,std::move(map));
+                // insert_or_assign: same override rule as addNameMapping() above.
+                ctx->m_defaultColorMapsPtr->insert_or_assign(mode,std::move(map));
             }
             else
             {
@@ -114,7 +119,7 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
                     auto it1=ctx->m_contextColorMaps.emplace(context,colorMapsT{});
                     maps=&it1.first->second;
                 }
-                maps->emplace(mode,std::move(map));
+                maps->insert_or_assign(mode,std::move(map));
             }
         }
 
@@ -363,6 +368,14 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
         std::shared_ptr<SvgIcon> iconForContext(const QString& name, const StyleContext& context, bool autocreate) const;
         std::shared_ptr<SvgIcon> recreateContextIcon(size_t hash, const IconSelectorCacheItem& prevIcon);
 
+        //! Resolve the file path for a requested icon name within the given context (this or
+        //! a SelectorContext). Checks, in order: an explicit "paths" override keyed by the
+        //! exact requested name, then the same for the alias-resolved name, then a direct
+        //! search in the icon dirs, then a retry with the hierarchical qualifier stripped.
+        //! Defined in svgiconlocator.cpp (needs the file helpers in its anonymous namespace).
+        template <typename ContextT>
+        QString resolvePath(ContextT* ctx, const QString& name) const;
+
         void clearBeforeReload()
         {
             m_icons.clear();
@@ -387,7 +400,10 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         SelectorContext* addSelectorContext(ContextSelector selector)
         {
-            auto inserted=m_selectorContexts.emplace_back(SelectorContext{});
+            // Bind by reference: emplace_back() returns a reference to the inserted
+            // element (C++17), and both fields below must be written on the element
+            // that actually lives in m_selectorContexts, not on a copy.
+            auto& inserted=m_selectorContexts.emplace_back(SelectorContext{});
             inserted.m_defaultColorMapsPtr=m_defaultColorMapsPtr;
             inserted.m_selector=std::move(selector);
             return &m_selectorContexts.back();
