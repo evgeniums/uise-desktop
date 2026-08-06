@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/uise/desktop/demo/chatmessagefiles">
+        <file>assets/animated.gif</file>
+    </qresource>
+</RCC>

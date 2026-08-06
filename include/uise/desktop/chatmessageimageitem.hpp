@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/chatfileitem.hpp>
+#include <uise/desktop/imagelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -84,6 +85,14 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         IconTextButton* menuButton() const;
 
         /**
+         * @brief Set when animated content of the preview is allowed to play.
+         * @param mode Forwarded to the underlying ImageLabel, re-evaluated immediately.
+         */
+        void setAnimationMode(ImageLabel::AnimationMode mode);
+
+        ImageLabel::AnimationMode animationMode() const noexcept;
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * See ChatMessageFileItem::closeMenu() -- same rationale.
@@ -108,7 +117,6 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
-        bool eventFilter(QObject* obj, QEvent* event) override;
 
     private:
 

@@ -62,6 +62,8 @@ class ChatMessageImages_p
         ChatMessageText* comment=nullptr;
         QString commentText;
         bool commentMarkdown=true;
+
+        ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 };
 
 //--------------------------------------------------------------------------
@@ -132,12 +134,6 @@ void ChatMessageImages::updateItem(const QUuid& id, const ChatFileItem& item)
 
 void ChatMessageImages::rebuildGrid(int forMaxWidth)
 {
-    for (auto* tile : pimpl->tiles)
-    {
-        destroyWidget(tile);
-    }
-    pimpl->tiles.clear();
-
     std::vector<QSize> sizes;
     sizes.reserve(pimpl->items.size());
     for (const auto& item : pimpl->items)
@@ -155,40 +151,61 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
     auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();
 
+    // rebuildGrid() runs on every bubble-width negotiation, i.e. on every view resize -- reuse the
+    // existing tiles whenever the item count did not change instead of destroying and recreating
+    // them, so a resize does not tear down (and thereby restart) any animated ImageLabel content.
+    // Tiles are addressed by index elsewhere in the class (see updateChatMessage()), so this keeps
+    // the same addressing scheme rather than introducing a new one.
+    if (pimpl->tiles.size()!=pimpl->items.size())
+    {
+        for (auto* tile : pimpl->tiles)
+        {
+            destroyWidget(tile);
+        }
+        pimpl->tiles.clear();
+
+        for (size_t i=0;i<pimpl->items.size();++i)
+        {
+            auto tile=new ChatMessageImageItem(pimpl->gridFrame);
+            tile->setAnimationMode(pimpl->animationMode);
+
+            // the item id is read from the tile at emit time (not captured by value) so that a
+            // later reuse of this same tile for a different item still reports the right id
+            connect(tile,&ChatMessageImageItem::clicked,this,[this,tile](){emit itemClicked(tile->item().id());});
+            connect(tile,&ChatMessageImageItem::loadControlClicked,this,[this,tile](){emit loadControlClicked(tile->item().id());});
+            connect(tile,&ChatMessageImageItem::menuTriggered,this,
+                [this,tile](int action)
+                {
+                    auto id=tile->item().id();
+                    switch (static_cast<ChatFileMenuAction>(action))
+                    {
+                        case (ChatFileMenuAction::Open):
+                            emit openWithRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::SaveAs):
+                            emit saveAsRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::Forward):
+                            emit forwardRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::ShowInFolder):
+                            emit showInFolderRequested(id);
+                            break;
+                    }
+                }
+            );
+
+            pimpl->tiles.push_back(tile);
+        }
+    }
+
     for (size_t i=0;i<pimpl->items.size();++i)
     {
-        auto tile=new ChatMessageImageItem(pimpl->gridFrame);
-        tile->setGeometry(rects[i]);
-        tile->setItem(pimpl->items[i],incoming);
-
-        auto id=pimpl->items[i].id();
-        connect(tile,&ChatMessageImageItem::clicked,this,[this,id](){emit itemClicked(id);});
-        connect(tile,&ChatMessageImageItem::loadControlClicked,this,[this,id](){emit loadControlClicked(id);});
-        connect(tile,&ChatMessageImageItem::menuTriggered,this,
-            [this,id](int action)
-            {
-                switch (static_cast<ChatFileMenuAction>(action))
-                {
-                    case (ChatFileMenuAction::Open):
-                        emit openWithRequested(id);
-                        break;
-
-                    case (ChatFileMenuAction::SaveAs):
-                        emit saveAsRequested(id);
-                        break;
-
-                    case (ChatFileMenuAction::Forward):
-                        emit forwardRequested(id);
-                        break;
-
-                    case (ChatFileMenuAction::ShowInFolder):
-                        emit showInFolderRequested(id);
-                        break;
-                }
-            }
-        );
-
-        pimpl->tiles.push_back(tile);
+        pimpl->tiles[i]->setGeometry(rects[i]);
+        pimpl->tiles[i]->setItem(pimpl->items[i],incoming);
     }
 
     updateGeometry();
@@ -235,6 +252,24 @@ void ChatMessageImages::closeMenus()
     {
         tile->closeMenu();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setAnimationMode(ImageLabel::AnimationMode mode)
+{
+    pimpl->animationMode=mode;
+    for (auto* tile : pimpl->tiles)
+    {
+        tile->setAnimationMode(mode);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+ImageLabel::AnimationMode ChatMessageImages::animationMode() const
+{
+    return pimpl->animationMode;
 }
 
 //--------------------------------------------------------------------------

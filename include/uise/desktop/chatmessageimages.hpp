@@ -41,10 +41,12 @@ class ChatMessageImages_p;
  *  followed by an embedded ChatMessageText used as the optional comment -- exactly the same
  *  comment-reuse idiom as ChatMessageFiles.
  *
- * The grid is recomputed (tiles destroyed and rebuilt against fresh QRects) on every
- * bubbleWidthHint()/updateMaximumBubbleWidth() call, not cached -- the same "just redo it"
- * approach ChatMessageText::bubbleWidthHint() itself already uses for re-wrapping, kept for
- * consistency rather than adding a caching layer nothing else in this widget family has.
+ * The grid geometry is recomputed against fresh QRects on every bubbleWidthHint()/
+ * updateMaximumBubbleWidth() call, not cached -- the same "just redo it" approach
+ * ChatMessageText::bubbleWidthHint() itself already uses for re-wrapping. The tiles themselves
+ * are only destroyed and rebuilt when the item count changes, not on every such call, so that a
+ * bubble-width renegotiation (e.g. a view resize) does not restart any tile's animated content
+ * (see ChatMessageImages::rebuildGrid()).
  */
 class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 {
@@ -70,6 +72,9 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         QString comment() const override;
 
         void closeMenus() override;
+
+        void setAnimationMode(ImageLabel::AnimationMode mode) override;
+        ImageLabel::AnimationMode animationMode() const override;
 
         void clearContentSelection() override;
 

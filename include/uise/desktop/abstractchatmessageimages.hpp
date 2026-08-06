@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 #include <uise/desktop/chatfileitem.hpp>
+#include <uise/desktop/imagelabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -74,6 +75,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
          * See AbstractChatMessageFiles::closeMenus() -- same rationale.
          */
         virtual void closeMenus() =0;
+
+        /**
+         * @brief Set when animated items of this images view are allowed to play.
+         * @param mode Applied to every current and future tile of this body.
+         */
+        virtual void setAnimationMode(ImageLabel::AnimationMode mode) =0;
+
+        virtual ImageLabel::AnimationMode animationMode() const =0;
 
     signals:
 

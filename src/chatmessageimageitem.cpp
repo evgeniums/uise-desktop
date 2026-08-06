@@ -24,12 +24,11 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QResizeEvent>
-#include <QMouseEvent>
 #include <QPointer>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/icontextbutton.hpp>
-#include <uise/desktop/roundedimage.hpp>
+#include <uise/desktop/imagelabel.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/loadcontrol.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -62,6 +61,31 @@ QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
     return scaled.copy(cropRect);
 }
 
+//! Local path to feed ImageLabel::setImageFile() for animated content, empty otherwise.
+//
+// Restricted to formats that can actually animate: a plain JPEG/PNG tile keeps rendering
+// item.preview() (a small pre-decoded thumbnail) rather than decoding the full-size original.
+// A static image of one of these MIME types is harmless too -- ImageLabel demotes single-frame
+// content to its still path on its own.
+QString animatableLocalPath(const ChatFileItem& item)
+{
+    if (item.state()!=ChatFileTransferState::Ready || item.localPath().isEmpty())
+    {
+        return {};
+    }
+
+    const auto mime=item.mimeType();
+    if (mime==QLatin1String("image/gif")
+        || mime==QLatin1String("image/webp")
+        || mime==QLatin1String("image/apng")
+        || mime==QLatin1String("image/avif"))
+    {
+        return item.localPath();
+    }
+
+    return {};
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -73,11 +97,17 @@ class ChatMessageImageItem_p
         ChatFileItem item;
         bool incoming=false;
 
-        RoundedImage* preview=nullptr;
+        ImageLabel* preview=nullptr;
         LoadControl* loadControl=nullptr;
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
+
+        //! Path currently loaded into preview via setImageFile(), empty when the still
+        //! (scaledAndCropped(item.preview())/svg-fallback) path is in use instead.
+        QString loadedPath;
+
+        ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 };
 
 //--------------------------------------------------------------------------
@@ -86,12 +116,14 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     : QFrame(parent),
       pimpl(std::make_unique<ChatMessageImageItem_p>())
 {
-    pimpl->preview=new RoundedImage(this);
+    pimpl->preview=new ImageLabel(this);
     pimpl->preview->setObjectName("preview");
     pimpl->preview->setAutoSize(false);
     pimpl->preview->setCornersRadius(8,8);
     pimpl->preview->setCursor(Qt::PointingHandCursor);
-    pimpl->preview->installEventFilter(this);
+    pimpl->preview->setClickable(true);
+    pimpl->preview->setAnimationMode(pimpl->animationMode);
+    connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
 
     pimpl->menuButton=new IconTextButton(
         menuIcon(QStringLiteral("menu"),this),
@@ -187,6 +219,21 @@ IconTextButton* ChatMessageImageItem::menuButton() const
 
 //--------------------------------------------------------------------------
 
+void ChatMessageImageItem::setAnimationMode(ImageLabel::AnimationMode mode)
+{
+    pimpl->animationMode=mode;
+    pimpl->preview->setAnimationMode(mode);
+}
+
+//--------------------------------------------------------------------------
+
+ImageLabel::AnimationMode ChatMessageImageItem::animationMode() const noexcept
+{
+    return pimpl->animationMode;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImageItem::closeMenu()
 {
     if (!pimpl->menu.isNull())
@@ -206,21 +253,6 @@ void ChatMessageImageItem::resizeEvent(QResizeEvent* event)
     updatePreview();
 
     repositionOverlays();
-}
-
-//--------------------------------------------------------------------------
-
-bool ChatMessageImageItem::eventFilter(QObject* obj, QEvent* event)
-{
-    if (obj==pimpl->preview && event->type()==QEvent::MouseButtonPress)
-    {
-        auto me=static_cast<QMouseEvent*>(event);
-        if (me->button()==Qt::LeftButton)
-        {
-            emit clicked();
-        }
-    }
-    return QFrame::eventFilter(obj,event);
 }
 
 //--------------------------------------------------------------------------
@@ -248,6 +280,33 @@ void ChatMessageImageItem::updatePreview()
     {
         // not laid out yet -- the next resizeEvent() will re-render against a real size
         return;
+    }
+
+    auto path=animatableLocalPath(pimpl->item);
+    if (!path.isEmpty())
+    {
+        if (path==pimpl->loadedPath)
+        {
+            // already loaded -- ImageLabel rescales/re-renders itself from its own resizeEvent(),
+            // re-loading here would re-decode the content and restart the animation
+            return;
+        }
+
+        pimpl->preview->setSvgIcon(nullptr);
+        if (pimpl->preview->setImageFile(path))
+        {
+            pimpl->loadedPath=path;
+            return;
+        }
+
+        // decode failed (e.g. animated WebP without the qtimageformats plugin) -- fall through
+        // to the static preview below
+        pimpl->loadedPath.clear();
+    }
+    else if (!pimpl->loadedPath.isEmpty())
+    {
+        pimpl->preview->clearImage();
+        pimpl->loadedPath.clear();
     }
 
     auto preview=pimpl->item.preview();

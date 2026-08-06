@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QPushButton>
 #include <QSlider>
+#include <QComboBox>
 #include <QPlainTextEdit>
 #include <QScrollArea>
 #include <QPainter>
@@ -38,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/imagelabel.hpp>
 #include <uise/desktop/chatmessage.hpp>
 #include <uise/desktop/chatmessagefiles.hpp>
 #include <uise/desktop/chatmessageimages.hpp>
@@ -101,6 +103,23 @@ ChatFileItem makeImageEntry(const QSize& pixelSize, const QColor& c1, const QCol
     {
         item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
     }
+    return item;
+}
+
+// An item whose localPath() points at an animated GIF, so ChatMessageImageItem feeds it to
+// ImageLabel::setImageFile() instead of rendering the static preview() pixmap (see
+// animatableLocalPath() in chatmessageimageitem.cpp). preview() is still set as the fallback
+// shown if the animated decode ever fails.
+ChatFileItem makeAnimatedImageEntry(const QSize& pixelSize, const QColor& c1, const QColor& c2, const QString& label, const QString& resourcePath)
+{
+    ChatFileItem item;
+    item.setFileName(label+QStringLiteral(".gif"));
+    item.setMimeType(QStringLiteral("image/gif"));
+    item.setPixelSize(pixelSize);
+    item.setSize(64*1024);
+    item.setState(ChatFileTransferState::Ready);
+    item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
+    item.setLocalPath(resourcePath);
     return item;
 }
 
@@ -287,6 +306,18 @@ int main(int argc, char *argv[])
     imgBody5->setComment(QStringLiteral("**Seven** images, justified-rows fallback."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody5));
 
+    // --- 8. two images, one static and one animated -- exercises ImageLabel's animation path
+    // and the animation-mode selector wired up below ---
+
+    auto* imgBody6=new ChatMessageImages();
+    imgBody6->setItems({
+        makeImageEntry(QSize(240,240),QColor("#90A4AE"),QColor("#37474F"),QStringLiteral("8a"),ChatFileTransferState::Ready),
+        makeAnimatedImageEntry(QSize(220,150),QColor("#EF9A9A"),QColor("#B71C1C"),QStringLiteral("8b"),
+            QStringLiteral(":/uise/desktop/demo/chatmessagefiles/assets/animated.gif"))
+    });
+    imgBody6->setComment(QStringLiteral("One static tile, one animated GIF."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody6));
+
     // --- wire up logging for every signal on every body ---
 
     auto logId=[logMsg](const QString& label, const QString& signalName, const QUuid& id)
@@ -320,6 +351,37 @@ int main(int argc, char *argv[])
     wireImages(imgBody3,QStringLiteral("img3"));
     wireImages(imgBody4,QStringLiteral("img4"));
     wireImages(imgBody5,QStringLiteral("img5"));
+    wireImages(imgBody6,QStringLiteral("img6"));
+
+    // --- animation-mode selector, applied to every images body -- the direct demonstration of
+    // AbstractChatMessageImages::setAnimationMode() being configurable per view/instance ---
+
+    auto* animModeFrame=new QFrame(central);
+    auto* animModeLayout=Layout::horizontal(animModeFrame);
+    rootLayout->addWidget(animModeFrame);
+
+    animModeLayout->addWidget(new QLabel(QStringLiteral("Image animation mode:")));
+
+    auto* animModeCombo=new QComboBox();
+    animModeCombo->addItem(QStringLiteral("Auto"),static_cast<int>(ImageLabel::AnimationMode::Auto));
+    animModeCombo->addItem(QStringLiteral("Never"),static_cast<int>(ImageLabel::AnimationMode::Never));
+    animModeCombo->addItem(QStringLiteral("OnHover"),static_cast<int>(ImageLabel::AnimationMode::OnHover));
+    animModeCombo->addItem(QStringLiteral("Manual"),static_cast<int>(ImageLabel::AnimationMode::Manual));
+    animModeLayout->addWidget(animModeCombo,1);
+
+    QObject::connect(
+        animModeCombo,
+        &QComboBox::currentIndexChanged,
+        central,
+        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,animModeCombo](int index)
+        {
+            auto mode=static_cast<ImageLabel::AnimationMode>(animModeCombo->itemData(index).toInt());
+            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6})
+            {
+                body->setAnimationMode(mode);
+            }
+        }
+    );
 
     // --- a timer driving the two "Running" items to completion, so the load-control arc and
     // the "x of y" size text are visible progressing, not just a static snapshot ---
