@@ -63,7 +63,9 @@ max-height: 18px;
 }
 
 uise--NavigationBar #leftFrame uise--IconTextButton,
-uise--NavigationBar #rightFrame uise--IconTextButton {
+uise--NavigationBar #rightFrame uise--IconTextButton,
+uise--NavigationBar #leftFrame uise--AvatarButton,
+uise--NavigationBar #rightFrame uise--AvatarButton {
 padding: 4px;
 }
 
@@ -79,22 +81,26 @@ margin-right: 0;
 margin-top: 0;
 }
 
+/*
 uise--NavigationBar #leftFrame uise--AvatarButton,
 uise--NavigationBar #rightFrame uise--AvatarButton {
 margin-right: 6px;
 margin-top: 2px;
 }
+*/
 
 /* margin-right:6px/margin-top:2px above is asymmetric, which would otherwise break the
  * true-circle capsule clip that ripple.qss gives an avatar-only AvatarButton (see
  * uise--AvatarButton[avatarOnly="true"] uise--RippleOverlay there) by making its rect() wider
  * on the right and taller on the top than the other two sides. rippleInsetRight/Top compensate,
  * restoring the square rect the capsule clip needs -- keep in step with the margin above. */
+/*
 uise--NavigationBar #leftFrame uise--AvatarButton uise--RippleOverlay,
 uise--NavigationBar #rightFrame uise--AvatarButton uise--RippleOverlay {
 qproperty-rippleInsetRight: 6;
 qproperty-rippleInsetTop: 2;
 }
+*/
 
 uise--NavigationBarPanel uise--IconTextButton#updateButton {
 margin-left: 8px;
@@ -129,7 +135,7 @@ padding: 0;
    generic rule above to contest. */
 uise--NavigationBar #leftFrame uise--FastSwitchButton #mainButton {
 margin: 0;
-padding: 2px;
+padding: 4px;
 border: 1px solid transparent;
 border-radius: 4px;
 }

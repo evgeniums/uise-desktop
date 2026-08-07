@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/passwordinput.hpp>
 #include <uise/desktop/toast.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/newpasswordpanel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -106,7 +107,7 @@ class NewPasswordPanel_p
         IconTextButton* copyButton;
         IconTextButton* clearButton;
 
-        QLabel* error;
+        Label* error;
 
         Toast* copyToast;
 
@@ -140,6 +141,11 @@ void NewPasswordPanel::construct()
     pimpl->repeatPassword->setObjectName("repeatPassword");
     pl->addWidget(pimpl->repeatPassword);
 
+    // Tab goes straight from the password line to the repeat line -- the embedded trailing
+    // icon buttons are not tab stops (see LineEdit::addPushButton), and the Generate/Copy/Clear
+    // IconTextButtons are plain frames with Qt::NoFocus.
+    setTabOrder(pimpl->password->editor(),pimpl->repeatPassword->editor());
+
     pimpl->buttonsFrame=new QFrame(this);
     pimpl->buttonsFrame->setObjectName("buttonsFrame");
     auto bl=Layout::horizontal(pimpl->buttonsFrame);
@@ -159,9 +165,13 @@ void NewPasswordPanel::construct()
     bl->addWidget(pimpl->clearButton);
     bl->addStretch(1);
 
-    pimpl->error=new QLabel(this);
+    pimpl->error=new Label(this);
     l->addWidget(pimpl->error);
     pimpl->error->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    // Same reasoning as PasswordInput's #title (see passwordinput.cpp): TextBrowserInteraction
+    // auto-promotes the label to StrongFocus, which would trap Tab on this label after the
+    // repeat-password field instead of moving on to the dialog's buttons.
+    pimpl->error->setFocusPolicy(Qt::NoFocus);
     pimpl->error->setWordWrap(true);
     pimpl->error->setObjectName("error");
 
@@ -365,7 +375,7 @@ void NewPasswordPanel::reset()
 
 void NewPasswordPanel::setError(const QString& message)
 {
-    pimpl->error->setText(message);
+    pimpl->error->setText(message + " diag");
     if (message.isEmpty())
     {
         pimpl->error->setText(" ");
