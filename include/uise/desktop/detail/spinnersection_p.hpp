@@ -66,6 +66,55 @@ class SpinnerSection_p
         bool clickScrolling=false;
 
         QList<QWidget*> items;
+
+        // Enabled-items mask -- supports Spinner's masked/excluded-range clamping (see
+        // Spinner::clampOffset()/enforceEnabledItems()). itemsEnabled is parallel to items; an
+        // empty list means "no mask, every item enabled", which is the default and keeps
+        // clampOffset() behaviour bit-identical to a section with no mask at all (including free
+        // wrap for a circular section). firstEnabled/lastEnabled/masked are a cache kept in sync
+        // by updateEnabledBounds() -- recompute them, do not read itemsEnabled directly outside
+        // of it.
+        QList<bool> itemsEnabled;
+        int firstEnabled=0;
+        int lastEnabled=-1;
+        bool masked=false;
+
+        void updateEnabledBounds()
+        {
+            if (itemsEnabled.isEmpty())
+            {
+                firstEnabled=0;
+                lastEnabled=items.size()-1;
+                masked=false;
+                return;
+            }
+
+            int first=-1;
+            int last=-1;
+            for (int i=0;i<itemsEnabled.size();++i)
+            {
+                if (itemsEnabled.at(i))
+                {
+                    if (first<0)
+                    {
+                        first=i;
+                    }
+                    last=i;
+                }
+            }
+
+            if (first<0)
+            {
+                // degenerate: nothing enabled -- keep the mask but fall back to item 0 so the
+                // section still has a valid, in-range selection
+                first=0;
+                last=0;
+            }
+
+            firstEnabled=first;
+            lastEnabled=last;
+            masked=true;
+        }
 };
 
 }

@@ -1,6 +1,9 @@
 uise--Spinner * {
     color: #ffffff;
 }
+uise--Spinner QLabel[itemDisabled="true"] {
+    color: #666666;
+}
 uise--Spinner QLabel {
     background-color: transparent;
 }

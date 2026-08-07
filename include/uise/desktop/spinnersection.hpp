@@ -148,6 +148,65 @@ class UISE_DESKTOP_EXPORT SpinnerSection
          */
         bool circular() const noexcept;
 
+        /**
+         * @brief Enable a contiguous range of items, disabling every other item.
+         * @param first Index of the first enabled item (clamped to [0,itemsCount()-1]).
+         * @param last Index of the last enabled item (clamped to [first,itemsCount()-1]).
+         *
+         * Spinner enforces the mask by clamping scroll position to the range's outer bounds --
+         * see Spinner::setEnabledRange(). Items disabled here that sit strictly between the
+         * first and last enabled item stay reachable: the clamp can only express a contiguous
+         * allowed span, so an interior gap has no effect on scrolling, only on itemEnabled().
+         *
+         * NOTE: mutating this on a section already loaded into a Spinner does not by itself
+         * re-clamp the current scroll position -- use the Spinner overload of setEnabledRange()
+         * for that.
+         */
+        void setEnabledRange(int first, int last) noexcept;
+
+        /**
+         * @brief Enable every item, clearing any mask set by setEnabledRange()/setItemEnabled().
+         *
+         * NOTE: see setEnabledRange() for the same caveat about a section already loaded into a
+         * Spinner -- use Spinner::resetEnabledItems() there instead.
+         */
+        void resetEnabledItems() noexcept;
+
+        /**
+         * @brief Enable or disable a single item.
+         * @param index Item index.
+         * @param enable Whether the item should be enabled.
+         *
+         * NOTE: see setEnabledRange() for the same caveat about a section already loaded into a
+         * Spinner -- use Spinner::setItemEnabled() there instead.
+         */
+        void setItemEnabled(int index, bool enable) noexcept;
+
+        /**
+         * @brief Check if an item is enabled.
+         * @param index Item index.
+         * @return True if the item is enabled (the default, when no mask is set).
+         */
+        bool itemEnabled(int index) const noexcept;
+
+        /**
+         * @brief Check if this section has any disabled item.
+         * @return Query result.
+         */
+        bool hasDisabledItems() const noexcept;
+
+        /**
+         * @brief Get index of the first enabled item.
+         * @return Query result. 0 when there is no mask.
+         */
+        int firstEnabledIndex() const noexcept;
+
+        /**
+         * @brief Get index of the last enabled item.
+         * @return Query result. itemsCount()-1 when there is no mask.
+         */
+        int lastEnabledIndex() const noexcept;
+
     private:
 
         std::unique_ptr<detail::SpinnerSection_p> pimpl;

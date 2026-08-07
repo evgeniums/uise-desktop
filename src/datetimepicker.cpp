@@ -65,29 +65,6 @@ QString tokenName(detail::Token token)
 
 //--------------------------------------------------------------------------
 
-void markOutOfRange(QWidget* widget, bool outOfRange)
-{
-    if (widget==nullptr)
-    {
-        return;
-    }
-
-    auto current=widget->property("outOfRange");
-    if (current.isValid() && current.toBool()==outOfRange)
-    {
-        return;
-    }
-
-    widget->setProperty("outOfRange",outOfRange);
-    if (widget->style()!=nullptr)
-    {
-        widget->style()->unpolish(widget);
-        widget->style()->polish(widget);
-    }
-}
-
-//--------------------------------------------------------------------------
-
 /**
  * @brief Find the first run of a format character in a Qt date/time format string, skipping
  *  over single-quoted literal sections (Qt convention: '' inside a literal is a literal quote).
@@ -679,7 +656,7 @@ QDateTime DateTimePicker_p::clampToRange(const QDateTime& dt) const
 
 //--------------------------------------------------------------------------
 
-void DateTimePicker_p::updateOutOfRangeMarkers()
+void DateTimePicker_p::updateAllowedRanges()
 {
     if (columns.empty())
     {
@@ -706,6 +683,16 @@ void DateTimePicker_p::updateOutOfRangeMarkers()
     }
     if (yearIdx<0)
     {
+        // no year column -- nothing to bound the month/day wheels by. Clear any mask a previous
+        // configuration (with a year column) may have left in place.
+        if (monthIdx>=0)
+        {
+            spinner->resetEnabledItems(monthIdx);
+        }
+        if (dayIdx>=0)
+        {
+            spinner->resetEnabledItems(dayIdx);
+        }
         return;
     }
 
@@ -715,11 +702,15 @@ void DateTimePicker_p::updateOutOfRangeMarkers()
 
     if (monthIdx>=0)
     {
-        auto& col=columns[static_cast<size_t>(monthIdx)];
-        for (int i=0;i<col.pool.size();++i)
+        int lo=atMin ? (minDate.month()-1) : 0;
+        int hi=atMax ? (maxDate.month()-1) : 11;
+        if (lo>0 || hi<11)
         {
-            bool outOfRange=(atMin && (i+1)<minDate.month()) || (atMax && (i+1)>maxDate.month());
-            markOutOfRange(col.pool.at(i),outOfRange);
+            spinner->setEnabledRange(monthIdx,lo,hi);
+        }
+        else
+        {
+            spinner->resetEnabledItems(monthIdx);
         }
     }
 
@@ -727,18 +718,16 @@ void DateTimePicker_p::updateOutOfRangeMarkers()
     {
         auto& col=columns[static_cast<size_t>(dayIdx)];
         int month=value.date().month();
-        for (int i=0;i<col.pool.size() && i<col.loaded;++i)
+        int lastDay=col.loaded-1;
+        int lo=(atMin && month==minDate.month()) ? (minDate.day()-1) : 0;
+        int hi=(atMax && month==maxDate.month()) ? (maxDate.day()-1) : lastDay;
+        if (lo>0 || hi<lastDay)
         {
-            bool outOfRange=false;
-            if (atMin && month==minDate.month() && (i+1)<minDate.day())
-            {
-                outOfRange=true;
-            }
-            if (atMax && month==maxDate.month() && (i+1)>maxDate.day())
-            {
-                outOfRange=true;
-            }
-            markOutOfRange(col.pool.at(i),outOfRange);
+            spinner->setEnabledRange(dayIdx,lo,hi);
+        }
+        else
+        {
+            spinner->resetEnabledItems(dayIdx);
         }
     }
 }
@@ -752,12 +741,19 @@ void DateTimePicker_p::applyValueToColumns()
         return;
     }
 
-    // resize the day column first so every other column's target index is guaranteed in range
+    // resize the day column so every other column's target index is guaranteed in range. Widen
+    // its mask first: a stale narrow mask from the previous value must not clamp the resize's
+    // internal selectItem() call (Spinner::setColumnTexts()->appendItems()/removeLastItems()).
     auto dayIdx=dayColumnIndex();
     if (dayIdx>=0)
     {
+        spinner->resetEnabledItems(dayIdx);
         setColumnTexts(dayIdx,columnTextsFor(detail::Token::Day));
     }
+
+    // push the mask (+ greying, via Spinner) for the NEW value BEFORE selecting, so the
+    // selectItem() loop below is never clamped by a mask computed from the old value
+    updateAllowedRanges();
 
     for (size_t i=0;i<columns.size();++i)
     {
@@ -772,8 +768,6 @@ void DateTimePicker_p::applyValueToColumns()
             spinner->selectItem(static_cast<int>(i),idx);
         }
     }
-
-    updateOutOfRangeMarkers();
 
     if (syncTimer!=nullptr)
     {

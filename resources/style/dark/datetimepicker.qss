@@ -2,7 +2,7 @@ uise--DateTimePicker uise--Spinner * {
 color: #ffffff;
 }
 
-uise--DateTimePicker uise--Spinner QLabel[outOfRange="true"] {
+uise--DateTimePicker uise--Spinner QLabel[itemDisabled="true"] {
 color: #666666;
 }
 

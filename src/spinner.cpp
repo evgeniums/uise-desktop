@@ -340,36 +340,56 @@ void Spinner::scroll(SpinnerSection* section, int delta)
 }
 
 //--------------------------------------------------------------------------
+int Spinner::offsetForIndex(SpinnerSection* section, int index) const
+{
+    return sectionHeight(section)/2 - pimpl->selectionHeight/2 - index*pimpl->itemHeight;
+}
+
+//--------------------------------------------------------------------------
+int Spinner::firstEnabledIndex(SpinnerSection* section) const
+{
+    return section->pimpl->firstEnabled;
+}
+
+//--------------------------------------------------------------------------
+int Spinner::lastEnabledIndex(SpinnerSection* section) const
+{
+    return section->pimpl->lastEnabled;
+}
+
+//--------------------------------------------------------------------------
+int Spinner::clampIndex(SpinnerSection* section, int index) const
+{
+    return qBound(firstEnabledIndex(section),index,lastEnabledIndex(section));
+}
+
+//--------------------------------------------------------------------------
 int Spinner::clampOffset(SpinnerSection* section, int pos) const
 {
-    if (section->pimpl->circular)
+    auto n=section->pimpl->items.size();
+    if (n<=0 || pimpl->itemHeight<=0)
     {
         return pos;
     }
 
-    auto h=sectionHeight(section);
-    auto itemsHeight=section->pimpl->items.size()*pimpl->itemHeight;
-    if (pos<0)
+    if (section->pimpl->circular && !section->pimpl->masked)
     {
-        // down
-
-        auto edge=itemsHeight-(h+pimpl->itemHeight)/2;
-        if (qAbs(pos)>edge)
-        {
-            pos=-edge;
-        }
+        // unmasked circular section: wrap freely, as before
+        return pos;
     }
-    else
+
+    // Both the non-circular case and a masked circular one clamp to the offsets at which the
+    // first/last enabled item sit exactly in the selection band. For an unmasked non-circular
+    // section this is exactly the pre-mask behaviour (firstEnabledIndex()==0,
+    // lastEnabledIndex()==n-1) -- see offsetForIndex().
+    auto hi=offsetForIndex(section,firstEnabledIndex(section));
+    auto lo=offsetForIndex(section,lastEnabledIndex(section));
+    if (lo>hi)
     {
-        // up
-
-        auto edge=h/2 - pimpl->itemHeight/2;
-        if (pos>edge)
-        {
-            pos=edge;
-        }
+        // degenerate (e.g. a single-item enabled range with weird geometry) -- do not clamp
+        return pos;
     }
-    return pos;
+    return qBound(lo,pos,hi);
 }
 
 //--------------------------------------------------------------------------
@@ -442,6 +462,149 @@ void Spinner::animateScrollTo(SpinnerSection* section, int targetOffset)
 
     section->pimpl->clickScrolling=true;
     anim->start();
+}
+
+//--------------------------------------------------------------------------
+namespace {
+
+// Drives QSS greying of masked-out items (uise--Spinner QLabel[itemDisabled="true"]). Guards on
+// "property already has this value" to avoid unpolish()/polish() repaint storms when a mask is
+// re-pushed with the same range (see Spinner::setEnabledRange()).
+void applyItemDisabledProperty(QWidget* widget, bool disabled)
+{
+    if (widget==nullptr)
+    {
+        return;
+    }
+    auto current=widget->property("itemDisabled");
+    if (current.isValid() && current.toBool()==disabled)
+    {
+        return;
+    }
+    widget->setProperty("itemDisabled",disabled);
+    if (widget->style()!=nullptr)
+    {
+        widget->style()->unpolish(widget);
+        widget->style()->polish(widget);
+    }
+}
+
+}
+
+//--------------------------------------------------------------------------
+void Spinner::updateItemsDisabledState(SpinnerSection* section)
+{
+    for (int i=0;i<section->pimpl->items.size();++i)
+    {
+        applyItemDisabledProperty(section->pimpl->items.at(i),!section->itemEnabled(i));
+    }
+}
+
+//--------------------------------------------------------------------------
+void Spinner::enforceEnabledItems(SpinnerSection* section)
+{
+    auto n=section->pimpl->items.size();
+    if (n<=0 || pimpl->itemHeight<=0)
+    {
+        return;
+    }
+
+    if (!section->pimpl->masked)
+    {
+        return;
+    }
+
+    auto hi=offsetForIndex(section,firstEnabledIndex(section));
+    auto lo=offsetForIndex(section,lastEnabledIndex(section));
+    if (lo>hi)
+    {
+        return;
+    }
+
+    auto pos=section->pimpl->currentOffset;
+
+    if (section->pimpl->circular)
+    {
+        // A circular section's currentOffset can have drifted an arbitrary number of whole
+        // periods while it was unmasked (or under a wider mask). Rendering -- and therefore
+        // currentItemIndex/currentItemPosition -- is exactly P-periodic in currentOffset (see
+        // calcTopItem(): adding P raises qFloor(currentOffset/itemHeight) by exactly n, leaving
+        // both q%n and the remainder unchanged, including for negative offsets), so folding it
+        // back by whole periods is a VISUAL NO-OP and can be assigned directly -- BEFORE any
+        // gap clamping, and only the fold, or scrollTo() below (which moves only when its target
+        // differs from currentOffset) would see no difference and skip re-deriving
+        // currentItemIndex/currentItemPosition for the folded position entirely. This is the
+        // only place such folding happens -- see clampOffset()'s comment for why per-call
+        // modular arithmetic there would be wrong.
+        auto p=static_cast<int>(n)*pimpl->itemHeight;
+        auto d=pos-lo;
+        auto k=(d>=0) ? d/p : -(((-d)+p-1)/p); // floor division, negative-safe
+        pos-=k*p;                              // pos is now in [lo,lo+p)
+        section->pimpl->currentOffset=pos;
+
+        // if pos fell in the forbidden gap, the nearer boundary is the actual scroll target;
+        // scrollTo() below performs that move (and only that move) through the normal path
+        if (pos>hi)
+        {
+            pos=((pos-hi)<=(lo+p-pos)) ? hi : lo;
+        }
+    }
+
+    // route the actual (possibly clamping) move through the normal path: cancels an in-flight
+    // click animation, updates the index, repaints, and re-arms the post-scroll snap. A no-op
+    // (scrollTo() early-returns) when pos is already within [lo,hi].
+    scrollTo(section,qBound(lo,pos,hi));
+}
+
+//--------------------------------------------------------------------------
+void Spinner::setEnabledRange(SpinnerSection* section, int first, int last)
+{
+    auto prevFirst=section->firstEnabledIndex();
+    auto prevLast=section->lastEnabledIndex();
+    auto prevMasked=section->pimpl->masked;
+
+    section->setEnabledRange(first,last);
+
+    // cheap regardless -- also catches an interior mask (set item-by-item via setItemEnabled())
+    // collapsing into the same [first,last] bounds, which the bounds-only comparison below would
+    // otherwise miss
+    updateItemsDisabledState(section);
+
+    if (prevMasked==section->pimpl->masked
+        && prevFirst==section->firstEnabledIndex() && prevLast==section->lastEnabledIndex())
+    {
+        return;
+    }
+
+    enforceEnabledItems(section);
+    update();
+}
+
+//--------------------------------------------------------------------------
+void Spinner::resetEnabledItems(SpinnerSection* section)
+{
+    if (!section->pimpl->masked)
+    {
+        return;
+    }
+
+    section->resetEnabledItems();
+    updateItemsDisabledState(section);
+    update();
+}
+
+//--------------------------------------------------------------------------
+void Spinner::setItemEnabled(SpinnerSection* section, int index, bool enable)
+{
+    if (section->itemEnabled(index)==enable)
+    {
+        return;
+    }
+
+    section->setItemEnabled(index,enable);
+    updateItemsDisabledState(section);
+    enforceEnabledItems(section);
+    update();
 }
 
 //--------------------------------------------------------------------------
@@ -595,7 +758,15 @@ void Spinner::setSections(std::vector<std::shared_ptr<SpinnerSection>> sections)
             section->pimpl->rightBarLabel->setVisible(false);
         }
 
-        selectItem(section.get(),0);
+        // a section may arrive with a mask already set (SpinnerSection::setEnabledRange()
+        // called before setSections()) -- make sure its greying is applied from the start, and
+        // that item 0 (not necessarily selectable) is not what gets selected. An empty section
+        // has nothing to select at all -- selectItem() would throw std::out_of_range.
+        updateItemsDisabledState(section.get());
+        if (!section->pimpl->items.isEmpty())
+        {
+            selectItem(section.get(),firstEnabledIndex(section.get()));
+        }
 
         ++i;
     }
@@ -621,11 +792,10 @@ void Spinner::selectItem(SpinnerSection *section, int index)
         throw std::out_of_range("Index is out of range");
     }
 
-    auto idx=index;
-    if (idx>=section->pimpl->items.size())
-    {
-        idx=section->pimpl->items.size()-1;
-    }
+    // a masked-out index is not a valid target -- land on the nearest enabled item instead of
+    // throwing (DateTimePicker never actually hits this: its own value is always clamped before
+    // it calls selectItem(), see DateTimePicker_p::applyValueToColumns())
+    auto idx=clampIndex(section,index);
 
     if (section->pimpl->firstIndexUpdating)
     {
@@ -700,8 +870,8 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 {
                     // down
 
-                    // enable for non circtular section or not last item
-                    if (!section->pimpl->circular || section->pimpl->currentItemIndex<(section->pimpl->items.size()-1))
+                    // enable for non circular section or not last enabled item
+                    if (!section->pimpl->circular || section->pimpl->currentItemIndex<lastEnabledIndex(section))
                     {
                         offset+=pimpl->itemHeight;
                     }
@@ -710,8 +880,8 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 {
                     // up
 
-                    // enable for non circtular section or not first item
-                    if (!section->pimpl->circular || section->pimpl->currentItemIndex>0)
+                    // enable for non circular section or not first enabled item
+                    if (!section->pimpl->circular || section->pimpl->currentItemIndex>firstEnabledIndex(section))
                     {
                         offset-=pimpl->itemHeight;
                     }
@@ -747,7 +917,10 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
                 int rm = asc?val.toInt():-val.toInt();
                 auto offs = section->pimpl->animationVal - rm;
                 section->pimpl->animationVal=rm;
-                section->pimpl->currentOffset+=offs;
+                // defensive: the geometric proof that this snap cannot cross a mask boundary
+                // relies on selectionHeight==itemHeight (the only case that can arise today,
+                // see setItemHeight()) -- route through clampOffset() as insurance regardless
+                section->pimpl->currentOffset=clampOffset(section,section->pimpl->currentOffset+offs);
 
                 updateCurrentIndex(section);
                 repaint();
@@ -756,7 +929,7 @@ void Spinner::adjustPosition(SpinnerSection *section, bool animate, bool noDelay
         }
         else
         {
-            section->pimpl->currentOffset-=offset;
+            section->pimpl->currentOffset=clampOffset(section,section->pimpl->currentOffset-offset);
 
             updateCurrentIndex(section);
             repaint();
@@ -823,6 +996,25 @@ void Spinner::appendItems(int sectionIndex, const QList<QWidget *> &items)
         item->setParent(this);
         item->setVisible(false);
     }
+
+    // keep the enabled mask parallel to items -- appended items default to enabled, mirroring
+    // SpinnerSection::setItems() (QList<bool>::resize() alone would default-construct them to
+    // false, the wrong default)
+    if (!section->pimpl->itemsEnabled.isEmpty())
+    {
+        while (section->pimpl->itemsEnabled.size()<section->pimpl->items.size())
+        {
+            section->pimpl->itemsEnabled.append(true);
+        }
+        section->pimpl->updateEnabledBounds();
+    }
+
+    // reset stale "itemDisabled" state on recycled widgets: DateTimePicker's day-column pool
+    // reuses labels that may have been marked disabled the last time they were loaded (see
+    // DateTimePicker_p::poolLabel())
+    updateItemsDisabledState(section.get());
+    enforceEnabledItems(section.get());
+
     selectItem(section.get(),section->pimpl->currentItemIndex);
     update();
 }
@@ -840,7 +1032,19 @@ void Spinner::removeLastItems(int sectionIndex, int count)
     for (auto i=0;i<count;i++)
     {
         section->pimpl->items.removeLast();
+        if (!section->pimpl->itemsEnabled.isEmpty())
+        {
+            section->pimpl->itemsEnabled.removeLast();
+        }
     }
+    if (!section->pimpl->itemsEnabled.isEmpty())
+    {
+        // must happen before the mask is used below (clampIndex()/lastEnabledIndex() inside
+        // selectItem()/enforceEnabledItems()), or a stale enabledLast could still point past
+        // the shrunk item list
+        section->pimpl->updateEnabledBounds();
+    }
+    enforceEnabledItems(section.get());
 
     int index=section->pimpl->currentItemIndex;
     if (index>=section->pimpl->items.size())
@@ -929,6 +1133,11 @@ void Spinner::updateCurrentIndex(SpinnerSection *section)
     // currentItemIndex back to whichever row lands in the middle of the (wrongly offset) view.
     if (section->pimpl->firstIndexUpdating)
     {
+        // clamp into the enabled range first: selectItem()'s firstIndexUpdating branch writes
+        // currentItemIndex directly, bypassing clampOffset(), so without this a mask set before
+        // the section settles its first index could leave currentOffset (computed below, which
+        // is exactly offsetForIndex(currentItemIndex)) outside [lo,hi]
+        section->pimpl->currentItemIndex=clampIndex(section,section->pimpl->currentItemIndex);
         auto h=sectionHeight(section);
         section->pimpl->currentOffset=h/2-pimpl->selectionHeight/2-section->pimpl->currentItemIndex*pimpl->itemHeight;
     }

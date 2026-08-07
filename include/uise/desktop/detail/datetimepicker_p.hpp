@@ -159,7 +159,7 @@ class DateTimePicker_p
         QDateTime clampToRange(const QDateTime& dt) const;
         QDateTime composeFromColumns() const;
         void updateOnValueChanged(bool changed, const QDateTime& previous);
-        void updateOutOfRangeMarkers();
+        void updateAllowedRanges();
 
         // --- columns -------------------------------------------------------
 

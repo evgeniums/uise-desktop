@@ -167,6 +167,27 @@ BOOST_AUTO_TEST_CASE(TestRangeClamp)
         auto picker=container->testWidget;
         UISE_TEST_CHECK(picker->date()==QDate(2020,6,15));
 
+        // at the min-date year the month wheel (circular, section 0 for en_US) is masked to
+        // [June,December] -- this is the regression check for the unstable bounce this feature
+        // replaces: scrolling backward past June must stop exactly there, not wrap to December
+        auto spinner=picker->spinner();
+        UISE_TEST_CHECK_EQUAL(spinner->firstEnabledIndex(0),5);  // June
+        UISE_TEST_CHECK_EQUAL(spinner->lastEnabledIndex(0),11);  // December, unrestricted
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(0),5);
+
+        spinner->scroll(0,-50*spinner->itemHeight());
+    };
+
+    auto checkMonthClampedAtMinYear=[](DateTimePickerContainerPtr container)
+    {
+        auto picker=container->testWidget;
+        auto spinner=picker->spinner();
+
+        // still June -- a big backward scroll must not wrap a masked circular wheel past the
+        // boundary
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(0),5);
+        UISE_TEST_CHECK(picker->date()==QDate(2020,6,15));
+
         picker->setDate(QDate(2030,12,31));
     };
 
@@ -174,13 +195,33 @@ BOOST_AUTO_TEST_CASE(TestRangeClamp)
     {
         auto picker=container->testWidget;
         UISE_TEST_CHECK(picker->date()==QDate(2030,3,10));
+
+        // at the max-date year the month wheel is masked to [January,March] -- scrolling
+        // forward past March must stop exactly there, not wrap to January
+        auto spinner=picker->spinner();
+        UISE_TEST_CHECK_EQUAL(spinner->firstEnabledIndex(0),0);  // January, unrestricted
+        UISE_TEST_CHECK_EQUAL(spinner->lastEnabledIndex(0),2);   // March
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(0),2);
+
+        spinner->scroll(0,50*spinner->itemHeight());
+    };
+
+    auto checkMonthClampedAtMaxYear=[](DateTimePickerContainerPtr container)
+    {
+        auto picker=container->testWidget;
+        auto spinner=picker->spinner();
+
+        UISE_TEST_CHECK_EQUAL(spinner->selectedItemIndex(0),2);
+        UISE_TEST_CHECK(picker->date()==QDate(2030,3,10));
     };
 
     std::vector<std::function<void (DateTimePickerContainerPtr container)>> steps={
         init,
         checkYearCount,
         checkClampedLow,
-        checkClampedHigh
+        checkMonthClampedAtMinYear,
+        checkClampedHigh,
+        checkMonthClampedAtMaxYear
     };
     DateTimePickerContainer::runTestCase(steps);
 }

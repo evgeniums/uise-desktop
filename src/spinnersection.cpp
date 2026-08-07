@@ -95,6 +95,19 @@ void SpinnerSection::setCircular(bool enable) noexcept
 void SpinnerSection::setItems(QList<QWidget *> items)
 {
     pimpl->items=std::move(items);
+
+    // keep the enabled mask parallel to items: preserve existing flags by position, default new
+    // entries to enabled. QList::resize() default-constructs new elements to false, which is
+    // the wrong default here, so grow with explicit true values instead.
+    if (!pimpl->itemsEnabled.isEmpty())
+    {
+        while (pimpl->itemsEnabled.size()<pimpl->items.size())
+        {
+            pimpl->itemsEnabled.append(true);
+        }
+        pimpl->itemsEnabled.resize(pimpl->items.size());
+    }
+    pimpl->updateEnabledBounds();
 }
 
 //--------------------------------------------------------------------------
@@ -113,6 +126,92 @@ void SpinnerSection::setRightBarLabel(QWidget *widget) noexcept
 int SpinnerSection::itemsCount() const noexcept
 {
     return pimpl->items.size();
+}
+
+//--------------------------------------------------------------------------
+void SpinnerSection::setEnabledRange(int first, int last) noexcept
+{
+    auto n=pimpl->items.size();
+    if (n<=0)
+    {
+        return;
+    }
+
+    first=qBound(0,first,n-1);
+    last=qBound(first,last,n-1);
+
+    pimpl->itemsEnabled.clear();
+    for (int i=0;i<n;++i)
+    {
+        pimpl->itemsEnabled.append(i>=first && i<=last);
+    }
+    pimpl->updateEnabledBounds();
+}
+
+//--------------------------------------------------------------------------
+void SpinnerSection::resetEnabledItems() noexcept
+{
+    pimpl->itemsEnabled.clear();
+    pimpl->updateEnabledBounds();
+}
+
+//--------------------------------------------------------------------------
+void SpinnerSection::setItemEnabled(int index, bool enable) noexcept
+{
+    auto n=pimpl->items.size();
+    if (index<0 || index>=n)
+    {
+        return;
+    }
+
+    if (pimpl->itemsEnabled.isEmpty())
+    {
+        if (enable)
+        {
+            // already enabled -- no mask needed
+            return;
+        }
+        pimpl->itemsEnabled.reserve(n);
+        for (int i=0;i<n;++i)
+        {
+            pimpl->itemsEnabled.append(true);
+        }
+    }
+
+    pimpl->itemsEnabled[index]=enable;
+    pimpl->updateEnabledBounds();
+}
+
+//--------------------------------------------------------------------------
+bool SpinnerSection::itemEnabled(int index) const noexcept
+{
+    if (pimpl->itemsEnabled.isEmpty())
+    {
+        return true;
+    }
+    if (index<0 || index>=pimpl->itemsEnabled.size())
+    {
+        return false;
+    }
+    return pimpl->itemsEnabled.at(index);
+}
+
+//--------------------------------------------------------------------------
+bool SpinnerSection::hasDisabledItems() const noexcept
+{
+    return pimpl->masked;
+}
+
+//--------------------------------------------------------------------------
+int SpinnerSection::firstEnabledIndex() const noexcept
+{
+    return pimpl->firstEnabled;
+}
+
+//--------------------------------------------------------------------------
+int SpinnerSection::lastEnabledIndex() const noexcept
+{
+    return pimpl->lastEnabled;
 }
 
 //--------------------------------------------------------------------------

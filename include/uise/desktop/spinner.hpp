@@ -199,6 +199,75 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
 
         QSize sizeHint() const override;
 
+        /**
+         * @brief Enable a contiguous range of items in a spinner section, disabling every other
+         *  item.
+         * @param sectionIndex Section index.
+         * @param first Index of the first enabled item.
+         * @param last Index of the last enabled item.
+         *
+         * Unlike SpinnerSection::setEnabledRange(), this also re-clamps the current scroll
+         * position into the new range if it fell outside -- see clampOffset()/
+         * enforceEnabledItems(). Scrolling (wheel/drag/keys/click) is then hard-clamped to the
+         * range's outer bounds: for a circular section this makes the wheel stop at the
+         * boundary instead of wrapping past it.
+         */
+        void setEnabledRange(int sectionIndex, int first, int last)
+        {
+            setEnabledRange(section(sectionIndex).get(),first,last);
+        }
+
+        /**
+         * @brief Enable every item in a spinner section, clearing any previously set mask.
+         * @param sectionIndex Section index.
+         */
+        void resetEnabledItems(int sectionIndex)
+        {
+            resetEnabledItems(section(sectionIndex).get());
+        }
+
+        /**
+         * @brief Enable or disable a single item in a spinner section.
+         * @param sectionIndex Section index.
+         * @param index Item index.
+         * @param enable Whether the item should be enabled.
+         */
+        void setItemEnabled(int sectionIndex, int index, bool enable)
+        {
+            setItemEnabled(section(sectionIndex).get(),index,enable);
+        }
+
+        /**
+         * @brief Check if an item is enabled.
+         * @param sectionIndex Section index.
+         * @param index Item index.
+         * @return Query result.
+         */
+        bool itemEnabled(int sectionIndex, int index) const
+        {
+            return section(sectionIndex)->itemEnabled(index);
+        }
+
+        /**
+         * @brief Get index of the first enabled item in a spinner section.
+         * @param sectionIndex Section index.
+         * @return Query result.
+         */
+        int firstEnabledIndex(int sectionIndex) const
+        {
+            return section(sectionIndex)->firstEnabledIndex();
+        }
+
+        /**
+         * @brief Get index of the last enabled item in a spinner section.
+         * @param sectionIndex Section index.
+         * @return Query result.
+         */
+        int lastEnabledIndex(int sectionIndex) const
+        {
+            return section(sectionIndex)->lastEnabledIndex();
+        }
+
     signals:
 
         /**
@@ -232,9 +301,42 @@ class UISE_DESKTOP_EXPORT Spinner : public QFrame,
         int selectedItemIndex(SpinnerSection* section) const;
         void selectItem(SpinnerSection* section, int index);
 
-        /** @brief Clamp a candidate offset into range for a non-circular section (a no-op for a
-         *  circular one). Shared by scrollTo() and the click-to-scroll animation. */
+        /** @brief Clamp a candidate offset into range for a non-circular section, or for a
+         *  masked circular one (a no-op for an unmasked circular section, which wraps freely).
+         *  Shared by scrollTo() and the click-to-scroll animation.
+         *
+         *  Deliberately does NO modular arithmetic: every caller derives pos from currentOffset
+         *  by plain arithmetic in the same unwrapped frame, and enforceEnabledItems() guarantees
+         *  currentOffset is already inside [lo,hi]. Folding pos back by whole periods here would
+         *  let one large step (PageDown, a fast wheel/drag) cross the midpoint of the forbidden
+         *  gap and snap to the OPPOSITE boundary -- i.e. wrap, exactly what masking must prevent. */
         int clampOffset(SpinnerSection* section, int pos) const;
+
+        /** @brief Offset at which item `index` sits exactly in the selection band. */
+        int offsetForIndex(SpinnerSection* section, int index) const;
+
+        /** @brief Index of the first enabled item (0 when the section has no mask). */
+        int firstEnabledIndex(SpinnerSection* section) const;
+
+        /** @brief Index of the last enabled item (items.size()-1 when the section has no mask). */
+        int lastEnabledIndex(SpinnerSection* section) const;
+
+        /** @brief Clamp an item index into the section's enabled range. */
+        int clampIndex(SpinnerSection* section, int index) const;
+
+        /** @brief Re-establish the currentOffset-in-range invariant after the enabled range or
+         *  the item count changed. The only place that folds a circular section's currentOffset
+         *  by whole periods (a visual no-op, see calcTopItem()) -- everywhere else clampOffset()
+         *  assumes that invariant already holds. */
+        void enforceEnabledItems(SpinnerSection* section);
+
+        /** @brief Set/clear the "itemDisabled" dynamic property (drives QSS greying) on every
+         *  item widget in a section, according to its current mask. */
+        void updateItemsDisabledState(SpinnerSection* section);
+
+        void setEnabledRange(SpinnerSection* section, int first, int last);
+        void resetEnabledItems(SpinnerSection* section);
+        void setItemEnabled(SpinnerSection* section, int index, bool enable);
 
         /** @brief Animate currentOffset from wherever it is now to targetOffset, in response to
          *  a click on a visible item -- see mousePressEvent()/mouseReleaseEvent(). Deliberately
