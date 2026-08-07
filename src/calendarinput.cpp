@@ -73,6 +73,7 @@ void CalendarDropdown::construct(CalendarMode mode)
     connect(m_cancelButton,&PushButton::clicked,this,[this]()
     {
         restoreSnapshot();
+        m_sessionCommitted=true;
         emit cancelled();
         closeDropdown();
     });
@@ -82,6 +83,7 @@ void CalendarDropdown::construct(CalendarMode mode)
     bl->addWidget(m_applyButton);
     connect(m_applyButton,&PushButton::clicked,this,[this]()
     {
+        m_sessionCommitted=true;
         emit applied();
         closeDropdown();
     });
@@ -93,12 +95,45 @@ void CalendarDropdown::construct(CalendarMode mode)
     connect(this,&DropdownFrame::aboutToShow,this,[this]()
     {
         takeSnapshot();
+        m_sessionCommitted=false;
         updateButtonsPolicy();
     });
 
-    // Activation/SingleSelection: a click IS the whole answer, so close as soon as it lands --
-    // but only while the buttons row is not showing (RangeSelection/MultipleSelection/Auto keep
-    // an explicit Apply/Cancel and never auto-close on a mere click).
+    // Explicit mode stages picks in the calendar until Apply commits them -- any OTHER way the
+    // popup closes (Escape, an outside click, re-clicking the trigger, the host window changing,
+    // or CalendarInput's own keyPressEvent() closing it directly) must discard those pending
+    // picks exactly like Cancel does, or the next opening would silently adopt an abandoned edit
+    // as its new baseline (see takeSnapshot() above, which just captures whatever the calendar
+    // currently shows). aboutToHide() is the one hook that fires on every path to closed,
+    // regardless of which of those triggered it or whether the owner called closeDropdown()
+    // directly -- closeRequested() only covers the self-dismiss paths, missing direct
+    // closeDropdown() callers such as CalendarInput's Escape handling. m_sessionCommitted, set by
+    // the Apply/Cancel handlers above, distinguishes an already-resolved session (nothing to do)
+    // from one abandoned some other way.
+    connect(this,&DropdownFrame::aboutToHide,this,[this]()
+    {
+        if (m_buttonsFrame->isVisible() && !m_sessionCommitted)
+        {
+            restoreSnapshot();
+            m_sessionCommitted=true;
+            emit cancelled();
+        }
+    });
+
+    // Activation/SingleSelection/RangeSelection are each terminal at some single, identifiable
+    // click -- activation itself, the date picked, or the range's second endpoint -- so each
+    // closes as soon as that click lands, but only while the buttons row is not showing
+    // (Explicit-mode RangeSelection/Multiple/SingleSelection keep an explicit Apply/Cancel and
+    // never auto-close on a mere click). MultipleSelection has no such terminal click -- every
+    // click just toggles one more date in or out -- so it is deliberately not covered here; the
+    // popup only closes on it via Apply or an explicit dismissal.
+    //
+    // The SingleSelection/RangeSelection checks below key on mode() (the pinned/configured mode),
+    // not effectiveMode() -- ExtendedSelection's effectiveMode() also cycles through
+    // SingleSelection and RangeSelection, but it is deliberately excluded here for the same
+    // reason MultipleSelection is: the whole point of that mode is picking up more dates with
+    // Ctrl/Shift right after a plain click or a completed range, so it must stay open exactly
+    // like MultipleSelection does, regardless of which flavour effectiveMode() currently reports.
     connect(m_calendar,&Calendar::dateActivated,this,[this](const QDate&)
     {
         if (m_autoClose && !m_buttonsFrame->isVisible())
@@ -110,8 +145,21 @@ void CalendarDropdown::construct(CalendarMode mode)
     connect(m_calendar,&Calendar::selectionChanged,this,[this]()
     {
         if (m_autoClose && !m_buttonsFrame->isVisible()
-            && m_calendar->effectiveMode()==CalendarMode::SingleSelection
+            && m_calendar->mode()==CalendarMode::SingleSelection
             && m_calendar->hasSelection())
+        {
+            emit applied();
+            closeDropdown();
+        }
+    });
+    // rangeSelected(), unlike selectionChanged(), is only ever emitted once a range gesture
+    // actually completes (its second endpoint click, or a finished drag) -- never on the first,
+    // still-pending endpoint -- so it needs no extra hasSelection() check the way selectionChanged()
+    // above does.
+    connect(m_calendar,&Calendar::rangeSelected,this,[this](const QDate&, const QDate&)
+    {
+        if (m_autoClose && !m_buttonsFrame->isVisible()
+            && m_calendar->mode()==CalendarMode::RangeSelection)
         {
             emit applied();
             closeDropdown();
@@ -123,22 +171,10 @@ void CalendarDropdown::construct(CalendarMode mode)
 
 //--------------------------------------------------------------------------
 
-void CalendarDropdown::setAutoButtons(bool enable)
+void CalendarDropdown::setUpdateMode(CalendarUpdateMode mode)
 {
-    m_autoButtons=enable;
+    m_updateMode=mode;
     updateButtonsPolicy();
-}
-
-//--------------------------------------------------------------------------
-
-void CalendarDropdown::setButtonsVisible(bool enable)
-{
-    m_autoButtons=false;
-    m_buttonsVisible=enable;
-    if (m_buttonsFrame!=nullptr)
-    {
-        m_buttonsFrame->setVisible(enable);
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -152,24 +188,14 @@ void CalendarDropdown::setAutoClose(bool enable) noexcept
 
 void CalendarDropdown::updateButtonsPolicy()
 {
-    if (m_autoButtons)
-    {
-        bool show=true;
-        switch (m_calendar->mode())
-        {
-            case (CalendarMode::Activation):
-            case (CalendarMode::SingleSelection):
-                show=false;
-                break;
-
-            default:
-                break;
-        }
-        m_buttonsVisible=show;
-    }
+    // CalendarMode::Activation has nothing an Apply step could stage -- a plain activation click
+    // is already the whole answer -- so it always behaves like CalendarUpdateMode::Auto
+    // regardless of what was configured.
+    const bool show=m_updateMode==CalendarUpdateMode::Explicit
+                     && m_calendar->mode()!=CalendarMode::Activation;
     if (m_buttonsFrame!=nullptr)
     {
-        m_buttonsFrame->setVisible(m_buttonsVisible);
+        m_buttonsFrame->setVisible(show);
     }
 }
 
@@ -237,19 +263,39 @@ void CalendarInput::construct(CalendarMode mode)
         m_dropdown->toggleBelow(this);
     });
 
+    // Activation has no pending/committed distinction -- a click is already the final answer --
+    // so it always lands in the input immediately, independent of updateMode().
     connect(m_dropdown->calendar(),&Calendar::dateActivated,this,[this](const QDate& d)
     {
         m_lastActivated=d;
         updateText();
         emit dateActivated(d);
     });
+    // Calendar::selectionChanged is the umbrella signal for every other mode -- it always fires
+    // alongside rangeSelected()/selectedDatesChanged() when either of those does (see
+    // Calendar_p::emitSelectionChanged() callers), so this single connection is enough to catch
+    // every kind of pick. In CalendarUpdateMode::Explicit those picks stay pending in the
+    // calendar and must NOT reach the input yet -- commitFromCalendar() runs once instead, on
+    // CalendarDropdown::applied(), below.
     connect(m_dropdown->calendar(),&Calendar::selectionChanged,this,[this]()
     {
-        updateText();
-        emit selectionChanged();
+        if (isLiveUpdating())
+        {
+            commitFromCalendar();
+        }
     });
-    connect(m_dropdown->calendar(),&Calendar::rangeSelected,this,&CalendarInput::rangeSelected);
-    connect(m_dropdown->calendar(),&Calendar::selectedDatesChanged,this,&CalendarInput::selectedDatesChanged);
+    connect(m_dropdown,&CalendarDropdown::applied,this,[this]()
+    {
+        if (!isLiveUpdating())
+        {
+            commitFromCalendar();
+        }
+    });
+
+    connect(m_dropdown,&DropdownFrame::aboutToShow,this,[this]()
+    {
+        navigateToRelevantMonth();
+    });
 
     updatePlaceholder();
     updateText();
@@ -276,6 +322,20 @@ void CalendarInput::setMode(CalendarMode mode)
 CalendarMode CalendarInput::mode() const
 {
     return m_dropdown->calendar()->mode();
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarInput::setUpdateMode(CalendarUpdateMode mode)
+{
+    m_dropdown->setUpdateMode(mode);
+}
+
+//--------------------------------------------------------------------------
+
+CalendarUpdateMode CalendarInput::updateMode() const noexcept
+{
+    return m_dropdown->updateMode();
 }
 
 //--------------------------------------------------------------------------
@@ -377,6 +437,85 @@ void CalendarInput::updatePlaceholder()
         default:
             setPlaceholderText(tr("Select dates"));
             break;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool CalendarInput::isLiveUpdating() const
+{
+    return m_dropdown->updateMode()==CalendarUpdateMode::Auto
+           || m_dropdown->calendar()->mode()==CalendarMode::Activation;
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarInput::commitFromCalendar()
+{
+    updateText();
+    emit selectionChanged();
+
+    auto cal=m_dropdown->calendar();
+    switch (cal->effectiveMode())
+    {
+        case (CalendarMode::RangeSelection):
+            if (cal->rangeFrom().isValid())
+            {
+                emit rangeSelected(cal->rangeFrom(),cal->rangeTo());
+            }
+            break;
+
+        case (CalendarMode::MultipleSelection):
+            emit selectedDatesChanged(cal->selectedDates());
+            break;
+
+        default:
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarInput::navigateToRelevantMonth()
+{
+    auto cal=m_dropdown->calendar();
+
+    QDate target;
+    switch (cal->effectiveMode())
+    {
+        case (CalendarMode::Activation):
+            target=m_lastActivated;
+            break;
+
+        case (CalendarMode::SingleSelection):
+            target=cal->selectedDate();
+            break;
+
+        case (CalendarMode::RangeSelection):
+            target=cal->rangeTo().isValid() ? cal->rangeTo() : cal->rangeFrom();
+            break;
+
+        case (CalendarMode::MultipleSelection):
+        {
+            const auto dates=cal->selectedDates();
+            if (!dates.isEmpty())
+            {
+                target=dates.last();
+            }
+        }
+        break;
+
+        default:
+            break;
+    }
+
+    if (target.isValid())
+    {
+        cal->setDisplayedMonth(QDate{target.year(),target.month(),1});
+    }
+    else
+    {
+        cal->showToday();
     }
 }
 

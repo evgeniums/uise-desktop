@@ -59,6 +59,7 @@ QString modeName(CalendarMode mode)
         case (CalendarMode::RangeSelection): return QStringLiteral("RangeSelection");
         case (CalendarMode::MultipleSelection): return QStringLiteral("MultipleSelection");
         case (CalendarMode::Auto): return QStringLiteral("Auto");
+        case (CalendarMode::ExtendedSelection): return QStringLiteral("ExtendedSelection");
     }
     return QString();
 }
@@ -117,6 +118,8 @@ int main(int argc, char *argv[])
     multipleInput->setObjectName("MultipleInput");
     auto autoInput = new CalendarInput(CalendarMode::Auto);
     autoInput->setObjectName("AutoInput");
+    auto extendedInput = new CalendarInput(CalendarMode::ExtendedSelection);
+    extendedInput->setObjectName("ExtendedInput");
 
     auto addInputRow = [igl](const QString& label, QWidget* input)
     {
@@ -133,6 +136,7 @@ int main(int argc, char *argv[])
     addInputRow("RangeSelection", rangeInput);
     addInputRow("MultipleSelection", multipleInput);
     addInputRow("Auto", autoInput);
+    addInputRow("ExtendedSelection", extendedInput);
     pfl->addWidget(inputsGroup, 1);
 
     std::vector<Calendar*> allCalendars{
@@ -141,10 +145,11 @@ int main(int argc, char *argv[])
         singleInput->calendar(),
         rangeInput->calendar(),
         multipleInput->calendar(),
-        autoInput->calendar()
+        autoInput->calendar(),
+        extendedInput->calendar()
     };
     std::vector<CalendarInput*> allInputs{
-        activationInput, singleInput, rangeInput, multipleInput, autoInput
+        activationInput, singleInput, rangeInput, multipleInput, autoInput, extendedInput
     };
 
     // ---- log ----
@@ -220,6 +225,7 @@ int main(int argc, char *argv[])
     modeCombo->addItem("RangeSelection", static_cast<int>(CalendarMode::RangeSelection));
     modeCombo->addItem("MultipleSelection", static_cast<int>(CalendarMode::MultipleSelection));
     modeCombo->addItem("Auto", static_cast<int>(CalendarMode::Auto));
+    modeCombo->addItem("ExtendedSelection", static_cast<int>(CalendarMode::ExtendedSelection));
     modeCombo->setCurrentIndex(4);
     mgl->addWidget(modeCombo);
     QObject::connect(modeCombo, &QComboBox::currentIndexChanged, [calendar, modeCombo](int idx)
@@ -360,17 +366,17 @@ int main(int argc, char *argv[])
     // -- dropdown buttons policy --
     auto buttonsGroup = new QGroupBox("Input popup");
     auto bgl = Layout::vertical(buttonsGroup, false);
-    auto autoButtonsCheck = new QCheckBox("Auto buttons");
-    autoButtonsCheck->setChecked(true);
+    auto explicitUpdateCheck = new QCheckBox("Explicit update (Apply/Cancel)");
+    explicitUpdateCheck->setChecked(false);
     auto autoCloseCheck = new QCheckBox("Auto close");
     autoCloseCheck->setChecked(true);
-    bgl->addWidget(autoButtonsCheck);
+    bgl->addWidget(explicitUpdateCheck);
     bgl->addWidget(autoCloseCheck);
-    QObject::connect(autoButtonsCheck, &QCheckBox::toggled, [allInputs](bool enable)
+    QObject::connect(explicitUpdateCheck, &QCheckBox::toggled, [allInputs](bool enable)
     {
         for (auto* i : allInputs)
         {
-            i->dropdown()->setAutoButtons(enable);
+            i->setUpdateMode(enable ? CalendarUpdateMode::Explicit : CalendarUpdateMode::Auto);
         }
     });
     QObject::connect(autoCloseCheck, &QCheckBox::toggled, [allInputs](bool enable)

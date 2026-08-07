@@ -82,6 +82,26 @@ bool hasControlModifier(Qt::KeyboardModifiers mods) noexcept
 
 //--------------------------------------------------------------------------
 
+// Auto starts collapsed to Activation (nothing kept selected until the user escalates);
+// ExtendedSelection starts at SingleSelection instead, since a plain click there always keeps
+// exactly one date selected -- see CalendarMode::ExtendedSelection. Every other mode is already
+// its own effective mode.
+CalendarMode initialEffectiveMode(CalendarMode mode) noexcept
+{
+    switch (mode)
+    {
+        case (CalendarMode::Auto):
+            return CalendarMode::Activation;
+        case (CalendarMode::ExtendedSelection):
+            return CalendarMode::SingleSelection;
+        default:
+            break;
+    }
+    return mode;
+}
+
+//--------------------------------------------------------------------------
+
 const char* bandEdgeName(CalendarDay::BandEdge edge) noexcept
 {
     switch (edge)
@@ -778,6 +798,20 @@ void Calendar_p::buildHeader()
 {
     header=new CalendarHeaderFrame(self);
     header->setObjectName(QStringLiteral("headerFrame"));
+    // KNOWN ISSUE (macOS, confirmed 2026-08-08): this cursor -- and titleFrame's own below --
+    // shows correctly for a standalone Calendar, but stays a plain arrow (not the pointing hand)
+    // for a Calendar hosted inside a CalendarDropdown popup, even while hovering/moving the
+    // mouse over the header; the click itself still works (opens the month picker). Not caused
+    // by headerClickable (defaults true, never disabled by CalendarDropdown/CalendarInput) or by
+    // any QSS rule -- most likely a Qt/Cocoa limitation where a non-activating popup window
+    // (DropdownFrame opens Qt::Tool + Qt::WA_ShowWithoutActivating, deliberately, to avoid
+    // stealing window activation) never becomes "key" and so never gets its cursor icon
+    // recomputed, regardless of QWidget::setCursor(). Unconfirmed on Windows/Linux. If this needs
+    // fixing later, the standard workaround is QGuiApplication::setOverrideCursor()/
+    // restoreOverrideCursor() in enterEvent()/leaveEvent() instead of a plain setCursor(), since
+    // an application-level override cursor bypasses whatever per-window mechanism is failing here
+    // -- but every setOverrideCursor() must be exactly paired with a restoreOverrideCursor(), or
+    // the cursor gets stuck overridden app-wide.
     header->setCursor(Qt::PointingHandCursor);
     auto hl=Layout::vertical(header);
 
@@ -793,7 +827,7 @@ void Calendar_p::buildHeader()
 
     titleFrame=new ClickableFrame(headerTopLeft);
     titleFrame->setObjectName(QStringLiteral("titleFrame"));
-    titleFrame->setCursor(Qt::PointingHandCursor);
+    titleFrame->setCursor(Qt::PointingHandCursor);   // see the known cursor issue noted on header's own setCursor() above
     auto tfl=Layout::horizontal(titleFrame);
     titleLabel=new ElidedLabel(titleFrame);
     titleLabel->setObjectName(QStringLiteral("titleLabel"));
@@ -892,6 +926,10 @@ void Calendar_p::buildHeader()
             {
                 datesDropdown->toggleBelow(titleFrame);
             }
+        }
+        else if (effective==CalendarMode::SingleSelection && single.isValid())
+        {
+            self->setDisplayedMonth(QDate{single.year(),single.month(),1});
         }
         else
         {
@@ -1370,7 +1408,7 @@ void Calendar_p::setEffectiveMode(CalendarMode m)
     updateMonthLabel();
     updateClearButton();
 
-    if (mode==CalendarMode::Auto)
+    if (mode==CalendarMode::Auto || mode==CalendarMode::ExtendedSelection)
     {
         emit self->effectiveModeChanged(effective);
     }
@@ -1404,9 +1442,7 @@ void Calendar_p::clickRange(const QDate& date)
         rangeFrom=date;
         rangeTo=date;
         rangePending=true;
-        restyleSelection();
-        updateTitle();
-        updateClearButton();
+        emitSelectionChanged();
     }
     else
     {
@@ -1433,12 +1469,15 @@ void Calendar_p::clickRange(const QDate& date)
 
 bool Calendar_p::isRangeDragEligible() const
 {
-    // Dragging is meaningful in RangeSelection itself (explicit or already-escalated Auto), and
-    // as the gesture that escalates Auto's Activation into RangeSelection in the first place --
-    // mirroring what Shift+click already does for a plain click. Multiple/Single/explicit
+    // Dragging is meaningful in RangeSelection itself (explicit or already-escalated Auto), as
+    // the gesture that escalates Auto's Activation into RangeSelection in the first place --
+    // mirroring what Shift+click already does for a plain click -- and unconditionally in
+    // ExtendedSelection, which (like Shift+click there) always replaces the whole selection with
+    // a fresh range regardless of what effectiveMode() currently is. Multiple/Single/explicit
     // Activation have no drag semantics of their own, so a drag there is simply ignored (the
     // release still falls through to a plain click if it never left the pressed cell).
     return effective==CalendarMode::RangeSelection
+           || mode==CalendarMode::ExtendedSelection
            || (mode==CalendarMode::Auto && effective==CalendarMode::Activation);
 }
 
@@ -1466,6 +1505,12 @@ void Calendar_p::onDayDragMoved(const QDate& date)
         dragActive=true;
         if (mode==CalendarMode::Auto && effective==CalendarMode::Activation)
         {
+            setEffectiveMode(CalendarMode::RangeSelection);
+        }
+        else if (mode==CalendarMode::ExtendedSelection)
+        {
+            single=QDate{};
+            multiple.clear();
             setEffectiveMode(CalendarMode::RangeSelection);
         }
     }
@@ -1498,6 +1543,10 @@ void Calendar_p::onDayDragFinished(const QDate& date, Qt::KeyboardModifiers modi
     rangeFrom=std::min(dragAnchor,date);
     rangeTo=std::max(dragAnchor,date);
     rangePending=false;
+    // rangeAnchor is already dragAnchor (set throughout by onDayDragMoved) -- a drag is a single
+    // gesture with one fixed anchor (its start), same as a Shift+click never moving the anchor
+    // (see onDayClicked()'s ExtendedSelection handling), so it is deliberately left untouched
+    // here rather than moved to the drag's release point.
     emit self->rangeSelected(rangeFrom,rangeTo);
     emitSelectionChanged();
 }
@@ -1520,6 +1569,12 @@ void Calendar_p::emitSelectionChanged()
         {
             setEffectiveMode(CalendarMode::Activation);
         }
+        else if (mode==CalendarMode::ExtendedSelection && effective!=CalendarMode::SingleSelection)
+        {
+            // ExtendedSelection has no Activation-like empty state of its own -- it always rests
+            // at SingleSelection (with single left invalid), see CalendarMode::ExtendedSelection.
+            setEffectiveMode(CalendarMode::SingleSelection);
+        }
     }
 }
 
@@ -1531,6 +1586,70 @@ void Calendar_p::onDayClicked(const QDate& date, Qt::KeyboardModifiers modifiers
 
     const bool ctrl=hasControlModifier(modifiers);
     const bool shift=modifiers.testFlag(Qt::ShiftModifier);
+
+    if (mode==CalendarMode::ExtendedSelection)
+    {
+        if (shift)
+        {
+            // Range from the anchor -- deliberately NOT updated to date below, so repeated
+            // Shift+clicks keep re-deriving the range from the same fixed point (the last plain
+            // or Ctrl+click) instead of "walking" to wherever the previous Shift+click landed.
+            // This is the same anchor convention file browsers and list views use (Explorer,
+            // Finder, Qt's own QAbstractItemView::ExtendedSelection): Shift+click alone never
+            // moves it, only a plain or Ctrl+click does.
+            const auto anchor=rangeAnchor.isValid() ? rangeAnchor : date;
+            single=QDate{};
+            multiple.clear();
+            rangeFrom=std::min(anchor,date);
+            rangeTo=std::max(anchor,date);
+            rangePending=false;
+            setEffectiveMode(CalendarMode::RangeSelection);
+            emit self->rangeSelected(rangeFrom,rangeTo);
+            emitSelectionChanged();
+        }
+        else if (ctrl)
+        {
+            // Seed the multiple set from whatever was selected before -- a range collapses to
+            // its individual days (mirroring Auto's own Range-to-Multiple collapse), a single
+            // date becomes a one-element set -- then toggle this date in/out of it.
+            if (rangeFrom.isValid())
+            {
+                std::set<QDate> collapsed;
+                for (auto d=rangeFrom;d<=rangeTo;d=d.addDays(1))
+                {
+                    collapsed.insert(d);
+                }
+                multiple=std::move(collapsed);
+                rangeFrom=QDate{};
+                rangeTo=QDate{};
+                rangePending=false;
+            }
+            else if (single.isValid())
+            {
+                multiple.clear();
+                multiple.insert(single);
+                single=QDate{};
+            }
+            setEffectiveMode(CalendarMode::MultipleSelection);
+            toggleMultiple(date);
+            rangeAnchor=date;   // moves the anchor, same as a plain click -- see the shift branch
+        }
+        else
+        {
+            // A plain click always collapses back down to exactly this one date, discarding any
+            // range or Ctrl-accumulated set -- the defining "basically SingleSelection" behaviour
+            // of this mode. Also moves the anchor -- see the shift branch above.
+            single=date;
+            rangeFrom=QDate{};
+            rangeTo=QDate{};
+            rangePending=false;
+            multiple.clear();
+            rangeAnchor=date;
+            setEffectiveMode(CalendarMode::SingleSelection);
+            emitSelectionChanged();
+        }
+        return;
+    }
 
     if (mode!=CalendarMode::Auto)
     {
@@ -1570,6 +1689,7 @@ void Calendar_p::onDayClicked(const QDate& date, Qt::KeyboardModifiers modifiers
                 rangeTo=date;
                 rangePending=true;
                 setEffectiveMode(CalendarMode::RangeSelection);
+                emitSelectionChanged();
             }
             else if (ctrl)
             {
@@ -1649,9 +1769,7 @@ void Calendar_p::onDayClicked(const QDate& date, Qt::KeyboardModifiers modifiers
                 rangeFrom=date;
                 rangeTo=date;
                 rangePending=true;
-                restyleSelection();
-                updateTitle();
-                updateClearButton();
+                emitSelectionChanged();
             }
             break;
 
@@ -1692,7 +1810,7 @@ void Calendar::construct(CalendarMode mode)
 
     pimpl->self=this;
     pimpl->mode=mode;
-    pimpl->effective=(mode==CalendarMode::Auto) ? CalendarMode::Activation : mode;
+    pimpl->effective=initialEffectiveMode(mode);
     pimpl->locale=locale();
     pimpl->currentDate=QDate::currentDate();
     pimpl->maxDate=pimpl->currentDate;
@@ -1769,7 +1887,7 @@ void Calendar::setMode(CalendarMode mode)
     pimpl->rangeTo=QDate{};
     pimpl->multiple.clear();
 
-    pimpl->setEffectiveMode((mode==CalendarMode::Auto) ? CalendarMode::Activation : mode);
+    pimpl->setEffectiveMode(initialEffectiveMode(mode));
     emit selectedDatesChanged(QList<QDate>{});
     pimpl->emitSelectionChanged();
 }
@@ -1919,6 +2037,18 @@ bool Calendar::hasSelection() const noexcept
 void Calendar::setSelectedDate(const QDate& date)
 {
     pimpl->single=date;
+    // Auto/ExtendedSelection keep single/rangeFrom-rangeTo/multiple mutually exclusive and
+    // effectiveMode() in sync with whichever of them is actually populated -- every other mode
+    // pins effectiveMode() to itself already, so setting the "wrong" field for that mode is
+    // (as before) simply inert rather than something to reconcile here.
+    if ((pimpl->mode==CalendarMode::Auto || pimpl->mode==CalendarMode::ExtendedSelection) && date.isValid())
+    {
+        pimpl->rangeFrom=QDate{};
+        pimpl->rangeTo=QDate{};
+        pimpl->rangePending=false;
+        pimpl->multiple.clear();
+        pimpl->setEffectiveMode(CalendarMode::SingleSelection);
+    }
     pimpl->emitSelectionChanged();
 }
 
@@ -1935,6 +2065,12 @@ void Calendar::setSelectedRange(const QDate& from, const QDate& to)
     {
         pimpl->rangeFrom=std::min(from,to);
         pimpl->rangeTo=std::max(from,to);
+        if (pimpl->mode==CalendarMode::Auto || pimpl->mode==CalendarMode::ExtendedSelection)
+        {
+            pimpl->single=QDate{};
+            pimpl->multiple.clear();
+            pimpl->setEffectiveMode(CalendarMode::RangeSelection);
+        }
     }
     pimpl->rangePending=false;
     pimpl->emitSelectionChanged();
@@ -1951,6 +2087,13 @@ void Calendar::setSelectedDates(const QList<QDate>& dates)
         {
             pimpl->multiple.insert(d);
         }
+    }
+    if ((pimpl->mode==CalendarMode::Auto || pimpl->mode==CalendarMode::ExtendedSelection) && !pimpl->multiple.empty())
+    {
+        pimpl->single=QDate{};
+        pimpl->rangeFrom=QDate{};
+        pimpl->rangeTo=QDate{};
+        pimpl->setEffectiveMode(CalendarMode::MultipleSelection);
     }
     emit selectedDatesChanged(QList<QDate>(pimpl->multiple.begin(),pimpl->multiple.end()));
     pimpl->emitSelectionChanged();

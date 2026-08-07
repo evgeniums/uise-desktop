@@ -41,7 +41,30 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 class PushButton;
 
 /**
- * @brief Animated dropdown that hosts a Calendar, with an optional Apply/Cancel buttons row.
+ * @brief How a CalendarDropdown/CalendarInput reflects calendar picks.
+ */
+enum class CalendarUpdateMode : int
+{
+    /** Every pick lands immediately -- no Apply/Cancel row, CalendarInput's text updates live.
+     *  Activation/SingleSelection/RangeSelection are each terminal at some single click (the
+     *  activation itself, the date picked, or the range's second endpoint), so the dropdown also
+     *  auto-closes on it (see CalendarDropdown::setAutoClose()); MultipleSelection and
+     *  ExtendedSelection have no such terminal click -- every click is potentially just one of
+     *  several -- and stay open until dismissed. */
+    Auto,
+
+    /** Picks stay pending in the calendar until Apply is clicked; Cancel (or dismissing the
+     *  popup any other way -- Escape, outside click, re-clicking the trigger) discards them and
+     *  reverts the calendar to the last applied state. The Apply/Cancel row is shown for this.
+     *  CalendarMode::Activation is always forced to behave as Auto regardless of this setting --
+     *  a plain activation click has nothing to stage, so there is nothing an Apply step could
+     *  add. */
+    Explicit
+};
+
+/**
+ * @brief Animated dropdown that hosts a Calendar, with an Apply/Cancel buttons row in
+ * CalendarUpdateMode::Explicit.
  *
  * The calendar is created once and kept alive across openings -- like DateTimePickerDropdown and
  * unlike DropdownMenu, this frame never rebuilds its content in fillContent(), since the
@@ -63,32 +86,16 @@ class UISE_DESKTOP_EXPORT CalendarDropdown : public DropdownFrame
         }
 
         /**
-         * @brief Let the buttons row follow the calendar's configured mode automatically.
-         * @param enable Default true.
+         * @brief Set whether picks apply immediately or stay pending until Apply is clicked.
+         * @param mode Default CalendarUpdateMode::Auto.
          *
-         * A click is inherently terminal in Activation/SingleSelection, so the row is hidden
-         * and the dropdown auto-closes on the corresponding signal instead; Range/Multiple
-         * selection need an explicit commit, so the row is shown and auto-close is off. In
-         * Auto mode the row is shown (the user may escalate at any moment) but auto-close still
-         * applies while effectiveMode() is Activation. See setButtonsVisible() to override.
+         * Drives the Apply/Cancel row's visibility -- see CalendarUpdateMode.
          */
-        void setAutoButtons(bool enable);
+        void setUpdateMode(CalendarUpdateMode mode);
 
-        bool isAutoButtons() const noexcept
+        CalendarUpdateMode updateMode() const noexcept
         {
-            return m_autoButtons;
-        }
-
-        /**
-         * @brief Show/hide the Apply/Cancel buttons row explicitly.
-         *
-         * Turns setAutoButtons() off.
-         */
-        void setButtonsVisible(bool enable);
-
-        bool isButtonsVisible() const noexcept
-        {
-            return m_buttonsVisible;
+            return m_updateMode;
         }
 
         /**
@@ -118,9 +125,9 @@ class UISE_DESKTOP_EXPORT CalendarDropdown : public DropdownFrame
         QFrame* m_buttonsFrame=nullptr;
         PushButton* m_applyButton=nullptr;
         PushButton* m_cancelButton=nullptr;
-        bool m_buttonsVisible=false;
-        bool m_autoButtons=true;
+        CalendarUpdateMode m_updateMode=CalendarUpdateMode::Auto;
         bool m_autoClose=true;
+        bool m_sessionCommitted=false;   //!< set by Apply/Cancel; see aboutToHide handling
 
         QDate m_snapshotMonth;
         QDate m_snapshotSingle;
@@ -154,6 +161,11 @@ class UISE_DESKTOP_EXPORT CalendarInput : public LineEdit
 
         void setMode(CalendarMode mode);
         CalendarMode mode() const;
+
+        /** @brief See CalendarDropdown::setUpdateMode(). Forwarded to dropdown(); also governs
+         *  whether this input's own text/signals track the calendar live or only on Apply. */
+        void setUpdateMode(CalendarUpdateMode mode);
+        CalendarUpdateMode updateMode() const noexcept;
 
         void setDateRange(const QDate& min, const QDate& max);
 
@@ -199,6 +211,27 @@ class UISE_DESKTOP_EXPORT CalendarInput : public LineEdit
         void construct(CalendarMode mode);
         void updateText();
         void updatePlaceholder();
+
+        /**
+         * @brief Navigate the popup calendar to the month relevant to the current input state.
+         *
+         * Activation/SingleSelection -> the activated/selected date's month. RangeSelection ->
+         * the range's last (to) date's month. MultipleSelection -> the last (latest) selected
+         * date's month. Falls back to Calendar::showToday() when there is nothing selected yet.
+         * Called on CalendarDropdown::aboutToShow, i.e. every time the popup is about to open.
+         */
+        void navigateToRelevantMonth();
+
+        /** @brief True while calendar picks should land in the input immediately: update mode
+         *  is Auto, or (regardless of update mode) the calendar's configured mode is
+         *  Activation -- see CalendarUpdateMode::Explicit. */
+        bool isLiveUpdating() const;
+
+        /** @brief Pull the calendar's current selection into the input: updateText() plus
+         *  re-emitting whichever of selectionChanged()/rangeSelected()/selectedDatesChanged()
+         *  applies to the calendar's effectiveMode(). Called live when isLiveUpdating(), or once
+         *  on CalendarDropdown::applied() otherwise. */
+        void commitFromCalendar();
 
         CalendarDropdown* m_dropdown=nullptr;
         PushButton* m_pickerButton=nullptr;

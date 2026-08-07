@@ -52,7 +52,16 @@ enum class CalendarMode : int
     SingleSelection,    //!< exactly one date stays selected
     RangeSelection,     //!< a contiguous [from,to] range stays selected
     MultipleSelection,  //!< an arbitrary set of dates stays selected
-    Auto                //!< starts as Activation, escalates on Ctrl/Cmd+click and Shift+click
+    Auto,               //!< starts as Activation, escalates on Ctrl/Cmd+click and Shift+click
+    ExtendedSelection   //!< a plain click always (re)selects exactly one date -- the same
+                         //!< SingleSelection behaviour as above -- Ctrl/Cmd+click adds/removes
+                         //!< that date from a MultipleSelection-style set instead, and
+                         //!< Shift+click (or a click-drag) replaces the whole selection with a
+                         //!< RangeSelection-style range from the last-clicked date. Unlike Auto,
+                         //!< which starts empty and only ever grows more permissive, a plain
+                         //!< click always collapses back down to a single date, so effectiveMode()
+                         //!< genuinely cycles between SingleSelection/RangeSelection/
+                         //!< MultipleSelection as the user works, never Activation
 };
 
 /**
@@ -190,13 +199,17 @@ class UISE_DESKTOP_EXPORT CalendarDay : public Frame
  * 6x7 grid of CalendarDay cells. Supports date activation and single / range / multiple date
  * selection, plus an Auto mode that escalates from activation to multiple selection on
  * Ctrl/Cmd+click and to range selection on Shift+click, and falls back to activation as soon
- * as the selection empties (see setMode()).
+ * as the selection empties, and an ExtendedSelection mode that behaves like SingleSelection for
+ * a plain click but layers Ctrl/Cmd+click (add/remove a date) and Shift+click or a click-drag
+ * (replace the selection with a range) on top of it (see setMode()).
  *
  * Clicking the header opens a MonthPicker wheel in a dropdown, so navigation is never more
- * than one gesture away from any month within [minimumDate(), maximumDate()]. In RangeSelection
- * mode, once a range exists, the header instead shows two independently clickable "from"/"to"
- * controls that jump the grid straight to their own month. In MultipleSelection mode, the
- * header's elided date list opens a scrollable management dropdown listing every selected date.
+ * than one gesture away from any month within [minimumDate(), maximumDate()]. In SingleSelection
+ * mode, once a date is selected, clicking the header title jumps the grid straight to that
+ * date's month instead of opening the picker. In RangeSelection mode, once a range exists, the
+ * header instead shows two independently clickable "from"/"to" controls that jump the grid
+ * straight to their own month. In MultipleSelection mode, the header's elided date list opens a
+ * scrollable management dropdown listing every selected date.
  */
 class UISE_DESKTOP_EXPORT Calendar : public Frame
 {
@@ -235,7 +248,9 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
         void setMode(CalendarMode mode);
         CalendarMode mode() const noexcept;
 
-        /** @brief Mode actually in force right now. Never returns CalendarMode::Auto. */
+        /** @brief Mode actually in force right now. Never returns CalendarMode::Auto or
+         *  CalendarMode::ExtendedSelection -- both report one of Activation/SingleSelection/
+         *  RangeSelection/MultipleSelection here depending on live state. */
         CalendarMode effectiveMode() const noexcept;
 
         void setWeekStart(CalendarWeekStart value);
@@ -355,7 +370,8 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
         /** @brief The displayed page (month) changed. */
         void displayedMonthChanged(const QDate& month);
 
-        /** @brief effectiveMode() changed -- only ever emitted when mode()==Auto. */
+        /** @brief effectiveMode() changed -- only ever emitted when mode() is Auto or
+         *  ExtendedSelection, the two modes where effectiveMode() can differ from mode(). */
         void effectiveModeChanged(CalendarMode mode);
 
     protected:
