@@ -154,20 +154,97 @@ if [[ "$platform" == "macos" ]]; then
 
     macdeployqt "$dest_bundle" -verbose=1 "${executable_args[@]}"
 
-    # ---- verify / repair remaining out-of-bundle dylib references ----
-    # libuisedesktop.dylib / libZXing.*.dylib carry build-tree absolute
-    # install names that macdeployqt does not rewrite (it only patches Qt's
-    # own libraries and the frameworks it already knows about).
+    # ---- verify / repair remaining out-of-bundle references ----
+    # Two gaps macdeployqt leaves behind, fixed in ONE combined, iterated pass
+    # so that a file copied in by one fix is itself rescanned for its own
+    # missing dependencies on the next iteration (a naive two-separate-loops
+    # split, tried first, missed exactly this: QtDBus.framework copied in by
+    # the "missing framework" fix was never rescanned by the "missing
+    # absolute-path dylib" fix, so ITS OWN libdbus-1.3.dylib dependency stayed
+    # unresolved):
+    #  1. libuisedesktop.dylib / libZXing.*.dylib (and any dylib a
+    #     newly-added framework itself needs, e.g. QtDBus -> libdbus-1.3.dylib)
+    #     carry absolute install names that macdeployqt does not rewrite --
+    #     it only patches Qt's own libraries and the frameworks it already
+    #     knows about.
+    #  2. A whole @rpath/*.framework dependency can be missing outright --
+    #     macdeployqt's dependency scan can miss a framework that's only an
+    #     indirect/optional dependency of another Qt module (e.g. QtGui
+    #     linking QtDBus on some Qt builds, a known macdeployqt gap, not
+    #     specific to this project). This one is dangerous precisely because
+    #     it passes silently here -- the app still launches and even runs
+    #     macdeployqt/codesign without error on the machine that built it --
+    #     and only surfaces as a dyld "Library not loaded" crash at launch on
+    #     a machine that doesn't happen to already have that framework
+    #     installed system-wide.
     frameworks_dir="$dest_bundle/Contents/Frameworks"
     mkdir -p "$frameworks_dir"
 
+    # Resolve the source Qt lib dir the same way macdeployqt itself was
+    # found, so case 2 works for both a Homebrew Qt (flat
+    # /opt/homebrew/lib/*.framework layout) and an official Qt installer
+    # prefix (<qt>/lib/*.framework).
+    qt_lib_dir=""
+    macdeployqt_path="`command -v macdeployqt`"
+    if [ -n "$macdeployqt_path" ]; then
+        candidate="$(cd "$(dirname "$macdeployqt_path")/../lib" 2>/dev/null && pwd)"
+        if [ -n "$candidate" ] && [ -d "$candidate" ]; then
+            qt_lib_dir="$candidate"
+        fi
+    fi
+    if [ -z "$qt_lib_dir" ] && command -v qmake >/dev/null 2>&1; then
+        qt_lib_dir="`qmake -query QT_INSTALL_LIBS 2>/dev/null`"
+    fi
+    if [ -z "$qt_lib_dir" ] && [ -n "$QT_HOME" ] && [ -d "$QT_HOME/lib" ]; then
+        qt_lib_dir="$QT_HOME/lib"
+    fi
+    if [ -z "$qt_lib_dir" ] && [ -d /opt/homebrew/lib ]; then
+        qt_lib_dir="/opt/homebrew/lib"
+    fi
+
     fix_pass=1
-    while [ "$fix_pass" -le 5 ]; do
+    while [ "$fix_pass" -le 8 ]; do
         changed=0
         while IFS= read -r -d '' macho; do
             while IFS= read -r dep; do
                 case "$dep" in
-                    /usr/lib/*|/System/*|@rpath/*|@executable_path/*|@loader_path/*|"") continue ;;
+                    /usr/lib/*|/System/*|@executable_path/*|@loader_path/*|"") continue ;;
+                    @rpath/*.framework/*)
+                        fw_name="`echo \"$dep\" | sed -E 's#@rpath/([^/]+)\.framework/.*#\1#'`"
+                        if [ -d "$frameworks_dir/$fw_name.framework" ]; then
+                            continue
+                        fi
+                        if [ -z "$qt_lib_dir" ] || [ ! -d "$qt_lib_dir/$fw_name.framework" ]; then
+                            echo "Cannot resolve framework dependency '$fw_name.framework' referenced by '$macho' (Qt lib dir not found -- set QT_HOME)" >&2
+                            exit 1
+                        fi
+                        echo "macdeployqt did not include $fw_name.framework (needed by `basename \"$macho\"`) -- copying it from $qt_lib_dir"
+                        # -H: a Homebrew Qt's .framework entries under lib/ are themselves
+                        # symlinks into the Cellar (e.g. QtDBus.framework ->
+                        # ../Cellar/qt/6.8.2/lib/QtDBus.framework). Plain `cp -R` does not
+                        # dereference a symlink named directly as its source, so it would
+                        # recreate that same symlink inside the bundle instead of copying
+                        # real content -- not self-contained (breaks on any other machine),
+                        # and `codesign --verify --deep --strict` cannot treat a live symlink
+                        # pointing outside the bundle as nested code ("No such file or
+                        # directory" verify failure). -H dereferences only that OUTER
+                        # command-line symlink; -L was tried first and is wrong here -- it
+                        # also flattens the framework's OWN internal Versions/Current symlink,
+                        # which then makes codesign unable to tell the copy is a versioned
+                        # framework bundle at all ("bundle format is ambiguous (could be app
+                        # or framework)").
+                        cp -RH "$qt_lib_dir/$fw_name.framework" "$frameworks_dir/"
+                        chmod -R u+w "$frameworks_dir/$fw_name.framework"
+                        # $dep is already the exact "@rpath/Name.framework/Versions/X/Name"
+                        # string every referencing binary uses to find it -- reuse it
+                        # verbatim as the copy's own identity too, since a Homebrew Qt
+                        # framework's LC_ID_DYLIB is otherwise an absolute Cellar path.
+                        fw_rel_path="${dep#@rpath/}"
+                        install_name_tool -id "$dep" "$frameworks_dir/$fw_rel_path"
+                        changed=1
+                        continue
+                        ;;
+                    @rpath/*) continue ;;
                 esac
                 dep_base="`basename \"$dep\"`"
                 if [ ! -f "$frameworks_dir/$dep_base" ]; then
