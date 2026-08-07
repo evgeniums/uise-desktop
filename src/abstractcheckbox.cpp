@@ -96,6 +96,11 @@ class AbstractCheckBox_p
         std::shared_ptr<SvgIcon> icon;
 
         QHBoxLayout* boxLayout=nullptr;
+        //! The stretch spacer applyTextPosition() (re)adds on the trailing/leading edge of
+        //! boxLayout, tracked so it can be found and removed on the next call -- boxLayout's
+        //! removeWidget() calls only ever touch indicator/text, and a QSpacerItem has no
+        //! widget for that to key off.
+        QLayoutItem* stretchItem=nullptr;
 
         QWidget* indicator=nullptr;
         QFrame* off=nullptr;
@@ -135,9 +140,10 @@ AbstractCheckBox::AbstractCheckBox(QWidget* parent)
     // row's own alignment to -- the whole panel shrinks to the checkbox's own narrow width and
     // then gets centred as a block by whatever outer layout places the panel, instead of the
     // checkbox filling its row and staying left-anchored the way a native QCheckBox does.
-    // #indicator/#text are packed from pimpl->boxLayout's left edge with no trailing stretch,
-    // so any extra width Minimum now lets this widget claim just becomes harmless blank space
-    // after the (still left-anchored) text -- exactly how native left-aligns too.
+    // #indicator/#text are packed from pimpl->boxLayout's left edge, with an explicit trailing
+    // stretch (see applyTextPosition()) soaking up whatever extra width Minimum now lets this
+    // widget claim -- so it just becomes harmless blank space after the (still left-anchored)
+    // #indicator/#text, exactly how native left-aligns too.
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 
     pimpl->boxLayout=Layout::horizontal(this);
@@ -815,10 +821,29 @@ void AbstractCheckBox::applyTextPosition()
     {
         pimpl->boxLayout->removeWidget(pimpl->indicator);
         pimpl->boxLayout->removeWidget(pimpl->text);
+        if (pimpl->stretchItem!=nullptr)
+        {
+            pimpl->boxLayout->removeItem(pimpl->stretchItem);
+            delete pimpl->stretchItem;
+            pimpl->stretchItem=nullptr;
+        }
     }
 
+    // An explicit stretch -- rather than relying on #text's own unbounded QSizePolicy to
+    // silently soak up the layout's leftover width, see the setSizePolicy() comment in the
+    // constructor -- keeps #indicator anchored to the same edge whether or not #text is
+    // visible. Without it, an empty-text checkbox leaves #indicator (pinned to a fixed size
+    // by checkbox.qss) as boxLayout's ONLY item with nothing to left/right-anchor against, so
+    // Qt's box-layout engine centres it in the row instead of packing it against the edge --
+    // while a checkbox with text never showed the bug because the visible #text item happened
+    // to play the stretch's role. Placed on the trailing edge for After (so #indicator stays
+    // flush against the leading edge, matching native left-alignment) and on the leading edge
+    // for Before (so #indicator stays flush against the trailing edge, as it already did with
+    // visible text).
     if (pimpl->textPosition==TextPosition::Before)
     {
+        pimpl->boxLayout->addStretch(1);
+        pimpl->stretchItem=pimpl->boxLayout->itemAt(pimpl->boxLayout->count()-1);
         pimpl->boxLayout->addWidget(pimpl->text);
         pimpl->boxLayout->addWidget(pimpl->indicator);
     }
@@ -826,6 +851,8 @@ void AbstractCheckBox::applyTextPosition()
     {
         pimpl->boxLayout->addWidget(pimpl->indicator);
         pimpl->boxLayout->addWidget(pimpl->text);
+        pimpl->boxLayout->addStretch(1);
+        pimpl->stretchItem=pimpl->boxLayout->itemAt(pimpl->boxLayout->count()-1);
     }
 
     // Drives checkbox.qss's #text margin swap between the "after" (default) and "before"
