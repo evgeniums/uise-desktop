@@ -1,12 +1,8 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(calendar-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME calendar-demo
+    TITLE "Calendar"
+    DESCRIPTION "Calendar widget and CalendarInput for picking a date."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})

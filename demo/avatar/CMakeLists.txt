@@ -1,15 +1,9 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(avatar-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME avatar-demo
+    TITLE "Avatar"
+    DESCRIPTION "Round avatars built from an image or initials, with an online/offline status badge."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/avatardemo.qrc
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-QT6_ADD_RESOURCES(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/avatardemo.qrc)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})
-

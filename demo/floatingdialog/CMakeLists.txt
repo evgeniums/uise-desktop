@@ -1,12 +1,8 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(floatingdialog-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME floatingdialog-demo
+    TITLE "Floating Dialog"
+    DESCRIPTION "Floating dialog and status dialog overlaid on the main window."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})

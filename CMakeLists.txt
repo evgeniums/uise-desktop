@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(uisedesktop VERSION 0.1.1 LANGUAGES CXX C ASM)
+PROJECT(uisedesktop VERSION 1.0.1 LANGUAGES CXX C ASM)
 
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -466,6 +466,8 @@ IF (NOT MSVC)
 ENDIF (NOT MSVC)
 
 IF (UISE_DESKTOP_DEMO)
+    SET(UISE_DESKTOP_LIB_TARGET ${PROJECT_NAME})
+    INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/uisedemo.cmake)
     ADD_SUBDIRECTORY(demo)
 ENDIF (UISE_DESKTOP_DEMO)
 
@@ -487,6 +489,10 @@ SET (BUILD_CI_FILES
     build/mingw-config.bat
     build/msvc-config.bat
     build/unix-ci.sh
+    build/unix-deploy.sh
+    build/macos-deploy
+    build/linux-deploy
+    build/windows-deploy.bat
 )
 
 ADD_CUSTOM_TARGET(build SOURCES ${BUILD_CI_FILES})

@@ -1,12 +1,8 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(editablelabel-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME editablelabel-demo
+    TITLE "Editable Label"
+    DESCRIPTION "Typed value widgets (text, int, double, date, combo, ...) with an inline edit/apply cycle."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})

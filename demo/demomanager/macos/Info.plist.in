@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
+	<key>CFBundleName</key>
+	<string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+	<key>CFBundleDisplayName</key>
+	<string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+	<key>CFBundleIdentifier</key>
+	<string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
+	<key>CFBundleExecutable</key>
+	<string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+
+	<key>CFBundleVersion</key>
+	<string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+	<key>CFBundleShortVersionString</key>
+	<string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+	<key>CFBundleLongVersionString</key>
+	<string>${MACOSX_BUNDLE_LONG_VERSION_STRING}</string>
+
+	<key>LSMinimumSystemVersion</key>
+	<string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
+
+	<key>CFBundleGetInfoString</key>
+	<string>${MACOSX_BUNDLE_INFO_STRING}</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>${MACOSX_BUNDLE_COPYRIGHT}</string>
+
+	<key>CFBundleIconFile</key>
+	<string>${MACOSX_BUNDLE_ICON_FILE}</string>
+
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+
+	<!-- Sibling demo binaries (qrcodescanner-demo, audiodevicesetting-demo) run inside
+	     this same bundle's Contents/MacOS, so their OS permission prompts are keyed off
+	     this Info.plist. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Required by the QR Code Scanner demo to read QR codes from the camera.</string>
+
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Required by the Audio Device Setting demo to preview the microphone input level.</string>
+</dict>
+</plist>

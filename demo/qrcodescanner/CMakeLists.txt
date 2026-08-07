@@ -1,28 +1,9 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(qrcodescanner-demo LANGUAGES CXX)
 
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+uise_demo(
+    NAME qrcodescanner-demo
+    TITLE "QR Code Scanner"
+    DESCRIPTION "Scans QR codes from a live camera feed."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    MACOS_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in
 )
-
-# ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-
-qt_add_executable(${PROJECT_NAME}
-    MANUAL_FINALIZATION
-    ${SOURCES}
-)
-
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} PRIVATE ${CMAKE_PROJECT_NAME})
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    WIN32_EXECUTABLE TRUE
-    MACOSX_BUNDLE TRUE
-)
-
-if(APPLE)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
-    )
-endif()
-
-qt_finalize_executable(${PROJECT_NAME})

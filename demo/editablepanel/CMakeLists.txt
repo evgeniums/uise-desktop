@@ -1,13 +1,9 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(editablepanel-demo LANGUAGES CXX)
 
-SET (HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/demopanel.hpp
+uise_demo(
+    NAME editablepanel-demo
+    TITLE "Editable Panel"
+    DESCRIPTION "Form panel built from EditablePanel/EditablePanelGrid rows."
+    HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/demopanel.hpp
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})

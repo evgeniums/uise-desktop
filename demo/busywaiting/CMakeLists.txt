@@ -1,12 +1,8 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(busywaiting-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME busywaiting-demo
+    TITLE "Busy Waiting"
+    DESCRIPTION "Busy-waiting spinner overlay shown while a frame is loading."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})

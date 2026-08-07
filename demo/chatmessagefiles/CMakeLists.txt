@@ -1,14 +1,9 @@
 CMAKE_MINIMUM_REQUIRED (VERSION 3.16)
-PROJECT(chatmessagefiles-demo LANGUAGES CXX)
 
-SET (HEADERS
+uise_demo(
+    NAME chatmessagefiles-demo
+    TITLE "Chat Message Files / Images"
+    DESCRIPTION "File and image attachments rendered inside a chat message bubble."
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/chatmessagefilesdemo.qrc
 )
-
-SET (SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
-
-QT6_ADD_RESOURCES(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/chatmessagefilesdemo.qrc)
-
-ADD_EXECUTABLE(${PROJECT_NAME} ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CMAKE_PROJECT_NAME})
