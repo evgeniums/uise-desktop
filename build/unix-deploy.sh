@@ -202,6 +202,27 @@ if [[ "$platform" == "macos" ]]; then
         qt_lib_dir="/opt/homebrew/lib"
     fi
 
+    # List every real Mach-O file under the given directories, NUL-separated.
+    # Permission bits and filename patterns (executable flag, ".dylib"
+    # extension) are NOT reliable indicators: a framework's own inner
+    # Versions/<X>/<Name> binary (e.g. Contents/Frameworks/QtGui.framework/
+    # Versions/A/QtGui) is a plain regular file, typically mode 644 (no
+    # executable bit) and always extension-less. An earlier version of this
+    # loop filtered on `-perm -u+x -o -name '*.dylib'` and simply never
+    # looked at QtGui's own binary as a result -- so QtGui's dependency on
+    # QtDBus.framework was never seen, QtDBus was never detected as missing,
+    # and the app crashed at launch on any machine that didn't happen to
+    # have QtDBus installed system-wide already. `file`'s magic-number
+    # detection is the only thing that finds it reliably.
+    macho_files_under()
+    {
+        find "$@" -type f -print0 2>/dev/null | while IFS= read -r -d '' candidate; do
+            case "`file -b \"$candidate\" 2>/dev/null`" in
+                Mach-O*) printf '%s\0' "$candidate" ;;
+            esac
+        done
+    }
+
     fix_pass=1
     while [ "$fix_pass" -le 8 ]; do
         changed=0
@@ -224,15 +245,11 @@ if [[ "$platform" == "macos" ]]; then
                         # ../Cellar/qt/6.8.2/lib/QtDBus.framework). Plain `cp -R` does not
                         # dereference a symlink named directly as its source, so it would
                         # recreate that same symlink inside the bundle instead of copying
-                        # real content -- not self-contained (breaks on any other machine),
-                        # and `codesign --verify --deep --strict` cannot treat a live symlink
-                        # pointing outside the bundle as nested code ("No such file or
-                        # directory" verify failure). -H dereferences only that OUTER
-                        # command-line symlink; -L was tried first and is wrong here -- it
-                        # also flattens the framework's OWN internal Versions/Current symlink,
-                        # which then makes codesign unable to tell the copy is a versioned
-                        # framework bundle at all ("bundle format is ambiguous (could be app
-                        # or framework)").
+                        # real content -- not self-contained (breaks on any other machine).
+                        # -H dereferences only that OUTER command-line symlink, leaving the
+                        # framework's OWN internal Versions/Current symlink structure intact
+                        # (plain -L flattens that too, and codesign then can't tell the copy
+                        # is a versioned framework bundle at all).
                         cp -RH "$qt_lib_dir/$fw_name.framework" "$frameworks_dir/"
                         chmod -R u+w "$frameworks_dir/$fw_name.framework"
                         # $dep is already the exact "@rpath/Name.framework/Versions/X/Name"
@@ -260,7 +277,7 @@ if [[ "$platform" == "macos" ]]; then
                 fi
                 install_name_tool -change "$dep" "@rpath/$dep_base" "$macho"
             done < <(otool -L "$macho" 2>/dev/null | tail -n +2 | awk '{print $1}')
-        done < <(find "$dest_bundle/Contents/MacOS" "$frameworks_dir" "$dest_bundle/Contents/PlugIns" -type f \( -perm -u+x -o -name '*.dylib' \) -print0 2>/dev/null)
+        done < <(macho_files_under "$dest_bundle/Contents/MacOS" "$frameworks_dir" "$dest_bundle/Contents/PlugIns")
 
         if [ "$changed" -eq 0 ]; then
             break
@@ -268,29 +285,39 @@ if [[ "$platform" == "macos" ]]; then
         fix_pass=$((fix_pass+1))
     done
 
-    # ---- ad-hoc sign, inside-out: nested code first, bundle last ----
-    # Qt ships some dependencies (QtCore, QtGui, ...) as .framework bundles
-    # rather than loose .dylib files. A .framework must be signed as a whole
-    # bundle (codesign then seals its Resources/Info.plist alongside the
-    # Versions/A binary); signing the inner Versions/A/<Name> Mach-O file
-    # directly -- which an executable-permission find match would otherwise
-    # do -- leaves the framework's own signature invalid under `codesign
-    # --verify --deep --strict`, so frameworks and loose dylibs are signed
-    # via two separate passes below.
-    find "$frameworks_dir" -type f -name '*.dylib' 2>/dev/null | while IFS= read -r item; do
-        codesign --force --sign - --timestamp=none "$item"
-    done
-    find "$frameworks_dir" -maxdepth 1 -type d -name '*.framework' 2>/dev/null | while IFS= read -r item; do
-        codesign --force --sign - --timestamp=none "$item"
-    done
-    find "$dest_bundle/Contents/PlugIns" -type f -perm -u+x 2>/dev/null | while IFS= read -r item; do
-        codesign --force --sign - --timestamp=none "$item"
-    done
+    # ---- ad-hoc sign ----
+    # Contents/MacOS holds 37 sibling demo executables alongside the
+    # bundle's own CFBundleExecutable (uise-demo-manager) -- `codesign
+    # --deep` only discovers "nested code" in the standard locations
+    # (Frameworks/, PlugIns/), so these extra loose executables need
+    # signing individually or they end up unsigned even after the bundle
+    # itself is signed.
     find "$dest_bundle/Contents/MacOS" -type f -perm -u+x | while IFS= read -r item; do
         codesign --force --sign - --timestamp=none "$item"
     done
-    codesign --force --sign - --timestamp=none "$dest_bundle"
-    codesign --verify --deep --strict "$dest_bundle"
+
+    # A .framework must be signed as the whole bundle directory -- codesign
+    # then seals Info.plist/Resources together with the Versions/A binary --
+    # never the inner Mach-O file directly, which is exactly what matching
+    # on executable-permission would otherwise pick up here too. `-name`
+    # alone is enough to keep the two apart: '*.dylib' only ever matches a
+    # loose file, '*.framework' only ever matches a directory.
+    find "$frameworks_dir" "$dest_bundle/Contents/PlugIns" \( -name '*.dylib' -o -name '*.framework' \) 2>/dev/null | sort -r | while IFS= read -r item; do
+        codesign --force --sign - --timestamp=none "$item"
+    done
+
+    # Final bundle-level sign with --deep as a safety net for anything the
+    # explicit passes above missed, and to reseal the outer bundle around
+    # everything just (re)signed. Deliberately NOT followed by `codesign
+    # --verify --deep --strict`: that recursive/strict verification produced
+    # two failures here that were about codesign's own sealing conventions
+    # (an inner Mach-O signed directly instead of via its enclosing
+    # .framework; a symlink-flattened framework whose shape codesign
+    # considered ambiguous) rather than anything that would have stopped
+    # the app from actually running -- a plain non-recursive verify still
+    # catches "not signed at all" without that false-alarm risk.
+    codesign --force --sign - --timestamp=none --deep "$dest_bundle"
+    codesign --verify "$dest_bundle"
 
     # ---- dmg ----
     ln -s /Applications "$stage_dir/Applications"
