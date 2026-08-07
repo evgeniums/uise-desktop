@@ -29,10 +29,14 @@ SET_PROPERTY(GLOBAL PROPERTY UISE_DEMO_REGISTRY "")
 #     [HEADERS <header files...>]
 #     [RESOURCES <.qrc files...>]
 #     [MACOS_INFO_PLIST <Info.plist.in>]
+#     [PRIORITY <single digit, default 5>]
 # )
+# PRIORITY controls ordering in the demo manager's list: entries are sorted
+# by PRIORITY first, then alphabetically by TITLE within the same PRIORITY.
+# Lower sorts first (0 = pinned to the very top, 9 = pinned to the bottom).
 FUNCTION(uise_demo)
 
-    SET(oneValueArgs NAME TITLE DESCRIPTION MACOS_INFO_PLIST)
+    SET(oneValueArgs NAME TITLE DESCRIPTION MACOS_INFO_PLIST PRIORITY)
     SET(multiValueArgs SOURCES HEADERS RESOURCES)
     CMAKE_PARSE_ARGUMENTS(ARG "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -41,6 +45,15 @@ FUNCTION(uise_demo)
     ENDIF()
     IF (NOT ARG_TITLE)
         SET(ARG_TITLE ${ARG_NAME})
+    ENDIF()
+    # DEFINED, not a truthiness check: CMake's if() treats the string "0" as
+    # boolean false, so `IF (NOT ARG_PRIORITY)` would wrongly reset an
+    # explicit PRIORITY 0 back to the default.
+    IF (NOT DEFINED ARG_PRIORITY)
+        SET(ARG_PRIORITY "5")
+    ENDIF()
+    IF (NOT ARG_PRIORITY MATCHES "^[0-9]$")
+        MESSAGE(FATAL_ERROR "uise_demo(${ARG_NAME}): PRIORITY must be a single digit 0-9")
     ENDIF()
 
     SET(demoSources ${ARG_HEADERS} ${ARG_SOURCES})
@@ -94,7 +107,7 @@ FUNCTION(uise_demo)
         MESSAGE(FATAL_ERROR "uise_demo(${ARG_NAME}): TITLE/DESCRIPTION must not contain '|' or ';'")
     ENDIF()
 
-    # Registry entries are sorted by title, so TITLE goes first.
-    SET_PROPERTY(GLOBAL APPEND PROPERTY UISE_DEMO_REGISTRY "${ARG_TITLE}|${ARG_NAME}|${ARG_DESCRIPTION}")
+    # Registry entries are sorted as plain strings, so PRIORITY then TITLE go first.
+    SET_PROPERTY(GLOBAL APPEND PROPERTY UISE_DEMO_REGISTRY "${ARG_PRIORITY}|${ARG_TITLE}|${ARG_NAME}|${ARG_DESCRIPTION}")
 
 ENDFUNCTION()
