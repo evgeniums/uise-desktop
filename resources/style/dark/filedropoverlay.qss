@@ -1,0 +1,31 @@
+uise--FileDropOverlay {
+background-color: rgba(30,30,32,230);
+}
+
+uise--FileDropOverlay #documentsPanel,
+uise--FileDropOverlay #imagesPanel {
+border-color: #666666;
+background-color: transparent;
+}
+
+uise--FileDropOverlay #documentsPanel[hovered="true"],
+uise--FileDropOverlay #imagesPanel[hovered="true"] {
+border-color: #4C9AFF;
+background-color: rgba(76,154,255,25);
+}
+
+uise--FileDropOverlay #panelCaption {
+color: #CCCCCC;
+}
+
+uise--FileDropOverlay #panelCaption[hovered="true"] {
+color: #4C9AFF;
+}
+
+uise--FileDropOverlay #panelSubtitle {
+color: #999999;
+}
+
+uise--FileDropOverlay #panelSubtitle[hovered="true"] {
+color: #4C9AFF;
+}

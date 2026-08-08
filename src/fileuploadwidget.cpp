@@ -48,6 +48,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/mimedatautils.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/scrollarea.hpp>
@@ -63,16 +64,6 @@ namespace {
 std::shared_ptr<SvgIcon> fileUploadIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("FileUpload::%1").arg(alias),context);
-}
-
-const QStringList& acceptedImageMimeFormats()
-{
-    static const QStringList formats={
-        QStringLiteral("image/png"),
-        QStringLiteral("image/jpeg"),
-        QStringLiteral("image/webp")
-    };
-    return formats;
 }
 
 // QWidget::setMinimumHeight()/setMaximumHeight() (what updateListAreaHeight() below uses to

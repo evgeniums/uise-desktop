@@ -110,6 +110,9 @@
         <file>style/light/loadcontrol.json</file>
         <file>style/dark/loadcontrol.qss</file>
         <file>style/light/loadcontrol.qss</file>
+        <file>style/loadcontrolerror.json</file>
+        <file>style/dark/loadcontrolerror.json</file>
+        <file>style/light/loadcontrolerror.json</file>
         <file>style/fastswitchbutton.json</file>
         <file>style/fastswitchbutton.qss</file>
         <file>style/dark/fastswitchbutton.json</file>
@@ -134,6 +137,12 @@
         <file>style/light/chatmessagefiles.json</file>
         <file>style/dark/chatmessagefiles.qss</file>
         <file>style/light/chatmessagefiles.qss</file>
+        <file>style/filedropoverlay.json</file>
+        <file>style/filedropoverlay.qss</file>
+        <file>style/dark/filedropoverlay.json</file>
+        <file>style/light/filedropoverlay.json</file>
+        <file>style/dark/filedropoverlay.qss</file>
+        <file>style/light/filedropoverlay.qss</file>
         <file>style/lineedit.json</file>
         <file>style/lineedit.qss</file>
         <file>style/dark/lineedit.json</file>

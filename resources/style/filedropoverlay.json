@@ -1,0 +1,12 @@
+{
+    "contexts" : [
+        {
+            "name" : "FileDropOverlay",
+            "aliases" : {
+                "upload" : "${uise-svg-icons-1}/file-upload",
+                "documents" : "${uise-svg-icons-1}/files",
+                "images" : "${uise-svg-icons-1}/photo"
+            }
+        }
+    ]
+}

@@ -1,0 +1,41 @@
+/* Translucent over whatever the page is showing, the same rgba-over-the-parent idiom as
+   light/modalpopup.qss -- opaque enough to read the captions against arbitrary chat content,
+   translucent enough that the user can still see where they are dropping. */
+uise--FileDropOverlay {
+background-color: rgba(255,255,255,225);
+}
+
+uise--FileDropOverlay #documentsPanel,
+uise--FileDropOverlay #imagesPanel {
+border-color: #B3B3B3;
+background-color: transparent;
+}
+
+/* Keyed on a dynamic "hovered" property set from the overlay's own dragMoveEvent hit test, not
+   on Qt's :hover pseudo-state: no mouse-move events are delivered at all during a drag, so
+   :hover never fires. Same property name and same set-it-on-every-widget-you-style discipline
+   as IconTextButton::setHovered() -- a dynamic property change on the panel does not
+   invalidate the cached style evaluation of its child labels, so each of them carries and is
+   repolished with its own copy of the property rather than being matched through an ancestor
+   attribute selector. */
+uise--FileDropOverlay #documentsPanel[hovered="true"],
+uise--FileDropOverlay #imagesPanel[hovered="true"] {
+border-color: #0A66C2;
+background-color: rgba(10,102,194,20);
+}
+
+uise--FileDropOverlay #panelCaption {
+color: #444444;
+}
+
+uise--FileDropOverlay #panelCaption[hovered="true"] {
+color: #0A66C2;
+}
+
+uise--FileDropOverlay #panelSubtitle {
+color: #777777;
+}
+
+uise--FileDropOverlay #panelSubtitle[hovered="true"] {
+color: #0A66C2;
+}

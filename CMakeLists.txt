@@ -62,6 +62,7 @@ SET (HEADERS
     include/uise/desktop/utils/filesizeformat.hpp
     include/uise/desktop/utils/filetypeicon.hpp
     include/uise/desktop/utils/albumlayout.hpp
+    include/uise/desktop/utils/mimedatautils.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -193,6 +194,7 @@ SET (HEADERS
     include/uise/desktop/abstractfileuploadwidget.hpp
     include/uise/desktop/fileuploadwidget.hpp
     include/uise/desktop/fileuploaddialog.hpp
+    include/uise/desktop/filedropoverlay.hpp
 
     include/uise/desktop/abstractimageviewer.hpp
     include/uise/desktop/imageviewer.hpp
@@ -254,6 +256,7 @@ SET (SOURCES
     src/linkedlistview.cpp
     src/singleshottimer.cpp
     src/directchildwidget.cpp
+    src/mimedatautils.cpp
     src/alignedstretchingwidget.cpp
     src/editablelabel.cpp
     src/style.cpp
@@ -358,6 +361,7 @@ SET (SOURCES
     src/fileuploadlistitem.cpp
     src/fileuploadwidget.cpp
     src/fileuploaddialog.cpp
+    src/filedropoverlay.cpp
 
     src/abstractimageviewer.cpp
     src/imageviewer.cpp

@@ -1,0 +1,18 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "FileDropOverlay",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#999999" },
+                    "on" :  { "currentColor" : "#999999" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                }
+            }
+        }
+    ]
+}

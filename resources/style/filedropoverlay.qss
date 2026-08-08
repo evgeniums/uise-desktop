@@ -1,0 +1,56 @@
+/*
+ * FileDropOverlay geometry. Colours live in light/filedropoverlay.qss and
+ * dark/filedropoverlay.qss; everything here is theme-independent.
+ *
+ * qproperty-leaveWatchdogIntervalMs - how often, in ms, an active overlay re-checks the real
+ *   pointer position against its own geometry and dismisses itself once the pointer is no
+ *   longer over it; 0 disables. This is the backstop for a QDragLeaveEvent that never arrives,
+ *   not the primary hide path -- see filedropoverlay.hpp.
+ *
+ * qproperty-panelOrientation - "horizontal" (default, panels side by side) or "vertical"
+ *   (documents above images) for the two-panel (has-images) layout; the single full-area panel
+ *   shown when there are no images is unaffected either way. Like every other qproperty-* here,
+ *   this is reapplied on every repolish (e.g. a theme reload) -- a C++ setPanelOrientation()
+ *   call overrides it only until the next one.
+ */
+
+uise--FileDropOverlay {
+padding:16px;
+border:none;
+qproperty-leaveWatchdogIntervalMs: 200;
+qproperty-panelOrientation: "horizontal";
+}
+
+/* The gap between the two panels comes from this margin, not from the layout's spacing:
+   Layout::horizontal()/Layout::vertical() (see FileDropOverlay::rebuildPanelsLayout()) zero the
+   layout's own margins/spacing by design, same as every other widget in this library, and Qt
+   paints a styled QFrame's background/border into its borderRect, i.e. inside the QSS margin --
+   so half the gap comes from each panel. */
+uise--FileDropOverlay #documentsPanel,
+uise--FileDropOverlay #imagesPanel {
+margin:8px;
+padding:24px;
+border:2px dashed transparent;
+border-radius:12px;
+}
+
+/* RoundedImage has no intrinsic size for an SVG icon -- it derives one from its own widget
+   size (re-derived on every resize while autoSize is on), so the size must be declared here,
+   same as fileupload.qss/chatmessagefiles.qss do for their own icon slots. */
+uise--FileDropOverlay uise--RoundedImage {
+min-width:44px;
+max-width:44px;
+min-height:44px;
+max-height:44px;
+margin-bottom:12px;
+}
+
+uise--FileDropOverlay #panelCaption {
+font-size:15px;
+font-weight:bold;
+}
+
+uise--FileDropOverlay #panelSubtitle {
+font-size:12px;
+margin-top:4px;
+}
