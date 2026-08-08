@@ -54,7 +54,12 @@ class UISE_DESKTOP_EXPORT AbstractLoadControl : public QFrame
             CanUpload,
             Paused,
             Waiting,
-            Running
+            Running,
+            Complete,    //!< This item's own transfer is done while sibling items in the same
+                         //!< message are not -- once every item is done, the caller hides the
+                         //!< load control entirely rather than leaving it in this state.
+            Failed       //!< Transfer failed; distinct from Paused (a user-initiated pause),
+                         //!< shown with a distinct error icon/color -- see LoadControl.
         };
         Q_ENUM(State)
 
