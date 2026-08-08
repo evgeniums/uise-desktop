@@ -186,6 +186,16 @@ void QrCodeScanner::construct()
 
     updateCameras();
     connect(&pimpl->devices, &QMediaDevices::videoInputsChanged, this, &QrCodeScanner::updateCameras);
+
+    QTimer::singleShot(
+        100,
+        this,
+        [this]()
+        {
+            start();
+        }
+    );
+
 }
 
 //--------------------------------------------------------------------------
