@@ -184,7 +184,7 @@ void LoadControl::paintEvent(QPaintEvent * /*event*/)
 
 //--------------------------------------------------------------------------
 
-void LoadControl::updateIcon(const QString name)
+void LoadControl::updateIcon(const QString name, const QString& context)
 {
     if (name.isEmpty())
     {
@@ -193,7 +193,14 @@ void LoadControl::updateIcon(const QString name)
         return;
     }
 
-    m_icon=Style::instance().svgIconLocator().icon(QString("LoadControl::%1").arg(name),this);
+    // Every state but Failed resolves through the shared "LoadControl" context, whose
+    // normal/hovered colors are the same gray-to-black/gray-to-white scale for every icon --
+    // see loadcontrol.json. Failed passes "LoadControlError" instead, a small second context
+    // (loadcontrolerror.json) that exists purely to give that one icon its own red color scale
+    // -- a failed transfer is not just a different pictogram from Paused, it should actually
+    // read as an error, not a themed variant of the others.
+    auto ctx=context.isEmpty() ? QStringLiteral("LoadControl") : context;
+    m_icon=Style::instance().svgIconLocator().icon(QString("%1::%2").arg(ctx,name),this);
     update();
 }
 
@@ -334,6 +341,7 @@ void LoadControl::hideEvent(QHideEvent* event)
 void LoadControl::updateState()
 {
     QString iconName;
+    QString iconContext;
     switch (state())
     {
         case State::None:
@@ -370,9 +378,22 @@ void LoadControl::updateState()
             iconName="stop";
         }
         break;
+
+        case State::Complete:
+        {
+            iconName="complete";
+        }
+        break;
+
+        case State::Failed:
+        {
+            iconName="failed";
+            iconContext="LoadControlError";
+        }
+        break;
     }
 
-    updateIcon(iconName);
+    updateIcon(iconName,iconContext);
 }
 
 //--------------------------------------------------------------------------

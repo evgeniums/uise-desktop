@@ -120,7 +120,7 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
 
     private:
 
-        void updateIcon(const QString name={});
+        void updateIcon(const QString name={}, const QString& context={});
         void updateAnimation();
 
         std::shared_ptr<SvgIcon> m_icon;

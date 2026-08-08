@@ -1,0 +1,18 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "LoadControlError",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#C0392B" },
+                    "on" :  { "currentColor" : "#922B21" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#922B21" },
+                    "on" :  { "currentColor" : "#922B21" }
+                }
+            }
+        }
+    ]
+}

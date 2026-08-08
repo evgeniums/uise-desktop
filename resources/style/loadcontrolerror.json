@@ -1,0 +1,10 @@
+{
+    "contexts" : [
+        {
+            "name" : "LoadControlError",
+            "aliases" : {
+                "failed" : "${uise-svg-icons-1}/exclamation-circle"
+            }
+        }
+    ]
+}
