@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATFILEITEM_HPP
 
 #include <vector>
+#include <algorithm>
 
 #include <QString>
 #include <QImage>
@@ -36,6 +37,9 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractloadcontrol.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
+
+class QWidget;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -53,7 +57,27 @@ enum class ChatFileTransferState : uint8_t
     Pending,     //!< Queued, waiting for its turn.
     Running,     //!< Transfer in progress, see transferred()/size().
     Paused,      //!< Transfer paused by the user.
-    Failed       //!< Transfer failed; load control offers a retry.
+    Failed,      //!< Transfer failed; load control offers a retry.
+    Complete     //!< This item's own transfer just finished while sibling items in the same
+                 //!< message have not -- once every item is done, the caller hides the load
+                 //!< control entirely rather than leaving it in this state.
+};
+
+/**
+ * @brief Ids of the drop-down menu entries offered by ChatMessageFileItem/ChatMessageImageItem,
+ *  shared between both so a host can handle AbstractChatMessageFiles/AbstractChatMessageImages
+ *  uniformly.
+ */
+enum class ChatFileMenuAction : int
+{
+    Open=1,
+    SaveAs=2,
+    Forward=3,
+    ShowInFolder=4,
+    OpenWith=5,
+    CopyFileName=6,
+    Pause=7,
+    Resume=8
 };
 
 /**
@@ -207,6 +231,9 @@ class UISE_DESKTOP_EXPORT ChatFileItem
          * @brief Check whether "Show in folder" should be offered for this item.
          * @return false unless the host has a real filesystem location to reveal (the brief
          *  marks this menu entry optional).
+         *
+         * Only consulted by the default menu policy -- ignored once setMenuActions() has been
+         * given a non-empty list, see its own docs.
          */
         bool isShowInFolderAvailable() const noexcept
         {
@@ -216,6 +243,36 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         void setShowInFolderAvailable(bool enable) noexcept
         {
             m_showInFolderAvailable=enable;
+        }
+
+        /**
+         * @brief Set exactly which context-menu entries ChatMessageFileItem/ChatMessageImageItem
+         *  should build for this item, and in what order.
+         * @param actions Entries to show. ChatFileMenuAction::Pause/Resume are still additionally
+         *  filtered by state() -- listing both is fine, only the one that matches state() shows.
+         *
+         * An empty list (the default) means "use the library's own default policy": Open, SaveAs,
+         * Forward, plus ShowInFolder when isShowInFolderAvailable() -- i.e. today's menu, so every
+         * existing caller is unaffected. A non-empty list is taken verbatim; the host is expected
+         * to already know which entries make sense for this item (e.g. an "embedded-viewer-capable"
+         * flag gating OpenWith is the host's own concern, not this class's).
+         */
+        void setMenuActions(std::vector<ChatFileMenuAction> actions)
+        {
+            m_menuActions=std::move(actions);
+        }
+
+        const std::vector<ChatFileMenuAction>& menuActions() const noexcept
+        {
+            return m_menuActions;
+        }
+
+        /**
+         * @brief Check if a given action is present in menuActions().
+         */
+        bool hasMenuAction(ChatFileMenuAction action) const
+        {
+            return std::find(m_menuActions.begin(),m_menuActions.end(),action)!=m_menuActions.end();
         }
 
     private:
@@ -231,22 +288,10 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         ChatFileTransferState m_state=ChatFileTransferState::Ready;
         qint64 m_transferred=0;
         bool m_showInFolderAvailable=false;
+        std::vector<ChatFileMenuAction> m_menuActions;
 };
 
 using ChatFileItems=std::vector<ChatFileItem>;
-
-/**
- * @brief Ids of the drop-down menu entries offered by ChatMessageFileItem/ChatMessageImageItem,
- *  shared between both so a host can handle AbstractChatMessageFiles/AbstractChatMessageImages
- *  uniformly.
- */
-enum class ChatFileMenuAction : int
-{
-    Open=1,
-    SaveAs=2,
-    Forward=3,
-    ShowInFolder=4
-};
 
 /**
  * @brief Map a chat file item's transfer state to the state of the AbstractLoadControl shown
@@ -258,6 +303,19 @@ enum class ChatFileMenuAction : int
  *  control at all (the caller should hide it instead of mapping to None).
  */
 UISE_DESKTOP_EXPORT AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state, bool incoming);
+
+/**
+ * @brief Build the drop-down menu rows for one chat file/image item, the single place this is
+ *  done so ChatMessageFileItem::rebuildMenu()/ChatMessageImageItem::rebuildMenu() cannot drift.
+ * @param item Item the menu is being built for.
+ * @param imageItem Reserved for a future per-kind divergence -- both item kinds currently share
+ *  one default policy and one label/icon set.
+ * @param context Widget the icons will be painted in (for theme/mode resolution).
+ * @return Rows built from item.menuActions() if non-empty (verbatim, in that order), else the
+ *  default policy -- see ChatFileItem::setMenuActions(). ChatFileMenuAction::Pause/Resume are
+ *  additionally filtered by item.state() so at most one of the pair is ever included.
+ */
+UISE_DESKTOP_EXPORT std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, QWidget* context);
 
 UISE_DESKTOP_NAMESPACE_END
 

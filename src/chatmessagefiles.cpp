@@ -144,6 +144,10 @@ void ChatMessageFiles::rebuildList()
                         emit openRequested(id);
                         break;
 
+                    case (ChatFileMenuAction::OpenWith):
+                        emit openWithRequested(id);
+                        break;
+
                     case (ChatFileMenuAction::SaveAs):
                         emit saveAsRequested(id);
                         break;
@@ -154,6 +158,18 @@ void ChatMessageFiles::rebuildList()
 
                     case (ChatFileMenuAction::ShowInFolder):
                         emit showInFolderRequested(id);
+                        break;
+
+                    case (ChatFileMenuAction::CopyFileName):
+                        emit copyFileNameRequested(id);
+                        break;
+
+                    case (ChatFileMenuAction::Pause):
+                        emit pauseRequested(id);
+                        break;
+
+                    case (ChatFileMenuAction::Resume):
+                        emit resumeRequested(id);
                         break;
                 }
             }

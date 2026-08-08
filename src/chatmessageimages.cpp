@@ -180,6 +180,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                     switch (static_cast<ChatFileMenuAction>(action))
                     {
                         case (ChatFileMenuAction::Open):
+                            emit openRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::OpenWith):
                             emit openWithRequested(id);
                             break;
 
@@ -193,6 +197,18 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
                         case (ChatFileMenuAction::ShowInFolder):
                             emit showInFolderRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::CopyFileName):
+                            emit copyFileNameRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::Pause):
+                            emit pauseRequested(id);
+                            break;
+
+                        case (ChatFileMenuAction::Resume):
+                            emit resumeRequested(id);
                             break;
                     }
                 }

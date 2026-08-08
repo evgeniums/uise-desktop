@@ -84,9 +84,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
         void loadControlClicked(const QUuid& id);
 
         void openRequested(const QUuid& id);
+        void openWithRequested(const QUuid& id);
         void saveAsRequested(const QUuid& id);
         void forwardRequested(const QUuid& id);
         void showInFolderRequested(const QUuid& id);
+        void copyFileNameRequested(const QUuid& id);
+        void pauseRequested(const QUuid& id);
+        void resumeRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

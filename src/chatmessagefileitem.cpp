@@ -243,17 +243,7 @@ bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
 
 void ChatMessageFileItem::rebuildMenu()
 {
-    std::vector<MenuItem> items;
-
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::Open),tr("Open"),menuIcon(QStringLiteral("open"),this)));
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::SaveAs),tr("Save as"),menuIcon(QStringLiteral("saveAs"),this)));
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::Forward),tr("Forward"),menuIcon(QStringLiteral("forward"),this)));
-    if (pimpl->item.isShowInFolderAvailable())
-    {
-        items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::ShowInFolder),tr("Show in folder"),menuIcon(QStringLiteral("showInFolder"),this)));
-    }
-
-    pimpl->menu->setItems(std::move(items));
+    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,false,this));
 }
 
 //--------------------------------------------------------------------------
@@ -274,6 +264,10 @@ void ChatMessageFileItem::updateIconSlot()
         if (it.state()==ChatFileTransferState::Running)
         {
             pimpl->loadControl->setProgress(it.transferred(),it.size());
+        }
+        else if (it.state()==ChatFileTransferState::Complete)
+        {
+            pimpl->loadControl->setProgress(100.0);
         }
         return;
     }

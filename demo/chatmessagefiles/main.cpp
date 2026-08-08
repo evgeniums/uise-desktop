@@ -189,8 +189,13 @@ int main(int argc, char *argv[])
     ChatFileItems fileItems1{
         makeFileEntry(QStringLiteral("quarterly-report.pdf"),842*1024,ChatFileTransferState::Ready),
         makeFileEntry(QStringLiteral("a-very-long-descriptive-filename-that-needs-eliding-in-the-middle.docx"),1024*1024,ChatFileTransferState::NotLoaded),
-        makeFileEntry(QStringLiteral("archive.zip"),12*1024*1024,ChatFileTransferState::Running)
+        makeFileEntry(QStringLiteral("archive.zip"),12*1024*1024,ChatFileTransferState::Running),
+        // State::Complete: this item's own transfer is done while archive.zip above is still
+        // running -- the load control shows a check icon instead of disappearing, since the
+        // whole message is not done yet (see AbstractLoadControl::State::Complete).
+        makeFileEntry(QStringLiteral("sync-notes.md"),6*1024,ChatFileTransferState::Complete)
     };
+    fileItems1[3].setTransferred(fileItems1[3].size());
     auto* fileBody1=new ChatMessageFiles();
     fileBody1->setItems(fileItems1);
     fileBody1->setComment(QStringLiteral("Here are the files you asked for."));
@@ -203,8 +208,19 @@ int main(int argc, char *argv[])
     ChatFileItems fileItems2{
         makeFileEntry(QStringLiteral("photo-original.jpg"),3*1024*1024,ChatFileTransferState::Ready),
         makeFileEntry(QStringLiteral("notes.txt"),4*1024,ChatFileTransferState::Failed),
-        makeFileEntry(QStringLiteral("manual-control.bin"),8*1024*1024,ChatFileTransferState::Running)
+        makeFileEntry(QStringLiteral("manual-control.bin"),8*1024*1024,ChatFileTransferState::Running),
+        // Custom setMenuActions(): overrides the library's default {Open,SaveAs,Forward} menu
+        // entirely. Both Pause and Resume are listed, but state()==Paused means only Resume
+        // actually shows -- buildChatFileMenuItems() filters the pair by transfer state even
+        // when a host lists both.
+        makeFileEntry(QStringLiteral("draft-proposal.docx"),512*1024,ChatFileTransferState::Paused)
     };
+    fileItems2[3].setMenuActions({
+        ChatFileMenuAction::OpenWith,
+        ChatFileMenuAction::CopyFileName,
+        ChatFileMenuAction::Pause,
+        ChatFileMenuAction::Resume
+    });
     fileItems2[2].setTransferred(0);
     auto manualItemId=fileItems2[2].id();
     auto* fileBody2=new ChatMessageFiles();
@@ -330,9 +346,13 @@ int main(int argc, char *argv[])
         QObject::connect(body,&AbstractChatMessageFiles::itemClicked,body,[label,&logId](const QUuid& id){logId(label,"itemClicked",id);});
         QObject::connect(body,&AbstractChatMessageFiles::loadControlClicked,body,[label,&logId](const QUuid& id){logId(label,"loadControlClicked",id);});
         QObject::connect(body,&AbstractChatMessageFiles::openRequested,body,[label,&logId](const QUuid& id){logId(label,"openRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::openWithRequested,body,[label,&logId](const QUuid& id){logId(label,"openWithRequested",id);});
         QObject::connect(body,&AbstractChatMessageFiles::saveAsRequested,body,[label,&logId](const QUuid& id){logId(label,"saveAsRequested",id);});
         QObject::connect(body,&AbstractChatMessageFiles::forwardRequested,body,[label,&logId](const QUuid& id){logId(label,"forwardRequested",id);});
         QObject::connect(body,&AbstractChatMessageFiles::showInFolderRequested,body,[label,&logId](const QUuid& id){logId(label,"showInFolderRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::copyFileNameRequested,body,[label,&logId](const QUuid& id){logId(label,"copyFileNameRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::pauseRequested,body,[label,&logId](const QUuid& id){logId(label,"pauseRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::resumeRequested,body,[label,&logId](const QUuid& id){logId(label,"resumeRequested",id);});
     };
     wireFiles(fileBody1,QStringLiteral("file1"));
     wireFiles(fileBody2,QStringLiteral("file2"));
@@ -341,10 +361,14 @@ int main(int argc, char *argv[])
     {
         QObject::connect(body,&AbstractChatMessageImages::itemClicked,body,[label,&logId](const QUuid& id){logId(label,"itemClicked",id);});
         QObject::connect(body,&AbstractChatMessageImages::loadControlClicked,body,[label,&logId](const QUuid& id){logId(label,"loadControlClicked",id);});
+        QObject::connect(body,&AbstractChatMessageImages::openRequested,body,[label,&logId](const QUuid& id){logId(label,"openRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::openWithRequested,body,[label,&logId](const QUuid& id){logId(label,"openWithRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::saveAsRequested,body,[label,&logId](const QUuid& id){logId(label,"saveAsRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::forwardRequested,body,[label,&logId](const QUuid& id){logId(label,"forwardRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::showInFolderRequested,body,[label,&logId](const QUuid& id){logId(label,"showInFolderRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::copyFileNameRequested,body,[label,&logId](const QUuid& id){logId(label,"copyFileNameRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::pauseRequested,body,[label,&logId](const QUuid& id){logId(label,"pauseRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::resumeRequested,body,[label,&logId](const QUuid& id){logId(label,"resumeRequested",id);});
     };
     wireImages(imgBody1,QStringLiteral("img1"));
     wireImages(imgBody2,QStringLiteral("img2"));

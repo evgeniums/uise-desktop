@@ -41,9 +41,10 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  *  tasks/chat-message-file-type.md.
  *
  * Mirrors AbstractChatMessageFiles exactly (same item-update/comment/menu-close shape, items
- * addressed by ChatFileItem::id()) so a host can treat both bodies uniformly; the only
- * difference is openWithRequested() in place of openRequested(), matching the brief's "Open
- * with" wording for image items versus plain "Open" for file items.
+ * addressed by ChatFileItem::id(), and the same openRequested()/openWithRequested() pair now
+ * that ChatFileMenuAction::OpenWith exists as its own entry -- Open routes to an embedded
+ * viewer when one is available for the item, OpenWith always routes to an external
+ * application) so a host can treat both bodies uniformly.
  */
 class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessageBody
 {
@@ -93,10 +94,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
 
         void loadControlClicked(const QUuid& id);
 
+        void openRequested(const QUuid& id);
         void openWithRequested(const QUuid& id);
         void saveAsRequested(const QUuid& id);
         void forwardRequested(const QUuid& id);
         void showInFolderRequested(const QUuid& id);
+        void copyFileNameRequested(const QUuid& id);
+        void pauseRequested(const QUuid& id);
+        void resumeRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -197,6 +197,10 @@ void ChatMessageImageItem::refresh()
         {
             pimpl->loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
         }
+        else if (pimpl->item.state()==ChatFileTransferState::Complete)
+        {
+            pimpl->loadControl->setProgress(100.0);
+        }
         pimpl->loadControl->raise();
     }
 
@@ -259,17 +263,7 @@ void ChatMessageImageItem::resizeEvent(QResizeEvent* event)
 
 void ChatMessageImageItem::rebuildMenu()
 {
-    std::vector<MenuItem> items;
-
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::Open),tr("Open with"),menuIcon(QStringLiteral("open"),this)));
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::SaveAs),tr("Save as"),menuIcon(QStringLiteral("saveAs"),this)));
-    items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::Forward),tr("Forward"),menuIcon(QStringLiteral("forward"),this)));
-    if (pimpl->item.isShowInFolderAvailable())
-    {
-        items.push_back(MenuItem(static_cast<int>(ChatFileMenuAction::ShowInFolder),tr("Show in folder"),menuIcon(QStringLiteral("showInFolder"),this)));
-    }
-
-    pimpl->menu->setItems(std::move(items));
+    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,true,this));
 }
 
 //--------------------------------------------------------------------------

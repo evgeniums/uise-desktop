@@ -9,7 +9,11 @@
                 "forward" : "${uise-svg-icons-1}/arrow-forward-up",
                 "showInFolder" : "${uise-svg-icons-1}/folder",
                 "file" : "${uise-svg-icons-1}/file",
-                "image" : "${uise-svg-icons-1}/photo"
+                "image" : "${uise-svg-icons-1}/photo",
+                "openWith" : "${uise-svg-icons-1}/external-link",
+                "copyFileName" : "${uise-svg-icons-1}/copy",
+                "pause" : "${uise-svg-icons-1}/player-pause",
+                "resume" : "${uise-svg-icons-1}/player-play"
             }
         }
     ]
