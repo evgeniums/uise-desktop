@@ -5,7 +5,7 @@ min-width:56px;min-height:56px;max-width:56px;max-height:56px;
 
 uise--LoadControl #sample,
 uise--CircleBusy #sample {
-border: 6px solid transparent;
+border: 3px solid transparent;
 }
 
 /*
