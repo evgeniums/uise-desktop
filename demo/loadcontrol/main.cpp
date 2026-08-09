@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     auto cl=Layout::horizontal(controlsFrame);
 
     auto state=new QComboBox();
-    state->addItems({"None","Can download","Can upload","Paused","Waiting","Running","Complete","Failed"});
+    state->addItems({"None","Download","Upload","Running","Waiting","Complete","Failed","Cancelled","Cancel","Stop"});
     state->setCurrentIndex(1);
     cl->addWidget(state);
     QObject::connect(

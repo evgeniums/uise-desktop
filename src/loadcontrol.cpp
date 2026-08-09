@@ -349,33 +349,29 @@ void LoadControl::updateState()
         }
         break;
 
-        case State::CanDownload:
+        case State::Download:
         {
             iconName="download";
         }
         break;
 
-        case State::CanUpload:
+        case State::Upload:
         {
             iconName="upload";
         }
         break;
 
-        case State::Paused:
+        case State::Running:
         {
-            iconName="pause";
+            // deliberately not a pause/stop glyph -- what a click here does is entirely up to
+            // the host (see LoadControlMenu), so the icon just says "active", not "click pauses"
+            iconName="running";
         }
         break;
 
         case State::Waiting:
         {
-            iconName="wait";
-        }
-        break;
-
-        case State::Running:
-        {
-            iconName="stop";
+            iconName="waiting";
         }
         break;
 
@@ -391,9 +387,32 @@ void LoadControl::updateState()
             iconContext="LoadControlError";
         }
         break;
+
+        case State::Cancelled:
+        {
+            iconName="cancelled";
+        }
+        break;
+
+        case State::Cancel:
+        {
+            iconName="cancel";
+        }
+        break;
+
+        case State::Stop:
+        {
+            iconName="stop";
+        }
+        break;
     }
 
     updateIcon(iconName,iconContext);
+
+    // the ring itself signals "this is actively happening" -- Running is the only state
+    // representing a live, in-progress operation; every other state is idle (not started,
+    // paused, done, failed, or terminal), so its ring stays still
+    setProgressMode(state()==State::Running ? ProgressMode::AnimatedProgress : ProgressMode::Static);
 }
 
 //--------------------------------------------------------------------------

@@ -1,6 +1,12 @@
 uise--LoadControl,
-uise--CircleBusy {
+uise--CircleBusy,
+uise--LoadControlMenu {
 min-width:56px;min-height:56px;max-width:56px;max-height:56px;
+}
+
+uise--LoadControlMenu {
+padding:0;
+margin:0;
 }
 
 uise--LoadControl #sample,

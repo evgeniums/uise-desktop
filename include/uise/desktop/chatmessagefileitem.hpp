@@ -43,11 +43,15 @@ class ChatMessageFileItem_p;
 /**
  * @brief One row of a file chat message's contents list.
  *
- * Structured after FileUploadListItem's Row view: a fixed-size icon slot on the left (an
- * AbstractLoadControl while the item is transferring, an AvatarWidget preview for a completed
- * image item, or a per-extension/generic file icon otherwise -- exactly one visible at a time,
- * swapped by show/hide so a progress tick never has to rebuild anything), an elided-in-the-
- * middle clickable file name with its size below, and a drop-down menu button.
+ * Structured after FileUploadListItem's Row view: a fixed-size icon slot on the left (a
+ * LoadControlMenu -- wrapping an AbstractLoadControl -- while the item is transferring, an
+ * AvatarWidget preview for a completed image item, or a per-extension/generic file icon
+ * otherwise -- exactly one visible at a time, swapped by show/hide so a progress tick never has
+ * to rebuild anything), an elided-in-the-middle clickable file name with its size below, and a
+ * drop-down menu button. The icon slot's own LoadControlMenu offers pause-or-cancel directly on
+ * click while running -- see its own docs -- so this row has no separate always-visible Cancel
+ * control of its own; the drop-down menu still carries Cancel too, for a Pending/Paused/Failed
+ * item to which that click-to-pause flow does not apply.
  */
 class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
 {
@@ -67,7 +71,7 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         /**
          * @brief Set the item to display.
          * @param item New item content.
-         * @param incoming Direction of the owning message -- selects CanDownload vs CanUpload
+         * @param incoming Direction of the owning message -- selects Download vs Upload
          *  for the load control of a not-yet-transferred item.
          */
         void setItem(const ChatFileItem& item, bool incoming);
@@ -89,6 +93,17 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         IconTextButton* menuButton() const;
 
         /**
+         * @brief Set how the file-name/size two-line block is aligned within the row's height.
+         * @param alignment Only the vertical component is read (anything else is ignored, and an
+         *  unrecognized vertical component falls back to Qt::AlignTop). Qt::AlignVCenter (the
+         *  default) centers the two-line block within the full row height; Qt::AlignTop keeps
+         *  both lines flush with the icon slot's top edge instead.
+         */
+        void setTextVerticalAlignment(Qt::Alignment alignment);
+
+        Qt::Alignment textVerticalAlignment() const noexcept;
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * Meant for a host embedding this item in a scrolling list to call whenever the list
@@ -104,6 +119,10 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          */
         void clicked();
 
+        /**
+         * @brief Emitted when the load control is clicked in any state but Running -- see
+         *  LoadControlMenu::clicked().
+         */
         void loadControlClicked();
 
         /**
@@ -111,6 +130,19 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          * @param action One of ChatFileMenuAction.
          */
         void menuTriggered(int action);
+
+        /**
+         * @brief Forwarded from the icon slot's LoadControlMenu -- see its own docs for the
+         *  full pause-or-cancel-decision flow these two participate in. Each is also
+         *  independently reachable via the drop-down menu's own Pause/Cancel entries
+         *  (menuTriggered() with the matching ChatFileMenuAction); the host fans both trigger
+         *  paths into the same AbstractChatMessageFiles signals. There is no resumeRequested()
+         *  here -- LoadControlMenu never emits one (see its own docs), and resuming a paused
+         *  item is a plain loadControlClicked() the host interprets itself, same as any other
+         *  non-Running state.
+         */
+        void pauseRequested();
+        void cancelRequested();
 
     protected:
 

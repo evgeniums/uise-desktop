@@ -210,9 +210,15 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                         case (ChatFileMenuAction::Resume):
                             emit resumeRequested(id);
                             break;
+
+                        case (ChatFileMenuAction::Cancel):
+                            emit cancelRequested(id);
+                            break;
                     }
                 }
             );
+            connect(tile,&ChatMessageImageItem::pauseRequested,this,[this,tile](){emit pauseRequested(tile->item().id());});
+            connect(tile,&ChatMessageImageItem::cancelRequested,this,[this,tile](){emit cancelRequested(tile->item().id());});
 
             pimpl->tiles.push_back(tile);
         }

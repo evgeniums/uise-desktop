@@ -52,6 +52,9 @@ class ChatMessageFiles_p
         ChatMessageText* comment=nullptr;
         QString commentText;
         bool commentMarkdown=true;
+
+        // matches ChatMessageFileItem's own default -- see its docs for the rationale
+        Qt::Alignment textVerticalAlignment=Qt::AlignVCenter;
 };
 
 //--------------------------------------------------------------------------
@@ -130,6 +133,7 @@ void ChatMessageFiles::rebuildList()
     for (const auto& item : pimpl->items)
     {
         auto row=new ChatMessageFileItem(pimpl->contentsFrame);
+        row->setTextVerticalAlignment(pimpl->textVerticalAlignment);
         row->setItem(item,incoming);
 
         auto id=item.id();
@@ -171,9 +175,15 @@ void ChatMessageFiles::rebuildList()
                     case (ChatFileMenuAction::Resume):
                         emit resumeRequested(id);
                         break;
+
+                    case (ChatFileMenuAction::Cancel):
+                        emit cancelRequested(id);
+                        break;
                 }
             }
         );
+        connect(row,&ChatMessageFileItem::pauseRequested,this,[this,id](){emit pauseRequested(id);});
+        connect(row,&ChatMessageFileItem::cancelRequested,this,[this,id](){emit cancelRequested(id);});
 
         pimpl->contentsLayout->addWidget(row);
         pimpl->rows.push_back(row);
@@ -223,6 +233,32 @@ void ChatMessageFiles::closeMenus()
     {
         row->closeMenu();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::setTextVerticalAlignment(Qt::Alignment alignment)
+{
+    // normalized the same way ChatMessageFileItem::setTextVerticalAlignment() does, so
+    // textVerticalAlignment() reports exactly what every row actually ends up using
+    auto vAlign=alignment & Qt::AlignVertical_Mask;
+    if (vAlign!=Qt::AlignTop && vAlign!=Qt::AlignVCenter)
+    {
+        vAlign=Qt::AlignTop;
+    }
+
+    pimpl->textVerticalAlignment=vAlign;
+    for (auto* row : pimpl->rows)
+    {
+        row->setTextVerticalAlignment(vAlign);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment ChatMessageFiles::textVerticalAlignment() const
+{
+    return pimpl->textVerticalAlignment;
 }
 
 //--------------------------------------------------------------------------

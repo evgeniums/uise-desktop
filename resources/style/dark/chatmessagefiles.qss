@@ -10,10 +10,10 @@ uise--ChatMessageFileItem #infoLabel {
 color: #999999;
 }
 
-uise--ChatMessageFileItem uise--IconTextButton[hovered="true"],
-uise--ChatMessageImageItem uise--IconTextButton[hovered="true"] {
-background-color: rgba(255,255,255,15);
-}
+/* deliberately no [hovered="true"] background-color for the menu IconTextButton here -- its
+   padding is rectangular while the icon's own hover color swap (see chatmessagefiles.json's
+   modes) already gives hover feedback; layering a rect background behind a rounded control
+   looked odd on click/hover */
 
 /* icons here are light (see chatmessagefiles.json's dark mode colors), so the backing behind
    the image-tile menu button needs to be dark for contrast */

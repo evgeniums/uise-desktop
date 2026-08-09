@@ -13,7 +13,8 @@
                 "openWith" : "${uise-svg-icons-1}/external-link",
                 "copyFileName" : "${uise-svg-icons-1}/copy",
                 "pause" : "${uise-svg-icons-1}/player-pause",
-                "resume" : "${uise-svg-icons-1}/player-play"
+                "resume" : "${uise-svg-icons-1}/player-play",
+                "cancel" : "${uise-svg-icons-1}/x"
             }
         }
     ]

@@ -46,7 +46,11 @@ class ChatMessageImageItem_p;
  *
  * A clickable, center-cropped preview filling whatever rect the owning ChatMessageImages gives
  * it (see albumLayout()), with a drop-down menu button floating over its top-right corner and,
- * while the image is not yet transferred, an AbstractLoadControl centered on top of it.
+ * while the image is not yet transferred, a LoadControlMenu -- wrapping an AbstractLoadControl
+ * -- centered on top of it. That load control offers pause-or-cancel directly on click while
+ * running -- see its own docs -- so this tile has no separate always-visible Cancel control of
+ * its own; the drop-down menu still carries Cancel too, for a Pending/Paused/Failed item to
+ * which that click-to-pause flow does not apply.
  */
 class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
 {
@@ -66,7 +70,7 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         /**
          * @brief Set the item to display.
          * @param item New item content.
-         * @param incoming Direction of the owning message -- selects CanDownload vs CanUpload
+         * @param incoming Direction of the owning message -- selects Download vs Upload
          *  for the load control of a not-yet-transferred item.
          */
         void setItem(const ChatFileItem& item, bool incoming);
@@ -82,6 +86,9 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
 
         AbstractLoadControl* loadControl() const;
 
+        /**
+         * @brief The drop-down menu button floating over the tile's top-right corner.
+         */
         IconTextButton* menuButton() const;
 
         /**
@@ -106,6 +113,10 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
          */
         void clicked();
 
+        /**
+         * @brief Emitted when the load control is clicked in any state but Running -- see
+         *  LoadControlMenu::clicked().
+         */
         void loadControlClicked();
 
         /**
@@ -113,6 +124,13 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
          * @param action One of ChatFileMenuAction.
          */
         void menuTriggered(int action);
+
+        /**
+         * @brief Forwarded from the load control's LoadControlMenu -- see
+         *  ChatMessageFileItem::pauseRequested() for the full rationale, identical here.
+         */
+        void pauseRequested();
+        void cancelRequested();
 
     protected:
 

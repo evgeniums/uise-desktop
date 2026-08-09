@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/loadcontrol.hpp>
+#include <uise/desktop/loadcontrolmenu.hpp>
 #include <uise/desktop/chatmessagefileitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -46,6 +47,11 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 namespace {
 
 const QSize IconSlotSize{56,56};
+
+// vertical gap between the file-name and size lines -- addSpacing() rather than the layout's
+// own spacing() (kept at 0 by Layout::vertical's reset) so it applies only between these two
+// widgets, not also between them and the top/bottom stretch spacers bracketing the pair
+constexpr int TextLineSpacing=4;
 
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
@@ -78,10 +84,12 @@ class ChatMessageFileItem_p
         QFrame* iconSlot=nullptr;
         RoundedImage* fileIcon=nullptr;
         AvatarWidget* imagePreview=nullptr;
-        LoadControl* loadControl=nullptr;
+        LoadControlMenu* loadControl=nullptr;
 
         ElidedLabel* nameLabel=nullptr;
         QLabel* infoLabel=nullptr;
+        QVBoxLayout* textColumnLayout=nullptr;
+        Qt::Alignment textVerticalAlignment=Qt::AlignVCenter;
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
@@ -117,26 +125,46 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     pimpl->imagePreview->setClickable(true);
     connect(pimpl->imagePreview,&AvatarWidget::clicked,this,&ChatMessageFileItem::clicked);
 
-    pimpl->loadControl=new LoadControl(pimpl->iconSlot);
+    pimpl->loadControl=new LoadControlMenu(pimpl->iconSlot);
     pimpl->loadControl->setObjectName("loadControl");
     pimpl->loadControl->setGeometry(QRect(QPoint(0,0),IconSlotSize));
-    connect(pimpl->loadControl,&LoadControl::clicked,this,&ChatMessageFileItem::loadControlClicked);
+    connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageFileItem::loadControlClicked);
+    connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageFileItem::pauseRequested);
+    connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageFileItem::cancelRequested);
 
     auto textColumn=new QFrame(this);
     textColumn->setObjectName("textColumn");
-    auto textColumnLayout=Layout::vertical(textColumn);
+    pimpl->textColumnLayout=Layout::vertical(textColumn);
     layout->addWidget(textColumn,1);
+
+    // top/bottom spacers bracketing the two labels -- textColumn's own height follows the row's
+    // (56px, driven by iconSlot), well beyond what two lines of text need, and a plain QVBoxLayout
+    // with neither stretch would otherwise hand that leftover space to the labels themselves
+    // (both default to a Preferred vertical size policy), stretching their cells and leaving the
+    // text looking vertically centered *within each of those inflated cells* -- i.e. the name
+    // appears top-ish and the size line bottom-ish with a gap between, not the two lines sitting
+    // together. Routing all leftover space into these spacers instead keeps the labels at their
+    // natural sizeHint height; see setTextVerticalAlignment() for how the top spacer's stretch
+    // factor picks Top vs Center. Both start at stretch 1 (equal split -> centered), matching
+    // pimpl->textVerticalAlignment's own Qt::AlignVCenter default -- kept in sync by hand rather
+    // than via setTextVerticalAlignment(), which no-ops when the requested value already matches
+    // the stored one.
+    pimpl->textColumnLayout->addStretch(1);
 
     pimpl->nameLabel=new ElidedLabel(textColumn);
     pimpl->nameLabel->setObjectName("nameLabel");
     pimpl->nameLabel->setElideMode(Qt::ElideMiddle);
     pimpl->nameLabel->setCursor(Qt::PointingHandCursor);
     pimpl->nameLabel->installEventFilter(this);
-    textColumnLayout->addWidget(pimpl->nameLabel);
+    pimpl->textColumnLayout->addWidget(pimpl->nameLabel);
+
+    pimpl->textColumnLayout->addSpacing(TextLineSpacing);
 
     pimpl->infoLabel=new QLabel(textColumn);
     pimpl->infoLabel->setObjectName("infoLabel");
-    textColumnLayout->addWidget(pimpl->infoLabel);
+    pimpl->textColumnLayout->addWidget(pimpl->infoLabel);
+
+    pimpl->textColumnLayout->addStretch(1);
 
     pimpl->menuButton=new IconTextButton(
         menuIcon(QStringLiteral("menu"),this),
@@ -145,6 +173,7 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     );
     pimpl->menuButton->setObjectName("menuButton");
     pimpl->menuButton->setText(QString());
+    pimpl->menuButton->setCursor(Qt::PointingHandCursor);
     layout->addWidget(pimpl->menuButton);
 
     // DropdownMenu is constructed parentless, like FileUploadListItem's own per-item menu:
@@ -194,6 +223,7 @@ void ChatMessageFileItem::refresh()
 {
     updateIconSlot();
     updateInfoLabels();
+    pimpl->loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);
 
     pimpl->nameLabel->setText(pimpl->item.fileName());
 
@@ -204,7 +234,7 @@ void ChatMessageFileItem::refresh()
 
 AbstractLoadControl* ChatMessageFileItem::loadControl() const
 {
-    return pimpl->loadControl;
+    return pimpl->loadControl->loadControl();
 }
 
 //--------------------------------------------------------------------------
@@ -212,6 +242,35 @@ AbstractLoadControl* ChatMessageFileItem::loadControl() const
 IconTextButton* ChatMessageFileItem::menuButton() const
 {
     return pimpl->menuButton;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::setTextVerticalAlignment(Qt::Alignment alignment)
+{
+    auto vAlign=alignment & Qt::AlignVertical_Mask;
+    if (vAlign!=Qt::AlignTop && vAlign!=Qt::AlignVCenter)
+    {
+        vAlign=Qt::AlignTop;
+    }
+
+    if (pimpl->textVerticalAlignment==vAlign)
+    {
+        return;
+    }
+    pimpl->textVerticalAlignment=vAlign;
+
+    // Top: all leftover space goes to the bottom spacer (top spacer stretch 0), keeping both
+    // lines flush with the icon slot's top edge. Center: both spacers get an equal share, so the
+    // leftover splits evenly above and below and the two-line block centers as a whole.
+    pimpl->textColumnLayout->setStretch(0,vAlign==Qt::AlignVCenter?1:0);
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment ChatMessageFileItem::textVerticalAlignment() const noexcept
+{
+    return pimpl->textVerticalAlignment;
 }
 
 //--------------------------------------------------------------------------
@@ -243,7 +302,7 @@ bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
 
 void ChatMessageFileItem::rebuildMenu()
 {
-    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,false,this));
+    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,false,pimpl->incoming,this));
 }
 
 //--------------------------------------------------------------------------
@@ -261,7 +320,7 @@ void ChatMessageFileItem::updateIconSlot()
     {
         pimpl->loadControl->setVisible(true);
         pimpl->loadControl->setState(chatFileLoadControlState(it.state(),pimpl->incoming));
-        if (it.state()==ChatFileTransferState::Running)
+        if (it.state()==ChatFileTransferState::Running || it.state()==ChatFileTransferState::Paused)
         {
             pimpl->loadControl->setProgress(it.transferred(),it.size());
         }

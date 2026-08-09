@@ -102,6 +102,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
         void copyFileNameRequested(const QUuid& id);
         void pauseRequested(const QUuid& id);
         void resumeRequested(const QUuid& id);
+        void cancelRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

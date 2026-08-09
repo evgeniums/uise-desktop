@@ -80,7 +80,11 @@ ChatFileItem makeFileEntry(QString name, qint64 size, ChatFileTransferState stat
     item.setFileName(std::move(name));
     item.setSize(size);
     item.setState(state);
-    if (state==ChatFileTransferState::Running)
+    // Paused maps to the same Download/Upload load-control state as NotLoaded (see
+    // AbstractLoadControl::State::Download's own docs) -- giving it a transferred() value too
+    // is what actually shows the difference: a partially-filled progress ring instead of an
+    // empty one, since there's no separate "Resume" icon to carry that information anymore.
+    if (state==ChatFileTransferState::Running || state==ChatFileTransferState::Paused)
     {
         item.setTransferred(size/3);
     }
@@ -95,7 +99,7 @@ ChatFileItem makeImageEntry(const QSize& pixelSize, const QColor& c1, const QCol
     item.setPixelSize(pixelSize);
     item.setSize(static_cast<qint64>(pixelSize.width())*pixelSize.height()*3);
     item.setState(state);
-    if (state==ChatFileTransferState::Running)
+    if (state==ChatFileTransferState::Running || state==ChatFileTransferState::Paused)
     {
         item.setTransferred(item.size()/4);
     }
@@ -213,13 +217,41 @@ int main(int argc, char *argv[])
         // entirely. Both Pause and Resume are listed, but state()==Paused means only Resume
         // actually shows -- buildChatFileMenuItems() filters the pair by transfer state even
         // when a host lists both.
-        makeFileEntry(QStringLiteral("draft-proposal.docx"),512*1024,ChatFileTransferState::Paused)
+        makeFileEntry(QStringLiteral("draft-proposal.docx"),512*1024,ChatFileTransferState::Paused),
+        // Cancelled sits right next to notes.txt's Failed above -- a neutral grey glyph
+        // (chatFileLoadControlState() maps it through the plain LoadControl context) versus
+        // Failed's red LoadControlError one, direct visual proof they're not the same icon.
+        // Neither cancellable nor listing Cancel: isChatFileCancellable() is false for
+        // Cancelled, so this item shows no cancel affordance of its own -- it's already done.
+        makeFileEntry(QStringLiteral("cancelled-download.iso"),96*1024*1024,ChatFileTransferState::Cancelled)
     };
+    // Cancel is opt-in, like Pause/Resume: only an item whose menuActions() lists it gets the
+    // drop-down menu entry (filtered by isChatFileCancellable()). manual-control.bin below is
+    // additionally Running, so its load control's own click also offers pause-or-cancel directly
+    // -- see LoadControlMenu -- without needing the drop-down menu at all. photo-original.jpg
+    // (Ready) is left with the default empty menuActions() to prove an opted-out item is
+    // unaffected.
+    fileItems2[1].setMenuActions({
+        ChatFileMenuAction::Open,
+        ChatFileMenuAction::SaveAs,
+        ChatFileMenuAction::Forward,
+        ChatFileMenuAction::Resume,
+        ChatFileMenuAction::Cancel
+    });
+    fileItems2[2].setMenuActions({
+        ChatFileMenuAction::Open,
+        ChatFileMenuAction::SaveAs,
+        ChatFileMenuAction::Forward,
+        ChatFileMenuAction::Pause,
+        ChatFileMenuAction::Resume,
+        ChatFileMenuAction::Cancel
+    });
     fileItems2[3].setMenuActions({
         ChatFileMenuAction::OpenWith,
         ChatFileMenuAction::CopyFileName,
         ChatFileMenuAction::Pause,
-        ChatFileMenuAction::Resume
+        ChatFileMenuAction::Resume,
+        ChatFileMenuAction::Cancel
     });
     fileItems2[2].setTransferred(0);
     auto manualItemId=fileItems2[2].id();
@@ -263,6 +295,172 @@ int main(int argc, char *argv[])
         }
     );
 
+    // pushes manual-control.bin straight to Cancelled -- makes the Running->Cancelled icon swap
+    // directly observable, as an alternative to picking Cancel from the load control's own
+    // pause-or-cancel popup (click the load control itself while it's Running to try that path)
+    auto* manualCancelButton=new QPushButton(QStringLiteral("Cancel"));
+    manualProgressLayout->addWidget(manualCancelButton);
+    QObject::connect(
+        manualCancelButton,
+        &QPushButton::clicked,
+        fileBody2,
+        [fileBody2,manualItemId]()
+        {
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    auto updated=it;
+                    updated.setState(ChatFileTransferState::Cancelled);
+                    fileBody2->updateItem(manualItemId,updated);
+                    break;
+                }
+            }
+        }
+    );
+
+    // mirrors manualCancelButton above, but driven by the real signals rather than a dedicated
+    // button -- filtered to manual-control.bin so the load control's own pause-or-cancel popup
+    // (Running -> click it), the ⋮ menu's Pause/Resume/Cancel entries, and clicking the control
+    // again while Paused all actually change this one item's state instead of just being
+    // logged, exercising the whole flow end to end: click load control -> Paused (progress
+    // preserved) -> Cancel picked -> Cancelled, or Resume picked (⋮ menu) / control clicked
+    // again -> back to Running. LoadControlMenu itself has no silent-resume path (see its own
+    // docs) -- dismissing the popup without picking anything just leaves it Paused.
+    QObject::connect(
+        fileBody2,
+        &AbstractChatMessageFiles::pauseRequested,
+        fileBody2,
+        [fileBody2,manualItemId](const QUuid& id)
+        {
+            if (id!=manualItemId)
+            {
+                return;
+            }
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    auto updated=it;
+                    updated.setState(ChatFileTransferState::Paused);
+                    fileBody2->updateItem(manualItemId,updated);
+                    break;
+                }
+            }
+        }
+    );
+    // manual-control.bin now lists ChatFileMenuAction::Resume alongside Pause (see its
+    // setMenuActions() above) precisely so this has something to fire from -- buildChatFileMenuItems()
+    // shows Resume instead of Pause automatically once state() is Paused, no separate wiring
+    // needed for the menu content itself, only for what picking it actually does.
+    QObject::connect(
+        fileBody2,
+        &AbstractChatMessageFiles::resumeRequested,
+        fileBody2,
+        [fileBody2,manualItemId](const QUuid& id)
+        {
+            if (id!=manualItemId)
+            {
+                return;
+            }
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    auto updated=it;
+                    updated.setState(ChatFileTransferState::Running);
+                    fileBody2->updateItem(manualItemId,updated);
+                    break;
+                }
+            }
+        }
+    );
+    QObject::connect(
+        fileBody2,
+        &AbstractChatMessageFiles::cancelRequested,
+        fileBody2,
+        [fileBody2,manualItemId](const QUuid& id)
+        {
+            if (id!=manualItemId)
+            {
+                return;
+            }
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    auto updated=it;
+                    updated.setState(ChatFileTransferState::Cancelled);
+                    fileBody2->updateItem(manualItemId,updated);
+                    break;
+                }
+            }
+        }
+    );
+    // LoadControlMenu only auto-intercepts a click while state()==Running -- once Paused, its
+    // load control shows a plain Download/Upload arrow and a click just passes through as an
+    // ordinary loadControlClicked(), same as any other non-Running state (see
+    // AbstractLoadControl::State::Download's own docs: click means "start or continue", the
+    // host decides which). This is that decision for manual-control.bin: clicking it while
+    // Paused resumes it -- the second of the two ways back from Paused, alongside picking
+    // Resume from the ⋮ menu above.
+    QObject::connect(
+        fileBody2,
+        &AbstractChatMessageFiles::loadControlClicked,
+        fileBody2,
+        [fileBody2,manualItemId](const QUuid& id)
+        {
+            if (id!=manualItemId)
+            {
+                return;
+            }
+            for (const auto& it : fileBody2->items())
+            {
+                if (it.id()==manualItemId)
+                {
+                    if (it.state()==ChatFileTransferState::Paused)
+                    {
+                        auto updated=it;
+                        updated.setState(ChatFileTransferState::Running);
+                        fileBody2->updateItem(manualItemId,updated);
+                    }
+                    break;
+                }
+            }
+        }
+    );
+
+    // --- text vertical alignment selector, applied to every file body -- the direct
+    // demonstration of AbstractChatMessageFiles::setTextVerticalAlignment() being configurable
+    // per view/instance, same pattern as the animation-mode selector further down ---
+
+    auto* textAlignFrame=new QFrame(central);
+    auto* textAlignLayout=Layout::horizontal(textAlignFrame);
+    rootLayout->addWidget(textAlignFrame);
+
+    textAlignLayout->addWidget(new QLabel(QStringLiteral("File name/size text alignment:")));
+
+    // Center listed first so the combo's initial index-0 selection matches
+    // ChatMessageFileItem's own actual default (Qt::AlignVCenter) without an extra call here
+    auto* textAlignCombo=new QComboBox();
+    textAlignCombo->addItem(QStringLiteral("Center"),static_cast<int>(Qt::AlignVCenter));
+    textAlignCombo->addItem(QStringLiteral("Top"),static_cast<int>(Qt::AlignTop));
+    textAlignLayout->addWidget(textAlignCombo,1);
+
+    QObject::connect(
+        textAlignCombo,
+        &QComboBox::currentIndexChanged,
+        central,
+        [fileBody1,fileBody2,textAlignCombo](int index)
+        {
+            auto alignment=static_cast<Qt::Alignment>(textAlignCombo->itemData(index).toInt());
+            for (auto* body : {fileBody1,fileBody2})
+            {
+                body->setTextVerticalAlignment(alignment);
+            }
+        }
+    );
+
     rootLayout->addSpacing(8);
     rootLayout->addWidget(new QLabel(QStringLiteral("Image messages (one per album template):")));
 
@@ -286,11 +484,21 @@ int main(int argc, char *argv[])
     // --- 5. three images (one wide + two below), with a comment and one still transferring ---
 
     auto* imgBody3=new ChatMessageImages();
-    imgBody3->setItems({
+    ChatFileItems imgItems3{
         makeImageEntry(QSize(480,270),QColor("#BA68C8"),QColor("#6A1B9A"),QStringLiteral("3a"),ChatFileTransferState::Ready),
         makeImageEntry(QSize(240,320),QColor("#4FC3F7"),QColor("#0277BD"),QStringLiteral("3b"),ChatFileTransferState::Running),
         makeImageEntry(QSize(240,320),QColor("#AED581"),QColor("#558B2F"),QStringLiteral("3c"),ChatFileTransferState::Ready)
+    };
+    // opted into Cancel, same rationale as fileItems2 above -- this item is Running, so
+    // clicking its own load control (not just the ⋮ menu) offers pause-or-cancel directly
+    imgItems3[1].setMenuActions({
+        ChatFileMenuAction::Open,
+        ChatFileMenuAction::SaveAs,
+        ChatFileMenuAction::Forward,
+        ChatFileMenuAction::Pause,
+        ChatFileMenuAction::Cancel
     });
+    imgBody3->setItems(imgItems3);
     imgBody3->setComment(QStringLiteral("From the trip last weekend."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody3));
 
@@ -334,6 +542,31 @@ int main(int argc, char *argv[])
     imgBody6->setComment(QStringLiteral("One static tile, one animated GIF."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody6));
 
+    // --- 9. single cancellable image, left in a persistent Paused state (untouched by the
+    // progress timer below, unlike imgBody3's own Running item) so it stays put to look at.
+    // Contrast its load control's click behavior with imgBody3's: Paused isn't Running, so
+    // LoadControlMenu just passes the click straight through as loadControlClicked() -- no
+    // pause-or-cancel popup -- leaving "what does a click on a paused item do" entirely up to
+    // the host, same as every other non-Running state. Cancel is still reachable via the ⋮ menu.
+    // The tile shows the same Upload arrow a not-yet-started item would (see
+    // AbstractLoadControl::State::Download's own docs), just with a partially-filled ring --
+    // makeImageEntry() gives every Paused item a transferred() value now, for exactly this. ---
+
+    auto* imgBody7=new ChatMessageImages();
+    ChatFileItems imgItems7{
+        makeImageEntry(QSize(360,240),QColor("#FFB74D"),QColor("#E65100"),QStringLiteral("cancel-me"),ChatFileTransferState::Paused)
+    };
+    imgItems7[0].setMenuActions({
+        ChatFileMenuAction::Open,
+        ChatFileMenuAction::SaveAs,
+        ChatFileMenuAction::Forward,
+        ChatFileMenuAction::Resume,
+        ChatFileMenuAction::Cancel
+    });
+    imgBody7->setItems(imgItems7);
+    imgBody7->setComment(QStringLiteral("Paused upload -- click the load control (plain click, no popup) vs. a Running one above."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody7));
+
     // --- wire up logging for every signal on every body ---
 
     auto logId=[logMsg](const QString& label, const QString& signalName, const QUuid& id)
@@ -353,6 +586,7 @@ int main(int argc, char *argv[])
         QObject::connect(body,&AbstractChatMessageFiles::copyFileNameRequested,body,[label,&logId](const QUuid& id){logId(label,"copyFileNameRequested",id);});
         QObject::connect(body,&AbstractChatMessageFiles::pauseRequested,body,[label,&logId](const QUuid& id){logId(label,"pauseRequested",id);});
         QObject::connect(body,&AbstractChatMessageFiles::resumeRequested,body,[label,&logId](const QUuid& id){logId(label,"resumeRequested",id);});
+        QObject::connect(body,&AbstractChatMessageFiles::cancelRequested,body,[label,&logId](const QUuid& id){logId(label,"cancelRequested",id);});
     };
     wireFiles(fileBody1,QStringLiteral("file1"));
     wireFiles(fileBody2,QStringLiteral("file2"));
@@ -369,6 +603,7 @@ int main(int argc, char *argv[])
         QObject::connect(body,&AbstractChatMessageImages::copyFileNameRequested,body,[label,&logId](const QUuid& id){logId(label,"copyFileNameRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::pauseRequested,body,[label,&logId](const QUuid& id){logId(label,"pauseRequested",id);});
         QObject::connect(body,&AbstractChatMessageImages::resumeRequested,body,[label,&logId](const QUuid& id){logId(label,"resumeRequested",id);});
+        QObject::connect(body,&AbstractChatMessageImages::cancelRequested,body,[label,&logId](const QUuid& id){logId(label,"cancelRequested",id);});
     };
     wireImages(imgBody1,QStringLiteral("img1"));
     wireImages(imgBody2,QStringLiteral("img2"));
@@ -376,6 +611,7 @@ int main(int argc, char *argv[])
     wireImages(imgBody4,QStringLiteral("img4"));
     wireImages(imgBody5,QStringLiteral("img5"));
     wireImages(imgBody6,QStringLiteral("img6"));
+    wireImages(imgBody7,QStringLiteral("img7"));
 
     // --- animation-mode selector, applied to every images body -- the direct demonstration of
     // AbstractChatMessageImages::setAnimationMode() being configurable per view/instance ---
@@ -397,10 +633,10 @@ int main(int argc, char *argv[])
         animModeCombo,
         &QComboBox::currentIndexChanged,
         central,
-        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,animModeCombo](int index)
+        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody7,animModeCombo](int index)
         {
             auto mode=static_cast<ImageLabel::AnimationMode>(animModeCombo->itemData(index).toInt());
-            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6})
+            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody7})
             {
                 body->setAnimationMode(mode);
             }

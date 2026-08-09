@@ -186,6 +186,7 @@ SET (HEADERS
     include/uise/desktop/radiobox.hpp
     include/uise/desktop/abstractloadcontrol.hpp
     include/uise/desktop/loadcontrol.hpp
+    include/uise/desktop/loadcontrolmenu.hpp
     include/uise/desktop/dropdownframe.hpp
     include/uise/desktop/dropdownmenu.hpp
     include/uise/desktop/fastswitchbutton.hpp
@@ -353,6 +354,7 @@ SET (SOURCES
     src/checkbox.cpp
     src/radiobox.cpp
     src/loadcontrol.cpp
+    src/loadcontrolmenu.cpp
     src/dropdownframe.cpp
     src/dropdownmenu.cpp
     src/fastswitchbutton.cpp

@@ -5,10 +5,13 @@
             "aliases" : {
                 "download"  : "${uise-svg-icons-1}/arrow-big-down",
                 "upload"  : "${uise-svg-icons-1}/arrow-big-up",
+                "running" : "${uise-svg-icons-1}/x",
                 "pause"  : "${uise-svg-icons-1}/player-pause",
-                "wait"  : "${uise-svg-icons-1}/hourglass-empty",
-                "stop"  : "${uise-svg-icons-1}/x",
-                "complete" : "${uise-svg-icons-1}/check"
+                "waiting"  : "${uise-svg-icons-1}/hourglass-empty",
+                "complete" : "${uise-svg-icons-1}/check",
+                "cancelled" : "${uise-svg-icons-1}/cancel",
+                "cancel" : "${uise-svg-icons-1}/x",
+                "stop" : "${uise-svg-icons-1}/player-stop"
             }
         }
     ]

@@ -24,9 +24,10 @@ padding:0;
 margin-left:8px;
 }
 
+/* same left edge as nameLabel above it -- no margin-left of its own, so the two lines stay
+   flush on the left boundary; textColumn's own margin-left:8px already positions both */
 uise--ChatMessageFileItem #infoLabel {
 font-size:11px;
-margin-left:2px;
 }
 
 /* IconTextButton's icon has no sensible default size of its own -- it must be set explicitly
@@ -41,7 +42,7 @@ max-height:18px;
 
 uise--ChatMessageFileItem uise--IconTextButton,
 uise--ChatMessageImageItem uise--IconTextButton {
-padding:6px;
+padding:4px;
 border-radius:4px;
 border:1px solid transparent;
 }

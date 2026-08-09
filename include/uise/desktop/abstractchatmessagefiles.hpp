@@ -74,6 +74,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          */
         virtual void closeMenus() =0;
 
+        /**
+         * @brief Set how every row's file-name/size two-line block is aligned within its height.
+         * @param alignment Forwarded to ChatMessageFileItem::setTextVerticalAlignment() -- see
+         *  its docs for the accepted values and their meaning.
+         */
+        virtual void setTextVerticalAlignment(Qt::Alignment alignment) =0;
+
+        virtual Qt::Alignment textVerticalAlignment() const =0;
+
     signals:
 
         /**
@@ -91,6 +100,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
         void copyFileNameRequested(const QUuid& id);
         void pauseRequested(const QUuid& id);
         void resumeRequested(const QUuid& id);
+        void cancelRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -68,8 +68,13 @@ AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state,
     switch (state)
     {
         case (ChatFileTransferState::NotLoaded):
+        case (ChatFileTransferState::Paused):
         {
-            return incoming ? AbstractLoadControl::State::CanDownload : AbstractLoadControl::State::CanUpload;
+            // deliberately the same mapping for both: a click means "start/continue in this
+            // direction" either way, and progress() (0 vs partial) already tells a not-yet-
+            // started item apart from a paused one visually -- see AbstractLoadControl::State::
+            // Download's own docs for why there's no separate "Resume" state to map Paused to
+            return incoming ? AbstractLoadControl::State::Download : AbstractLoadControl::State::Upload;
         }
         break;
 
@@ -85,12 +90,6 @@ AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state,
         }
         break;
 
-        case (ChatFileTransferState::Paused):
-        {
-            return AbstractLoadControl::State::Paused;
-        }
-        break;
-
         case (ChatFileTransferState::Failed):
         {
             return AbstractLoadControl::State::Failed;
@@ -100,6 +99,12 @@ AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state,
         case (ChatFileTransferState::Complete):
         {
             return AbstractLoadControl::State::Complete;
+        }
+        break;
+
+        case (ChatFileTransferState::Cancelled):
+        {
+            return AbstractLoadControl::State::Cancelled;
         }
         break;
 
@@ -116,7 +121,29 @@ AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state,
 
 //--------------------------------------------------------------------------
 
-std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, QWidget* context)
+bool isChatFileCancellable(ChatFileTransferState state) noexcept
+{
+    switch (state)
+    {
+        case (ChatFileTransferState::Pending):
+        case (ChatFileTransferState::Running):
+        case (ChatFileTransferState::Paused):
+        case (ChatFileTransferState::Failed):
+            return true;
+
+        case (ChatFileTransferState::Ready):
+        case (ChatFileTransferState::NotLoaded):
+        case (ChatFileTransferState::Complete):
+        case (ChatFileTransferState::Cancelled):
+            return false;
+    }
+
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context)
 {
     // imageItem is currently unused -- reserved for a future per-kind divergence, see the
     // header doc. Named rather than dropped so the call sites at both ChatMessageFileItem and
@@ -152,6 +179,10 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
         }
         if (action==ChatFileMenuAction::Resume &&
             item.state()!=ChatFileTransferState::Paused && item.state()!=ChatFileTransferState::Failed)
+        {
+            continue;
+        }
+        if (action==ChatFileMenuAction::Cancel && !isChatFileCancellable(item.state()))
         {
             continue;
         }
@@ -192,13 +223,24 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                 break;
 
             case (ChatFileMenuAction::Pause):
-                text=QCoreApplication::translate("ChatFileItem","Pause");
+                text=incoming
+                    ? QCoreApplication::translate("ChatFileItem","Pause downloading")
+                    : QCoreApplication::translate("ChatFileItem","Pause sending");
                 alias=QStringLiteral("pause");
                 break;
 
             case (ChatFileMenuAction::Resume):
-                text=QCoreApplication::translate("ChatFileItem","Resume");
+                text=incoming
+                    ? QCoreApplication::translate("ChatFileItem","Resume downloading")
+                    : QCoreApplication::translate("ChatFileItem","Resume sending");
                 alias=QStringLiteral("resume");
+                break;
+
+            case (ChatFileMenuAction::Cancel):
+                text=incoming
+                    ? QCoreApplication::translate("ChatFileItem","Cancel downloading")
+                    : QCoreApplication::translate("ChatFileItem","Cancel sending");
+                alias=QStringLiteral("cancel");
                 break;
         }
 

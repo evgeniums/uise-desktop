@@ -66,6 +66,9 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         void closeMenus() override;
 
+        void setTextVerticalAlignment(Qt::Alignment alignment) override;
+        Qt::Alignment textVerticalAlignment() const override;
+
         void clearContentSelection() override;
 
         QString selectedText() const override;

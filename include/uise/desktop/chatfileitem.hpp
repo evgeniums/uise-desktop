@@ -58,9 +58,11 @@ enum class ChatFileTransferState : uint8_t
     Running,     //!< Transfer in progress, see transferred()/size().
     Paused,      //!< Transfer paused by the user.
     Failed,      //!< Transfer failed; load control offers a retry.
-    Complete     //!< This item's own transfer just finished while sibling items in the same
+    Complete,    //!< This item's own transfer just finished while sibling items in the same
                  //!< message have not -- once every item is done, the caller hides the load
                  //!< control entirely rather than leaving it in this state.
+    Cancelled    //!< Transfer cancelled by the user -- deliberately distinct from Failed: this
+                 //!< was on purpose, not an error, so no retry affordance is offered for it.
 };
 
 /**
@@ -77,7 +79,8 @@ enum class ChatFileMenuAction : int
     OpenWith=5,
     CopyFileName=6,
     Pause=7,
-    Resume=8
+    Resume=8,
+    Cancel=9
 };
 
 /**
@@ -248,14 +251,17 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         /**
          * @brief Set exactly which context-menu entries ChatMessageFileItem/ChatMessageImageItem
          *  should build for this item, and in what order.
-         * @param actions Entries to show. ChatFileMenuAction::Pause/Resume are still additionally
-         *  filtered by state() -- listing both is fine, only the one that matches state() shows.
+         * @param actions Entries to show. ChatFileMenuAction::Pause/Resume/Cancel are still
+         *  additionally filtered by state() -- see isChatFileCancellable() for Cancel's gate;
+         *  listing an action that doesn't match state() is fine, it simply won't show.
          *
          * An empty list (the default) means "use the library's own default policy": Open, SaveAs,
          * Forward, plus ShowInFolder when isShowInFolderAvailable() -- i.e. today's menu, so every
          * existing caller is unaffected. A non-empty list is taken verbatim; the host is expected
          * to already know which entries make sense for this item (e.g. an "embedded-viewer-capable"
-         * flag gating OpenWith is the host's own concern, not this class's).
+         * flag gating OpenWith is the host's own concern, not this class's). Listing
+         * ChatFileMenuAction::Cancel is also what enables ChatMessageFileItem/ChatMessageImageItem's
+         * always-visible Cancel control, not just the menu entry -- see isChatFileCancellable().
          */
         void setMenuActions(std::vector<ChatFileMenuAction> actions)
         {
@@ -298,11 +304,22 @@ using ChatFileItems=std::vector<ChatFileItem>;
  *  for it, as the single place this mapping is defined.
  * @param state Current transfer state of the item.
  * @param incoming Direction of the owning chat message (AbstractChatMessage::isIncoming()) --
- *  distinguishes CanDownload from CanUpload for a NotLoaded item.
+ *  distinguishes Download from Upload for a NotLoaded item.
  * @return AbstractLoadControl::State::None is never returned by this mapping: Ready has no load
  *  control at all (the caller should hide it instead of mapping to None).
  */
 UISE_DESKTOP_EXPORT AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state, bool incoming);
+
+/**
+ * @brief Check whether a transfer in this state can be cancelled -- the single place this gate is
+ *  defined, shared by buildChatFileMenuItems() (Cancel menu entry) and LoadControlMenu's own
+ *  Running-only pause-or-cancel popup.
+ * @param state Current transfer state of the item.
+ * @return True for Pending/Running/Paused/Failed. Failed counts as cancellable alongside Resume's
+ *  retry -- a permanently-failed item still needs a way to give up on it and remove it, not just
+ *  retry it. False for Ready/NotLoaded/Complete/Cancelled.
+ */
+UISE_DESKTOP_EXPORT bool isChatFileCancellable(ChatFileTransferState state) noexcept;
 
 /**
  * @brief Build the drop-down menu rows for one chat file/image item, the single place this is
@@ -310,12 +327,16 @@ UISE_DESKTOP_EXPORT AbstractLoadControl::State chatFileLoadControlState(ChatFile
  * @param item Item the menu is being built for.
  * @param imageItem Reserved for a future per-kind divergence -- both item kinds currently share
  *  one default policy and one label/icon set.
+ * @param incoming Direction of the owning message -- Pause/Resume/Cancel are labelled
+ *  "...downloading"/"...sending" rather than a bare verb, mirroring LoadControlMenu's own
+ *  pause-or-cancel popup, so pairing a verb with its icon can't later be misread as a
+ *  media-playback control once the app grows an inline player for audio/video messages.
  * @param context Widget the icons will be painted in (for theme/mode resolution).
  * @return Rows built from item.menuActions() if non-empty (verbatim, in that order), else the
  *  default policy -- see ChatFileItem::setMenuActions(). ChatFileMenuAction::Pause/Resume are
  *  additionally filtered by item.state() so at most one of the pair is ever included.
  */
-UISE_DESKTOP_EXPORT std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, QWidget* context);
+UISE_DESKTOP_EXPORT std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context);
 
 UISE_DESKTOP_NAMESPACE_END
 

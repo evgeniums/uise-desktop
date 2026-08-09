@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/imagelabel.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/loadcontrol.hpp>
+#include <uise/desktop/loadcontrolmenu.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/chatmessageimageitem.hpp>
 
@@ -98,7 +99,7 @@ class ChatMessageImageItem_p
         bool incoming=false;
 
         ImageLabel* preview=nullptr;
-        LoadControl* loadControl=nullptr;
+        LoadControlMenu* loadControl=nullptr;
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
@@ -125,6 +126,8 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     pimpl->preview->setAnimationMode(pimpl->animationMode);
     connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
 
+    // floats over the tile's top-right corner, positioned by repositionOverlays() -- not added
+    // to any layout of `this` (this widget has none)
     pimpl->menuButton=new IconTextButton(
         menuIcon(QStringLiteral("menu"),this),
         this,
@@ -132,6 +135,7 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     );
     pimpl->menuButton->setObjectName("menuButton");
     pimpl->menuButton->setText(QString());
+    pimpl->menuButton->setCursor(Qt::PointingHandCursor);
 
     // DropdownMenu is constructed parentless, like FileUploadListItem's own per-item menu -- see
     // that class's constructor for why (DropdownFrame reparents itself lazily to the trigger's
@@ -140,9 +144,11 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     pimpl->menu->attachTo(pimpl->menuButton);
     connect(pimpl->menu,&DropdownMenu::itemTriggered,this,&ChatMessageImageItem::onMenuItemTriggered);
 
-    pimpl->loadControl=new LoadControl(this);
+    pimpl->loadControl=new LoadControlMenu(this);
     pimpl->loadControl->setObjectName("loadControl");
-    connect(pimpl->loadControl,&LoadControl::clicked,this,&ChatMessageImageItem::loadControlClicked);
+    connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageImageItem::loadControlClicked);
+    connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageImageItem::pauseRequested);
+    connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageImageItem::cancelRequested);
 }
 
 //--------------------------------------------------------------------------
@@ -193,7 +199,7 @@ void ChatMessageImageItem::refresh()
     if (!ready)
     {
         pimpl->loadControl->setState(chatFileLoadControlState(pimpl->item.state(),pimpl->incoming));
-        if (pimpl->item.state()==ChatFileTransferState::Running)
+        if (pimpl->item.state()==ChatFileTransferState::Running || pimpl->item.state()==ChatFileTransferState::Paused)
         {
             pimpl->loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
         }
@@ -203,6 +209,7 @@ void ChatMessageImageItem::refresh()
         }
         pimpl->loadControl->raise();
     }
+    pimpl->loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);
 
     rebuildMenu();
 }
@@ -211,7 +218,7 @@ void ChatMessageImageItem::refresh()
 
 AbstractLoadControl* ChatMessageImageItem::loadControl() const
 {
-    return pimpl->loadControl;
+    return pimpl->loadControl->loadControl();
 }
 
 //--------------------------------------------------------------------------
@@ -263,7 +270,7 @@ void ChatMessageImageItem::resizeEvent(QResizeEvent* event)
 
 void ChatMessageImageItem::rebuildMenu()
 {
-    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,true,this));
+    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,true,pimpl->incoming,this));
 }
 
 //--------------------------------------------------------------------------
