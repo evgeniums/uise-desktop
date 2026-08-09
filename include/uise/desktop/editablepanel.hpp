@@ -412,7 +412,7 @@ class UISE_DESKTOP_EXPORT EditablePanel : public AbstractEditablePanel
 
         void doBeginApply() override;
 
-        void updateAlignments() override;
+        void updateAlignments() override final;
 
     private:
 
