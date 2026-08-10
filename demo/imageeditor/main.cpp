@@ -75,16 +75,16 @@ int main(int argc, char *argv[])
     l->addWidget(configFrame);
     auto cl=new QHBoxLayout(configFrame);
 
-    auto square=new QCheckBox("Square crop",configFrame);
-    square->setChecked(true);
-    cl->addWidget(square);
+    auto croppingCapable=new QCheckBox("Cropping capable",configFrame);
+    croppingCapable->setChecked(false);
+    cl->addWidget(croppingCapable);
     QObject::connect(
-        square,
+        croppingCapable,
         &QCheckBox::toggled,
         editorCtrl->qWidget(),
         [&](bool enable)
         {
-            editorCtrl->setSquareCrop(enable);
+            editorCtrl->setCropButtonVisible(enable);
         }
     );
 
@@ -98,19 +98,6 @@ int main(int argc, char *argv[])
         [&](bool enable)
         {
             editorCtrl->setEllipseCropPreview(enable);
-        }
-    );
-
-    auto aspectRatio=new QCheckBox("Keep aspect ratio crop",configFrame);
-    aspectRatio->setChecked(false);
-    cl->addWidget(aspectRatio);
-    QObject::connect(
-        aspectRatio,
-        &QCheckBox::toggled,
-        editorCtrl->qWidget(),
-        [&](bool enable)
-        {
-            editorCtrl->setKeepAspectRatio(enable);
         }
     );
 

@@ -39,6 +39,14 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
 
     public:
 
+        enum class CropMode : int
+        {
+            Off,
+            Square,
+            Rectangular
+        };
+        Q_ENUM(CropMode)
+
         using WidgetController::WidgetController;
 
         void loadImage(const QPixmap& image)
@@ -148,6 +156,28 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
             updateCropShape();
         }
 
+        CropMode cropMode() const noexcept
+        {
+            if (!m_cropperEnabled)
+            {
+                return CropMode::Off;
+            }
+            return m_squareCrop ? CropMode::Square : CropMode::Rectangular;
+        }
+
+        void setCropMode(CropMode mode);
+
+        void setCropButtonVisible(bool enable)
+        {
+            m_cropButtonVisible=enable;
+            updateCropButtonState();
+        }
+
+        bool isCropButtonVisible() const noexcept
+        {
+            return m_cropButtonVisible;
+        }
+
         void setCropEnabled(bool enable);
         void setSquareCrop(bool enable);
         void setMaximumImageSize(const QSize& size);
@@ -163,6 +193,10 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         {
             return m_nativeFileDialog;
         }
+
+    signals:
+
+        void cropModeChanged(CropMode mode);
 
     public slots:
 
@@ -180,6 +214,12 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         virtual void updateCropShape()
         {}
 
+        virtual void updateCropEnabled()
+        {}
+
+        virtual void updateCropButtonState()
+        {}
+
         virtual void updateImageSizeLimits()
         {}
 
@@ -193,6 +233,8 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         {}
 
     private:
+
+        void applyCropMode();
 
         QPixmap m_originalImage;
 
@@ -209,6 +251,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         bool m_filenameEditable=true;
         bool m_ellipseCropPreview=false;
         bool m_cropperEnabled=true;
+        bool m_cropButtonVisible=false;
 
         QString m_folder;
         bool m_nativeFileDialog=true;

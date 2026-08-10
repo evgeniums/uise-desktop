@@ -44,10 +44,22 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/freehanddrawview.hpp>
 #include <uise/desktop/simpleimageeditor.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+enum CropMenuId : int
+{
+    CropMenuOff=0,
+    CropMenuSquare=1,
+    CropMenuRectangular=2
+};
+
+}
 
 /********************* SimpleImageEditorWidget *****************************/
 
@@ -72,6 +84,12 @@ class SimpleImageEditorWidget_p
         PushButton* flipVertical;
         PushButton* zoomIn;
         PushButton* zoomOut;
+        PushButton* crop;
+        DropdownMenu* cropMenu;
+        std::shared_ptr<SvgIcon> cropOffIcon;
+        std::shared_ptr<SvgIcon> cropSquareIcon;
+        std::shared_ptr<SvgIcon> cropRectangularIcon;
+        bool updatingCropMenu=false;
         PushButton* freeHandDraw;
 
         QFrame* freeHandDrawFrame;
@@ -177,6 +195,51 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
         pimpl->ctrl,
         &AbstractImageEditor::zoomOut
     );
+    pimpl->cropOffIcon=Style::instance().svgIconLocator().icon("ImageEditor::crop",this);
+    pimpl->cropSquareIcon=Style::instance().svgIconLocator().icon("ImageEditor::crop-square",this);
+    pimpl->cropRectangularIcon=Style::instance().svgIconLocator().icon("ImageEditor::crop-rectangular",this);
+
+    pimpl->crop=new PushButton(pimpl->mainButtonsFrame);
+    pimpl->crop->setToolTip(tr("Cropping"));
+    pimpl->crop->setSvgIcon(pimpl->cropSquareIcon);
+    pimpl->crop->setVisible(false);
+    ml->addWidget(pimpl->crop);
+
+    pimpl->cropMenu=new DropdownMenu(this);
+    auto cropMenuItemOff=MenuItem::checkable(CropMenuOff,tr("Cropping off"),false,pimpl->cropOffIcon);
+    cropMenuItemOff.group=0;
+    auto cropMenuItemSquare=MenuItem::checkable(CropMenuSquare,tr("Square cropping"),true,pimpl->cropSquareIcon);
+    cropMenuItemSquare.group=0;
+    auto cropMenuItemRectangular=MenuItem::checkable(CropMenuRectangular,tr("Rectangular cropping"),false,pimpl->cropRectangularIcon);
+    cropMenuItemRectangular.group=0;
+    pimpl->cropMenu->setItems({cropMenuItemOff,cropMenuItemSquare,cropMenuItemRectangular});
+    pimpl->cropMenu->setCloseOnCheckableActivation(true);
+    pimpl->cropMenu->attachTo(pimpl->crop);
+    connect(
+        pimpl->cropMenu,
+        &DropdownMenu::itemToggled,
+        this,
+        [this](int id, bool checked)
+        {
+            if (!checked || pimpl->updatingCropMenu)
+            {
+                return;
+            }
+            switch (id)
+            {
+                case CropMenuOff:
+                    pimpl->ctrl->setCropMode(AbstractImageEditor::CropMode::Off);
+                    break;
+                case CropMenuSquare:
+                    pimpl->ctrl->setCropMode(AbstractImageEditor::CropMode::Square);
+                    break;
+                case CropMenuRectangular:
+                    pimpl->ctrl->setCropMode(AbstractImageEditor::CropMode::Rectangular);
+                    break;
+            }
+        }
+    );
+
     pimpl->freeHandDraw=new PushButton(pimpl->mainButtonsFrame);
     pimpl->freeHandDraw->setToolTip(tr("Freehand draw"));
     pimpl->freeHandDraw->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::brush",this));
@@ -339,6 +402,52 @@ void SimpleImageEditor::updateCropShape()
 
 //--------------------------------------------------------------------------
 
+void SimpleImageEditor::updateCropEnabled()
+{
+    if (isCropEnabled())
+    {
+        resetCropper();
+    }
+    else
+    {
+        destroyCropper();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::updateCropButtonState()
+{
+    m_widget->pimpl->crop->setVisible(isCropButtonVisible());
+
+    int checkedId=CropMenuSquare;
+    std::shared_ptr<SvgIcon> icon=m_widget->pimpl->cropSquareIcon;
+    switch (cropMode())
+    {
+        case CropMode::Off:
+            icon=m_widget->pimpl->cropOffIcon;
+            checkedId=CropMenuOff;
+            break;
+        case CropMode::Square:
+            icon=m_widget->pimpl->cropSquareIcon;
+            checkedId=CropMenuSquare;
+            break;
+        case CropMode::Rectangular:
+            icon=m_widget->pimpl->cropRectangularIcon;
+            checkedId=CropMenuRectangular;
+            break;
+    }
+    m_widget->pimpl->crop->setSvgIcon(icon);
+
+    m_widget->pimpl->updatingCropMenu=true;
+    m_widget->pimpl->cropMenu->setItemChecked(CropMenuOff,checkedId==CropMenuOff);
+    m_widget->pimpl->cropMenu->setItemChecked(CropMenuSquare,checkedId==CropMenuSquare);
+    m_widget->pimpl->cropMenu->setItemChecked(CropMenuRectangular,checkedId==CropMenuRectangular);
+    m_widget->pimpl->updatingCropMenu=false;
+}
+
+//--------------------------------------------------------------------------
+
 void SimpleImageEditor::updateImageSizeLimits()
 {
     if (m_widget->pimpl->cropperItem!=nullptr)
@@ -422,30 +531,40 @@ void SimpleImageEditor::doUpdateFilenameState()
 
 QPixmap SimpleImageEditor::editedImage()
 {
-    if (m_widget->pimpl->cropperItem==nullptr)
+    if (m_widget->pimpl->imageItem==nullptr)
     {
         return QPixmap{};
     }
 
     QRectF croppedRect;
-    auto items=m_widget->pimpl->scene->items();
-    for (qsizetype i=0; i<items.count();i++)
+    if (m_widget->pimpl->cropperItem!=nullptr)
     {
-        auto* item=items.at(i);
-        if (item->type()==CropRectItem::Type)
+        auto items=m_widget->pimpl->scene->items();
+        for (qsizetype i=0; i<items.count();i++)
         {
-            auto cropper=qgraphicsitem_cast<CropRectItem*>(item);
-            croppedRect=cropper->getCropAreaCoordinates();
-            break;
+            auto* item=items.at(i);
+            if (item->type()==CropRectItem::Type)
+            {
+                auto cropper=qgraphicsitem_cast<CropRectItem*>(item);
+                croppedRect=cropper->getCropAreaCoordinates();
+                break;
+            }
+        }
+
+        if (!croppedRect.isValid())
+        {
+            return QPixmap{};
         }
     }
-
-    if (!croppedRect.isValid())
+    else
     {
-        return QPixmap{};
+        croppedRect=m_widget->pimpl->itemGroup->sceneBoundingRect();
     }
 
-    m_widget->pimpl->cropperItem->setVisible(false);
+    if (m_widget->pimpl->cropperItem!=nullptr)
+    {
+        m_widget->pimpl->cropperItem->setVisible(false);
+    }
 
     auto px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
     QPainter painter;
@@ -454,7 +573,10 @@ QPixmap SimpleImageEditor::editedImage()
     m_widget->pimpl->scene->render(&painter,px.rect(),croppedRect);
     painter.end();
 
-    m_widget->pimpl->cropperItem->setVisible(true);
+    if (m_widget->pimpl->cropperItem!=nullptr)
+    {
+        m_widget->pimpl->cropperItem->setVisible(true);
+    }
 
 #if 0
     auto viewRect=m_widget->pimpl->view->mapFromScene(croppedRect).boundingRect();

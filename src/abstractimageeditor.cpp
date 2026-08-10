@@ -39,7 +39,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 void AbstractImageEditor::setSquareCrop(bool enable)
 {
     m_squareCrop=enable;
-    updateCropShape();
+    applyCropMode();
 }
 
 //--------------------------------------------------------------------------
@@ -47,7 +47,40 @@ void AbstractImageEditor::setSquareCrop(bool enable)
 void AbstractImageEditor::setCropEnabled(bool enable)
 {
     m_cropperEnabled=enable;
+    applyCropMode();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractImageEditor::setCropMode(CropMode mode)
+{
+    switch (mode)
+    {
+        case CropMode::Off:
+            m_cropperEnabled=false;
+            break;
+
+        case CropMode::Square:
+            m_cropperEnabled=true;
+            m_squareCrop=true;
+            break;
+
+        case CropMode::Rectangular:
+            m_cropperEnabled=true;
+            m_squareCrop=false;
+            break;
+    }
+    applyCropMode();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractImageEditor::applyCropMode()
+{
+    updateCropEnabled();
     updateCropShape();
+    updateCropButtonState();
+    emit cropModeChanged(cropMode());
 }
 
 //--------------------------------------------------------------------------

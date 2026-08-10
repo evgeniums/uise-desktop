@@ -61,6 +61,10 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
 
         void updateCropShape() override;
 
+        void updateCropEnabled() override;
+
+        void updateCropButtonState() override;
+
         void updateImageSizeLimits() override;
 
         void updateAspectRatio() override;

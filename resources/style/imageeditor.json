@@ -13,7 +13,10 @@
                 "redo"  : "${uise-svg-icons-1}/arrow-forward-up",
                 "brush"  : "${uise-svg-icons-1}/brush",
                 "accept"  : "${uise-svg-icons-1}/check",
-                "cancel"  : "${uise-svg-icons-1}/x"
+                "cancel"  : "${uise-svg-icons-1}/x",
+                "crop"  : "${uise-svg-icons-1}/crop",
+                "crop-square"  : "${uise-svg-icons-1}/crop-1-1",
+                "crop-rectangular"  : "${uise-svg-icons-1}/crop-landscape"
             }
         }
     ]
