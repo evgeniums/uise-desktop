@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/loadcontrol.hpp>
 #include <uise/desktop/loadcontrolmenu.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/chatmessageimageitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -48,18 +49,6 @@ const QSize LoadControlSize{56,56};
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);
-}
-
-QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
-{
-    auto scaled=src.scaled(targetSize,Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation);
-    QRect cropRect(
-        (scaled.width()-targetSize.width())/2,
-        (scaled.height()-targetSize.height())/2,
-        targetSize.width(),
-        targetSize.height()
-    );
-    return scaled.copy(cropRect);
 }
 
 //! Local path to feed ImageLabel::setImageFile() for animated content, empty otherwise.

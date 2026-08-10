@@ -29,12 +29,15 @@ You may select, at your option, one of the above-listed licenses.
 #include <QResizeEvent>
 #include <QMouseEvent>
 #include <QPointer>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/filesizeformat.hpp>
 #include <uise/desktop/utils/filetypeicon.hpp>
+#include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/editablelabel.hpp>
@@ -56,6 +59,15 @@ std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("FileUpload::%1").arg(alias),context);
 }
+
+// Row-view chip: stays a fixed square (list rows must stay aligned), centre-cropped rather than
+// showing the true aspect ratio.
+const QSize RowPreviewSize{40,40};
+
+// Image-view bounding box the true-aspect preview is fitted into. Taller than it is wide
+// relative to the old fixed 220x160 box so a portrait source isn't squeezed down to a sliver
+// before even reaching updateListAreaHeight()'s own maxListAreaHeight clamp (fileupload.qss).
+const QSize ImagePreviewBox{220,260};
 
 }
 
@@ -149,6 +161,9 @@ FileUploadListItem::FileUploadListItem(QWidget* parent)
     pimpl->imagePreview->setCornersRadius(8,8);
     pimpl->imagePreview->setCursor(Qt::PointingHandCursor);
     pimpl->imagePreview->installEventFilter(this);
+    // Left-aligned: updatePreview() sizes the preview to its true (variable) aspect ratio rather
+    // than a fixed box, and a QBoxLayout already left-aligns a narrower-than-box (portrait)
+    // preview by default with no alignment flag needed.
     pimpl->imageLayout->addWidget(pimpl->imagePreview);
 
     pimpl->imageInfoLabel=new QLabel(pimpl->imageFrame);
@@ -376,29 +391,60 @@ void FileUploadListItem::updatePreview()
         }
     }
 
-    std::shared_ptr<SvgIcon> fallbackIcon;
-    if (!isImg)
+    if (px.isNull())
     {
-        fallbackIcon=fileTypeIcon(it.suffix().toLower(),this,QStringLiteral("FileUpload::file"));
+        // non-image (or a decode failure): both slots fall back to the same fixed-size file-type
+        // icon they always used -- no aspect ratio to preserve for a generic file glyph.
+        auto fallbackIcon=fileTypeIcon(it.suffix().toLower(),this,QStringLiteral("FileUpload::file"));
+        pimpl->rowPreview->setImageSize(RowPreviewSize);
+        pimpl->rowPreview->setPixmap(QPixmap());
+        pimpl->rowPreview->setSvgIcon(fallbackIcon);
+        pimpl->imagePreview->setImageSize(ImagePreviewBox);
+        pimpl->imagePreview->setPixmap(QPixmap());
+        pimpl->imagePreview->setSvgIcon(fallbackIcon);
+    }
+    else
+    {
+        // RoundedImage::paintEvent() paints via a brush-textured drawRoundedRect(), which tiles
+        // the pixmap at its own raw pixel size rather than honouring a QPixmap::devicePixelRatio()
+        // tag (roundedimage.cpp) -- so, exactly like RoundedImage::setImageSize() itself
+        // (m_size=size*pixelRatio), every box below is scaled up to physical pixels before the
+        // pixmap is produced, and back down to logical pixels before being handed to
+        // setImageSize().
+        const qreal dpr=qApp->primaryScreen()->devicePixelRatio();
+        auto toPhysical=[dpr](const QSize& logical)
+        {
+            return QSize(qRound(logical.width()*dpr),qRound(logical.height()*dpr));
+        };
+
+        pimpl->rowPreview->setSvgIcon(nullptr);
+        pimpl->rowPreview->setImageSize(RowPreviewSize);
+        pimpl->rowPreview->setPixmap(scaledAndCropped(px,toPhysical(RowPreviewSize)));
+
+        // True aspect ratio, fitted inside ImagePreviewBox: the pixmap's OWN resulting size
+        // drives the widget's fixed size (via setImageSize()), so nothing is cropped and nothing
+        // is letterboxed -- a portrait source ends up narrower than the box, a landscape one
+        // shorter.
+        auto scaledPhysical=scaledToFit(px,toPhysical(ImagePreviewBox));
+        QSize resultLogical(
+            qRound(scaledPhysical.width()/dpr),
+            qRound(scaledPhysical.height()/dpr)
+        );
+        pimpl->imagePreview->setSvgIcon(nullptr);
+        pimpl->imagePreview->setImageSize(resultLogical);
+        pimpl->imagePreview->setPixmap(scaledPhysical);
     }
 
-    auto applyTo=[&px,&fallbackIcon](RoundedImage* w, const QSize& size)
+    if (pimpl->view==View::Image)
     {
-        w->setImageSize(size);
-        if (!px.isNull())
-        {
-            w->setSvgIcon(nullptr);
-            w->setPixmap(px.scaled(size,Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation));
-        }
-        else
-        {
-            w->setPixmap(QPixmap());
-            w->setSvgIcon(fallbackIcon);
-        }
-    };
-
-    applyTo(pimpl->imagePreview,QSize(220,160));
-    applyTo(pimpl->rowPreview,QSize(40,40));
+        // The preview's fixed size may just have changed (a different image, or the same image
+        // re-edited to a different crop) -- re-run the layout immediately (setFixedSize() only
+        // POSTS a deferred LayoutRequest, uise-desktop's own recurring gotcha with Qt layouts)
+        // so repositionButtonsBlock() reads the preview's up-to-date geometry rather than last
+        // frame's.
+        pimpl->imageLayout->activate();
+        repositionButtonsBlock();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -455,8 +501,13 @@ void FileUploadListItem::repositionButtonsBlock()
     }
     constexpr int margin=4;
     auto sz=pimpl->buttonsBlock->sizeHint();
-    auto x=pimpl->imageFrame->width()-sz.width()-margin;
-    pimpl->buttonsBlock->setGeometry(x,margin,sz.width(),sz.height());
+    // Anchored to the PREVIEW's own geometry, not the frame's -- since updatePreview() now sizes
+    // the preview to its true (possibly narrower-than-frame, left-aligned) aspect ratio, anchoring
+    // to imageFrame->width() would float the buttons out past a portrait preview's right edge.
+    auto previewGeom=pimpl->imagePreview->geometry();
+    auto x=previewGeom.x()+previewGeom.width()-sz.width()-margin;
+    auto y=previewGeom.y()+margin;
+    pimpl->buttonsBlock->setGeometry(x,y,sz.width(),sz.height());
 }
 
 //--------------------------------------------------------------------------

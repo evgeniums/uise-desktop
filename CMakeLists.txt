@@ -61,6 +61,7 @@ SET (HEADERS
     include/uise/desktop/utils/datetime.hpp
     include/uise/desktop/utils/filesizeformat.hpp
     include/uise/desktop/utils/filetypeicon.hpp
+    include/uise/desktop/utils/pixmapscale.hpp
     include/uise/desktop/utils/albumlayout.hpp
     include/uise/desktop/utils/mimedatautils.hpp
 

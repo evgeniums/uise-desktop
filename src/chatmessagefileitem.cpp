@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/filesizeformat.hpp>
 #include <uise/desktop/utils/filetypeicon.hpp>
+#include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/avatar.hpp>
@@ -56,18 +57,6 @@ constexpr int TextLineSpacing=4;
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);
-}
-
-QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
-{
-    auto scaled=src.scaled(targetSize,Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation);
-    QRect cropRect(
-        (scaled.width()-targetSize.width())/2,
-        (scaled.height()-targetSize.height())/2,
-        targetSize.width(),
-        targetSize.height()
-    );
-    return scaled.copy(cropRect);
 }
 
 }
