@@ -63,6 +63,21 @@ UISE_DESKTOP_EXPORT QStringList mimeDataLocalFilePaths(const QMimeData* mimeData
  */
 UISE_DESKTOP_EXPORT bool mimeDataHasImages(const QMimeData* mimeData);
 
+/**
+ * @brief Check whether mimeData carries anything FileUploadWidget::addFromMimeData() would
+ *  actually stage as an item.
+ * @param mimeData Payload to inspect; nullptr is treated as not carrying attachments.
+ * @return true if mimeData has at least one local-file URL (mimeDataLocalFilePaths()) or an
+ *  image (mimeDataHasImages()).
+ *
+ * Same predicate as AbstractFileUploadWidget::acceptsMimeData() (private to the widget), kept
+ * as a free function so a host that must decide *before* handing a payload to the widget -- a
+ * message editor deciding whether to swallow a paste/drop itself or let it fall through to an
+ * attachment flow -- can ask without the widget existing yet, and can never disagree with what
+ * the widget would do once it does.
+ */
+UISE_DESKTOP_EXPORT bool mimeDataHasAttachments(const QMimeData* mimeData);
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_MIMEDATAUTILS_HPP
