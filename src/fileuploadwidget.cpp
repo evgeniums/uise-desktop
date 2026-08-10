@@ -801,7 +801,19 @@ void FileUploadWidget::doUpdateListAreaHeight()
         contentHeight=hint;
     }
 
-    auto h=qBound(pimpl->minListAreaHeight,contentHeight,pimpl->maxListAreaHeight);
+    // minListAreaHeight exists to keep a multi-row, scrollable list from collapsing to a
+    // sliver -- headroom a lone row doesn't need. With exactly one item, contentHeight already
+    // IS that row's own natural height (the two-pass measurement above), so drop the floor to
+    // it instead of the general minimum, letting the list area (and, via
+    // ModalFileUploadDialog's setPopupAutoHeight(true), the whole popup) shrink to fit a
+    // single-file send.
+    auto minHeight=pimpl->minListAreaHeight;
+    if (pimpl->listItems.size()==1)
+    {
+        minHeight=qMin(minHeight,contentHeight);
+    }
+
+    auto h=qBound(minHeight,contentHeight,pimpl->maxListAreaHeight);
 
     pimpl->listArea->setMinimumHeight(h);
     pimpl->listArea->setMaximumHeight(h);
