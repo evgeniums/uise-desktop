@@ -114,4 +114,16 @@ bool mimeDataHasImages(const QMimeData* mimeData)
 
 //--------------------------------------------------------------------------
 
+bool mimeDataHasAttachments(const QMimeData* mimeData)
+{
+    if (mimeData==nullptr)
+    {
+        return false;
+    }
+
+    return !mimeDataLocalFilePaths(mimeData).isEmpty() || mimeDataHasImages(mimeData);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/frame.hpp>
 
+class QMimeData;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 enum class TextFormat : int
@@ -97,6 +99,16 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         void textChanged();
         void editingFinished();
         void activated();
+
+        /**
+         * @brief A paste/drop the editor recognized as an attachment payload (mimeDataHasAttachments())
+         *  rather than text, and therefore did not insert into the document.
+         * @param mimeData Payload. Emitted synchronously from inside the triggering event handler, so
+         *  mimeData is only valid for the duration of the slot -- consume it there (e.g. via
+         *  AbstractFileUploadWidget::addFromMimeData(), which copies everything it needs) or copy it
+         *  yourself, same contract as FileDropOverlay::dropped().
+         */
+        void attachmentsPasted(const QMimeData* mimeData);
 
     protected:
 

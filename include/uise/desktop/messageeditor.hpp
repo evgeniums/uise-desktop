@@ -64,10 +64,31 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         void returnPressed();
         void activated();
 
+        /**
+         * @brief See AbstractMessageEditor::attachmentsPasted() -- relayed there verbatim by
+         *  MessageEditor. Emitted for Ctrl+V, context-menu Paste, and middle-click paste alike,
+         *  since all three funnel through insertFromMimeData().
+         */
+        void attachmentsPasted(const QMimeData* mimeData);
+
     protected:
 
         void keyPressEvent(QKeyEvent* event) override;
         void focusInEvent(QFocusEvent* event) override;
+
+        /**
+         * @brief Refuse a payload mimeDataHasAttachments() recognizes as an attachment, so Qt's
+         *  own drag-and-drop machinery lets the drag propagate to an ancestor (e.g. a chat page's
+         *  FileDropOverlay) instead of the editor claiming it as the drop target.
+         */
+        bool canInsertFromMimeData(const QMimeData* source) const override;
+
+        /**
+         * @brief For an attachment payload, emit attachmentsPasted() instead of inserting it into
+         *  the document. Covers Ctrl+V, context-menu Paste, and middle-click paste uniformly, since
+         *  QTextEdit funnels all three through this one override.
+         */
+        void insertFromMimeData(const QMimeData* source) override;
 
     private slots:
 

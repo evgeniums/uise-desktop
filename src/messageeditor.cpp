@@ -26,8 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QKeyEvent>
 #include <QTextEdit>
 #include <QTextDocumentFragment>
+#include <QMimeData>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/mimedatautils.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
@@ -127,6 +129,31 @@ void EnhancedTextEdit::focusInEvent(QFocusEvent* event)
     emit activated();
 }
 
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::canInsertFromMimeData(const QMimeData* source) const
+{
+    if (mimeDataHasAttachments(source))
+    {
+        return false;
+    }
+
+    return QTextEdit::canInsertFromMimeData(source);
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
+{
+    if (mimeDataHasAttachments(source))
+    {
+        emit attachmentsPasted(source);
+        return;
+    }
+
+    QTextEdit::insertFromMimeData(source);
+}
+
 /********************************MessageEditor*********************************/
 
 //--------------------------------------------------------------------------
@@ -175,6 +202,13 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::activated,
         this,
         &AbstractMessageEditor::activated
+    );
+
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::attachmentsPasted,
+        this,
+        &AbstractMessageEditor::attachmentsPasted
     );
 }
 
