@@ -14,7 +14,8 @@
         {
             "name" : "DialogTitle",
             "aliases" : {
-                "close" : "${uise-svg-icons-1}/x"
+                "close" : "${uise-svg-icons-1}/x",
+                "menu" : "${uise-svg-icons-1}/dots"
             }
         }
     ]

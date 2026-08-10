@@ -90,6 +90,16 @@ min-height:14px;
 max-height:14px;
 }
 
+/* in dialog mode the button is reparented into the dialog title bar (see
+   FileUploadDialog::construct()), where it sits next to the title text and the 14px used inside
+   the widget's own header reads as too small -- 2 ids + 2 types outranks the rule above */
+uise--AbstractDialog #titleFrame uise--IconTextButton#headerMenuButton uise--RoundedImage {
+min-width:18px;
+max-width:18px;
+min-height:18px;
+max-height:18px;
+}
+
 uise--IconTextButton#headerMenuButton {
 padding:4px;
 border-radius:4px;

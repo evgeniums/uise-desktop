@@ -9,6 +9,12 @@
                 },
                 "hovered" : {
                     "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#0A66C2" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#0A66C2" }
                 }
             }
         },

@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QMetaObject>
 
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/fileuploaddialog.hpp>
 #include <uise/desktop/fileuploadwidget.hpp>
@@ -55,6 +56,17 @@ void FileUploadDialog::construct()
     m_widget->setHeaderVisible(false);
     m_widget->setButtonsVisible(true);
     setTitleControl(m_widget->menuButton());
+
+    // the vertical dots used inside the widget's own header (see fileupload.json's "menu"
+    // alias) read as too small once relocated into the dialog's title bar next to the title
+    // text -- swap in the horizontal variant for this button only, leaving every other
+    // dots-vertical use (standalone header, ChatMessageFiles, HTree placeholders) untouched.
+    // Reuse DialogTitle's icon colors (same context as titleClose, see dialog.ipp) rather than
+    // FileUpload's -- those are tuned for the widget's own light header, not the dialog's
+    // always-dark title bar, and would render near-invisible there in the light theme.
+    m_widget->menuButton()->setSvgIcon(
+        Style::instance().svgIconLocator().icon(QStringLiteral("DialogTitle::menu"),m_widget->qWidget())
+    );
 
     setButtons({});
 
