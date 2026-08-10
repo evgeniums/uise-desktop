@@ -1236,7 +1236,12 @@ void FileUploadWidget::addFromMimeData(const QMimeData* mimeData)
 
 void FileUploadWidget::requestAddFiles()
 {
-    auto paths=QFileDialog::getOpenFileNames(this,tr("Add files"));
+    QFileDialog::Options options;
+    if (!isNativeFileDialog())
+    {
+        options=QFileDialog::DontUseNativeDialog;
+    }
+    auto paths=QFileDialog::getOpenFileNames(this,tr("Add files"),QString{},QString{},nullptr,options);
     if (!paths.isEmpty())
     {
         addFiles(paths);

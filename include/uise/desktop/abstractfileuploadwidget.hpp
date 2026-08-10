@@ -112,6 +112,21 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
             return m_maxFileCount;
         }
 
+        /**
+         * @brief Use the platform-native file picker in requestAddFiles().
+         * @param enable Default true. Set false to force Qt's own dialog
+         *  (QFileDialog::DontUseNativeDialog), e.g. in ad-hoc signed macOS builds.
+         */
+        void setNativeFileDialog(bool enable) noexcept
+        {
+            m_nativeFileDialog=enable;
+        }
+
+        bool isNativeFileDialog() const noexcept
+        {
+            return m_nativeFileDialog;
+        }
+
         virtual bool isHighQuality() const=0;
         virtual void setHighQuality(bool enable)=0;
 
@@ -168,6 +183,9 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
 
         /**
          * @brief Open a file picker (QFileDialog::getOpenFileNames) and add the chosen files.
+         *
+         * Honours isNativeFileDialog() -- when false, the picker is opened with
+         * QFileDialog::DontUseNativeDialog.
          */
         virtual void requestAddFiles()=0;
 
@@ -215,6 +233,7 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
     private:
 
         int m_maxFileCount=10;
+        bool m_nativeFileDialog=true;
         QString m_caption;
 };
 

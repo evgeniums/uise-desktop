@@ -64,14 +64,14 @@ class UISE_DESKTOP_EXPORT DirectoryImagesViewer : public WidgetQFrame
         void setFileBrowserFrameVisible(bool enable);
         bool isFileBrowserFrameVisible() const;
 
-        void setCustomFileDialog(bool enable) noexcept
+        void setNativeFileDialog(bool enable) noexcept
         {
-            m_customFileDialog=enable;
+            m_nativeFileDialog=enable;
         }
 
-        bool isCustomFileDialog() const noexcept
+        bool isNativeFileDialog() const noexcept
         {
-            return m_customFileDialog;
+            return m_nativeFileDialog;
         }
 
     public slots:
@@ -92,7 +92,7 @@ class UISE_DESKTOP_EXPORT DirectoryImagesViewer : public WidgetQFrame
         QLineEdit* m_fileName;
         PushButton* m_browseButton;
 
-        bool m_customFileDialog;
+        bool m_nativeFileDialog;
         mutable std::filesystem::path m_path;
 };
 

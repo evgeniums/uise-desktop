@@ -59,7 +59,7 @@ void DirectoryImagesSource::doLoadPixmap(const PixmapKey& key)
 
 DirectoryImagesViewer::DirectoryImagesViewer(QWidget *parent)
     : WidgetQFrame(parent),
-      m_customFileDialog(false)
+      m_nativeFileDialog(true)
 {
     auto m_imageSource=std::make_shared<DirectoryImagesSource>();
 
@@ -102,7 +102,7 @@ void DirectoryImagesViewer::browseFile()
     QPointer<QFrame> guard(this);
 
     QFileDialog::Options options;
-    if (m_customFileDialog)
+    if (!m_nativeFileDialog)
     {
         options=QFileDialog::DontUseNativeDialog;
     }
