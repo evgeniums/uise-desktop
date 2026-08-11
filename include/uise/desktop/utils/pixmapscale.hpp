@@ -77,7 +77,18 @@ inline QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
  */
 inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize)
 {
-    return src.scaled(boxSize,Qt::KeepAspectRatio,Qt::SmoothTransformation);
+    // Never upscale beyond the source's own size (this function's own documented contract
+    // above) -- clamp the scale target to boxSize on each axis. When src already fits, target
+    // equals src.size() and scaled() below is a same-size no-op; deliberately still routed
+    // through scaled() rather than returning src directly, so every result -- shrunk or not --
+    // is a freshly produced QPixmap via the identical path a RoundedImage brush-texture paint
+    // (roundedimage.cpp) has always received here, rather than the caller's original QPixmap
+    // object (which callers may go on to mutate/reuse, e.g. FileUploadItem::image() callers).
+    QSize target(
+        qMin(src.width(),boxSize.width()),
+        qMin(src.height(),boxSize.height())
+    );
+    return src.scaled(target,Qt::KeepAspectRatio,Qt::SmoothTransformation);
 }
 
 UISE_DESKTOP_NAMESPACE_END

@@ -95,10 +95,47 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         }
 
         /**
-         * @brief Check if this item is an image.
+         * @brief Check if this item's CONTENT is an image, regardless of how it will be
+         *  presented (see presentAsImage() for that).
          * @return Always true for Type::ImageData; for Type::File, sniffed from mimeType().
+         *  Unaffected by maxImageAspectRatio() -- an extreme-aspect-ratio image is still an
+         *  image: still editable, still decodes a real thumbnail/pixelSize(), it just isn't
+         *  presented as an inline image tile (see presentAsImage()).
          */
         bool isImage() const;
+
+        /**
+         * @brief Check whether this item should be PRESENTED as an inline image tile
+         *  (FileUploadListItem::View::Image) rather than a plain document row (View::Row).
+         * @return false whenever isImage() is false. Also false for an image whose pixelSize()
+         *  aspect ratio exceeds maxImageAspectRatio() (too tall/narrow or too wide/short to
+         *  usefully present as an image) -- content-wise it is still isImage()==true (editable,
+         *  has a real thumbnail/dimensions), it is only routed to a document-style row instead.
+         *  A degenerate/unreadable pixelSize() never trips the ratio check.
+         */
+        bool presentAsImage() const;
+
+        /**
+         * @brief Get the configured extreme-aspect-ratio limit, see setMaxImageAspectRatio().
+         */
+        uint32_t maxImageAspectRatio() const noexcept
+        {
+            return m_maxImageAspectRatio;
+        }
+
+        /**
+         * @brief Set the max(w,h)/min(w,h) limit past which presentAsImage() returns false for
+         *  an otherwise-image item.
+         * @param ratio 0 disables the check -- presentAsImage() then equals isImage(), as before
+         *  this setting existed. A bare FileUploadItem constructed directly (not via a widget)
+         *  defaults to 0/disabled; FileUploadWidget stamps its own DefaultMaxImageAspectRatio
+         *  onto every item it creates instead, see
+         *  AbstractFileUploadWidget::setMaxImageAspectRatio().
+         */
+        void setMaxImageAspectRatio(uint32_t ratio) noexcept
+        {
+            m_maxImageAspectRatio=ratio;
+        }
 
         /**
          * @brief Stable identity for list bookkeeping (e.g. matching a widget row to an item
@@ -197,6 +234,12 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          * @brief Generate a file name if none is set yet.
          * @param index Zero-based position of this item in its list, used by autoFileName().
          * @return true if a name was generated (fileName() was empty), false if it already had one.
+         *
+         * FileUploadWidget calls this itself, as soon as a row is displayed in View::Row (i.e.
+         * presented as a plain document rather than an image -- whether via the extreme-aspect-
+         * ratio guard or "send as documents"), so a pasted/generated image with no name still
+         * gets a sensible one before the user ever sees the row. Callers building a send request
+         * from items() directly (bypassing the widget) still need to call this themselves.
          */
         bool ensureFileName(int index);
 
@@ -226,6 +269,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
 
         mutable QSize m_pixelSize;
         mutable qint64 m_size=-1;
+        uint32_t m_maxImageAspectRatio=0;
 };
 
 using FileUploadItems=std::vector<FileUploadItem>;

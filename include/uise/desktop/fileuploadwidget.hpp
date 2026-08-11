@@ -68,6 +68,10 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         constexpr static const int DefaultMinListAreaHeight=88;
         constexpr static const int DefaultMaxCommentsHeight=110;
         constexpr static const int DefaultMaxCommentLength=1000;
+        //! Out-of-the-box extreme-aspect-ratio limit, see
+        //! AbstractFileUploadWidget::setMaxImageAspectRatio(). A caller that genuinely wants no
+        //! check at all can still setMaxImageAspectRatio(0) explicitly.
+        constexpr static const uint32_t DefaultMaxImageAspectRatio=10;
 
         explicit FileUploadWidget(QWidget* parent=nullptr);
 
@@ -97,6 +101,9 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         void setGroupItems(bool enable) override;
         bool isRememberChoice() const override;
         void setRememberChoice(bool enable) override;
+
+        void setMaxImageAspectRatio(uint32_t ratio) override;
+        uint32_t maxImageAspectRatio() const noexcept override;
 
         FileUploadOptions options() const override;
 
@@ -165,7 +172,17 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         bool acceptsMimeData(const QMimeData* mimeData) const;
         bool isAtMaxFileCount() const;
         void addRowFor(const FileUploadItem& item);
-        void applyViewToRow(FileUploadListItem* row);
+        /**
+         * @brief Choose Image vs Row view for a row from its item's current isImage()/
+         *  sendAsDocuments state, and -- when the outcome is Row (presented as a plain
+         *  document, whatever the reason: the extreme-aspect-ratio guard or the user's own
+         *  "send as documents" choice) -- ensure the underlying item has a fileName() to
+         *  display, generating one via FileUploadItem::ensureFileName() if it doesn't (a
+         *  pasted/generated buffer-sourced image has none until named).
+         * @param index This row's position in items()/pimpl->items, i.e. the same index
+         *  ensureFileName() itself takes -- callers already know it (it's how they found `row`).
+         */
+        void applyViewToRow(FileUploadListItem* row, int index);
         int indexOfRow(FileUploadListItem* row) const;
 
         void clearItemsInternal(bool notifyEmptied);

@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QFile>
 #include <QFileInfo>
 #include <QBuffer>
@@ -102,11 +104,29 @@ FileUploadItem FileUploadItem::fromEncodedImage(QByteArray bytes, QString fileNa
 
 bool FileUploadItem::isImage() const
 {
-    if (m_type==Type::ImageData)
+    return (m_type==Type::ImageData) || mimeType().startsWith(QStringLiteral("image/"));
+}
+
+//--------------------------------------------------------------------------
+
+bool FileUploadItem::presentAsImage() const
+{
+    if (!isImage() || m_maxImageAspectRatio==0)
     {
+        return isImage();
+    }
+
+    auto sz=pixelSize();
+    if (!sz.isValid() || sz.width()<=0 || sz.height()<=0)
+    {
+        // Dimensions unknown -- the ratio check has nothing to act on, same
+        // leniency as whitemclient's aspectRatioExceeds() probe-failure rule.
         return true;
     }
-    return mimeType().startsWith(QStringLiteral("image/"));
+
+    auto hi=std::max(sz.width(),sz.height());
+    auto lo=std::min(sz.width(),sz.height());
+    return static_cast<qint64>(hi)<=static_cast<qint64>(lo)*m_maxImageAspectRatio;
 }
 
 //--------------------------------------------------------------------------

@@ -48,23 +48,36 @@ using namespace UISE_DESKTOP_NAMESPACE;
 
 namespace {
 
-QImage makeSampleImage()
+QImage makeGradientImage(int w, int h, const QString& text)
 {
-    QImage img(320,200,QImage::Format_ARGB32);
+    QImage img(w,h,QImage::Format_ARGB32);
     img.fill(Qt::transparent);
     QPainter p(&img);
     p.setRenderHint(QPainter::Antialiasing);
-    QLinearGradient grad(0,0,320,200);
+    QLinearGradient grad(0,0,w,h);
     grad.setColorAt(0,QColor("#4C9AFF"));
     grad.setColorAt(1,QColor("#0A66C2"));
     p.fillRect(img.rect(),grad);
     p.setPen(Qt::white);
     auto font=p.font();
-    font.setPointSize(18);
+    font.setPointSize(qMin(18,qMax(6,qMin(w,h)/3)));
     p.setFont(font);
-    p.drawText(img.rect(),Qt::AlignCenter,QStringLiteral("Sample image"));
+    p.drawText(img.rect(),Qt::AlignCenter,text);
     p.end();
     return img;
+}
+
+QImage makeSampleImage()
+{
+    return makeGradientImage(320,200,QStringLiteral("Sample image"));
+}
+
+//! 900x30 -- 30:1, past FileUploadWidget::DefaultMaxImageAspectRatio (10) -- so this stages as a
+//! plain file row out of the box; lower the "Max aspect ratio" spinbox to 0 to see it switch
+//! back to an image preview row instead.
+QImage makeDisproportionalImage()
+{
+    return makeGradientImage(900,30,QStringLiteral("Banner"));
 }
 
 QString logOptions(const FileUploadItems& items, const FileUploadOptions& opts)
@@ -74,11 +87,17 @@ QString logOptions(const FileUploadItems& items, const FileUploadOptions& opts)
     for (size_t i=0;i<items.size();++i)
     {
         const auto& it=items[i];
-        text+=QString("  [%1] %2 (%3, %4)\n")
+        auto sz=it.pixelSize();
+        text+=QString("  [%1] %2 (%3, %4, isImage=%5, presentAsImage=%6, pixelSize=%7x%8, maxAspectRatio=%9)\n")
                 .arg(static_cast<int>(i))
                 .arg(it.fileName())
                 .arg(it.type()==FileUploadItem::Type::File ? QStringLiteral("file") : QStringLiteral("image data"))
-                .arg(it.size());
+                .arg(it.size())
+                .arg(it.isImage() ? "true" : "false")
+                .arg(it.presentAsImage() ? "true" : "false")
+                .arg(sz.width())
+                .arg(sz.height())
+                .arg(it.maxImageAspectRatio());
     }
     text+=QString("highQuality=%1 sendAsDocuments=%2 groupItems=%3 rememberChoice=%4\n")
             .arg(opts.highQuality ? "true" : "false")
@@ -118,6 +137,7 @@ int main(int argc, char *argv[])
 
     auto* log=new QPlainTextEdit();
     log->setReadOnly(true);
+    log->setMinimumHeight(200);
     auto logMsg=[log](const QString& text)
     {
         log->appendPlainText(text);
@@ -129,9 +149,16 @@ int main(int argc, char *argv[])
     // placement further down, grouped with the upload dialog host -- see "Modal dialog hosts".
     auto* imageEditDialog=new ModalImageEditDialog(central);
 
-    auto openImageEditor=[imageEditDialog,logMsg](AbstractFileUploadWidget* uw, int index)
+    // The dialog/editor are reused across edit sessions -- openDialog() only returns true the
+    // FIRST time (see the file-upload dialog's own isNew pattern). A connection made only under
+    // that guard would stay bound to whichever (uw,index) was current the first time it fired,
+    // silently misapplying every later edit to the wrong item -- so instead this is rebound
+    // (disconnect+reconnect) on every call, to the session actually in progress.
+    auto applyConnection=std::make_shared<QMetaObject::Connection>();
+
+    auto openImageEditor=[imageEditDialog,logMsg,applyConnection](AbstractFileUploadWidget* uw, int index)
     {
-        auto opened=imageEditDialog->openDialog();
+        imageEditDialog->openDialog();
         auto dlg=imageEditDialog->dialog();
         if (dlg==nullptr)
         {
@@ -140,23 +167,21 @@ int main(int argc, char *argv[])
         auto* editor=dlg->editor();
         editor->loadImage(QPixmap::fromImage(uw->itemImage(index)));
 
-        if (opened)
-        {
-            QObject::connect(
-                dlg,
-                &AbstractDialog::buttonClicked,
-                imageEditDialog,
-                [dlg,editor,uw,index,logMsg](int id)
+        QObject::disconnect(*applyConnection);
+        *applyConnection=QObject::connect(
+            dlg,
+            &AbstractDialog::buttonClicked,
+            imageEditDialog,
+            [dlg,editor,uw,index,logMsg](int id)
+            {
+                if (AbstractDialog::isButton(id,AbstractDialog::StandardButton::Apply))
                 {
-                    if (AbstractDialog::isButton(id,AbstractDialog::StandardButton::Apply))
-                    {
-                        uw->setItemImage(index,editor->editedImage().toImage());
-                        logMsg(QString("edited image at index %1").arg(index));
-                    }
-                    dlg->closeDialog();
+                    uw->setItemImage(index,editor->editedImage().toImage());
+                    logMsg(QString("edited image at index %1").arg(index));
                 }
-            );
-        }
+                dlg->closeDialog();
+            }
+        );
     };
 
     auto wireUploadWidget=[openImageEditor,logMsg](AbstractFileUploadWidget* uw, const QString& label)
@@ -177,6 +202,18 @@ int main(int argc, char *argv[])
             [uw,label,logMsg]()
             {
                 logMsg(QString("--- %1: Send ---\n%2").arg(label,logOptions(uw->items(),uw->options())));
+            }
+        );
+        // Logged immediately on every add/remove -- not just at Send -- so the isImage()/
+        // pixelSize()/maxAspectRatio breakdown from logOptions() is visible right after clicking
+        // e.g. "Add disproportional image", with no extra click needed to see the effect.
+        QObject::connect(
+            uw,
+            &AbstractFileUploadWidget::itemsChanged,
+            uw,
+            [uw,label,logMsg]()
+            {
+                logMsg(QString("--- %1: itemsChanged ---\n%2").arg(label,logOptions(uw->items(),uw->options())));
             }
         );
         QObject::connect(
@@ -360,6 +397,52 @@ int main(int argc, char *argv[])
         [standaloneWidget]()
         {
             standaloneWidget->addItems({FileUploadItem::fromImage(makeSampleImage())});
+        }
+    );
+
+    // Exercises FileUploadItem::isImage()'s extreme-aspect-ratio check (see the "Max aspect
+    // ratio" spinbox below) -- with that spinbox at its own default (FileUploadWidget::
+    // DefaultMaxImageAspectRatio, 10), this 30:1 image stages as a plain file row straight away;
+    // lower the spinbox to 0 to see it switch to a normal image preview row instead, like "Add
+    // sample image" above.
+    auto addDisproportionalImage=new QPushButton(QStringLiteral("Add disproportional image"));
+    applyButtonStyle(addDisproportionalImage);
+    demoButtons.push_back(addDisproportionalImage);
+    cl->addWidget(addDisproportionalImage);
+    QObject::connect(
+        addDisproportionalImage,
+        &QPushButton::clicked,
+        standaloneWidget,
+        [standaloneWidget]()
+        {
+            standaloneWidget->addItems({FileUploadItem::fromImage(makeDisproportionalImage())});
+        }
+    );
+
+    cl->addWidget(new QLabel(QStringLiteral("Max aspect ratio:")));
+    auto* maxAspectRatio=new QSpinBox();
+    maxAspectRatio->setRange(0,100);
+    maxAspectRatio->setSpecialValueText(QStringLiteral("off"));
+    maxAspectRatio->setValue(static_cast<int>(standaloneWidget->maxImageAspectRatio()));
+    cl->addWidget(maxAspectRatio);
+    QObject::connect(
+        maxAspectRatio,
+        &QSpinBox::valueChanged,
+        standaloneWidget,
+        [standaloneWidget,uploadDialogFrame,logMsg](int val)
+        {
+            standaloneWidget->setMaxImageAspectRatio(static_cast<uint32_t>(val));
+            if (uploadDialogFrame->dialog()!=nullptr)
+            {
+                uploadDialogFrame->dialog()->fileUploadWidget()->setMaxImageAspectRatio(static_cast<uint32_t>(val));
+            }
+            // setMaxImageAspectRatio() re-stamps existing items in place but does not itself
+            // emit itemsChanged() (it's a re-classification of what's already staged, not an
+            // add/remove) -- log explicitly here so raising/lowering the spinbox shows its
+            // effect on already-added items without requiring another add/remove first.
+            logMsg(QString("--- standalone: setMaxImageAspectRatio(%1) ---\n%2")
+                .arg(val)
+                .arg(logOptions(standaloneWidget->items(),standaloneWidget->options())));
         }
     );
 

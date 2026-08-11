@@ -405,12 +405,15 @@ void FileUploadListItem::updatePreview()
     }
     else
     {
-        // RoundedImage::paintEvent() paints via a brush-textured drawRoundedRect(), which tiles
-        // the pixmap at its own raw pixel size rather than honouring a QPixmap::devicePixelRatio()
-        // tag (roundedimage.cpp) -- so, exactly like RoundedImage::setImageSize() itself
-        // (m_size=size*pixelRatio), every box below is scaled up to physical pixels before the
-        // pixmap is produced, and back down to logical pixels before being handed to
-        // setImageSize().
+        // RoundedImage::paintEvent() paints via a brush-textured drawRoundedRect() -- a QBrush
+        // texture fill DOES respect QPixmap::devicePixelRatio() (unlike an untagged pixmap,
+        // which Qt treats as 1 raw pixel = 1 LOGICAL unit for tiling purposes, not 1 raw pixel =
+        // 1 PHYSICAL device pixel). Every pixmap below is produced at physical-pixel resolution
+        // (scaled up from logical box sizes by dpr, matching RoundedImage::setImageSize()'s own
+        // m_size=size*pixelRatio) for Retina sharpness, so it MUST be tagged with that same dpr
+        // before setPixmap() -- an untagged one is misread as dpr times too large, so only its
+        // top-left 1/dpr-by-1/dpr corner ends up inside the (correctly logical-sized) rect,
+        // upscaled-then-cropped rather than shown whole.
         const qreal dpr=qApp->primaryScreen()->devicePixelRatio();
         auto toPhysical=[dpr](const QSize& logical)
         {
@@ -419,7 +422,9 @@ void FileUploadListItem::updatePreview()
 
         pimpl->rowPreview->setSvgIcon(nullptr);
         pimpl->rowPreview->setImageSize(RowPreviewSize);
-        pimpl->rowPreview->setPixmap(scaledAndCropped(px,toPhysical(RowPreviewSize)));
+        auto rowPixmap=scaledAndCropped(px,toPhysical(RowPreviewSize));
+        rowPixmap.setDevicePixelRatio(dpr);
+        pimpl->rowPreview->setPixmap(rowPixmap);
 
         // True aspect ratio, fitted inside ImagePreviewBox: the pixmap's OWN resulting size
         // drives the widget's fixed size (via setImageSize()), so nothing is cropped and nothing
@@ -430,6 +435,7 @@ void FileUploadListItem::updatePreview()
             qRound(scaledPhysical.width()/dpr),
             qRound(scaledPhysical.height()/dpr)
         );
+        scaledPhysical.setDevicePixelRatio(dpr);
         pimpl->imagePreview->setSvgIcon(nullptr);
         pimpl->imagePreview->setImageSize(resultLogical);
         pimpl->imagePreview->setPixmap(scaledPhysical);

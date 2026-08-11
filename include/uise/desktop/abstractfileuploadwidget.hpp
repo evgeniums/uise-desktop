@@ -113,6 +113,22 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         }
 
         /**
+         * @brief Set the extreme-aspect-ratio limit stamped onto every item added from now on
+         *  (addFiles(), paste, drop, setItems() -- all funnel through one row-construction choke
+         *  point), and onto every item already in items().
+         * @param ratio Forwarded verbatim to FileUploadItem::setMaxImageAspectRatio() -- 0
+         *  disables the check entirely. FileUploadWidget starts with its own
+         *  DefaultMaxImageAspectRatio rather than 0/disabled; call this to override it (e.g. a
+         *  messenger's chat upload dialog supplying its own policy value).
+         */
+        virtual void setMaxImageAspectRatio(uint32_t ratio)=0;
+
+        /**
+         * @brief Get the current extreme-aspect-ratio limit, see setMaxImageAspectRatio().
+         */
+        virtual uint32_t maxImageAspectRatio() const noexcept=0;
+
+        /**
          * @brief Use the platform-native file picker in requestAddFiles().
          * @param enable Default true. Set false to force Qt's own dialog
          *  (QFileDialog::DontUseNativeDialog), e.g. in ad-hoc signed macOS builds.

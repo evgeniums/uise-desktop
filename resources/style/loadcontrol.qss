@@ -11,7 +11,7 @@ margin:0;
 
 uise--LoadControl #sample,
 uise--CircleBusy #sample {
-border: 3px solid transparent;
+border: 4px solid transparent;
 }
 
 /*

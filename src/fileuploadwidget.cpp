@@ -156,6 +156,7 @@ class FileUploadWidget_p
         bool sendAsDocuments=false;
         bool groupItems=true;
         bool rememberChoice=false;
+        uint32_t maxImageAspectRatio=FileUploadWidget::DefaultMaxImageAspectRatio;
 
         QFrame* headerFrame=nullptr;
         QLabel* captionLabel=nullptr;
@@ -384,13 +385,15 @@ const FileUploadItems& FileUploadWidget::items() const
 
 //--------------------------------------------------------------------------
 
-void FileUploadWidget::addRowFor(const FileUploadItem& it)
+void FileUploadWidget::addRowFor(const FileUploadItem& source)
 {
+    auto it=source;
+    it.setMaxImageAspectRatio(pimpl->maxImageAspectRatio);
     pimpl->items.push_back(it);
 
     auto* row=new FileUploadListItem(pimpl->listContent);
     row->setItem(it);
-    applyViewToRow(row);
+    applyViewToRow(row,static_cast<int>(pimpl->items.size())-1);
     pimpl->listLayout->insertWidget(pimpl->listLayout->count()-1,row);
     pimpl->listItems.push_back(row);
 
@@ -462,11 +465,22 @@ int FileUploadWidget::indexOfRow(FileUploadListItem* row) const
 
 //--------------------------------------------------------------------------
 
-void FileUploadWidget::applyViewToRow(FileUploadListItem* row)
+void FileUploadWidget::applyViewToRow(FileUploadListItem* row, int index)
 {
-    auto view=(row->item().isImage() && !pimpl->sendAsDocuments)
+    auto view=(row->item().presentAsImage() && !pimpl->sendAsDocuments)
                 ? FileUploadListItem::View::Image
                 : FileUploadListItem::View::Row;
+    if (view==FileUploadListItem::View::Row &&
+        index>=0 && static_cast<size_t>(index)<pimpl->items.size())
+    {
+        // Row view always displays a name; a pasted/generated buffer-sourced item has none
+        // until named. ensureFileName() is a no-op if the item is already named (e.g. a real
+        // Type::File item, or one renamed earlier).
+        if (pimpl->items[static_cast<size_t>(index)].ensureFileName(index))
+        {
+            row->setItem(pimpl->items[static_cast<size_t>(index)]);
+        }
+    }
     row->setView(view);
 }
 
@@ -614,10 +628,13 @@ void FileUploadWidget::updateCaption()
         return;
     }
 
+    // presentAsImage(), not isImage(): the caption should match what the rows actually show --
+    // an extreme-aspect-ratio image stages as a document row, so it should read as a file here
+    // too, even though it is still isImage()==true underneath (editable, has a thumbnail).
     auto imageCount=std::count_if(
         pimpl->items.begin(),
         pimpl->items.end(),
-        [](const FileUploadItem& it){ return it.isImage(); }
+        [](const FileUploadItem& it){ return it.presentAsImage(); }
     );
 
     if (n==1)
@@ -661,10 +678,13 @@ void FileUploadWidget::updateAddEnabled()
 
 void FileUploadWidget::updateMenuVisibility()
 {
+    // presentAsImage(), not isImage(): "High quality"/"Send as documents" are only meaningful
+    // for an item that would otherwise actually be shown as an image tile -- an item already
+    // forced to a document row by the aspect-ratio guard gets no visible effect from either.
     auto hasImage=std::any_of(
         pimpl->items.begin(),
         pimpl->items.end(),
-        [](const FileUploadItem& it){ return it.isImage(); }
+        [](const FileUploadItem& it){ return it.presentAsImage(); }
     );
     auto hasMultipleItems=pimpl->items.size()>1;
 
@@ -959,7 +979,7 @@ void FileUploadWidget::setItemImage(int index, QImage image)
 
     auto* row=pimpl->listItems[static_cast<size_t>(index)];
     row->setItem(pimpl->items[static_cast<size_t>(index)]);
-    applyViewToRow(row);
+    applyViewToRow(row,index);
 
     updateCaption();
     updateMenuVisibility();
@@ -1017,10 +1037,41 @@ void FileUploadWidget::setSendAsDocuments(bool enable)
         pimpl->sendAsDocumentsCheck->setChecked(enable);
     }
 
-    for (auto* row : pimpl->listItems)
+    for (size_t i=0;i<pimpl->listItems.size();++i)
     {
-        applyViewToRow(row);
+        applyViewToRow(pimpl->listItems[i],static_cast<int>(i));
     }
+    updateListAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+uint32_t FileUploadWidget::maxImageAspectRatio() const noexcept
+{
+    return pimpl->maxImageAspectRatio;
+}
+
+void FileUploadWidget::setMaxImageAspectRatio(uint32_t ratio)
+{
+    if (pimpl->maxImageAspectRatio==ratio)
+    {
+        return;
+    }
+    pimpl->maxImageAspectRatio=ratio;
+
+    // Re-stamp every item already staged, same mutate-then-resync pattern as
+    // setItemImage() above: pimpl->items is the source of truth, each row's
+    // own copy is refreshed via setItem() afterward.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        pimpl->items[i].setMaxImageAspectRatio(ratio);
+        auto* row=pimpl->listItems[i];
+        row->setItem(pimpl->items[i]);
+        applyViewToRow(row,static_cast<int>(i));
+    }
+
+    updateCaption();
+    updateMenuVisibility();
     updateListAreaHeight();
 }
 
