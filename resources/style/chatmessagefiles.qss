@@ -57,6 +57,17 @@ uise--ChatMessageImageItem {
 border-radius:8px;
 }
 
+/* Placeholder tile: an image item with no content to show at all -- a preview that never
+   resolved, or a failed/synthesized entry with no image behind it. Rendered as an empty
+   rounded outline rather than a filled fallback glyph: the tile already carries a centered
+   load control and a floating menu button, and an icon behind those read as visual noise.
+   Border color is picked per theme in dark/light.qss. */
+uise--ChatMessageImageItem[placeholder="true"] {
+border-width: 3px;
+border-style: solid;
+border-radius: 8px;
+}
+
 /* the menu button floats over arbitrary photo content, same rationale as fileupload.qss's
    [view="image"] #itemButtons -- it always gets a translucent backing so the (theme-colored)
    icon stays visible against arbitrary photo content; color picked per theme in dark/light.qss */

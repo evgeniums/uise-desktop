@@ -44,6 +44,17 @@ namespace {
 // AbstractChatMessageContent.
 constexpr int DefaultMaxWidth=320;
 
+// Edge length a placeholder tile (an item whose real pixel size is not known -- never resolved,
+// or a failed/synthesized entry that has no image behind it at all) is laid out at.
+//
+// Without this, such an item reaches albumLayout() as QSize(1,1), i.e. aspect 1.0, and the
+// single-image template's "fill the width budget" rule turns it into a maxWidth x maxWidth
+// square -- a bubble-width blank tile, which is visibly wrong for something that has no image
+// to show. The clamps below feed albumLayout() a width/height budget sized for placeholders
+// instead of for real photo content, so every template (not just the single-image one) lays
+// them out at roughly this extent and the bubble ends up sized to match.
+constexpr int PlaceholderTileExtent=100;
+
 }
 
 //--------------------------------------------------------------------------
@@ -136,14 +147,31 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 {
     std::vector<QSize> sizes;
     sizes.reserve(pimpl->items.size());
+    bool allPlaceholders=!pimpl->items.empty();
     for (const auto& item : pimpl->items)
     {
         auto sz=item.pixelSize();
-        sizes.push_back((sz.isValid() && sz.width()>0 && sz.height()>0) ? sz : QSize(1,1));
+        bool known=sz.isValid() && sz.width()>0 && sz.height()>0;
+        allPlaceholders=allPlaceholders && !known;
+        sizes.push_back(known ? sz : QSize(1,1));
     }
 
     AlbumLayoutOptions options;
     options.maxWidth=(forMaxWidth>0) ? forMaxWidth : DefaultMaxWidth;
+
+    if (allPlaceholders)
+    {
+        // See PlaceholderTileExtent. Two tiles wide is the budget every template then works
+        // within: the single-image one clamps to a square of exactly the extent (its own
+        // maxHeight branch), the two-image one splits the width into two such squares, and
+        // three-or-more fall out of their own templates (or the justified-rows fallback) at
+        // comparable sizes, with albumLayout()'s uniform scale-down catching anything taller
+        // than the height budget.
+        options.maxWidth=qMin(options.maxWidth,PlaceholderTileExtent*2+options.spacing);
+        options.maxHeight=(pimpl->items.size()==1)
+            ? PlaceholderTileExtent
+            : qMin(options.maxHeight,PlaceholderTileExtent*2+options.spacing);
+    }
 
     QSize totalSize;
     auto rects=albumLayout(sizes,options,&totalSize);

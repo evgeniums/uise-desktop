@@ -104,6 +104,22 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
             return m_ripple;
         }
 
+        /**
+         * @brief Enable or disable click interaction, default enabled.
+         *
+         * Disabling suppresses clicked(), the ripple, the hover color swap and the
+         * pointing-hand cursor together -- a control that still highlighted and rippled but
+         * did nothing on click would misrepresent itself as actionable. Intended for states
+         * where the control is purely an indicator, e.g. a permanently failed transfer whose
+         * only recovery path is a menu entry rather than the control itself.
+         */
+        void setClickable(bool enable);
+
+        bool isClickable() const noexcept
+        {
+            return m_clickable;
+        }
+
     protected:
 
         void paintEvent(QPaintEvent *event) override;
@@ -134,6 +150,7 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         qreal m_circlePercent;
         int m_animationDuration;
         bool m_pressed=false;
+        bool m_clickable=true;
 
         RippleOverlay* m_ripple=nullptr;
 };

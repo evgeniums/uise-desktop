@@ -287,10 +287,23 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
 
     QPixmap px=pixmap();
 
+    // See setSvgIconSize()'s own doc comment -- a valid size there means the icon is a small
+    // fixed-size glyph to be centered, not a fill-the-whole-shape placeholder like Avatar's.
+    bool svgIconCentered=false;
     if (px.isNull() && m_svgIcon)
     {
-        // use svg icon
-        px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
+        if (m_svgIconSize.isValid())
+        {
+            svgIconCentered=true;
+            const qreal pixelRatio=qApp->primaryScreen()->devicePixelRatio();
+            px=m_svgIcon->pixmap(m_svgIconSize*pixelRatio,currentSvgIconMode());
+            px.setDevicePixelRatio(pixelRatio);
+        }
+        else
+        {
+            // use svg icon, filling the whole shape
+            px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
+        }
     }
     if (px.isNull())
     {
@@ -306,7 +319,14 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
     }
 
     // draw pixmap
-    if (!px.isNull())
+    if (!px.isNull() && svgIconCentered)
+    {
+        painter.setPen(Qt::NoPen);
+        QRect target(QPoint(0,0),px.deviceIndependentSize().toSize());
+        target.moveCenter(rect().center());
+        painter.drawPixmap(target,px);
+    }
+    else if (!px.isNull())
     {
         painter.setPen(Qt::NoPen);
         painter.setBrush(px);

@@ -309,6 +309,7 @@ void ChatMessageFileItem::updateIconSlot()
     {
         pimpl->loadControl->setVisible(true);
         pimpl->loadControl->setState(chatFileLoadControlState(it.state(),pimpl->incoming));
+        pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(it.state()));
         if (it.state()==ChatFileTransferState::Running || it.state()==ChatFileTransferState::Paused)
         {
             pimpl->loadControl->setProgress(it.transferred(),it.size());

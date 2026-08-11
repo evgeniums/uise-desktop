@@ -143,6 +143,13 @@ bool isChatFileCancellable(ChatFileTransferState state) noexcept
 
 //--------------------------------------------------------------------------
 
+bool isChatFileLoadControlClickable(ChatFileTransferState state) noexcept
+{
+    return state!=ChatFileTransferState::Failed && state!=ChatFileTransferState::Cancelled;
+}
+
+//--------------------------------------------------------------------------
+
 std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context)
 {
     // imageItem is currently unused -- reserved for a future per-kind divergence, see the
@@ -230,10 +237,25 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                 break;
 
             case (ChatFileMenuAction::Resume):
-                text=incoming
-                    ? QCoreApplication::translate("ChatFileItem","Resume downloading")
-                    : QCoreApplication::translate("ChatFileItem","Resume sending");
-                alias=QStringLiteral("resume");
+                // One action, two meanings by state: continuing a transfer the user paused is
+                // "Resume", but picking up a permanently failed one is a fresh attempt, not a
+                // continuation -- "Resume sending" would misdescribe it (and, since the load
+                // control is a pure indicator in that state, see
+                // isChatFileLoadControlClickable(), this entry is the only way to trigger it).
+                if (item.state()==ChatFileTransferState::Failed)
+                {
+                    text=incoming
+                        ? QCoreApplication::translate("ChatFileItem","Retry downloading")
+                        : QCoreApplication::translate("ChatFileItem","Retry sending");
+                    alias=QStringLiteral("retry");
+                }
+                else
+                {
+                    text=incoming
+                        ? QCoreApplication::translate("ChatFileItem","Resume downloading")
+                        : QCoreApplication::translate("ChatFileItem","Resume sending");
+                    alias=QStringLiteral("resume");
+                }
                 break;
 
             case (ChatFileMenuAction::Cancel):

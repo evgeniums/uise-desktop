@@ -206,9 +206,44 @@ void LoadControl::updateIcon(const QString name, const QString& context)
 
 //--------------------------------------------------------------------------
 
+void LoadControl::setClickable(bool enable)
+{
+    if (m_clickable==enable)
+    {
+        return;
+    }
+    m_clickable=enable;
+
+    setCursor(enable ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    if (m_ripple!=nullptr)
+    {
+        m_ripple->setRippleEnabled(enable);
+    }
+    if (!enable)
+    {
+        // Drop any in-progress press/hover so the control does not stay visually "armed"
+        // after being switched to indicator-only mid-interaction -- m_hovered is the only
+        // thing selecting IconMode::Hovered in paintEvent(), so clearing it here (and not
+        // setting it in enterEvent() while unclickable) is what suppresses the hover
+        // highlight for a Failed/Cancelled transfer.
+        m_pressed=false;
+        m_hovered=false;
+    }
+    else
+    {
+        // Becoming clickable again under a stationary cursor produces no enterEvent(), so
+        // pick the hover state up here instead of leaving it stale until the pointer
+        // happens to leave and come back.
+        m_hovered=underMouse();
+    }
+    update();
+}
+
+//--------------------------------------------------------------------------
+
 void LoadControl::enterEvent(QEnterEvent* event)
 {
-    m_hovered=true;
+    m_hovered=m_clickable;
     QFrame::enterEvent(event);
     update();
 }
@@ -230,7 +265,7 @@ void LoadControl::mousePressEvent(QMouseEvent* event)
     // Matches QAbstractButton/CalendarDay: a press only marks the control down, it does not
     // fire clicked() by itself -- that lets a press dragged out of the control before release
     // cancel it, same as every other button in this library.
-    if (event->button()==Qt::LeftButton)
+    if (m_clickable && event->button()==Qt::LeftButton)
     {
         m_pressed=true;
     }

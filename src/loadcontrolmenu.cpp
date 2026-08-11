@@ -200,7 +200,13 @@ void LoadControlMenu::rebuildMenuItems()
 
 void LoadControlMenu::onLoadControlClicked()
 {
-    if (pimpl->loadControl->state()!=AbstractLoadControl::State::Running)
+    // Waiting is treated exactly like Running: a queued-but-not-yet-started transfer is just
+    // as pausable (pausing keeps the scheduler from picking it up) and just as cancellable as
+    // one already in flight -- isChatFileCancellable()/buildChatFileMenuItems() already offer
+    // both for it in the overflow menu, so without this the control would be the one place
+    // that silently ignores a click in that state.
+    auto state=pimpl->loadControl->state();
+    if (state!=AbstractLoadControl::State::Running && state!=AbstractLoadControl::State::Waiting)
     {
         emit clicked();
         return;

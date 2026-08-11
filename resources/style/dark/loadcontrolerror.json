@@ -5,12 +5,12 @@
             "name" : "LoadControlError",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#E57373" },
-                    "on" :  { "currentColor" : "#FF6659" }
+                    "off" : { "currentColor" : "#FF4444" },
+                    "on" :  { "currentColor" : "#FF4444" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#FF6659" },
-                    "on" :  { "currentColor" : "#FF6659" }
+                    "off" : { "currentColor" : "#FF4444" },
+                    "on" :  { "currentColor" : "#FF4444" }
                 }
             }
         }

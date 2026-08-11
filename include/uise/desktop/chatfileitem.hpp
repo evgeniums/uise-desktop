@@ -313,13 +313,25 @@ UISE_DESKTOP_EXPORT AbstractLoadControl::State chatFileLoadControlState(ChatFile
 /**
  * @brief Check whether a transfer in this state can be cancelled -- the single place this gate is
  *  defined, shared by buildChatFileMenuItems() (Cancel menu entry) and LoadControlMenu's own
- *  Running-only pause-or-cancel popup.
+ *  pause-or-cancel popup for the Running/Waiting states.
  * @param state Current transfer state of the item.
  * @return True for Pending/Running/Paused/Failed. Failed counts as cancellable alongside Resume's
  *  retry -- a permanently-failed item still needs a way to give up on it and remove it, not just
  *  retry it. False for Ready/NotLoaded/Complete/Cancelled.
  */
 UISE_DESKTOP_EXPORT bool isChatFileCancellable(ChatFileTransferState state) noexcept;
+
+/**
+ * @brief Check whether the load control shown for an item in this state should react to clicks --
+ *  the single place this gate is defined, applied by both ChatMessageFileItem::refresh() and
+ *  ChatMessageImageItem::refresh() via LoadControl::setClickable().
+ * @param state Current transfer state of the item.
+ * @return False for Failed and Cancelled, where the control is a pure indicator that must not
+ *  present itself as actionable: a permanently failed transfer is recovered through the menu's
+ *  own Retry entry (see buildChatFileMenuItems()) rather than by clicking the control, and a
+ *  cancelled one offers no click action at all. True otherwise.
+ */
+UISE_DESKTOP_EXPORT bool isChatFileLoadControlClickable(ChatFileTransferState state) noexcept;
 
 /**
  * @brief Build the drop-down menu rows for one chat file/image item, the single place this is

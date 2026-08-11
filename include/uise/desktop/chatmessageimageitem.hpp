@@ -142,6 +142,12 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         void updatePreview();
         void repositionOverlays();
 
+        //! Toggle the "placeholder" dynamic property (and repolish) that switches this tile
+        //! between normal rendering and the empty rounded-outline look used when there is no
+        //! image content to show at all -- see chatmessagefiles.qss's [placeholder="true"] rule
+        //! and updatePreview()'s own else branch.
+        void setPlaceholderMode(bool enable);
+
     private slots:
 
         void onMenuItemTriggered(int id);

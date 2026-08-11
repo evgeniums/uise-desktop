@@ -21,3 +21,22 @@ color: #666666;
 uise--ChatMessageImageItem #menuButton {
 background-color: rgba(255,255,255,190);
 }
+
+/* Deliberately opaque, not an rgba() blend of the bubble behind it: Qt's stylesheet engine
+   paints a rounded border as separate edge and corner-arc paths, and a translucent color
+   double-blends where those overlap, leaving visible darker dots at the four corners. This
+   value is roughly what rgba(0,0,0,50) resolved to over the sent-message bubble (chat.qss
+   #D0E8F8), so it reads the same as before minus the artifact. Kept in sync with the load
+   control's own circle background below, which shares the same tone by request. */
+uise--ChatMessageImageItem[placeholder="true"] {
+border-color: #A7BBC7;
+}
+
+/* Same tone as the placeholder outline above, for both chat message body types so a file row
+   and an image tile in the same conversation match. Scoped to these two rather than changing
+   loadcontrol.qss globally, which would also repaint every other LoadControl in the app (the
+   upload dialog, ...). */
+uise--ChatMessageImageItem uise--LoadControl #sample,
+uise--ChatMessageFileItem uise--LoadControl #sample {
+background-color: #A7BBC7;
+}

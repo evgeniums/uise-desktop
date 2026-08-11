@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QResizeEvent>
 #include <QPointer>
+#include <QStyle>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/icontextbutton.hpp>
@@ -188,6 +189,7 @@ void ChatMessageImageItem::refresh()
     if (!ready)
     {
         pimpl->loadControl->setState(chatFileLoadControlState(pimpl->item.state(),pimpl->incoming));
+        pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(pimpl->item.state()));
         if (pimpl->item.state()==ChatFileTransferState::Running || pimpl->item.state()==ChatFileTransferState::Paused)
         {
             pimpl->loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
@@ -286,6 +288,7 @@ void ChatMessageImageItem::updatePreview()
         if (pimpl->preview->setImageFile(path))
         {
             pimpl->loadedPath=path;
+            setPlaceholderMode(false);
             return;
         }
 
@@ -304,19 +307,46 @@ void ChatMessageImageItem::updatePreview()
     {
         pimpl->preview->setSvgIcon(nullptr);
         pimpl->preview->setPixmap(scaledAndCropped(QPixmap::fromImage(preview),size()));
+        setPlaceholderMode(false);
     }
     else
     {
+        // Nothing to show: deliberately no fallback glyph. The tile already carries a centered
+        // load control and a floating menu button, and an icon behind those read as noise --
+        // the tile itself becomes the placeholder instead, drawn as an empty rounded outline
+        // (see chatmessagefiles.qss's [placeholder="true"] rule).
+        pimpl->preview->setSvgIcon(nullptr);
         pimpl->preview->setPixmap(QPixmap());
-        pimpl->preview->setSvgIcon(Style::instance().svgIconLocator().icon(QStringLiteral("ChatMessageFiles::image"),this));
+        setPlaceholderMode(true);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::setPlaceholderMode(bool enable)
+{
+    if (property("placeholder").toBool()==enable)
+    {
+        return;
+    }
+
+    // Dynamic properties drive QSS selectors only after an explicit repolish -- Qt does not
+    // re-evaluate stylesheets on a bare setProperty().
+    setProperty("placeholder",enable);
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageImageItem::repositionOverlays()
 {
-    constexpr int margin=4;
+    // Inset of the floating menu button from the tile's top-right corner. Comfortably clear of
+    // the 3px placeholder outline (chatmessagefiles.qss's [placeholder="true"] rule) rather
+    // than sitting right on it -- the button reads as floating over the tile, not attached to
+    // its edge, and the same inset looks right over real photo content too.
+    constexpr int margin=6;
 
     auto menuSize=pimpl->menuButton->sizeHint();
     pimpl->menuButton->setGeometry(width()-menuSize.width()-margin,margin,menuSize.width(),menuSize.height());

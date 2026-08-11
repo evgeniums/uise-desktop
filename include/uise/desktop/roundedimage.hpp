@@ -192,6 +192,26 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
             return m_svgIcon;
         }
 
+        //! By default the svg icon set via setSvgIcon() is rendered at m_size (the widget's
+        //! own image size, see setImageSize()) and painted as a brush filling the whole
+        //! rounded rect -- correct for a generic-avatar-style icon meant to fill its shape,
+        //! but wrong for a small status/placeholder glyph shown inside a widget sized for
+        //! real photo content (e.g. a failed/no-preview chat image tile), where it ends up
+        //! stretched to fill the entire (large) tile instead of reading as a small icon.
+        //! Passing a valid size here switches to rendering the icon at exactly that size,
+        //! centered in the widget's rect via drawPixmap(), independent of m_size/the
+        //! widget's own geometry. Pass an invalid QSize (the default) to restore fill mode.
+        void setSvgIconSize(const QSize& size)
+        {
+            m_svgIconSize=size;
+            update();
+        }
+
+        QSize svgIconSize() const noexcept
+        {
+            return m_svgIconSize;
+        }
+
         void setParentHovered(bool enable);
 
         bool isParentHovered() const noexcept
@@ -286,6 +306,7 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
         bool m_autoSize;
 
         std::shared_ptr<SvgIcon> m_svgIcon;
+        QSize m_svgIconSize;
         bool m_hovered;
         bool m_parentHovered;
         bool m_selected;

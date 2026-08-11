@@ -5,12 +5,12 @@
             "name" : "LoadControl",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" },
-                    "on" :  { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#F0F0F0" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#000000" },
-                    "on" : { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
                 }
             }
         }

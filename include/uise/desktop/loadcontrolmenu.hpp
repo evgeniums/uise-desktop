@@ -40,14 +40,15 @@ class LoadControl;
 class LoadControlMenu_p;
 
 /**
- * @brief Wraps a plain LoadControl, adding a pause-or-cancel decision menu for its Running
- *  state without teaching LoadControl itself anything about that flow.
+ * @brief Wraps a plain LoadControl, adding a pause-or-cancel decision menu for its in-progress
+ *  states without teaching LoadControl itself anything about that flow.
  *
- * For every state but Running, a click passes straight through as clicked() -- identical to a
- * bare LoadControl, so a host that never cares about the Running-specific flow can use this as
- * a drop-in replacement for LoadControl and never notice the difference.
+ * For every other state, a click passes straight through as clicked() -- identical to a bare
+ * LoadControl, so a host that never cares about the pause-or-cancel flow can use this as a
+ * drop-in replacement for LoadControl and never notice the difference.
  *
- * While state()==AbstractLoadControl::State::Running, a click instead:
+ * While state() is Running or Waiting -- a queued transfer is as pausable and cancellable as
+ * one already transferring, only without progress to show yet -- a click instead:
  *  1. Emits pauseRequested() immediately -- the transfer is presumed genuinely paused, not just
  *     visually frozen, while the user decides what to do next.
  *  2. Opens a two-item menu anchored to the control: a direction-aware Pause entry ("Pause
@@ -61,8 +62,8 @@ class LoadControlMenu_p;
  *     transfer they haven't explicitly asked to continue.
  *  4. Clicking the control again while its own menu is still open is different: that click is a
  *     deliberate interaction with the control, not an incidental dismissal, so it's treated as
- *     an ordinary click on the (by now Paused) control -- emits clicked(), same as any other
- *     non-Running-state click -- letting the host's own click handling decide what it means
+ *     an ordinary click on the (by now Paused) control -- emits clicked(), same as a click in
+ *     any pass-through state -- letting the host's own click handling decide what it means
  *     (typically resume), exactly like LoadControl's own docs describe for every other state.
  */
 class UISE_DESKTOP_EXPORT LoadControlMenu : public QFrame
@@ -112,8 +113,8 @@ class UISE_DESKTOP_EXPORT LoadControlMenu : public QFrame
     signals:
 
         /**
-         * @brief Emitted for a click in any state but Running -- identical to LoadControl's own
-         *  clicked() signal.
+         * @brief Emitted for a click in any state other than Running/Waiting -- identical to
+         *  LoadControl's own clicked() signal.
          */
         void clicked();
 
