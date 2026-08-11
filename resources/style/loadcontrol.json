@@ -13,6 +13,14 @@
                 "cancel" : "${uise-svg-icons-1}/x",
                 "stop" : "${uise-svg-icons-1}/player-stop"
             }
+        },
+        {
+            "comment" : "Rows of LoadControlMenu's pause-or-cancel popup -- a separate context from LoadControl above on purpose: those icons are painted inside the control's own filled circle and are coloured for contrast against it, while these are ordinary drop-down menu rows on the menu background. Colours here mirror the generic DropdownMenu context (and so the per-item chat file menu, which resolves to the same values) rather than the control's.",
+            "name" : "LoadControlMenu",
+            "aliases" : {
+                "pause"  : "${uise-svg-icons-1}/player-pause",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
         }
     ]
 }

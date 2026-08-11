@@ -186,6 +186,41 @@ int main(int argc, char *argv[])
         log->appendPlainText(text);
     };
 
+    // --- colour theme selector, pinned at the top rather than down with the other selectors:
+    // most of what this demo is looked at for (load-control circle and icon colours, the
+    // placeholder tile outline, drop-down menu row icons) is theme-specific, so switching
+    // themes needs to be reachable without scrolling past every message first. Same toggle
+    // recipe as demo/chatimageviewer/main.cpp and demo/dropdownmenu/main.cpp, just exposed as
+    // a selector including Auto rather than a two-state toggle. ---
+
+    auto* themeFrame=new QFrame(central);
+    auto* themeLayout=Layout::horizontal(themeFrame);
+    rootLayout->addWidget(themeFrame);
+
+    themeLayout->addWidget(new QLabel(QStringLiteral("Colour theme:")));
+
+    auto* themeCombo=new QComboBox();
+    themeCombo->addItem(QStringLiteral("Auto"),static_cast<int>(Style::StyleSheetMode::Auto));
+    themeCombo->addItem(QStringLiteral("Light"),static_cast<int>(Style::StyleSheetMode::Light));
+    themeCombo->addItem(QStringLiteral("Dark"),static_cast<int>(Style::StyleSheetMode::Dark));
+    themeCombo->setCurrentIndex(themeCombo->findData(static_cast<int>(Style::instance().styleSheetMode())));
+    themeLayout->addWidget(themeCombo,1);
+
+    QObject::connect(
+        themeCombo,
+        &QComboBox::currentIndexChanged,
+        central,
+        [themeCombo](int index)
+        {
+            auto mode=static_cast<Style::StyleSheetMode>(themeCombo->itemData(index).toInt());
+            Style::instance().setStyleSheetMode(mode);
+            // reload=true: re-resolves every already-created SvgIcon against the new theme's
+            // colour maps, not just the QSS -- without it the icons would keep the colours
+            // they were built with while their backgrounds changed underneath them.
+            Style::instance().applyStyleSheet(true);
+        }
+    );
+
     rootLayout->addWidget(new QLabel(QStringLiteral("File messages:")));
 
     // --- 1. incoming file message: mixed transfer states, with a comment ---

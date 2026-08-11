@@ -53,7 +53,12 @@ constexpr int MaxFileNameTextWidth=160;
 
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
-    return Style::instance().svgIconLocator().icon(QString("LoadControl::%1").arg(alias),context);
+    // LoadControlMenu, not LoadControl: these are drop-down menu rows painted on the menu
+    // background, not glyphs inside the control's own filled circle, so they follow the
+    // generic menu colour scale (see loadcontrol.json's own comment on that context). Using
+    // the control's scale here made them near-invisible in the light theme, where it is
+    // deliberately almost white for contrast against the circle behind it.
+    return Style::instance().svgIconLocator().icon(QString("LoadControlMenu::%1").arg(alias),context);
 }
 
 }

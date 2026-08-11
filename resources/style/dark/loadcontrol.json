@@ -13,6 +13,19 @@
                     "on" : { "currentColor" : "#FFFFFF" }
                 }
             }
+        },
+        {
+            "name" : "LoadControlMenu",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                }
+            }
         }
     ]
 }
