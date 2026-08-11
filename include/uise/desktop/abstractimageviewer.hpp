@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <vector>
 #include <map>
+#include <cstdint>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/frame.hpp>
@@ -50,6 +51,15 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             Image(PixmapKey key={}, QPixmap content={}) : key(std::move(key)), content(std::move(content))
             {}
         };
+
+        //! How the navigation/toolbar controls are presented over the image.
+        enum class ControlsMode : uint8_t
+        {
+            Static,   //!< Current behaviour: the bottom widget occupies layout space below the image.
+            Overlay   //!< The bottom widget and prev/next buttons float over the image and fade out
+                      //!< after a period of user inactivity, reappearing on mouse movement.
+        };
+        Q_ENUM(ControlsMode)
 
         using WidgetController::WidgetController;
 
@@ -106,7 +116,7 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             return imagePixmap(key);
         }
 
-        void setImageSource(std::shared_ptr<PixmapSource> imageSource);
+        virtual void setImageSource(std::shared_ptr<PixmapSource> imageSource);
 
         std::shared_ptr<PixmapSource> imageSource() const
         {
@@ -118,13 +128,59 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             return m_currentImageIndex;
         }
 
-        virtual void reset() {}
+        //! Switch between the embedded static toolbar and a floating, auto-hiding overlay.
+        //! Default is ControlsMode::Static, so existing callers see no behavioural change.
+        virtual void setControlsMode(ControlsMode mode)
+        {
+            m_controlsMode=mode;
+        }
+
+        ControlsMode controlsMode() const noexcept
+        {
+            return m_controlsMode;
+        }
+
+        /**
+         * @brief Replace the embedded bottom toolbar with a caller-supplied widget.
+         * @param widget New bottom widget; the viewer takes ownership (reparents it). Passing
+         *  nullptr restores the viewer's own embedded toolbar.
+         *
+         * Base implementation is a no-op: only a concrete viewer with an actual widget surface
+         * (see ImageViewer) can host one.
+         */
+        virtual void setBottomWidget(QWidget* widget)
+        {
+            std::ignore=widget;
+        }
+
+        //! Get the widget set via setBottomWidget(), or nullptr if none/the embedded toolbar is used.
+        virtual QWidget* bottomWidget() const
+        {
+            return nullptr;
+        }
+
+        //! Idle delay, in ControlsMode::Overlay, before the controls fade out. Default 2500 ms.
+        void setControlsAutoHideDelayMs(int ms) noexcept
+        {
+            m_controlsAutoHideDelayMs=ms;
+        }
+
+        int controlsAutoHideDelayMs() const noexcept
+        {
+            return m_controlsAutoHideDelayMs;
+        }
 
     signals:
 
         void currentImageIndexChanged(size_t index);
 
+        //! Emitted once when the user presses Escape (see ImageViewerWidget::keyPressEvent()).
+        //! A host wrapping the viewer in a modal dialog is expected to close that dialog on this.
+        void closeRequested();
+
     public slots:
+
+        virtual void reset() {}
 
         virtual void zoomIn() {}
         virtual void zoomOut() {}
@@ -133,11 +189,33 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         virtual void rotate() {}
         virtual void rotateClockwise() {}
 
+        //! Alias of rotate() (which rotates counterclockwise) under an unambiguous name; not
+        //! itself virtual so a single definition always dispatches to whatever rotate() resolves to.
+        void rotateCounterclockwise()
+        {
+            rotate();
+        }
+
+        virtual void fitImage() {}
+
+        //! Not itself virtual -- a single definition always dispatches to whatever
+        //! closeRequested() is connected to; see ImageViewerWidget::keyPressEvent()'s Escape case.
+        void requestClose()
+        {
+            emit closeRequested();
+        }
+
         void showNextImage();
         void showPrevImage();
 
         void selectImage(size_t index);
         void selectImage(const UISE_DESKTOP_NAMESPACE::PixmapKey& key);
+
+        //! In ControlsMode::Overlay, show the controls and (re)arm the auto-hide timer. No-op in Static mode.
+        virtual void showControls() {}
+
+        //! In ControlsMode::Overlay, fade the controls out immediately. No-op in Static mode.
+        virtual void hideControls() {}
 
     private slots:
 
@@ -180,6 +258,9 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
 
         std::map<PixmapKey,std::shared_ptr<ImageData>> m_images;
         std::shared_ptr<PixmapSource> m_imageSource;
+
+        ControlsMode m_controlsMode=ControlsMode::Static;
+        int m_controlsAutoHideDelayMs=2500;
 };
 
 UISE_DESKTOP_NAMESPACE_END

@@ -201,6 +201,9 @@ SET (HEADERS
     include/uise/desktop/abstractimageviewer.hpp
     include/uise/desktop/imageviewer.hpp
     include/uise/desktop/directoryimagesviewer.hpp
+    include/uise/desktop/imagepreviewstrip.hpp
+    include/uise/desktop/chatimageviewercontrols.hpp
+    include/uise/desktop/chatimageviewer.hpp
 
     include/uise/desktop/circlebusy.hpp
     include/uise/desktop/lineedit.hpp
@@ -369,6 +372,9 @@ SET (SOURCES
     src/abstractimageviewer.cpp
     src/imageviewer.cpp
     src/directoryimagesviewer.cpp
+    src/imagepreviewstrip.cpp
+    src/chatimageviewercontrols.cpp
+    src/chatimageviewer.cpp
 
     src/circlebusy.cpp
     src/lineedit.cpp

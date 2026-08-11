@@ -34,6 +34,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/widgetfactory.hpp>
+#include <uise/desktop/abstractimageviewer.hpp>
 #include <uise/desktop/directoryimagesviewer.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -52,6 +53,40 @@ int main(int argc, char *argv[])
 
     auto viewer=new DirectoryImagesViewer(mainFrame);
     l->addWidget(viewer,1);
+
+    // Escape closes the viewer; here (no wrapping dialog) that just quits the demo.
+    QObject::connect(
+        viewer->viewer(),
+        &AbstractImageViewer::closeRequested,
+        &app,
+        &QApplication::quit
+    );
+
+    // Toggle between AbstractImageViewer::ControlsMode::Static (the default: toolbar below the
+    // image) and ::Overlay (toolbar + prev/next float over the image and fade out when idle).
+    auto modeButton=new QPushButton(mainFrame);
+    modeButton->setText("Switch to Overlay Mode");
+    l->addWidget(modeButton);
+    QObject::connect(
+        modeButton,
+        &QPushButton::clicked,
+        &w,
+        [viewer,modeButton]()
+        {
+            auto* imageViewer=viewer->viewer();
+            auto overlay=imageViewer->controlsMode()==AbstractImageViewer::ControlsMode::Overlay;
+            if (overlay)
+            {
+                imageViewer->setControlsMode(AbstractImageViewer::ControlsMode::Static);
+                modeButton->setText("Switch to Overlay Mode");
+            }
+            else
+            {
+                imageViewer->setControlsMode(AbstractImageViewer::ControlsMode::Overlay);
+                modeButton->setText("Switch to Static Mode");
+            }
+        }
+    );
 
     w.setCentralWidget(mainFrame);
     w.resize(1000,700);

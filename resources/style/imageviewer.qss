@@ -1,0 +1,26 @@
+uise--ImageViewerWidget {
+qproperty-controlsFadeInDurationMs: 150;
+qproperty-controlsFadeOutDurationMs: 300;
+qproperty-controlsMaxOpacity: 1.0;
+}
+
+/* ControlsMode::Overlay: the embedded controlsFrame (and, when a caller supplies its own bottom
+ * widget via setBottomWidget(), that widget too, via its own styling) floats over the image
+ * instead of sitting in normal layout flow below it -- see
+ * ImageViewerWidget::applyControlsMode(), which sets this "overlay" dynamic property. It needs
+ * a backing of its own to stay legible over arbitrary image content, same rationale as
+ * ChatMessageImageItem's #menuButton translucent backing in chatmessagefiles.qss. Deliberately
+ * theme-independent (always a dark backing) rather than following light/dark.qss, since it
+ * always sits over a photo rather than the app's own background.
+ *
+ * Known limitation: the embedded toolbar's icons still come from the ImageEditor context
+ * (imageeditor.json), whose colors are tuned for sitting on the app's normal background, not
+ * this dark overlay backing -- in the light theme they read with reduced contrast here. A
+ * caller that cares (see ChatImageViewerControls, which ships its own always-light icon set
+ * instead of the embedded toolbar) should supply a custom bottom widget via setBottomWidget()
+ * rather than relying on the embedded one for prolonged overlay use.
+ */
+uise--ImageViewerWidget[overlay="true"] #controlsFrame {
+background-color: rgba(0,0,0,140);
+border-radius: 8px;
+}

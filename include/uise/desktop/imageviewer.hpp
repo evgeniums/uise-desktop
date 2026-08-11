@@ -41,11 +41,14 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
 
         using AbstractImageViewer::AbstractImageViewer;
 
-        void reset() override;
+        void setControlsMode(ControlsMode mode) override;
 
-        void fitImage();
+        void setBottomWidget(QWidget* widget) override;
+        QWidget* bottomWidget() const override;
 
     public slots:
+
+        void reset() override;
 
         void zoomIn() override;
         void zoomOut() override;
@@ -53,6 +56,11 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void flipHorizontal() override;
         void rotate() override;
         void rotateClockwise() override;
+
+        void fitImage() override;
+
+        void showControls() override;
+        void hideControls() override;
 
     private slots:
 
@@ -67,6 +75,19 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void updateBusySpinner();
         void updatePrevNextButtons();
 
+        /**
+         * @brief Force an immediate recompute of the overlay bottom widget's/prev-next buttons'
+         *  geometry, without waiting for Qt's own queued QEvent::LayoutRequest.
+         *
+         * ImageViewerWidget::updateButtonPositions() is private (only ImageViewer is friend, and
+         * friendship is not inherited), so a subclass whose bottom widget's content can change
+         * its own sizeHint well after doCreateActualWidget() ran (see ChatImageViewer, which
+         * calls this after every setPreviews() on its album strip) needs this instead of relying
+         * solely on the eventFilter()-driven QEvent::LayoutRequest reaction, which only fires on
+         * the next event loop iteration.
+         */
+        void refreshOverlayGeometry();
+
         ImageViewerWidget* m_widget;
 };
 
@@ -75,7 +96,18 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
 {
     Q_OBJECT
 
+    // QSS-tunable presentation knobs of the ControlsMode::Overlay fade, mirroring
+    // ChatDateSubtitle's own show/hide/fade Q_PROPERTYs.
+    Q_PROPERTY(qreal controlsOpacity READ controlsOpacity WRITE setControlsOpacity)
+    Q_PROPERTY(int controlsFadeInDurationMs READ controlsFadeInDurationMs WRITE setControlsFadeInDurationMs)
+    Q_PROPERTY(int controlsFadeOutDurationMs READ controlsFadeOutDurationMs WRITE setControlsFadeOutDurationMs)
+    Q_PROPERTY(qreal controlsMaxOpacity READ controlsMaxOpacity WRITE setControlsMaxOpacity)
+
     public:
+
+        constexpr static const int DefaultControlsFadeInDurationMs=150;
+        constexpr static const int DefaultControlsFadeOutDurationMs=300;
+        constexpr static const qreal DefaultControlsMaxOpacity=1.0;
 
         ImageViewerWidget(ImageViewer* ctrl, QWidget* parent=nullptr);
 
@@ -85,14 +117,47 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         ImageViewerWidget& operator=(const ImageViewerWidget&)=delete;
         ImageViewerWidget& operator=(ImageViewerWidget&&)=delete;
 
+        void setControlsMode(AbstractImageViewer::ControlsMode mode);
+        AbstractImageViewer::ControlsMode controlsMode() const noexcept;
+
+        void setBottomWidget(QWidget* widget);
+        QWidget* bottomWidget() const;
+
+        //! Current animated opacity of the overlay controls. Not meant to be set directly by client code.
+        qreal controlsOpacity() const;
+        void setControlsOpacity(qreal value);
+
+        int controlsFadeInDurationMs() const;
+        void setControlsFadeInDurationMs(int value);
+
+        int controlsFadeOutDurationMs() const;
+        void setControlsFadeOutDurationMs(int value);
+
+        //! Maximum (fully visible) opacity to fade the overlay controls in to.
+        qreal controlsMaxOpacity() const;
+        void setControlsMaxOpacity(qreal value);
+
+    public slots:
+
+        void showControls();
+        void hideControls();
+
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
+        bool event(QEvent* event) override;
+        bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
 
         void updateButtonPositions();
+        void applyControlsMode();
+        void updateControlsVisibility();
+        void fadeControlsIn();
+        void fadeControlsOut();
+        void notifyActivity();
+
         std::unique_ptr<ImageViewerWidget_p> pimpl;
 
         friend class ImageViewer;
