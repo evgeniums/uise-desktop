@@ -64,6 +64,13 @@ class UISE_DESKTOP_EXPORT DirectoryImagesViewer : public WidgetQFrame
         void setFileBrowserFrameVisible(bool enable);
         bool isFileBrowserFrameVisible() const;
 
+        //! The embedded viewer, for callers that want to drive its ControlsMode/bottom widget
+        //! directly (e.g. a Static/Overlay toggle in a demo).
+        AbstractImageViewer* viewer() const noexcept
+        {
+            return m_viewer;
+        }
+
         void setNativeFileDialog(bool enable) noexcept
         {
             m_nativeFileDialog=enable;

@@ -61,7 +61,7 @@ DirectoryImagesViewer::DirectoryImagesViewer(QWidget *parent)
     : WidgetQFrame(parent),
       m_nativeFileDialog(true)
 {
-    auto m_imageSource=std::make_shared<DirectoryImagesSource>();
+    m_imageSource=std::make_shared<DirectoryImagesSource>();
 
     auto l=Layout::vertical(this);
 
@@ -93,6 +93,20 @@ DirectoryImagesViewer::DirectoryImagesViewer(QWidget *parent)
         this,
         &DirectoryImagesViewer::browseFile
     );
+}
+
+//--------------------------------------------------------------------------
+
+void DirectoryImagesViewer::setFileBrowserFrameVisible(bool enable)
+{
+    m_fileBrowserFrame->setVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool DirectoryImagesViewer::isFileBrowserFrameVisible() const
+{
+    return m_fileBrowserFrame->isVisible();
 }
 
 //--------------------------------------------------------------------------

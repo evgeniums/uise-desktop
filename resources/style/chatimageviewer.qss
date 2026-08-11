@@ -1,0 +1,84 @@
+/* ChatImageViewerControls always sits over an arbitrary image, in both themes -- like
+ * imageviewer.qss's own [overlay="true"] backing, its colors are deliberately fixed rather than
+ * following light/dark.qss (hence no dark/ or light/ variant of this file). */
+
+uise--ChatImageViewerControls {
+padding: 6px 10px;
+background-color: rgba(0,0,0,140);
+}
+
+uise--ChatImageViewerControls #textBlock {
+padding: 0;
+margin: 0;
+}
+
+uise--ChatImageViewerControls #counter {
+color: #FFFFFF;
+font-weight: bold;
+}
+
+uise--ChatImageViewerControls #senderRow {
+padding: 0;
+margin: 0;
+}
+
+/* ElidedLabel (#sender) renders its text via an internal plain QLabel child, not itself -- the
+ * global "QLabel { color: ... }" rule in light/reset.qss and dark/reset.qss matches that internal
+ * QLabel DIRECTLY, which always beats an inherited color from an ancestor rule regardless of the
+ * ancestor rule's own specificity. Must target the internal QLabel explicitly, same fix already
+ * used for uise--HTreeNodeTitleBar uise--ElidedLabel QLabel in htree.qss. */
+uise--ChatImageViewerControls #sender,
+uise--ChatImageViewerControls #sender QLabel {
+color: #E0E0E0;
+}
+
+uise--ChatImageViewerControls #separator {
+min-width: 1px;
+max-width: 1px;
+margin: 2px 6px;
+background-color: rgba(255,255,255,90);
+}
+
+uise--ChatImageViewerControls #dateTime {
+color: #B0B0B0;
+}
+
+uise--ChatImageViewerControls #previewStrip {
+margin: 0 12px;
+}
+
+/* Same reasoning as chatmessagefiles.qss's own IconTextButton rule -- an icon has no sensible
+ * default size of its own, it must be set explicitly per container. */
+uise--ChatImageViewerControls uise--IconTextButton uise--RoundedImage {
+min-width: 20px;
+max-width: 20px;
+min-height: 20px;
+max-height: 20px;
+}
+
+uise--ChatImageViewerControls #menuButton {
+padding: 6px;
+border-radius: 6px;
+}
+
+uise--ChatImageViewerControls #menuButton[checked="true"] {
+background-color: rgba(255,255,255,40);
+}
+
+/* Explicit and self-contained rather than relying on imageeditor.qss's
+ * "uise--ImageViewerWidget uise--PushButton QPushButton" rule matching by incidental ancestry
+ * (ChatImageViewerControls is always reparented inside an ImageViewerWidget once installed via
+ * setBottomWidget(), but should still look right standalone, e.g. in a test). */
+uise--ChatImageViewerControls uise--PushButton QPushButton {
+padding: 6px;
+icon-size: 20px;
+border-radius: 6px;
+}
+
+uise--ChatImageViewerControls uise--PushButton QPushButton:hover {
+background-color: rgba(255,255,255,40);
+}
+
+uise--ImagePreviewStrip #previewItem {
+border-radius: 6px;
+}

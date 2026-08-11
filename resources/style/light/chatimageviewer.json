@@ -1,0 +1,22 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ChatImageViewer",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#F0F0F0" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}
