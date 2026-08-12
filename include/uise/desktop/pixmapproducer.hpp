@@ -100,10 +100,17 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
 
         void acquireProducer();
 
+        //! Relays PixmapProducer::isLoading() of the currently acquired producer, or false when
+        //! there is none -- see PixmapSource::setPixmapLoading().
+        bool isLoading() const;
+
     signals:
 
         void pixmapUpdated();
         void dataUpdated();
+
+        //! Relays PixmapProducer::loadingChanged() of the currently acquired producer.
+        void loadingChanged(bool loading);
 
     private:
 
@@ -175,6 +182,20 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
             return m_aspectRatioMode;
         }
 
+        //! Producer's own "loading" flag, distinct from the pixmap being null -- see
+        //! PixmapSource::setPixmapLoading(). A source that already shows a lower-rung pixmap can
+        //! set this while it fetches a better one, so a consumer can display an unobtrusive
+        //! "still improving" indicator instead of (or on top of) an already-usable image.
+        bool isLoading() const noexcept
+        {
+            return m_loading;
+        }
+
+        //! Note: this shadows the pixmap key's own WithPath::data()/data(const QString&) (this
+        //! class privately inherits identity from PixmapKey but re-declares an unrelated data()
+        //! of its own for caller-attached payload). Inside a PixmapSource, the key's side channel
+        //! -- e.g. a viewer's fetch-priority hint -- must be read via pixmapKey().data(...), not
+        //! via this method.
         QVariant data() const
         {
             return m_data;
@@ -185,6 +206,9 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         void pixmapUpdated();
         void dataUpdated();
 
+        //! See isLoading().
+        void loadingChanged(bool loading);
+
     public slots:
 
         void setImage(const QImage& img, UISE_DESKTOP_NAMESPACE::IconVariant mode={}, QIcon::State state=DefaultIconState);
@@ -193,6 +217,9 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         void setSvgIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> svgIcon);
 
         void setData(QVariant data);
+
+        //! See isLoading(). No-op, and no signal emitted, when the value is unchanged.
+        void setLoading(bool enable);
 
     private:
 
@@ -230,6 +257,8 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         Qt::AspectRatioMode m_aspectRatioMode;
 
         QVariant m_data;
+
+        bool m_loading=false;
 
         friend class PixmapSource;
 };
@@ -318,6 +347,30 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
         void updatePixmap(const PixmapKey& key, const QPixmap& pixmap);
 
         void updateScaledPixmaps(const WithPath& path, const QPixmap& originalPixmap);
+
+        /**
+         * @brief Mark a single producer as still fetching a better pixmap.
+         * @param key Pixmap key; a no-op if no producer is currently registered for it.
+         * @param enable New loading state.
+         *
+         * Sanctioned idiom for a version-ladder source (see doLoadPixmap()):
+         * @code
+         *  setPixmapLoading(key,true);
+         *  updatePixmap(key,lowRungPixmap());   // shows immediately, consumer's overlay spinner on
+         *  fetchBetterRung(key);                // async; on completion:
+         *  //   updatePixmap(key,betterRung());
+         *  //   setPixmapLoading(key,false);    // after the pixmap, so there is no spinner-less frame
+         * @endcode
+         *
+         * Producers default to isLoading()==false and this is never set implicitly by
+         * acquireProducer() -- a source must opt in explicitly, otherwise every existing consumer
+         * (Avatar, RoundedImage, ImageLabel, ...) would start relaying a signal it never asked for.
+         */
+        void setPixmapLoading(const PixmapKey& key, bool enable);
+
+        //! Same as setPixmapLoading(), but for every producer currently registered under path --
+        //! mirrors updateScaledPixmaps()'s one-path-many-sizes fan-out.
+        void setPathLoading(const WithPath& path, bool enable);
 
         void setAspectRatioMode(Qt::AspectRatioMode mode) noexcept
         {

@@ -137,6 +137,10 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         //! A preview in the album strip was clicked; index is within the currently loaded album.
         void previewClicked(int index);
 
+        //! Same event as previewClicked(), identifying the preview by key -- see
+        //! ImagePreviewStrip::previewClickedKey(), which this simply forwards.
+        void previewClickedKey(const UISE_DESKTOP_NAMESPACE::PixmapKey& key);
+
         void saveAsRequested();
         void rotateRequested();
         void zoomInRequested();

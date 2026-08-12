@@ -86,7 +86,18 @@ class ImageViewerWidget_p
 
         QLabel* styleSample;
 
+        //! Large, centred, blocking spinner shown while currentImage() is null -- unchanged from
+        //! before the flyweight refactor.
         CircleBusy* busySpinner;
+
+        //! Small, non-blocking "still improving" indicator shown over an already-displayed image
+        //! -- see AbstractImageViewer::isCurrentImageLoading()/isNavigationPending(). loadingOverlayFrame
+        //! is a plain QFrame backing (CircleBusy::paintEvent() never chains to QFrame::paintEvent(),
+        //! so QSS background/border-radius on the spinner itself would not render -- see
+        //! imageviewer.qss); loadingOverlay is constructed with disableParentWhenSpinning=false so
+        //! navigation stays live while a better version is being fetched.
+        QFrame* loadingOverlayFrame;
+        CircleBusy* loadingOverlay;
 
         qreal scale=1.0;
 
@@ -249,11 +260,28 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
 
     cl->addStretch(1);
 
-    updateButtonPositions();
-
     pimpl->busySpinner=new CircleBusy(pimpl->contentFrame);
+    pimpl->busySpinner->setObjectName("busySpinner");
     pimpl->busySpinner->stop();
     pimpl->busySpinner->setVisible(false);
+
+    pimpl->loadingOverlayFrame=new QFrame(pimpl->contentFrame);
+    pimpl->loadingOverlayFrame->setObjectName("loadingOverlayFrame");
+    pimpl->loadingOverlayFrame->setVisible(false);
+    auto lol=Layout::vertical(pimpl->loadingOverlayFrame);
+    // centerOnParent=false: positioned explicitly in updateButtonPositions() instead, in the
+    // corner rather than over the middle of the image. disableParentWhenSpinning=false: this
+    // spinner shows WHILE a usable image is already displayed, so CircleBusy's default of
+    // disabling its parent while running (see CircleBusy::start()) would freeze navigation for no
+    // reason -- the whole point is that the user can keep browsing while a better version loads.
+    pimpl->loadingOverlay=new CircleBusy(pimpl->loadingOverlayFrame,false,false);
+    pimpl->loadingOverlay->setObjectName("loadingOverlay");
+    pimpl->loadingOverlay->stop();
+    lol->addWidget(pimpl->loadingOverlay);
+
+    // Must run after loadingOverlayFrame above is constructed -- it reads pimpl->loadingOverlayFrame
+    // directly (see its own body).
+    updateButtonPositions();
 
     pimpl->controlsAnimation=new QPropertyAnimation(this,"controlsOpacity",this);
     connect(
@@ -307,6 +335,18 @@ void ImageViewerWidget::updateButtonPositions()
 
     pimpl->prevButton->move(prevX,y);
     pimpl->nextButton->move(nextX,y);
+
+    // Top-right corner of the image area, same rect the prev/next buttons above are anchored
+    // from -- see ImageViewer::updateBusySpinner() for when this is actually shown.
+    auto overlaySize=pimpl->loadingOverlayFrame->sizeHint();
+    if (!overlaySize.isValid() || overlaySize.isEmpty())
+    {
+        overlaySize=pimpl->loadingOverlayFrame->size();
+    }
+    auto overlayMargin=8;
+    auto overlayX=pimpl->view->x()+r.right()-overlaySize.width()-overlayMargin;
+    auto overlayY=pimpl->view->y()+r.top()+overlayMargin;
+    pimpl->loadingOverlayFrame->setGeometry(overlayX,overlayY,overlaySize.width(),overlaySize.height());
 
     if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay && pimpl->activeBottomWidget!=nullptr)
     {
@@ -439,11 +479,12 @@ void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
 
 bool ImageViewerWidget::isInPrevNavigationZone(const QPoint& pos) const
 {
-    // hasPrev, not prevButton->isVisible() -- matches updateControlsVisibility()'s own
+    // hasPrevImage(), not prevButton->isVisible() -- matches updateControlsVisibility()'s own
     // definition of "enabled" rather than the button's transient visibility during an
     // Overlay-mode fade (hovering the zone itself fades the controls back in, see
-    // updateEdgeNavigationHover()'s notifyActivity() call).
-    if (pimpl->ctrl->currentImageIndex()==0)
+    // updateEdgeNavigationHover()'s notifyActivity() call). Also correctly stays enabled at
+    // index 0 when the flyweight window hasMoreBefore().
+    if (!pimpl->ctrl->hasPrevImage())
     {
         return false;
     }
@@ -459,7 +500,7 @@ bool ImageViewerWidget::isInPrevNavigationZone(const QPoint& pos) const
 
 bool ImageViewerWidget::isInNextNavigationZone(const QPoint& pos) const
 {
-    if ((pimpl->ctrl->currentImageIndex()+1)>=pimpl->ctrl->imageCount())
+    if (!pimpl->ctrl->hasNextImage())
     {
         return false;
     }
@@ -835,8 +876,11 @@ void ImageViewerWidget::applyControlsMode()
 
 void ImageViewerWidget::updateControlsVisibility()
 {
-    bool hasPrev=pimpl->ctrl->currentImageIndex()>0;
-    bool hasNext=(pimpl->ctrl->currentImageIndex()+1)<pimpl->ctrl->imageCount();
+    // hasPrevImage()/hasNextImage(), not raw index comparisons -- a flyweight window can have
+    // more images before/after the loaded range (see AbstractImageViewer::hasMoreBefore()/
+    // hasMoreAfter()), which must keep the button enabled even at index 0 or the last loaded index.
+    bool hasPrev=pimpl->ctrl->hasPrevImage();
+    bool hasNext=pimpl->ctrl->hasNextImage();
 
     if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Static)
     {
@@ -1116,16 +1160,43 @@ void ImageViewer::zoomOut()
 void ImageViewer::doSelectImage()
 {
     doReset();
-    auto px=currentImage();
-    if (!px.isNull())
-    {
-        m_widget->pimpl->imageItem=m_widget->pimpl->scene->addPixmap(px);
-    }
+    applyCurrentPixmap();
     fitImage();
     updateBusySpinner();
     updatePrevNextButtons();
     m_widget->showControls();
     m_widget->setFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::applyCurrentPixmap()
+{
+    auto px=currentImage();
+    if (px.isNull())
+    {
+        if (m_widget->pimpl->imageItem!=nullptr)
+        {
+            m_widget->pimpl->scene->removeItem(m_widget->pimpl->imageItem);
+            delete m_widget->pimpl->imageItem;
+            m_widget->pimpl->imageItem=nullptr;
+        }
+        return;
+    }
+
+    // Create the scene item lazily the first time a non-null pixmap becomes available, rather
+    // than only at doSelectImage() time -- doSelectImage() itself calls this too, so a
+    // still-loading image (no producer pixmap yet, no seed content) that only gets one later via
+    // onPixmapUpdated() now actually appears instead of being silently dropped forever (the
+    // previous onPixmapUpdated() required imageItem to already be non-null to update it).
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        m_widget->pimpl->imageItem=m_widget->pimpl->scene->addPixmap(px);
+    }
+    else
+    {
+        m_widget->pimpl->imageItem->setPixmap(px);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1166,12 +1237,35 @@ void ImageViewer::fitImage()
 
 void ImageViewer::onPixmapUpdated(const PixmapKey& key)
 {
-    if (key==currentImageKey() && m_widget->pimpl->imageItem!=nullptr)
+    if (key==currentImageKey())
     {
-        m_widget->pimpl->imageItem->setPixmap(currentImage());
+        applyCurrentPixmap();
         fitImage();
     }
     updateBusySpinner();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onPixmapLoadingChanged(const PixmapKey& key, bool loading)
+{
+    std::ignore=loading;
+    if (key==currentImageKey())
+    {
+        updateBusySpinner();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onWindowChanged()
+{
+    if (m_widget==nullptr)
+    {
+        return;
+    }
+    updateBusySpinner();
+    updatePrevNextButtons();
 }
 
 //--------------------------------------------------------------------------
@@ -1181,13 +1275,30 @@ void ImageViewer::updateBusySpinner()
     auto px=currentImage();
     if (px.isNull())
     {
+        // No usable pixmap at all yet -- the original, large, centred, blocking spinner.
         m_widget->pimpl->busySpinner->setVisible(true);
         m_widget->pimpl->busySpinner->start();
+        m_widget->pimpl->loadingOverlayFrame->setVisible(false);
+        m_widget->pimpl->loadingOverlay->stop();
+        return;
+    }
+
+    m_widget->pimpl->busySpinner->setVisible(false);
+    m_widget->pimpl->busySpinner->stop();
+
+    // A usable (possibly seed/lower-rung) pixmap is already shown -- only the small, non-blocking
+    // corner overlay is appropriate here, and only while a better version is still being fetched
+    // (isCurrentImageLoading(), see PixmapSource::setPixmapLoading()) or navigation is waiting on
+    // a fetch past a loaded window edge (isNavigationPending()).
+    bool showOverlay=isCurrentImageLoading() || isNavigationPending();
+    m_widget->pimpl->loadingOverlayFrame->setVisible(showOverlay);
+    if (showOverlay)
+    {
+        m_widget->pimpl->loadingOverlay->start();
     }
     else
     {
-        m_widget->pimpl->busySpinner->setVisible(false);
-        m_widget->pimpl->busySpinner->stop();
+        m_widget->pimpl->loadingOverlay->stop();
     }
 }
 

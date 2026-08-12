@@ -317,7 +317,7 @@ class WithPathAndSize : public WithPath
     private:
 
         QSize m_size;
-        bool m_anySize;
+        bool m_anySize=false;
 };
 
 using PixmapKey=WithPathAndSize;

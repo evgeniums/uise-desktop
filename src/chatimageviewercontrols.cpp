@@ -128,6 +128,12 @@ ChatImageViewerControls::ChatImageViewerControls(QWidget* parent)
         this,
         &ChatImageViewerControls::previewClicked
     );
+    connect(
+        pimpl->previewStrip,
+        &ImagePreviewStrip::previewClickedKey,
+        this,
+        &ChatImageViewerControls::previewClickedKey
+    );
 
     // --- right-hand toolbar ---
 

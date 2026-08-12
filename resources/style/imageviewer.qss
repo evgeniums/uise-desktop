@@ -24,3 +24,34 @@ uise--ImageViewerWidget[overlay="true"] #controlsFrame {
 background-color: rgba(0,0,0,140);
 border-radius: 8px;
 }
+
+/* Small "a better version is still loading" indicator shown in the top-right corner over an
+ * already-displayed image -- see ImageViewer::updateBusySpinner()'s three-way split with the
+ * large centred #busySpinner (shown only while there is no usable pixmap at all yet, unchanged
+ * from before). Deliberately theme-independent, same rationale as #controlsFrame above: this
+ * always sits over an arbitrary photo, never over the app's own background.
+ */
+uise--ImageViewerWidget #busySpinner {
+min-width: 48px;
+max-width: 48px;
+min-height: 48px;
+max-height: 48px;
+}
+
+uise--ImageViewerWidget #loadingOverlayFrame {
+background-color: rgba(0,0,0,120);
+border-radius: 14px;
+padding: 4px;
+}
+
+uise--ImageViewerWidget #loadingOverlay {
+min-width: 20px;
+max-width: 20px;
+min-height: 20px;
+max-height: 20px;
+}
+
+uise--ImageViewerWidget #loadingOverlay #sample {
+background-color: rgba(255,255,255,70);
+color: #FFFFFF;
+}

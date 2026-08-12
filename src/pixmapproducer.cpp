@@ -122,6 +122,18 @@ void PixmapProducer::setDefaultPixmap(const QPixmap& pixmap)
     emit pixmapUpdated();
 }
 
+//--------------------------------------------------------------------------
+
+void PixmapProducer::setLoading(bool enable)
+{
+    if (m_loading==enable)
+    {
+        return;
+    }
+    m_loading=enable;
+    emit loadingChanged(m_loading);
+}
+
 /************************** PixmapConsumer *********************************/
 
 //--------------------------------------------------------------------------
@@ -137,11 +149,27 @@ void PixmapConsumer::resetPixmapProducer()
 {
     if (m_producer)
     {
+        // Disconnect every signal wired in setPixmapProducer() below -- leaving dataUpdated/
+        // loadingChanged connected would accumulate duplicate connections to the same slot once a
+        // consumer cycles acquire/reset repeatedly against different producers (e.g. a flyweight
+        // image viewer releasing producers outside its active window).
         disconnect(
             m_producer.get(),
             &PixmapProducer::pixmapUpdated,
             this,
             &PixmapConsumer::pixmapUpdated
+        );
+        disconnect(
+            m_producer.get(),
+            &PixmapProducer::dataUpdated,
+            this,
+            &PixmapConsumer::dataUpdated
+        );
+        disconnect(
+            m_producer.get(),
+            &PixmapProducer::loadingChanged,
+            this,
+            &PixmapConsumer::loadingChanged
         );
     }
 
@@ -173,6 +201,12 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
         this,
         &PixmapConsumer::dataUpdated
     );
+    connect(
+        m_producer.get(),
+        &PixmapProducer::loadingChanged,
+        this,
+        &PixmapConsumer::loadingChanged
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -188,8 +222,25 @@ void PixmapConsumer::acquireProducer()
 
 //--------------------------------------------------------------------------
 
+bool PixmapConsumer::isLoading() const
+{
+    return m_producer && m_producer->isLoading();
+}
+
+//--------------------------------------------------------------------------
+
 void PixmapConsumer::setPixmapSource(std::shared_ptr<PixmapSource> source)
 {
+    if (m_source==source)
+    {
+        return;
+    }
+
+    // Release any producer held in the previous source before switching -- otherwise the old
+    // producer leaks there (it is never unregistered) and this consumer's connections to it are
+    // never torn down. See resetPixmapProducer() for what "release" tears down.
+    resetPixmapProducer();
+
     m_source=std::move(source);
     acquireProducer();
 }
@@ -301,7 +352,12 @@ void PixmapSource::updatePixmap(const PixmapKey& key, const QPixmap& pixmap)
     }
 
     auto* producer=it->value();
-    if (!pixmap.isNull() && pixmap.size()!=producer->size())
+    // Mirror PixmapProducer::setPixmap()'s own guard: a producer with no fixed size (anySize keys,
+    // e.g. DirectoryImagesViewer, or any flyweight image-viewer key requesting the original
+    // resolution) reports an invalid QSize(-1,-1) from size(). Scaling to that would hand
+    // QPixmap::scaled() an empty target size, which returns a null pixmap and silently destroys
+    // the image being delivered.
+    if (!pixmap.isNull() && producer->size().isValid() && pixmap.size()!=producer->size())
     {
         auto px=pixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
         producer->setPixmap(px);
@@ -321,15 +377,43 @@ void PixmapSource::updateScaledPixmaps(const WithPath& path, const QPixmap& orig
     for (auto it=from; it!=to; ++it)
     {
         auto* producer=it->value();
-        if (!originalPixmap.isNull() && originalPixmap.size() != producer->size())
+        if (!originalPixmap.isNull() && producer->size().isValid() && originalPixmap.size()!=producer->size())
         {
             auto px=originalPixmap.scaled(producer->size(),m_aspectRatioMode,Qt::SmoothTransformation);
             producer->setPixmap(px);
         }
         else
         {
-            producer->setPixmap(QPixmap{});
+            // Either no pixmap to give, or originalPixmap is already the right size (including the
+            // anySize/original-resolution case where producer->size() is invalid and no scaling is
+            // possible or needed) -- hand it over as-is rather than blanking a perfectly good pixmap.
+            producer->setPixmap(originalPixmap);
         }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::setPixmapLoading(const PixmapKey& key, bool enable)
+{
+    auto& kIdx=keyIdx();
+    auto it=kIdx.find(key);
+    if (it==kIdx.end())
+    {
+        return;
+    }
+    it->value()->setLoading(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::setPathLoading(const WithPath& path, bool enable)
+{
+    auto& pIdx=pathIdx();
+    auto [from,to]=pIdx.equal_range(path);
+    for (auto it=from; it!=to; ++it)
+    {
+        it->value()->setLoading(enable);
     }
 }
 

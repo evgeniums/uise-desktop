@@ -65,6 +65,7 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
     private slots:
 
         void onPixmapUpdated(const UISE_DESKTOP_NAMESPACE::PixmapKey& key) override;
+        void onPixmapLoadingChanged(const UISE_DESKTOP_NAMESPACE::PixmapKey& key, bool loading) override;
 
     protected:
 
@@ -72,6 +73,20 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void doSelectImage() override;
         Widget* doCreateActualWidget(QWidget* parent) override;
 
+        //! Create the QGraphicsPixmapItem lazily on first use, or update it in place -- shared by
+        //! doSelectImage() and onPixmapUpdated() so a pixmap that arrives asynchronously (still
+        //! loading at selection time) is picked up whenever it lands, not only re-applied if an
+        //! item already happened to exist (see the B1 fix note on onPixmapUpdated()).
+        void applyCurrentPixmap();
+
+        //! Refreshes both spinners and the prev/next buttons -- see AbstractImageViewer::
+        //! onWindowChanged()'s doc. Any window/hasMore*/pending-navigation change routes here.
+        void onWindowChanged() override;
+
+        //! Three-way: a large centred blocking spinner while currentImage() is null (unchanged
+        //! behaviour), a small non-blocking overlay spinner while an already-displayed image is
+        //! still being improved (isCurrentImageLoading()) or navigation is pending past a loaded
+        //! edge (isNavigationPending()), or nothing.
         void updateBusySpinner();
         void updatePrevNextButtons();
 
@@ -88,7 +103,7 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
          */
         void refreshOverlayGeometry();
 
-        ImageViewerWidget* m_widget;
+        ImageViewerWidget* m_widget=nullptr;
 };
 
 class ImageViewerWidget_p;

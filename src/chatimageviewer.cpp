@@ -23,18 +23,13 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <limits>
+#include <map>
+#include <algorithm>
 
 #include <uise/desktop/chatimageviewercontrols.hpp>
 #include <uise/desktop/chatimageviewer.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
-
-namespace {
-
-constexpr size_t InvalidAlbumIndex=std::numeric_limits<size_t>::max();
-
-} // anonymous namespace
 
 //--------------------------------------------------------------------------
 
@@ -42,16 +37,41 @@ class ChatImageViewer_p
 {
     public:
 
+        struct ChatMeta
+        {
+            QString sender;
+            QDateTime dateTime;
+            QString messageId;
+            PixmapKey previewKey;   //!< Valid only when ChatImage::previewKey was set explicitly.
+        };
+
         ChatImageViewerControls* controls=nullptr;
 
-        std::vector<ChatImageViewer::ChatImage> metadata;
+        std::map<PixmapKey,ChatMeta> meta;
 
-        size_t albumStart=InvalidAlbumIndex;
-        size_t albumEnd=InvalidAlbumIndex;
+        ChatImageViewer::StripScope stripScope=ChatImageViewer::StripScope::Album;
+        size_t stripRadius=ChatImageViewer::DefaultStripRadius;
 
-        bool numberingSet=false;
-        size_t firstImageNumber=1;
-        size_t totalCount=0;
+        //! Split a caller-supplied ChatImage list into the base's own Image list plus this
+        //! class's metadata, and record the metadata under each image's key -- shared by every
+        //! load/insert entry point below.
+        std::vector<AbstractImageViewer::Image> splitAndRecordMeta(std::vector<ChatImageViewer::ChatImage>& images)
+        {
+            std::vector<AbstractImageViewer::Image> baseImages;
+            baseImages.reserve(images.size());
+            for (auto& img : images)
+            {
+                baseImages.emplace_back(img.key,img.content);
+
+                ChatMeta m;
+                m.sender=std::move(img.sender);
+                m.dateTime=std::move(img.dateTime);
+                m.messageId=std::move(img.messageId);
+                m.previewKey=std::move(img.previewKey);
+                meta[img.key]=std::move(m);
+            }
+            return baseImages;
+        }
 };
 
 //--------------------------------------------------------------------------
@@ -115,15 +135,11 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
     );
     connect(
         pimpl->controls,
-        &ChatImageViewerControls::previewClicked,
+        &ChatImageViewerControls::previewClickedKey,
         this,
-        [this](int index)
+        [this](const PixmapKey& key)
         {
-            if (index<0 || pimpl->albumStart==InvalidAlbumIndex)
-            {
-                return;
-            }
-            selectImage(pimpl->albumStart+static_cast<size_t>(index));
+            selectImage(key);
         }
     );
     connect(
@@ -150,9 +166,8 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
         this,
         [this]()
         {
-            auto idx=currentImageIndex();
-            auto messageId=idx<pimpl->metadata.size() ? pimpl->metadata[idx].messageId : QString();
-            emit goToMessageRequested(messageId);
+            auto it=pimpl->meta.find(currentImageKey());
+            emit goToMessageRequested(it!=pimpl->meta.end() ? it->second.messageId : QString());
         }
     );
     connect(
@@ -161,9 +176,8 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
         this,
         [this]()
         {
-            auto idx=currentImageIndex();
-            auto messageId=idx<pimpl->metadata.size() ? pimpl->metadata[idx].messageId : QString();
-            emit deleteMessageRequested(messageId);
+            auto it=pimpl->meta.find(currentImageKey());
+            emit deleteMessageRequested(it!=pimpl->meta.end() ? it->second.messageId : QString());
         }
     );
 
@@ -172,6 +186,15 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
         &AbstractImageViewer::currentImageIndexChanged,
         this,
         &ChatImageViewer::onCurrentImageIndexChanged
+    );
+    // Catches everything a pure selection change misses: an album/neighbourhood completing at a
+    // window edge once a fetch reply lands, hasMoreBefore()/hasMoreAfter() flipping, an
+    // updateChatImage()/removeImagesForMessage() call, etc. -- see updateControls()'s own doc.
+    connect(
+        this,
+        &AbstractImageViewer::windowChanged,
+        this,
+        &ChatImageViewer::onWindowChangedSlot
     );
 
     updateControls();
@@ -183,63 +206,75 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
 
 void ChatImageViewer::loadChatImages(std::vector<ChatImage> images)
 {
-    pimpl->metadata.clear();
-    pimpl->albumStart=InvalidAlbumIndex;
-    pimpl->albumEnd=InvalidAlbumIndex;
+    loadChatImages(std::move(images),false,false,0,-1);
+}
 
-    std::vector<Image> baseImages;
-    baseImages.reserve(images.size());
-    pimpl->metadata.reserve(images.size());
-    for (auto& img : images)
-    {
-        baseImages.push_back(Image{img.key,img.content});
-        pimpl->metadata.push_back(std::move(img));
-    }
+//--------------------------------------------------------------------------
 
-    loadImages(std::move(baseImages));
+void ChatImageViewer::loadChatImages(
+    std::vector<ChatImage> images,
+    bool hasMoreBefore,
+    bool hasMoreAfter,
+    qint64 firstPosition,
+    qint64 totalCount)
+{
+    pimpl->meta.clear();
+    auto baseImages=pimpl->splitAndRecordMeta(images);
+    loadImages(std::move(baseImages),hasMoreBefore,hasMoreAfter,firstPosition,totalCount);
     updateControls();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatImageViewer::insertChatImages(size_t index, std::vector<ChatImage> images)
+void ChatImageViewer::insertFetchedChatImages(std::vector<ChatImage> images, Direction direction, size_t requestedCount)
 {
-    std::vector<Image> baseImages;
-    baseImages.reserve(images.size());
-    std::vector<ChatImage> metaToInsert;
-    metaToInsert.reserve(images.size());
-    for (auto& img : images)
-    {
-        baseImages.push_back(Image{img.key,img.content});
-        metaToInsert.push_back(std::move(img));
-    }
-
-    auto boundedIndex=qMin(index,pimpl->metadata.size());
-    auto pos=pimpl->metadata.begin()+static_cast<std::vector<ChatImage>::difference_type>(boundedIndex);
-    pimpl->metadata.insert(pos,std::make_move_iterator(metaToInsert.begin()),std::make_move_iterator(metaToInsert.end()));
-
-    insertImages(boundedIndex,std::move(baseImages));
-
-    // An insertion shifts every index at/after boundedIndex -- the album window cached by the
-    // last updateControls() call may now point at the wrong images, so force a full recompute
-    // rather than risk showing a stale album range.
-    pimpl->albumStart=InvalidAlbumIndex;
-    pimpl->albumEnd=InvalidAlbumIndex;
+    auto baseImages=pimpl->splitAndRecordMeta(images);
+    insertFetchedImages(std::move(baseImages),direction,requestedCount);
     updateControls();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatImageViewer::appendChatImages(std::vector<ChatImage> images)
+bool ChatImageViewer::updateChatImage(const ChatImage& image)
 {
-    insertChatImages(pimpl->metadata.size(),std::move(images));
+    auto it=pimpl->meta.find(image.key);
+    if (it==pimpl->meta.end())
+    {
+        return false;
+    }
+
+    it->second.sender=image.sender;
+    it->second.dateTime=image.dateTime;
+    it->second.messageId=image.messageId;
+    it->second.previewKey=image.previewKey;
+
+    bool ok=updateImage(Image{image.key,image.content});
+    updateControls();
+    return ok;
 }
 
 //--------------------------------------------------------------------------
 
-void ChatImageViewer::prependChatImages(std::vector<ChatImage> images)
+size_t ChatImageViewer::removeImagesForMessage(const QString& messageId)
 {
-    insertChatImages(0,std::move(images));
+    std::vector<PixmapKey> toRemove;
+    for (const auto& [key,m] : pimpl->meta)
+    {
+        if (m.messageId==messageId)
+        {
+            toRemove.push_back(key);
+        }
+    }
+
+    size_t removed=0;
+    for (const auto& key : toRemove)
+    {
+        if (removeImage(key))
+        {
+            ++removed;
+        }
+    }
+    return removed;
 }
 
 //--------------------------------------------------------------------------
@@ -253,9 +288,9 @@ ChatImageViewerControls* ChatImageViewer::controls() const
 
 void ChatImageViewer::setImageNumbering(size_t firstImageNumber, size_t totalCount)
 {
-    pimpl->numberingSet=true;
-    pimpl->firstImageNumber=firstImageNumber;
-    pimpl->totalCount=totalCount;
+    // firstImageNumber is 1-based over the whole chat; windowFirstPosition() is 0-based.
+    setWindowFirstPosition(static_cast<qint64>(firstImageNumber)-1);
+    setTotalCountHint(static_cast<qint64>(totalCount));
     updateControls();
 }
 
@@ -263,8 +298,53 @@ void ChatImageViewer::setImageNumbering(size_t firstImageNumber, size_t totalCou
 
 void ChatImageViewer::resetImageNumbering()
 {
-    pimpl->numberingSet=false;
+    setTotalCountHint(-1);
+    if (!hasMoreBefore() && !hasMoreAfter())
+    {
+        setWindowFirstPosition(0);
+    }
     updateControls();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewer::setStripScope(StripScope scope)
+{
+    if (pimpl->stripScope==scope)
+    {
+        return;
+    }
+    pimpl->stripScope=scope;
+    updateControls();
+}
+
+//--------------------------------------------------------------------------
+
+ChatImageViewer::StripScope ChatImageViewer::stripScope() const noexcept
+{
+    return pimpl->stripScope;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewer::setStripRadius(size_t n)
+{
+    if (pimpl->stripRadius==n)
+    {
+        return;
+    }
+    pimpl->stripRadius=n;
+    if (pimpl->stripScope==StripScope::Continuous)
+    {
+        updateControls();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+size_t ChatImageViewer::stripRadius() const noexcept
+{
+    return pimpl->stripRadius;
 }
 
 //--------------------------------------------------------------------------
@@ -275,6 +355,12 @@ void ChatImageViewer::setImageSource(std::shared_ptr<PixmapSource> imageSource)
     if (pimpl->controls!=nullptr)
     {
         pimpl->controls->setPreviewSource(imageSource);
+        // Preview::content precedence follows the base's own image content (see makePreview()):
+        // with a source now available, previews should stop relying on any seed content they
+        // were built with and resolve live instead -- force a rebuild rather than relying on
+        // setPreviewSource() alone, which only re-wires previews that never had ANY source before
+        // (see ImagePreviewStrip::setImageSource()'s own doc on what it does and does not do).
+        updateControls();
     }
 }
 
@@ -288,6 +374,73 @@ void ChatImageViewer::onCurrentImageIndexChanged(size_t index)
 
 //--------------------------------------------------------------------------
 
+void ChatImageViewer::onWindowChangedSlot()
+{
+    updateControls();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewer::onImageEvicted(const PixmapKey& key)
+{
+    pimpl->meta.erase(key);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewer::onImageRemoved(const PixmapKey& key)
+{
+    pimpl->meta.erase(key);
+}
+
+//--------------------------------------------------------------------------
+
+PixmapKey ChatImageViewer::previewKeyFor(const PixmapKey& imageKey) const
+{
+    PixmapKey pk;
+    pk.setPath(imageKey.toWithPath());
+    pk.setData(imageKey.data());
+
+    auto size=(pimpl->controls!=nullptr)
+        ? pimpl->controls->previewStrip()->itemSize()
+        : QSize{ImagePreviewStrip::DefaultItemSize,ImagePreviewStrip::DefaultItemSize};
+    pk.setSize(size);
+    pk.setAnySize(false);
+
+    return pk;
+}
+
+//--------------------------------------------------------------------------
+
+ImagePreviewStrip::Preview ChatImageViewer::makePreview(size_t index) const
+{
+    auto key=imageKey(index);
+
+    auto it=pimpl->meta.find(key);
+    PixmapKey previewKey;
+    if (it!=pimpl->meta.end() && it->second.previewKey.isValid())
+    {
+        previewKey=it->second.previewKey;
+    }
+    else
+    {
+        previewKey=previewKeyFor(key);
+    }
+
+    // With a source configured, always pass null content so the strip resolves (and can upgrade)
+    // the preview live through that source -- passing a seed here would recreate the same
+    // content-shadows-the-producer trap D4 fixes on the base viewer, one level down (see
+    // ImagePreviewStrip::applyItemContent(), which returns immediately for non-null content).
+    // Only fall back to whatever seed pixmap the base holds for this image when there is no
+    // source at all -- the same situation Image::content exists for in the first place, which is
+    // exactly what keeps the source-less chatimageviewer-demo/chatimageviewerwindow-demo working.
+    QPixmap seed=imageSource() ? QPixmap{} : imagePixmap(index);
+
+    return ImagePreviewStrip::Preview{previewKey,seed};
+}
+
+//--------------------------------------------------------------------------
+
 void ChatImageViewer::updateControls()
 {
     if (pimpl->controls==nullptr)
@@ -296,58 +449,91 @@ void ChatImageViewer::updateControls()
     }
 
     auto idx=currentImageIndex();
-    auto loadedCount=imageCount();
-
-    auto number=pimpl->numberingSet ? (pimpl->firstImageNumber+idx) : (idx+1);
-    auto total=pimpl->numberingSet ? pimpl->totalCount : loadedCount;
+    auto number=static_cast<size_t>(windowFirstPosition()+static_cast<qint64>(idx))+1;
+    auto total=totalCountHint()>=0 ? static_cast<size_t>(totalCountHint()) : imageCount();
     pimpl->controls->setCounter(number,total);
 
-    if (idx>=pimpl->metadata.size())
+    auto key=currentImageKey();
+    auto metaIt=pimpl->meta.find(key);
+    if (metaIt==pimpl->meta.end())
     {
         pimpl->controls->setSender(QString());
         pimpl->controls->setDateTime(QDateTime());
-        pimpl->albumStart=idx;
-        pimpl->albumEnd=idx;
         pimpl->controls->setPreviews({});
         refreshOverlayGeometry();
         return;
     }
 
-    const auto& meta=pimpl->metadata[idx];
-    pimpl->controls->setSender(meta.sender);
-    pimpl->controls->setDateTime(meta.dateTime);
+    pimpl->controls->setSender(metaIt->second.sender);
+    pimpl->controls->setDateTime(metaIt->second.dateTime);
 
-    auto start=idx;
-    auto end=idx;
-    if (!meta.messageId.isEmpty())
+    auto count=imageCount();
+    std::vector<ImagePreviewStrip::Preview> previews;
+    int currentPos=0;
+
+    if (pimpl->stripScope==StripScope::Continuous)
     {
-        while (start>0 && pimpl->metadata[start-1].messageId==meta.messageId)
+        auto radius=pimpl->stripRadius;
+        auto lo=(idx>=radius) ? (idx-radius) : size_t{0};
+        auto hi=(count==0) ? size_t{0} : std::min(count-1,idx+radius);
+        for (auto i=lo; count>0 && i<=hi; ++i)
         {
-            --start;
+            if (i==idx)
+            {
+                currentPos=static_cast<int>(previews.size());
+            }
+            previews.push_back(makePreview(i));
         }
-        while ((end+1)<pimpl->metadata.size() && pimpl->metadata[end+1].messageId==meta.messageId)
-        {
-            ++end;
-        }
-    }
-
-    if (start!=pimpl->albumStart || end!=pimpl->albumEnd)
-    {
-        pimpl->albumStart=start;
-        pimpl->albumEnd=end;
-
-        std::vector<ImagePreviewStrip::Preview> previews;
-        previews.reserve(end-start+1);
-        for (auto i=start;i<=end;++i)
-        {
-            previews.push_back(ImagePreviewStrip::Preview{imageKey(i),pimpl->metadata[i].content});
-        }
-        pimpl->controls->setPreviews(std::move(previews),static_cast<int>(idx-start));
     }
     else
     {
-        pimpl->controls->setCurrentPreview(static_cast<int>(idx-start));
+        // StripScope::Album -- the contiguous run sharing the current image's messageId. Runs
+        // only over the loaded window: if it reaches either edge while that end's hasMoreBefore()/
+        // hasMoreAfter() is still true, the album may be truncated here and will simply be
+        // recomputed (via the windowChanged() connection) once AbstractImageViewer's own
+        // prefetching -- driven by how close currentImageIndex() is to that edge, see
+        // setPrefetchThreshold() -- extends the window far enough to complete it. Never blocks.
+        const auto& messageId=metaIt->second.messageId;
+        auto start=idx;
+        auto end=idx;
+        if (!messageId.isEmpty())
+        {
+            while (start>0)
+            {
+                auto it=pimpl->meta.find(imageKey(start-1));
+                if (it==pimpl->meta.end() || it->second.messageId!=messageId)
+                {
+                    break;
+                }
+                --start;
+            }
+            while ((end+1)<count)
+            {
+                auto it=pimpl->meta.find(imageKey(end+1));
+                if (it==pimpl->meta.end() || it->second.messageId!=messageId)
+                {
+                    break;
+                }
+                ++end;
+            }
+        }
+
+        for (auto i=start; i<=end; ++i)
+        {
+            if (i==idx)
+            {
+                currentPos=static_cast<int>(previews.size());
+            }
+            previews.push_back(makePreview(i));
+        }
     }
+
+    // ImagePreviewStrip::setPreviews() diffs internally (see its own class doc) -- reusing
+    // widgets/consumers for keys already shown and animating rather than jumping when the
+    // previously-current key survives -- so calling it unconditionally on every updateControls()
+    // is cheap and correct, unlike the old index-based "did the range change" fast path this
+    // replaces (which broke across a window prepend/eviction shifting every index).
+    pimpl->controls->setPreviews(std::move(previews),currentPos);
 
     // setPreviews() above can change the album strip's, and hence the whole bottom widget's,
     // sizeHint (e.g. an album appearing/disappearing) -- force the overlay geometry to catch up

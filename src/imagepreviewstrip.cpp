@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <map>
 
 #include <QResizeEvent>
 #include <QVariantAnimation>
@@ -49,6 +50,8 @@ class ImagePreviewStrip_p
             PixmapKey key;
             QPixmap content;
             PixmapConsumer consumer;
+            bool consumerWired=false;
+            QMetaObject::Connection clickedConnection;
 
             // Opacity is baked directly into the pixmap handed to widget->setPixmap() (see
             // ImagePreviewStrip::applyItemOpacity()) rather than via a per-item
@@ -110,14 +113,39 @@ ImagePreviewStrip::~ImagePreviewStrip()
 
 void ImagePreviewStrip::setPreviews(std::vector<Preview> previews, int currentIndex)
 {
+    // Captured before pimpl->items is touched by diffItems() below -- used only to decide
+    // jump-vs-animate afterwards (see the class doc on setPreviews()).
+    PixmapKey oldCurrentKey;
+    bool hadCurrent=false;
+    if (!pimpl->items.empty()
+        && pimpl->currentIndex>=0
+        && static_cast<size_t>(pimpl->currentIndex)<pimpl->items.size())
+    {
+        oldCurrentKey=pimpl->items[static_cast<size_t>(pimpl->currentIndex)]->key;
+        hadCurrent=true;
+    }
+
     pimpl->previews=std::move(previews);
     pimpl->visualIndexAnimation->stop();
 
-    rebuildItems();
+    diffItems();
 
     auto count=static_cast<int>(pimpl->items.size());
-    pimpl->currentIndex=count>0 ? qBound(0,currentIndex,count-1) : 0;
-    pimpl->visualIndex=static_cast<qreal>(pimpl->currentIndex);
+    auto newIndex=count>0 ? qBound(0,currentIndex,count-1) : 0;
+    bool animate=hadCurrent && indexOf(oldCurrentKey)>=0;
+
+    pimpl->currentIndex=newIndex;
+    if (animate)
+    {
+        pimpl->visualIndexAnimation->setDuration(pimpl->scrollAnimationDurationMs);
+        pimpl->visualIndexAnimation->setStartValue(pimpl->visualIndex);
+        pimpl->visualIndexAnimation->setEndValue(static_cast<qreal>(newIndex));
+        pimpl->visualIndexAnimation->start();
+    }
+    else
+    {
+        pimpl->visualIndex=static_cast<qreal>(newIndex);
+    }
 
     relayout();
 }
@@ -145,13 +173,44 @@ int ImagePreviewStrip::currentIndex() const noexcept
 
 //--------------------------------------------------------------------------
 
+int ImagePreviewStrip::indexOf(const PixmapKey& key) const
+{
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        if (pimpl->items[i]->key==key)
+        {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+//--------------------------------------------------------------------------
+
+void ImagePreviewStrip::setCurrentPreview(const PixmapKey& key)
+{
+    auto idx=indexOf(key);
+    if (idx>=0)
+    {
+        setCurrentIndex(idx);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ImagePreviewStrip::setImageSource(std::shared_ptr<PixmapSource> source)
 {
+    if (pimpl->imageSource==source)
+    {
+        return;
+    }
     pimpl->imageSource=std::move(source);
 
-    // Only affects items that never got a source at all yet (Preview::content null and no prior
-    // setImageSource() call) -- applyItemContent() itself no-ops for anything already wired to a
-    // producer, so calling this again is safe rather than accumulating duplicate connections.
+    // Re-applies every item's content: an item with non-null Preview::content is a no-op
+    // (applyItemContent() returns immediately), an item never resolved through any source starts
+    // resolving through this one, and -- unlike before this fix -- an item already resolved
+    // through a DIFFERENT prior source is now correctly re-wired onto this one instead of being
+    // silently left on the old one (see wireItemConsumer()/applyItemContent()'s own source check).
     for (size_t i=0;i<pimpl->items.size();++i)
     {
         applyItemContent(i);
@@ -313,16 +372,42 @@ void ImagePreviewStrip::resizeEvent(QResizeEvent* event)
 
 //--------------------------------------------------------------------------
 
-void ImagePreviewStrip::rebuildItems()
+void ImagePreviewStrip::diffItems()
 {
+    // Key -> previous entry, so a key that reappears (mostly-overlapping continuous slide) or
+    // simply moves position (mostly-disjoint album swap that happens to share one boundary image)
+    // keeps its widget and, if already resolved, its live PixmapConsumer -- see the class doc on
+    // setPreviews().
+    std::map<PixmapKey,std::shared_ptr<ImagePreviewStrip_p::ItemEntry>> oldByKey;
     for (auto& entry : pimpl->items)
     {
-        destroyWidget(entry->widget);
+        oldByKey[entry->key]=entry;
     }
-    pimpl->items.clear();
+
+    std::vector<std::shared_ptr<ImagePreviewStrip_p::ItemEntry>> newItems;
+    newItems.reserve(pimpl->previews.size());
 
     for (auto& preview : pimpl->previews)
     {
+        auto it=oldByKey.find(preview.key);
+        if (it!=oldByKey.end())
+        {
+            auto entry=it->second;
+            oldByKey.erase(it);
+
+            // Refresh the stored key too, not just content -- preview.key can carry an updated
+            // data() payload (e.g. a host-attached priority/cursor hint) even when path+size
+            // (hence PixmapKey equality) are unchanged.
+            entry->key=preview.key;
+            if (entry->content.cacheKey()!=preview.content.cacheKey())
+            {
+                entry->content=preview.content;
+            }
+
+            newItems.push_back(std::move(entry));
+            continue;
+        }
+
         auto entry=std::make_shared<ImagePreviewStrip_p::ItemEntry>();
         entry->key=preview.key;
         entry->content=preview.content;
@@ -333,22 +418,44 @@ void ImagePreviewStrip::rebuildItems()
         entry->widget->setAutoSize(false);
         entry->widget->setImageSize(pimpl->itemSize);
         entry->widget->resize(pimpl->itemSize);
+        entry->widget->show();
 
-        auto index=pimpl->items.size();
-        connect(
-            entry->widget,
+        newItems.push_back(std::move(entry));
+    }
+
+    // Whatever is left in oldByKey fell out of the new set entirely.
+    for (auto& [key,entry] : oldByKey)
+    {
+        std::ignore=key;
+        destroyWidget(entry->widget);
+    }
+
+    pimpl->items=std::move(newItems);
+
+    // Re-wire click handlers now that indices are final. Capturing key (not the index itself) and
+    // re-resolving via indexOf() at click/emit time keeps this correct even across a LATER
+    // setPreviews() call that reorders items without touching this particular connection again.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        auto& entry=*pimpl->items[i];
+        auto key=entry.key;
+
+        if (entry.clickedConnection)
+        {
+            disconnect(entry.clickedConnection);
+        }
+        entry.clickedConnection=connect(
+            entry.widget,
             &ImageLabel::clicked,
             this,
-            [this,index]()
+            [this,key]()
             {
-                emit previewClicked(static_cast<int>(index));
+                emit previewClicked(indexOf(key));
+                emit previewClickedKey(key);
             }
         );
 
-        pimpl->items.push_back(entry);
-        entry->widget->show();
-
-        applyItemContent(index);
+        applyItemContent(i);
     }
 
     // Deliberately NOT setVisible(items.size()>1) -- hiding the whole widget would exclude it
@@ -382,36 +489,52 @@ void ImagePreviewStrip::applyItemContent(size_t index)
         return;
     }
 
-    if (entry.consumer.pixmapProducer()!=nullptr)
+    if (entry.consumer.pixmapSource()==pimpl->imageSource)
     {
-        // Already wired to a source by an earlier call (rebuildItems() or a previous
-        // setImageSource()) -- PixmapConsumer::setPixmapProducer() never disconnects a prior
-        // pixmapUpdated connection, so re-wiring here would accumulate a duplicate connection
-        // and fire setItemPixmap() multiple times per update. The existing connection already
-        // resolves this item (or is still waiting to), nothing to do.
+        // Already wired to the current source -- wireItemConsumer() only ever connects
+        // pixmapUpdated once per entry (see its own consumerWired guard), nothing more to do; the
+        // existing connection already resolves this item or is still waiting to.
         return;
     }
 
+    wireItemConsumer(index);
+}
+
+//--------------------------------------------------------------------------
+
+void ImagePreviewStrip::wireItemConsumer(size_t index)
+{
+    auto& entry=*pimpl->items[index];
+    auto key=entry.key;
+
+    if (!entry.consumerWired)
+    {
+        entry.consumerWired=true;
+        connect(
+            &entry.consumer,
+            &PixmapConsumer::pixmapUpdated,
+            this,
+            [this,key]()
+            {
+                auto idx=indexOf(key);
+                if (idx<0)
+                {
+                    return;
+                }
+                auto* producer=pimpl->items[static_cast<size_t>(idx)]->consumer.pixmapProducer();
+                if (producer!=nullptr)
+                {
+                    setItemPixmap(static_cast<size_t>(idx),producer->pixmap());
+                }
+            }
+        );
+    }
+
     entry.consumer.setPathAndSize(entry.key);
+    // Releases any previous source's producer first (see PixmapConsumer::setPixmapSource()) --
+    // this is what fixes the "second setImageSource() call is silently ignored" bug: the guard
+    // above only skips entries already on the CURRENT source, not merely already-wired ones.
     entry.consumer.setPixmapSource(pimpl->imageSource);
-    connect(
-        &entry.consumer,
-        &PixmapConsumer::pixmapUpdated,
-        this,
-        [this,index]()
-        {
-            if (index>=pimpl->items.size())
-            {
-                return;
-            }
-            auto* producer=pimpl->items[index]->consumer.pixmapProducer();
-            if (producer!=nullptr)
-            {
-                setItemPixmap(index,producer->pixmap());
-            }
-        }
-    );
-    entry.consumer.acquireProducer();
 
     auto* producer=entry.consumer.pixmapProducer();
     if (producer!=nullptr)

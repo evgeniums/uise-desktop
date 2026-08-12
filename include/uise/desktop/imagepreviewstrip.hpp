@@ -95,7 +95,22 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
         ImagePreviewStrip& operator=(const ImagePreviewStrip&)=delete;
         ImagePreviewStrip& operator=(ImagePreviewStrip&&)=delete;
 
-        //! Replace the whole set of previews and jump (no animation) to currentIndex.
+        /**
+         * @brief Replace the set of previews shown, diffing against the previous set.
+         * @param previews New previews, in display order.
+         * @param currentIndex Index (into previews) to select.
+         *
+         * A key already present in the previous set keeps its widget and, if already resolved, its
+         * live PixmapConsumer -- so a mostly-overlapping replacement (e.g. a continuous strip
+         * sliding by one image as the viewer's window moves) does not re-fetch or re-flash
+         * thumbnails that were already showing correctly. Keys not present in the new set are
+         * destroyed; keys not present in the previous set are created fresh.
+         *
+         * The transition animates (see setScrollAnimationDurationMs()) when the previously-current
+         * preview's key is still present somewhere in the new set -- i.e. the strip is still
+         * looking at "the same neighbourhood", just re-centred -- and jumps with no animation
+         * otherwise, which is the common case for a disjoint album-to-album swap.
+         */
         void setPreviews(std::vector<Preview> previews, int currentIndex=0);
 
         //! Equivalent to setPreviews({}).
@@ -104,11 +119,22 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
         int count() const noexcept;
         int currentIndex() const noexcept;
 
+        //! Window-relative index of key, or -1 if key is not currently shown. Re-resolve after
+        //! any setPreviews() call rather than caching -- diffing can shift every index.
+        int indexOf(const UISE_DESKTOP_NAMESPACE::PixmapKey& key) const;
+
+        //! Equivalent to setCurrentIndex(indexOf(key)); no-op if key is not currently shown.
+        void setCurrentPreview(const UISE_DESKTOP_NAMESPACE::PixmapKey& key);
+
         /**
          * @brief Set the source used to resolve previews whose Preview::content was left null.
-         * @param source New source. Only affects previews resolved after this call -- previews
-         *  supplied with non-null content, or already resolved via a previously-set source, are
-         *  unaffected by calling this again.
+         * @param source New source, replacing any previously set. Previews supplied with
+         *  non-null content are unaffected either way.
+         *
+         * Previews already resolved through a DIFFERENT prior source are re-wired onto this one
+         * (its producer released, this source's acquired) the next time their content is
+         * (re-)applied; previews already resolved through the SAME source (i.e. this call is a
+         * no-op change) are left exactly as they are.
          */
         void setImageSource(std::shared_ptr<PixmapSource> source);
         std::shared_ptr<PixmapSource> imageSource() const;
@@ -142,8 +168,15 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
 
     signals:
 
-        //! Emitted when a preview other than a plain drag is clicked.
+        //! Emitted when a preview other than a plain drag is clicked. index is resolved at click
+        //! time (see previewClickedKey()) so it is correct even if setPreviews() reordered items
+        //! since the click target was last wired.
         void previewClicked(int index);
+
+        //! Same event as previewClicked(), identifying the preview by key -- the form to prefer
+        //! when the receiver will turn around and call something key-addressed (e.g.
+        //! AbstractImageViewer::selectImage(const PixmapKey&)) rather than an index.
+        void previewClickedKey(const UISE_DESKTOP_NAMESPACE::PixmapKey& key);
 
     protected:
 
@@ -152,8 +185,19 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
     private:
 
         void relayout();
-        void rebuildItems();
+
+        //! Diffs pimpl->previews against the current pimpl->items: keys present in both keep
+        //! their widget/consumer, keys only in the old set are destroyed, keys only in the new set
+        //! are created. Replaces the old destroy-everything-and-rebuild rebuildItems().
+        void diffItems();
+
         void applyItemContent(size_t index);
+
+        //! Connect an entry's consumer to pimpl->imageSource for the first time, or re-point it
+        //! at a source that changed since it was last wired (see setImageSource()'s doc on why
+        //! that case needs handling explicitly).
+        void wireItemConsumer(size_t index);
+
         void setItemPixmap(size_t index, const QPixmap& px);
         void applyItemOpacity(size_t index);
 
