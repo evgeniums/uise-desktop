@@ -55,6 +55,11 @@ uise--DirectoryImagesViewer #fileBrowserFrame
 margin-top: 4px;
 }
 
+/* Left/right values here become the prev/next JumpEdge buttons' own left/right inset from the
+ * view's edge (see ImageViewerWidget::updateButtonPositions()) -- increased from the original
+ * 8px so the buttons sit clear of the wider edge navigation click/hover zones (see
+ * ImageViewerWidget::isInPrevNavigationZone()/isInNextNavigationZone()) rather than flush
+ * against the image edge. */
 uise--ImageViewerWidget #viewerStyleSample {
-margin: 0 8px;
+margin: 0 24px;
 }

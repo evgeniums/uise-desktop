@@ -141,7 +141,7 @@ void JumpEdge::paintEvent(QPaintEvent * /*event*/)
         QRect iconRect{r.left()+leftPadding,r.bottom()-iconWidth-bottomPadding,iconWidth,iconWidth};
 
         auto mode=IconMode::Normal;
-        if (m_hovered)
+        if (m_hovered || m_forceHovered)
         {
             mode=IconMode::Hovered;
         }
@@ -255,6 +255,18 @@ QString JumpEdge::badgeText() const
 void JumpEdge::clearBadgeText()
 {
     m_badgeText->clear();
+    update();
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::setForceHovered(bool hovered)
+{
+    if (m_forceHovered==hovered)
+    {
+        return;
+    }
+    m_forceHovered=hovered;
     update();
 }
 

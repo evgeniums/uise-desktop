@@ -102,12 +102,14 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
     Q_PROPERTY(int controlsFadeInDurationMs READ controlsFadeInDurationMs WRITE setControlsFadeInDurationMs)
     Q_PROPERTY(int controlsFadeOutDurationMs READ controlsFadeOutDurationMs WRITE setControlsFadeOutDurationMs)
     Q_PROPERTY(qreal controlsMaxOpacity READ controlsMaxOpacity WRITE setControlsMaxOpacity)
+    Q_PROPERTY(int edgeNavigationZoneWidth READ edgeNavigationZoneWidth WRITE setEdgeNavigationZoneWidth)
 
     public:
 
         constexpr static const int DefaultControlsFadeInDurationMs=150;
         constexpr static const int DefaultControlsFadeOutDurationMs=300;
         constexpr static const qreal DefaultControlsMaxOpacity=1.0;
+        constexpr static const int DefaultEdgeNavigationZoneWidth=96;
 
         ImageViewerWidget(ImageViewer* ctrl, QWidget* parent=nullptr);
 
@@ -136,6 +138,12 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         //! Maximum (fully visible) opacity to fade the overlay controls in to.
         qreal controlsMaxOpacity() const;
         void setControlsMaxOpacity(qreal value);
+
+        //! Width, in pixels, of the click/hover zone along each edge of the image area that
+        //! mirrors the prev/next buttons -- active only where hasPrev/hasNext is actually true,
+        //! same as the buttons themselves. See ImageViewerWidget::isInPrevNavigationZone().
+        int edgeNavigationZoneWidth() const;
+        void setEdgeNavigationZoneWidth(int value);
 
     public slots:
 
@@ -168,8 +176,27 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
 
         //! Shared by mouseReleaseEvent() and the viewport eventFilter() branch: emits
         //! ctrl->viewerClicked() if this was a plain left-button click (not a drag, not on the
-        //! controls) ending at pos (this-widget coordinates).
+        //! controls) ending at pos (this-widget coordinates), unless pos lands in one of the
+        //! edge navigation zones below, in which case the matching prev/next button's clicked()
+        //! is emitted instead.
         void handlePotentialViewerClick(const QPoint& pos);
+
+        //! True if pos (this-widget coordinates) lands in the left-edge strip that mirrors the
+        //! prev button -- full image height, edgeNavigationZoneWidth() wide, active only while
+        //! there is a previous image (independent of the button's own transient visibility
+        //! during an Overlay-mode fade).
+        bool isInPrevNavigationZone(const QPoint& pos) const;
+
+        //! Right-edge counterpart of isInPrevNavigationZone(), mirroring the next button.
+        bool isInNextNavigationZone(const QPoint& pos) const;
+
+        //! Update the prev/next buttons' forced-hover state and the viewport cursor for pos
+        //! (this-widget coordinates) -- called on every viewport/this MouseMove.
+        void updateEdgeNavigationHover(const QPoint& pos);
+
+        //! Reset whatever updateEdgeNavigationHover() last set -- called when the pointer
+        //! leaves the viewport or this widget outright.
+        void clearEdgeNavigationHover();
 
         std::unique_ptr<ImageViewerWidget_p> pimpl;
 

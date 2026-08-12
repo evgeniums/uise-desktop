@@ -120,6 +120,12 @@ class ImageViewerWidget_p
 
         bool pressIsLeftButton=false;
         QPoint pressPos;
+
+        // --- edge navigation zone support ---
+
+        int edgeNavigationZoneWidth=ImageViewerWidget::DefaultEdgeNavigationZoneWidth;
+        bool prevZoneHovered=false;
+        bool nextZoneHovered=false;
 };
 
 //--------------------------------------------------------------------------
@@ -145,10 +151,13 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
     pimpl->view->setScene(pimpl->scene);
     pimpl->view->setFocusPolicy(Qt::NoFocus);
     pimpl->layout->addWidget(pimpl->view,1);
-    // Installed once here (not per controls-mode switch in applyControlsMode()) because
-    // viewerClicked() detection (see mouseReleaseEvent()/eventFilter()) must work in both
-    // Static and Overlay modes, not just Overlay's auto-hide-on-activity tracking.
+    // Installed/enabled once here (not per controls-mode switch in applyControlsMode()) because
+    // viewerClicked() detection and edge navigation hover (see mouseReleaseEvent()/eventFilter()/
+    // updateEdgeNavigationHover()) must work in both Static and Overlay modes, not just Overlay's
+    // auto-hide-on-activity tracking.
     pimpl->view->viewport()->installEventFilter(this);
+    pimpl->view->viewport()->setMouseTracking(true);
+    setMouseTracking(true);
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -412,26 +421,153 @@ void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
         return;
     }
 
+    if (isInPrevNavigationZone(pos))
+    {
+        emit pimpl->prevButton->clicked();
+        return;
+    }
+    if (isInNextNavigationZone(pos))
+    {
+        emit pimpl->nextButton->clicked();
+        return;
+    }
+
     emit pimpl->ctrl->viewerClicked();
+}
+
+//--------------------------------------------------------------------------
+
+bool ImageViewerWidget::isInPrevNavigationZone(const QPoint& pos) const
+{
+    // hasPrev, not prevButton->isVisible() -- matches updateControlsVisibility()'s own
+    // definition of "enabled" rather than the button's transient visibility during an
+    // Overlay-mode fade (hovering the zone itself fades the controls back in, see
+    // updateEdgeNavigationHover()'s notifyActivity() call).
+    if (pimpl->ctrl->currentImageIndex()==0)
+    {
+        return false;
+    }
+    auto r=pimpl->view->contentsRect().translated(pimpl->view->pos());
+    if (pos.y()<r.top() || pos.y()>r.bottom())
+    {
+        return false;
+    }
+    return pos.x()>=r.left() && pos.x()<r.left()+pimpl->edgeNavigationZoneWidth;
+}
+
+//--------------------------------------------------------------------------
+
+bool ImageViewerWidget::isInNextNavigationZone(const QPoint& pos) const
+{
+    if ((pimpl->ctrl->currentImageIndex()+1)>=pimpl->ctrl->imageCount())
+    {
+        return false;
+    }
+    auto r=pimpl->view->contentsRect().translated(pimpl->view->pos());
+    if (pos.y()<r.top() || pos.y()>r.bottom())
+    {
+        return false;
+    }
+    return pos.x()<=r.right() && pos.x()>r.right()-pimpl->edgeNavigationZoneWidth;
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::updateEdgeNavigationHover(const QPoint& pos)
+{
+    auto prevHovered=isInPrevNavigationZone(pos);
+    auto nextHovered=!prevHovered && isInNextNavigationZone(pos);
+
+    if (prevHovered!=pimpl->prevZoneHovered)
+    {
+        pimpl->prevZoneHovered=prevHovered;
+        pimpl->prevButton->setForceHovered(prevHovered);
+    }
+    if (nextHovered!=pimpl->nextZoneHovered)
+    {
+        pimpl->nextZoneHovered=nextHovered;
+        pimpl->nextButton->setForceHovered(nextHovered);
+    }
+
+    if (pimpl->view!=nullptr)
+    {
+        auto* viewport=pimpl->view->viewport();
+        if (prevHovered || nextHovered)
+        {
+            viewport->setCursor(Qt::PointingHandCursor);
+        }
+        else
+        {
+            viewport->unsetCursor();
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::clearEdgeNavigationHover()
+{
+    if (pimpl->prevZoneHovered)
+    {
+        pimpl->prevZoneHovered=false;
+        pimpl->prevButton->setForceHovered(false);
+    }
+    if (pimpl->nextZoneHovered)
+    {
+        pimpl->nextZoneHovered=false;
+        pimpl->nextButton->setForceHovered(false);
+    }
+    if (pimpl->view!=nullptr)
+    {
+        pimpl->view->viewport()->unsetCursor();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+int ImageViewerWidget::edgeNavigationZoneWidth() const
+{
+    return pimpl->edgeNavigationZoneWidth;
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::setEdgeNavigationZoneWidth(int value)
+{
+    pimpl->edgeNavigationZoneWidth=value;
 }
 
 //--------------------------------------------------------------------------
 
 bool ImageViewerWidget::event(QEvent* event)
 {
-    if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+    switch (event->type())
     {
-        switch (event->type())
+        case QEvent::MouseMove:
         {
-            case QEvent::MouseMove:
-            case QEvent::HoverMove:
-            case QEvent::Enter:
+            if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+            {
                 notifyActivity();
-                break;
-
-            default:
-                break;
+            }
+            auto* mouseEvent=static_cast<QMouseEvent*>(event);
+            updateEdgeNavigationHover(mouseEvent->pos());
+            break;
         }
+
+        case QEvent::HoverMove:
+        case QEvent::Enter:
+            if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+            {
+                notifyActivity();
+            }
+            break;
+
+        case QEvent::Leave:
+            clearEdgeNavigationHover();
+            break;
+
+        default:
+            break;
     }
 
     return WidgetQFrame::event(event);
@@ -441,19 +577,34 @@ bool ImageViewerWidget::event(QEvent* event)
 
 bool ImageViewerWidget::eventFilter(QObject* watched, QEvent* event)
 {
-    // watched==viewport() branches run in both control modes -- viewerClicked() detection is
-    // not an Overlay-only feature, unlike the activity-notify (auto-hide) reaction below.
+    // watched==viewport() branches run in both control modes -- viewerClicked() detection and
+    // edge navigation hover/click are not Overlay-only features, unlike the activity-notify
+    // (auto-hide) reaction below.
     if (pimpl->view!=nullptr && watched==pimpl->view->viewport())
     {
         switch (event->type())
         {
             case QEvent::MouseMove:
+            {
+                if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+                {
+                    notifyActivity();
+                }
+                auto* mouseEvent=static_cast<QMouseEvent*>(event);
+                updateEdgeNavigationHover(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+                break;
+            }
+
             case QEvent::HoverMove:
             case QEvent::Enter:
                 if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
                 {
                     notifyActivity();
                 }
+                break;
+
+            case QEvent::Leave:
+                clearEdgeNavigationHover();
                 break;
 
             case QEvent::MouseButtonPress:
@@ -638,15 +789,9 @@ void ImageViewerWidget::applyControlsMode()
 
     if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Static)
     {
-        // Note: the viewport event filter itself stays installed (see the constructor) even in
-        // Static mode -- it is also how viewerClicked() detects clicks landing on the image area,
-        // not just Overlay's own activity tracking.
-        if (pimpl->view!=nullptr)
-        {
-            pimpl->view->viewport()->setMouseTracking(false);
-        }
-        setMouseTracking(false);
-
+        // Note: the viewport event filter and mouse tracking both stay on (see the constructor)
+        // even in Static mode -- they are also how viewerClicked() and the edge navigation zones
+        // detect clicks/hover on the image area, not just Overlay's own activity tracking.
         if (bw!=nullptr)
         {
             bw->removeEventFilter(this);
@@ -663,12 +808,6 @@ void ImageViewerWidget::applyControlsMode()
     }
     else
     {
-        setMouseTracking(true);
-        if (pimpl->view!=nullptr)
-        {
-            pimpl->view->viewport()->setMouseTracking(true);
-        }
-
         if (bw!=nullptr)
         {
             pimpl->layout->removeWidget(bw);

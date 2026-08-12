@@ -92,6 +92,17 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
             return m_ripple;
         }
 
+        /**
+         * @brief Force the visual hovered state without a real QEnterEvent.
+         * @param hovered New forced-hover state.
+         *
+         * ORed with the button's own real hover state (see enterEvent()/leaveEvent()) when
+         * paintEvent() decides whether to paint the hovered icon -- for a caller (e.g.
+         * ImageViewerWidget's edge navigation zones) that wants this button to look hovered
+         * while the pointer is actually in some larger area that only proxies for hovering it.
+         */
+        void setForceHovered(bool hovered);
+
     signals:
 
         void clicked();
@@ -117,6 +128,7 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
         QLabel* m_badgeText;
         bool m_hovered;
+        bool m_forceHovered=false;
         std::shared_ptr<SvgIcon> m_icon;
 
         Qt::Orientation m_orientation;

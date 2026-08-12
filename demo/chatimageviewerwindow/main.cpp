@@ -144,6 +144,39 @@ int main(int argc, char *argv[])
 
     auto* toast=new Toast(mainFrame);
 
+    // --- colour theme selector -- same combo recipe as demo/chatmessagefiles/main.cpp and
+    // demo/chatimageviewer/main.cpp's own theme toggle, just exposed as a 3-way selector
+    // (including Auto) rather than a two-state toggle. Since ChatImageViewerWindow opens
+    // fullscreen by default, this is the only on-screen control once the viewer is up, so it's
+    // worth confirming the chosen theme before opening. ---
+
+    auto* themeRow=new QFrame(mainFrame);
+    auto* themeLayout=Layout::horizontal(themeRow);
+    l->addWidget(themeRow);
+
+    themeLayout->addWidget(new QLabel(QStringLiteral("Colour theme:")));
+
+    auto* themeCombo=new QComboBox(themeRow);
+    themeCombo->addItem(QStringLiteral("Auto"),static_cast<int>(Style::StyleSheetMode::Auto));
+    themeCombo->addItem(QStringLiteral("Light"),static_cast<int>(Style::StyleSheetMode::Light));
+    themeCombo->addItem(QStringLiteral("Dark"),static_cast<int>(Style::StyleSheetMode::Dark));
+    themeCombo->setCurrentIndex(themeCombo->findData(static_cast<int>(Style::instance().styleSheetMode())));
+    themeLayout->addWidget(themeCombo,1);
+
+    QObject::connect(
+        themeCombo,
+        &QComboBox::currentIndexChanged,
+        mainFrame,
+        [themeCombo]()
+        {
+            auto mode=static_cast<Style::StyleSheetMode>(themeCombo->currentData().toInt());
+            Style::instance().setStyleSheetMode(mode);
+            // reload=true: re-resolves every already-created SvgIcon (prev/next arrows, toolbar
+            // icons) against the new theme's colour maps, not just the QSS.
+            Style::instance().applyStyleSheet(true);
+        }
+    );
+
     // --- launcher controls ---
 
     auto* controlsRow=new QFrame(mainFrame);
@@ -240,7 +273,7 @@ int main(int argc, char *argv[])
     );
 
     w.setCentralWidget(mainFrame);
-    w.resize(700,260);
+    w.resize(700,300);
     w.setWindowTitle("Chat Image Viewer Window Demo");
     w.show();
     return app.exec();
