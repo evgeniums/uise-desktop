@@ -544,8 +544,8 @@ void FileDropOverlay::rebuildPanelsLayout()
     // does not own the widgets placed into it), so both survive to be re-added below. See the
     // constructor's own comment on why panel construction and layout assembly are kept separate.
     auto* layout=Layout::box(this,pimpl->panelOrientation);
-    layout->addWidget(pimpl->documentsPanel,1);
     layout->addWidget(pimpl->imagesPanel,1);
+    layout->addWidget(pimpl->documentsPanel,1);
 }
 
 //--------------------------------------------------------------------------
@@ -614,18 +614,18 @@ FileDropOverlay::Panel FileDropOverlay::panelAt(const QPoint& pos) const
     }
 
     // Midpoint split, not strict rect containment, so the padding band and inter-panel gap have
-    // no dead zone -- panelAt() always resolves to one panel or the other. documentsPanel is
+    // no dead zone -- panelAt() always resolves to one panel or the other. imagesPanel is
     // always added to the layout first (see rebuildPanelsLayout()), so it is the left panel in
     // Qt::Horizontal and the top panel in Qt::Vertical; split on the axis the layout actually
     // arranges the panels along.
     if (pimpl->panelOrientation==Qt::Vertical)
     {
-        auto split=(pimpl->documentsPanel->geometry().bottom()+pimpl->imagesPanel->geometry().top())/2;
-        return pos.y()<split ? Panel::Documents : Panel::Images;
+        auto split=(pimpl->imagesPanel->geometry().bottom()+pimpl->documentsPanel->geometry().top())/2;
+        return pos.y()<split ? Panel::Images : Panel::Documents;
     }
 
-    auto split=(pimpl->documentsPanel->geometry().right()+pimpl->imagesPanel->geometry().left())/2;
-    return pos.x()<split ? Panel::Documents : Panel::Images;
+    auto split=(pimpl->imagesPanel->geometry().right()+pimpl->documentsPanel->geometry().left())/2;
+    return pos.x()<split ? Panel::Images : Panel::Documents;
 }
 
 //--------------------------------------------------------------------------

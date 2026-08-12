@@ -177,14 +177,14 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void setSingleSubtitle(const QString& text);
         QString singleSubtitle() const;
 
-        //! Caption of the documents panel in the two-panel layout (first/left/top, depending on
-        //! panelOrientation()).
+        //! Caption of the documents panel in the two-panel layout (second/right/bottom, depending
+        //! on panelOrientation()).
         void setDocumentsCaption(const QString& text);
         QString documentsCaption() const;
         void setDocumentsSubtitle(const QString& text);
         QString documentsSubtitle() const;
 
-        //! Caption of the images panel in the two-panel layout (second/right/bottom).
+        //! Caption of the images panel in the two-panel layout (first/left/top).
         void setImagesCaption(const QString& text);
         QString imagesCaption() const;
         void setImagesSubtitle(const QString& text);
