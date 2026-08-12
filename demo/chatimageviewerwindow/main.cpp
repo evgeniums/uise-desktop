@@ -134,11 +134,13 @@ int main(int argc, char *argv[])
     auto* mainFrame=new QFrame();
     auto* l=Layout::vertical(mainFrame);
 
-    l->addWidget(new QLabel(
+    auto* descriptionLabel=new QLabel(
         QStringLiteral("Opens ChatImageViewer in a top-level ChatImageViewerWindow. Fullscreen "
                        "mode (default) closes on Esc or a click anywhere outside the controls; "
                        "Window mode closes only via Esc or its native close button.")
-    ));
+    );
+    descriptionLabel->setWordWrap(true);
+    l->addWidget(descriptionLabel);
 
     auto* toast=new Toast(mainFrame);
 
