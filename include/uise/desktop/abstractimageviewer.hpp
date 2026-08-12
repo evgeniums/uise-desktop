@@ -178,6 +178,11 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         //! A host wrapping the viewer in a modal dialog is expected to close that dialog on this.
         void closeRequested();
 
+        //! Emitted on a left-button click that lands on the image area rather than on the bottom
+        //! widget or the prev/next buttons (see ImageViewerWidget::mouseReleaseEvent()). A
+        //! fullscreen host (see ChatImageViewerWindow) closes on it.
+        void viewerClicked();
+
     public slots:
 
         virtual void reset() {}

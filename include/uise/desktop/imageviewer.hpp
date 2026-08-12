@@ -146,6 +146,8 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
 
         void resizeEvent(QResizeEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
         bool event(QEvent* event) override;
         bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -157,6 +159,17 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         void fadeControlsIn();
         void fadeControlsOut();
         void notifyActivity();
+
+        //! True if pos (in this widget's coordinates) lands on the bottom widget or the
+        //! prev/next buttons -- walks childAt(pos) up to this, so it works whether the bottom
+        //! widget is a Static-mode layout child or an Overlay-mode floating one, and naturally
+        //! ignores hidden (e.g. faded-out) widgets.
+        bool isOnControls(const QPoint& pos) const;
+
+        //! Shared by mouseReleaseEvent() and the viewport eventFilter() branch: emits
+        //! ctrl->viewerClicked() if this was a plain left-button click (not a drag, not on the
+        //! controls) ending at pos (this-widget coordinates).
+        void handlePotentialViewerClick(const QPoint& pos);
 
         std::unique_ptr<ImageViewerWidget_p> pimpl;
 

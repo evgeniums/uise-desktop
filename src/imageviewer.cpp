@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QMouseEvent>
+#include <QApplication>
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 
@@ -113,6 +115,11 @@ class ImageViewerWidget_p
         int controlsFadeInDurationMs=ImageViewerWidget::DefaultControlsFadeInDurationMs;
         int controlsFadeOutDurationMs=ImageViewerWidget::DefaultControlsFadeOutDurationMs;
         qreal controlsMaxOpacity=ImageViewerWidget::DefaultControlsMaxOpacity;
+
+        // --- viewerClicked() support ---
+
+        bool pressIsLeftButton=false;
+        QPoint pressPos;
 };
 
 //--------------------------------------------------------------------------
@@ -138,6 +145,10 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
     pimpl->view->setScene(pimpl->scene);
     pimpl->view->setFocusPolicy(Qt::NoFocus);
     pimpl->layout->addWidget(pimpl->view,1);
+    // Installed once here (not per controls-mode switch in applyControlsMode()) because
+    // viewerClicked() detection (see mouseReleaseEvent()/eventFilter()) must work in both
+    // Static and Overlay modes, not just Overlay's auto-hide-on-activity tracking.
+    pimpl->view->viewport()->installEventFilter(this);
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -335,6 +346,77 @@ void ImageViewerWidget::keyPressEvent(QKeyEvent* event)
 
 //--------------------------------------------------------------------------
 
+void ImageViewerWidget::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton)
+    {
+        pimpl->pressIsLeftButton=true;
+        pimpl->pressPos=event->pos();
+    }
+    else
+    {
+        pimpl->pressIsLeftButton=false;
+    }
+    QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton)
+    {
+        handlePotentialViewerClick(event->pos());
+    }
+    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+bool ImageViewerWidget::isOnControls(const QPoint& pos) const
+{
+    // Walking ancestors of childAt(pos), rather than comparing geometries, is mode-independent
+    // (the bottom widget is a layout child of contentFrame in Static mode but a direct floating
+    // child of this in Overlay mode) and naturally ignores hidden widgets -- childAt() never
+    // returns one, so a faded-out overlay bar does not block a click meant for the image beneath it.
+    auto* w=childAt(pos);
+    while (w!=nullptr && w!=this)
+    {
+        if (w==pimpl->activeBottomWidget || w==pimpl->prevButton || w==pimpl->nextButton)
+        {
+            return true;
+        }
+        w=w->parentWidget();
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
+{
+    if (!pimpl->pressIsLeftButton)
+    {
+        return;
+    }
+    pimpl->pressIsLeftButton=false;
+
+    // A drag/pan that happens to end outside the controls should not read as a click.
+    if ((pos-pimpl->pressPos).manhattanLength()>QApplication::startDragDistance())
+    {
+        return;
+    }
+
+    if (isOnControls(pos))
+    {
+        return;
+    }
+
+    emit pimpl->ctrl->viewerClicked();
+}
+
+//--------------------------------------------------------------------------
+
 bool ImageViewerWidget::event(QEvent* event)
 {
     if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
@@ -359,33 +441,61 @@ bool ImageViewerWidget::event(QEvent* event)
 
 bool ImageViewerWidget::eventFilter(QObject* watched, QEvent* event)
 {
-    if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+    // watched==viewport() branches run in both control modes -- viewerClicked() detection is
+    // not an Overlay-only feature, unlike the activity-notify (auto-hide) reaction below.
+    if (pimpl->view!=nullptr && watched==pimpl->view->viewport())
     {
-        if (pimpl->view!=nullptr && watched==pimpl->view->viewport())
+        switch (event->type())
         {
-            switch (event->type())
-            {
-                case QEvent::MouseMove:
-                case QEvent::HoverMove:
-                case QEvent::Enter:
+            case QEvent::MouseMove:
+            case QEvent::HoverMove:
+            case QEvent::Enter:
+                if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
+                {
                     notifyActivity();
-                    break;
+                }
+                break;
 
-                default:
-                    break;
+            case QEvent::MouseButtonPress:
+            {
+                auto* mouseEvent=static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button()==Qt::LeftButton)
+                {
+                    pimpl->pressIsLeftButton=true;
+                    pimpl->pressPos=mapFromGlobal(mouseEvent->globalPosition().toPoint());
+                }
+                else
+                {
+                    pimpl->pressIsLeftButton=false;
+                }
+                break;
             }
+
+            case QEvent::MouseButtonRelease:
+            {
+                auto* mouseEvent=static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button()==Qt::LeftButton)
+                {
+                    handlePotentialViewerClick(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+                }
+                break;
+            }
+
+            default:
+                break;
         }
-        else if (watched==pimpl->activeBottomWidget && event->type()==QEvent::LayoutRequest)
-        {
-            // The bottom widget is unmanaged by any outer QLayout while overlaid (we position it
-            // ourselves via setGeometry() in updateButtonPositions()), so when ITS OWN internal
-            // layout decides its sizeHint changed (e.g. ChatImageViewerControls' album strip
-            // gaining/losing rows), Qt delivers this event straight to the widget instead of an
-            // ancestor layout silently absorbing it -- without reacting to it here, the bar stays
-            // sized/positioned from whatever it was the last time updateButtonPositions() happened
-            // to run, which is what showed up as broken/glitchy layout right after content changed.
-            updateButtonPositions();
-        }
+    }
+    else if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay
+             && watched==pimpl->activeBottomWidget && event->type()==QEvent::LayoutRequest)
+    {
+        // The bottom widget is unmanaged by any outer QLayout while overlaid (we position it
+        // ourselves via setGeometry() in updateButtonPositions()), so when ITS OWN internal
+        // layout decides its sizeHint changed (e.g. ChatImageViewerControls' album strip
+        // gaining/losing rows), Qt delivers this event straight to the widget instead of an
+        // ancestor layout silently absorbing it -- without reacting to it here, the bar stays
+        // sized/positioned from whatever it was the last time updateButtonPositions() happened
+        // to run, which is what showed up as broken/glitchy layout right after content changed.
+        updateButtonPositions();
     }
 
     return WidgetQFrame::eventFilter(watched,event);
@@ -528,9 +638,11 @@ void ImageViewerWidget::applyControlsMode()
 
     if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Static)
     {
+        // Note: the viewport event filter itself stays installed (see the constructor) even in
+        // Static mode -- it is also how viewerClicked() detects clicks landing on the image area,
+        // not just Overlay's own activity tracking.
         if (pimpl->view!=nullptr)
         {
-            pimpl->view->viewport()->removeEventFilter(this);
             pimpl->view->viewport()->setMouseTracking(false);
         }
         setMouseTracking(false);
@@ -555,7 +667,6 @@ void ImageViewerWidget::applyControlsMode()
         if (pimpl->view!=nullptr)
         {
             pimpl->view->viewport()->setMouseTracking(true);
-            pimpl->view->viewport()->installEventFilter(this);
         }
 
         if (bw!=nullptr)

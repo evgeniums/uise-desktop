@@ -91,6 +91,7 @@
         <file>style/dark/chatimageviewer.json</file>
         <file>style/light/chatimageviewer.json</file>
         <file>style/chatimageviewer.qss</file>
+        <file>style/chatimageviewerwindow.qss</file>
         <file>style/flyweightlistview.json</file>
         <file>style/dark/flyweightlistview.json</file>
         <file>style/light/flyweightlistview.json</file>

@@ -1,0 +1,8 @@
+/* Opaque dark backing so any letterboxed/background area around the image reads as viewer
+ * chrome rather than the app's own background -- theme-independent for the same reason
+ * chatimageviewer.qss's overlay backing is: this always sits over a photo, never over the app's
+ * normal content, so it does not follow light/dark.qss.
+ */
+uise--ChatImageViewerWindow {
+background-color: rgb(16,16,16);
+}

@@ -204,6 +204,7 @@ SET (HEADERS
     include/uise/desktop/imagepreviewstrip.hpp
     include/uise/desktop/chatimageviewercontrols.hpp
     include/uise/desktop/chatimageviewer.hpp
+    include/uise/desktop/chatimageviewerwindow.hpp
 
     include/uise/desktop/circlebusy.hpp
     include/uise/desktop/lineedit.hpp
@@ -375,6 +376,7 @@ SET (SOURCES
     src/imagepreviewstrip.cpp
     src/chatimageviewercontrols.cpp
     src/chatimageviewer.cpp
+    src/chatimageviewerwindow.cpp
 
     src/circlebusy.cpp
     src/lineedit.cpp
