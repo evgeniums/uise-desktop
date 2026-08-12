@@ -310,13 +310,22 @@ void ChatMessageFileItem::updateIconSlot()
         pimpl->loadControl->setVisible(true);
         pimpl->loadControl->setState(chatFileLoadControlState(it.state(),pimpl->incoming));
         pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(it.state()));
-        if (it.state()==ChatFileTransferState::Running || it.state()==ChatFileTransferState::Paused)
+        // m_progress is a sticky member on the reused per-row LoadControl (setState() never
+        // touches it) and paintEvent() draws the progress arc unconditionally from it, in
+        // every state -- so every non-transferring state must explicitly zero it, not just
+        // skip the setProgress() call, or a stale ring (a full one for Complete, a partial
+        // one for e.g. Running->Failed) paints behind that state's own glyph. Pending is kept
+        // alongside Running/Paused so a re-queued item with real seeded partial bytes doesn't
+        // lose that partial ring.
+        if (it.state()==ChatFileTransferState::Running
+            || it.state()==ChatFileTransferState::Paused
+            || it.state()==ChatFileTransferState::Pending)
         {
             pimpl->loadControl->setProgress(it.transferred(),it.size());
         }
-        else if (it.state()==ChatFileTransferState::Complete)
+        else
         {
-            pimpl->loadControl->setProgress(100.0);
+            pimpl->loadControl->setProgress(0.0);
         }
         return;
     }

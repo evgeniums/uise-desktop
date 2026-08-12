@@ -190,13 +190,19 @@ void ChatMessageImageItem::refresh()
     {
         pimpl->loadControl->setState(chatFileLoadControlState(pimpl->item.state(),pimpl->incoming));
         pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(pimpl->item.state()));
-        if (pimpl->item.state()==ChatFileTransferState::Running || pimpl->item.state()==ChatFileTransferState::Paused)
+        // See ChatMessageFileItem::updateIconSlot()'s identical fix for why every non-
+        // transferring state must explicitly zero progress, not just skip setProgress(): it's
+        // a sticky member on the reused per-row LoadControl, and paintEvent() draws the arc
+        // unconditionally from it.
+        if (pimpl->item.state()==ChatFileTransferState::Running
+            || pimpl->item.state()==ChatFileTransferState::Paused
+            || pimpl->item.state()==ChatFileTransferState::Pending)
         {
             pimpl->loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
         }
-        else if (pimpl->item.state()==ChatFileTransferState::Complete)
+        else
         {
-            pimpl->loadControl->setProgress(100.0);
+            pimpl->loadControl->setProgress(0.0);
         }
         pimpl->loadControl->raise();
     }
