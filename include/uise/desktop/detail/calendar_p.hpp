@@ -275,6 +275,7 @@ class Calendar_p
         Qt::DayOfWeek resolvedFirstDayOfWeek() const;
         bool withinLimits(const QDate& date) const;
         QDate clampMonth(const QDate& month) const;
+        void activity() const { self->notifyActivity(); }   //!< shorthand used by every wiring site
 
         void buildHeader();
         void buildGrid();

@@ -103,6 +103,7 @@ SET (HEADERS
     include/uise/desktop/modaldialog.hpp
     include/uise/desktop/floatingdialog.hpp
     include/uise/desktop/statusdialog.hpp
+    include/uise/desktop/calendardialog.hpp
 
     include/uise/desktop/framewithmodalstatus.hpp
 
@@ -315,6 +316,7 @@ SET (SOURCES
     src/abstractdialog.cpp
     src/floatingdialog.cpp
     src/statusdialog.cpp
+    src/calendardialog.cpp
 
     src/framewithmodalstatus.cpp
 

@@ -12,21 +12,18 @@ uise--Calendar #headerFrame {
 padding: 2px 0 4px 0;
 }
 
-uise--Calendar #titleFrame {
+uise--Calendar #calendarTitleFrame {
 padding: 0;
 margin: 0;
+margin-left: 4px;
 border: none;
-background-color: transparent;
 border-radius: 4px;
+background-color: transparent;
 }
 
 uise--Calendar #titleLabel {
 padding: 0;
 margin: 0;
-}
-
-uise--Calendar #titleLabel QLabel {
-background-color: transparent;
 }
 
 uise--Calendar #rangeFromButton QPushButton,

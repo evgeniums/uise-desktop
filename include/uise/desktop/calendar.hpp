@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/frame.hpp>
 
 class QLabel;
+class QMouseEvent;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -318,6 +319,12 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
         QWidget* headerFrame() const noexcept;
         QWidget* daysFrame() const noexcept;
 
+        /** @brief True while one of the calendar's own top-level popups (the month picker or
+         *  the multiple-selection dates dropdown) is open. Interaction inside those popups
+         *  never reaches this widget's event stream, so an embedder running an inactivity
+         *  countdown must treat an open popup as "busy" -- see CalendarDialog. */
+        bool isPopupOpen() const noexcept;
+
         void setCellWidth(int val) noexcept;
         int cellWidth() const noexcept;
 
@@ -347,6 +354,10 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
         void openMonthPicker();
         void closeMonthPicker();
 
+        /** @brief Emit activity(). Public so an embedder can fold external interaction into
+         *  the calendar's own activity stream (mirrors ImageViewerWidget::notifyActivity()). */
+        void notifyActivity();
+
     signals:
 
         /** @brief A selectable day was clicked while effectiveMode()==Activation. */
@@ -374,6 +385,11 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
          *  ExtendedSelection, the two modes where effectiveMode() can differ from mode(). */
         void effectiveModeChanged(CalendarMode mode);
 
+        /** @brief Any user interaction: a click on any control or day cell, a drag, a wheel
+         *  step, a key press, or opening/closing one of the popups. Never emitted for
+         *  programmatic changes (setSelectedDate(), setDisplayedMonth(), ...). */
+        void activity();
+
     protected:
 
         void changeEvent(QEvent* event) override;
@@ -383,6 +399,12 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
 
         /** @brief PageUp/ArrowUp step to the previous month, PageDown/ArrowDown to the next. */
         void keyPressEvent(QKeyEvent* event) override;
+
+        /** @brief Catch-all: a press landing on the calendar's own background (or on a child
+         *  that ignored it) still counts as activity. Never consumes the event -- do not
+         *  "optimise" this into event->accept(), embedders such as CalendarDropdown rely on it
+         *  propagating. */
+        void mousePressEvent(QMouseEvent* event) override;
 
     private:
 

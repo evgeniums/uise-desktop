@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QStyleOption>
 #include <QStyle>
+#include <QPropertyAnimation>
+#include <QLayout>
 
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -69,6 +71,12 @@ class FloatingDialogFrame_p
         QShortcut* escShortcut=nullptr;
 
         bool hasPosition=false;
+
+        QPropertyAnimation* fadeAnimation=nullptr;
+        int fadeDurationMs=FloatingDialogFrame::DefaultFadeDurationMs;
+        int easingCurveType=static_cast<int>(QEasingCurve::OutCubic);
+        bool closing=false;             // a close is in flight (fade running) or mid-finishClose()
+        bool pendingAutoDestroy=false;
 };
 
 //--------------------------------------------------------------------------
@@ -122,9 +130,26 @@ static void showFrame(FloatingDialogFrame* self, FloatingDialogFrame_p* p)
     p->hiddenByHost=false;
     p->escShortcut->setEnabled(p->shortcutEnabled);
 
+    // Cancel any in-flight close fade so reopening never shows a half-transparent window, and
+    // reset closing before show() -- a fade-out's finished() firing after this point (its
+    // animation was just stopped, so it won't, but belt-and-braces) must not tear content down
+    // out from under the frame that is being shown again.
+    p->fadeAnimation->stop();
+    p->closing=false;
+    self->setWindowOpacity(p->fadeDurationMs>0 ? 0.0 : 1.0);
+
     self->show();
     self->raise();
     self->activateWindow();
+
+    if (p->fadeDurationMs>0)
+    {
+        p->fadeAnimation->setDuration(p->fadeDurationMs);
+        p->fadeAnimation->setEasingCurve(static_cast<QEasingCurve::Type>(p->easingCurveType));
+        p->fadeAnimation->setStartValue(0.0);
+        p->fadeAnimation->setEndValue(1.0);
+        p->fadeAnimation->start();
+    }
 
     if (!p->content.isNull())
     {
@@ -170,6 +195,22 @@ FloatingDialogFrame::FloatingDialogFrame(QWidget* parent)
             close(pimpl->contentAutoDestroy);
         }
     );
+
+    // Drives both the fade-out (close()) and the fade-in (showFrame()) -- finished() only acts
+    // on the fade-out, guarded by pimpl->closing, since the fade-in has nothing left to do.
+    pimpl->fadeAnimation=new QPropertyAnimation(this,"windowOpacity",this);
+    connect(
+        pimpl->fadeAnimation,
+        &QPropertyAnimation::finished,
+        this,
+        [this]()
+        {
+            if (pimpl->closing)
+            {
+                finishClose();
+            }
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -211,6 +252,17 @@ void FloatingDialogFrame::setWidget(QWidget* widget, bool autoDestroy)
 
     widget->setParent(this);
     pimpl->layout->addWidget(widget);
+
+    // An AbstractDialog can opt out of mouse-drag resizing (AbstractDialog::isResizable()) --
+    // SetFixedSize keeps this frame's own minimumSize()/maximumSize() continuously pinned to
+    // the layout's sizeHint() as the content's natural size changes, which is also what
+    // disables the OS-level resize affordance on a frameless top-level window; non-dialog
+    // content (no titleBar()/isResizable() to ask) keeps the ordinary default constraint.
+    auto* dialog=qobject_cast<AbstractDialog*>(widget);
+    pimpl->layout->setSizeConstraint(
+        (dialog!=nullptr && !dialog->isResizable()) ? QLayout::SetFixedSize
+                                                      : QLayout::SetDefaultConstraint
+    );
 
     if (!pimpl->explicitDragHandle)
     {
@@ -367,6 +419,34 @@ bool FloatingDialogFrame::isFollowHostVisibility() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::setFadeDurationMs(int val) noexcept
+{
+    pimpl->fadeDurationMs=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FloatingDialogFrame::fadeDurationMs() const noexcept
+{
+    return pimpl->fadeDurationMs;
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::setEasingCurveType(int val) noexcept
+{
+    pimpl->easingCurveType=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FloatingDialogFrame::easingCurveType() const noexcept
+{
+    return pimpl->easingCurveType;
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::popup()
 {
     adjustSize();
@@ -415,11 +495,46 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos)
 
 void FloatingDialogFrame::close(bool autoDestroy)
 {
-    hide();
-    pimpl->escShortcut->setEnabled(false);
-    emit closed();
+    // With a fade the close becomes asynchronous, so closed() -- and therefore any
+    // closeDialog()/closeRequested() round trip a host wires from it (see
+    // FloatingDialog::openDialog()) -- now fires after this call has already returned. This
+    // guard, rather than the blockSignals() window openDialog() still (harmlessly) uses, is
+    // what makes a re-entrant close() during that round trip, a plain double close(), or a
+    // closeEvent() arriving mid-fade all safe no-ops.
+    if (pimpl->closing || !isVisible())
+    {
+        return;
+    }
 
-    if (autoDestroy)
+    pimpl->escShortcut->setEnabled(false);
+    pimpl->closing=true;
+    pimpl->pendingAutoDestroy=autoDestroy;
+
+    if (pimpl->fadeDurationMs<=0)
+    {
+        finishClose();
+        return;
+    }
+
+    pimpl->fadeAnimation->stop();
+    pimpl->fadeAnimation->setDuration(pimpl->fadeDurationMs);
+    pimpl->fadeAnimation->setEasingCurve(static_cast<QEasingCurve::Type>(pimpl->easingCurveType));
+    pimpl->fadeAnimation->setStartValue(windowOpacity());
+    pimpl->fadeAnimation->setEndValue(0.0);
+    pimpl->fadeAnimation->start();
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::finishClose()
+{
+    pimpl->fadeAnimation->stop();
+    hide();
+    setWindowOpacity(1.0);          // restored before the next popup()
+    emit closed();                  // pimpl->closing is still true here, so a close() re-entered
+                                     // from a closed()/closeRequested() round trip is a no-op
+
+    if (pimpl->pendingAutoDestroy)
     {
         if (!pimpl->explicitDragHandle && !pimpl->dragHandle.isNull())
         {
@@ -429,6 +544,8 @@ void FloatingDialogFrame::close(bool autoDestroy)
         destroyWidget(pimpl->content);
         pimpl->content=nullptr;
     }
+
+    pimpl->closing=false;
 }
 
 //--------------------------------------------------------------------------
@@ -500,6 +617,12 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
             case (QEvent::Hide): [[fallthrough]];
             case (QEvent::Close):
             {
+                if (pimpl->closing)
+                {
+                    // the host is going away -- there is nothing left to fade against, so jump
+                    // straight to the end state instead of leaving an orphaned animation running
+                    finishClose();
+                }
                 if (pimpl->followHostVisibility && isVisible())
                 {
                     pimpl->hiddenByHost=true;
@@ -517,6 +640,22 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
             }
             break;
 
+            case (QEvent::WindowActivate):
+            {
+                // Qt::Dialog plus a parent already asks the OS to keep this frame above its
+                // host, but that relationship is not automatically re-asserted every time the
+                // host itself is brought forward by the user -- a click on it, Cmd+Tab, Mission
+                // Control, clicking a different window of the same app and back, ... raise()
+                // (never activateWindow(), which would steal focus right back from the host and
+                // fight the user -- this is "stay above its own parent", not "always on top")
+                // restacks the frame above the host without taking focus away from it.
+                if (isVisible() && !pimpl->closing)
+                {
+                    raise();
+                }
+            }
+            break;
+
             default:
             break;
         }
@@ -529,8 +668,12 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
 
 void FloatingDialogFrame::closeEvent(QCloseEvent* event)
 {
+    // A WM-initiated close (titlebar / Cmd+W) must not hide the window immediately -- that
+    // would preempt the fade. close() starts the fade (or, with fadeDurationMs()==0, has
+    // already run finishClose() synchronously by the time this returns) and the frame hides
+    // itself once that finishes; ignore() lets it stay showing meanwhile.
     close(pimpl->contentAutoDestroy);
-    event->accept();
+    event->ignore();
 }
 
 //--------------------------------------------------------------------------

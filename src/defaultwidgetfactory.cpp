@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <uise/desktop/statusdialog.hpp>
+#include <uise/desktop/calendardialog.hpp>
 #include <uise/desktop/editablepanelgrid.hpp>
 #include <uise/desktop/editablepanels.hpp>
 #include <uise/desktop/loadingframe.hpp>
@@ -47,6 +48,7 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     auto factory=std::make_shared<WidgetFactory>();
 
     factory->registerBuilder<AbstractStatusDialog>([](QWidget* parent){return new StatusDialog(parent);});
+    factory->registerBuilder<AbstractCalendarDialog>([](QWidget* parent){return new CalendarDialog(parent);});
     factory->registerBuilder<AbstractLoadingWidget>([](QWidget* parent){return new CircleBusyFrame(parent,true,false);});
     factory->registerBuilder<AbstractOperationLoadingWidget>([](QWidget* parent){return new CircleBusyFrame(parent,true,false);});
     factory->registerBuilder<AbstractPanelLoadingWidget>([](QWidget* parent){return new Skeleton(parent);});

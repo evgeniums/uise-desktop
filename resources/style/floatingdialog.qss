@@ -2,4 +2,10 @@
  * hosted uise--AbstractDialog content paints its own background, border and rounded corners
  * (see abstractdialog.qss), so the frame itself must stay fully transparent or it would show
  * as an opaque square around the dialog's rounded corners. */
-uise--FloatingDialogFrame {background-color: transparent; border: none; padding: 0;}
+uise--FloatingDialogFrame {
+background-color: transparent;
+border: none;
+padding: 0;
+qproperty-fadeDurationMs: 150;
+qproperty-easingCurveType: 6; /* QEasingCurve::OutCubic */
+}

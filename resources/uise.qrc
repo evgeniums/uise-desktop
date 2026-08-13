@@ -77,6 +77,7 @@
         <file>style/dark/passworddialog.qss</file>
         <file>style/wizarddialog.qss</file>
         <file>style/floatingdialog.qss</file>
+        <file>style/calendardialog.qss</file>
         <file>style/light/passworddialog.json</file>
         <file>style/light/abstractdialog.qss</file>
         <file>style/light/passworddialog.qss</file>

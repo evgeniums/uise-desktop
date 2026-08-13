@@ -1,6 +1,6 @@
-uise--Calendar #titleLabel { color: #ffffff; }
-uise--Calendar #titleLabel QLabel { color: #ffffff; }
-uise--Calendar #titleFrame[checked="true"] { background-color: #2b3a4a; }
+uise--Calendar #calendarTitleFrame #titleLabel { color: #ffffff; }
+uise--Calendar #calendarTitleFrame #titleLabel QLabel { color: #ffffff; }
+uise--Calendar #calendarTitleFrame[checked="true"] { background-color: #2b3a4a; }
 uise--Calendar #rangeFromButton QPushButton,
 uise--Calendar #rangeToButton QPushButton { color: #ffffff; }
 uise--Calendar #rangeFromButton QPushButton:hover,

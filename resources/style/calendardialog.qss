@@ -1,0 +1,20 @@
+/* CalendarDialog embeds a uise--Calendar (which already draws its own 6px padding, see
+ * calendar.qss) directly as the dialog's content. Without this override
+ * uise--AbstractDialog #contentFrame's own "padding: 16px 8px 8px 8px" (abstractdialog.qss)
+ * would stack on top of it, giving the grid a lopsided, oversized margin -- CalendarDropdown
+ * gets the tighter look this reproduces by having only its own 6px padding, nothing else. */
+uise--CalendarDialog #contentFrame {padding: 0;}
+
+/* CalendarDropdown gives its own equivalent wrapper (#calendarDropdownContent, calendar.qss)
+ * an explicit transparent background for the same reason: once a widget acquires
+ * WA_StyledBackground -- which #calendarDialogContent does here, purely by having its own
+ * objectName-qualified rules like the one above -- Qt Style Sheets stop treating it as the
+ * ordinarily-transparent plain QFrame it would otherwise be, and fill it from the active
+ * palette instead. Left unset, that shows up as a mismatched grey box behind Calendar's own
+ * (truly transparent, see calendar.qss) header title label, most visible in the dark theme. */
+uise--CalendarDialog #calendarDialogContent {background-color: transparent;}
+
+/* Same spacing as CalendarDropdown's own buttons row (calendar.qss) -- the Apply-styled button
+ * below the calendar is built the same way as CalendarDropdown's, so it gets the same margin
+ * above it. */
+uise--CalendarDialog #buttonsFrame {margin-top: 4px;}

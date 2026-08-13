@@ -54,16 +54,24 @@ class FloatingDialogFrame_p;
  * widget is set via setWidget(), normally an AbstractDialog so the usual title bar, icon,
  * content and buttons chrome (and its QSS) is reused unchanged. Dragging is driven by an event
  * filter installed on the content's titleBar() (see AbstractDialog::titleBar()), or on an
- * explicit setDragHandle() override for non-dialog content.
+ * explicit setDragHandle() override for non-dialog content. Whether the user can resize the
+ * frame by dragging its edges likewise follows the content's own AbstractDialog::isResizable()
+ * when it has one (true by default); non-dialog content is always resizable.
  */
 class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(int fadeDurationMs READ fadeDurationMs WRITE setFadeDurationMs)
+    Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
+
     public:
 
         //! Minimal number of pixels of the frame kept within the screen while dragging.
         constexpr static const int DefaultMinVisibleMargin=40;
+
+        //! Default fade duration in milliseconds; 0 disables the animation entirely.
+        constexpr static const int DefaultFadeDurationMs=150;
 
         /**
          * @brief Constructor.
@@ -145,6 +153,22 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void setFollowHostVisibility(bool enable) noexcept;
         bool isFollowHostVisibility() const noexcept;
 
+        /**
+         * @brief Set the duration of the fade played on popup()/close().
+         * @param val Duration in milliseconds; 0 disables the animation (instant show/hide,
+         *  the pre-fade behaviour).
+         */
+        void setFadeDurationMs(int val) noexcept;
+        int fadeDurationMs() const noexcept;
+
+        /**
+         * @brief Set the easing curve of the fade.
+         * @param val A QEasingCurve::Type value. Declared as int (rather than the enum) so it
+         *  is directly settable from QSS, matching DropdownFrame::setEasingCurveType().
+         */
+        void setEasingCurveType(int val) noexcept;
+        int easingCurveType() const noexcept;
+
     signals:
 
         void moved(const QPoint& globalPos);
@@ -170,6 +194,10 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         /**
          * @brief Close the frame.
          * @param autoDestroy Destroy the content widget set with autoDestroy=true.
+         *
+         * When fadeDurationMs() is non-zero this starts a fade-out and returns immediately;
+         * closed() and the content teardown happen once the fade finishes, not synchronously.
+         * A call while a close is already in flight is a no-op.
          */
         void close(bool autoDestroy=true);
 
@@ -180,6 +208,8 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void closeEvent(QCloseEvent* event) override;
 
     private:
+
+        void finishClose();
 
         void clampToScreen(QPoint& pos) const;
 

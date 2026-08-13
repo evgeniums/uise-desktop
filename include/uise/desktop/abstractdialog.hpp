@@ -132,6 +132,17 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
             return nullptr;
         }
 
+        /**
+         * @brief Whether a top-level host (e.g. FloatingDialogFrame) should let the user resize
+         *  this dialog by dragging its window edges.
+         * @return true by default. Override to return false for a dialog whose content has no
+         *  meaningful size beyond its own natural one (e.g. CalendarDialog).
+         */
+        virtual bool isResizable() const
+        {
+            return true;
+        }
+
         virtual void setClosable(bool enable)
         {
             std::ignore=enable;

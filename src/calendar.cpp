@@ -760,10 +760,12 @@ void CalendarDatesDropdown::rebuildRows()
 
         connect(row,&CalendarDateRow::clicked,this,[this](const QDate& d)
         {
+            m_owner->notifyActivity();
             m_owner->setDisplayedMonth(QDate{d.year(),d.month(),1});
         });
         connect(row,&CalendarDateRow::removeRequested,this,[this](const QDate& d)
         {
+            m_owner->notifyActivity();
             auto dates=m_owner->selectedDates();
             dates.removeOne(d);
             m_owner->setSelectedDates(dates);
@@ -826,7 +828,7 @@ void Calendar_p::buildHeader()
     htl->addWidget(headerTopLeft,1);
 
     titleFrame=new ClickableFrame(headerTopLeft);
-    titleFrame->setObjectName(QStringLiteral("titleFrame"));
+    titleFrame->setObjectName(QStringLiteral("calendarTitleFrame"));
     titleFrame->setCursor(Qt::PointingHandCursor);   // see the known cursor issue noted on header's own setCursor() above
     auto tfl=Layout::horizontal(titleFrame);
     titleLabel=new ElidedLabel(titleFrame);
@@ -914,8 +916,10 @@ void Calendar_p::buildHeader()
     header->addNonTriggerWidget(titleFrame);
 
     QObject::connect(header,&CalendarHeaderFrame::clicked,self,&Calendar::openMonthPicker);
+    QObject::connect(header,&CalendarHeaderFrame::clicked,self,&Calendar::notifyActivity);
     QObject::connect(titleFrame,&ClickableFrame::clicked,self,[this]()
     {
+        activity();
         if (!headerClickable)
         {
             return;
@@ -937,14 +941,19 @@ void Calendar_p::buildHeader()
         }
     });
     QObject::connect(prevButton,&PushButton::clicked,self,&Calendar::showPreviousMonth);
+    QObject::connect(prevButton,&PushButton::clicked,self,&Calendar::notifyActivity);
     QObject::connect(nextButton,&PushButton::clicked,self,&Calendar::showNextMonth);
+    QObject::connect(nextButton,&PushButton::clicked,self,&Calendar::notifyActivity);
     QObject::connect(clearButton,&PushButton::clicked,self,&Calendar::clearSelection);
+    QObject::connect(clearButton,&PushButton::clicked,self,&Calendar::notifyActivity);
     QObject::connect(rangeFromButton,&PushButton::clicked,self,[this]()
     {
+        activity();
         self->setDisplayedMonth(QDate{rangeFrom.year(),rangeFrom.month(),1});
     });
     QObject::connect(rangeToButton,&PushButton::clicked,self,[this]()
     {
+        activity();
         self->setDisplayedMonth(QDate{rangeTo.year(),rangeTo.month(),1});
     });
 }
@@ -963,18 +972,22 @@ void Calendar_p::buildGrid()
             g->addWidget(cell,r,c);
             QObject::connect(cell,&CalendarDay::clicked,self,[this](const QDate& d, Qt::KeyboardModifiers m)
             {
+                activity();
                 onDayClicked(d,m);
             });
             QObject::connect(cell,&CalendarDay::dragStarted,self,[this](const QDate& d, Qt::KeyboardModifiers m)
             {
+                activity();
                 onDayDragStarted(d,m);
             });
             QObject::connect(cell,&CalendarDay::dragMoved,self,[this](const QDate& d)
             {
+                activity();
                 onDayDragMoved(d);
             });
             QObject::connect(cell,&CalendarDay::dragFinished,self,[this](const QDate& d, Qt::KeyboardModifiers m, bool dragged)
             {
+                activity();
                 onDayDragFinished(d,m,dragged);
             });
         }
@@ -1846,16 +1859,22 @@ void Calendar::construct(CalendarMode mode)
 
     connect(pimpl->monthDropdown,&DateTimePickerDropdown::applied,this,[this]()
     {
+        notifyActivity();
         auto d=pimpl->monthDropdown->picker()->date();
         setDisplayedMonth(QDate{d.year(),d.month(),1});
     });
+    connect(pimpl->monthDropdown,&DateTimePickerDropdown::cancelled,this,&Calendar::notifyActivity);
+    connect(pimpl->monthDropdown,&DropdownFrame::shown,this,&Calendar::notifyActivity);
+    connect(pimpl->monthDropdown,&DropdownFrame::hidden,this,&Calendar::notifyActivity);
 
     connect(pimpl->datesDropdown,&DropdownFrame::shown,this,[this]()
     {
+        notifyActivity();
         setPropertyRepolish(pimpl->titleFrame,PropChecked,true);
     });
     connect(pimpl->datesDropdown,&DropdownFrame::hidden,this,[this]()
     {
+        notifyActivity();
         setPropertyRepolish(pimpl->titleFrame,PropChecked,false);
     });
 
@@ -2366,6 +2385,31 @@ void Calendar::closeMonthPicker()
 
 //--------------------------------------------------------------------------
 
+bool Calendar::isPopupOpen() const noexcept
+{
+    // null-safe: ~Calendar destroyWidget()s both dropdowns (deleteLater), so a host holding a
+    // QPointer to this calendar can legitimately call this mid-teardown
+    return (pimpl->monthDropdown!=nullptr && pimpl->monthDropdown->isVisible())
+        || (pimpl->datesDropdown!=nullptr && pimpl->datesDropdown->isVisible());
+}
+
+//--------------------------------------------------------------------------
+
+void Calendar::notifyActivity()
+{
+    emit activity();
+}
+
+//--------------------------------------------------------------------------
+
+void Calendar::mousePressEvent(QMouseEvent* event)
+{
+    notifyActivity();
+    Frame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
 void Calendar::changeEvent(QEvent* event)
 {
     Frame::changeEvent(event);
@@ -2404,6 +2448,8 @@ void Calendar::changeEvent(QEvent* event)
 
 void Calendar::wheelEvent(QWheelEvent* event)
 {
+    notifyActivity();
+
     auto deltaY=event->angleDelta().y();
     if (deltaY==0)
     {
@@ -2435,6 +2481,8 @@ void Calendar::wheelEvent(QWheelEvent* event)
 
 void Calendar::keyPressEvent(QKeyEvent* event)
 {
+    notifyActivity();
+
     switch (event->key())
     {
         case (Qt::Key_PageUp):
