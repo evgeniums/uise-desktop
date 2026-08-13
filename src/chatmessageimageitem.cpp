@@ -95,7 +95,7 @@ class ChatMessageImageItem_p
         QPointer<DropdownMenu> menu;
 
         //! Path currently loaded into preview via setImageFile(), empty when the still
-        //! (scaledAndCropped(item.preview())/svg-fallback) path is in use instead.
+        //! (scaledToFitPadded(item.preview())/svg-fallback) path is in use instead.
         QString loadedPath;
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
@@ -113,6 +113,14 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     pimpl->preview->setCornersRadius(8,8);
     pimpl->preview->setCursor(Qt::PointingHandCursor);
     pimpl->preview->setClickable(true);
+    // ImageLabel defaults to KeepAspectRatioByExpanding, i.e. it CROPS -- which would silently
+    // undo updatePreview()'s never-crop rule for the one branch that bypasses it: animatable
+    // content (gif/webp/apng/avif), which ImageLabel renders itself from setImageFile() via
+    // renderTile() rather than from the pixmap updatePreview() composes. Without this, the same
+    // image could render uncropped or cropped depending purely on whether its mime happened to be
+    // animatable and its local file had resolved yet -- exactly the intermittent "sometimes looks
+    // cropped after reopening the page" symptom.
+    pimpl->preview->setAspectRatioMode(Qt::KeepAspectRatio);
     pimpl->preview->setAnimationMode(pimpl->animationMode);
     connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
 
@@ -313,14 +321,31 @@ void ChatMessageImageItem::updatePreview()
     {
         pimpl->preview->setSvgIcon(nullptr);
 
+        // Fit the WHOLE image inside the tile, preserving its own aspect ratio and never cropping
+        // it -- confirmed requirement: a chat image tile must show the full original image, only
+        // ever scaled down. scaledToFitPadded() (not scaledAndCropped()) composes the fitted
+        // image centred onto an exactly-tile-sized canvas, since RoundedImage::paintEvent()'s
+        // QBrush texture fill needs an exact-size pixmap to render correctly at all (a smaller
+        // one tiles instead of centering).
+        //
+        // ...but a PLACEHOLDER preview is stretched to fill the tile instead, distortion and all
+        // (stretchedToFill()). The embedded thumbnail files2 generates is a SQUARE centre-crop
+        // (ScaleMode::FillCrop), so fitting it into a tile shaped for the original's real aspect
+        // ratio leaves big empty bars and reads as a small square adrift in a blank tile.
+        // Confirmed requirement: fill the whole tile, accepting the lost aspect ratio, because
+        // the result is transient and already visibly low quality either way.
+        //
         // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
-        // RoundedImage::paintEvent() paints via a QBrush texture fill, which DOES honor the tag
-        // (see FileUploadListItem::updatePreviews() and pixmapscale.hpp's own doc comment for the
-        // same rule). Without both halves -- physical-size source AND the tag -- the tile
-        // rasterises at 1x and reads as soft/blurry on any HiDPI/Retina display.
+        // the brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
+        // pixmapscale.hpp's own doc comments for the same rule). Without both halves --
+        // physical-size canvas AND the tag -- the tile rasterises at 1x and reads as soft/blurry
+        // on any HiDPI/Retina display.
         const qreal dpr=devicePixelRatioF();
         QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
-        auto px=scaledAndCropped(QPixmap::fromImage(preview),physicalSize);
+        auto srcPx=QPixmap::fromImage(preview);
+        auto px=pimpl->item.isPreviewPlaceholder()
+            ? stretchedToFill(srcPx,physicalSize)
+            : scaledToFitPadded(srcPx,physicalSize);
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);
         setPlaceholderMode(false);

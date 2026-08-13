@@ -44,14 +44,6 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
     int maxHeight=420;  //!< Total height budget; exceeding it triggers a uniform scale-down.
     int minTile=60;     //!< Floor on any single tile's width/height.
     int spacing=2;      //!< Gap between adjacent tiles.
-
-    //! Screen devicePixelRatio, used together with albumLayout()'s availablePixelSizes
-    //! parameter to convert a tile's LOGICAL rect into the PHYSICAL pixel count it would need
-    //! to paint at full sharpness, so the resolution-ceiling clamp can compare it against the
-    //! content actually available. 1.0 (the default) treats logical and physical pixels as the
-    //! same, i.e. no additional demand from HiDPI -- set to qApp->primaryScreen()->
-    //! devicePixelRatio() by callers that also pass availablePixelSizes.
-    qreal devicePixelRatio=1.0;
 };
 
 /**
@@ -64,24 +56,22 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
  * @param options Layout bounds.
  * @param totalSize Optional out-param receiving the overall album size (equivalent to the
  *  bounding rect of every returned QRect).
- * @param availablePixelSizes Optional, same order/length convention as pixelSizes: the pixel
- *  size of the content actually available to paint each tile with RIGHT NOW (e.g. a locally
- *  resolved preview rung), as opposed to pixelSizes' ORIGINAL dimensions used above to pick the
- *  template. When given (non-empty), the whole album is uniformly scaled down -- after every
- *  other rule above, including the maxHeight clamp -- so no tile ends up needing more physical
- *  pixels (pixelSizes, options.devicePixelRatio) than its own entry here provides; an entry
- *  left invalid (the default QSize()) leaves that tile unconstrained. Empty (the default) means
- *  no resolution ceiling at all -- every existing caller that doesn't pass this is unaffected.
- * @return One rect per input image, same order, all within [0,0,totalSize]. Tiles are meant to
- *  be filled by center-cropping (KeepAspectRatioByExpanding then crop to the rect) -- the
- *  returned geometry is authoritative and a tile's own aspect ratio only ever influenced which
- *  template/proportions were picked, never the final rect shape.
+ * @return One rect per input image, same order, all within [0,0,totalSize]. Tile PROPORTIONS
+ *  (size ratios between images in the same album) are driven purely by pixelSizes -- confirmed
+ *  requirement: never by which rung/preview resolution happens to be locally available at
+ *  render time. Tiles are meant to be filled by fitting the source INSIDE the rect, preserving
+ *  its own aspect ratio and never upscaling past its native resolution (see
+ *  utils/pixmapscale.hpp's scaledToFitPadded()) -- the returned geometry is a budget, not an
+ *  exact content shape: a tile's own aspect ratio only ever influenced which template/
+ *  proportions were picked (and, for some multi-image templates, is only approximated -- see
+ *  stackEven()'s own doc comment), so painted content may be letterboxed/pillarboxed within its
+ *  rect rather than exactly filling it. This function itself only computes geometry; it does not
+ *  paint or crop anything.
  */
 UISE_DESKTOP_EXPORT std::vector<QRect> albumLayout(
     const std::vector<QSize>& pixelSizes,
     const AlbumLayoutOptions& options,
-    QSize* totalSize=nullptr,
-    const std::vector<QSize>& availablePixelSizes={}
+    QSize* totalSize=nullptr
 );
 
 UISE_DESKTOP_NAMESPACE_END

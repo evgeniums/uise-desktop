@@ -207,6 +207,34 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
         this,
         &PixmapConsumer::loadingChanged
     );
+
+    // Converge on the producer's CURRENT state, because any update it already published is gone:
+    // PixmapSource::acquireProducer() calls doLoadPixmap() synchronously and only then returns the
+    // producer for this function to connect to, so a source that answers synchronously (a cache
+    // hit) emits pixmapUpdated() with nothing attached yet. The same applies to acquireProducer()'s
+    // reuse branch, which hands back an already-populated producer and emits nothing at all.
+    //
+    // Real bug this fixes: a chat image tile looked correct the first time its chat page opened
+    // (cache miss -> async fetch -> signal arrives after this connect) and reverted to its
+    // low-resolution placeholder on every reopen within the source's cache TTL (cache hit ->
+    // signal lost -> the consumer never learned real content was already available).
+    //
+    // Emitted directly rather than queued so a consumer that reads state right after acquiring is
+    // already correct. Callers that ALSO poll the producer themselves (see
+    // RoundedImage::createPixmapConsumer(), which pre-dates this fix) just get a harmless
+    // second update.
+    if (!m_producer->pixmap().isNull())
+    {
+        emit pixmapUpdated();
+    }
+    if (m_producer->data().isValid())
+    {
+        emit dataUpdated();
+    }
+    if (m_producer->isLoading())
+    {
+        emit loadingChanged(true);
+    }
 }
 
 //--------------------------------------------------------------------------

@@ -177,29 +177,6 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         }
 
         /**
-         * @brief Get the pixel size of the rung actually resolved into preview() right now --
-         *  the ceiling the album layout must not scale this tile's display beyond, so a tile
-         *  never renders at more physical pixels than the content it actually has (see
-         *  albumLayout()'s availablePixelSizes parameter).
-         * @return An invalid QSize when not yet known (the host should treat this as
-         *  "unconstrained until known" the same way an invalid pixelSize() is treated -- see
-         *  ChatMessageImages::rebuildGrid()'s allPlaceholders handling). Distinct from
-         *  pixelSize(), which is the ORIGINAL's own dimensions and only picks the album
-         *  template's aspect class -- this is what can actually be painted right now, which may
-         *  start smaller (e.g. clamped to the `chat` rung's box) and grow as a better rung
-         *  resolves.
-         */
-        QSize availablePixelSize() const noexcept
-        {
-            return m_availablePixelSize;
-        }
-
-        void setAvailablePixelSize(QSize size) noexcept
-        {
-            m_availablePixelSize=size;
-        }
-
-        /**
          * @brief Get the decoded preview image, if one has been supplied.
          * @return A possibly-null QImage -- previews are decoded off-thread by the host and
          *  handed in via setPreview(), never decoded from localPath() by this class itself.
@@ -212,6 +189,28 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         void setPreview(QImage preview)
         {
             m_preview=std::move(preview);
+        }
+
+        /**
+         * @brief Check whether preview() currently holds a low-resolution PLACEHOLDER rather than
+         *  real, final-quality content.
+         * @return True while preview() is a stand-in shown only until the real content resolves
+         *  (e.g. a chat message's embedded ~128px thumbnail, before the `chat`/top rung arrives).
+         *
+         * Drives one thing only: whether the tile may ENLARGE the preview past its own resolution
+         * to fill the tile. A placeholder is upscaled deliberately -- blurry but recognisable
+         * beats a small stamp in a blank tile -- whereas real content is never upscaled, so a
+         * genuinely small image renders at its own size. The host must clear this when it swaps
+         * in real content, otherwise that content gets upscaled too.
+         */
+        bool isPreviewPlaceholder() const noexcept
+        {
+            return m_previewPlaceholder;
+        }
+
+        void setPreviewPlaceholder(bool enable) noexcept
+        {
+            m_previewPlaceholder=enable;
         }
 
         /**
@@ -312,8 +311,8 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         QString m_mimeType;
         qint64 m_size=0;
         QSize m_pixelSize;
-        QSize m_availablePixelSize;
         QImage m_preview;
+        bool m_previewPlaceholder=false;
         QString m_localPath;
         ChatFileTransferState m_state=ChatFileTransferState::Ready;
         qint64 m_transferred=0;
