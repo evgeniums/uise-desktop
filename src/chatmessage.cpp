@@ -100,10 +100,22 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 
     auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-BubbleWidthSlack;
 
+    // Populate the body-hint memo for THIS pass before querying any section -- bodyWidthHint()
+    // (used by ChatMessageBottom::bubbleWidthHint() below, via the section loop) reuses it
+    // instead of re-invoking body()->bubbleWidthHint(), which for some bodies (e.g.
+    // ChatMessageImages::rebuildGrid()) is a full re-layout, not a cheap query.
+    m_bodyWidthHintForMaxWidth=forMaxWidth;
+    m_bodyWidthHint=(body()!=nullptr) ? body()->bubbleWidthHint(forMaxWidth) : 0;
+    m_bodyWidthHintValid=true;
+
     int widthHint=0;
     for (auto& section : m_sections)
     {
-        auto sectionWidthHint=section->bubbleWidthHint(forMaxWidth);
+        // Reuse the memo just populated above instead of calling bubbleWidthHint() on the body
+        // a second time in the same pass.
+        auto sectionWidthHint=(section==static_cast<ChatMessageContentSection*>(body()))
+            ? m_bodyWidthHint
+            : section->bubbleWidthHint(forMaxWidth);
         if (sectionWidthHint>widthHint)
         {
             widthHint=sectionWidthHint;
@@ -395,7 +407,7 @@ void ChatMessageContent::clearContentSelection()
 
 void ChatMessageContent::setSelected(bool enable)
 {
-    setProperty("selected",enable);
+    Style::setStyleProperty(this,"selected",enable);
     if (bottom())
     {
         bottom()->setSelected(enable);
@@ -404,14 +416,13 @@ void ChatMessageContent::setSelected(bool enable)
     {
         header()->setSelected(enable);
     }
-    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::setSent(bool enable)
 {
-    setProperty("sent",enable);
+    Style::setStyleProperty(this,"sent",enable);
     if (bottom())
     {
         bottom()->setSent(enable);
@@ -420,7 +431,6 @@ void ChatMessageContent::setSent(bool enable)
     {
         header()->setSent(enable);
     }
-    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
@@ -440,24 +450,24 @@ void ChatMessageContent::updateChatMessage()
         &ChatMessageContent::updateFirstInBatch
     );
 
+    // No repolish here: no QSS rule anywhere keys on a "right" property set on
+    // uise--AbstractChatMessageContent, so a repolish would only cost a full stylesheet
+    // re-match for nothing.
     setProperty("right",chatMessage()->isRight());
-    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::updateFirstInBatch()
 {
-    setProperty("first",chatMessage()->isFirstInBatch());
-    Style::updateWidgetStyle(this);
+    Style::setStyleProperty(this,"first",chatMessage()->isFirstInBatch());
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::updateLastInBatch()
 {
-    setProperty("last",chatMessage()->isLastInBatch());
-    Style::updateWidgetStyle(this);
+    Style::setStyleProperty(this,"last",chatMessage()->isLastInBatch());
 }
 
 /*************************ChatMessageContentWrapper*************************/
@@ -623,8 +633,13 @@ void ChatMessage::construct()
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
-    Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(pimpl->avatarFramePlaceholder);
+    // A widget's size hint is only meaningful after QStyle::polish() has applied the QSS
+    // geometry rules (min/max-width, padding, ...) -- ensurePolished() is what actually
+    // guarantees that, recursing into every descendant built above and marking each polished
+    // exactly once (QWidgetPrivate::polished), unlike Style::updateWidgetStyle() which is
+    // neither recursive nor idempotent. This is what makeMessage() (chatmessagesview.ipp) relies
+    // on before it reads bubbleOuterWidth()/minimumWidth()/maximumWidth() off this widget.
+    ensurePolished();
 }
 
 //--------------------------------------------------------------------------
@@ -677,16 +692,20 @@ void ChatMessage::updateLastInBatch()
 {
     pimpl->avatarFrame->setLastInBatch(isLastInBatch());
     pimpl->bottomSpace->setVisible(isLastInBatch());
+
+    // No repolish of `this` here: chat.qss puts qproperty-selectorPositionLeft on
+    // uise--AbstractChatMessage, and a repolish would re-apply that default over any
+    // programmatic setSelectorOnLeft() -- and no QSS rule keys on [last=...] on this widget
+    // itself anyway (only on the content bubble and the avatar, both updated separately above).
     setProperty("last",isLastInBatch());
-    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessage::updateFirstInBatch()
 {
+    // Same reasoning as updateLastInBatch() above -- no repolish of `this`.
     setProperty("first",isFirstInBatch());
-    Style::updateWidgetStyle(this);
     updateGeometry();
 }
 
@@ -968,8 +987,11 @@ QSize ChatMessageBottom::sizeHint() const
 
 int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
 {
-    auto* body=chatContent()->body();
-    auto bodyHW=(body!=nullptr) ? body->bubbleWidthHint(forMaxWidth) : 0;
+    // bodyWidthHint() reuses the memo AbstractChatMessageContent::updateBubbleWidth() populated
+    // just before this section's own bubbleWidthHint() was called, rather than re-invoking
+    // body()->bubbleWidthHint() here -- for a body like ChatMessageImages that call is a full
+    // rebuildGrid() re-layout, not a cheap query, so this section used to pay for it twice.
+    auto bodyHW=chatContent()->bodyWidthHint(forMaxWidth);
     auto bottomW=AbstractChatMessageBottom::sizeHint().width();
 
     // A threshold below the bottom's own content width would be self-defeating -- the
@@ -1000,24 +1022,23 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
 
 void ChatMessageBottom::setSelected(bool enable)
 {
+    // No repolish of `this`: no QSS rule keys on [selected=...] directly on
+    // uise--ChatMessageBottom (chat.qss's "uise--ChatMessageBottom QLabel[selected=...]" rule
+    // matches the label's OWN property below), and repolishing `this` would re-apply chat.qss's
+    // qproperty-narrowBodyWidth default over any programmatic override.
     setProperty("selected",enable);
-    pimpl->time->setProperty("selected",enable);
-    pimpl->edited->setProperty("selected",enable);
-    Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(this,pimpl->time);
-    Style::updateWidgetStyle(this,pimpl->edited);
+    Style::setStyleProperty(pimpl->time,"selected",enable);
+    Style::setStyleProperty(pimpl->edited,"selected",enable);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageBottom::setSent(bool enable)
 {
+    // Same reasoning as setSelected() above -- no repolish of `this`.
     setProperty("sent",enable);
-    pimpl->time->setProperty("sent",enable);
-    pimpl->edited->setProperty("sent",enable);
-    Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(this,pimpl->time);
-    Style::updateWidgetStyle(this,pimpl->edited);
+    Style::setStyleProperty(pimpl->time,"sent",enable);
+    Style::setStyleProperty(pimpl->edited,"sent",enable);
 }
 
 /***************************ChatMessageAvatar*****************************/
@@ -1072,10 +1093,14 @@ void ChatMessageAvatar::setLastInBatch(bool enable)
 
 void ChatMessageAvatar::setStyleProperty(const char* name, bool enable)
 {
-    setProperty(name,enable);
-    m_mask->setProperty(name,enable);
-    Style::updateWidgetStyle(this);
-    Style::updateWidgetStyle(m_mask);
+    // Both `this` and #mask are repolish targets: chat.qss has rules keyed on
+    // uise--ChatMessageAvatar[sent=...][last=...] directly (styling `this`) as well as on
+    // uise--ChatMessageAvatar[...] #mask (styling the child) -- unlike setSelected()/setSent()
+    // above, neither repolish here is redundant. setStyleProperty() guards each independently;
+    // since both are always set to the same value in lockstep, that is equivalent to a combined
+    // guard.
+    Style::setStyleProperty(this,name,enable);
+    Style::setStyleProperty(m_mask,name,enable);
 }
 
 //--------------------------------------------------------------------------

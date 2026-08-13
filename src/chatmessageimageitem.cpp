@@ -409,17 +409,13 @@ void ChatMessageImageItem::updatePreview()
 
 void ChatMessageImageItem::setPlaceholderMode(bool enable)
 {
-    if (property("placeholder").toBool()==enable)
-    {
-        return;
-    }
-
     // Dynamic properties drive QSS selectors only after an explicit repolish -- Qt does not
-    // re-evaluate stylesheets on a bare setProperty().
-    setProperty("placeholder",enable);
-    style()->unpolish(this);
-    style()->polish(this);
-    update();
+    // re-evaluate stylesheets on a bare setProperty(). Style::setStyleProperty() guards on "value
+    // actually changed" to avoid a repaint storm when this is called repeatedly with the same mode.
+    if (Style::setStyleProperty(this,"placeholder",enable))
+    {
+        update();
+    }
 }
 
 //--------------------------------------------------------------------------

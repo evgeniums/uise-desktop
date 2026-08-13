@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLineEdit>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/spinner.hpp>
 
 #include <uise/desktop/spinnersection.hpp>
@@ -465,38 +466,15 @@ void Spinner::animateScrollTo(SpinnerSection* section, int targetOffset)
 }
 
 //--------------------------------------------------------------------------
-namespace {
-
-// Drives QSS greying of masked-out items (uise--Spinner QLabel[itemDisabled="true"]). Guards on
-// "property already has this value" to avoid unpolish()/polish() repaint storms when a mask is
-// re-pushed with the same range (see Spinner::setEnabledRange()).
-void applyItemDisabledProperty(QWidget* widget, bool disabled)
-{
-    if (widget==nullptr)
-    {
-        return;
-    }
-    auto current=widget->property("itemDisabled");
-    if (current.isValid() && current.toBool()==disabled)
-    {
-        return;
-    }
-    widget->setProperty("itemDisabled",disabled);
-    if (widget->style()!=nullptr)
-    {
-        widget->style()->unpolish(widget);
-        widget->style()->polish(widget);
-    }
-}
-
-}
-
-//--------------------------------------------------------------------------
 void Spinner::updateItemsDisabledState(SpinnerSection* section)
 {
     for (int i=0;i<section->pimpl->items.size();++i)
     {
-        applyItemDisabledProperty(section->pimpl->items.at(i),!section->itemEnabled(i));
+        // Drives QSS greying of masked-out items (uise--Spinner QLabel[itemDisabled="true"]).
+        // Style::setStyleProperty() guards on "property already has this value" to avoid
+        // unpolish()/polish() repaint storms when a mask is re-pushed with the same range (see
+        // Spinner::setEnabledRange()).
+        Style::setStyleProperty(section->pimpl->items.at(i),"itemDisabled",!section->itemEnabled(i));
     }
 }
 

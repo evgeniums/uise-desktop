@@ -897,12 +897,22 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     {
         message->ui()->setSelectionMode(true);
         replaceSelectedData(message);
-    }    
+    }
+
+    // A message's size hint (and every geometry-related QSS rule feeding it -- min/max-width,
+    // padding, ...) is only meaningful after QStyle::polish() has run. Every caller of
+    // makeMessage() measures the widget (adjustMessagesSizes()/adjustMesssageSize()) right after
+    // this call, so it must be fully polished BEFORE that -- not just the first message ever
+    // built, which is all the old m_messageBubbleOuterWidth==0-gated repolish below used to cover.
+    // ensurePolished() recurses into every descendant built by the message builder above
+    // (including the content sections, already attached at this point) and is idempotent, so
+    // calling it unconditionally here is cheap for messages built via ChatMessage::construct(),
+    // which already polished its own static chrome.
+    message->ui()->ensurePolished();
 
     // keep message widths assuming that all messages have the same minimum and outer bubble width
     if (m_messageBubbleOuterWidth==0)
     {
-        Style::updateWidgetStyle(message->ui());
         m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
         m_messageMinWidth=message->ui()->minimumWidth();
         m_messageMaxWidth=message->ui()->maximumWidth();

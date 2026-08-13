@@ -75,6 +75,17 @@ class ChatMessageImages_p
         bool commentMarkdown=true;
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
+
+        // Signature of the last full rebuildGrid() layout pass -- lets a later call skip
+        // albumLayout()/setFixedSize() when nothing that affects tile geometry actually changed
+        // (see rebuildGrid()). Deliberately does NOT gate the per-tile setItem() refresh at the
+        // end of rebuildGrid(), so a setItems() call carrying only non-geometry changes (e.g. a
+        // transfer-progress tick, see ChatMessage::refreshAllItems() in whitemdesktop) still
+        // reaches the tiles even when the layout itself is reused.
+        int lastLayoutForMaxWidth=-1;
+        qreal lastLayoutDpr=-1.0;
+        std::vector<QSize> lastLayoutPixelSizes;
+        std::vector<QRect> lastLayoutRects;
 };
 
 //--------------------------------------------------------------------------
@@ -168,61 +179,98 @@ void ChatMessageImages::updateItem(const QUuid& id, const ChatFileItem& item)
 
 void ChatMessageImages::rebuildGrid(int forMaxWidth)
 {
-    std::vector<QSize> sizes;
-    sizes.reserve(pimpl->items.size());
-    bool allPlaceholders=!pimpl->items.empty();
-    for (const auto& item : pimpl->items)
+    const qreal dpr=(devicePixelRatioF()>0.0) ? devicePixelRatioF() : 1.0;
+
+    // rebuildGrid() runs on every bubble-width negotiation (i.e. every resize) AND on every
+    // setItems() call carrying non-geometry updates (e.g. ChatMessage::refreshAllItems() in
+    // whitemdesktop, ticking transfer progress) -- skip the expensive albumLayout() pass and
+    // reuse the last computed rects when neither the width budget, the display's pixel ratio,
+    // nor any item's pixelSize() changed since then. The per-tile setItem() refresh below still
+    // always runs, so content updates are never skipped, only the layout recomputation.
+    bool layoutUnchanged=forMaxWidth==pimpl->lastLayoutForMaxWidth
+        && dpr==pimpl->lastLayoutDpr
+        && pimpl->lastLayoutPixelSizes.size()==pimpl->items.size()
+        && pimpl->lastLayoutRects.size()==pimpl->items.size();
+    for (size_t i=0;layoutUnchanged && i<pimpl->items.size();++i)
     {
-        auto sz=item.pixelSize();
-        bool known=sz.isValid() && sz.width()>0 && sz.height()>0;
-        allPlaceholders=allPlaceholders && !known;
-        sizes.push_back(known ? sz : QSize(1,1));
+        layoutUnchanged=pimpl->lastLayoutPixelSizes[i]==pimpl->items[i].pixelSize();
     }
 
-    AlbumLayoutOptions options;
-    options.maxWidth=(forMaxWidth>0) ? forMaxWidth : DefaultMaxWidth;
-
-    if (allPlaceholders)
+    std::vector<QRect> rects;
+    if (layoutUnchanged)
     {
-        // See PlaceholderTileExtent. Two tiles wide is the budget every template then works
-        // within: the single-image one clamps to a square of exactly the extent (its own
-        // maxHeight branch), the two-image one splits the width into two such squares, and
-        // three-or-more fall out of their own templates (or the justified-rows fallback) at
-        // comparable sizes, with albumLayout()'s uniform scale-down catching anything taller
-        // than the height budget.
-        options.maxWidth=qMin(options.maxWidth,PlaceholderTileExtent*2+options.spacing);
-        options.maxHeight=(pimpl->items.size()==1)
-            ? PlaceholderTileExtent
-            : qMin(options.maxHeight,PlaceholderTileExtent*2+options.spacing);
+        rects=pimpl->lastLayoutRects;
     }
-    else if (pimpl->items.size()==1)
+    else
     {
-        // Never blow a SMALL image up to the full bubble budget -- albumLayout()'s n==1 branch
-        // otherwise always spends the whole width budget, which turned a thumbnail-sized
-        // original into a tile several times its own resolution (observed at 2x-8x). Confirmed
-        // requirement: "show the full original image, only scaled DOWN to tile size; if the
-        // original is smaller, no scaling needed."
-        //
-        // Divided by devicePixelRatio because the budget is in LOGICAL units while pixelSize()
-        // is in real pixels: a 200px-wide original fills exactly 100 logical px on a 2x display,
-        // and asking for more than that is upscaling however good the source rung is.
-        //
-        // This caps against the ORIGINAL's own dimensions (pixelSize(), the sender's real image),
-        // NOT against whichever preview rung happens to be resolved right now -- tile geometry
-        // must never depend on the latter (confirmed requirement), and does not here.
-        //
-        // Deliberately n==1 only: for an album, one small image among large ones would drag the
-        // whole grid down with it (albumLayout()'s scale-downs are uniform, to preserve the
-        // ratios between tiles), which is worse than letting that one tile upscale.
-        const auto& sz=sizes.front();
-        const qreal dpr=(devicePixelRatioF()>0.0) ? devicePixelRatioF() : 1.0;
-        options.maxWidth=qMin(options.maxWidth,qMax(options.minTile,qRound(sz.width()/dpr)));
-        options.maxHeight=qMin(options.maxHeight,qMax(options.minTile,qRound(sz.height()/dpr)));
-    }
+        std::vector<QSize> sizes;
+        sizes.reserve(pimpl->items.size());
+        std::vector<QSize> rawPixelSizes;
+        rawPixelSizes.reserve(pimpl->items.size());
+        bool allPlaceholders=!pimpl->items.empty();
+        for (const auto& item : pimpl->items)
+        {
+            auto sz=item.pixelSize();
+            bool known=sz.isValid() && sz.width()>0 && sz.height()>0;
+            allPlaceholders=allPlaceholders && !known;
+            sizes.push_back(known ? sz : QSize(1,1));
+            // Stored as the layoutUnchanged signature below -- must be the RAW pixelSize(), not
+            // the placeholder-substituted value above, since that is what the next call's
+            // comparison (against pimpl->items[i].pixelSize()) actually checks against.
+            rawPixelSizes.push_back(sz);
+        }
 
-    QSize totalSize;
-    auto rects=albumLayout(sizes,options,&totalSize);
-    pimpl->gridFrame->setFixedSize(totalSize);
+        AlbumLayoutOptions options;
+        options.maxWidth=(forMaxWidth>0) ? forMaxWidth : DefaultMaxWidth;
+
+        if (allPlaceholders)
+        {
+            // See PlaceholderTileExtent. Two tiles wide is the budget every template then works
+            // within: the single-image one clamps to a square of exactly the extent (its own
+            // maxHeight branch), the two-image one splits the width into two such squares, and
+            // three-or-more fall out of their own templates (or the justified-rows fallback) at
+            // comparable sizes, with albumLayout()'s uniform scale-down catching anything taller
+            // than the height budget.
+            options.maxWidth=qMin(options.maxWidth,PlaceholderTileExtent*2+options.spacing);
+            options.maxHeight=(pimpl->items.size()==1)
+                ? PlaceholderTileExtent
+                : qMin(options.maxHeight,PlaceholderTileExtent*2+options.spacing);
+        }
+        else if (pimpl->items.size()==1)
+        {
+            // Never blow a SMALL image up to the full bubble budget -- albumLayout()'s n==1
+            // branch otherwise always spends the whole width budget, which turned a
+            // thumbnail-sized original into a tile several times its own resolution (observed at
+            // 2x-8x). Confirmed requirement: "show the full original image, only scaled DOWN to
+            // tile size; if the original is smaller, no scaling needed."
+            //
+            // Divided by devicePixelRatio because the budget is in LOGICAL units while
+            // pixelSize() is in real pixels: a 200px-wide original fills exactly 100 logical px
+            // on a 2x display, and asking for more than that is upscaling however good the
+            // source rung is.
+            //
+            // This caps against the ORIGINAL's own dimensions (pixelSize(), the sender's real
+            // image), NOT against whichever preview rung happens to be resolved right now -- tile
+            // geometry must never depend on the latter (confirmed requirement), and does not
+            // here.
+            //
+            // Deliberately n==1 only: for an album, one small image among large ones would drag
+            // the whole grid down with it (albumLayout()'s scale-downs are uniform, to preserve
+            // the ratios between tiles), which is worse than letting that one tile upscale.
+            const auto& sz=sizes.front();
+            options.maxWidth=qMin(options.maxWidth,qMax(options.minTile,qRound(sz.width()/dpr)));
+            options.maxHeight=qMin(options.maxHeight,qMax(options.minTile,qRound(sz.height()/dpr)));
+        }
+
+        QSize totalSize;
+        rects=albumLayout(sizes,options,&totalSize);
+        pimpl->gridFrame->setFixedSize(totalSize);
+
+        pimpl->lastLayoutForMaxWidth=forMaxWidth;
+        pimpl->lastLayoutDpr=dpr;
+        pimpl->lastLayoutPixelSizes=std::move(rawPixelSizes);
+        pimpl->lastLayoutRects=rects;
+    }
 
     auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();
 
@@ -296,6 +344,12 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
             connect(tile,&ChatMessageImageItem::cancelRequested,this,[this,tile](){emit cancelRequested(tile->item().id());});
 
             pimpl->tiles.push_back(tile);
+
+            // A freshly created tile must be polished before its first paint -- e.g. its
+            // [placeholder="true"] outline (chatmessagefiles.qss) is QSS-driven and, like every
+            // dynamic-property rule, only takes effect after a repolish. Matches the file-row
+            // treatment in ChatMessageFiles::rebuildList().
+            tile->ensurePolished();
         }
     }
 

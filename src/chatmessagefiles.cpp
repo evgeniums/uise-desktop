@@ -187,6 +187,12 @@ void ChatMessageFiles::rebuildList()
 
         pimpl->contentsLayout->addWidget(row);
         pimpl->rows.push_back(row);
+
+        // bubbleWidthHint() below reads row->sizeHint(), which is only meaningful once
+        // chatmessagefiles.qss's min-width/padding rules are actually applied -- ensure that
+        // before this row is ever measured, rather than relying on whatever repolish this
+        // message's ancestors happen to get later (see makeMessage() in chatmessagesview.ipp).
+        row->ensurePolished();
     }
 
     updateGeometry();
