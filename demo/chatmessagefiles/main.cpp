@@ -41,6 +41,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagelabel.hpp>
 #include <uise/desktop/chatmessage.hpp>
+#include <uise/desktop/chatmessagetext.hpp>
 #include <uise/desktop/chatmessagefiles.hpp>
 #include <uise/desktop/chatmessageimages.hpp>
 
@@ -221,6 +222,30 @@ int main(int argc, char *argv[])
         }
     );
 
+    // --- text messages, added to visually confirm the bubble-width narrow-body threshold
+    // (AbstractChatMessageBottom::narrowBodyWidth(), default 200px -- see chatmessage.cpp's
+    // ChatMessageBottom::bubbleWidthHint()) alongside the file/image bodies below: a short
+    // one-word body stays under the threshold and the bubble widens to make room for the
+    // time on the same visual row, while a long paragraph is already wider than the
+    // threshold and the bubble just follows the wrapped text with no added gap. ---
+
+    rootLayout->addWidget(new QLabel(QStringLiteral("Text messages (narrow-body threshold check):")));
+
+    auto* textBodyShort=new ChatMessageText();
+    textBodyShort->loadText(QStringLiteral("Ok"),false);
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,textBodyShort));
+
+    auto* textBodyLong=new ChatMessageText();
+    textBodyLong->loadText(
+        QStringLiteral("This is a much longer message that should wrap across several lines "
+                        "and end up wider than the narrow-body threshold, so the bubble should "
+                        "hug the wrapped text with the time sitting on its own row underneath, "
+                        "not appended as extra blank space to the right."),
+        false
+    );
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,textBodyLong));
+
+    rootLayout->addSpacing(8);
     rootLayout->addWidget(new QLabel(QStringLiteral("File messages:")));
 
     // --- 1. incoming file message: mixed transfer states, with a comment ---

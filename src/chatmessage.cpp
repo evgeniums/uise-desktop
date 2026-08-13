@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QPointer>
 #include <QMouseEvent>
 #include <QLabel>
@@ -38,6 +40,19 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/chatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+//! Slack subtracted from the negotiation budget in AbstractChatMessageContent::
+//! updateBubbleWidth() before asking sections for their width hints, so a section's
+//! own rounding/frame width never pushes the bubble a pixel or two past forMaxWidthIn.
+constexpr int BubbleWidthSlack=10;
+
+//! Gap left between the body and the time/status row when ChatMessageBottom::
+//! bubbleWidthHint() widens the bubble for a too-narrow body -- see DefaultNarrowBodyWidth.
+constexpr int BottomGap=10;
+
+} // anonymous namespace
 
 /***************************AbstractChatMessage******************************/
 
@@ -83,7 +98,7 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
     m_lastForMaxWidth=forMaxWidthIn;
     m_everNegotiated=true;
 
-    auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-10;
+    auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-BubbleWidthSlack;
 
     int widthHint=0;
     for (auto& section : m_sections)
@@ -953,8 +968,23 @@ QSize ChatMessageBottom::sizeHint() const
 
 int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
 {
-    auto bodyHW=chatContent()->body()->bubbleWidthHint(forMaxWidth);
-    auto wHint=bodyHW+AbstractChatMessageBottom::sizeHint().width()+10;
+    auto* body=chatContent()->body();
+    auto bodyHW=(body!=nullptr) ? body->bubbleWidthHint(forMaxWidth) : 0;
+    auto bottomW=AbstractChatMessageBottom::sizeHint().width();
+
+    // A threshold below the bottom's own content width would be self-defeating -- the
+    // "wide enough" branch would then hand back a bubble the time/status row itself
+    // can't fit into.
+    auto narrow=std::max(narrowBodyWidth(),bottomW);
+
+    auto wHint=bodyHW;
+    if (bodyHW<narrow)
+    {
+        // Body too narrow to host the time/status row on its own visual row without
+        // looking cramped -- widen the bubble to fit both side by side.
+        wHint=bodyHW+bottomW+BottomGap;
+    }
+
     if (wHint>forMaxWidth)
     {
         wHint=forMaxWidth;

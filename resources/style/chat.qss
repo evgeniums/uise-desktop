@@ -101,6 +101,7 @@ max-width: 40px;
 
 uise--AbstractChatMessageBottom {
 min-width: 90px;
+qproperty-narrowBodyWidth: 200;
 }
 
 uise--AbstractChatMessage {

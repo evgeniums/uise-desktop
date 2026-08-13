@@ -244,7 +244,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
 {
     Q_OBJECT
 
+    Q_PROPERTY(int narrowBodyWidth READ narrowBodyWidth WRITE setNarrowBodyWidth)
+
     public:
+
+        constexpr static const int DefaultNarrowBodyWidth=200;
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
@@ -252,6 +256,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         virtual void setEdited(const QString& /*text*/, const QString& /*tooltip*/={}) {}
         virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
+
+        //! Body widths below this are considered "too narrow to host the time/status row":
+        //! for those the bubble is widened to body + bottom, otherwise the body alone
+        //! governs the bubble width. Settable from QSS via qproperty-narrowBodyWidth.
+        void setNarrowBodyWidth(int width) noexcept
+        {
+            m_narrowBodyWidth=width;
+        }
+
+        int narrowBodyWidth() const noexcept
+        {
+            return m_narrowBodyWidth;
+        }
+
+    private:
+
+        int m_narrowBodyWidth=DefaultNarrowBodyWidth;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
