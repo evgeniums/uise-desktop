@@ -71,6 +71,31 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool ena
         dateSection=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
         dateSection->setType(AbstractChatSeparatorSection::TypeDate);
         sep->insertSection(dateSection,0);
+
+        // Clickable only as an affordance for the jump-to-date popup; the connection's context
+        // is m_ui (the message widget that owns the section), so Qt drops it when either the
+        // section widget or the owning message widget goes away -- the flyweight list may
+        // destroy and rebuild both independently of this item.
+        dateSection->setClickable(true);
+        QObject::connect(
+            dateSection,
+            &AbstractChatSeparatorSection::clicked,
+            m_ui,
+            [this,dateSection]()
+            {
+                if (!m_dateSectionClickedCb)
+                {
+                    return;
+                }
+                auto* pill=dateSection->clickableWidget();
+                if (pill==nullptr)
+                {
+                    return;
+                }
+                m_dateSectionClickedCb(m_msg->dateTime().date(),
+                                       pill->mapToGlobal(QPoint{0,pill->height()}));
+            }
+        );
     }
 
     dateSection->setVisible(enable);
@@ -157,6 +182,27 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setVerticalScrollBarPlaceHolder(true);
 
     m_dateSubtitle=new ChatDateSubtitle(m_listView->viewportFrame());
+
+    connect(
+        m_dateSubtitle,
+        &ChatDateSubtitle::clicked,
+        this,
+        [this]()
+        {
+            auto* section=m_dateSubtitle->section();
+            if (section==nullptr)
+            {
+                return;
+            }
+            auto* pill=section->clickableWidget();
+            if (pill==nullptr)
+            {
+                return;
+            }
+            emit dateSectionClicked(m_dateSubtitle->dateTime().date(),
+                                    pill->mapToGlobal(QPoint{0,pill->height()}));
+        }
+    );
 
     m_listView->setUserScrolledCb(
         [this]()
@@ -891,6 +937,17 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     // make message
     auto message=m_messageBuilder(data,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");
+
+    // Set BEFORE anything can build a date separator: insertFetched() runs
+    // adjustMessageList() (-> setDateSeparatorVisible()) before loadItems(), i.e. before
+    // setInsertItemCb() would fire, so installing this in that callback would be too late for
+    // the initial load. `this` is the view, which outlives every item it owns.
+    message->setDateSectionClickedCb(
+        [this](const QDate& date, const QPoint& pos)
+        {
+            emit dateSectionClicked(date,pos);
+        }
+    );
 
     // set selection mode
     if (isSelectionMode())

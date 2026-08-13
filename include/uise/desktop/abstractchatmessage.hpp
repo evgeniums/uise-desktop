@@ -98,6 +98,15 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         virtual void setClickable(bool enable) =0;
         virtual bool isClickable() const=0;
 
+        //! Widget that actually receives the click -- the visible pill, not the full-width
+        //! section. Used to anchor a popup at the pill's own geometry (e.g. a calendar dialog
+        //! opened from a date separator). Default is the section itself, so an implementation
+        //! with no separate inner widget needs no override.
+        virtual QWidget* clickableWidget()
+        {
+            return this;
+        }
+
         void setType(QString type)
         {            
             setProperty("separator_type",type);

@@ -261,6 +261,13 @@ bool ChatSeparatorSection::isClickable() const
 
 //--------------------------------------------------------------------------
 
+QWidget* ChatSeparatorSection::clickableWidget()
+{
+    return pimpl->button;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatSeparatorSection::setHLineVisible(bool enable)
 {
     pimpl->leftLine->setVisible(enable);

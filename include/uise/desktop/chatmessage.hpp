@@ -72,6 +72,8 @@ class UISE_DESKTOP_EXPORT ChatSeparatorSection : public AbstractChatSeparatorSec
         void setClickable(bool enable) override;
         bool isClickable() const override;
 
+        QWidget* clickableWidget() override;
+
     private:
 
         std::unique_ptr<ChatSeparatorSection_p> pimpl;

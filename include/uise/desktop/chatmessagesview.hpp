@@ -94,6 +94,16 @@ class ChatMessagesViewItem : public BaseMessageT
             return isDateSeparatorVisible() || isUnreadSeparatorVisible();
         }
 
+        //! Invoked when the date separator's pill is clicked. Args: the message's local date,
+        //! and the global position of the pill's bottom-left corner (an anchor point for a
+        //! popup, see FloatingDialogFrame::popupAt()).
+        using DateSectionClickedCb=std::function<void (const QDate& date, const QPoint& globalAnchorPos)>;
+
+        void setDateSectionClickedCb(DateSectionClickedCb cb)
+        {
+            m_dateSectionClickedCb=std::move(cb);
+        }
+
     protected:
 
         Widget* doCreateActualWidget(QWidget* parent) override;
@@ -104,6 +114,7 @@ class ChatMessagesViewItem : public BaseMessageT
         BaseMessageT* m_msg;
         bool m_dtSepVisible=false;
         bool m_unreadSepVisible=false;
+        DateSectionClickedCb m_dateSectionClickedCb;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -155,6 +166,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         void selectedCountChanged(size_t count);
         void copySelectedRequested();
         void viewportUpdated();
+
+        /**
+         * @brief A date pill was clicked -- either an inline separator's date section or the
+         *  floating ChatDateSubtitle.
+         * @param date Local date the pill displays.
+         * @param globalAnchorPos Global position of the pill's bottom-left corner.
+         *
+         * The view itself does nothing with this; an embedder is expected to open a date
+         * picker anchored at globalAnchorPos and jump the history to the chosen date.
+         */
+        void dateSectionClicked(const QDate& date, const QPoint& globalAnchorPos);
 };
 
 template <typename BaseMessageT, typename Traits>

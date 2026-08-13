@@ -153,7 +153,9 @@ class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
 
     signals:
 
-        //! @todo Bind to opening a calendar to jump to a date, similar to Telegram Desktop.
+        //! The pill was clicked. Forwarded by ChatMessagesView as
+        //! AbstractChatMessagesView::dateSectionClicked(), which an embedder binds to opening a
+        //! calendar to jump to a date, similar to Telegram Desktop.
         void clicked();
 
     protected:
