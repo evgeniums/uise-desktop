@@ -604,6 +604,49 @@ void ChatMessagesView<BaseMessageT,Traits>::insertContinuousMessages(const std::
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
+                                                                const SortValue& minSortValue, const SortValue& maxSortValue,
+                                                                int offset)
+{
+    // Mirrors insertFetched()'s forLoad branch (clear + reload the whole list), but the min/max
+    // sort-value markers come from the caller instead of being inferred from an edge load -- a
+    // mid-list window can't tell on its own whether there is more data before/after it.
+    std::vector<Message*> messages;
+    std::vector<ChatMessageViewItemWrapper<BaseMessageT,Traits>> messageItems;
+
+    for (const auto& item : items)
+    {
+        auto message=makeMessage(item);
+
+        messages.push_back(message);
+        messageItems.push_back(message);
+    }
+
+    m_listView->clear();
+    adjustMessageList(messages);
+
+    m_listView->setMinSortValue(minSortValue);
+    m_listView->setMaxSortValue(maxSortValue);
+
+    adjustMessagesSizes(&messages);
+    m_listView->loadItems(messageItems);
+
+    // valid synchronously right after loadItems(): endUpdate() (called inside loadItems()) runs
+    // resizeList() inline, so the anchor's widget is already laid out.
+    m_listView->scrollToItem(anchorId,offset);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessage(const Id& id, int offset)
+{
+    return m_listView->scrollToItem(id,offset);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::clear()
 {
     m_listView->clear();

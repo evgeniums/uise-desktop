@@ -217,6 +217,21 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
 
+        //! Replace the whole list with a window centred on an arbitrary anchor (not necessarily
+        //! an edge), then scroll to it. `minSortValue`/`maxSortValue` are the "is there more data
+        //! beyond this window" markers the flyweight list uses for prefetch/jumpToEdge -- unlike
+        //! loadMessages() (always an edge-anchored load), a mid-list window can't infer them from
+        //! `items` alone, so the caller must supply them explicitly. `offset` is forwarded to
+        //! scrollToItem() as-is (0 aligns anchorId's leading edge with the viewport's top).
+        void loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
+                                const SortValue& minSortValue, const SortValue& maxSortValue,
+                                int offset=0);
+
+        //! Scroll to a message already present in the loaded window. False if `id` isn't loaded
+        //! (this never fetches -- the caller must have loaded a window containing it first, e.g.
+        //! via loadMessagesAround()).
+        bool scrollToMessage(const Id& id, int offset=0);
+
         void clear();
 
         void insertMessage(const Data& item);
