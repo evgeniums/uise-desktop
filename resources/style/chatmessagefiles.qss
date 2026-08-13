@@ -2,6 +2,7 @@ uise--ChatMessageFiles,
 uise--ChatMessageImages {
 padding:0;
 margin:0;
+margin-bottom:4px;
 }
 
 uise--ChatMessageFiles #contents {
