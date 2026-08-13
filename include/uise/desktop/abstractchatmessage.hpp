@@ -332,6 +332,26 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_maximumBubbleWidth;
         }
 
+        //! Returns body()->bubbleWidthHint(forMaxWidth), memoized against the CURRENT negotiation
+        //! pass's forMaxWidth. updateBubbleWidth() below populates the memo before querying any
+        //! section, so ChatMessageBottom::bubbleWidthHint() (the only other caller, needing the
+        //! body's width to decide whether to widen the bubble) gets a plain lookup instead of a
+        //! second real measurement -- for a body like ChatMessageImages that means one
+        //! rebuildGrid() per negotiation pass instead of two. A stale forMaxWidth (call from
+        //! outside a negotiation pass) falls back to a real, unmemoized call.
+        int bodyWidthHint(int forMaxWidth)
+        {
+            if (m_body==nullptr)
+            {
+                return 0;
+            }
+            if (!m_bodyWidthHintValid || m_bodyWidthHintForMaxWidth!=forMaxWidth)
+            {
+                return m_body->bubbleWidthHint(forMaxWidth);
+            }
+            return m_bodyWidthHint;
+        }
+
         virtual void setSelected(bool enable) =0;
         virtual void setSent(bool enable) =0;
 
@@ -373,6 +393,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         int m_maximumBubbleWidth=0;
         int m_lastForMaxWidth=0;
         bool m_everNegotiated=false;
+
+        int m_bodyWidthHint=0;
+        int m_bodyWidthHintForMaxWidth=0;
+        bool m_bodyWidthHintValid=false;
 
         void setMaximumBubbleWidth(int width);
 };

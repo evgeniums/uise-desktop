@@ -35,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QRegularExpression>
 #include <QDebug>
 
+#include <iostream>
+
 #include <uise/desktop/htree.hpp>
 
 #include <uise/desktop/utils/substitutecolors.hpp>
@@ -49,6 +51,16 @@ namespace {
 QStringList filters()
 {
     return QStringList{"*.qss","*.css","*.json"};
+}
+
+// Diagnostic counter for Style::updateWidgetStyle() call volume -- unpolish()+polish() re-matches
+// the whole QSS rule set for the widget, so a hot path calling it unconditionally (e.g. per
+// message per batch recompute in the chat view) is expensive. Off by default; enable with
+// UISE_STYLE_DEBUG=1 to see the running count and which widgets are being repolished.
+bool styleDebugEnabled()
+{
+    static bool enabled=qEnvironmentVariableIsSet("UISE_STYLE_DEBUG");
+    return enabled;
 }
 
 }
@@ -398,12 +410,39 @@ void Style::updateWidgetStyle(QWidget* source, QWidget* target)
     {
         target=source;
     }
+    if (styleDebugEnabled())
+    {
+        static size_t count=0;
+        ++count;
+        std::cerr << "UISE-STYLE-DEBUG repolish #" << count
+                   << " " << target->metaObject()->className()
+                   << " #" << target->objectName().toStdString()
+                   << std::endl;
+    }
     auto style=source->style();
     if (style!=nullptr)
     {
         style->unpolish(target);
         style->polish(target);
     }
+}
+
+//--------------------------------------------------------------------------
+
+bool Style::setStyleProperty(QWidget* widget, const char* name, const QVariant& value, QWidget* repolishTarget)
+{
+    if (widget==nullptr)
+    {
+        return false;
+    }
+    auto current=widget->property(name);
+    if (current.isValid() && current==value)
+    {
+        return false;
+    }
+    widget->setProperty(name,value);
+    updateWidgetStyle(widget,repolishTarget);
+    return true;
 }
 
 //--------------------------------------------------------------------------

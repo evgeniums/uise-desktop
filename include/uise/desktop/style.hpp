@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QString>
 #include <QIcon>
 #include <QStyle>
+#include <QVariant>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
@@ -502,6 +503,23 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         void mergeWidgetFactory(std::shared_ptr<WidgetFactory> factory);
 
         static void updateWidgetStyle(QWidget* source, QWidget* target=nullptr);
+
+        /**
+         * @brief Set a dynamic style property and repolish, but only if the value actually changed.
+         *
+         * QStyle::polish() re-evaluates the whole QSS rule set for the widget and re-applies every
+         * qproperty-* declaration, so an unconditional setProperty()+repolish on a hot path is both
+         * expensive and destructive (it reverts programmatic qproperty overrides). A never-set
+         * property reads back as an invalid QVariant, so the FIRST write always goes through --
+         * callers do not need a separate "applied once" flag.
+         *
+         * @param repolishTarget Widget to repolish; defaults to @a widget. Use it when the QSS rule
+         *        that reacts to the property is a DESCENDANT selector -- the property must live on
+         *        the ancestor, but the child is what has to be repolished.
+         * @return true if the value changed (and a repolish was performed).
+         */
+        static bool setStyleProperty(QWidget* widget, const char* name, const QVariant& value,
+                                     QWidget* repolishTarget=nullptr);
 
         /**
          * @brief Repolish a widget and all of its descendants.
