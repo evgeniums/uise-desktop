@@ -133,7 +133,33 @@ void ChatMessageImages::updateItem(const QUuid& id, const ChatFileItem& item)
     {
         if (pimpl->items[i].id()==id)
         {
+            // Geometry-affecting fields changing (pixelSize -> which template/aspect class the
+            // album picked; availablePixelSize -> the resolution ceiling) means the album laid
+            // out from stale values (e.g. the QSize(1,1) placeholder, or the conservative
+            // pre-fetch floor -- see availablePixelSize()'s own doc comment) and must run again,
+            // not just repaint the one tile in its unchanged rect. Checked before the copy below
+            // so the comparison is against the OLD stored item, not the new one.
+            bool geometryChanged=pimpl->items[i].pixelSize()!=item.pixelSize()
+                || pimpl->items[i].availablePixelSize()!=item.availablePixelSize();
+
             pimpl->items[i]=item;
+
+            if (geometryChanged)
+            {
+                auto forMaxWidth=(chatContent()!=nullptr && chatContent()->maximumBubbleWidth()>0)
+                    ? chatContent()->maximumBubbleWidth()
+                    : DefaultMaxWidth;
+                rebuildGrid(forMaxWidth);
+                if (chatContent()!=nullptr)
+                {
+                    // rebuildGrid() alone only resizes THIS section's own gridFrame -- the
+                    // bubble as a whole (and any sibling section, e.g. a comment below the
+                    // album) must renegotiate too, exactly as if a resize had triggered it.
+                    chatContent()->renegotiateBubbleWidth();
+                }
+                return;
+            }
+
             auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();
             pimpl->tiles[i]->setItem(item,incoming);
             return;
@@ -146,7 +172,9 @@ void ChatMessageImages::updateItem(const QUuid& id, const ChatFileItem& item)
 void ChatMessageImages::rebuildGrid(int forMaxWidth)
 {
     std::vector<QSize> sizes;
+    std::vector<QSize> availableSizes;
     sizes.reserve(pimpl->items.size());
+    availableSizes.reserve(pimpl->items.size());
     bool allPlaceholders=!pimpl->items.empty();
     for (const auto& item : pimpl->items)
     {
@@ -154,10 +182,12 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         bool known=sz.isValid() && sz.width()>0 && sz.height()>0;
         allPlaceholders=allPlaceholders && !known;
         sizes.push_back(known ? sz : QSize(1,1));
+        availableSizes.push_back(item.availablePixelSize());
     }
 
     AlbumLayoutOptions options;
     options.maxWidth=(forMaxWidth>0) ? forMaxWidth : DefaultMaxWidth;
+    options.devicePixelRatio=devicePixelRatioF();
 
     if (allPlaceholders)
     {
@@ -174,7 +204,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
     }
 
     QSize totalSize;
-    auto rects=albumLayout(sizes,options,&totalSize);
+    auto rects=albumLayout(sizes,options,&totalSize,availableSizes);
     pimpl->gridFrame->setFixedSize(totalSize);
 
     auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();

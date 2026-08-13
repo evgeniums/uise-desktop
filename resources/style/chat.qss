@@ -106,6 +106,13 @@ min-width: 90px;
 uise--AbstractChatMessage {
 qproperty-selectorPositionLeft: false;
 min-width: 400px;
+/* Absolute bubble cap -- without it a bubble grows to the list's own 1000px max-width
+ * (#uiseFlyweightListViewV above) on a maximised window, which for an image message meant
+ * the album's width budget (ChatMessagesView::messageContentWidth(), capped by
+ * m_messageMaxWidth -- captured from THIS max-width at the first message widget built)
+ * upscaled tiles well past any resolution actually available. Applies to every message
+ * type (text/call/files), not just images -- confirmed as the intended scope. */
+max-width: 620px;
 }
 
 /* ChatMessageSelector is a uise--CheckBox styled as a round, glyph-less selection dot -- see

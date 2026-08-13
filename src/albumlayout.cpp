@@ -84,7 +84,8 @@ std::vector<QRect> stackEven(int x, int y, int width, int totalHeight, int count
 std::vector<QRect> albumLayout(
         const std::vector<QSize>& pixelSizes,
         const AlbumLayoutOptions& options,
-        QSize* totalSize
+        QSize* totalSize,
+        const std::vector<QSize>& availablePixelSizes
     )
 {
     std::vector<QRect> rects;
@@ -279,6 +280,56 @@ std::vector<QRect> albumLayout(
         }
         totalW=qRound(totalW*factor);
         totalH=options.maxHeight;
+    }
+
+    // Resolution ceiling: never lay a tile out at more PHYSICAL pixels than the content
+    // actually available for it right now (see AlbumLayoutOptions::devicePixelRatio's own doc
+    // comment) -- otherwise a tile ends up upscaled past its source's real detail, reading as
+    // soft/blurry regardless of how correctly it is later painted. Uniform across every tile,
+    // like the maxHeight clamp just above, so the chosen template's proportions survive -- a
+    // per-tile clamp would distort the layout the aspect-class templates chose. Applied AFTER
+    // the maxHeight clamp so it constrains the geometry actually being used, not a pre-clamp
+    // intermediate. availablePixelSizes empty (the default) means "unconstrained" -- every
+    // existing caller that doesn't pass it is unaffected.
+    if (!availablePixelSizes.empty() && options.devicePixelRatio>0.0)
+    {
+        qreal k=1.0;
+        for (int i=0;i<n && static_cast<size_t>(i)<availablePixelSizes.size();++i)
+        {
+            const auto& avail=availablePixelSizes[static_cast<size_t>(i)];
+            if (avail.width()<=0 || avail.height()<=0)
+            {
+                // Not yet known for this tile -- e.g. no rung has resolved yet -- leave it
+                // unconstrained rather than treating "unknown" as "zero available".
+                continue;
+            }
+            const auto& r=rects[static_cast<size_t>(i)];
+            if (r.width()<=0 || r.height()<=0)
+            {
+                continue;
+            }
+            // Centre-crop-to-fill needs the SMALLER source axis to cover the tile (see
+            // albumLayout()'s own header doc comment on the crop contract), so the binding
+            // constraint is whichever axis needs more physical pixels than are available.
+            auto needW=static_cast<qreal>(r.width())*options.devicePixelRatio/static_cast<qreal>(avail.width());
+            auto needH=static_cast<qreal>(r.height())*options.devicePixelRatio/static_cast<qreal>(avail.height());
+            auto need=qMax(needW,needH);
+            if (need>1.0)
+            {
+                k=qMin(k,1.0/need);
+            }
+        }
+        if (k<1.0)
+        {
+            for (auto& r : rects)
+            {
+                auto newW=qMax(options.minTile,qRound(r.width()*k));
+                auto newH=qMax(options.minTile,qRound(r.height()*k));
+                r=QRect(qRound(r.x()*k),qRound(r.y()*k),newW,newH);
+            }
+            totalW=qRound(totalW*k);
+            totalH=qRound(totalH*k);
+        }
     }
 
     if (totalSize!=nullptr)

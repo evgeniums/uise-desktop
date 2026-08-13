@@ -43,11 +43,15 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  * @param targetSize Target size, in the SAME pixel units as src - callers painting into a
  *  RoundedImage must pass its widget size already multiplied by the screen's devicePixelRatio
  *  (matching RoundedImage::setImageSize()'s own m_size=size*pixelRatio convention,
- *  roundedimage.cpp) rather than tagging the result with QPixmap::setDevicePixelRatio(): the
- *  brush-texture paint path RoundedImage::paintEvent() uses (setBrush(px);drawRoundedRect(...))
- *  tiles at the pixmap's raw pixel size and does not itself scale for a dpr tag, so an untagged,
- *  already-physical-sized pixmap is what avoids the blur a naive logical-size scale produces on
- *  HiDPI/Retina.
+ *  roundedimage.cpp) AND tag the returned pixmap with QPixmap::setDevicePixelRatio(dpr) before
+ *  handing it to setPixmap(): the brush-texture paint path RoundedImage::paintEvent() uses
+ *  (setBrush(px);drawRoundedRect(0,0,size().width(),size().height(),...)) draws in LOGICAL
+ *  widget coordinates and DOES honor a pixmap's devicePixelRatio tag when texture-mapping it into
+ *  that rect -- an untagged physical-sized pixmap is read as 1 raw pixel = 1 logical unit and
+ *  ends up dpr times too large for the rect (only its top-left 1/dpr fraction paints, upscaled
+ *  and blurred). Both halves are required: scale to physical size for real HiDPI detail, then tag
+ *  so the paint path renders it at the correct logical footprint. See
+ *  ChatMessageImageItem::updatePreview() / FileUploadListItem::updatePreviews() for the pattern.
  * @return A pixmap of exactly targetSize, covering the box with no letterboxing. Used for
  *  square/fixed-size chips (e.g. the file-upload row thumbnail) where the aspect ratio must not
  *  vary.

@@ -177,6 +177,29 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         }
 
         /**
+         * @brief Get the pixel size of the rung actually resolved into preview() right now --
+         *  the ceiling the album layout must not scale this tile's display beyond, so a tile
+         *  never renders at more physical pixels than the content it actually has (see
+         *  albumLayout()'s availablePixelSizes parameter).
+         * @return An invalid QSize when not yet known (the host should treat this as
+         *  "unconstrained until known" the same way an invalid pixelSize() is treated -- see
+         *  ChatMessageImages::rebuildGrid()'s allPlaceholders handling). Distinct from
+         *  pixelSize(), which is the ORIGINAL's own dimensions and only picks the album
+         *  template's aspect class -- this is what can actually be painted right now, which may
+         *  start smaller (e.g. clamped to the `chat` rung's box) and grow as a better rung
+         *  resolves.
+         */
+        QSize availablePixelSize() const noexcept
+        {
+            return m_availablePixelSize;
+        }
+
+        void setAvailablePixelSize(QSize size) noexcept
+        {
+            m_availablePixelSize=size;
+        }
+
+        /**
          * @brief Get the decoded preview image, if one has been supplied.
          * @return A possibly-null QImage -- previews are decoded off-thread by the host and
          *  handed in via setPreview(), never decoded from localPath() by this class itself.
@@ -289,6 +312,7 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         QString m_mimeType;
         qint64 m_size=0;
         QSize m_pixelSize;
+        QSize m_availablePixelSize;
         QImage m_preview;
         QString m_localPath;
         ChatFileTransferState m_state=ChatFileTransferState::Ready;

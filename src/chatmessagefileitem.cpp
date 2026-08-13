@@ -336,7 +336,15 @@ void ChatMessageFileItem::updateIconSlot()
         auto preview=it.preview();
         if (!preview.isNull())
         {
-            pimpl->imagePreview->setPixmap(scaledAndCropped(QPixmap::fromImage(preview),IconSlotSize));
+            // Scale to PHYSICAL pixels and tag with devicePixelRatio -- same rule as
+            // ChatMessageImageItem::updatePreview(), see that function's comment for why both
+            // halves (physical-size source AND the tag) are required for a sharp brush-texture
+            // paint on HiDPI/Retina displays.
+            const qreal dpr=devicePixelRatioF();
+            QSize physicalSize(qRound(IconSlotSize.width()*dpr),qRound(IconSlotSize.height()*dpr));
+            auto px=scaledAndCropped(QPixmap::fromImage(preview),physicalSize);
+            px.setDevicePixelRatio(dpr);
+            pimpl->imagePreview->setPixmap(px);
         }
         else
         {

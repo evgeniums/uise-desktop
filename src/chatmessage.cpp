@@ -80,6 +80,9 @@ void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
 
 void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 {
+    m_lastForMaxWidth=forMaxWidthIn;
+    m_everNegotiated=true;
+
     auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-10;
 
     int widthHint=0;
@@ -99,6 +102,18 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 
     setMaximumBubbleWidth(widthHint);
     emit bubbleWidthUpdated();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessageContent::renegotiateBubbleWidth()
+{
+    if (!m_everNegotiated)
+    {
+        // No real forMaxWidthIn to repeat yet -- see this function's own doc comment.
+        return;
+    }
+    updateBubbleWidth(m_lastForMaxWidth);
 }
 
 //--------------------------------------------------------------------------

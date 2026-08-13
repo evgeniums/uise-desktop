@@ -316,6 +316,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         void updateBubbleWidth(int forMaxWidthIn);
 
+        //! Re-runs updateBubbleWidth() against the SAME forMaxWidthIn it was last called with --
+        //! for a section whose own natural size changed without any resize/scroll (e.g. an
+        //! image tile's dimensions or available-resolution ceiling resolving asynchronously
+        //! after the section was first laid out from placeholder/conservative values). A no-op
+        //! before the first real updateBubbleWidth() call (ChatMessagesView::adjustMessagesSizes()
+        //! always runs at least one before any section could have real content to react to).
+        //! Unlike the normal top-down flow (ChatMessagesView drives every updateBubbleWidth()
+        //! call), this lets a BODY request its own re-layout -- see ChatMessageImages::
+        //! updateItem() for the motivating case.
+        void renegotiateBubbleWidth();
+
         const auto& sections() const
         {
             return m_sections;
@@ -339,6 +350,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         std::vector<ChatMessageContentSection*> m_sections;
         int m_maximumBubbleWidth=0;
+        int m_lastForMaxWidth=0;
+        bool m_everNegotiated=false;
 
         void setMaximumBubbleWidth(int width);
 };

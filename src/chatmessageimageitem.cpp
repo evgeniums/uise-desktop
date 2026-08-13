@@ -312,7 +312,17 @@ void ChatMessageImageItem::updatePreview()
     if (!preview.isNull())
     {
         pimpl->preview->setSvgIcon(nullptr);
-        pimpl->preview->setPixmap(scaledAndCropped(QPixmap::fromImage(preview),size()));
+
+        // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
+        // RoundedImage::paintEvent() paints via a QBrush texture fill, which DOES honor the tag
+        // (see FileUploadListItem::updatePreviews() and pixmapscale.hpp's own doc comment for the
+        // same rule). Without both halves -- physical-size source AND the tag -- the tile
+        // rasterises at 1x and reads as soft/blurry on any HiDPI/Retina display.
+        const qreal dpr=devicePixelRatioF();
+        QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
+        auto px=scaledAndCropped(QPixmap::fromImage(preview),physicalSize);
+        px.setDevicePixelRatio(dpr);
+        pimpl->preview->setPixmap(px);
         setPlaceholderMode(false);
     }
     else
