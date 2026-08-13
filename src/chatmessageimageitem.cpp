@@ -93,6 +93,7 @@ class ChatMessageImageItem_p
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
+        bool menuButtonVisibleOnHover=true;
 
         //! Path currently loaded into preview via setImageFile(), empty when the still
         //! (scaledToFitPadded(item.preview())/svg-fallback) path is in use instead.
@@ -141,12 +142,18 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     pimpl->menu=new DropdownMenu();
     pimpl->menu->attachTo(pimpl->menuButton);
     connect(pimpl->menu,&DropdownMenu::itemTriggered,this,&ChatMessageImageItem::onMenuItemTriggered);
+    // the dropdown is a separate top-level popup, not a child of this tile -- moving the mouse
+    // onto it while it is open fires this tile's leaveEvent, so updateMenuButtonVisibility() must
+    // re-run once it closes too, to hide the button again if the mouse never came back
+    connect(pimpl->menu,&DropdownMenu::hidden,this,[this](){ updateMenuButtonVisibility(); });
 
     pimpl->loadControl=new LoadControlMenu(this);
     pimpl->loadControl->setObjectName("loadControl");
     connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageImageItem::loadControlClicked);
     connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageImageItem::pauseRequested);
     connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageImageItem::cancelRequested);
+
+    updateMenuButtonVisibility();
 }
 
 //--------------------------------------------------------------------------
@@ -260,6 +267,26 @@ void ChatMessageImageItem::closeMenu()
 
 //--------------------------------------------------------------------------
 
+void ChatMessageImageItem::setMenuButtonVisibleOnHover(bool enable)
+{
+    if (pimpl->menuButtonVisibleOnHover==enable)
+    {
+        return;
+    }
+
+    pimpl->menuButtonVisibleOnHover=enable;
+    updateMenuButtonVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImageItem::menuButtonVisibleOnHover() const noexcept
+{
+    return pimpl->menuButtonVisibleOnHover;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImageItem::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
@@ -269,6 +296,22 @@ void ChatMessageImageItem::resizeEvent(QResizeEvent* event)
     updatePreview();
 
     repositionOverlays();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::enterEvent(QEnterEvent* event)
+{
+    QFrame::enterEvent(event);
+    updateMenuButtonVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::leaveEvent(QEvent* event)
+{
+    QFrame::leaveEvent(event);
+    updateMenuButtonVisibility();
 }
 
 //--------------------------------------------------------------------------
@@ -400,6 +443,16 @@ void ChatMessageImageItem::repositionOverlays()
         LoadControlSize.height()
     );
     pimpl->loadControl->raise();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::updateMenuButtonVisibility()
+{
+    bool visible=!pimpl->menuButtonVisibleOnHover
+        || underMouse()
+        || (!pimpl->menu.isNull() && pimpl->menu->isOpen());
+    pimpl->menuButton->setVisible(visible);
 }
 
 //--------------------------------------------------------------------------

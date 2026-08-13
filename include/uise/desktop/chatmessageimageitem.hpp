@@ -106,6 +106,14 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
          */
         void closeMenu();
 
+        /**
+         * @brief Set whether the drop-down menu button is only shown while the tile is
+         *  hovered (or its drop-down menu is open), hidden otherwise. Enabled by default.
+         */
+        void setMenuButtonVisibleOnHover(bool enable);
+
+        bool menuButtonVisibleOnHover() const noexcept;
+
     signals:
 
         /**
@@ -135,12 +143,15 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
 
     private:
 
         void rebuildMenu();
         void updatePreview();
         void repositionOverlays();
+        void updateMenuButtonVisibility();
 
         //! Toggle the "placeholder" dynamic property (and repolish) that switches this tile
         //! between normal rendering and the empty rounded-outline look used when there is no
