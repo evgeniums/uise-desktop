@@ -111,6 +111,13 @@ class UISE_DESKTOP_EXPORT ChatImageViewerWindow : public QFrame
         //! Emitted once when the window closes, before any destroyOnClose teardown.
         void closed();
 
+        //! F11 was pressed. This class does not toggle openMode() itself -- unlike Escape/
+        //! viewerClicked(), which have one obvious meaning (close), FullScreen<->Window has no
+        //! default this widget should impose (e.g. a host may not want the toggle persisted, or
+        //! may want to persist it to app settings) -- so a host connects this and calls
+        //! setOpenMode()+popup() itself.
+        void openModeToggleRequested();
+
     public slots:
 
         //! Show, raise and activate the window according to openMode().
@@ -120,7 +127,23 @@ class UISE_DESKTOP_EXPORT ChatImageViewerWindow : public QFrame
 
         void closeEvent(QCloseEvent* event) override;
 
+        //! Catches a FullScreen -> non-FullScreen window-state transition arriving from
+        //! OUTSIDE popup() -- e.g. macOS's own native fullscreen-exit ("green traffic light")
+        //! button, which changes windowState() directly with no call into this class at all.
+        //! Without this, such a transition leaves the window at whatever "normal" geometry it
+        //! had before it was ever shown (never actually set, since FullScreen mode's own
+        //! popup() branch never resizes) -- visually a tiny/default-sized window, unlike the
+        //! same transition driven by openModeToggleRequested(), which goes through popup()'s
+        //! own sizing. Applies the identical one-time sizing popup()'s Window branch does
+        //! (still gated on windowPositioned, so a manual resize the user already made is never
+        //! undone) and syncs openMode() so a later toggle reflects what the window actually is.
+        void changeEvent(QEvent* event) override;
+
     private:
+
+        //! One-time (per windowPositioned) resize+center to defaultWindowSize(), shared by
+        //! popup()'s own Window branch and changeEvent()'s external-transition catch.
+        void applyDefaultWindowSizing();
 
         std::unique_ptr<ChatImageViewerWindow_p> pimpl;
 };

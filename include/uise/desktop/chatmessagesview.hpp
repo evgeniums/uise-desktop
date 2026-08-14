@@ -304,6 +304,11 @@ class ChatMessagesView : public AbstractChatMessagesView
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
+        //! App-wide filter, watching only this widget's own top-level window losing activation
+        //! -- see resetMouseSelectionState()'s doc comment for why that alone is what actually
+        //! catches the case a real mouseReleaseEvent() misses.
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
         void resizeEvent(QResizeEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
 
@@ -332,6 +337,21 @@ class ChatMessagesView : public AbstractChatMessagesView
         SingleShotTimer* m_selectionModeTimer=nullptr;
 
     private:
+
+        //! Clears the drag-tracking state mouseMoveEvent() above reads. Normally only
+        //! mouseReleaseEvent() needs this, but a mousePressEvent delivered to a bubble (e.g.
+        //! ImageLabel, which fires its own clicked() on press rather than release -- see
+        //! AbstractChatMessage::detectMouseSelection()) can open a new top-level window (the
+        //! fullscreen image viewer) that steals activation before the matching
+        //! mouseReleaseEvent ever reaches this widget. Qt's per-widget event()->buttons()
+        //! tracking then stays "left button down" forever, and mouseMoveEvent() -- gated only
+        //! on that flag -- starts drag-selecting messages on every subsequent plain mouse move,
+        //! until an explicit fresh click resets it. eventFilter() above calls this on
+        //! WindowDeactivate of this widget's own top-level window to close that gap; a plain
+        //! changeEvent() override was not used because window-activation events are not
+        //! reliably delivered to descendant widgets across Qt versions/platforms (see
+        //! ImageLabel::changeEvent()'s own comment).
+        void resetMouseSelectionState();
 
         Message* makeMessage(const Data& data);
 

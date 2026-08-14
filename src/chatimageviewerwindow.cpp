@@ -22,6 +22,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QCloseEvent>
+#include <QWindowStateChangeEvent>
 #include <QShortcut>
 #include <QGuiApplication>
 #include <QScreen>
@@ -108,6 +109,15 @@ ChatImageViewerWindow::ChatImageViewerWindow(QWidget* parent)
         &QShortcut::activated,
         this,
         &ChatImageViewerWindow::close
+    );
+
+    auto* f11Shortcut=new QShortcut(Qt::Key_F11,this);
+    f11Shortcut->setContext(Qt::WindowShortcut);
+    connect(
+        f11Shortcut,
+        &QShortcut::activated,
+        this,
+        &ChatImageViewerWindow::openModeToggleRequested
     );
 
     // Covers a programmatic requestClose() (and Escape arriving through the viewer itself, see
@@ -217,6 +227,27 @@ bool ChatImageViewerWindow::isCloseOnClick() const noexcept
 
 //--------------------------------------------------------------------------
 
+//! Shared by popup()'s own Window branch and changeEvent()'s external-transition catch below --
+//! see windowPositioned's own doc comment: applied once, ever, so a manual resize the user
+//! already made is never undone regardless of which of the two call sites got there first.
+void ChatImageViewerWindow::applyDefaultWindowSizing()
+{
+    if (pimpl->windowPositioned)
+    {
+        return;
+    }
+
+    resize(pimpl->defaultWindowSize);
+    if (auto* screen=targetScreen(this); screen!=nullptr)
+    {
+        auto avail=screen->availableGeometry();
+        move(avail.center()-QPoint(width()/2,height()/2));
+    }
+    pimpl->windowPositioned=true;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatImageViewerWindow::popup()
 {
     auto* screen=targetScreen(this);
@@ -231,16 +262,16 @@ void ChatImageViewerWindow::popup()
     }
     else
     {
-        if (!pimpl->windowPositioned)
+        // A live FullScreen -> Window switch (setOpenMode() called on an already-visible
+        // window, e.g. from a menu toggle) needs showNormal() first -- show() alone does not
+        // clear Qt::WindowFullScreen, so without this the window would stay fullscreen despite
+        // openMode() now reporting Window.
+        if (isFullScreen())
         {
-            resize(pimpl->defaultWindowSize);
-            if (screen!=nullptr)
-            {
-                auto avail=screen->availableGeometry();
-                move(avail.center()-QPoint(width()/2,height()/2));
-            }
-            pimpl->windowPositioned=true;
+            showNormal();
         }
+
+        applyDefaultWindowSizing();
         show();
     }
 
@@ -252,6 +283,38 @@ void ChatImageViewerWindow::popup()
     {
         viewerWidget->setFocus();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewerWindow::changeEvent(QEvent* event)
+{
+    QFrame::changeEvent(event);
+
+    if (event->type()!=QEvent::WindowStateChange)
+    {
+        return;
+    }
+
+    // Only a genuine FullScreen -> non-FullScreen transition, not e.g. minimize/restore or the
+    // very first show. windowState() (the NEW state) not carrying FullScreen, while the event's
+    // own oldState() did, is the one unambiguous signal for it, regardless of what triggered it.
+    auto* stateEvent=static_cast<QWindowStateChangeEvent*>(event);
+    bool wasFullScreen=(stateEvent->oldState() & Qt::WindowFullScreen)!=0;
+    bool isFullScreenNow=(windowState() & Qt::WindowFullScreen)!=0;
+    if (!wasFullScreen || isFullScreenNow)
+    {
+        return;
+    }
+
+    // A macOS native fullscreen-exit ("green traffic light") arrives here with no call into
+    // popup() at all -- without this, the window is left at whatever "normal" geometry it had
+    // before it was ever shown (never actually set, since FullScreen mode's own popup() branch
+    // never resizes), which is why it otherwise renders tiny. Sync openMode() too, so a later
+    // openModeToggleRequested() (F11/menu) toggles relative to what the window actually is now,
+    // not stale FullScreen tracking.
+    pimpl->openMode=OpenMode::Window;
+    applyDefaultWindowSizing();
 }
 
 //--------------------------------------------------------------------------

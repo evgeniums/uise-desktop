@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
 #include <QClipboard>
+#include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
@@ -164,6 +165,10 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     : AbstractChatMessagesView(parent)
 {
     setObjectName("uiseChatMessagesView");
+
+    // See eventFilter()'s own doc comment: catches this widget's own top-level window losing
+    // activation while mouseMoveEvent()'s drag-tracking state was left stuck "pressed".
+    qApp->installEventFilter(this);
 
     m_resizeTimer=new SingleShotTimer(this);
     m_selectionModeTimer=new SingleShotTimer(this);
@@ -355,6 +360,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 template <typename BaseMessageT,typename Traits>
 ChatMessagesView<BaseMessageT,Traits>::~ChatMessagesView()
 {
+    qApp->removeEventFilter(this);
     m_listView->resetCallbacks();
 }
 
@@ -923,10 +929,33 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::mouseReleaseEvent(QMouseEvent* event)
 {
+    resetMouseSelectionState();
+    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::resetMouseSelectionState()
+{
     m_chatUnderMouse=nullptr;
     m_lastMousePos=QPoint{};
     m_mouseMoveUp.reset();
-    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent* event)
+{
+    // window(), not a cached pointer -- this widget can be reparented into a different
+    // top-level window over its lifetime (e.g. a chat page moved between MainWindows), so it
+    // must be re-resolved on every event rather than captured once.
+    if (event->type()==QEvent::WindowDeactivate && watched==window())
+    {
+        resetMouseSelectionState();
+    }
+    return QFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------

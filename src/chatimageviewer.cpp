@@ -51,6 +51,7 @@ class ChatImageViewer_p
 
         ChatImageViewer::StripScope stripScope=ChatImageViewer::StripScope::Album;
         size_t stripRadius=ChatImageViewer::DefaultStripRadius;
+        bool counterVisible=true;
 
         //! Split a caller-supplied ChatImage list into the base's own Image list plus this
         //! class's metadata, and record the metadata under each image's key -- shared by every
@@ -114,6 +115,9 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
     {
         pimpl->controls->setPreviewSource(imageSource());
     }
+
+    // Same replay rationale for a setCounterVisible(false) made before the widget existed.
+    pimpl->controls->setCounterVisible(pimpl->counterVisible);
 
     connect(
         pimpl->controls,
@@ -349,6 +353,24 @@ size_t ChatImageViewer::stripRadius() const noexcept
 
 //--------------------------------------------------------------------------
 
+void ChatImageViewer::setCounterVisible(bool visible)
+{
+    pimpl->counterVisible=visible;
+    if (pimpl->controls!=nullptr)
+    {
+        pimpl->controls->setCounterVisible(visible);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatImageViewer::isCounterVisible() const
+{
+    return pimpl->counterVisible;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatImageViewer::setImageSource(std::shared_ptr<PixmapSource> imageSource)
 {
     AbstractImageViewer::setImageSource(imageSource);
@@ -449,9 +471,13 @@ void ChatImageViewer::updateControls()
     }
 
     auto idx=currentImageIndex();
-    auto number=static_cast<size_t>(windowFirstPosition()+static_cast<qint64>(idx))+1;
-    auto total=totalCountHint()>=0 ? static_cast<size_t>(totalCountHint()) : imageCount();
-    pimpl->controls->setCounter(number,total);
+
+    if (pimpl->counterVisible)
+    {
+        auto number=static_cast<size_t>(windowFirstPosition()+static_cast<qint64>(idx))+1;
+        auto total=totalCountHint()>=0 ? static_cast<size_t>(totalCountHint()) : imageCount();
+        pimpl->controls->setCounter(number,total);
+    }
 
     auto key=currentImageKey();
     auto metaIt=pimpl->meta.find(key);

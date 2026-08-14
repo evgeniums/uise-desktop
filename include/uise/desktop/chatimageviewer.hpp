@@ -171,6 +171,13 @@ class UISE_DESKTOP_EXPORT ChatImageViewer : public ImageViewer
         void setStripRadius(size_t n);
         size_t stripRadius() const noexcept;
 
+        //! Show/hide the "n of N" counter -- forwarded to ChatImageViewerControls::
+        //! setCounterVisible(). Useful when the loaded window's own count (imageCount()/
+        //! totalCountHint()) is not a number the caller wants to present to the user. Visible
+        //! by default; updateControls() skips recomputing the counter text while hidden.
+        void setCounterVisible(bool visible);
+        bool isCounterVisible() const;
+
         void setImageSource(std::shared_ptr<PixmapSource> imageSource) override;
 
     signals:
