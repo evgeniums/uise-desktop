@@ -95,7 +95,7 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         constexpr static const bool DefaultAutoShow=true;
         constexpr static const bool DefaultImagesPanelAllowed=true;
         constexpr static const int DefaultLeaveWatchdogIntervalMs=200;
-        constexpr static const Qt::Orientation DefaultPanelOrientation=Qt::Horizontal;
+        constexpr static const Qt::Orientation DefaultPanelOrientation=Qt::Vertical;
 
         explicit FileDropOverlay(QWidget* host);
 
