@@ -38,6 +38,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class IconTextButton;
 class AbstractLoadControl;
+class LoadControlMenu;
 
 class ChatMessageImageItem_p;
 
@@ -84,10 +85,20 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
          */
         void refresh();
 
+        /**
+         * @brief The wrapped load control overlay.
+         *
+         * Created lazily on first use -- e.g. the first time this tile's item is not yet
+         * Ready (see refresh()) -- since a transferred, never-hovered tile never needs it.
+         * Calling this accessor itself forces creation.
+         */
         AbstractLoadControl* loadControl() const;
 
         /**
          * @brief The drop-down menu button floating over the tile's top-right corner.
+         *
+         * Created lazily on first hover (see updateMenuButtonVisibility()). Calling this
+         * accessor itself forces creation.
          */
         IconTextButton* menuButton() const;
 
@@ -152,6 +163,15 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         void updatePreview();
         void repositionOverlays();
         void updateMenuButtonVisibility();
+
+        //! Create the load control overlay on first use -- see loadControl()'s doc comment.
+        //! const so the loadControl() accessor can call it directly: constness does not
+        //! propagate through pimpl (a unique_ptr member), so mutating *pimpl here is legal.
+        LoadControlMenu* ensureLoadControl() const;
+
+        //! Create the menu button and its drop-down on first use -- see menuButton()'s doc
+        //! comment. const for the same reason as ensureLoadControl().
+        IconTextButton* ensureMenuButton() const;
 
         //! Toggle the "placeholder" dynamic property (and repolish) that switches this tile
         //! between normal rendering and the empty rounded-outline look used when there is no

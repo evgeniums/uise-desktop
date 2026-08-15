@@ -25,9 +25,9 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <algorithm>
 
-#include <QBoxLayout>
+#include <QResizeEvent>
 
-#include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/frame.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/albumlayout.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
@@ -63,9 +63,10 @@ class ChatMessageImages_p
 {
     public:
 
-        QBoxLayout* layout=nullptr;
+        //! Total footprint of the album grid, as computed by albumLayout() -- previously the
+        //! fixed size of a now-removed #grid QFrame (see the class doc comment).
+        QSize gridSize;
 
-        QFrame* gridFrame=nullptr;
         std::vector<ChatMessageImageItem*> tiles;
 
         ChatFileItems items;
@@ -94,21 +95,10 @@ ChatMessageImages::ChatMessageImages(QWidget* parent)
     : AbstractChatMessageImages(parent),
       pimpl(std::make_unique<ChatMessageImages_p>())
 {
-    pimpl->layout=Layout::vertical(this);
-
-    // no internal layout of its own -- tiles are positioned with manual QRects from
-    // albumLayout(), the same "plain QFrame + manual setGeometry()" idiom FileUploadListItem
-    // uses for its imageFrame/rowFrame children
-    pimpl->gridFrame=new QFrame(this);
-    pimpl->gridFrame->setObjectName("grid");
-    pimpl->layout->addWidget(pimpl->gridFrame);
-
-    // see ChatMessageFiles's constructor comment: wired up for real -- setChatMessage()/
-    // setChatContent() forwarded, reparented into our own layout -- from updateChatMessage()
-    pimpl->comment=new ChatMessageText(this);
-    pimpl->comment->setVisible(false);
-    pimpl->layout->addWidget(pimpl->comment);
-
+    // No QLayout, no child widgets created here -- tiles are positioned with manual QRects from
+    // albumLayout() (see rebuildGrid()/layoutChildren()), the same "manual setGeometry()" idiom
+    // FileUploadListItem uses for its imageFrame/rowFrame children. The comment is created
+    // lazily on first use (see ensureComment()) since most albums carry no comment at all.
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
 
@@ -160,9 +150,9 @@ void ChatMessageImages::updateItem(const QUuid& id, const ChatFileItem& item)
                 rebuildGrid(forMaxWidth);
                 if (chatContent()!=nullptr)
                 {
-                    // rebuildGrid() alone only resizes THIS section's own gridFrame -- the
-                    // bubble as a whole (and any sibling section, e.g. a comment below the
-                    // album) must renegotiate too, exactly as if a resize had triggered it.
+                    // rebuildGrid() alone only resizes THIS section's own grid -- the bubble as
+                    // a whole (and any sibling section, e.g. a comment below the album) must
+                    // renegotiate too, exactly as if a resize had triggered it.
                     chatContent()->renegotiateBubbleWidth();
                 }
                 return;
@@ -264,7 +254,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
         QSize totalSize;
         rects=albumLayout(sizes,options,&totalSize);
-        pimpl->gridFrame->setFixedSize(totalSize);
+        pimpl->gridSize=totalSize;
 
         pimpl->lastLayoutForMaxWidth=forMaxWidth;
         pimpl->lastLayoutDpr=dpr;
@@ -289,7 +279,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
         for (size_t i=0;i<pimpl->items.size();++i)
         {
-            auto tile=new ChatMessageImageItem(pimpl->gridFrame);
+            auto tile=new ChatMessageImageItem(this);
             tile->setAnimationMode(pimpl->animationMode);
 
             // the item id is read from the tile at emit time (not captured by value) so that a
@@ -350,16 +340,91 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
             // dynamic-property rule, only takes effect after a repolish. Matches the file-row
             // treatment in ChatMessageFiles::rebuildList().
             tile->ensurePolished();
+
+            // No QLayout to add it to any more -- a plain new child stays hidden until shown
+            // when its parent is already visible (a QLayout::addWidget() used to do this
+            // implicitly).
+            tile->show();
         }
     }
 
     for (size_t i=0;i<pimpl->items.size();++i)
     {
-        pimpl->tiles[i]->setGeometry(rects[i]);
         pimpl->tiles[i]->setItem(pimpl->items[i],incoming);
     }
 
     updateGeometry();
+    layoutChildren();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::layoutChildren()
+{
+    // Single manual placement path for every child -- tiles and the (optional, lazily created)
+    // comment -- replacing the QLayout this class used to have. Called from resizeEvent() and
+    // from the QEvent::LayoutRequest handler in event(), which is how a child's
+    // updateGeometry() (e.g. the comment re-wrapping) reaches a layout-less parent -- a
+    // QLayout would normally intercept that event itself and re-run activate().
+    auto cr=contentsRect();
+
+    if (pimpl->lastLayoutRects.size()==pimpl->tiles.size())
+    {
+        for (size_t i=0;i<pimpl->tiles.size();++i)
+        {
+            pimpl->tiles[i]->setGeometry(pimpl->lastLayoutRects[i].translated(cr.topLeft()));
+        }
+    }
+
+    if (pimpl->comment!=nullptr && pimpl->comment->isVisible())
+    {
+        auto h=pimpl->comment->sizeHint().height();
+        pimpl->comment->setGeometry(cr.x(),cr.y()+pimpl->gridSize.height(),cr.width(),h);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::resizeEvent(QResizeEvent* event)
+{
+    AbstractChatMessageImages::resizeEvent(event);
+    layoutChildren();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImages::event(QEvent* event)
+{
+    if (event->type()==QEvent::LayoutRequest)
+    {
+        updateGeometry();
+        layoutChildren();
+        return true;
+    }
+    return AbstractChatMessageImages::event(event);
+}
+
+//--------------------------------------------------------------------------
+
+ChatMessageText* ChatMessageImages::ensureComment()
+{
+    if (pimpl->comment==nullptr)
+    {
+        pimpl->comment=new ChatMessageText(this);
+        pimpl->comment->setVisible(false);
+        if (chatMessage()!=nullptr)
+        {
+            pimpl->comment->setChatMessage(chatMessage());
+        }
+        if (chatContent()!=nullptr)
+        {
+            pimpl->comment->setChatContent(chatContent());
+        }
+        // See rebuildGrid()'s identical comment: freshly created QSS-dependent content must be
+        // polished before its first paint.
+        pimpl->comment->ensurePolished();
+    }
+    return pimpl->comment;
 }
 
 //--------------------------------------------------------------------------
@@ -371,14 +436,23 @@ void ChatMessageImages::setComment(const QString& text, bool markdown)
 
     if (text.isEmpty())
     {
-        pimpl->comment->clearText();
-        pimpl->comment->setVisible(false);
+        // Never create the comment widget just to immediately clear/hide it -- most albums
+        // never carry a comment at all.
+        if (pimpl->comment!=nullptr)
+        {
+            pimpl->comment->clearText();
+            pimpl->comment->setVisible(false);
+        }
     }
     else
     {
-        pimpl->comment->loadText(text,markdown);
-        pimpl->comment->setVisible(true);
+        auto comment=ensureComment();
+        comment->loadText(text,markdown);
+        comment->setVisible(true);
     }
+
+    updateGeometry();
+    layoutChildren();
 }
 
 //--------------------------------------------------------------------------
@@ -427,14 +501,17 @@ ImageLabel::AnimationMode ChatMessageImages::animationMode() const
 
 void ChatMessageImages::clearContentSelection()
 {
-    pimpl->comment->clearContentSelection();
+    if (pimpl->comment!=nullptr)
+    {
+        pimpl->comment->clearContentSelection();
+    }
 }
 
 //--------------------------------------------------------------------------
 
 QString ChatMessageImages::selectedText() const
 {
-    return pimpl->comment->selectedText();
+    return (pimpl->comment!=nullptr) ? pimpl->comment->selectedText() : QString();
 }
 
 //--------------------------------------------------------------------------
@@ -443,11 +520,12 @@ int ChatMessageImages::bubbleWidthHint(int forMaxWidth)
 {
     rebuildGrid(forMaxWidth);
 
-    int width=pimpl->gridFrame->width();
+    int width=pimpl->gridSize.width()+horizontalTotalMargin(this);
     if (!pimpl->commentText.isEmpty())
     {
-        pimpl->comment->setChatContent(chatContent());
-        width=std::max(width,pimpl->comment->bubbleWidthHint(forMaxWidth));
+        auto comment=ensureComment();
+        comment->setChatContent(chatContent());
+        width=std::max(width,comment->bubbleWidthHint(forMaxWidth));
     }
 
     return std::min(width,forMaxWidth);
@@ -462,28 +540,65 @@ void ChatMessageImages::updateMaximumBubbleWidth()
 
     if (!pimpl->commentText.isEmpty())
     {
-        pimpl->comment->setChatContent(chatContent());
-        pimpl->comment->updateMaximumBubbleWidth();
+        auto comment=ensureComment();
+        comment->setChatContent(chatContent());
+        comment->updateMaximumBubbleWidth();
     }
 
     updateGeometry();
+    layoutChildren();
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageImages::updateChatMessage()
 {
-    // reparents comment to chatMessage() as a side effect (see AbstractChatMessageChild::
-    // setChatMessage()) -- put it back into our own layout right after, exactly like
-    // ChatMessageContent::updateWidgets() does for a top-level header/body/bottom section
-    pimpl->comment->setChatMessage(chatMessage());
-    pimpl->layout->addWidget(pimpl->comment);
+    if (pimpl->comment!=nullptr)
+    {
+        // AbstractChatMessageChild::setChatMessage() reparents the comment onto chatMessage()
+        // as a side effect, hiding it -- put it back under this widget and restore its
+        // visibility right after, exactly like ChatMessageContent::updateWidgets() does for a
+        // top-level header/body/bottom section.
+        pimpl->comment->setChatMessage(chatMessage());
+        pimpl->comment->setParent(this);
+        pimpl->comment->setVisible(!pimpl->commentText.isEmpty());
+    }
 
     auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();
     for (size_t i=0;i<pimpl->tiles.size() && i<pimpl->items.size();++i)
     {
         pimpl->tiles[i]->setItem(pimpl->items[i],incoming);
     }
+
+    layoutChildren();
+}
+
+//--------------------------------------------------------------------------
+
+QSize ChatMessageImages::sizeHint() const
+{
+    auto m=contentsMargins();
+
+    int width=pimpl->gridSize.width();
+    int height=pimpl->gridSize.height();
+    if (pimpl->comment!=nullptr && pimpl->comment->isVisible())
+    {
+        auto commentSize=pimpl->comment->sizeHint();
+        width=std::max(width,commentSize.width());
+        height+=commentSize.height();
+    }
+
+    return QSize(width+m.left()+m.right(),height+m.top()+m.bottom());
+}
+
+//--------------------------------------------------------------------------
+
+QSize ChatMessageImages::minimumSizeHint() const
+{
+    // The grid is already a hard size (from albumLayout(), no wrapping/eliding involved) and
+    // the comment's own vertical policy is Fixed -- there is no smaller size this body could
+    // usefully take, so the minimum is the same as the preferred size.
+    return sizeHint();
 }
 
 //--------------------------------------------------------------------------
