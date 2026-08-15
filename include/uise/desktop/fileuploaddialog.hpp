@@ -100,6 +100,7 @@ class UISE_DESKTOP_EXPORT FileUploadDialog : public Dialog<AbstractFileUploadDia
         AbstractFileUploadWidget* fileUploadWidget() const override;
 
         void reset() override;
+        void prepareToShow() override;
 
         virtual void construct() override;
 

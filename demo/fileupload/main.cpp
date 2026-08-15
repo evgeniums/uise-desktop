@@ -339,14 +339,12 @@ int main(int argc, char *argv[])
     // tall enough that 90% of it comfortably clears FileUploadWidget's natural maximum height
     // (header + max list area 360 + 3 checkboxes + max comments 110 + button row + padding).
     uploadDialogFrame->setMinimumHeight(800);
-    rootLayout->addWidget(uploadDialogFrame);
-    rootLayout->addSpacing(8);
 
-    imageEditDialog->setObjectName("imageEditWrapper");
-    applyWrapperTheme(imageEditDialog);
-    imageEditDialog->setMinimumHeight(360);
-    rootLayout->addWidget(imageEditDialog);
-    rootLayout->addSpacing(8);
+    // The two buttons below are added to the layout BEFORE uploadDialogFrame/imageEditDialog
+    // (both ~800px+360px tall), and right after their own frames are constructed -- not after,
+    // as originally written -- so clicking either one does not require first scrolling the
+    // dialog host itself out of view: the popup opens inside uploadDialogFrame, which stays
+    // visible directly below the button that opened it.
 
     auto* openDialogButton=new QPushButton(QStringLiteral("Open upload dialog"));
     applyButtonStyle(openDialogButton);
@@ -358,13 +356,59 @@ int main(int argc, char *argv[])
         uploadDialogFrame,
         [uploadDialogFrame,wireUploadWidget]()
         {
-            auto isNew=uploadDialogFrame->openDialog(false);
+            // openDialog(false,false): create/reuse the dialog WITHOUT showing it yet. This
+            // button opens empty, so the ordering makes no visible difference here -- but it
+            // is the same open-hidden-then-show shape "Open dialog with sample files" below
+            // relies on, wiring under `if (isNew)` and showing last either way.
+            auto isNew=uploadDialogFrame->openDialog(false,false);
             if (isNew)
             {
                 wireUploadWidget(uploadDialogFrame->dialog()->fileUploadWidget(),QStringLiteral("dialog"));
             }
+            uploadDialogFrame->showDialog();
         }
     );
+
+    // Reproduces the pre-populated-dialog flicker this change targets: without
+    // openDialog(...,/*show*/false) + showDialog(), a dialog opened already carrying files
+    // would appear at its empty size and then visibly jump as setSendAsDocuments()/addItems()
+    // land. Here the widget is filled while still invisible, so it should appear once, already
+    // at its final size.
+    auto* openWithFilesButton=new QPushButton(QStringLiteral("Open dialog with sample files"));
+    applyButtonStyle(openWithFilesButton);
+    demoButtons.push_back(openWithFilesButton);
+    rootLayout->addWidget(openWithFilesButton);
+    QObject::connect(
+        openWithFilesButton,
+        &QPushButton::clicked,
+        uploadDialogFrame,
+        [uploadDialogFrame,wireUploadWidget]()
+        {
+            auto isNew=uploadDialogFrame->openDialog(false,false);
+            auto* widget=uploadDialogFrame->dialog()->fileUploadWidget();
+            if (isNew)
+            {
+                wireUploadWidget(widget,QStringLiteral("dialog"));
+            }
+            widget->addFiles({QString::fromUtf8(__FILE__)});
+            widget->addItems(
+                {
+                    FileUploadItem::fromImage(makeSampleImage()),
+                    FileUploadItem::fromImage(makeDisproportionalImage())
+                }
+            );
+            uploadDialogFrame->showDialog();
+        }
+    );
+
+    rootLayout->addWidget(uploadDialogFrame);
+    rootLayout->addSpacing(8);
+
+    imageEditDialog->setObjectName("imageEditWrapper");
+    applyWrapperTheme(imageEditDialog);
+    imageEditDialog->setMinimumHeight(360);
+    rootLayout->addWidget(imageEditDialog);
+    rootLayout->addSpacing(8);
 
     // --- 3. controls ---
 

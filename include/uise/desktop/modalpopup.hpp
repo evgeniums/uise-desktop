@@ -74,6 +74,15 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
 
         void updateWidgetGeometry();
 
+        /**
+         * @brief ensurePolished() over the popup widget's whole subtree, so a widget that has
+         *  never been shown yet is measured with real (post-QSS) geometry rather than
+         *  construction defaults. Deliberately NOT Style::repolishRecursive(): unpolish+polish
+         *  would re-fire qproperty-* setters that some widgets (e.g. FileUploadWidget) use to
+         *  schedule further work, which would undo the point of priming before show.
+         */
+        void polishWidgetTree();
+
         std::unique_ptr<ModalPopup_p> pimpl;
 };
 

@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/modalpopup.hpp>
+#include <uise/desktop/abstractdialog.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -121,6 +122,17 @@ void ModalPopup::popup()
     }
 
     pimpl->shortcut->setEnabled(pimpl->shortcutEnabled);
+
+    // Prime the widget BEFORE it becomes visible, so it is measured once at its final size
+    // instead of appearing empty/undersized and then visibly refitting as content settles.
+    // Polish first (so any QSS qproperty-* driven geometry is applied), then let the dialog
+    // settle whatever content-driven geometry it owns (e.g. FileUploadWidget's list area).
+    polishWidgetTree();
+    if (auto* dialog=qobject_cast<AbstractDialog*>(pimpl->widget))
+    {
+        dialog->prepareToShow();
+    }
+
     updateWidgetGeometry();
 
     show();
@@ -128,6 +140,26 @@ void ModalPopup::popup()
     pimpl->widget->setVisible(true);
     pimpl->widget->raise();
     pimpl->widget->setFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::polishWidgetTree()
+{
+    if (pimpl->widget==nullptr)
+    {
+        return;
+    }
+
+    // ensurePolished() early-returns on an already-polished widget and does not recurse into
+    // its children, so walk the subtree explicitly -- same reasoning as
+    // DropdownFrame::measureContentSize().
+    pimpl->widget->ensurePolished();
+    const auto descendants=pimpl->widget->findChildren<QWidget*>();
+    for (auto* w : descendants)
+    {
+        w->ensurePolished();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -204,6 +236,28 @@ void ModalPopup::updateWidgetGeometry()
         newW=minSize.width();
     }
 
+    // Measure at the width we are about to use, not at whatever stale width the widget still
+    // has (e.g. a construction default, or the width of a previous, differently-sized dialog
+    // reusing this popup) -- otherwise sizeHint().height() below answers for the wrong width.
+    // Guarded on newW>0: with a host frame not yet laid out, w (and so newW) is 0, and locking
+    // that in as the widget's real geometry is what once shrank the whole popup to a tiny
+    // top-left rectangle (see FileUploadWidget::doUpdateListAreaHeight()). The widget is still
+    // hidden at this point, so resize() alone only records the new geometry -- activate() is
+    // what actually re-lays out its children at the new width so sizeHint() reflects it.
+    if (newW>0 && pimpl->widget->width()!=newW && pimpl->widget->layout()!=nullptr)
+    {
+        pimpl->inUpdate=true;
+        pimpl->widget->resize(newW,pimpl->widget->height());
+        pimpl->widget->layout()->activate();
+        pimpl->inUpdate=false;
+
+        // re-read: the width change just activated above may have published a new
+        // SetDefaultConstraint minimum/maximum height, which the height clamps below need to
+        // see.
+        minSize=pimpl->widget->minimumSize();
+        maxSize=pimpl->widget->maximumSize();
+    }
+
     if (pimpl->parent->isPopupAutoHeight())
     {
         // fit height to content at the resolved width
@@ -236,6 +290,14 @@ void ModalPopup::updateWidgetGeometry()
 
     pimpl->inUpdate=true;
     pimpl->widget->resize(newW,newH);
+    if (auto* l=pimpl->widget->layout())
+    {
+        // The widget is hidden on the popup() path, so this resize would otherwise only be
+        // delivered as a pending QResizeEvent once show() runs -- relayouting, and possibly
+        // posting a LayoutRequest that refits the popup, only after it is already on screen.
+        // Activating now settles that before the first paint.
+        l->activate();
+    }
     pimpl->inUpdate=false;
     setPos(newW,newH);
 }
