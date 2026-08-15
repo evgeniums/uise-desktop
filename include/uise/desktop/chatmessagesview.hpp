@@ -304,9 +304,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
-        //! App-wide filter, watching only this widget's own top-level window losing activation
-        //! -- see resetMouseSelectionState()'s doc comment for why that alone is what actually
-        //! catches the case a real mouseReleaseEvent() misses.
+        //! App-wide filter: this widget's own top-level window losing activation is what marks
+        //! m_dragTrustSuspect (see its own doc comment); any QEvent::MouseButtonPress anywhere
+        //! in the app is what clears it again.
         bool eventFilter(QObject* watched, QEvent* event) override;
 
         void resizeEvent(QResizeEvent* event) override;
@@ -329,6 +329,21 @@ class ChatMessagesView : public AbstractChatMessagesView
         std::map<Id,Data> m_selectedMessages;
         std::optional<bool> m_mouseMoveUp;
 
+        //! Set on this widget's own window losing activation (eventFilter()'s WindowDeactivate
+        //! catch), cleared on the next genuine QEvent::MouseButtonPress anywhere in the app.
+        //! While true, mouseMoveEvent() ignores what QMouseEvent::buttons() reports rather than
+        //! acting on it -- confirmed by log capture that after a fullscreen top-level window
+        //! (the image viewer) steals activation without a normal click-release cycle completing,
+        //! buttons() keeps reporting LeftButton down on every subsequent plain mouse move,
+        //! seemingly indefinitely, even though no button is physically held. This is consistent
+        //! with a *native* (AppKit) drag-tracking session on macOS that never received its
+        //! matching mouseUp (swallowed during the fullscreen/Space transition animation) and so
+        //! keeps delivering "dragged" rather than "moved" native events until a genuinely fresh
+        //! press/release pair resyncs it -- state this class cannot correct directly, only work
+        //! around by not trusting buttons() until it sees independent evidence (a real press)
+        //! that the OS's own tracking is sane again.
+        bool m_dragTrustSuspect=false;
+
         int m_messageBubbleOuterWidth=0;
         int m_messageMinWidth=0;
         int m_messageMaxWidth=QWIDGETSIZE_MAX;
@@ -338,19 +353,13 @@ class ChatMessagesView : public AbstractChatMessagesView
 
     private:
 
-        //! Clears the drag-tracking state mouseMoveEvent() above reads. Normally only
-        //! mouseReleaseEvent() needs this, but a mousePressEvent delivered to a bubble (e.g.
-        //! ImageLabel, which fires its own clicked() on press rather than release -- see
-        //! AbstractChatMessage::detectMouseSelection()) can open a new top-level window (the
-        //! fullscreen image viewer) that steals activation before the matching
-        //! mouseReleaseEvent ever reaches this widget. Qt's per-widget event()->buttons()
-        //! tracking then stays "left button down" forever, and mouseMoveEvent() -- gated only
-        //! on that flag -- starts drag-selecting messages on every subsequent plain mouse move,
-        //! until an explicit fresh click resets it. eventFilter() above calls this on
-        //! WindowDeactivate of this widget's own top-level window to close that gap; a plain
-        //! changeEvent() override was not used because window-activation events are not
-        //! reliably delivered to descendant widgets across Qt versions/platforms (see
-        //! ImageLabel::changeEvent()'s own comment).
+        //! Clears the per-move drag-tracking state mouseMoveEvent() reads
+        //! (m_chatUnderMouse/m_lastMousePos/m_mouseMoveUp). Called from mouseReleaseEvent() for
+        //! a normal click-release, and from eventFilter()'s WindowDeactivate catch so a stale
+        //! m_chatUnderMouse does not linger across the gap m_dragTrustSuspect actually closes
+        //! (see that member's own doc comment) -- this alone does not stop mouseMoveEvent() from
+        //! reacting to the *next* move, only tidies state left over from the move just before
+        //! the window lost activation.
         void resetMouseSelectionState();
 
         Message* makeMessage(const Data& data);

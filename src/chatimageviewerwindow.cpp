@@ -173,7 +173,12 @@ QString ChatImageViewerWindow::caption() const
 
 void ChatImageViewerWindow::setOpenMode(OpenMode mode) noexcept
 {
+    if (pimpl->openMode==mode)
+    {
+        return;
+    }
     pimpl->openMode=mode;
+    emit openModeChanged(mode);
 }
 
 //--------------------------------------------------------------------------
@@ -250,14 +255,17 @@ void ChatImageViewerWindow::applyDefaultWindowSizing()
 
 void ChatImageViewerWindow::popup()
 {
-    auto* screen=targetScreen(this);
-
     if (pimpl->openMode==OpenMode::FullScreen)
     {
-        if (screen!=nullptr)
-        {
-            move(screen->geometry().topLeft());
-        }
+        // Sized/centered before ever entering fullscreen -- not just when opening in Window
+        // mode -- so the "normal" geometry Qt remembers to restore to is already correct. That
+        // restore is what runs both for a live openModeToggleRequested() switch and for macOS's
+        // own native fullscreen-exit ("green traffic light"), which restores directly with no
+        // call into this class at all (see changeEvent() below). Without this, the very first
+        // restore visibly flashes the window at whatever tiny default geometry it had before
+        // ever being shown, then jumps to defaultWindowSize() a frame later -- changeEvent()
+        // still fires afterward, but as a no-op once windowPositioned is already set.
+        applyDefaultWindowSizing();
         showFullScreen();
     }
     else
@@ -296,24 +304,32 @@ void ChatImageViewerWindow::changeEvent(QEvent* event)
         return;
     }
 
-    // Only a genuine FullScreen -> non-FullScreen transition, not e.g. minimize/restore or the
-    // very first show. windowState() (the NEW state) not carrying FullScreen, while the event's
-    // own oldState() did, is the one unambiguous signal for it, regardless of what triggered it.
+    // Only a genuine FullScreen<->non-FullScreen transition, not e.g. minimize/restore or the
+    // very first show.
     auto* stateEvent=static_cast<QWindowStateChangeEvent*>(event);
     bool wasFullScreen=(stateEvent->oldState() & Qt::WindowFullScreen)!=0;
     bool isFullScreenNow=(windowState() & Qt::WindowFullScreen)!=0;
-    if (!wasFullScreen || isFullScreenNow)
+    if (wasFullScreen==isFullScreenNow)
     {
+        return;
+    }
+
+    if (isFullScreenNow)
+    {
+        // Native fullscreen entry (e.g. the same macOS button, going the other way, while
+        // already in Window mode) -- fullscreen fills the screen regardless of prior geometry,
+        // so no sizing catch-up is needed, only syncing openMode() (via setOpenMode(), which
+        // emits openModeChanged()) so a later toggle and any persisted setting both reflect
+        // what the window actually is now.
+        setOpenMode(OpenMode::FullScreen);
         return;
     }
 
     // A macOS native fullscreen-exit ("green traffic light") arrives here with no call into
     // popup() at all -- without this, the window is left at whatever "normal" geometry it had
     // before it was ever shown (never actually set, since FullScreen mode's own popup() branch
-    // never resizes), which is why it otherwise renders tiny. Sync openMode() too, so a later
-    // openModeToggleRequested() (F11/menu) toggles relative to what the window actually is now,
-    // not stale FullScreen tracking.
-    pimpl->openMode=OpenMode::Window;
+    // never resizes), which is why it otherwise renders tiny.
+    setOpenMode(OpenMode::Window);
     applyDefaultWindowSizing();
 }
 
