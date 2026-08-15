@@ -181,8 +181,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 
     m_listView->setItemsAlignment(FlyweightListViewAlignment::Begin);
     m_listView->setPrefetchItemWindowHint(20);
-    m_listView->setPrefetchScreensCount(2);
-    m_listView->setPrefetchItemCount(10);
+    m_listView->setPrefetchScreensCount(3.0);
+    m_listView->setPrefetchItemCount(20);
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
     m_listView->setVerticalScrollBarPlaceHolder(true);
