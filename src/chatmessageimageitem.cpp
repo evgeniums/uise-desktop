@@ -310,9 +310,9 @@ void ChatMessageImageItem::leaveEvent(QEvent* event)
 void ChatMessageImageItem::rebuildMenu()
 {
     // Deferred: buildChatFileMenuItems() (one svg-icon lookup per entry) only actually runs the
-    // next time the drop-down is about to open (see ensureMenuButton()'s aboutToShow handler),
-    // not on every refresh() -- most refresh() calls are just a progress tick and the menu is
-    // never opened for most tiles at all.
+    // next time the menu button is clicked (see ensureMenuButton()'s clicked() handler), not on
+    // every refresh() -- most refresh() calls are just a progress tick and the menu is never
+    // opened for most tiles at all.
     pimpl->menuDirty=true;
 }
 
@@ -513,16 +513,16 @@ IconTextButton* ChatMessageImageItem::ensureMenuButton() const
         // see that class's constructor for why (DropdownFrame reparents itself lazily to the
         // trigger's actual window() on first opening)
         pimpl->menu=new DropdownMenu();
-        pimpl->menu->attachTo(pimpl->menuButton);
-        connect(pimpl->menu,&DropdownMenu::itemTriggered,self,&ChatMessageImageItem::onMenuItemTriggered);
-        // the dropdown is a separate top-level popup, not a child of this tile -- moving the
-        // mouse onto it while it is open fires this tile's leaveEvent, so
-        // updateMenuButtonVisibility() must re-run once it closes too, to hide the button again
-        // if the mouse never came back
-        connect(pimpl->menu,&DropdownMenu::hidden,self,[self](){ self->updateMenuButtonVisibility(); });
+
         // Menu items are only ever built the moment the drop-down is actually about to open --
-        // see rebuildMenu()'s doc comment.
-        connect(pimpl->menu,&DropdownFrame::aboutToShow,self,
+        // see rebuildMenu()'s doc comment -- via the trigger button's own clicked() rather than
+        // DropdownFrame::aboutToShow(): DropdownFrame::popupBelow()/popupAt() already run
+        // fillContent()+measure() BEFORE beginOpen() emits aboutToShow() (despite that signal's
+        // "right before content is filled and measured" doc comment), so rebuilding on
+        // aboutToShow() is one step too late and measures an empty, tiny popup. Connected here,
+        // BEFORE menu->attachTo() below wires its own clicked handler that actually opens the
+        // dropdown, so this slot runs first -- Qt invokes same-signal slots in connection order.
+        connect(pimpl->menuButton,&IconTextButton::clicked,self,
             [self]()
             {
                 if (self->pimpl->menuDirty)
@@ -532,6 +532,14 @@ IconTextButton* ChatMessageImageItem::ensureMenuButton() const
                 }
             }
         );
+
+        pimpl->menu->attachTo(pimpl->menuButton);
+        connect(pimpl->menu,&DropdownMenu::itemTriggered,self,&ChatMessageImageItem::onMenuItemTriggered);
+        // the dropdown is a separate top-level popup, not a child of this tile -- moving the
+        // mouse onto it while it is open fires this tile's leaveEvent, so
+        // updateMenuButtonVisibility() must re-run once it closes too, to hide the button again
+        // if the mouse never came back
+        connect(pimpl->menu,&DropdownMenu::hidden,self,[self](){ self->updateMenuButtonVisibility(); });
 
         // See rebuildGrid()'s identical comment on freshly created tiles: QSS-driven content
         // (this button's 18px icon size) must be polished before its first paint, and before
