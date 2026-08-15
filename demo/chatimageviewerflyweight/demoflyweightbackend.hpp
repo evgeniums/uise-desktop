@@ -83,6 +83,14 @@ inline QPixmap makeBlurryImage(const QSize& size, const QColor& c1, const QColor
 
 //--------------------------------------------------------------------------
 
+//! Resource path of the shared demo GIF asset, embedded into this demo's own binary via
+//! chatimageviewerflyweightdemo.qrc (which references demo/imagelabel/assets/animated.gif by
+//! relative path rather than duplicating the file).
+inline QString animatedGifResourcePath()
+{
+    return QStringLiteral(":/uise/desktop/demo/chatimageviewerflyweight/animated.gif");
+}
+
 //! One synthetic image's full record -- the fake backend's whole "database".
 struct ImageRecord
 {
@@ -92,6 +100,11 @@ struct ImageRecord
     QColor c1;
     QColor c2;
     QString label;
+
+    //! Whether DemoFlyweightSource::doLoadPixmap() also delivers animation content for this
+    //! image, alongside its ordinary poster pixmap -- see buildDataset() for which images this
+    //! is set on.
+    bool isAnimated=false;
 };
 
 //! Path prefix images are addressed under -- see keyForIndex()/indexFromKey().
@@ -166,6 +179,10 @@ inline std::vector<ImageRecord> buildDataset()
             rec.c1=colors.first;
             rec.c2=colors.second;
             rec.label=QString("%1.%2").arg(messageIndex).arg(i+1);
+            // First image of every 5th message animates -- scattered but not overwhelming across
+            // the 200-image dataset (~12 images), enough to hit while paging/scrolling without
+            // every album being animated.
+            rec.isAnimated=(messageIndex%5==0 && i==0);
             images.push_back(rec);
         }
         ++messageIndex;
@@ -213,6 +230,10 @@ class DemoFlyweightSource : public PixmapSource
                 // "No latency" setting: skip the loading indicator/timer entirely and deliver the
                 // sharp rung synchronously too.
                 updatePixmap(key,makeSampleImage(key.size(),rec.c1,rec.c2,rec.label));
+                if (rec.isAnimated)
+                {
+                    updateAnimation(key,AnimationContent{animatedGifResourcePath()});
+                }
                 return;
             }
 
@@ -232,6 +253,10 @@ class DemoFlyweightSource : public PixmapSource
                     // producer was released (entry scrolled out of the active window) in the
                     // meantime -- see PixmapSource::updatePixmap()'s own key lookup.
                     self->updatePixmap(key,makeSampleImage(key.size(),rec.c1,rec.c2,rec.label));
+                    if (rec.isAnimated)
+                    {
+                        self->updateAnimation(key,AnimationContent{animatedGifResourcePath()});
+                    }
                     self->setPixmapLoading(key,false);
                 }
             );

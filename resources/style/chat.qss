@@ -4,6 +4,15 @@ background-color: transparent;
 border:none;
 }
 
+/* Only reachable once a host opts into ChatMessageText::setCopyable(true) (see
+   AbstractReplyDialog's static preview) -- Qt.NoFocus (the default) never lets this widget
+   gain focus at all. "outline" is Qt QSS's own property for the native focus rectangle Qt
+   would otherwise draw around a focused QAbstractScrollArea, distinct from "border". */
+uise--ChatMessageText uise--ChatMessageTextBrowser:focus {
+border: none;
+outline: none;
+}
+
 uise--AbstractChatMessageContent {
 border-radius: 16px;
 padding: 8px;

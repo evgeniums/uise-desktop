@@ -31,9 +31,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 #include <QEnterEvent>
 #include <QEvent>
-#include <QBuffer>
-#include <QMovie>
-#include <QImageReader>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QWindow>
@@ -42,40 +39,102 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+namespace {
+
+//! ImageAnimator subclass reporting ImageLabel's own visibility/window-activation/hover state --
+//! kept local to this translation unit so imagelabel.hpp does not need to expose it.
+class LabelAnimator : public ImageAnimator
+{
+    public:
+
+        explicit LabelAnimator(ImageLabel* owner)
+            // No QObject parent: ImageLabel owns this exclusively via its own unique_ptr (see the
+            // member-order/ownership comment on ImageLabel::m_animator and ImageAnimator's own
+            // m_movie for why -- parenting to owner would register it as a QObject child too, and
+            // ~QObject would then try to delete it a second time on top of the unique_ptr).
+            : ImageAnimator(nullptr),
+              m_owner(owner)
+        {}
+
+    protected:
+
+        bool isWidgetVisible() const override
+        {
+            return m_owner->isVisible();
+        }
+
+        bool isWindowActive() const override
+        {
+            return !m_owner->window() || m_owner->window()->isActiveWindow();
+        }
+
+        bool isHovered() const override
+        {
+            return m_owner->isEffectiveHovered();
+        }
+
+    private:
+
+        ImageLabel* m_owner;
+};
+
+}
+
 /************************** ImageLabel *************************************/
 
 //--------------------------------------------------------------------------
 
 ImageLabel::ImageLabel(QWidget* parent, Qt::WindowFlags f)
     : RoundedImage(parent,f),
-      m_mode(DefaultAnimationMode),
       m_aspectMode(DefaultAspectRatioMode),
-      m_speed(100),
-      m_animated(false),
-      m_cacheFrames(false),
-      m_pauseWhenHidden(true),
-      m_pauseWhenInactive(false),
       m_clickable(false),
-      m_playing(false),
-      m_frameDirty(false),
-      m_inSync(false),
-      m_manual(ManualState::Stopped)
-{}
+      m_frameDirty(false)
+{
+    m_animator=std::make_unique<LabelAnimator>(this);
+
+    connect(
+        m_animator.get(),
+        &ImageAnimator::frameChanged,
+        this,
+        &ImageLabel::onAnimatorFrameChanged
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::loaded,
+        this,
+        &ImageLabel::onAnimatorLoaded
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::loadFailed,
+        this,
+        &ImageLabel::onAnimatorLoadFailed
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::animatedChanged,
+        this,
+        &ImageLabel::onAnimatorAnimatedChanged
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::playingChanged,
+        this,
+        &ImageLabel::onAnimatorPlayingChanged
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::finished,
+        this,
+        &ImageLabel::animationFinished
+    );
+}
 
 //--------------------------------------------------------------------------
 
 ImageLabel::~ImageLabel()
 {
-    // Disconnect first so no slot runs against a half-destroyed object while the movie is being
-    // torn down, then stop before releasing -- see resetContent() for the same ordering used at
-    // runtime and the member-order comment in the header for why m_movie must go before m_buffer.
-    if (m_movie)
-    {
-        m_movie->disconnect(this);
-        m_movie->stop();
-    }
-    m_movie.reset();
-    m_buffer.reset();
+    m_animator.reset();
 }
 
 //--------------------------------------------------------------------------
@@ -83,8 +142,7 @@ ImageLabel::~ImageLabel()
 bool ImageLabel::setImageFile(const QString& fileName)
 {
     resetContent();
-    m_fileName=fileName;
-    return loadContent();
+    return m_animator->loadFile(fileName);
 }
 
 //--------------------------------------------------------------------------
@@ -92,15 +150,14 @@ bool ImageLabel::setImageFile(const QString& fileName)
 bool ImageLabel::setImageData(const QByteArray& data, const QByteArray& format)
 {
     resetContent();
-    m_data=data;
-    m_format=format;
-    return loadContent();
+    return m_animator->loadData(data,format);
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::clearImage()
 {
+    m_animator->clear();
     resetContent();
     update();
 }
@@ -109,197 +166,52 @@ void ImageLabel::clearImage()
 
 void ImageLabel::resetContent()
 {
-    if (m_movie)
-    {
-        m_movie->disconnect(this);
-        m_movie->stop();
-    }
-    m_movie.reset();
-    m_buffer.reset();
-
-    m_fileName.clear();
-    m_data.clear();
-    m_format.clear();
-
     m_stillFrame=QPixmap{};
     m_paintFrame=QPixmap{};
-    m_naturalSize=QSize{};
-
-    m_animated=false;
     m_frameDirty=false;
-    m_manual=ManualState::Stopped;
-
-    if (m_playing)
-    {
-        m_playing=false;
-        emit playingChanged(false);
-    }
 
     QLabel::setPixmap(QPixmap{});
 }
 
 //--------------------------------------------------------------------------
 
-bool ImageLabel::loadContent()
+void ImageLabel::onAnimatorLoaded()
 {
-    QImageReader reader;
-    QBuffer sniffBuffer;
-
-    if (!m_fileName.isEmpty())
-    {
-        reader.setFileName(m_fileName);
-    }
-    else
-    {
-        sniffBuffer.setBuffer(&m_data);
-        sniffBuffer.open(QIODevice::ReadOnly);
-        reader.setDevice(&sniffBuffer);
-        if (!m_format.isEmpty())
-        {
-            reader.setFormat(m_format);
-        }
-        else
-        {
-            reader.setDecideFormatFromContent(true);
-        }
-    }
-    reader.setAutoTransform(true);
-
-    if (!reader.canRead())
-    {
-        auto error=reader.errorString();
-        resetContent();
-        emit imageLoadFailed(error);
-        return false;
-    }
-
-    m_naturalSize=reader.size();
-
-    // Query animation support/frame count before read() -- the conventional order, and safer
-    // than querying afterwards since some format handlers determine these from a quick block
-    // scan that is not guaranteed to still be meaningful once the first frame has been decoded
-    // and the device position has moved on.
-    auto wasAnimated=m_animated;
-    m_animated=reader.supportsAnimation() && reader.imageCount()!=1;
-
-    auto first=reader.read();
-    if (first.isNull())
-    {
-        auto error=reader.errorString();
-        resetContent();
-        emit imageLoadFailed(error);
-        return false;
-    }
-    if (!m_naturalSize.isValid())
-    {
-        m_naturalSize=first.size();
-    }
-
-    if (m_animated)
-    {
-        createMovie();
-        if (m_movie && m_movie->frameCount()==1)
-        {
-            // A single-frame "animated" format (e.g. a static GIF) -- no point driving a timer
-            // for it, fall back to the still path below.
-            m_movie->disconnect(this);
-            m_movie.reset();
-            m_buffer.reset();
-            m_animated=false;
-        }
-    }
-
-    if (m_animated)
-    {
-        QLabel::setPixmap(QPixmap{});
-    }
-    else
-    {
-        QLabel::setPixmap(renderTile(first));
-    }
-
-    m_stillFrame=renderTile(first);
-    m_paintFrame=m_stillFrame;
+    applyScaledSize();
+    rebuildStills();
     m_frameDirty=false;
 
-    if (wasAnimated!=m_animated)
-    {
-        emit animatedChanged(m_animated);
-    }
     emit imageLoaded();
-
-    syncPlayback();
     update();
-
-    return true;
 }
 
 //--------------------------------------------------------------------------
 
-void ImageLabel::createMovie()
+void ImageLabel::onAnimatorLoadFailed(const QString& error)
 {
-    m_buffer.reset();
-    // No QObject parent: m_movie's lifetime is owned exclusively by the unique_ptr (see the
-    // member-order comment in the header). Parenting it to `this` would register it as a QObject
-    // child too, and ~QObject would then try to delete it a second time on top of the unique_ptr.
-    m_movie.reset(new QMovie());
+    resetContent();
+    emit imageLoadFailed(error);
+    update();
+}
 
-    if (!m_fileName.isEmpty())
-    {
-        m_movie->setFileName(m_fileName);
-    }
-    else
-    {
-        m_buffer.reset(new QBuffer(&m_data));
-        m_buffer->open(QIODevice::ReadOnly);
-        m_movie->setDevice(m_buffer.get());
-        if (!m_format.isEmpty())
-        {
-            m_movie->setFormat(m_format);
-        }
-    }
+//--------------------------------------------------------------------------
 
-    m_movie->setCacheMode(m_cacheFrames ? QMovie::CacheAll : QMovie::CacheNone);
-    m_movie->setSpeed(m_speed);
+void ImageLabel::onAnimatorAnimatedChanged(bool animated)
+{
+    emit animatedChanged(animated);
+}
 
-    connect(
-        m_movie.get(),
-        &QMovie::frameChanged,
-        this,
-        &ImageLabel::onFrameChanged
-    );
-    connect(
-        m_movie.get(),
-        &QMovie::error,
-        this,
-        &ImageLabel::onMovieError
-    );
-    connect(
-        m_movie.get(),
-        &QMovie::finished,
-        this,
-        &ImageLabel::onMovieFinished
-    );
+//--------------------------------------------------------------------------
 
-    // Apply the current scaled size directly here rather than going through applyScaledSize():
-    // that function's CacheAll branch calls back into createMovie() to rebuild a stale cache,
-    // which would recurse into this constructor indefinitely for a CacheAll movie.
-    auto dev=imageSize();
-    if (dev.isValid() && !dev.isNull())
-    {
-        m_movie->setScaledSize(dev);
-    }
+void ImageLabel::onAnimatorPlayingChanged(bool playing)
+{
+    emit playingChanged(playing);
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::applyScaledSize()
 {
-    if (!m_movie)
-    {
-        return;
-    }
-
     auto dev=imageSize();
     if (!dev.isValid() || dev.isNull())
     {
@@ -307,63 +219,21 @@ void ImageLabel::applyScaledSize()
         return;
     }
 
-    if (m_cacheFrames)
-    {
-        // QMovie caches frames at the scaled size in effect when they were cached, so changing
-        // the scaled size of a CacheAll movie requires rebuilding it from scratch (createMovie()
-        // applies the new scaled size itself) rather than calling setScaledSize() on the live
-        // instance.
-        auto wasPlaying=m_movie->state()==QMovie::Running;
-        createMovie();
-        if (wasPlaying)
-        {
-            syncPlayback();
-        }
-        return;
-    }
-
-    m_movie->setScaledSize(dev);
+    m_animator->setScaledSize(dev);
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::rebuildStills()
 {
-    if (m_fileName.isEmpty() && m_data.isEmpty())
-    {
-        return;
-    }
-
-    QImageReader reader;
-    QBuffer buf;
-    if (!m_fileName.isEmpty())
-    {
-        reader.setFileName(m_fileName);
-    }
-    else
-    {
-        buf.setBuffer(&m_data);
-        buf.open(QIODevice::ReadOnly);
-        reader.setDevice(&buf);
-        if (!m_format.isEmpty())
-        {
-            reader.setFormat(m_format);
-        }
-        else
-        {
-            reader.setDecideFormatFromContent(true);
-        }
-    }
-    reader.setAutoTransform(true);
-
-    auto first=reader.read();
+    auto first=m_animator->firstFrame();
     if (first.isNull())
     {
         return;
     }
 
     m_stillFrame=renderTile(first);
-    if (!m_animated)
+    if (!m_animator->isAnimated())
     {
         m_paintFrame=m_stillFrame;
         QLabel::setPixmap(m_stillFrame);
@@ -410,26 +280,9 @@ QPixmap ImageLabel::renderTile(const QImage& src) const
 
 //--------------------------------------------------------------------------
 
-int ImageLabel::frameCount() const
-{
-    if (m_movie)
-    {
-        return m_movie->frameCount();
-    }
-    return m_stillFrame.isNull() ? 0 : 1;
-}
-
-//--------------------------------------------------------------------------
-
 void ImageLabel::setAnimationMode(AnimationMode mode)
 {
-    if (m_mode==mode)
-    {
-        return;
-    }
-    m_mode=mode;
-    m_manual=ManualState::Stopped;
-    syncPlayback();
+    m_animator->setAnimationMode(mode);
     update();
 }
 
@@ -437,11 +290,7 @@ void ImageLabel::setAnimationMode(AnimationMode mode)
 
 void ImageLabel::setAnimationSpeed(int percent)
 {
-    m_speed=percent;
-    if (m_movie)
-    {
-        m_movie->setSpeed(m_speed);
-    }
+    m_animator->setAnimationSpeed(percent);
 }
 
 //--------------------------------------------------------------------------
@@ -463,44 +312,28 @@ void ImageLabel::setAspectRatioMode(Qt::AspectRatioMode mode)
 
 void ImageLabel::setCacheFrames(bool enable)
 {
-    if (m_cacheFrames==enable)
-    {
-        return;
-    }
-    m_cacheFrames=enable;
-    if (m_movie)
-    {
-        auto wasPlaying=m_movie->state()==QMovie::Running;
-        createMovie();
-        if (wasPlaying)
-        {
-            syncPlayback();
-        }
-    }
+    m_animator->setCacheFrames(enable);
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::play()
 {
-    m_manual=ManualState::Playing;
-    syncPlayback();
+    m_animator->play();
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::pause()
 {
-    m_manual=ManualState::Paused;
-    syncPlayback();
+    m_animator->pause();
 }
 
 //--------------------------------------------------------------------------
 
 void ImageLabel::stop()
 {
-    m_manual=ManualState::Stopped;
-    syncPlayback();
+    m_animator->stop();
 }
 
 //--------------------------------------------------------------------------
@@ -519,116 +352,8 @@ void ImageLabel::togglePlay()
 
 //--------------------------------------------------------------------------
 
-bool ImageLabel::shouldPlay() const
+void ImageLabel::onAnimatorFrameChanged()
 {
-    if (!m_animated || !m_movie)
-    {
-        return false;
-    }
-    if (m_pauseWhenHidden && !isVisible())
-    {
-        return false;
-    }
-    if (m_pauseWhenInactive && window() && !window()->isActiveWindow())
-    {
-        return false;
-    }
-
-    switch (m_mode)
-    {
-        case AnimationMode::Auto:
-            return true;
-        case AnimationMode::Never:
-            return false;
-        case AnimationMode::OnHover:
-            return isEffectiveHovered();
-        case AnimationMode::Manual:
-            return m_manual==ManualState::Playing;
-    }
-    return false;
-}
-
-//--------------------------------------------------------------------------
-
-bool ImageLabel::restOnFirstFrame() const
-{
-    if (m_mode==AnimationMode::Never)
-    {
-        return true;
-    }
-    if (m_mode==AnimationMode::OnHover)
-    {
-        return !isEffectiveHovered();
-    }
-    if (m_mode==AnimationMode::Manual)
-    {
-        return m_manual==ManualState::Stopped;
-    }
-    // Auto only ever stops because of hide/deactivate -- freeze in place and resume from there.
-    return false;
-}
-
-//--------------------------------------------------------------------------
-
-void ImageLabel::syncPlayback()
-{
-    if (m_inSync)
-    {
-        return;
-    }
-    m_inSync=true;
-
-    if (m_animated && m_movie)
-    {
-        auto play=shouldPlay();
-        if (play)
-        {
-            if (m_movie->state()==QMovie::Paused)
-            {
-                m_movie->setPaused(false);
-            }
-            else if (m_movie->state()!=QMovie::Running)
-            {
-                m_movie->start();
-            }
-        }
-        else
-        {
-            if (restOnFirstFrame())
-            {
-                m_movie->stop();
-                m_paintFrame=m_stillFrame;
-                m_frameDirty=false;
-                update();
-            }
-            else if (m_movie->state()==QMovie::Running)
-            {
-                m_movie->setPaused(true);
-            }
-        }
-
-        auto running=m_movie->state()==QMovie::Running;
-        if (m_playing!=running)
-        {
-            m_playing=running;
-            emit playingChanged(m_playing);
-        }
-    }
-    else if (m_playing)
-    {
-        m_playing=false;
-        emit playingChanged(false);
-    }
-
-    m_inSync=false;
-}
-
-//--------------------------------------------------------------------------
-
-void ImageLabel::onFrameChanged(int frameNumber)
-{
-    std::ignore=frameNumber;
-
     m_frameDirty=true;
     if (!isVisible() || visibleRegion().isEmpty())
     {
@@ -639,35 +364,11 @@ void ImageLabel::onFrameChanged(int frameNumber)
 
 //--------------------------------------------------------------------------
 
-void ImageLabel::onMovieError()
-{
-    if (m_movie)
-    {
-        emit imageLoadFailed(m_movie->lastErrorString());
-    }
-}
-
-//--------------------------------------------------------------------------
-
-void ImageLabel::onMovieFinished()
-{
-    emit animationFinished();
-
-    auto running=m_movie && m_movie->state()==QMovie::Running;
-    if (m_playing!=running)
-    {
-        m_playing=running;
-        emit playingChanged(m_playing);
-    }
-}
-
-//--------------------------------------------------------------------------
-
 void ImageLabel::paintEvent(QPaintEvent* event)
 {
-    syncPlayback();
+    m_animator->sync();
 
-    if (!m_animated || !m_movie)
+    if (!m_animator->isAnimated())
     {
         RoundedImage::paintEvent(event);
         return;
@@ -676,7 +377,7 @@ void ImageLabel::paintEvent(QPaintEvent* event)
     if (autoSize() && !isDeviceImageSizeEqual(size()))
     {
         // setImageSize() (base class) only updates imageSize()/m_size -- it does not know about
-        // our QMovie, so re-apply the scaled size here too. Without this, the movie would keep
+        // our animator, so re-apply the scaled size here too. Without this, the movie would keep
         // decoding at whatever size was last applied (possibly none, i.e. the natural size) until
         // the *next* resize, one extra unnecessarily-large/blurry decode per resize. renderTile()
         // below still produces a correctly-sized tile regardless -- this call is a performance
@@ -687,7 +388,7 @@ void ImageLabel::paintEvent(QPaintEvent* event)
 
     if (m_frameDirty)
     {
-        m_paintFrame=renderTile(m_movie->currentImage());
+        m_paintFrame=renderTile(m_animator->currentFrame());
         m_frameDirty=false;
     }
 
@@ -702,6 +403,7 @@ void ImageLabel::paintEvent(QPaintEvent* event)
     painter.begin(this);
     painter.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     painter.setPen(Qt::NoPen);
+    painter.setOpacity(m_contentOpacity);
     painter.setBrush(px);
     painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
     doPaint(&painter);
@@ -725,7 +427,7 @@ void ImageLabel::resizeEvent(QResizeEvent* event)
 void ImageLabel::showEvent(QShowEvent* event)
 {
     RoundedImage::showEvent(event);
-    syncPlayback();
+    m_animator->sync();
 }
 
 //--------------------------------------------------------------------------
@@ -733,7 +435,7 @@ void ImageLabel::showEvent(QShowEvent* event)
 void ImageLabel::hideEvent(QHideEvent* event)
 {
     RoundedImage::hideEvent(event);
-    syncPlayback();
+    m_animator->sync();
 }
 
 //--------------------------------------------------------------------------
@@ -741,7 +443,7 @@ void ImageLabel::hideEvent(QHideEvent* event)
 void ImageLabel::enterEvent(QEnterEvent* event)
 {
     RoundedImage::enterEvent(event);
-    syncPlayback();
+    m_animator->sync();
 }
 
 //--------------------------------------------------------------------------
@@ -749,7 +451,7 @@ void ImageLabel::enterEvent(QEnterEvent* event)
 void ImageLabel::leaveEvent(QEvent* event)
 {
     RoundedImage::leaveEvent(event);
-    syncPlayback();
+    m_animator->sync();
 }
 
 //--------------------------------------------------------------------------
@@ -759,7 +461,7 @@ void ImageLabel::mousePressEvent(QMouseEvent* event)
     if (m_clickable && event->button()==Qt::LeftButton)
     {
         emit clicked();
-        if (m_mode==AnimationMode::Manual)
+        if (m_animator->animationMode()==AnimationMode::Manual)
         {
             togglePlay();
         }
@@ -775,9 +477,9 @@ void ImageLabel::changeEvent(QEvent* event)
 
     // Window-activation events (WindowActivate/WindowDeactivate/ActivationChange) are not
     // reliably delivered to every descendant widget across Qt versions/platforms, so rather than
-    // special-case those types here, just re-evaluate on every change event -- syncPlayback() is
-    // idempotent and cheap, and shouldPlay() already re-checks window()->isActiveWindow() itself.
-    syncPlayback();
+    // special-case those types here, just re-evaluate on every change event -- sync() is
+    // idempotent and cheap, and shouldPlay() already re-checks isWindowActive() itself.
+    m_animator->sync();
 }
 
 //--------------------------------------------------------------------------

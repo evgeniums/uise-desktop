@@ -62,7 +62,7 @@ class ChatImageViewer_p
             baseImages.reserve(images.size());
             for (auto& img : images)
             {
-                baseImages.emplace_back(img.key,img.content);
+                baseImages.emplace_back(img.key,img.content,img.animation);
 
                 ChatMeta m;
                 m.sender=std::move(img.sender);
@@ -139,6 +139,18 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
     );
     connect(
         pimpl->controls,
+        &ChatImageViewerControls::playPauseRequested,
+        this,
+        &ImageViewer::togglePlay
+    );
+    connect(
+        this,
+        &ImageViewer::currentImageAnimationStateChanged,
+        this,
+        &ChatImageViewer::onAnimationStateChanged
+    );
+    connect(
+        pimpl->controls,
         &ChatImageViewerControls::previewClickedKey,
         this,
         [this](const PixmapKey& key)
@@ -202,6 +214,7 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
     );
 
     updateControls();
+    onAnimationStateChanged();
 
     return w;
 }
@@ -252,7 +265,7 @@ bool ChatImageViewer::updateChatImage(const ChatImage& image)
     it->second.messageId=image.messageId;
     it->second.previewKey=image.previewKey;
 
-    bool ok=updateImage(Image{image.key,image.content});
+    bool ok=updateImage(Image{image.key,image.content,image.animation});
     updateControls();
     return ok;
 }
@@ -403,6 +416,18 @@ void ChatImageViewer::onWindowChangedSlot()
 
 //--------------------------------------------------------------------------
 
+void ChatImageViewer::onAnimationStateChanged()
+{
+    if (pimpl->controls==nullptr)
+    {
+        return;
+    }
+    pimpl->controls->setPlayPauseVisible(isCurrentImageAnimated());
+    pimpl->controls->setPlaying(isCurrentImagePlaying());
+}
+
+//--------------------------------------------------------------------------
+
 void ChatImageViewer::onImageEvicted(const PixmapKey& key)
 {
     pimpl->meta.erase(key);
@@ -457,8 +482,9 @@ ImagePreviewStrip::Preview ChatImageViewer::makePreview(size_t index) const
     // source at all -- the same situation Image::content exists for in the first place, which is
     // exactly what keeps the source-less chatimageviewer-demo/chatimageviewerwindow-demo working.
     QPixmap seed=imageSource() ? QPixmap{} : imagePixmap(index);
+    AnimationContent animSeed=imageSource() ? AnimationContent{} : imageAnimation(index);
 
-    return ImagePreviewStrip::Preview{previewKey,seed};
+    return ImagePreviewStrip::Preview{previewKey,seed,animSeed};
 }
 
 //--------------------------------------------------------------------------

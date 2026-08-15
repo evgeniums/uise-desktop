@@ -7,6 +7,8 @@
                 "rotate" : "${uise-svg-icons-1}/rotate-2",
                 "zoom-in" : "${uise-svg-icons-1}/zoom-in",
                 "zoom-out" : "${uise-svg-icons-1}/zoom-out",
+                "play" : "${uise-svg-icons-1}/player-play",
+                "pause" : "${uise-svg-icons-1}/player-pause",
                 "menu" : "${uise-svg-icons-1}/dots-vertical",
                 "goToMessage" : "${uise-svg-icons-1}/message-circle",
                 "copy" : "${uise-svg-icons-1}/copy",

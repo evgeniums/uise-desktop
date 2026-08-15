@@ -134,6 +134,25 @@ void PixmapProducer::setLoading(bool enable)
     emit loadingChanged(m_loading);
 }
 
+//--------------------------------------------------------------------------
+
+void PixmapProducer::setAnimation(UISE_DESKTOP_NAMESPACE::AnimationContent animation)
+{
+    if (m_animation==animation)
+    {
+        return;
+    }
+    m_animation=std::move(animation);
+    emit animationUpdated();
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapProducer::clearAnimation()
+{
+    setAnimation(AnimationContent{});
+}
+
 /************************** PixmapConsumer *********************************/
 
 //--------------------------------------------------------------------------
@@ -171,6 +190,12 @@ void PixmapConsumer::resetPixmapProducer()
             this,
             &PixmapConsumer::loadingChanged
         );
+        disconnect(
+            m_producer.get(),
+            &PixmapProducer::animationUpdated,
+            this,
+            &PixmapConsumer::animationUpdated
+        );
     }
 
     if (m_source)
@@ -207,6 +232,12 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
         this,
         &PixmapConsumer::loadingChanged
     );
+    connect(
+        m_producer.get(),
+        &PixmapProducer::animationUpdated,
+        this,
+        &PixmapConsumer::animationUpdated
+    );
 
     // Converge on the producer's CURRENT state, because any update it already published is gone:
     // PixmapSource::acquireProducer() calls doLoadPixmap() synchronously and only then returns the
@@ -234,6 +265,10 @@ void PixmapConsumer::setPixmapProducer(std::shared_ptr<PixmapProducer> producer)
     if (m_producer->isLoading())
     {
         emit loadingChanged(true);
+    }
+    if (!m_producer->animation().isNull())
+    {
+        emit animationUpdated();
     }
 }
 
@@ -417,6 +452,31 @@ void PixmapSource::updateScaledPixmaps(const WithPath& path, const QPixmap& orig
             // possible or needed) -- hand it over as-is rather than blanking a perfectly good pixmap.
             producer->setPixmap(originalPixmap);
         }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::updateAnimation(const PixmapKey& key, const AnimationContent& animation)
+{
+    auto& kIdx=keyIdx();
+    auto it=kIdx.find(key);
+    if (it==kIdx.end())
+    {
+        return;
+    }
+    it->value()->setAnimation(animation);
+}
+
+//--------------------------------------------------------------------------
+
+void PixmapSource::updatePathAnimation(const WithPath& path, const AnimationContent& animation)
+{
+    auto& pIdx=pathIdx();
+    auto [from,to]=pIdx.equal_range(path);
+    for (auto it=from; it!=to; ++it)
+    {
+        it->value()->setAnimation(animation);
     }
 }
 

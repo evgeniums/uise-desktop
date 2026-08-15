@@ -49,6 +49,16 @@ class ImagePreviewStrip_p
             ImageLabel* widget=nullptr;
             PixmapKey key;
             QPixmap content;
+
+            //! Seed animation content for this item (Preview::animation) -- what applyItemAnimation()
+            //! applies when non-null. Distinct from appliedAnimation below.
+            AnimationContent animation;
+
+            //! Animation content actually last handed to widget->setImageFile()/setImageData() (or
+            //! a null AnimationContent if none/cleared) -- lets setItemAnimation() skip redundant
+            //! reloads (which would restart playback) when called again with the same content.
+            AnimationContent appliedAnimation;
+
             PixmapConsumer consumer;
             bool consumerWired=false;
             QMetaObject::Connection clickedConnection;
@@ -81,6 +91,8 @@ class ImagePreviewStrip_p
         qreal minOpacity=ImagePreviewStrip::DefaultMinOpacity;
         int visibleNeighbours=ImagePreviewStrip::DefaultVisibleNeighbours;
         int scrollAnimationDurationMs=ImagePreviewStrip::DefaultScrollAnimationDurationMs;
+
+        ImageAnimator::AnimationMode animationMode=ImageAnimator::AnimationMode::Never;
 };
 
 //--------------------------------------------------------------------------
@@ -214,6 +226,7 @@ void ImagePreviewStrip::setImageSource(std::shared_ptr<PixmapSource> source)
     for (size_t i=0;i<pimpl->items.size();++i)
     {
         applyItemContent(i);
+        applyItemAnimation(i);
     }
 }
 
@@ -323,6 +336,29 @@ qreal ImagePreviewStrip::visualIndex() const
 
 //--------------------------------------------------------------------------
 
+void ImagePreviewStrip::setAnimationMode(ImageAnimator::AnimationMode mode)
+{
+    if (pimpl->animationMode==mode)
+    {
+        return;
+    }
+    pimpl->animationMode=mode;
+
+    for (auto& entry : pimpl->items)
+    {
+        entry->widget->setAnimationMode(mode);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+ImageAnimator::AnimationMode ImagePreviewStrip::animationMode() const
+{
+    return pimpl->animationMode;
+}
+
+//--------------------------------------------------------------------------
+
 void ImagePreviewStrip::setVisualIndex(qreal value)
 {
     pimpl->visualIndex=value;
@@ -403,6 +439,7 @@ void ImagePreviewStrip::diffItems()
             {
                 entry->content=preview.content;
             }
+            entry->animation=preview.animation;
 
             newItems.push_back(std::move(entry));
             continue;
@@ -411,11 +448,13 @@ void ImagePreviewStrip::diffItems()
         auto entry=std::make_shared<ImagePreviewStrip_p::ItemEntry>();
         entry->key=preview.key;
         entry->content=preview.content;
+        entry->animation=preview.animation;
 
         entry->widget=new ImageLabel(this);
         entry->widget->setObjectName("previewItem");
         entry->widget->setClickable(true);
         entry->widget->setAutoSize(false);
+        entry->widget->setAnimationMode(pimpl->animationMode);
         entry->widget->setImageSize(pimpl->itemSize);
         entry->widget->resize(pimpl->itemSize);
         entry->widget->show();
@@ -456,6 +495,7 @@ void ImagePreviewStrip::diffItems()
         );
 
         applyItemContent(i);
+        applyItemAnimation(i);
     }
 
     // Deliberately NOT setVisible(items.size()>1) -- hiding the whole widget would exclude it
@@ -502,6 +542,34 @@ void ImagePreviewStrip::applyItemContent(size_t index)
 
 //--------------------------------------------------------------------------
 
+void ImagePreviewStrip::applyItemAnimation(size_t index)
+{
+    if (index>=pimpl->items.size())
+    {
+        return;
+    }
+    auto& entry=*pimpl->items[index];
+
+    if (!entry.animation.isNull())
+    {
+        setItemAnimation(index,entry.animation);
+        return;
+    }
+
+    if (!pimpl->imageSource)
+    {
+        setItemAnimation(index,AnimationContent{});
+        return;
+    }
+
+    // Resolved (if at all) through the consumer wireItemConsumer() wires for the pixmap channel --
+    // it connects PixmapConsumer::animationUpdated alongside pixmapUpdated, so there is nothing
+    // further to do here; applyItemContent(), always called alongside this one, already triggered
+    // wireItemConsumer() if needed.
+}
+
+//--------------------------------------------------------------------------
+
 void ImagePreviewStrip::wireItemConsumer(size_t index)
 {
     auto& entry=*pimpl->items[index];
@@ -528,6 +596,24 @@ void ImagePreviewStrip::wireItemConsumer(size_t index)
                 }
             }
         );
+        connect(
+            &entry.consumer,
+            &PixmapConsumer::animationUpdated,
+            this,
+            [this,key]()
+            {
+                auto idx=indexOf(key);
+                if (idx<0)
+                {
+                    return;
+                }
+                auto* producer=pimpl->items[static_cast<size_t>(idx)]->consumer.pixmapProducer();
+                if (producer!=nullptr)
+                {
+                    setItemAnimation(static_cast<size_t>(idx),producer->animation());
+                }
+            }
+        );
     }
 
     entry.consumer.setPathAndSize(entry.key);
@@ -540,6 +626,7 @@ void ImagePreviewStrip::wireItemConsumer(size_t index)
     if (producer!=nullptr)
     {
         setItemPixmap(index,producer->pixmap());
+        setItemAnimation(index,producer->animation());
     }
 }
 
@@ -559,6 +646,43 @@ void ImagePreviewStrip::setItemPixmap(size_t index, const QPixmap& px)
 
 //--------------------------------------------------------------------------
 
+void ImagePreviewStrip::setItemAnimation(size_t index, const AnimationContent& animation)
+{
+    if (index>=pimpl->items.size())
+    {
+        return;
+    }
+    auto& entry=*pimpl->items[index];
+
+    if (entry.appliedAnimation==animation)
+    {
+        return;
+    }
+    entry.appliedAnimation=animation;
+
+    if (animation.isNull())
+    {
+        if (entry.widget->isAnimated())
+        {
+            entry.widget->clearImage();
+            applyItemOpacity(index);
+        }
+        return;
+    }
+
+    if (!animation.file.isEmpty())
+    {
+        entry.widget->setImageFile(animation.file);
+    }
+    else
+    {
+        entry.widget->setImageData(animation.data,animation.format);
+    }
+    applyItemOpacity(index);
+}
+
+//--------------------------------------------------------------------------
+
 void ImagePreviewStrip::applyItemOpacity(size_t index)
 {
     if (index>=pimpl->items.size())
@@ -566,6 +690,17 @@ void ImagePreviewStrip::applyItemOpacity(size_t index)
         return;
     }
     auto& entry=*pimpl->items[index];
+
+    if (entry.widget->isAnimated())
+    {
+        // Animated content paints its own decoded frames (see ImageLabel::paintEvent()), a path
+        // that never chains through RoundedImage's QLabel::pixmap()-based paint -- so opacity has
+        // to be applied via ImageLabel::setContentOpacity() instead of being baked into a pixmap
+        // handed to setPixmap(), as the static branch below does.
+        entry.widget->setContentOpacity(qMax(0.0,entry.opacity));
+        return;
+    }
+    entry.widget->setContentOpacity(1.0);
 
     if (entry.scaledContent.isNull())
     {

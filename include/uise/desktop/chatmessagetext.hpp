@@ -54,6 +54,22 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         int textWidthHint() const;
 
+        /**
+         * @brief Toggle focusability + a minimal Copy/Select All context menu.
+         * @param enable Off by default -- see AbstractChatMessageBody::setCopyable()'s own doc
+         *  comment for why (live chat page vs. a static preview like AbstractReplyDialog's).
+         *  Deliberately NOT createStandardContextMenu(): that pulls in Qt's full standard
+         *  action set (Cut/Paste, irrelevant since this is read-only, and "Copy Link Location"
+         *  for any markdown-rendered link, which a chat message has no meaningful separate
+         *  "location" to expose) -- this shows only what actually applies here.
+         */
+        void setCopyable(bool enable);
+
+        bool isCopyable() const noexcept
+        {
+            return m_copyable;
+        }
+
     public slots:
 
         void updateSize();
@@ -64,9 +80,14 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         void mousePressEvent(QMouseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
 
+    private slots:
+
+        void showCopyMenu(const QPoint& pos);
+
     private:
 
         AbstractChatMessageText* m_messageTextWidget=nullptr;
+        bool m_copyable=false;
 };
 
 class ChatMessageText_p;
@@ -96,6 +117,10 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
         void updateMaximumBubbleWidth() override;
 
         QString selectedText() const override;
+
+        bool hasSelectableText() const override;
+
+        void setCopyable(bool enable) override;
 
     protected:
 

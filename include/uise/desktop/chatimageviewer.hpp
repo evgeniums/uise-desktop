@@ -80,19 +80,27 @@ class UISE_DESKTOP_EXPORT ChatImageViewer : public ImageViewer
             //! (invalid) to use previewKeyFor()'s derivation instead.
             PixmapKey previewKey;
 
+            //! Seed encoded animation content, forwarded verbatim into the base viewer's Image::
+            //! animation -- see AbstractImageViewer::imageAnimation()'s producer-first/seed-
+            //! fallback precedence. Left null when the caller expects a PixmapSource to supply it
+            //! (or the image is not animated).
+            AnimationContent animation;
+
             ChatImage(
                     PixmapKey key={},
                     QPixmap content={},
                     QString sender={},
                     QDateTime dateTime={},
                     QString messageId={},
-                    PixmapKey previewKey={}
+                    PixmapKey previewKey={},
+                    AnimationContent animation={}
                 ) : key(std::move(key)),
                     content(std::move(content)),
                     sender(std::move(sender)),
                     dateTime(std::move(dateTime)),
                     messageId(std::move(messageId)),
-                    previewKey(std::move(previewKey))
+                    previewKey(std::move(previewKey)),
+                    animation(std::move(animation))
             {}
         };
 
@@ -211,6 +219,12 @@ class UISE_DESKTOP_EXPORT ChatImageViewer : public ImageViewer
 
         void onCurrentImageIndexChanged(size_t index);
         void onWindowChangedSlot();
+
+        //! Keeps ChatImageViewerControls' own play/pause button in sync with ImageViewer::
+        //! isCurrentImageAnimated()/the animation's running state -- see ImageViewer::
+        //! currentImageAnimationStateChanged()'s doc for why this class needs its own copy of
+        //! that logic instead of relying on the (replaced) embedded toolbar button.
+        void onAnimationStateChanged();
 
     private:
 

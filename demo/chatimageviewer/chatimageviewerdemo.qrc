@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/uise/desktop/demo/chatimageviewer">
+        <file alias="animated.gif">../imagelabel/assets/animated.gif</file>
+    </qresource>
+</RCC>

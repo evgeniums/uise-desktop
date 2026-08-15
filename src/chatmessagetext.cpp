@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTimer>
 #include <QWheelEvent>
 #include <QMouseEvent>
+#include <QMenu>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -47,6 +48,17 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
 
     setLineWrapMode(FixedPixelWidth);
+
+    // Qt's macOS style draws the native Cocoa focus ring itself, outside the stylesheet paint
+    // path entirely -- chat.qss's "outline: none;" on :focus (a QSS-level property) has no
+    // effect on it. WA_MacShowFocusRect is the Qt-level switch for that ring specifically; a
+    // no-op on every other platform. Only reachable at all once a host opts into
+    // setCopyable(true), see that method's own doc comment.
+    setAttribute(Qt::WA_MacShowFocusRect,false);
+
+    // Wired unconditionally -- inert while contextMenuPolicy() stays Qt::NoContextMenu (the
+    // default, see setCopyable()), so this only ever fires once a host actually opts in.
+    connect(this,&QWidget::customContextMenuRequested,this,&ChatMessageTextBrowser::showCopyMenu);
 
     Style::updateWidgetStyle(this);
 
@@ -138,6 +150,43 @@ void ChatMessageTextBrowser::mouseMoveEvent(QMouseEvent* event)
             QTextBrowser::mouseMoveEvent(event);
         }
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCopyable(bool enable)
+{
+    if (m_copyable==enable)
+    {
+        return;
+    }
+    m_copyable=enable;
+
+    // NoFocus (the ctor's default) means Ctrl+C/Cmd+C can never reach this widget -- keyboard
+    // shortcuts go to whichever widget currently HAS focus, and a widget with Qt::NoFocus can
+    // never receive it via click or Tab. Mouse-drag selection (and so selectedText()) works
+    // regardless of focus policy, which is why the live chat page's "Quote selected" flow was
+    // never affected by this.
+    setFocusPolicy(enable ? Qt::StrongFocus : Qt::NoFocus);
+    // CustomContextMenu routes right-clicks to showCopyMenu() instead of Qt's own
+    // createStandardContextMenu() -- see setCopyable()'s own doc comment for why.
+    setContextMenuPolicy(enable ? Qt::CustomContextMenu : Qt::NoContextMenu);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::showCopyMenu(const QPoint& pos)
+{
+    QMenu menu(this);
+
+    auto copyAction=menu.addAction(tr("Copy"));
+    copyAction->setEnabled(textCursor().hasSelection());
+    connect(copyAction,&QAction::triggered,this,&QTextEdit::copy);
+
+    auto selectAllAction=menu.addAction(tr("Select All"));
+    connect(selectAllAction,&QAction::triggered,this,&QTextEdit::selectAll);
+
+    menu.exec(mapToGlobal(pos));
 }
 
 /********************************ChatMessageText****************************/
@@ -269,6 +318,20 @@ QString ChatMessageText::selectedText() const
 {
     auto text=pimpl->text->textCursor().selectedText();
     return text;
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageText::hasSelectableText() const
+{
+    return !pimpl->text->toPlainText().trimmed().isEmpty();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::setCopyable(bool enable)
+{
+    pimpl->text->setCopyable(enable);
 }
 
 //--------------------------------------------------------------------------

@@ -138,7 +138,17 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         PushButton* rotateButton() const;
         PushButton* zoomInButton() const;
         PushButton* zoomOutButton() const;
+        PushButton* playPauseButton() const;
         IconTextButton* menuButton() const;
+
+        //! Show/hide the play/pause toolbar button -- hidden by default (most images are static).
+        //! ChatImageViewer keeps this in sync with ImageViewer::isCurrentImageAnimated().
+        void setPlayPauseVisible(bool visible);
+
+        //! Swap the button's icon between play and pause -- meaningful only while visible (see
+        //! setPlayPauseVisible()). ChatImageViewer keeps this in sync with the animation's actual
+        //! running state.
+        void setPlaying(bool playing);
 
     signals:
 
@@ -153,6 +163,7 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         void rotateRequested();
         void zoomInRequested();
         void zoomOutRequested();
+        void playPauseRequested();
 
         void goToMessageRequested();
         void copyRequested();

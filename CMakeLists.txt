@@ -157,6 +157,7 @@ SET (HEADERS
 
     include/uise/desktop/newpasswordwizard.hpp
 
+    include/uise/desktop/imageanimator.hpp
     include/uise/desktop/pixmapproducer.hpp
     include/uise/desktop/roundedimage.hpp
     include/uise/desktop/imagelabel.hpp
@@ -342,6 +343,7 @@ SET (SOURCES
 
     src/newpasswordwizard.cpp
 
+    src/imageanimator.cpp
     src/pixmapproducer.cpp
     src/roundedimage.cpp
     src/imagelabel.cpp

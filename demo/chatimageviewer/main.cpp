@@ -19,8 +19,10 @@ You may select, at your option, one of the above-listed licenses.
 *
 *  Demo application of ChatImageViewer: a Telegram-style overlay image viewer with a custom
 *  bottom widget (ChatImageViewerControls) showing an "n of N" counter, sender/datetime, a
-*  clickable album strip (ImagePreviewStrip), and a toolbar (save as / rotate / zoom / menu, the
-*  latter with a custom "Toggle Light/Dark Theme" entry appended below the built-in ones).
+*  clickable album strip (ImagePreviewStrip), and a toolbar (save as / rotate / zoom / play-pause /
+*  menu, the latter with a custom "Toggle Light/Dark Theme" entry appended below the built-in
+*  ones). One image (Bob's first) carries animated GIF content via ChatImage::animation, seeded
+*  directly since this demo has no PixmapSource.
 *
 */
 
@@ -81,6 +83,11 @@ struct MessageSpec
 // not collide with ChatImageViewerControls::MenuAction's own ids (1-5).
 constexpr int ToggleThemeMenuItemId=100;
 
+// Embedded via chatimageviewerdemo.qrc, which references demo/imagelabel/assets/animated.gif by
+// relative path rather than duplicating the file. Attached to exactly one image below (Bob's
+// first) so both a still and an animated image are visible in the same album strip.
+const char* AnimatedAsset=":/uise/desktop/demo/chatimageviewer/animated.gif";
+
 } // anonymous namespace
 
 //--------------------------------------------------------------------------
@@ -139,6 +146,13 @@ int main(int argc, char *argv[])
                 dt,
                 msg.messageId
             );
+            if (msg.messageId=="msg-2" && i==0)
+            {
+                // The poster pixmap above stays as the seed/fallback -- see AbstractImageViewer::
+                // imageAnimation()'s producer-first precedence, which doesn't apply to a source-
+                // less demo like this one, so the seed is what's actually used.
+                chatImages.back().animation=AnimationContent{QString::fromUtf8(AnimatedAsset)};
+            }
             ++globalIndex;
         }
     }

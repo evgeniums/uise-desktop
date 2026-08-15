@@ -6,4 +6,5 @@ uise_demo(
     DESCRIPTION "Windowed chat image viewer: prefetching, a blurry-to-sharp version ladder, the loading overlay, and both album/continuous thumbnail-strip scopes."
     SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/demoflyweightbackend.hpp
+    RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/chatimageviewerflyweightdemo.qrc
 )

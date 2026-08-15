@@ -35,9 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/roundedimage.hpp>
+#include <uise/desktop/imageanimator.hpp>
 
-class QBuffer;
-class QMovie;
 class QResizeEvent;
 class QShowEvent;
 class QHideEvent;
@@ -48,9 +47,11 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 /**
  * @brief Extended image label showing either a static image or an animated image.
  *
- * ImageLabel extends RoundedImage with a direct file/bytes content API and QMovie-driven
- * animation playback. Whether the content actually animates is decided from two independent
- * things: the content itself (a single-frame image never animates, regardless of mode) and
+ * ImageLabel extends RoundedImage with a direct file/bytes content API and animated playback,
+ * both delegated to an internal ImageAnimator (see imageanimator.hpp) -- this class owns the
+ * widget-side concerns only: tiling decoded frames to the widget's size/devicePixelRatio and
+ * painting them. Whether the content actually animates is decided from two independent things:
+ * the content itself (a single-frame image never animates, regardless of mode) and
  * animationMode() (which can force a still image, gate playback on hover, or hand playback to
  * explicit play()/pause()/stop() calls).
  *
@@ -69,32 +70,27 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
 
     public:
 
-        //! When the animation of an animated image is allowed to run.
-        enum class AnimationMode
-        {
-            Auto,       //!< Play as soon as animated content is loaded and the widget is visible.
-            Never,      //!< Never play, always show the first frame as a still image.
-            OnHover,    //!< Still at rest, play from the first frame while hovered.
-            Manual      //!< Still at rest, playback driven only by play()/pause()/stop()/togglePlay();
-                        //!< a click also toggles it when isClickable() is true.
-        };
-        Q_ENUM(AnimationMode)
+        //! Alias of the shared, widget-free playback-mode enum -- kept as a class-scoped name for
+        //! source compatibility with existing call sites (ImageLabel::AnimationMode::...), even
+        //! though the enum itself is now declared (and Q_ENUM-registered) on ImageAnimator.
+        using AnimationMode=ImageAnimator::AnimationMode;
 
-    // Property declarations must follow the AnimationMode enum: moc parses the header top to
-    // bottom and needs the enum (registered via Q_ENUM above) already visible when it reaches
-    // the Q_PROPERTY line below that references it as a type.
-    Q_PROPERTY(AnimationMode animationMode READ animationMode WRITE setAnimationMode)
+    // Property declaration references ImageAnimator::AnimationMode (fully qualified, since the
+    // enum is no longer declared on this class -- see the alias above) so moc can resolve the
+    // type without needing a local Q_ENUM.
+    Q_PROPERTY(ImageAnimator::AnimationMode animationMode READ animationMode WRITE setAnimationMode)
     Q_PROPERTY(int animationSpeed READ animationSpeed WRITE setAnimationSpeed)
 
     public:
 
-        constexpr static const AnimationMode DefaultAnimationMode=AnimationMode::Auto;
+        constexpr static const AnimationMode DefaultAnimationMode=ImageAnimator::DefaultAnimationMode;
         constexpr static const Qt::AspectRatioMode DefaultAspectRatioMode=Qt::KeepAspectRatioByExpanding;
 
         //! Ctor, signature mirrors RoundedImage.
         explicit ImageLabel(QWidget* parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
 
-        //! Dtor is defined in the .cpp because QMovie/QBuffer are incomplete types here.
+        //! Dtor is defined in the .cpp, alongside the other out-of-line members, for consistency
+        //! with the rest of the class rather than out of a strict incomplete-type requirement.
         ~ImageLabel() override;
 
         ImageLabel(const ImageLabel&)=delete;
@@ -127,42 +123,45 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
         //! File name passed to setImageFile(), empty when content came from setImageData() or none is loaded.
         QString imageFile() const
         {
-            return m_fileName;
+            return m_animator->fileName();
         }
 
         //! Bytes passed to setImageData(), empty when content came from setImageFile() or none is loaded.
         QByteArray imageData() const
         {
-            return m_data;
+            return m_animator->data();
         }
 
         //! True when the loaded content is a multi-frame animation.
         bool isAnimated() const noexcept
         {
-            return m_animated;
+            return m_animator->isAnimated();
         }
 
         //! True when the underlying animation is currently running.
         bool isPlaying() const noexcept
         {
-            return m_playing;
+            return m_animator->isPlaying();
         }
 
         //! Unscaled pixel size of the loaded content, invalid when no content is loaded.
         QSize naturalImageSize() const noexcept
         {
-            return m_naturalSize;
+            return m_animator->naturalSize();
         }
 
         //! Number of frames of the loaded content: 0 when unknown, 1 for still content.
-        int frameCount() const;
+        int frameCount() const
+        {
+            return m_animator->frameCount();
+        }
 
         //! Set the mode governing when animated content is allowed to play; re-evaluates playback immediately.
         void setAnimationMode(AnimationMode mode);
 
         AnimationMode animationMode() const noexcept
         {
-            return m_mode;
+            return m_animator->animationMode();
         }
 
         //! Set playback speed as a percentage of the source frame delays, default 100.
@@ -170,7 +169,7 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
 
         int animationSpeed() const noexcept
         {
-            return m_speed;
+            return m_animator->animationSpeed();
         }
 
         //! Set how frames are fitted into the widget rect, default KeepAspectRatioByExpanding.
@@ -192,29 +191,29 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
 
         bool isCacheFrames() const noexcept
         {
-            return m_cacheFrames;
+            return m_animator->isCacheFrames();
         }
 
         //! Set whether playback pauses while the widget is hidden and resumes on show, default true.
         void setPauseWhenHidden(bool enable) noexcept
         {
-            m_pauseWhenHidden=enable;
+            m_animator->setPauseWhenHidden(enable);
         }
 
         bool isPauseWhenHidden() const noexcept
         {
-            return m_pauseWhenHidden;
+            return m_animator->isPauseWhenHidden();
         }
 
         //! Set whether playback pauses while the top-level window is inactive, default false.
         void setPauseWhenWindowInactive(bool enable) noexcept
         {
-            m_pauseWhenInactive=enable;
+            m_animator->setPauseWhenWindowInactive(enable);
         }
 
         bool isPauseWhenWindowInactive() const noexcept
         {
-            return m_pauseWhenInactive;
+            return m_animator->isPauseWhenWindowInactive();
         }
 
         //! Set whether clicked() is emitted on left mouse press and a click toggles playback in AnimationMode::Manual, default false.
@@ -232,6 +231,28 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
         QPixmap stillFrame() const
         {
             return m_stillFrame;
+        }
+
+        /**
+         * @brief Set an opacity multiplier applied when painting ANIMATED content, default 1.0.
+         *
+         * Meaningful only while isAnimated() -- static content is painted via the inherited
+         * RoundedImage/QLabel pixmap path (see paintEvent()), which callers instead control by
+         * baking opacity into the pixmap they pass to setPixmap() (RoundedImage has no comparable
+         * per-instance opacity property, by design -- see roundedimage.hpp). This exists because
+         * that baked-pixmap approach cannot work for animated content: ImageLabel's animated paint
+         * path never chains through QLabel::pixmap(), so there is no pixmap to bake it into (see
+         * ImagePreviewStrip::applyItemOpacity(), the motivating caller).
+         */
+        void setContentOpacity(qreal opacity) noexcept
+        {
+            m_contentOpacity=opacity;
+            update();
+        }
+
+        qreal contentOpacity() const noexcept
+        {
+            return m_contentOpacity;
         }
 
     public slots:
@@ -265,7 +286,8 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
         //! Emitted when loading or decoding content failed, with a human readable reason.
         void imageLoadFailed(const QString& error);
 
-        //! Forwarded from QMovie::finished(), reached only by animations with a finite loop count.
+        //! Forwarded from the underlying animator's finished() (itself forwarded from
+        //! QMovie::finished()), reached only by animations with a finite loop count.
         void animationFinished();
 
     protected:
@@ -281,58 +303,31 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
 
     private slots:
 
-        void onFrameChanged(int frameNumber);
-        void onMovieError();
-        void onMovieFinished();
+        void onAnimatorFrameChanged();
+        void onAnimatorLoaded();
+        void onAnimatorLoadFailed(const QString& error);
+        void onAnimatorAnimatedChanged(bool animated);
+        void onAnimatorPlayingChanged(bool playing);
 
     private:
 
-        //! Playback intent selected through play()/pause()/stop(), meaningful only in AnimationMode::Manual.
-        enum class ManualState
-        {
-            Stopped,
-            Playing,
-            Paused
-        };
-
         void resetContent();
-        bool loadContent();
-        void createMovie();
         void applyScaledSize();
         void rebuildStills();
         QPixmap renderTile(const QImage& src) const;
 
-        bool shouldPlay() const;
-        bool restOnFirstFrame() const;
-        void syncPlayback();
-
-        // NOTE: declaration order matters. QMovie does not own its QIODevice, so m_movie must be
-        // destroyed before m_buffer, and m_buffer (which wraps &m_data) before m_data. Members
-        // are destroyed in reverse declaration order, hence m_data, m_buffer, m_movie in this
-        // order -- do not reorder these three, and do not parent either of them to `this` as a
-        // QObject child (child destruction order is insertion order, not declaration order).
-        QString                  m_fileName;
-        QByteArray               m_data;
-        QByteArray               m_format;
-        std::unique_ptr<QBuffer> m_buffer;
-        std::unique_ptr<QMovie>  m_movie;
+        //! Concrete ImageAnimator subclass (defined in the .cpp) that reports this widget's
+        //! visibility/window-activation/hover state -- incomplete here, held via a base-class
+        //! unique_ptr (ImageAnimator's destructor is virtual via QObject).
+        std::unique_ptr<ImageAnimator> m_animator;
 
         QPixmap m_stillFrame;   // frame 0, rendered for the current widget size
         QPixmap m_paintFrame;   // what paintEvent() draws: m_stillFrame or the current movie frame
-        QSize   m_naturalSize;
 
-        AnimationMode        m_mode;
         Qt::AspectRatioMode  m_aspectMode;
-        int  m_speed;
-        bool m_animated;
-        bool m_cacheFrames;
-        bool m_pauseWhenHidden;
-        bool m_pauseWhenInactive;
         bool m_clickable;
-        bool m_playing;
         bool m_frameDirty;
-        bool m_inSync;
-        ManualState m_manual;
+        qreal m_contentOpacity=1.0;
 };
 
 UISE_DESKTOP_NAMESPACE_END

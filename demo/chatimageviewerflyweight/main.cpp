@@ -205,6 +205,24 @@ int main(int argc, char *argv[])
         [fetcher](bool checked){ fetcher->setFailNextFetch(checked); }
     );
 
+    // ImagePreviewStrip defaults to AnimationMode::Never (Telegram's own album strip keeps
+    // thumbnails still even for an animated image) -- this toggles it to Auto so animated
+    // records (see buildDataset()'s isAnimated marking) can be seen playing in the strip too,
+    // not just in the main view.
+    auto animatePreviewsCheck=new CheckBox("Animate previews",controlsBar);
+    cbl->addWidget(animatePreviewsCheck);
+    QObject::connect(
+        animatePreviewsCheck,
+        &CheckBox::toggled,
+        chatViewer,
+        [chatViewer](bool checked)
+        {
+            chatViewer->controls()->previewStrip()->setAnimationMode(
+                checked ? ImageAnimator::AnimationMode::Auto : ImageAnimator::AnimationMode::Never
+            );
+        }
+    );
+
     cbl->addWidget(new QLabel("Strip scope:",controlsBar));
     auto scopeCombo=new QComboBox(controlsBar);
     scopeCombo->addItem("Album",static_cast<int>(ChatImageViewer::StripScope::Album));

@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pixmapproducer.hpp>
+#include <uise/desktop/imageanimator.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -77,7 +78,16 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
             PixmapKey key;
             QPixmap content;
 
-            Preview(PixmapKey key={}, QPixmap content={}) : key(std::move(key)), content(std::move(content))
+            //! Seed encoded animation content -- resolved the same way content is (either this
+            //! seed, or -- when null and setImageSource() is set -- live through the source, see
+            //! PixmapSource::updateAnimation()/updatePathAnimation()). Whether a resolved preview
+            //! actually animates additionally depends on setAnimationMode() (default Never: a
+            //! preview holding animation content still shows only its first frame, matching
+            //! Telegram's own album-strip behaviour, unless the host opts in).
+            AnimationContent animation;
+
+            Preview(PixmapKey key={}, QPixmap content={}, AnimationContent animation={})
+                : key(std::move(key)), content(std::move(content)), animation(std::move(animation))
             {}
         };
 
@@ -159,6 +169,17 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
         qreal visualIndex() const;
         void setVisualIndex(qreal value);
 
+        /**
+         * @brief Set whether items with animation content actually play it, default Never.
+         *
+         * Telegram's own album strip keeps thumbnails still even when the full image is animated
+         * -- Never matches that and costs nothing extra (each item is already an ImageLabel, see
+         * the class doc, just never handed animation content). Auto/OnHover/Manual opt in at the
+         * cost of one concurrent QMovie decoder per visible animated item.
+         */
+        void setAnimationMode(UISE_DESKTOP_NAMESPACE::ImageAnimator::AnimationMode mode);
+        UISE_DESKTOP_NAMESPACE::ImageAnimator::AnimationMode animationMode() const;
+
         QSize sizeHint() const override;
 
     public slots:
@@ -193,12 +214,24 @@ class UISE_DESKTOP_EXPORT ImagePreviewStrip : public QFrame
 
         void applyItemContent(size_t index);
 
+        //! Seed-or-source-resolved counterpart of applyItemContent(), for Preview::animation --
+        //! the source-resolved case piggybacks on the same consumer wireItemConsumer() wires (it
+        //! connects both PixmapConsumer::pixmapUpdated and ::animationUpdated together), so this
+        //! only has direct work to do for the seed/no-source cases.
+        void applyItemAnimation(size_t index);
+
         //! Connect an entry's consumer to pimpl->imageSource for the first time, or re-point it
         //! at a source that changed since it was last wired (see setImageSource()'s doc on why
         //! that case needs handling explicitly).
         void wireItemConsumer(size_t index);
 
         void setItemPixmap(size_t index, const QPixmap& px);
+
+        //! No-op if animation equals the entry's last-applied animation content (ItemEntry::
+        //! appliedAnimation) -- guards against restarting playback on every redundant call (e.g.
+        //! a diffItems() pass for an item whose animation content did not actually change).
+        void setItemAnimation(size_t index, const UISE_DESKTOP_NAMESPACE::AnimationContent& animation);
+
         void applyItemOpacity(size_t index);
 
         std::unique_ptr<ImagePreviewStrip_p> pimpl;

@@ -78,6 +78,7 @@ class ImageViewerWidget_p
         PushButton* flipVertical;
         PushButton* zoomIn;
         PushButton* zoomOut;
+        PushButton* playPause;
 
         int angle=0;
 
@@ -241,6 +242,20 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
         &PushButton::clicked,
         pimpl->ctrl,
         &AbstractImageViewer::zoomOut
+    );
+
+    // Shown only for animated content (see ImageViewer::updatePlayPauseButton()) -- hidden by
+    // default since most images are static.
+    pimpl->playPause=new PushButton(pimpl->mainButtonsFrame);
+    pimpl->playPause->setToolTip(tr("Play/pause"));
+    pimpl->playPause->setSvgIcon(Style::instance().svgIconLocator().icon("ImageEditor::pause",this));
+    pimpl->playPause->setVisible(false);
+    ml->addWidget(pimpl->playPause);
+    connect(
+        pimpl->playPause,
+        &PushButton::clicked,
+        pimpl->ctrl,
+        &ImageViewer::togglePlay
     );
 
     pimpl->prevButton=new JumpEdge(this);
@@ -1005,6 +1020,70 @@ void ImageViewerWidget::hideControls()
 
 //--------------------------------------------------------------------------
 
+//! ImageAnimator subclass reporting m_widget's own visibility/window-activation state -- see the
+//! forward declaration's doc in imageviewer.hpp. isHovered() is deliberately left at the base's
+//! default (always false): AnimationMode::OnHover reads naturally for a small thumbnail (see
+//! ImageLabel) but not for a full-screen viewer, and this feature's toolbar-driven design (Auto
+//! play + an explicit play/pause button) never needs it.
+class ImageViewer::ViewerAnimator : public ImageAnimator
+{
+    public:
+
+        explicit ViewerAnimator(ImageViewer* owner)
+            // No QObject parent: same ownership rationale as ImageLabel's own animator member --
+            // owner holds this exclusively via std::unique_ptr.
+            : ImageAnimator(nullptr),
+              m_owner(owner)
+        {}
+
+    protected:
+
+        bool isWidgetVisible() const override
+        {
+            return m_owner->m_widget!=nullptr && m_owner->m_widget->isVisible();
+        }
+
+        bool isWindowActive() const override
+        {
+            return m_owner->m_widget==nullptr
+                   || m_owner->m_widget->window()==nullptr
+                   || m_owner->m_widget->window()->isActiveWindow();
+        }
+
+    private:
+
+        ImageViewer* m_owner;
+};
+
+//--------------------------------------------------------------------------
+
+ImageViewer::ImageViewer(QObject* parent)
+    : AbstractImageViewer(parent)
+{
+    m_animator=std::make_unique<ViewerAnimator>(this);
+
+    connect(
+        m_animator.get(),
+        &ImageAnimator::frameChanged,
+        this,
+        &ImageViewer::onAnimatorFrameChanged
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::playingChanged,
+        this,
+        &ImageViewer::onAnimatorPlayingChanged
+    );
+    connect(
+        m_animator.get(),
+        &ImageAnimator::animatedChanged,
+        this,
+        &ImageViewer::onAnimatorAnimatedChanged
+    );
+}
+
+//--------------------------------------------------------------------------
+
 Widget* ImageViewer::doCreateActualWidget(QWidget* parent)
 {
     m_widget=new ImageViewerWidget(this,parent);
@@ -1051,6 +1130,9 @@ void ImageViewer::doReset()
     m_widget->pimpl->imageItem = nullptr;
     m_widget->pimpl->angle=0;
     m_widget->pimpl->scale=1.0;
+
+    m_animator->clear();
+    m_animatorKey=PixmapKey{};
 }
 
 //--------------------------------------------------------------------------
@@ -1160,10 +1242,12 @@ void ImageViewer::zoomOut()
 void ImageViewer::doSelectImage()
 {
     doReset();
+    syncAnimatorToCurrentImage();
     applyCurrentPixmap();
     fitImage();
     updateBusySpinner();
     updatePrevNextButtons();
+    updatePlayPauseButton();
     m_widget->showControls();
     m_widget->setFocus();
 }
@@ -1172,7 +1256,20 @@ void ImageViewer::doSelectImage()
 
 void ImageViewer::applyCurrentPixmap()
 {
-    auto px=currentImage();
+    QPixmap px;
+    if (m_animator->isAnimated())
+    {
+        auto frame=m_animator->currentFrame();
+        if (!frame.isNull())
+        {
+            px=QPixmap::fromImage(frame);
+        }
+    }
+    if (px.isNull())
+    {
+        px=currentImage();
+    }
+
     if (px.isNull())
     {
         if (m_widget->pimpl->imageItem!=nullptr)
@@ -1197,6 +1294,169 @@ void ImageViewer::applyCurrentPixmap()
     {
         m_widget->pimpl->imageItem->setPixmap(px);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::syncAnimatorToCurrentImage()
+{
+    auto key=currentImageKey();
+    if (key==m_animatorKey)
+    {
+        return;
+    }
+    m_animatorKey=key;
+
+    auto animation=currentImageAnimation();
+    if (animation.isNull())
+    {
+        m_animator->clear();
+        return;
+    }
+    m_animator->loadContent(animation);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onAnimationUpdated(const PixmapKey& key)
+{
+    if (m_widget==nullptr || !(key==currentImageKey()))
+    {
+        return;
+    }
+
+    // Force syncAnimatorToCurrentImage() to reconsider even though it already ran for this key at
+    // selection time -- this override exists specifically for animation content that arrives
+    // asynchronously (a version-ladder-style source) after the image was already selected with
+    // none yet available.
+    m_animatorKey=PixmapKey{};
+    syncAnimatorToCurrentImage();
+
+    applyCurrentPixmap();
+    fitImage();
+    updatePlayPauseButton();
+}
+
+//--------------------------------------------------------------------------
+
+bool ImageViewer::isCurrentImageAnimated() const
+{
+    return m_animator->isAnimated();
+}
+
+//--------------------------------------------------------------------------
+
+bool ImageViewer::isCurrentImagePlaying() const
+{
+    return m_animator->isPlaying();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::setAnimationMode(ImageAnimator::AnimationMode mode)
+{
+    m_animator->setAnimationMode(mode);
+}
+
+//--------------------------------------------------------------------------
+
+ImageAnimator::AnimationMode ImageViewer::animationMode() const
+{
+    return m_animator->animationMode();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::setAnimationSpeed(int percent)
+{
+    m_animator->setAnimationSpeed(percent);
+}
+
+//--------------------------------------------------------------------------
+
+int ImageViewer::animationSpeed() const
+{
+    return m_animator->animationSpeed();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::play()
+{
+    m_animator->play();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::pause()
+{
+    m_animator->pause();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::stop()
+{
+    m_animator->stop();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::togglePlay()
+{
+    m_animator->togglePlay();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onAnimatorFrameChanged()
+{
+    if (m_widget==nullptr)
+    {
+        return;
+    }
+    // A frame tick during ongoing playback -- update the displayed pixmap in place without
+    // re-fitting (fitImage() would reset the user's current zoom/pan on every frame).
+    applyCurrentPixmap();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onAnimatorPlayingChanged(bool playing)
+{
+    std::ignore=playing;
+    updatePlayPauseButton();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::onAnimatorAnimatedChanged(bool animated)
+{
+    std::ignore=animated;
+    updatePlayPauseButton();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::updatePlayPauseButton()
+{
+    if (m_widget!=nullptr)
+    {
+        bool animated=m_animator->isAnimated();
+        m_widget->pimpl->playPause->setVisible(animated);
+        if (animated)
+        {
+            auto iconName=m_animator->isPlaying() ? QStringLiteral("pause") : QStringLiteral("play");
+            m_widget->pimpl->playPause->setSvgIcon(
+                Style::instance().svgIconLocator().icon(QString("ImageEditor::%1").arg(iconName),m_widget)
+            );
+        }
+    }
+
+    // Emitted regardless of m_widget's existence -- ChatImageViewer's own bottom-widget button
+    // (ChatImageViewerControls, which replaces this class' embedded toolbar entirely) listens for
+    // this independently of whether the embedded playPause button above exists.
+    emit currentImageAnimationStateChanged();
 }
 
 //--------------------------------------------------------------------------
@@ -1290,9 +1550,12 @@ void ImageViewer::onWindowChanged()
 void ImageViewer::updateBusySpinner()
 {
     auto px=currentImage();
-    if (px.isNull())
+    if (px.isNull() && !m_animator->isAnimated())
     {
-        // No usable pixmap at all yet -- the original, large, centred, blocking spinner.
+        // No usable pixmap at all yet -- the original, large, centred, blocking spinner. An
+        // animated image with no static poster pixmap (content never seeded/delivered, only
+        // animation) still counts as "usable": applyCurrentPixmap() already shows its first/
+        // current frame instead of currentImage() in that case.
         m_widget->pimpl->busySpinner->setVisible(true);
         m_widget->pimpl->busySpinner->start();
         m_widget->pimpl->loadingOverlayFrame->setVisible(false);

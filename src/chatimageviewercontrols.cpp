@@ -67,6 +67,7 @@ class ChatImageViewerControls_p
         PushButton* rotate=nullptr;
         PushButton* zoomIn=nullptr;
         PushButton* zoomOut=nullptr;
+        PushButton* playPause=nullptr;
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
 
@@ -173,6 +174,17 @@ ChatImageViewerControls::ChatImageViewerControls(QWidget* parent)
     pimpl->zoomOut->setSvgIcon(ctrlIcon("zoom-out",this));
     tbl->addWidget(pimpl->zoomOut);
     connect(pimpl->zoomOut,&PushButton::clicked,this,&ChatImageViewerControls::zoomOutRequested);
+
+    // Shown only for animated images (see setPlayPauseVisible(), driven by ChatImageViewer from
+    // ImageViewer::isCurrentImageAnimated()) -- hidden by default like the embedded toolbar's own
+    // equivalent button (ImageViewerWidget_p::playPause).
+    pimpl->playPause=new PushButton(pimpl->toolbar);
+    pimpl->playPause->setObjectName("playPause");
+    pimpl->playPause->setToolTip(tr("Play/pause"));
+    pimpl->playPause->setSvgIcon(ctrlIcon("pause",this));
+    pimpl->playPause->setVisible(false);
+    tbl->addWidget(pimpl->playPause);
+    connect(pimpl->playPause,&PushButton::clicked,this,&ChatImageViewerControls::playPauseRequested);
 
     pimpl->menuButton=new IconTextButton(
         ctrlIcon("menu",this),pimpl->toolbar,IconTextButton::IconPosition::BeforeText
@@ -340,6 +352,27 @@ PushButton* ChatImageViewerControls::zoomInButton() const
 PushButton* ChatImageViewerControls::zoomOutButton() const
 {
     return pimpl->zoomOut;
+}
+
+//--------------------------------------------------------------------------
+
+PushButton* ChatImageViewerControls::playPauseButton() const
+{
+    return pimpl->playPause;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewerControls::setPlayPauseVisible(bool visible)
+{
+    pimpl->playPause->setVisible(visible);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewerControls::setPlaying(bool playing)
+{
+    pimpl->playPause->setSvgIcon(ctrlIcon(playing ? QStringLiteral("pause") : QStringLiteral("play"),this));
 }
 
 //--------------------------------------------------------------------------

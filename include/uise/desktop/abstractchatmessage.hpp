@@ -295,6 +295,25 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
 
         virtual QString selectedText() const {return QString{};}
 
+        //! Check whether this body currently holds any text a user could select (and so quote
+        //! via AbstractReplyDialog's "Quote selected" -- see ReplyDialog::updateCommentVisibility(),
+        //! which uses this to decide whether the "you can select a part of the text" comment
+        //! makes sense to show at all). False by default -- a body with no text at all
+        //! (ChatMessageFiles, ChatMessageImages, ChatMessageCall) never overrides this; a text
+        //! body overrides it based on whatever content it currently holds.
+        virtual bool hasSelectableText() const {return false;}
+
+        /**
+         * @brief Make this body's text focusable and enable its standard text-edit context
+         *  menu (Copy, Select All) plus the Ctrl+C/Cmd+C shortcut.
+         * @param enable Off by default (see ChatMessageText's own ctor): the live chat page
+         *  handles its own selection-mode gesture and right-click menu instead, and a focusable
+         *  text body there would steal keyboard focus from the message editor. A host showing a
+         *  message OUTSIDE that context (e.g. AbstractReplyDialog's static preview) opts in via
+         *  this. No-op for a body with no text at all.
+         */
+        virtual void setCopyable(bool enable) {std::ignore=enable;}
+
     signals:
 
         //! Never emitted by the base class -- a body with genuine text selection (e.g.

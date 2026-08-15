@@ -45,6 +45,7 @@ class AbstractImageViewer_p
         {
             PixmapKey key;
             QPixmap content;
+            AnimationContent animation;
             PixmapConsumer consumer;
             bool wired=false;
             bool active=false;
@@ -141,6 +142,15 @@ void AbstractImageViewer::wireEntry(const PixmapKey& key)
             }
         }
     );
+    connect(
+        &entry->consumer,
+        &PixmapConsumer::animationUpdated,
+        this,
+        [this,key]()
+        {
+            onAnimationUpdated(key);
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -158,11 +168,13 @@ size_t AbstractImageViewer::mergeImages(std::vector<Image>& images, Direction di
             // Already windowed -- an insert of a key we already hold is an in-place seed update,
             // never a duplicate (see updateImage(), which this mirrors).
             it->second->content=image.content;
+            it->second->animation=image.animation;
             continue;
         }
 
         auto entry=std::make_shared<AbstractImageViewer_p::Entry>(image.key);
         entry->content=image.content;
+        entry->animation=image.animation;
         pimpl->byKey[entry->key]=entry.get();
         wireEntry(entry->key);
         newEntries.push_back(std::move(entry));
@@ -550,6 +562,7 @@ bool AbstractImageViewer::updateImage(const Image& image)
         return false;
     }
     entry->content=image.content;
+    entry->animation=image.animation;
 
     if (entry->key==pimpl->currentKey)
     {
@@ -670,6 +683,38 @@ QPixmap AbstractImageViewer::imagePixmap(size_t index) const
         }
     }
     return entry.content;
+}
+
+//--------------------------------------------------------------------------
+
+AnimationContent AbstractImageViewer::imageAnimation(size_t index) const
+{
+    if (index>=pimpl->window.size())
+    {
+        return AnimationContent{};
+    }
+
+    const auto& entry=*pimpl->window[index];
+
+    // Mirrors imagePixmap()'s D4 precedence: a resolved producer animation wins over the
+    // caller-seeded one, so a source that delivers the blob asynchronously after the seed was
+    // already shown still takes effect.
+    if (entry.consumer.pixmapProducer()!=nullptr)
+    {
+        const auto& anim=entry.consumer.pixmapProducer()->animation();
+        if (!anim.isNull())
+        {
+            return anim;
+        }
+    }
+    return entry.animation;
+}
+
+//--------------------------------------------------------------------------
+
+AnimationContent AbstractImageViewer::currentImageAnimation() const
+{
+    return imageAnimation(pimpl->currentIndex);
 }
 
 //--------------------------------------------------------------------------

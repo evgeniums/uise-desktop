@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractimageviewer.hpp>
+#include <uise/desktop/imageanimator.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -39,12 +40,39 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
 
     public:
 
-        using AbstractImageViewer::AbstractImageViewer;
+        explicit ImageViewer(QObject* parent=nullptr);
 
         void setControlsMode(ControlsMode mode) override;
 
         void setBottomWidget(QWidget* widget) override;
         QWidget* bottomWidget() const override;
+
+        //! True when the currently selected image has animated content loaded -- gates the
+        //! toolbar's play/pause button (see updatePlayPauseButton()).
+        bool isCurrentImageAnimated() const;
+
+        //! True when the current image's animation is actually running -- mirrors ImageLabel::
+        //! isPlaying(). Always false when !isCurrentImageAnimated().
+        bool isCurrentImagePlaying() const;
+
+        //! Set the mode governing when the current image's animation is allowed to play, default
+        //! ImageAnimator::AnimationMode::Auto -- mirrors ImageLabel::setAnimationMode().
+        void setAnimationMode(UISE_DESKTOP_NAMESPACE::ImageAnimator::AnimationMode mode);
+        UISE_DESKTOP_NAMESPACE::ImageAnimator::AnimationMode animationMode() const;
+
+        //! Set playback speed as a percentage of the source frame delays, default 100 -- mirrors
+        //! ImageLabel::setAnimationSpeed().
+        void setAnimationSpeed(int percent);
+        int animationSpeed() const;
+
+    signals:
+
+        //! Fires whenever isCurrentImageAnimated() or the animation's play/pause state might have
+        //! changed -- after navigation, animation content arriving asynchronously, or play()/
+        //! pause()/togglePlay(). ChatImageViewer listens to this to keep ChatImageViewerControls'
+        //! own play/pause button in sync, since it replaces this class' embedded toolbar entirely
+        //! (see AbstractImageViewer::setBottomWidget()).
+        void currentImageAnimationStateChanged();
 
     public slots:
 
@@ -62,10 +90,21 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void showControls() override;
         void hideControls() override;
 
+        //! Playback controls for the current image's animation, meaningful only when
+        //! isCurrentImageAnimated() -- mirror ImageLabel::play()/pause()/stop()/togglePlay().
+        void play();
+        void pause();
+        void stop();
+        void togglePlay();
+
     private slots:
 
         void onPixmapUpdated(const UISE_DESKTOP_NAMESPACE::PixmapKey& key) override;
         void onPixmapLoadingChanged(const UISE_DESKTOP_NAMESPACE::PixmapKey& key, bool loading) override;
+
+        void onAnimatorFrameChanged();
+        void onAnimatorPlayingChanged(bool playing);
+        void onAnimatorAnimatedChanged(bool animated);
 
     protected:
 
@@ -73,11 +112,30 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void doSelectImage() override;
         Widget* doCreateActualWidget(QWidget* parent) override;
 
+        void onAnimationUpdated(const UISE_DESKTOP_NAMESPACE::PixmapKey& key) override;
+
         //! Create the QGraphicsPixmapItem lazily on first use, or update it in place -- shared by
         //! doSelectImage() and onPixmapUpdated() so a pixmap that arrives asynchronously (still
         //! loading at selection time) is picked up whenever it lands, not only re-applied if an
         //! item already happened to exist (see the B1 fix note on onPixmapUpdated()).
+        //!
+        //! When the current image has animated content loaded (m_animator->isAnimated()), the
+        //! animator's current frame is used in place of currentImage() -- so both a fresh
+        //! navigation and an ordinary frame tick from onAnimatorFrameChanged() route through this
+        //! single method, and zoom/pan/rotate/flip (all QGraphicsView transforms, untouched by
+        //! which pixmap is loaded into the item) keep working unchanged for animated content.
         void applyCurrentPixmap();
+
+        //! Load/unload m_animator against currentImageAnimation(), tracked by m_animatorKey so
+        //! repeated calls for the same still-current image are cheap no-ops. Called from
+        //! doSelectImage() (a fresh navigation) and onAnimationUpdated() (animation content that
+        //! arrives asynchronously after the image was already selected -- forces a re-check by
+        //! invalidating m_animatorKey first).
+        void syncAnimatorToCurrentImage();
+
+        //! Show/hide the toolbar's play/pause button and refresh its icon -- called after
+        //! anything that might change isCurrentImageAnimated()/m_animator->isPlaying().
+        void updatePlayPauseButton();
 
         //! Refreshes both spinners and the prev/next buttons -- see AbstractImageViewer::
         //! onWindowChanged()'s doc. Any window/hasMore*/pending-navigation change routes here.
@@ -104,6 +162,21 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         void refreshOverlayGeometry();
 
         ImageViewerWidget* m_widget=nullptr;
+
+    private:
+
+        //! ImageAnimator subclass reporting this controller's widget's visibility/window-
+        //! activation state -- defined in the .cpp; forward-declared here as a nested class so it
+        //! has access to m_widget without needing a separate friendship grant from
+        //! ImageViewerWidget (nested classes share their enclosing class's own access rights).
+        class ViewerAnimator;
+
+        std::unique_ptr<UISE_DESKTOP_NAMESPACE::ImageAnimator> m_animator;
+
+        //! Key of the windowed image m_animator is currently loaded (or explicitly cleared) for --
+        //! see syncAnimatorToCurrentImage(). A default-constructed (invalid) key means "not yet
+        //! synced to the current image".
+        PixmapKey m_animatorKey;
 };
 
 class ImageViewerWidget_p;

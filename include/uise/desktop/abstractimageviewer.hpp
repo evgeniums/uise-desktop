@@ -72,7 +72,13 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             PixmapKey key;
             QPixmap content;
 
-            Image(PixmapKey key={}, QPixmap content={}) : key(std::move(key)), content(std::move(content))
+            //! Seed encoded animation content -- see imageAnimation()'s producer-first/seed-
+            //! fallback precedence, which mirrors content/imagePixmap()'s own. Left null when the
+            //! caller expects a PixmapSource to supply it (or the image is not animated).
+            AnimationContent animation;
+
+            Image(PixmapKey key={}, QPixmap content={}, AnimationContent animation={})
+                : key(std::move(key)), content(std::move(content)), animation(std::move(animation))
             {}
         };
 
@@ -185,6 +191,15 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         //! images it isn't currently displaying full-size. QPixmap{} if index is out of range or
         //! nothing has resolved for that entry yet.
         QPixmap imagePixmap(size_t index) const;
+
+        //! Resolved encoded animation content for the image at window-relative index -- same
+        //! producer-first, seed-fallback precedence as imagePixmap(). Null (AnimationContent::
+        //! isNull()) if index is out of range, the image is not animated, or nothing has resolved
+        //! for it yet.
+        AnimationContent imageAnimation(size_t index) const;
+
+        //! imageAnimation() for the currently selected image.
+        AnimationContent currentImageAnimation() const;
 
         virtual void setImageSource(std::shared_ptr<PixmapSource> imageSource);
 
@@ -410,6 +425,14 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
         {
             std::ignore=key;
             std::ignore=loading;
+        }
+
+        //! Called when the resolved animation content for a windowed entry changes -- see
+        //! imageAnimation(). Default no-op; ImageViewer overrides it to pick up animation content
+        //! that arrives asynchronously after the image was already selected.
+        virtual void onAnimationUpdated(const UISE_DESKTOP_NAMESPACE::PixmapKey& key)
+        {
+            std::ignore=key;
         }
 
     private:

@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/imageanimator.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/utils/withpathandsize.hpp>
 
@@ -111,6 +112,10 @@ class UISE_DESKTOP_EXPORT PixmapConsumer : public QObject,
 
         //! Relays PixmapProducer::loadingChanged() of the currently acquired producer.
         void loadingChanged(bool loading);
+
+        //! Relays PixmapProducer::animationUpdated() of the currently acquired producer -- see
+        //! PixmapSource::updateAnimation().
+        void animationUpdated();
 
     private:
 
@@ -201,6 +206,21 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
             return m_data;
         }
 
+        /**
+         * @brief Encoded animation content for this key, if any -- see PixmapSource::
+         *  updateAnimation()/updatePathAnimation().
+         *
+         * Independent of pixmap()/isLoading(): a source is expected to deliver a decoded poster
+         * pixmap (for immediate display and for hosts that never animate, e.g. ImagePreviewStrip
+         * thumbnails by default) AND, separately, the encoded blob a host that wants to animate
+         * can hand to an ImageAnimator. Null (AnimationContent::isNull()) when the source has not
+         * supplied one, either because the image is not animated or because it has not arrived yet.
+         */
+        const AnimationContent& animation() const
+        {
+            return m_animation;
+        }
+
     signals:
 
         void pixmapUpdated();
@@ -208,6 +228,9 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
 
         //! See isLoading().
         void loadingChanged(bool loading);
+
+        //! See animation().
+        void animationUpdated();
 
     public slots:
 
@@ -220,6 +243,12 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
 
         //! See isLoading(). No-op, and no signal emitted, when the value is unchanged.
         void setLoading(bool enable);
+
+        //! See animation(). No-op, and no signal emitted, when the value is unchanged.
+        void setAnimation(UISE_DESKTOP_NAMESPACE::AnimationContent animation);
+
+        //! Equivalent to setAnimation({}).
+        void clearAnimation();
 
     private:
 
@@ -257,6 +286,8 @@ class UISE_DESKTOP_EXPORT PixmapProducer : public QObject,
         Qt::AspectRatioMode m_aspectRatioMode;
 
         QVariant m_data;
+
+        AnimationContent m_animation;
 
         bool m_loading=false;
 
@@ -347,6 +378,26 @@ class UISE_DESKTOP_EXPORT PixmapSource : public std::enable_shared_from_this<Pix
         void updatePixmap(const PixmapKey& key, const QPixmap& pixmap);
 
         void updateScaledPixmaps(const WithPath& path, const QPixmap& originalPixmap);
+
+        /**
+         * @brief Deliver encoded animation content for a single producer.
+         * @param key Pixmap key; a no-op if no producer is currently registered for it.
+         * @param animation Encoded content -- see PixmapProducer::animation(). Passing a null
+         *  AnimationContent clears whatever was previously set (e.g. a source that discovers,
+         *  after first showing a static poster pixmap, that an image is not actually animated
+         *  need not call this at all; call it with a null content only to retract an earlier one).
+         *
+         * A source is free to call this any time after acquireProducer() -- synchronously from
+         * doLoadPixmap() if the blob is already at hand, or later once an async fetch completes,
+         * same as updatePixmap()/setPixmapLoading().
+         */
+        void updateAnimation(const PixmapKey& key, const AnimationContent& animation);
+
+        //! Same as updateAnimation(), but for every producer currently registered under path --
+        //! mirrors updateScaledPixmaps()'s one-path-many-sizes fan-out. Animation content is
+        //! inherently per-path, not per-size, so this is the more common entry point for a source
+        //! whose keys vary only by display size.
+        void updatePathAnimation(const WithPath& path, const AnimationContent& animation);
 
         /**
          * @brief Mark a single producer as still fetching a better pixmap.

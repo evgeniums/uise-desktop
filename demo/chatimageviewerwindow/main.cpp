@@ -83,8 +83,13 @@ struct MessageSpec
     QColor c2;
 };
 
+// Embedded via chatimageviewerwindowdemo.qrc, which references demo/imagelabel/assets/
+// animated.gif by relative path rather than duplicating the file.
+const char* AnimatedAsset=":/uise/desktop/demo/chatimageviewerwindow/animated.gif";
+
 // Same four-message fixture as demo/chatimageviewer/main.cpp: a single-image message exercises
-// ImagePreviewStrip's own count()<=1 hide rule, the rest exercise album grouping.
+// ImagePreviewStrip's own count()<=1 hide rule, the rest exercise album grouping. Bob's first
+// image also carries animated GIF content, same as demo/chatimageviewer/main.cpp's own fixture.
 std::vector<ChatImageViewer::ChatImage> makeChatImages()
 {
     std::vector<MessageSpec> messages=
@@ -114,6 +119,10 @@ std::vector<ChatImageViewer::ChatImage> makeChatImages()
                 dt,
                 msg.messageId
             );
+            if (msg.messageId=="msg-2" && i==0)
+            {
+                chatImages.back().animation=AnimationContent{QString::fromUtf8(AnimatedAsset)};
+            }
             ++globalIndex;
         }
     }

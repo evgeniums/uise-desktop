@@ -9,6 +9,8 @@
                 "rotate-clockwise"  : "${uise-svg-icons-1}/rotate-clockwise-2",
                 "zoom-in"  : "${uise-svg-icons-1}/zoom-in",
                 "zoom-out"  : "${uise-svg-icons-1}/zoom-out",
+                "play"  : "${uise-svg-icons-1}/player-play",
+                "pause"  : "${uise-svg-icons-1}/player-pause",
                 "undo"  : "${uise-svg-icons-1}/arrow-back",
                 "redo"  : "${uise-svg-icons-1}/arrow-forward-up",
                 "brush"  : "${uise-svg-icons-1}/brush",

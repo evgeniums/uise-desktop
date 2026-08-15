@@ -5,4 +5,5 @@ uise_demo(
     TITLE "Chat Image Viewer Window"
     DESCRIPTION "Top-level fullscreen/windowed host for ChatImageViewer with Esc and click-to-close."
     SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/chatimageviewerwindowdemo.qrc
 )
