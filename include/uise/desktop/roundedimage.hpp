@@ -115,6 +115,39 @@ class UISE_DESKTOP_EXPORT RoundedImageSource : public PixmapSource
         std::optional<double> m_radiusRatio;
 };
 
+//! @todo Rebase RoundedImage on QFrame instead of QLabel.
+//!
+//! Only two inherited QLabel members are actually used anywhere in the tree: pixmap() (read in
+//! paintEvent() as the static-override channel) and setPixmap() (called from
+//! fileuploadlistitem.cpp, chatmessagefileitem.cpp, chatmessageimageitem.cpp, imagelabel.cpp,
+//! and whitemdesktop's uichatlistitem.cpp). setText()/text() are already =delete'd, paintEvent()
+//! is fully overridden and never chains to QLabel::paintEvent(), and nothing uses
+//! setMovie/setPicture/setAlignment/setWordWrap/setScaledContents/setBuddy/textInteractionFlags.
+//! Replacing the base with QFrame + a plain QPixmap m_pixmap member (setPixmap() calling
+//! updateGeometry()+update(), pixmap() returning it) is source-compatible with every call site.
+//!
+//! This is a hygiene/correctness change, not a performance one -- expect no measurable paint-time
+//! win, since paintEvent() already bypasses QLabel's own painting on both bases. The benefits:
+//!  - Removes accidental matches from generic "QLabel { ... }"/"QLabel:disabled" QSS rules (see
+//!    resources/style/light/reset.qss) that currently apply to every RoundedImage instance
+//!    whether intended or not -- worth auditing whitemdesktop/hatnuise QSS for similar
+//!    descendant-QLabel selectors that unintentionally reach RoundedImage today.
+//!  - Drops one QStyleSheetStyle::subElementRect(SE_LabelLayoutItem) render-rule pass done at
+//!    QLabelPrivate::init() time for every instance (a one-time construction cost only).
+//! Known behavioural deltas to check before/after:
+//!  - sizeHint(): QLabel reports the pixmap's device-independent size (or avgCharWidth x
+//!    lineSpacing) expanded to minimumSize(); QFrame reports (-1,-1), falling back to
+//!    minimumSize() in layouts. Every current setPixmap() site also calls
+//!    setImageSize()/setFixedSize() and every "uise--RoundedImage" QSS rule pins min-*==max-*,
+//!    so this is expected to be a no-op, but chatmessagefileitem's preview sizing is worth
+//!    double-checking explicitly.
+//!  - QMacStyle applies a 1px left layout-item inset for SE_LabelLayoutItem (macOS only); losing
+//!    it may nudge icons 1px within their layout cell on macOS.
+//!  - Accessibility role drops from Label/Graphic to a generic frame.
+//! The real perf lever for widget-heavy screens (e.g. the chat list's ~13 WithRoundedImage
+//! instances per row, each a QFrame+QVBoxLayout+RoundedImage) is eliminating that wrapper and
+//! painting icons directly, per the flyweight-list painted-elements plan -- not this base-class
+//! swap.
 class UISE_DESKTOP_EXPORT RoundedImage : public QLabel,
                                          public WithPath
 {

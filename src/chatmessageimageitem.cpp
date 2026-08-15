@@ -95,6 +95,12 @@ class ChatMessageImageItem_p
         QPointer<DropdownMenu> menu;
         bool menuButtonVisibleOnHover=true;
 
+        //! Set by rebuildMenu(), consumed (and cleared) the next time the drop-down is about
+        //! to open -- see ensureMenuButton(). Defers buildChatFileMenuItems() (one svg-icon
+        //! lookup per entry) from every refresh() call to only the tiles that are actually
+        //! opened.
+        bool menuDirty=true;
+
         //! Path currently loaded into preview via setImageFile(), empty when the still
         //! (scaledToFitPadded(item.preview())/svg-fallback) path is in use instead.
         QString loadedPath;
@@ -125,34 +131,10 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     pimpl->preview->setAnimationMode(pimpl->animationMode);
     connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
 
-    // floats over the tile's top-right corner, positioned by repositionOverlays() -- not added
-    // to any layout of `this` (this widget has none)
-    pimpl->menuButton=new IconTextButton(
-        menuIcon(QStringLiteral("menu"),this),
-        this,
-        IconTextButton::IconPosition::BeforeText
-    );
-    pimpl->menuButton->setObjectName("menuButton");
-    pimpl->menuButton->setText(QString());
-    pimpl->menuButton->setCursor(Qt::PointingHandCursor);
-
-    // DropdownMenu is constructed parentless, like FileUploadListItem's own per-item menu -- see
-    // that class's constructor for why (DropdownFrame reparents itself lazily to the trigger's
-    // actual window() on first opening)
-    pimpl->menu=new DropdownMenu();
-    pimpl->menu->attachTo(pimpl->menuButton);
-    connect(pimpl->menu,&DropdownMenu::itemTriggered,this,&ChatMessageImageItem::onMenuItemTriggered);
-    // the dropdown is a separate top-level popup, not a child of this tile -- moving the mouse
-    // onto it while it is open fires this tile's leaveEvent, so updateMenuButtonVisibility() must
-    // re-run once it closes too, to hide the button again if the mouse never came back
-    connect(pimpl->menu,&DropdownMenu::hidden,this,[this](){ updateMenuButtonVisibility(); });
-
-    pimpl->loadControl=new LoadControlMenu(this);
-    pimpl->loadControl->setObjectName("loadControl");
-    connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageImageItem::loadControlClicked);
-    connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageImageItem::pauseRequested);
-    connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageImageItem::cancelRequested);
-
+    // The load control overlay, the menu button and its drop-down are all created lazily on
+    // demand (see ensureLoadControl()/ensureMenuButton()) -- a transferred, never-hovered tile
+    // never needs either, and this tile lives in a flyweight chat list where per-item widget
+    // count is on the scroll hot path.
     updateMenuButtonVisibility();
 }
 
@@ -200,11 +182,12 @@ void ChatMessageImageItem::refresh()
     // task brief ("clickable ... image preview with overlayed menu button ... In case the image
     // is not downloaded/uploaded then AbstractLoadControl is shown in the image center")
     const auto ready=(pimpl->item.state()==ChatFileTransferState::Ready);
-    pimpl->loadControl->setVisible(!ready);
     if (!ready)
     {
-        pimpl->loadControl->setState(chatFileLoadControlState(pimpl->item.state(),pimpl->incoming));
-        pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(pimpl->item.state()));
+        auto loadControl=ensureLoadControl();
+        loadControl->setVisible(true);
+        loadControl->setState(chatFileLoadControlState(pimpl->item.state(),pimpl->incoming));
+        loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(pimpl->item.state()));
         // See ChatMessageFileItem::updateIconSlot()'s identical fix for why every non-
         // transferring state must explicitly zero progress, not just skip setProgress(): it's
         // a sticky member on the reused per-row LoadControl, and paintEvent() draws the arc
@@ -213,15 +196,23 @@ void ChatMessageImageItem::refresh()
             || pimpl->item.state()==ChatFileTransferState::Paused
             || pimpl->item.state()==ChatFileTransferState::Pending)
         {
-            pimpl->loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
+            loadControl->setProgress(pimpl->item.transferred(),pimpl->item.size());
         }
         else
         {
-            pimpl->loadControl->setProgress(0.0);
+            loadControl->setProgress(0.0);
         }
-        pimpl->loadControl->raise();
+        // Only used to build the Pause/Cancel menu text (see LoadControlMenu::
+        // setFileDescription()'s doc comment), so only needed while the control is shown.
+        loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);
+        loadControl->raise();
     }
-    pimpl->loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);
+    else if (pimpl->loadControl!=nullptr)
+    {
+        // Never create a load control just to hide it -- a transferred, never-not-ready tile
+        // never needed one in the first place.
+        pimpl->loadControl->setVisible(false);
+    }
 
     rebuildMenu();
 }
@@ -230,14 +221,14 @@ void ChatMessageImageItem::refresh()
 
 AbstractLoadControl* ChatMessageImageItem::loadControl() const
 {
-    return pimpl->loadControl->loadControl();
+    return ensureLoadControl()->loadControl();
 }
 
 //--------------------------------------------------------------------------
 
 IconTextButton* ChatMessageImageItem::menuButton() const
 {
-    return pimpl->menuButton;
+    return ensureMenuButton();
 }
 
 //--------------------------------------------------------------------------
@@ -318,7 +309,11 @@ void ChatMessageImageItem::leaveEvent(QEvent* event)
 
 void ChatMessageImageItem::rebuildMenu()
 {
-    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,true,pimpl->incoming,this));
+    // Deferred: buildChatFileMenuItems() (one svg-icon lookup per entry) only actually runs the
+    // next time the drop-down is about to open (see ensureMenuButton()'s aboutToShow handler),
+    // not on every refresh() -- most refresh() calls are just a progress tick and the menu is
+    // never opened for most tiles at all.
+    pimpl->menuDirty=true;
 }
 
 //--------------------------------------------------------------------------
@@ -428,17 +423,25 @@ void ChatMessageImageItem::repositionOverlays()
     // its edge, and the same inset looks right over real photo content too.
     constexpr int margin=6;
 
-    auto menuSize=pimpl->menuButton->sizeHint();
-    pimpl->menuButton->setGeometry(width()-menuSize.width()-margin,margin,menuSize.width(),menuSize.height());
-    pimpl->menuButton->raise();
+    // Both overlays are created lazily -- guarded independently since a tile can have either,
+    // both, or neither at any given moment.
+    if (pimpl->menuButton!=nullptr)
+    {
+        auto menuSize=pimpl->menuButton->sizeHint();
+        pimpl->menuButton->setGeometry(width()-menuSize.width()-margin,margin,menuSize.width(),menuSize.height());
+        pimpl->menuButton->raise();
+    }
 
-    pimpl->loadControl->setGeometry(
-        (width()-LoadControlSize.width())/2,
-        (height()-LoadControlSize.height())/2,
-        LoadControlSize.width(),
-        LoadControlSize.height()
-    );
-    pimpl->loadControl->raise();
+    if (pimpl->loadControl!=nullptr)
+    {
+        pimpl->loadControl->setGeometry(
+            (width()-LoadControlSize.width())/2,
+            (height()-LoadControlSize.height())/2,
+            LoadControlSize.width(),
+            LoadControlSize.height()
+        );
+        pimpl->loadControl->raise();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -448,7 +451,15 @@ void ChatMessageImageItem::updateMenuButtonVisibility()
     bool visible=!pimpl->menuButtonVisibleOnHover
         || underMouse()
         || (!pimpl->menu.isNull() && pimpl->menu->isOpen());
-    pimpl->menuButton->setVisible(visible);
+
+    if (!visible && pimpl->menuButton==nullptr)
+    {
+        // Never create the menu button just to leave it hidden -- most tiles are never
+        // hovered.
+        return;
+    }
+
+    ensureMenuButton()->setVisible(visible);
 }
 
 //--------------------------------------------------------------------------
@@ -456,6 +467,80 @@ void ChatMessageImageItem::updateMenuButtonVisibility()
 void ChatMessageImageItem::onMenuItemTriggered(int id)
 {
     emit menuTriggered(id);
+}
+
+//--------------------------------------------------------------------------
+
+LoadControlMenu* ChatMessageImageItem::ensureLoadControl() const
+{
+    if (pimpl->loadControl==nullptr)
+    {
+        pimpl->loadControl=new LoadControlMenu(const_cast<ChatMessageImageItem*>(this));
+        pimpl->loadControl->setObjectName("loadControl");
+        connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageImageItem::loadControlClicked);
+        connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageImageItem::pauseRequested);
+        connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageImageItem::cancelRequested);
+
+        // See rebuildGrid()'s identical comment on freshly created tiles: QSS-driven content
+        // must be polished before its first paint.
+        pimpl->loadControl->ensurePolished();
+        const_cast<ChatMessageImageItem*>(this)->repositionOverlays();
+        pimpl->loadControl->show();
+    }
+    return pimpl->loadControl;
+}
+
+//--------------------------------------------------------------------------
+
+IconTextButton* ChatMessageImageItem::ensureMenuButton() const
+{
+    if (pimpl->menuButton==nullptr)
+    {
+        auto self=const_cast<ChatMessageImageItem*>(this);
+
+        // floats over the tile's top-right corner, positioned by repositionOverlays() -- not
+        // added to any layout of `this` (this widget has none)
+        pimpl->menuButton=new IconTextButton(
+            menuIcon(QStringLiteral("menu"),self),
+            self,
+            IconTextButton::IconPosition::BeforeText
+        );
+        pimpl->menuButton->setObjectName("menuButton");
+        pimpl->menuButton->setText(QString());
+        pimpl->menuButton->setCursor(Qt::PointingHandCursor);
+
+        // DropdownMenu is constructed parentless, like FileUploadListItem's own per-item menu --
+        // see that class's constructor for why (DropdownFrame reparents itself lazily to the
+        // trigger's actual window() on first opening)
+        pimpl->menu=new DropdownMenu();
+        pimpl->menu->attachTo(pimpl->menuButton);
+        connect(pimpl->menu,&DropdownMenu::itemTriggered,self,&ChatMessageImageItem::onMenuItemTriggered);
+        // the dropdown is a separate top-level popup, not a child of this tile -- moving the
+        // mouse onto it while it is open fires this tile's leaveEvent, so
+        // updateMenuButtonVisibility() must re-run once it closes too, to hide the button again
+        // if the mouse never came back
+        connect(pimpl->menu,&DropdownMenu::hidden,self,[self](){ self->updateMenuButtonVisibility(); });
+        // Menu items are only ever built the moment the drop-down is actually about to open --
+        // see rebuildMenu()'s doc comment.
+        connect(pimpl->menu,&DropdownFrame::aboutToShow,self,
+            [self]()
+            {
+                if (self->pimpl->menuDirty)
+                {
+                    self->pimpl->menu->setItems(buildChatFileMenuItems(self->pimpl->item,true,self->pimpl->incoming,self));
+                    self->pimpl->menuDirty=false;
+                }
+            }
+        );
+
+        // See rebuildGrid()'s identical comment on freshly created tiles: QSS-driven content
+        // (this button's 18px icon size) must be polished before its first paint, and before
+        // repositionOverlays() reads its sizeHint().
+        pimpl->menuButton->ensurePolished();
+        self->repositionOverlays();
+        pimpl->menuButton->show();
+    }
+    return pimpl->menuButton;
 }
 
 //--------------------------------------------------------------------------

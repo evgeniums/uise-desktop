@@ -48,12 +48,6 @@ border-radius:4px;
 border:1px solid transparent;
 }
 
-uise--ChatMessageImages #grid {
-padding:0;
-margin:0;
-background-color: transparent;
-}
-
 uise--ChatMessageImageItem {
 border-radius:8px;
 }

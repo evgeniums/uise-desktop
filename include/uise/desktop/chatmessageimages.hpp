@@ -33,13 +33,19 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+class ChatMessageText;
 class ChatMessageImages_p;
 
 /**
  * @brief Concrete image chat message body: a Telegram-style album grid (see albumLayout()) of
- *  ChatMessageImageItem tiles, positioned with manual geometry inside a fixed-size grid frame,
- *  followed by an embedded ChatMessageText used as the optional comment -- exactly the same
- *  comment-reuse idiom as ChatMessageFiles.
+ *  ChatMessageImageItem tiles, followed by an optional embedded ChatMessageText comment --
+ *  exactly the same comment-reuse idiom as ChatMessageFiles.
+ *
+ * No QLayout is used anywhere in this class: both the tiles and the comment are positioned with
+ * manual geometry in layoutChildren(), called from resizeEvent() and from the QEvent::
+ * LayoutRequest handler in event() (the latter is how a child's updateGeometry() reaches a
+ * layout-less parent -- see layoutChildren()'s own doc comment). The comment is created lazily,
+ * on the first non-empty setComment() -- most albums carry no comment at all.
  *
  * The grid geometry is recomputed against fresh QRects on every bubbleWidthHint()/
  * updateMaximumBubbleWidth() call, not cached -- the same "just redo it" approach
@@ -84,13 +90,28 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         void updateMaximumBubbleWidth() override;
 
+        QSize sizeHint() const override;
+
+        QSize minimumSizeHint() const override;
+
     protected:
 
         void updateChatMessage() override;
 
+        void resizeEvent(QResizeEvent* event) override;
+
+        bool event(QEvent* event) override;
+
     private:
 
         void rebuildGrid(int forMaxWidth);
+
+        //! Single placement path for every child (tiles + comment), replacing the QLayout this
+        //! class used to have -- see the class doc comment.
+        void layoutChildren();
+
+        //! Create the comment widget on first use -- see the class doc comment.
+        ChatMessageText* ensureComment();
 
         std::unique_ptr<ChatMessageImages_p> pimpl;
 };
