@@ -177,17 +177,23 @@ int main(int argc, char *argv[])
     // consumes it synchronously here; opening the (modal) dialog itself does not need
     // deferring in this demo since nothing here spins the event loop first, but a consumer
     // that does more work before opening should still defer with QTimer::singleShot(0,...),
-    // as showing a modal dialog from inside a drop handler blocks the platform's drag session. ---
+    // as showing a modal dialog from inside a drop handler blocks the platform's drag session.
+    //
+    // openDialog(false,false) creates/reuses the dialog WITHOUT showing it yet, so the widget
+    // can be populated while still invisible -- showDialog() then measures and shows it once,
+    // already at its final size, instead of showing it empty and visibly refitting as the
+    // dropped files land (see ModalPopup::popup()/AbstractDialog::prepareToShow()). ---
 
     QObject::connect(overlay,&FileDropOverlay::dropped,&app,
         [logMsg,uploadDialogFrame](FileDropOverlay::Panel panel, const QMimeData* mimeData)
         {
             logMsg(QString("dropped: %1").arg(panelName(panel)));
 
-            uploadDialogFrame->openDialog(false);
+            uploadDialogFrame->openDialog(false,false);
             auto* widget=uploadDialogFrame->dialog()->fileUploadWidget();
             widget->setSendAsDocuments(panel==FileDropOverlay::Panel::Documents);
             widget->addFromMimeData(mimeData);
+            uploadDialogFrame->showDialog();
         }
     );
 

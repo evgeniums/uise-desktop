@@ -447,8 +447,35 @@ int FloatingDialogFrame::easingCurveType() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::preparePopup()
+{
+    if (pimpl->content.isNull())
+    {
+        return;
+    }
+
+    // ensurePolished() early-returns on an already-polished widget and does not recurse into
+    // its children, so walk the subtree explicitly -- same reasoning as
+    // ModalPopup::polishWidgetTree()/DropdownFrame::measureContentSize().
+    pimpl->content->ensurePolished();
+    const auto descendants=pimpl->content->findChildren<QWidget*>();
+    for (auto* w : descendants)
+    {
+        w->ensurePolished();
+    }
+
+    auto* dialog=qobject_cast<AbstractDialog*>(pimpl->content.data());
+    if (dialog!=nullptr)
+    {
+        dialog->prepareToShow();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::popup()
 {
+    preparePopup();
     adjustSize();
 
     if (!pimpl->hasPosition)
@@ -481,6 +508,7 @@ void FloatingDialogFrame::popup()
 
 void FloatingDialogFrame::popupAt(const QPoint& globalPos)
 {
+    preparePopup();
     adjustSize();
 
     auto pos=globalPos;
@@ -495,6 +523,7 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos)
 
 void FloatingDialogFrame::popupAt(const QPoint& globalPos, Qt::Corner anchorCorner)
 {
+    preparePopup();
     adjustSize();
 
     auto pos=globalPos;

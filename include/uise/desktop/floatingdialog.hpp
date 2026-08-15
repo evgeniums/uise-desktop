@@ -228,6 +228,14 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void clampToScreen(QPoint& pos) const;
         void clampFullyToScreen(QPoint& pos) const;
 
+        /**
+         * @brief Polish the content subtree and, if it is an AbstractDialog, invoke its
+         *  prepareToShow() -- both while still invisible, before adjustSize() measures it.
+         *  Called as the first statement of popup()/popupAt(), mirroring
+         *  ModalPopup::polishWidgetTree()+prepareToShow() (see modalpopup.cpp).
+         */
+        void preparePopup();
+
         std::unique_ptr<FloatingDialogFrame_p> pimpl;
 };
 
@@ -275,6 +283,21 @@ class FloatingDialog : public FloatingDialogFrame,
         }
 
         /**
+         * @brief Show an already-created dialog (see openDialog(destroyOnClose,false)).
+         *  popup() itself invokes AbstractDialog::prepareToShow() (via
+         *  FloatingDialogFrame::preparePopup()) before measuring, so content added while the
+         *  dialog was hidden is accounted for in a single, pre-show layout pass.
+         */
+        void showDialog()
+        {
+            if (m_dialog.isNull())
+            {
+                return;
+            }
+            popup();
+        }
+
+        /**
          * @brief Open floating dialog.
          * @param destroyOnClose Destroy dialog when it is closed.
          * @param show Show the frame right away.
@@ -284,7 +307,10 @@ class FloatingDialog : public FloatingDialogFrame,
         {
             if (m_dialog)
             {
-                popup();
+                if (show)
+                {
+                    showDialog();
+                }
                 return false;
             }
 
@@ -322,8 +348,7 @@ class FloatingDialog : public FloatingDialogFrame,
 
             if (show)
             {
-                popup();
-                dialogWidget->setDialogFocus();
+                showDialog();
             }
             return true;
         }

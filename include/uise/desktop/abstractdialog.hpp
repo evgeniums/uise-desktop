@@ -124,6 +124,17 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         {}
 
         /**
+         * @brief Called by the host (ModalPopup/FloatingDialogFrame) immediately before the
+         *  dialog is measured and shown, after it has been reparented, capped and polished.
+         *  Override to settle content-driven geometry SYNCHRONOUSLY, so the host measures the
+         *  final size once instead of refitting a visible popup afterwards. Must not spin the
+         *  event loop, and must not repolish `this` if the implementation has qproperty-*
+         *  setters that schedule work (see FileUploadWidget::settleLayout() for why).
+         */
+        virtual void prepareToShow()
+        {}
+
+        /**
          * @brief Widget a host can drag the dialog by, e.g. FloatingDialogFrame.
          * @return The dialog's title bar, or nullptr if this implementation has none.
          */

@@ -188,6 +188,14 @@ class FileUploadWidget_p
         int maxListAreaHeight=FileUploadWidget::DefaultMaxListAreaHeight;
         int maxCommentsHeight=FileUploadWidget::DefaultMaxCommentsHeight;
         int maxCommentLength=FileUploadWidget::DefaultMaxCommentLength;
+
+        // Deferred safety re-runs of doUpdateListAreaHeight()/comments-area activation (see
+        // updateListAreaHeight()/updateCommentsAreaHeight()). Single-shot and restarted, not
+        // fired-and-forgotten, so N calls in a row coalesce into one pending re-run instead of
+        // N independent QTimer::singleShot() timers. Parented to the widget in the constructor,
+        // so no QPointer guard is needed in the connected lambdas.
+        QTimer* heightUpdateTimer=nullptr;
+        QTimer* commentsUpdateTimer=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -206,6 +214,24 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     // there is no key event target at all. StrongFocus plus grabbing focus on show (below)
     // gives paste a default target immediately, without requiring an initial click anywhere.
     setFocusPolicy(Qt::StrongFocus);
+
+    pimpl->heightUpdateTimer=new QTimer(this);
+    pimpl->heightUpdateTimer->setSingleShot(true);
+    pimpl->heightUpdateTimer->setInterval(50);
+    connect(pimpl->heightUpdateTimer,&QTimer::timeout,this,&FileUploadWidget::doUpdateListAreaHeight);
+
+    pimpl->commentsUpdateTimer=new QTimer(this);
+    pimpl->commentsUpdateTimer->setSingleShot(true);
+    pimpl->commentsUpdateTimer->setInterval(50);
+    connect(
+        pimpl->commentsUpdateTimer,
+        &QTimer::timeout,
+        this,
+        [this]()
+        {
+            activateLayoutsUpward(pimpl->messageEditor->qWidget());
+        }
+    );
 
     auto* topLayout=Layout::vertical(this);
 
@@ -720,20 +746,12 @@ void FileUploadWidget::updateListAreaHeight()
     // happen to let the backlog catch up. Schedule an explicit repeat of the FULL update (not
     // just layout activation) after a short real delay, rather than depending on a stray
     // event to do it by accident. doUpdateListAreaHeight() does not itself re-schedule
-    // anything, so this cannot chain into a repeating timer. QPointer guards against the
-    // widget being gone by the time it fires.
-    QPointer<FileUploadWidget> guard(this);
-    QTimer::singleShot(
-        50,
-        this,
-        [guard]()
-        {
-            if (!guard.isNull())
-            {
-                guard->doUpdateListAreaHeight();
-            }
-        }
-    );
+    // anything, so this cannot chain into a repeating timer. The timer is single-shot and
+    // restarted (not a fresh QTimer::singleShot() per call), so a burst of calls (e.g.
+    // addItems() with several files, followed immediately by setSendAsDocuments()) coalesces
+    // into one pending re-run instead of N -- it still fires >=50ms after the LAST call, which
+    // is a later and therefore strictly safer deadline than 50ms after the first.
+    pimpl->heightUpdateTimer->start();
 }
 
 //--------------------------------------------------------------------------
@@ -749,21 +767,11 @@ void FileUploadWidget::updateCommentsAreaHeight()
     // not the inner EnhancedTextEdit -- its own child layout is exactly what needs to
     // re-query the editor's new sizeHint()), then repeat after a short real delay in case
     // something in the chain (a QScrollArea ancestor's own posted-event-driven content
-    // tracking, same as the list area) has not settled by the time this call returns.
+    // tracking, same as the list area) has not settled by the time this call returns. This
+    // fires on every keystroke, so the re-run timer is coalesced the same way as
+    // updateListAreaHeight()'s, rather than allocating a fresh QTimer::singleShot() per call.
     activateLayoutsUpward(pimpl->messageEditor->qWidget());
-
-    QPointer<FileUploadWidget> guard(this);
-    QTimer::singleShot(
-        50,
-        this,
-        [guard]()
-        {
-            if (!guard.isNull())
-            {
-                activateLayoutsUpward(guard->pimpl->messageEditor->qWidget());
-            }
-        }
-    );
+    pimpl->commentsUpdateTimer->start();
 }
 
 //--------------------------------------------------------------------------
@@ -1165,6 +1173,28 @@ void FileUploadWidget::setCommentsVisible(bool visible)
     pimpl->commentsVisible=visible;
     pimpl->commentsTitle->setVisible(visible);
     pimpl->messageEditor->qWidget()->setVisible(visible);
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadWidget::settleLayout()
+{
+    // qproperty-minListAreaHeight/maxListAreaHeight (fileupload.qss) are applied by Qt's style
+    // engine during polish; measuring before that would lock in the C++ defaults and let the
+    // QSS values arrive later (via deferListAreaHeightUpdate()), i.e. after the popup hosting
+    // this widget is already on screen. ensurePolished() is idempotent -- unlike
+    // Style::repolishRecursive() (unpolish+polish), it does NOT re-fire those setters on a
+    // widget that has already been polished once, so it cannot manufacture that same
+    // post-show refit here.
+    ensurePolished();
+    doUpdateListAreaHeight();
+
+    // Keep the deferred safety re-run ARMED rather than cancelling it: this is exactly the
+    // path (first open, freshly built rows inside a QScrollArea) updateListAreaHeight()'s own
+    // timer exists for. A re-run that finds the height unchanged is inert -- setMinimumHeight()/
+    // setMaximumHeight() early-return when the value does not actually change -- so leaving it
+    // armed cannot cause a visible refit.
+    pimpl->heightUpdateTimer->start();
 }
 
 //--------------------------------------------------------------------------

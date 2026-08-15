@@ -114,6 +114,8 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         void setButtonsVisible(bool visible) override;
         void setCommentsVisible(bool visible) override;
 
+        void settleLayout() override;
+
         /**
          * @brief Set the tallest the preview list is allowed to grow to before it starts
          *  scrolling instead of growing further.

@@ -104,6 +104,22 @@ class ModalDialog : public FrameWithModalPopup,
         }
 
         /**
+         * @brief Show an already-created dialog (see openDialog(destroyOnCancel,false)).
+         *  ModalPopup::popup() polishes the widget tree and invokes
+         *  AbstractDialog::prepareToShow() before measuring, so content added while the dialog
+         *  was hidden is accounted for in a single, pre-show layout pass.
+         */
+        void showDialog()
+        {
+            if (m_dialog.isNull())
+            {
+                return;
+            }
+            popup();
+            DialogWidgetExtractor::dialogWidget(m_dialog)->setDialogFocus();
+        }
+
+        /**
          * @brief Open modal dialog.
          * @parame destroyOnCancel Destroy dialog if cancelled.
          * @return Returns true if new dialog is created, false if dialog already existed.
@@ -112,7 +128,10 @@ class ModalDialog : public FrameWithModalPopup,
         {
             if (m_dialog)
             {
-                popup();
+                if (show)
+                {
+                    showDialog();
+                }
                 return false;
             }
 
@@ -159,8 +178,7 @@ class ModalDialog : public FrameWithModalPopup,
 
             if (show)
             {
-                popup();
-                dialogWidget->setDialogFocus();
+                showDialog();
             }
             return true;
         }

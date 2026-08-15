@@ -160,6 +160,20 @@ void FileUploadDialog::reset()
 
 //--------------------------------------------------------------------------
 
+void FileUploadDialog::prepareToShow()
+{
+    // Runs while the popup/frame hosting this dialog is still invisible (see
+    // ModalPopup::popup()/FloatingDialogFrame::preparePopup()), after polish -- settle the
+    // widget's content-driven list-area height now so a dialog pre-populated with items before
+    // being shown is measured once, at its final size, instead of visibly refitting afterwards.
+    if (m_widget!=nullptr)
+    {
+        m_widget->settleLayout();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 template class UISE_DESKTOP_EXPORT Dialog<AbstractFileUploadDialog>;
 
 UISE_DESKTOP_NAMESPACE_END

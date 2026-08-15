@@ -102,6 +102,15 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
 
         virtual void setItemFileName(int index, const QString& name)=0;
 
+        /**
+         * @brief Apply any pending list-area height recalculation right now, synchronously.
+         *  Called by FileUploadDialog::prepareToShow() so a dialog pre-populated with items is
+         *  measured at its final size before it becomes visible. Defaulted (not pure) so
+         *  out-of-tree implementations keep compiling; safe to call at any time.
+         */
+        virtual void settleLayout()
+        {}
+
         void setMaxFileCount(int count) noexcept
         {
             m_maxFileCount=count;
