@@ -518,25 +518,24 @@ int FileUploadWidget::addItems(FileUploadItems newItems)
 
     auto toInsert=filterDuplicates(pimpl->items,std::move(newItems));
 
-    auto available=maxFileCount()-static_cast<int>(pimpl->items.size());
-    if (available<0)
+    // maxFileCount()<=0 means "no limit". Otherwise the whole incoming bunch is rejected as one
+    // unit when it would push the total over the limit -- no more silent partial-add truncation,
+    // see maxFileCountExceeded()'s own doc comment.
+    auto limit=maxFileCount();
+    if (limit>0 && static_cast<int>(pimpl->items.size())+static_cast<int>(toInsert.size())>limit)
     {
-        available=0;
+        emit maxFileCountExceeded(static_cast<int>(toInsert.size()));
+        updateItemsState(wasEmpty,true);
+        return 0;
     }
-    auto toAdd=qMin(available,static_cast<int>(toInsert.size()));
-    auto rejected=static_cast<int>(toInsert.size())-toAdd;
 
-    for (int i=0;i<toAdd;++i)
+    for (const auto& item : toInsert)
     {
-        addRowFor(toInsert[static_cast<size_t>(i)]);
-    }
-    if (rejected>0)
-    {
-        emit maxFileCountExceeded(rejected);
+        addRowFor(item);
     }
 
     updateItemsState(wasEmpty,true);
-    return toAdd;
+    return static_cast<int>(toInsert.size());
 }
 
 //--------------------------------------------------------------------------
@@ -557,15 +556,19 @@ void FileUploadWidget::setItems(FileUploadItems newItems)
 
     auto toInsert=filterDuplicates({},std::move(newItems));
 
-    auto toAdd=qMin(maxFileCount(),static_cast<int>(toInsert.size()));
-    auto rejected=static_cast<int>(toInsert.size())-toAdd;
-    for (int i=0;i<toAdd;++i)
+    // Same "reject the whole bunch, no truncation" rule as addItems() -- pimpl->items was just
+    // cleared above, so the check is against toInsert alone.
+    auto limit=maxFileCount();
+    if (limit>0 && static_cast<int>(toInsert.size())>limit)
     {
-        addRowFor(toInsert[static_cast<size_t>(i)]);
+        emit maxFileCountExceeded(static_cast<int>(toInsert.size()));
+        updateItemsState(wasEmpty,true);
+        return;
     }
-    if (rejected>0)
+
+    for (const auto& item : toInsert)
     {
-        emit maxFileCountExceeded(rejected);
+        addRowFor(item);
     }
 
     updateItemsState(wasEmpty,true);

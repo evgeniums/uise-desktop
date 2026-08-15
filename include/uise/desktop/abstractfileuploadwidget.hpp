@@ -75,15 +75,18 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
 
         /**
          * @brief Add files by path.
-         * @return Number of files actually added (may be less than paths.size() if
-         *  maxFileCount() was reached, see maxFileCountExceeded()).
+         * @return Number of files actually added. 0 if adding them all would exceed
+         *  maxFileCount() -- the whole bunch is rejected as one unit, nothing is truncated, see
+         *  maxFileCountExceeded().
          */
         virtual int addFiles(const QStringList& paths)=0;
 
         /**
-         * @brief Add items, truncating to maxFileCount(). The single choke point every other
-         *  add path (addFiles(), drag-and-drop, paste) routes through.
-         * @return Number of items actually added.
+         * @brief Add items. The single choke point every other add path (addFiles(),
+         *  drag-and-drop, paste) routes through.
+         * @return Number of items actually added -- either items.size() (after de-duplication)
+         *  or 0. If adding every item would push the total past maxFileCount(), NONE of them are
+         *  added and maxFileCountExceeded() is emitted instead; there is no partial add.
          */
         virtual int addItems(FileUploadItems items)=0;
 
@@ -111,6 +114,10 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         virtual void settleLayout()
         {}
 
+        /**
+         * @brief Set the cap on items().size(). A value <=0 means no limit -- addItems()/
+         *  setItems() never reject a bunch, however large.
+         */
         void setMaxFileCount(int count) noexcept
         {
             m_maxFileCount=count;
@@ -231,8 +238,11 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         void editImageRequested(int index);
 
         /**
-         * @brief Emitted when addFiles()/addItems()/a drop/a paste would exceed maxFileCount().
-         * @param rejectedCount Number of items that were NOT added because of the limit.
+         * @brief Emitted when addFiles()/addItems()/a drop/a paste would push items().size()
+         *  past maxFileCount(). The whole incoming bunch is rejected as one unit -- none of it
+         *  is added, whatever was already staged is left untouched.
+         * @param rejectedCount Number of items in the rejected bunch (after de-duplication
+         *  against what was already staged).
          */
         void maxFileCountExceeded(int rejectedCount);
 
