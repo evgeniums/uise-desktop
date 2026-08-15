@@ -35,6 +35,13 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/enums.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 
+// Comparison switch: define this to build the original QBoxLayout-based
+// implementation of LinkedListView instead of the manual-positioning one.
+// Undefine (default) to build the current implementation. Must be defined
+// consistently for linkedlistview.hpp and linkedlistview.cpp -- since the
+// .cpp includes this header, toggling the line below is enough.
+#define UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace detail
@@ -76,8 +83,10 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
         void setAlignment(Qt::Alignment alignment) noexcept;
         Qt::Alignment alignment() const noexcept;
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         QSize sizeHint() const override;
         QSize minimumSizeHint() const override;
+#endif
 
     signals:
 
@@ -86,7 +95,9 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         bool event(QEvent* event) override;
+#endif
 
     private slots:
 
