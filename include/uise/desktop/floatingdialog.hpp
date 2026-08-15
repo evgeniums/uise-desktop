@@ -154,6 +154,19 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         bool isFollowHostVisibility() const noexcept;
 
         /**
+         * @brief Close the frame when the user presses a mouse button outside of it.
+         * @param enable Default false -- a floating dialog is normally dismissed explicitly.
+         *
+         * Presses inside the frame, and inside any Qt::Popup/Qt::Tool/Qt::ToolTip top-level (a
+         * menu or a DropdownFrame opened by the frame's own content -- those are parentless
+         * windows with no Qt ancestry back to the frame), never dismiss it. The press itself is
+         * never consumed, so it still reaches whatever it landed on -- same contract as
+         * DropdownFrame's own outside-click path.
+         */
+        void setAutoCloseOnOutsideClick(bool enable) noexcept;
+        bool isAutoCloseOnOutsideClick() const noexcept;
+
+        /**
          * @brief Set the duration of the fade played on popup()/close().
          * @param val Duration in milliseconds; 0 disables the animation (instant show/hide,
          *  the pre-fade behaviour).

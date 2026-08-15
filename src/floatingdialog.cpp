@@ -35,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStyle>
 #include <QPropertyAnimation>
 #include <QLayout>
+#include <QPointer>
+#include <QTimer>
 
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -64,6 +66,10 @@ class FloatingDialogFrame_p
         QPointer<QWidget> hostWindow;
         bool followHostVisibility=true;
         bool hiddenByHost=false;
+
+        bool autoCloseOnOutsideClick=false;
+        bool outsideFilterInstalled=false;
+        bool suppressNextOutsideClose=false;
 
         int minVisibleMargin=FloatingDialogFrame::DefaultMinVisibleMargin;
 
@@ -123,9 +129,80 @@ static void updateHostWindowTracking(FloatingDialogFrame* self, FloatingDialogFr
 
 //--------------------------------------------------------------------------
 
+//! True when `obj` is a widget whose top-level window is neither the frame itself nor a
+//! parentless popup/tool window opened by the frame's own content (a DropdownFrame such as
+//! Calendar's month picker, or a QMenu) -- those must not count as "outside" even though they
+//! have no Qt ancestry back to the frame.
+static bool isOutsidePress(FloatingDialogFrame* frame, QObject* obj)
+{
+    auto* w=qobject_cast<QWidget*>(obj);
+    if (w==nullptr)
+    {
+        return false;
+    }
+
+    auto* topLevel=w->window();
+    if (topLevel==frame)
+    {
+        return false;
+    }
+
+    auto type=topLevel->windowType();
+    if (type==Qt::Popup || type==Qt::Tool || type==Qt::ToolTip)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+//! Installed only while both autoCloseOnOutsideClick is enabled and the frame is visible --
+//! see removeOutsideClickFilter() for the matching teardown. The click that opens the frame is
+//! suppressed for one event-loop turn, same guard as DropdownFrame::beginOpen()'s
+//! suppressNextOwnPressClose, so that opening click's redelivery up the parent chain cannot
+//! immediately close the frame it just opened.
+static void installOutsideClickFilter(FloatingDialogFrame* self, FloatingDialogFrame_p* p)
+{
+    if (!p->autoCloseOnOutsideClick || p->outsideFilterInstalled)
+    {
+        return;
+    }
+
+    qApp->installEventFilter(self);
+    p->outsideFilterInstalled=true;
+
+    p->suppressNextOutsideClose=true;
+    QPointer<FloatingDialogFrame> guard(self);
+    QTimer::singleShot(0,self,[guard,p]()
+    {
+        if (!guard.isNull())
+        {
+            p->suppressNextOutsideClose=false;
+        }
+    });
+}
+
+//--------------------------------------------------------------------------
+
+static void removeOutsideClickFilter(FloatingDialogFrame* self, FloatingDialogFrame_p* p)
+{
+    if (!p->outsideFilterInstalled)
+    {
+        return;
+    }
+
+    qApp->removeEventFilter(self);
+    p->outsideFilterInstalled=false;
+}
+
+//--------------------------------------------------------------------------
+
 static void showFrame(FloatingDialogFrame* self, FloatingDialogFrame_p* p)
 {
     updateHostWindowTracking(self,p);
+    installOutsideClickFilter(self,p);
 
     p->hiddenByHost=false;
     p->escShortcut->setEnabled(p->shortcutEnabled);
@@ -419,6 +496,28 @@ bool FloatingDialogFrame::isFollowHostVisibility() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::setAutoCloseOnOutsideClick(bool enable) noexcept
+{
+    pimpl->autoCloseOnOutsideClick=enable;
+    if (!enable)
+    {
+        removeOutsideClickFilter(this,pimpl.get());
+    }
+    else if (isVisible())
+    {
+        installOutsideClickFilter(this,pimpl.get());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool FloatingDialogFrame::isAutoCloseOnOutsideClick() const noexcept
+{
+    return pimpl->autoCloseOnOutsideClick;
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::setFadeDurationMs(int val) noexcept
 {
     pimpl->fadeDurationMs=val;
@@ -580,6 +679,8 @@ void FloatingDialogFrame::close(bool autoDestroy)
 
 void FloatingDialogFrame::finishClose()
 {
+    removeOutsideClickFilter(this,pimpl.get());
+
     pimpl->fadeAnimation->stop();
     hide();
     setWindowOpacity(1.0);          // restored before the next popup()
@@ -620,6 +721,19 @@ void FloatingDialogFrame::paintEvent(QPaintEvent* event)
 
 bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
 {
+    // Installed on qApp (see installOutsideClickFilter()), so this runs before the two
+    // branches below get a chance to see events meant for them -- neither dragHandle nor
+    // hostWindow presses are ever "outside", so this check never preempts them.
+    if (pimpl->outsideFilterInstalled
+        && event->type()==QEvent::MouseButtonPress
+        && isVisible() && !pimpl->closing && !pimpl->suppressNextOutsideClose
+        && isOutsidePress(this,obj))
+    {
+        // deliberately not consumed -- the press still activates whatever it landed on, same
+        // contract as DropdownFrame's own outside-click dismissal
+        close(pimpl->contentAutoDestroy);
+    }
+
     if (obj==pimpl->dragHandle.data())
     {
         switch (event->type())
@@ -701,7 +815,16 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
                 // (never activateWindow(), which would steal focus right back from the host and
                 // fight the user -- this is "stay above its own parent", not "always on top")
                 // restacks the frame above the host without taking focus away from it.
-                if (isVisible() && !pimpl->closing)
+                //
+                // Skipped under autoCloseOnOutsideClick: the host is reactivated by the very
+                // click meant to dismiss this frame (the OS activates the window under the
+                // cursor before the click event itself reaches the outside-click filter below),
+                // so raising here would fight the dismissal -- host activates, this frame jumps
+                // back on top, then the click's own close() finally wins, a visible
+                // hide/show/hide flicker. A frame in this mode is meant to behave like a
+                // dismissible popup rather than a persistent "stay above host" dialog, so it is
+                // simply left wherever the stacking order puts it.
+                if (isVisible() && !pimpl->closing && !pimpl->autoCloseOnOutsideClick)
                 {
                     raise();
                 }
