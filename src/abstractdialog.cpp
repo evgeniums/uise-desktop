@@ -165,6 +165,13 @@ void AbstractDialog::setButtonVisible(int id, bool enable)
 
 //--------------------------------------------------------------------------
 
+void AbstractDialog::setButtonText(int id, const QString& text)
+{
+    doSetButtonText(id,text);
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractDialog::closeDialog()
 {
     emit closeRequested();

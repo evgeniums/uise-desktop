@@ -21,7 +21,25 @@
             "name" : "ReplyDialog",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#9CD5FF" }
+                    "off" : { "currentColor" : "#9CD5FF" },
+                    "on" :  { "currentColor" : "#9CD5FF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
+            "name" : "ReplyDialogDanger",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#FF6B6B" },
+                    "on" :  { "currentColor" : "#FF6B6B" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FF8F8F" },
+                    "on" :  { "currentColor" : "#FF8F8F" }
                 }
             }
         }

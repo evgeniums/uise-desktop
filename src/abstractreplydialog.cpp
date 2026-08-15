@@ -56,10 +56,14 @@ ReplyDialogActionConfig AbstractReplyDialog::standardAction(ReplyDialogAction ac
 
         case (ReplyDialogAction::DoNotReply):
         {
+            // Its own icon-color context (ReplyDialogDanger), not ReplyDialog::* like the
+            // other actions -- a context's colour modes apply uniformly to every alias under
+            // it, so a destructive action needing a different (red) palette from its siblings
+            // needs a context of its own, see replypreview.json.
             return ReplyDialogActionConfig{
                 static_cast<int>(action),
                 tr("Do not reply"),
-                Style::instance().svgIconLocator().icon("ReplyDialog::doNotReply",parent)
+                Style::instance().svgIconLocator().icon("ReplyDialogDanger::doNotReply",parent)
             };
         }
         break;

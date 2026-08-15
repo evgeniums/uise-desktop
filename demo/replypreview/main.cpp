@@ -319,15 +319,29 @@ int main(int argc, char *argv[])
     // making every opened dialog a percentage of ~nothing (technically "open", but invisible).
     // demo/passworddialog/main.cpp avoids this by using its own dialogFrame to also host that
     // demo's control panel; this one has no such content, so it needs an explicit floor instead.
-    dialogFrame->setMinimumSize(360,300);
+    // The floor must be generous, not just non-zero: with isPopupAutoHeight() on, the dialog's
+    // natural content height (title + scroll area + comment + actions + buttons) is measured
+    // and then capped at maxHeightPercent() (80%) of THIS size -- too small a floor starves
+    // that budget and forces the dialog to squeeze into far less height than it needs, which
+    // looks like auto-height "not working" even though it's simply out of room to grow into.
+    dialogFrame->setMinimumSize(500,750);
     rootLayout->addWidget(dialogFrame);
 
     // Shared by the standalone button below AND replyBar's own configure button -- clicking
     // either one is exactly the "user wants to configure the reply operation" gesture the task
     // brief describes, so both open the same dialog.
-    auto openReplyDialog=[dialogFrame,central,logMsg]()
+    auto openReplyDialog=[dialogFrame,central,logMsg,replyBar,kindCombo]()
     {
-        bool isNew=dialogFrame->openDialog();
+        // openDialog(true,false): create (or reuse) the dialog WITHOUT showing/measuring it
+        // yet -- ModalPopup::popup() measures the dialog exactly once, from whatever content it
+        // finds at that moment, via AbstractDialog::prepareToShow() (see
+        // ReplyDialog::prepareToShow()). Calling the show=true default here would measure an
+        // EMPTY dialog (setMessage() below hasn't run yet) and lock that in; setMessage() then
+        // has no way to make the already-shown ModalPopup frame re-measure itself afterwards
+        // (it has no QLayout of its own, see ReplyDialog::prepareToShow()'s own comment). Same
+        // "build content before first show" idiom as demo/fileupload/main.cpp's own
+        // openDialog(false,false) call.
+        bool isNew=dialogFrame->openDialog(true,false);
         if (isNew)
         {
             QObject::connect(
@@ -340,9 +354,23 @@ int main(int argc, char *argv[])
                 dialogFrame->dialog(),
                 &AbstractReplyDialog::saveRequested,
                 central,
-                [dialogFrame,logMsg](const QString& quoted)
+                [dialogFrame,replyBar,kindCombo,logMsg](const QString& quoted)
                 {
                     logMsg(QString("dialog: saveRequested(\"%1\")").arg(quoted));
+
+                    // Save (quoted empty): revert to the original message's own (trimmed) text.
+                    // "Quote selected" (quoted non-empty): show the user-picked fragment instead,
+                    // marked isQuote() so the block applies quoteTrimLength() rather than
+                    // textTrimLength() to it -- see ReplyPreview::refresh()'s own doc comment.
+                    auto kind=static_cast<ReplyMessageKind>(kindCombo->currentData().toInt());
+                    auto data=makeReplyData(kind);
+                    if (!quoted.isEmpty())
+                    {
+                        data.setText(quoted);
+                        data.setQuote(true);
+                    }
+                    replyBar->setReplyData(data);
+
                     dialogFrame->closePopup();
                 }
             );
@@ -351,11 +379,22 @@ int main(int argc, char *argv[])
         auto* body=new ChatMessageText();
         body->loadText(
             QStringLiteral("Select some of this text, then look at the Save button below -- "
-                            "it swaps to \"Quote selected\" while a selection is active."),
+                            "it swaps to \"Quote selected\" while a selection is active."
+                           "Select some of this text, then look at the Save button below -- "
+                           "it swaps to \"Quote selected\" while a selection is active."
+                           "Select some of this text, then look at the Save button below -- "
+                           "it swaps to \"Quote selected\" while a selection is active."
+                           "Select some of this text, then look at the Save button below -- "
+                           "it swaps to \"Quote selected\" while a selection is active."
+                           ),
             false
         );
         auto* msg=makeMessage(dialogFrame,AbstractChatMessage::Direction::Received,body);
         dialogFrame->dialog()->setMessage(msg);
+
+        // NOW show/measure -- messageArea already reflects msg's real height (see
+        // ReplyDialog::prepareToShow(), invoked synchronously from inside popup() below).
+        dialogFrame->showDialog();
     };
 
     QObject::connect(
@@ -381,7 +420,7 @@ int main(int argc, char *argv[])
     rootLayout->addWidget(log,1);
 
     w.setCentralWidget(mainFrame);
-    w.resize(700,900);
+    w.resize(700,1000);
     w.setWindowTitle("Reply UI Demo");
     w.show();
 

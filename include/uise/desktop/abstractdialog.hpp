@@ -112,6 +112,22 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
             setButtonEnabled(static_cast<int>(id),enable);
         }
 
+        /**
+         * @brief Relabel an already-created button IN PLACE, without touching any other button.
+         *
+         * Unlike setButtons(), which destroys and recreates the whole row (see
+         * Dialog<>::doSetButtons()) -- visibly flickering (hide+show) every button, not just the
+         * one whose text actually changed -- this only calls PushButton::setText() on the one
+         * button matching @a id. Use this for a label that toggles based on live state (e.g. a
+         * selection-dependent "Save"/"Quote selected" swap); use setButtons() when the button
+         * SET itself changes (different ids, added/removed buttons).
+         */
+        template <typename T>
+        void setButtonText(T id, const QString& text)
+        {
+            setButtonText(static_cast<int>(id),text);
+        }
+
         template <typename T>
         void activateButton(T id)
         {
@@ -208,6 +224,7 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         void activateButton(int id);
         void setButtonEnabled(int id, bool enable);
         void setButtonVisible(int id, bool enable);
+        void setButtonText(int id, const QString& text);
         void closeDialog();
 
     protected:
@@ -215,6 +232,7 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         virtual void doActivateButton(int id)=0;
         virtual void doSetButtonEnabled(int id, bool enable)=0;
         virtual void doSetButtonVisible(int id, bool enable)=0;
+        virtual void doSetButtonText(int id, const QString& text)=0;
 
         /**
          * @brief Re-apply the effective ButtonsStyle to the already-created buttons.

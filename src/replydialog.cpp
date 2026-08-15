@@ -46,6 +46,34 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+namespace {
+
+// Keeps a lone one-line reply from collapsing messageArea to a sliver, and caps a very tall
+// bubble (e.g. an image album) so it scrolls internally instead of trying to grow the whole
+// dialog without bound -- ModalReplyDialog's own maxHeightPercent() still applies on top of
+// this as the final "don't exceed the host frame" clamp.
+constexpr int MinMessageAreaHeight=80;
+constexpr int MaxMessageAreaHeight=500;
+
+// Force every ancestor's layout to re-activate synchronously instead of waiting for the next
+// event loop turn to catch up -- same fix, same underlying Qt behavior, as
+// FileUploadWidget::activateLayoutsUpward() (src/fileuploadwidget.cpp) and
+// FastSwitchButton's own copy of it.
+void activateLayoutsUpward(QWidget* widget)
+{
+    for (auto* w=widget; w!=nullptr; w=w->parentWidget())
+    {
+        if (w->layout()!=nullptr)
+        {
+            w->layout()->invalidate();
+            w->layout()->activate();
+        }
+        w->update();
+    }
+}
+
+}
+
 //--------------------------------------------------------------------------
 
 class ReplyDialog_p
@@ -177,12 +205,19 @@ void ReplyDialog::setMessage(AbstractChatMessage* message)
 
         if (message->content()!=nullptr && message->content()->body()!=nullptr)
         {
-            connect(message->content()->body(),&AbstractChatMessageBody::selectionChanged,this,&ReplyDialog::updateSaveButton);
+            auto* body=message->content()->body();
+            connect(body,&AbstractChatMessageBody::selectionChanged,this,&ReplyDialog::updateSaveButton);
+
+            // Static preview, not the live chat page -- enable the body's own text selection/
+            // copy (Ctrl+C, right-click Copy), which are deliberately off by default there. See
+            // AbstractChatMessageBody::setCopyable()'s own doc comment.
+            body->setCopyable(true);
         }
     }
 
     updateCommentVisibility();
     updateSaveButton();
+    updateMessageAreaHeight();
 }
 
 //--------------------------------------------------------------------------
@@ -205,6 +240,13 @@ void ReplyDialog::setActions(std::vector<ReplyDialogActionConfig> actions)
     for (const auto& action : actions)
     {
         auto button=pimpl->actions->addButton(action.text,action.icon);
+        // ButtonsList::addButton() assigns no objectName of its own -- this is the only hook
+        // replypreview.qss has to give a destructive action (red palette) a different style
+        // from its siblings, see uise--ReplyDialog #actions #doNotReplyAction there.
+        if (action.id==static_cast<int>(ReplyDialogAction::DoNotReply))
+        {
+            button->setObjectName("doNotReplyAction");
+        }
         auto id=action.id;
         connect(button,&IconTextButton::clicked,this,
             [this,id]()
@@ -274,27 +316,6 @@ int ReplyDialog::quoteTrimLength() const
 
 //--------------------------------------------------------------------------
 
-void ReplyDialog::prepareToShow()
-{
-    if (pimpl->message.isNull())
-    {
-        return;
-    }
-
-    // Settle the scroll area's height against the bubble's own natural size NOW, synchronously,
-    // before ModalPopup/FrameWithModalPopup measures this dialog for its first show -- so a
-    // message pre-installed via setMessage() before the dialog is shown gets a single correct
-    // measurement instead of a visible refit afterwards. Capped at a reasonable viewing height
-    // so a very tall bubble (e.g. an image album) still scrolls rather than stretching the
-    // dialog off-screen.
-    constexpr int MaxMessageAreaHeight=420;
-    auto height=qMin(pimpl->message->sizeHint().height(),MaxMessageAreaHeight);
-    pimpl->messageArea->setMinimumHeight(height);
-    pimpl->messageArea->setMaximumHeight(height);
-}
-
-//--------------------------------------------------------------------------
-
 void ReplyDialog::updateSaveButton()
 {
     const bool quote=!selectedText().isEmpty();
@@ -304,14 +325,10 @@ void ReplyDialog::updateSaveButton()
     }
     pimpl->quoteMode=quote;
 
-    setButtons({
-        AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this),
-        AbstractDialog::ButtonConfig{
-            static_cast<int>(AbstractDialog::StandardButton::Apply),
-            quote ? tr("Quote selected") : tr("Save"),
-            quote ? Style::instance().svgIconLocator().icon("ReplyDialog::quote",this) : std::shared_ptr<SvgIcon>{}
-        }
-    });
+    // setButtonText() relabels the existing Apply button in place -- unlike setButtons(), it
+    // does not destroy/recreate the whole row (see Dialog<>::doSetButtons()), which visibly
+    // flickered every button (Cancel included) on each select/deselect.
+    setButtonText(AbstractDialog::StandardButton::Apply,quote ? tr("Quote selected") : tr("Save"));
 }
 
 //--------------------------------------------------------------------------
@@ -323,12 +340,80 @@ void ReplyDialog::updateCommentVisibility()
         return;
     }
 
-    bool isText=!pimpl->message.isNull()
+    bool hasText=!pimpl->message.isNull()
         && pimpl->message->content()!=nullptr
-        && dynamic_cast<AbstractChatMessageText*>(pimpl->message->content()->body())!=nullptr;
+        && pimpl->message->content()->body()!=nullptr
+        && pimpl->message->content()->body()->hasSelectableText();
 
-    pimpl->commentVisible=isText;
-    pimpl->comment->setVisible(isText);
+    pimpl->commentVisible=hasText;
+    pimpl->comment->setVisible(hasText);
+}
+
+//--------------------------------------------------------------------------
+
+void ReplyDialog::prepareToShow()
+{
+    // ModalPopup::popup() invokes this synchronously immediately before it measures the dialog
+    // for the FIRST time (see AbstractDialog::prepareToShow()'s own doc comment) -- the
+    // authoritative point to settle messageArea's height regardless of whether setMessage()
+    // happened to run before or after openDialog()/showDialog() was first called. The
+    // setMessage()-triggered call handles a LATER setMessage() while already visible (updating
+    // messageArea's own internal layout), but ModalPopup itself has no QLayout of its own (it
+    // positions itself via its own updateWidgetGeometry(), not Qt's layout system), so nothing
+    // after this first measurement can make the OUTER popup frame re-measure on its own --
+    // this is the one point guaranteed to run before that first measurement happens.
+    updateMessageAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+void ReplyDialog::updateMessageAreaHeight()
+{
+    // QScrollArea::sizeHint() is NOT a reliable measure of "how tall is my content" -- Qt's
+    // own implementation bounds it at a generic, font-metric-derived ceiling regardless of the
+    // actual widget() it holds, so it under-reports a real bubble's height and the ENCLOSING
+    // dialog's own sizeHint()/heightForWidth() (what ModalReplyDialog's popup-auto-height
+    // reads) inherits that under-report. Same problem, same fix, as FileUploadWidget's own
+    // listArea: measure the CONTENT directly and pin messageArea's height to it (bounded),
+    // rather than trusting the scroll area's own sizeHint -- see
+    // FileUploadWidget::doUpdateListAreaHeight() (src/fileuploadwidget.cpp) for the original.
+    if (pimpl->message.isNull())
+    {
+        pimpl->messageArea->setMinimumHeight(MinMessageAreaHeight);
+        pimpl->messageArea->setMaximumHeight(MaxMessageAreaHeight);
+        return;
+    }
+
+    Style::repolishRecursive(pimpl->messageHolder);
+    pimpl->messageHolder->ensurePolished();
+
+    // Two-pass measurement, same rationale as doUpdateListAreaHeight(): the message was just
+    // (re)inserted, so its own layout's invalidation may still be an asynchronous, posted
+    // QEvent::LayoutRequest rather than something already reflected in a synchronous
+    // sizeHint() -- pass 1 primes geometry, pass 2 re-measures after a real layout cycle.
+    int contentHeight=0;
+    for (int pass=0;pass<2;++pass)
+    {
+        pimpl->messageHolderLayout->invalidate();
+        pimpl->messageHolderLayout->activate();
+
+        auto hint=pimpl->messageHolder->sizeHint().height();
+        if (pass>0 && hint==contentHeight)
+        {
+            break;
+        }
+        contentHeight=hint;
+    }
+
+    auto h=qBound(MinMessageAreaHeight,contentHeight,MaxMessageAreaHeight);
+
+    pimpl->messageArea->setMinimumHeight(h);
+    pimpl->messageArea->setMaximumHeight(h);
+
+    // The two lines above only give messageArea the right constraints; this is what actually
+    // gets that new size reflected on screen (and up through ModalPopup's own geometry), same
+    // as doUpdateListAreaHeight()'s identical closing call.
+    activateLayoutsUpward(this);
 }
 
 //--------------------------------------------------------------------------

@@ -89,6 +89,7 @@ class Dialog : public BaseT
         void doActivateButton(int id) override;
         void doSetButtonEnabled(int id, bool enable) override;
         void doSetButtonVisible(int id, bool enable) override;
+        void doSetButtonText(int id, const QString& text) override;
         void doSetButtons(std::vector<AbstractDialog::ButtonConfig> buttons);
 
         void updateButtonsLayout() override;

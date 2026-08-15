@@ -88,21 +88,45 @@ class UISE_DESKTOP_EXPORT ReplyDialog : public Dialog<AbstractReplyDialog>
 
         void updateSaveButton();
         void updateCommentVisibility();
+        void updateMessageAreaHeight();
 
         std::unique_ptr<ReplyDialog_p> pimpl;
 };
 
 using ModalReplyDialogType=ModalDialog<AbstractReplyDialog,ReplyDialog,-1,80,-1,80>;
 
-//! Convenience alias matching the naming of ModalFileUploadDialog/ModalPasswordDialog -- a
-//! plain instantiation of ModalReplyDialogType with no behaviour of its own.
 class UISE_DESKTOP_EXPORT ModalReplyDialog : public ModalReplyDialogType
 {
     Q_OBJECT
 
     public:
 
-        using ModalReplyDialogType::ModalReplyDialogType;
+        /**
+         * @brief Constructor. Same parameters/defaults as ModalReplyDialogType, plus popup
+         *  auto-height enabled unconditionally.
+         */
+        explicit ModalReplyDialog(
+                QWidget* parent=nullptr,
+                int defaultMaxWidthPercent=80,
+                int defaultPopupMaxWidth=-1,
+                int defaultMaxHeightPercent=80,
+                int defaultPopupMaxHeight=-1
+            ) : ModalReplyDialogType(parent,defaultMaxWidthPercent,defaultPopupMaxWidth,defaultMaxHeightPercent,defaultPopupMaxHeight)
+        {
+            // The message bubble's height varies a lot by content (a one-line text reply vs. a
+            // multi-image album) -- auto-height reflows the popup to the dialog's real
+            // sizeHint()/heightForWidth() (see FrameWithModalPopup::setPopupAutoHeight()'s own
+            // doc comment) capped at maxHeightPercent() of the host frame, instead of a fixed
+            // percentage that would either clip a tall bubble or leave a short one floating in
+            // empty space. Same pairing as ModalFileUploadDialog's identical constructor.
+            setPopupAutoHeight(true);
+
+            // ModalDialog<>'s own ctor calls setShortcutEnabled(false); re-enable it since
+            // Escape already tears down through the same ModalPopup::close() ->
+            // AbstractDialog::closeDialog() chain as Cancel -- see ModalFileUploadDialog's
+            // identical rationale.
+            setShortcutEnabled(true);
+        }
 };
 
 #ifdef _MSC_VER

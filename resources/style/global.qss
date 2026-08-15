@@ -45,3 +45,5 @@ qproperty-drawBase: false;
 background: transparent;
 border:none;
 }
+
+QTextBrowser:focus {border:none;}

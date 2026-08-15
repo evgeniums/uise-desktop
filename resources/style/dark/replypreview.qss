@@ -14,15 +14,18 @@ uise--AbstractChatMessageReply[sent="true"] uise--AbstractReplyPreview #accentBa
 background-color: #9CD5FF;
 }
 
-uise--AbstractReplyPreview #title {
+/* Target the internal QLabel, not the ElidedLabel frame -- dark/reset.qss's "QLabel { color:
+   #EEEEEE; }" matches that internal QLabel DIRECTLY, which beats an inherited color from this
+   rule if it targeted #title/#text themselves, see replypreview.qss's own comment on #title. */
+uise--AbstractReplyPreview #title QLabel {
 color: #9CD5FF;
 }
 
-uise--AbstractReplyPreview #text {
+uise--AbstractReplyPreview #text QLabel {
 color: #BBBBBB;
 }
 
-uise--AbstractReplyPreview[deleted="true"] #text {
+uise--AbstractReplyPreview[deleted="true"] #text QLabel {
 color: #777777;
 }
 
@@ -34,3 +37,26 @@ border-top-color: #444444;
 uise--ReplyDialog #comment {
 color: #AAAAAA;
 }
+
+/* Icon mirrors text colour in both states -- see replypreview.json's "ReplyDialog" mode
+   ("normal"/"hovered"), which uses these exact same values. */
+uise--ReplyDialog #actions uise--IconTextButton #text {
+color: #9CD5FF;
+}
+
+uise--ReplyDialog #actions uise--IconTextButton #text[hovered="true"] {
+color: #FFFFFF;
+}
+
+/* "Do not reply" is destructive -- red palette, kept in step with replypreview.json's
+   "ReplyDialogDanger" mode. */
+uise--ReplyDialog #actions uise--IconTextButton#doNotReplyAction #text {
+color: #FF6B6B;
+}
+
+uise--ReplyDialog #actions uise--IconTextButton#doNotReplyAction #text[hovered="true"] {
+color: #FF8F8F;
+}
+
+uise--AbstractDialog uise--ChatMessageTextBrowser,
+uise--AbstractDialog uise--ChatMessageTextBrowser:focus {border:none;}

@@ -29,8 +29,14 @@ margin: 0;
 }
 
 /* Header (sender + datetime) vs. quoted text: smaller and bold so it reads as a label sitting
-   above the content, rather than just a differently-coloured line of the same size. */
-uise--AbstractReplyPreview #title {
+   above the content, rather than just a differently-coloured line of the same size.
+   ElidedLabel renders its text via an internal plain QLabel child, not itself -- the global
+   "QLabel { color: ... }" rule in light/reset.qss and dark/reset.qss matches that internal
+   QLabel DIRECTLY, which always beats an inherited property (font-weight included) from an
+   ancestor rule regardless of the ancestor rule's own specificity. Must target the internal
+   QLabel explicitly, same fix already used for uise--ChatImageViewerControls #sender QLabel in
+   chatimageviewer.qss and uise--HTreeNodeTitleBar uise--ElidedLabel QLabel in htree.qss. */
+uise--AbstractReplyPreview #title QLabel {
 font-weight: bold;
 font-size: 11px;
 }
@@ -43,20 +49,24 @@ max-height: 14px;
 margin-left: 4px;
 }
 
-uise--AbstractReplyPreview #text {
+uise--AbstractReplyPreview #text QLabel {
 font-weight: normal;
 font-size: 12px;
 }
 
-uise--AbstractReplyPreview[deleted="true"] #text {
+uise--AbstractReplyPreview[deleted="true"] #text QLabel {
 font-style: italic;
 }
 
 /* ---- reply section inside the bubble ---- */
 
+/* Right padding kept tighter than left on purpose -- the quote glyph sits flush against the
+   text column's own right edge (title's stretch pushes it there, see the ctor), so a narrower
+   right inset here brings it visibly closer to the bubble's edge; the left side keeps its
+   room for the accent bar. */
 uise--AbstractChatMessageReply {
 border-radius: 6px;
-padding: 4px 6px;
+padding: 4px 3px 4px 6px;
 margin-bottom: 4px;
 }
 
@@ -126,9 +136,33 @@ uise--ReplyDialog #messageHolder {
 padding: 4px;
 }
 
+/* Menu-item look for the actions list: transparent background throughout (inheriting whatever
+   is behind it), colour alone (icon + text together, see light/dark replypreview.qss) carries
+   the hover feedback instead of IconTextButton's usual filled hover background. #actions itself
+   needs the override too -- uise--ButtonsList has a global background-color (global.qss) that
+   would otherwise show through behind every row. */
+uise--ReplyDialog #actions {
+background-color: transparent;
+}
+
 uise--ReplyDialog #actions uise--IconTextButton {
 padding: 6px 8px;
 border-radius: 6px;
+background-color: transparent;
+}
+
+/* ripple.qss's global IconTextButton-with-text default is a flat, wide ellipse
+   (rippleRadiusScaleY: 0.35 -- "a horizontal sweep across the button"), tuned for busy chrome
+   (icon + text + hover fill competing for attention). Clipped to "rounded", a flat ellipse
+   reads as a rectangular middle with sharp elliptical ends rather than a clean fill -- wrong
+   for this plain, flat menu row. Equal X/Y scale grows it uniformly instead, so once clipped
+   it fills as an even rounded rectangle; rippleCornerRadius is also bumped to match this
+   button's own border-radius above (the global default, 4, does not). */
+uise--ReplyDialog #actions uise--IconTextButton uise--RippleOverlay {
+qproperty-rippleClip: "rounded";
+qproperty-rippleCornerRadius: 6;
+qproperty-rippleRadiusScaleX: 1.0;
+qproperty-rippleRadiusScaleY: 1.0;
 }
 
 uise--ReplyDialog #actions uise--IconTextButton uise--RoundedImage {
@@ -141,4 +175,6 @@ max-height: 18px;
 uise--ReplyDialog #comment {
 font-size: 12px;
 font-style: italic;
+padding: 6px 8px;
+margin: 4px 0;
 }
