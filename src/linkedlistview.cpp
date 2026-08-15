@@ -24,17 +24,26 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QDebug>
-#include <QEvent>
-#include <QCoreApplication>
-#include <QStyle>
-
-#include <uise/desktop/utils/orientationinvariant.hpp>
 
 #include <uise/desktop/linkedlistviewitem.hpp>
 #include <uise/desktop/linkedlistview.hpp>
 
+// linkedlistview.hpp is what #defines UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+// (or doesn't), so this branch must come after including it above -- otherwise
+// the macro reads as undefined here regardless of the switch in the header.
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+#include <QBoxLayout>
+#include <uise/desktop/utils/layout.hpp>
+#else
+#include <QEvent>
+#include <QCoreApplication>
+#include <QStyle>
+#include <uise/desktop/utils/orientationinvariant.hpp>
+#endif
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
 namespace {
 
 /**
@@ -129,10 +138,14 @@ int itemMaxCross(const QWidget* w, bool crossIsHorizontal, bool crossAligned)
 }
 
 } // anonymous namespace
+#endif
 
 namespace detail {
 
-class LinkedListView_p : public OrientationInvariant
+class LinkedListView_p
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+        : public OrientationInvariant
+#endif
 {
     public:
 
@@ -141,17 +154,30 @@ class LinkedListView_p : public OrientationInvariant
                 Qt::Orientation orientation
             ) : view(view),
                 orientation(orientation),
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+                layout(nullptr),
+#endif
                 blockUpdate(false),
-                singleWidgetHelper({nullptr}),
+                singleWidgetHelper({nullptr})
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+                ,
                 alignment(Qt::Alignment()),
                 inRelayout(false)
+#endif
         {
         }
 
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+        void setupLayout()
+        {
+            layout=Layout::box(view,orientation);
+        }
+#else
         bool isHorizontal() const noexcept override
         {
             return orientation==Qt::Horizontal;
         }
+#endif
 
         std::shared_ptr<LinkedListViewItem> itemForWidget(QWidget *widget)
         {
@@ -321,6 +347,10 @@ class LinkedListView_p : public OrientationInvariant
                 auto newItem=itemForWidget(newWidget);
                 newItem->setPrevAuto(lastItem);
 
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+                layout->insertWidget(pos,newWidget,0,alignment);
+                newWidget->setVisible(true);
+#else
                 // QBoxLayout::insertWidget reparented the widget as a side effect;
                 // do it explicitly, and only when it actually changes, so a mere
                 // reorder of an already-owned widget does not hide/re-show it and
@@ -330,6 +360,7 @@ class LinkedListView_p : public OrientationInvariant
                     newWidget->setParent(view);
                 }
                 newWidget->setVisible(true);
+#endif
                 newItem->setPos(pos++);
 
                 if (!firstItem)
@@ -366,10 +397,13 @@ class LinkedListView_p : public OrientationInvariant
                 item=item->next();
             }
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
             relayout();
             view->updateGeometry();
+#endif
         }
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         /**
          * @brief Reposition and resize all child widgets in a single deterministic pass.
          *
@@ -526,6 +560,7 @@ class LinkedListView_p : public OrientationInvariant
             setOProp(r,OProp::size,cross+oprop(m,OProp::size,true),true);
             return r;
         }
+#endif
 
     public:
 
@@ -533,12 +568,17 @@ class LinkedListView_p : public OrientationInvariant
         Qt::Orientation orientation;
 
         std::weak_ptr<LinkedListViewItem> head;
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+        QBoxLayout* layout;
+#endif
         bool blockUpdate;
 
         std::vector<QWidget*> singleWidgetHelper;
         Qt::Alignment alignment;
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         bool inRelayout;
+#endif
 };
 
 }
@@ -550,6 +590,9 @@ LinkedListView::LinkedListView(
     ) : QFrame(parent),
         pimpl(std::make_unique<detail::LinkedListView_p>(this,orientation))
 {
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+    pimpl->setupLayout();
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -571,7 +614,9 @@ void LinkedListView::clear(const DropWidgetHandler &dropWidget)
     pimpl->head.reset();
     blockSignals(false);
     pimpl->blockUpdate=false;
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
     pimpl->scheduleRelayout();
+#endif
     emit resized();
 }
 
@@ -592,12 +637,17 @@ void LinkedListView::setOrientation(Qt::Orientation orientation)
         pimpl->blockUpdate=true;
 
         pimpl->orientation=orientation;
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+        pimpl->setupLayout();
+#endif
 
         blockSignals(false);
         pimpl->blockUpdate=false;
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         pimpl->relayout();
         updateGeometry();
+#endif
     }
 }
 
@@ -605,10 +655,13 @@ void LinkedListView::setOrientation(Qt::Orientation orientation)
 void LinkedListView::resizeEvent(QResizeEvent *event)
 {
     QFrame::resizeEvent(event);
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
     pimpl->relayout();
+#endif
     emit resized();
 }
 
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
 //--------------------------------------------------------------------------
 bool LinkedListView::event(QEvent *event)
 {
@@ -639,6 +692,7 @@ QSize LinkedListView::minimumSizeHint() const
 {
     return pimpl->calcSizeHint(true);
 }
+#endif
 
 //--------------------------------------------------------------------------
 void LinkedListView::insertWidgetAfter(QWidget *newWidget, QWidget *existingWidget)
@@ -681,7 +735,9 @@ void LinkedListView::takeWidget(QObject *widget, bool destroyed)
 {
     auto item=LinkedListViewItem::getFromWidgetProperty(widget);
     pimpl->takeItem(item,destroyed);
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
     pimpl->scheduleRelayout();
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -717,11 +773,15 @@ QWidget* LinkedListView::widgetAtSeqPos(size_t pos) const
 //--------------------------------------------------------------------------
 void LinkedListView::setAlignment(Qt::Alignment alignment) noexcept
 {
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+    pimpl->alignment=alignment;
+#else
     if (alignment!=pimpl->alignment)
     {
         pimpl->alignment=alignment;
         pimpl->relayout();
     }
+#endif
 }
 
 //--------------------------------------------------------------------------

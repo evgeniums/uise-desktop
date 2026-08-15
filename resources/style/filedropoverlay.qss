@@ -18,7 +18,7 @@ uise--FileDropOverlay {
 padding:16px;
 border:none;
 qproperty-leaveWatchdogIntervalMs: 200;
-qproperty-panelOrientation: "horizontal";
+qproperty-panelOrientation: "vertical";
 }
 
 /* The gap between the two panels comes from this margin, not from the layout's spacing:
