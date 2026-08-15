@@ -133,6 +133,29 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 
 //--------------------------------------------------------------------------
 
+void AbstractChatMessageContent::rebuildSections()
+{
+    m_sections.clear();
+
+    auto attach=[this](ChatMessageContentSection* section)
+    {
+        if (section==nullptr)
+        {
+            return;
+        }
+        section->setChatMessage(chatMessage());
+        section->setChatContent(this);
+        m_sections.push_back(section);
+    };
+
+    attach(m_header);
+    attach(m_reply);
+    attach(m_body);
+    attach(m_bottom);
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractChatMessageContent::renegotiateBubbleWidth()
 {
     if (!m_everNegotiated)
@@ -376,9 +399,28 @@ ChatMessageContent::ChatMessageContent(QWidget* parent)
 
 void ChatMessageContent::updateWidgets()
 {
+    // Must be idempotent -- setReply() can re-run this after setWidgets() already has (the
+    // original single-shot version just kept appending and adding another trailing stretch).
+    // QWidgetItem does not own its widget, so deleting the layout item only frees the item
+    // (and any stretch spacer); reparent every real widget item back onto `this` first so it
+    // survives to be re-added below.
+    while (m_layout->count()>0)
+    {
+        auto item=m_layout->takeAt(0);
+        if (item->widget()!=nullptr)
+        {
+            item->widget()->setParent(this);
+        }
+        delete item;
+    }
+
     if (header()!=nullptr)
     {
         m_layout->addWidget(header(),0,Qt::AlignLeft);
+    }
+    if (reply()!=nullptr)
+    {
+        m_layout->addWidget(reply(),0,Qt::AlignLeft);
     }
     if (body()!=nullptr)
     {
@@ -399,6 +441,10 @@ void ChatMessageContent::clearContentSelection()
     if (header()!=nullptr)
     {
         header()->clearContentSelection();
+    }
+    if (reply()!=nullptr)
+    {
+        reply()->clearContentSelection();
     }
     if (body()!=nullptr)
     {
@@ -423,6 +469,10 @@ void ChatMessageContent::setSelected(bool enable)
     {
         header()->setSelected(enable);
     }
+    if (reply())
+    {
+        reply()->setSelected(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -437,6 +487,10 @@ void ChatMessageContent::setSent(bool enable)
     if (header())
     {
         header()->setSent(enable);
+    }
+    if (reply())
+    {
+        reply()->setSent(enable);
     }
 }
 

@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/loadcontrol.hpp>
 #include <uise/desktop/chatmessagefiles.hpp>
 #include <uise/desktop/chatmessageimages.hpp>
+#include <uise/desktop/replypreview.hpp>
 
 #include <uise/desktop/defaultwidgetfactory.hpp>
 
@@ -62,6 +63,7 @@ std::shared_ptr<WidgetFactory> defaultWidgetFactory()
     factory->registerBuilder<AbstractLoadControl>([](QWidget* parent){return new LoadControl(parent);});
     factory->registerBuilder<AbstractChatMessageFiles>([](QWidget* parent){return new ChatMessageFiles(parent);});
     factory->registerBuilder<AbstractChatMessageImages>([](QWidget* parent){return new ChatMessageImages(parent);});
+    factory->registerBuilder<AbstractReplyPreview>([](QWidget* parent){return new ReplyPreview(parent);});
 
     return factory;
 }

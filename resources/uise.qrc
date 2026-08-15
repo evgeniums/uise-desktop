@@ -166,6 +166,12 @@
         <file>style/light/chat.json</file>
         <file>style/dark/chat.qss</file>
         <file>style/light/chat.qss</file>
+        <file>style/replypreview.json</file>
+        <file>style/replypreview.qss</file>
+        <file>style/dark/replypreview.json</file>
+        <file>style/light/replypreview.json</file>
+        <file>style/dark/replypreview.qss</file>
+        <file>style/light/replypreview.qss</file>
         <file>style/dark/check.svg</file>
         <file>style/light/check.svg</file>
         <file>style/radio-dot.svg</file>

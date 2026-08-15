@@ -1,0 +1,144 @@
+uise--AbstractReplyPreview {
+border: none;
+padding: 0;
+min-width: 260px;
+qproperty-textTrimLength: 200;
+qproperty-quoteTrimLength: 200;
+qproperty-maxWidthHint: 320;
+qproperty-quoteIconVisible: false;
+}
+
+uise--AbstractReplyPreview #accentBar {
+min-width: 3px;
+max-width: 3px;
+border-radius: 2px;
+margin-right: 10px;
+}
+
+/* Icon slot: shown ONLY for a reply to an image message (its thumbnail) -- see
+   ReplyPreview::isIconSlotVisible(). Hidden entirely otherwise, including deleted. */
+uise--AbstractReplyPreview #iconSlot {
+padding: 0;
+margin: 0;
+margin-right: 12px;
+}
+
+uise--AbstractReplyPreview #titleRow {
+padding: 0;
+margin: 0;
+}
+
+/* Header (sender + datetime) vs. quoted text: smaller and bold so it reads as a label sitting
+   above the content, rather than just a differently-coloured line of the same size. */
+uise--AbstractReplyPreview #title {
+font-weight: bold;
+font-size: 11px;
+}
+
+uise--AbstractReplyPreview #quoteIcon {
+min-width: 14px;
+max-width: 14px;
+min-height: 14px;
+max-height: 14px;
+margin-left: 4px;
+}
+
+uise--AbstractReplyPreview #text {
+font-weight: normal;
+font-size: 12px;
+}
+
+uise--AbstractReplyPreview[deleted="true"] #text {
+font-style: italic;
+}
+
+/* ---- reply section inside the bubble ---- */
+
+uise--AbstractChatMessageReply {
+border-radius: 6px;
+padding: 4px 6px;
+margin-bottom: 4px;
+}
+
+/* Keep this section from widening a short bubble -- AbstractChatMessageContent::
+   updateBubbleWidth() takes max() over every section's bubbleWidthHint(), so this cap is what
+   stops a long "Reply to <long name>, <datetime>" title from dictating the bubble width on its
+   own. Set to 0 to make the section never influence bubble width at all. */
+uise--AbstractChatMessageReply uise--AbstractReplyPreview {
+qproperty-maxWidthHint: 300;
+/* Marks "this is a reply" -- only meaningful once the message is actually a finalized bubble,
+   not while still being composed (see AbstractReplyBar, which leaves this at its false default). */
+qproperty-quoteIconVisible: true;
+}
+
+/* ---- short reply bar above the chat editor ---- */
+
+uise--AbstractReplyBar {
+border-top: 1px solid transparent;
+padding: 6px 8px;
+}
+
+/* IconTextButton's icon has no sensible default size of its own -- must be set explicitly per
+   container, same as chatmessagefiles.qss does for its own icon buttons. */
+uise--AbstractReplyBar uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--AbstractReplyBar uise--IconTextButton {
+padding: 4px;
+border-radius: 4px;
+border: 1px solid transparent;
+}
+
+uise--AbstractReplyBar #configureButton {
+margin-right: 8px;
+}
+
+uise--AbstractReplyBar #cancelButton {
+margin-left: 8px;
+}
+
+/* margin-right:8px/margin-left:8px above each grow their button's rect() 8px wider on ONE side
+   only (Qt's box model, unlike CSS, makes margin part of the widget's own size) -- an
+   uncompensated ripple would grow into that band and paint as a flattened ellipse rather than
+   the circle an icon-only IconTextButton ripple should be. rippleInsetRight/Left below restore
+   the square rect the ripple needs -- keep each in step with its button's own margin above,
+   same idiom as navigationbar.qss's #updateButton. */
+uise--AbstractReplyBar #configureButton uise--RippleOverlay {
+qproperty-rippleInsetRight: 8;
+}
+
+uise--AbstractReplyBar #cancelButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 8;
+}
+
+/* ---- full-preview dialog ---- */
+
+uise--ReplyDialog #messageArea {
+border: none;
+background-color: transparent;
+}
+
+uise--ReplyDialog #messageHolder {
+padding: 4px;
+}
+
+uise--ReplyDialog #actions uise--IconTextButton {
+padding: 6px 8px;
+border-radius: 6px;
+}
+
+uise--ReplyDialog #actions uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--ReplyDialog #comment {
+font-size: 12px;
+font-style: italic;
+}

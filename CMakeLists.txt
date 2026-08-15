@@ -232,6 +232,15 @@ SET (HEADERS
     include/uise/desktop/abstractchatmessageimages.hpp
     include/uise/desktop/chatmessageimages.hpp
 
+    include/uise/desktop/replypreviewdata.hpp
+    include/uise/desktop/abstractreplypreview.hpp
+    include/uise/desktop/replypreview.hpp
+    include/uise/desktop/chatmessagereply.hpp
+    include/uise/desktop/abstractreplybar.hpp
+    include/uise/desktop/replybar.hpp
+    include/uise/desktop/abstractreplydialog.hpp
+    include/uise/desktop/replydialog.hpp
+
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
@@ -400,6 +409,13 @@ SET (SOURCES
     src/chatmessagefiles.cpp
     src/chatmessageimageitem.cpp
     src/chatmessageimages.cpp
+
+    src/replypreviewdata.cpp
+    src/replypreview.cpp
+    src/chatmessagereply.cpp
+    src/replybar.cpp
+    src/abstractreplydialog.cpp
+    src/replydialog.cpp
 
     src/messageeditor.cpp
     src/messageselectionpanel.cpp

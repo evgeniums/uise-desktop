@@ -1,0 +1,29 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "ReplyPreview",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#7FB0E0" }
+                }
+            }
+        },
+        {
+            "name" : "ReplyBar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                }
+            }
+        },
+        {
+            "name" : "ReplyDialog",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#9CD5FF" }
+                }
+            }
+        }
+    ]
+}

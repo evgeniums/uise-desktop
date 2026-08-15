@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/utils/withpathandsize.hpp>
+#include <uise/desktop/replypreviewdata.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -238,6 +239,52 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public ChatMessageContentS
         using ChatMessageContentSection::ChatMessageContentSection;
 };
 
+class AbstractReplyPreview;
+
+/**
+ * @brief Section shown between the bubble header and the bubble body, previewing the message
+ *  this message is a reply to.
+ *
+ * A genuine 4th AbstractChatMessageContent slot, deliberately kept separate from
+ * AbstractChatMessageHeader -- the header slot stays free for a future sender-name header (it
+ * has no concrete implementation anywhere yet), and this section gets its own QSS type
+ * selector plus its own setSelected()/setSent() forwarding, independent of the header's.
+ * Decoration is entirely QSS-driven -- see replypreview.qss for the vertical accent bar +
+ * tinted background convention.
+ */
+class UISE_DESKTOP_EXPORT AbstractChatMessageReply : public ChatMessageContentSection
+{
+    Q_OBJECT
+
+    public:
+
+        using ChatMessageContentSection::ChatMessageContentSection;
+
+        virtual void setReplyData(ReplyPreviewData data) =0;
+        virtual const ReplyPreviewData& replyData() const =0;
+
+        /**
+         * @brief The shared AbstractReplyPreview block hosted by this section -- the same
+         *  block reused by AbstractReplyBar and AbstractReplyDialog.
+         *
+         * Exposed for per-instance tuning (textTrimLength()/maxWidthHint()) that QSS alone
+         * cannot express; most callers never need this, setReplyData() is enough.
+         */
+        virtual AbstractReplyPreview* preview() const =0;
+
+        //! Convenience equivalent to replyData().isDeleted()/ReplyPreviewData::setDeleted() --
+        //! see that setter's own docs for what this changes in the rendered block.
+        virtual void setOriginalDeleted(bool enable) =0;
+        virtual bool isOriginalDeleted() const =0;
+
+    signals:
+
+        //! The user clicked this section -- a host typically scrolls/jumps to the original
+        //! message ("Show in chat"). Forwarded from preview()'s own
+        //! AbstractReplyPreview::clicked().
+        void clicked();
+};
+
 class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSection
 {
     Q_OBJECT
@@ -247,6 +294,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         using ChatMessageContentSection::ChatMessageContentSection;
 
         virtual QString selectedText() const {return QString{};}
+
+    signals:
+
+        //! Never emitted by the base class -- a body with genuine text selection (e.g.
+        //! ChatMessageText, whose underlying QTextEdit already has this exact signal) connects
+        //! it here, so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react
+        //! to selection changes without depending on a concrete body type. A body with no
+        //! selectable content (ChatMessageFiles, ChatMessageImages, ChatMessageCall) simply
+        //! never fires it.
+        void selectionChanged();
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
@@ -292,33 +349,50 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
-        void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr, AbstractChatMessageBottom* bottom=nullptr)
+        /**
+         * @brief Set this bubble's up-to-4 content sections.
+         * @param reply Appended last, defaulted, so every existing call site (none of which
+         *  knows about the reply section) keeps compiling unchanged. Display order is header /
+         *  reply / body / bottom regardless of this parameter's position -- see
+         *  ChatMessageContent::updateWidgets().
+         */
+        void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr,
+                        AbstractChatMessageBottom* bottom=nullptr, AbstractChatMessageReply* reply=nullptr)
         {
             destroyWidget(m_header);
             m_header=header;
-            if (m_header!=nullptr)
-            {
-                m_header->setChatMessage(chatMessage());
-                m_header->setChatContent(this);
-                m_sections.push_back(m_header);
-            }
             destroyWidget(m_body);
             m_body=body;
-            if (m_body!=nullptr)
-            {
-                m_body->setChatMessage(chatMessage());
-                m_body->setChatContent(this);
-                m_sections.push_back(m_body);
-            }
             destroyWidget(m_bottom);
             m_bottom=bottom;
-            if (m_bottom!=nullptr)
-            {
-                m_bottom->setChatMessage(chatMessage());
-                m_bottom->setChatContent(this);
-                m_sections.push_back(m_bottom);
-            }
+            destroyWidget(m_reply);
+            m_reply=reply;
+            rebuildSections();
             updateWidgets();
+        }
+
+        /**
+         * @brief Attach, replace or remove the reply section after construction, without
+         *  touching header()/body()/bottom().
+         * @param reply New section, or nullptr to remove it -- see clearReply(). Destroys
+         *  whatever reply section was previously set.
+         *
+         * For a reply target resolved asynchronously (looked up after the bubble is already on
+         * screen) or a reply whose original message is deleted while the bubble is visible --
+         * setWidgets() itself would also work, but would needlessly repeat header()/body()/
+         * bottom().
+         */
+        void setReply(AbstractChatMessageReply* reply)
+        {
+            destroyWidget(m_reply);
+            m_reply=reply;
+            rebuildSections();
+            updateWidgets();
+        }
+
+        void clearReply()
+        {
+            setReply(nullptr);
         }
 
         AbstractChatMessageHeader* header() const noexcept
@@ -334,6 +408,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         AbstractChatMessageBottom* bottom() const noexcept
         {
             return m_bottom;
+        }
+
+        AbstractChatMessageReply* reply() const noexcept
+        {
+            return m_reply;
         }
 
         int maximumBubbleWidth() const noexcept
@@ -394,7 +473,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
     private:
 
+        //! Rebuilds m_sections from whichever of m_header/m_reply/m_body/m_bottom are
+        //! currently non-null, in DISPLAY order, wiring each via setChatMessage()/
+        //! setChatContent(). Called by both setWidgets() and setReply() -- previously
+        //! setWidgets() only ever ran once per instance and just push_back()'d into
+        //! m_sections without clearing it first, which left stale (dangling, past their
+        //! destroyWidget() calls) entries the moment it ran a second time; setReply() makes a
+        //! second run reachable, so this clears first.
+        void rebuildSections();
+
         QPointer<AbstractChatMessageHeader> m_header=nullptr;
+        QPointer<AbstractChatMessageReply> m_reply=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
 

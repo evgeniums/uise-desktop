@@ -167,6 +167,11 @@ ChatMessageText::ChatMessageText(QWidget* parent)
 
     pimpl->text->setContextMenuPolicy(Qt::NoContextMenu);
 
+    // QTextBrowser inherits QTextEdit::selectionChanged() -- relayed here so a host (e.g.
+    // ReplyDialog's Save/"Quote selected" button swap) can react to selection changes via
+    // AbstractChatMessageBody alone, without depending on this concrete body type.
+    connect(pimpl->text,&QTextEdit::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
+
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
 

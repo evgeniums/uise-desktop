@@ -1,0 +1,26 @@
+{
+    "contexts" : [
+        {
+            "name" : "ReplyPreview",
+            "aliases" : {
+                "quote" : "${uise-svg-icons-1}/quote"
+            }
+        },
+        {
+            "name" : "ReplyBar",
+            "aliases" : {
+                "configure" : "${uise-svg-icons-1}/adjustments-horizontal",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        },
+        {
+            "name" : "ReplyDialog",
+            "aliases" : {
+                "reply" : "${uise-svg-icons-1}/corner-up-left",
+                "showInChat" : "${uise-svg-icons-1}/message-search",
+                "doNotReply" : "${uise-svg-icons-1}/message-off",
+                "quote" : "${uise-svg-icons-1}/quote"
+            }
+        }
+    ]
+}

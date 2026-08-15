@@ -1,0 +1,36 @@
+uise--AbstractChatMessageReply {
+background-color: rgba(255,255,255,0.07);
+}
+
+uise--AbstractChatMessageReply[selected="true"] {
+background-color: rgba(255,255,255,0.12);
+}
+
+uise--AbstractReplyPreview #accentBar {
+background-color: #7FB0E0;
+}
+
+uise--AbstractChatMessageReply[sent="true"] uise--AbstractReplyPreview #accentBar {
+background-color: #9CD5FF;
+}
+
+uise--AbstractReplyPreview #title {
+color: #9CD5FF;
+}
+
+uise--AbstractReplyPreview #text {
+color: #BBBBBB;
+}
+
+uise--AbstractReplyPreview[deleted="true"] #text {
+color: #777777;
+}
+
+uise--AbstractReplyBar {
+background-color: #28282a;
+border-top-color: #444444;
+}
+
+uise--ReplyDialog #comment {
+color: #AAAAAA;
+}
