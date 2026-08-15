@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPixmap>
 #include <QTimer>
 #include <QDateTime>
+#include <QFile>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -125,6 +126,29 @@ ChatFileItem makeAnimatedImageEntry(const QSize& pixelSize, const QColor& c1, co
     item.setState(ChatFileTransferState::Ready);
     item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
     item.setLocalPath(resourcePath);
+    return item;
+}
+
+// The bytes-in-memory counterpart of makeAnimatedImageEntry(): the same animated GIF, but handed
+// over via setAnimatedData() instead of setLocalPath() -- exercises whitemdesktop's real delivery
+// mechanism, where an image rung's decrypted content only ever exists in memory (see
+// ChatFileItem::animatedData()'s own doc comment). state()/localPath() are left at their unset
+// defaults on purpose: the bytes branch is deliberately NOT gated on either.
+ChatFileItem makeAnimatedImageBytesEntry(const QSize& pixelSize, const QColor& c1, const QColor& c2, const QString& label, const QString& resourcePath)
+{
+    ChatFileItem item;
+    item.setFileName(label+QStringLiteral(".gif"));
+    item.setMimeType(QStringLiteral("image/gif"));
+    item.setPixelSize(pixelSize);
+    item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
+
+    QFile f(resourcePath);
+    if (f.open(QIODevice::ReadOnly))
+    {
+        auto bytes=f.readAll();
+        item.setSize(bytes.size());
+        item.setAnimatedData(bytes,QByteArrayLiteral("gif"));
+    }
     return item;
 }
 
@@ -592,6 +616,19 @@ int main(int argc, char *argv[])
     imgBody6->setComment(QStringLiteral("One static tile, one animated GIF."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody6));
 
+    // --- 8b. same animated GIF, but delivered as in-memory bytes (setAnimatedData()) instead of
+    // a local path -- this is whitemdesktop's actual delivery mechanism (an image rung's
+    // decrypted content only ever exists in memory, never as a plaintext path), so this tile
+    // exercises the branch imgBody6 above does not. ---
+
+    auto* imgBody6b=new ChatMessageImages();
+    imgBody6b->setItems({
+        makeAnimatedImageBytesEntry(QSize(220,150),QColor("#A5D6A7"),QColor("#1B5E20"),QStringLiteral("8c"),
+            QStringLiteral(":/uise/desktop/demo/chatmessagefiles/assets/animated.gif"))
+    });
+    imgBody6b->setComment(QStringLiteral("Animated GIF delivered as setAnimatedData() bytes, not a local path."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody6b));
+
     // --- 9. single cancellable image, left in a persistent Paused state (untouched by the
     // progress timer below, unlike imgBody3's own Running item) so it stays put to look at.
     // Contrast its load control's click behavior with imgBody3's: Paused isn't Running, so
@@ -686,6 +723,7 @@ int main(int argc, char *argv[])
     wireImages(imgBody4,QStringLiteral("img4"));
     wireImages(imgBody5,QStringLiteral("img5"));
     wireImages(imgBody6,QStringLiteral("img6"));
+    wireImages(imgBody6b,QStringLiteral("img6b"));
     wireImages(imgBody7,QStringLiteral("img7"));
     wireImages(imgBody8,QStringLiteral("img8"));
 
@@ -709,10 +747,10 @@ int main(int argc, char *argv[])
         animModeCombo,
         &QComboBox::currentIndexChanged,
         central,
-        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody7,imgBody8,animModeCombo](int index)
+        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8,animModeCombo](int index)
         {
             auto mode=static_cast<ImageLabel::AnimationMode>(animModeCombo->itemData(index).toInt());
-            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody7,imgBody8})
+            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8})
             {
                 body->setAnimationMode(mode);
             }

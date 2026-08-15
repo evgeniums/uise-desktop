@@ -52,26 +52,46 @@ std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);
 }
 
-//! Local path to feed ImageLabel::setImageFile() for animated content, empty otherwise.
-//
-// Restricted to formats that can actually animate: a plain JPEG/PNG tile keeps rendering
-// item.preview() (a small pre-decoded thumbnail) rather than decoding the full-size original.
-// A static image of one of these MIME types is harmless too -- ImageLabel demotes single-frame
-// content to its still path on its own.
-QString animatableLocalPath(const ChatFileItem& item)
+//! Content to feed ImageLabel for animated playback: either a local path (setImageFile()) or
+//! in-memory bytes (setImageData()), empty when neither applies.
+struct AnimatableContent
 {
+    QString    path;
+    QByteArray data;
+    QByteArray format;
+
+    bool isEmpty() const noexcept
+    {
+        return path.isEmpty() && data.isEmpty();
+    }
+};
+
+//! Resolves animatableContent() for item, preferring bytes over a local path -- see
+//! ChatFileItem::animatedData()'s own doc comment for why the bytes branch is not gated on
+//! state()/mime the way the path branch is.
+AnimatableContent animatableContent(const ChatFileItem& item)
+{
+    if (!item.animatedData().isEmpty())
+    {
+        return {{},item.animatedData(),item.animatedFormat()};
+    }
+
     if (item.state()!=ChatFileTransferState::Ready || item.localPath().isEmpty())
     {
         return {};
     }
 
+    // Restricted to formats that can actually animate: a plain JPEG/PNG tile keeps rendering
+    // item.preview() (a small pre-decoded thumbnail) rather than decoding the full-size original.
+    // A static image of one of these MIME types is harmless too -- ImageLabel demotes single-frame
+    // content to its still path on its own.
     const auto mime=item.mimeType();
     if (mime==QLatin1String("image/gif")
         || mime==QLatin1String("image/webp")
         || mime==QLatin1String("image/apng")
         || mime==QLatin1String("image/avif"))
     {
-        return item.localPath();
+        return {item.localPath(),{},{}};
     }
 
     return {};
@@ -105,6 +125,12 @@ class ChatMessageImageItem_p
         //! (scaledToFitPadded(item.preview())/svg-fallback) path is in use instead.
         QString loadedPath;
 
+        //! Bytes currently loaded into preview via setImageData(), empty when loadedPath or the
+        //! still path is in use instead. Kept alive here (QByteArray is implicitly shared) purely
+        //! so updatePreview()'s identity check has something to compare against -- see its own
+        //! doc comment on why this is a (size,constData()) identity test, not a memcmp.
+        QByteArray loadedData;
+
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 };
 
@@ -129,6 +155,13 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     // cropped after reopening the page" symptom.
     pimpl->preview->setAspectRatioMode(Qt::KeepAspectRatio);
     pimpl->preview->setAnimationMode(pimpl->animationMode);
+    // Defensive restatement of ImageLabel's own defaults, in the same spirit as
+    // setAspectRatioMode() above -- this tile lives in a flyweight scrolling list where several
+    // multi-MB animated GIFs can be bound at once, so CacheAll (all decoded frames resident) and
+    // playback while the window is in the background are both explicitly ruled out here rather
+    // than left to whatever ImageLabel's default happens to be.
+    pimpl->preview->setCacheFrames(false);
+    pimpl->preview->setPauseWhenWindowInactive(true);
     connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
 
     // The load control overlay, the menu button and its drop-down are all created lazily on
@@ -326,20 +359,36 @@ void ChatMessageImageItem::updatePreview()
         return;
     }
 
-    auto path=animatableLocalPath(pimpl->item);
-    if (!path.isEmpty())
+    auto content=animatableContent(pimpl->item);
+    if (!content.isEmpty())
     {
-        if (path==pimpl->loadedPath)
+        // Already loaded -- ImageLabel rescales/re-renders itself from its own resizeEvent();
+        // re-loading here would re-decode the content and restart the animation.
+        //
+        // Bytes are compared by (size, constData()) rather than by value: QByteArray is
+        // implicitly shared, so the host's stored buffer and pimpl->loadedData's copy of it share
+        // one d-pointer, making this an O(1) identity test rather than an O(n) memcmp on a
+        // multi-megabyte GIF, on every single refresh(). It cannot false-positive either:
+        // pimpl->loadedData holds a reference that keeps the old buffer alive, so a genuinely new
+        // allocation can never reuse its address while we are still comparing.
+        bool same=content.path.isEmpty()
+            ? (!pimpl->loadedData.isEmpty()
+               && content.data.size()==pimpl->loadedData.size()
+               && content.data.constData()==pimpl->loadedData.constData())
+            : (content.path==pimpl->loadedPath);
+        if (same)
         {
-            // already loaded -- ImageLabel rescales/re-renders itself from its own resizeEvent(),
-            // re-loading here would re-decode the content and restart the animation
             return;
         }
 
         pimpl->preview->setSvgIcon(nullptr);
-        if (pimpl->preview->setImageFile(path))
+        bool ok=content.path.isEmpty()
+            ? pimpl->preview->setImageData(content.data,content.format)
+            : pimpl->preview->setImageFile(content.path);
+        if (ok)
         {
-            pimpl->loadedPath=path;
+            pimpl->loadedPath=content.path;
+            pimpl->loadedData=content.data;
             setPlaceholderMode(false);
             return;
         }
@@ -347,11 +396,13 @@ void ChatMessageImageItem::updatePreview()
         // decode failed (e.g. animated WebP without the qtimageformats plugin) -- fall through
         // to the static preview below
         pimpl->loadedPath.clear();
+        pimpl->loadedData.clear();
     }
-    else if (!pimpl->loadedPath.isEmpty())
+    else if (!pimpl->loadedPath.isEmpty() || !pimpl->loadedData.isEmpty())
     {
         pimpl->preview->clearImage();
         pimpl->loadedPath.clear();
+        pimpl->loadedData.clear();
     }
 
     auto preview=pimpl->item.preview();
@@ -366,12 +417,16 @@ void ChatMessageImageItem::updatePreview()
         // QBrush texture fill needs an exact-size pixmap to render correctly at all (a smaller
         // one tiles instead of centering).
         //
-        // ...but a PLACEHOLDER preview is stretched to fill the tile instead, distortion and all
-        // (stretchedToFill()). The embedded thumbnail files2 generates is a SQUARE centre-crop
-        // (ScaleMode::FillCrop), so fitting it into a tile shaped for the original's real aspect
-        // ratio leaves big empty bars and reads as a small square adrift in a blank tile.
-        // Confirmed requirement: fill the whole tile, accepting the lost aspect ratio, because
-        // the result is transient and already visibly low quality either way.
+        // ...but a PLACEHOLDER preview -- the embedded thumbnail files2 generates, a SQUARE
+        // centre-crop (ScaleMode::FillCrop) -- uses scaledAndCropped() instead: scale to COVER
+        // the tile, preserving the thumbnail's own aspect ratio, and centre-crop the overflow.
+        // Revised requirement (superseding the original "stretch to fill, losing aspect ratio"
+        // decision, whose distortion turned out to read poorly once animated tiles made the
+        // still ones' proportions easy to compare against): no letterboxing (scaledToFitPadded()
+        // on a square thumbnail into a non-square tile leaves large empty bars) and no
+        // distortion (the old stretchedToFill()) -- fill the tile with an aspect-correct crop,
+        // same policy every other thumbnail chip in this library already uses (see
+        // FileUploadListItem::updatePreviews(), ChatMessageFileItem, ImagePreviewStrip).
         //
         // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
         // the brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
@@ -382,7 +437,7 @@ void ChatMessageImageItem::updatePreview()
         QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
         auto srcPx=QPixmap::fromImage(preview);
         auto px=pimpl->item.isPreviewPlaceholder()
-            ? stretchedToFill(srcPx,physicalSize)
+            ? scaledAndCropped(srcPx,physicalSize)
             : scaledToFitPadded(srcPx,physicalSize);
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);

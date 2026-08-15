@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <algorithm>
 
 #include <QString>
+#include <QByteArray>
 #include <QImage>
 #include <QSize>
 #include <QUuid>
@@ -228,6 +229,41 @@ class UISE_DESKTOP_EXPORT ChatFileItem
             m_localPath=std::move(path);
         }
 
+        /**
+         * @brief Get the encoded bytes of animated content for this item, when the host has them
+         *  in memory.
+         * @return Empty when the host has no animated content (the overwhelmingly common case) --
+         *  the tile then renders preview()/localPath() exactly as if this were never called.
+         *
+         * The bytes-in-memory counterpart of localPath(): a host whose content lives in an
+         * encrypted store, or that simply has no filesystem path to offer, can still drive
+         * animation this way. Unlike localPath(), this is deliberately NOT gated on state() --
+         * holding the bytes IS the availability proof. QByteArray is implicitly shared, so
+         * carrying this on a value type copied per refresh costs only a refcount.
+         */
+        QByteArray animatedData() const
+        {
+            return m_animatedData;
+        }
+
+        //! Format hint for animatedData(), e.g. "gif"/"webp"; empty means "sniff from content".
+        QByteArray animatedFormat() const
+        {
+            return m_animatedFormat;
+        }
+
+        /**
+         * @brief Set the encoded bytes of animated content for this item.
+         * @param data Raw encoded bytes, e.g. "GIF89a...". Copied and retained (QByteArray is
+         *  implicitly shared) until cleared or replaced.
+         * @param format Optional format hint forwarded to ImageLabel::setImageData().
+         */
+        void setAnimatedData(QByteArray data, QByteArray format={})
+        {
+            m_animatedData=std::move(data);
+            m_animatedFormat=std::move(format);
+        }
+
         ChatFileTransferState state() const noexcept
         {
             return m_state;
@@ -314,6 +350,8 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         QImage m_preview;
         bool m_previewPlaceholder=false;
         QString m_localPath;
+        QByteArray m_animatedData;
+        QByteArray m_animatedFormat;
         ChatFileTransferState m_state=ChatFileTransferState::Ready;
         qint64 m_transferred=0;
         bool m_showInFolderAvailable=false;

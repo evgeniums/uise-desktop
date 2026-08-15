@@ -17,10 +17,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /** @file uise/desktop/utils/pixmapscale.hpp
 *
-*  Declares scaledAndCropped(), scaledToFit(), scaledToFitPadded() and
-*  stretchedToFill() - the aspect-ratio policies used to fit a source pixmap
-*  into a target box, shared by every preview/thumbnail widget instead of each
-*  call site scaling ad hoc.
+*  Declares scaledAndCropped(), scaledToFit() and scaledToFitPadded() - the
+*  aspect-ratio policies used to fit a source pixmap into a target box, shared
+*  by every preview/thumbnail widget instead of each call site scaling ad hoc.
 *
 */
 
@@ -114,8 +113,9 @@ inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize)
  *  chat message image tiles (ChatMessageImageItem) showing REAL content, where displaying the
  *  full image at its own aspect ratio and never enlarging it past its own resolution was an
  *  explicit, confirmed requirement (unlike scaledAndCropped()'s square/fixed-chip use cases,
- *  which are unaffected). For the low-resolution placeholder those same tiles show while real
- *  content resolves, see stretchedToFill() instead.
+ *  which are unaffected). Those same tiles' low-resolution placeholder uses scaledAndCropped()
+ *  instead, same as every other thumbnail chip -- see ChatMessageImageItem::updatePreview()'s
+ *  own doc comment for why REAL content is padded but the placeholder is cropped.
  */
 inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize)
 {
@@ -135,38 +135,6 @@ inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize)
     painter.drawPixmap(target,fitted);
 
     return canvas;
-}
-
-/**
- * @brief Stretch a pixmap to fill targetSize exactly, DISTORTING it -- aspect ratio is
- *  deliberately not preserved, and the source is enlarged as far as needed.
- * @param src Source pixmap.
- * @param targetSize Exact size of the result -- same pixel-unit convention as
- *  scaledAndCropped()'s targetSize (physical pixels; tag the RETURNED pixmap with
- *  QPixmap::setDevicePixelRatio() before setPixmap()).
- * @return A pixmap of exactly targetSize with no padding and no cropping, at the cost of the
- *  source's proportions.
- *
- * Sole intended use is a low-resolution PLACEHOLDER standing in for content that has not arrived
- * yet -- specifically a chat message tile's embedded ~128px thumbnail, which files2 generates
- * with ScaleMode::FillCrop, i.e. a SQUARE centre-crop of the original. Fitting that square into a
- * tile shaped for the original's real aspect ratio leaves large empty bars, so the placeholder
- * reads as a small square adrift in a blank tile; stretching it instead fills the tile with a
- * blurry, distorted, but recognisable impression of the image, which is the confirmed requirement
- * here ("scaled up to fill the whole tile, not only the square, i.e. losing aspect ratio").
- *
- * Do NOT use this for real content: distortion is only acceptable because the result is
- * transient and already visibly low quality.
- */
-inline QPixmap stretchedToFill(const QPixmap& src, const QSize& targetSize)
-{
-    if (src.isNull() || targetSize.width()<=0 || targetSize.height()<=0)
-    {
-        QPixmap canvas(targetSize.isValid() ? targetSize : QSize(1,1));
-        canvas.fill(Qt::transparent);
-        return canvas;
-    }
-    return src.scaled(targetSize,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
 }
 
 UISE_DESKTOP_NAMESPACE_END
