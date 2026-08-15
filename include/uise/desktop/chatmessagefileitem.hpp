@@ -37,6 +37,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 class IconTextButton;
 class AbstractLoadControl;
+class LoadControlMenu;
 
 class ChatMessageFileItem_p;
 
@@ -88,6 +89,13 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          */
         void refresh();
 
+        /**
+         * @brief The icon slot's load control overlay.
+         *
+         * Created lazily the first time this row's item is not yet Ready (see refresh()), since
+         * an already-transferred row never needs it. Calling this accessor itself forces
+         * creation.
+         */
         AbstractLoadControl* loadControl() const;
 
         IconTextButton* menuButton() const;
@@ -153,6 +161,12 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         void rebuildMenu();
         void updateIconSlot();
         void updateInfoLabels();
+
+        //! Create the load control overlay on first use -- see loadControl()'s doc comment.
+        //! const so the loadControl() accessor can call it directly: constness does not
+        //! propagate through pimpl (a unique_ptr member), so mutating *pimpl here is legal --
+        //! see ChatMessageImageItem::ensureLoadControl()'s identical rationale.
+        LoadControlMenu* ensureLoadControl() const;
 
     private slots:
 

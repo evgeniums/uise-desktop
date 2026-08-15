@@ -82,6 +82,12 @@ class ChatMessageFileItem_p
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
+
+        //! Set by rebuildMenu(), consumed (and cleared) the next time the menu button is
+        //! clicked -- see the constructor's clicked() handler. Defers buildChatFileMenuItems()
+        //! (one svg-icon lookup per entry) from every refresh() call to only rows whose menu is
+        //! actually opened.
+        bool menuDirty=true;
 };
 
 //--------------------------------------------------------------------------
@@ -114,13 +120,12 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     pimpl->imagePreview->setClickable(true);
     connect(pimpl->imagePreview,&AvatarWidget::clicked,this,&ChatMessageFileItem::clicked);
 
-    pimpl->loadControl=new LoadControlMenu(pimpl->iconSlot);
-    pimpl->loadControl->setObjectName("loadControl");
-    pimpl->loadControl->setGeometry(QRect(QPoint(0,0),IconSlotSize));
-    connect(pimpl->loadControl,&LoadControlMenu::clicked,this,&ChatMessageFileItem::loadControlClicked);
-    connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,this,&ChatMessageFileItem::pauseRequested);
-    connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,this,&ChatMessageFileItem::cancelRequested);
-
+    // The load control overlay is created lazily on first use (see ensureLoadControl()) -- an
+    // already-transferred row never needs it, and this row lives in a chat message list where
+    // per-row widget count is on the scroll hot path. Unlike ChatMessageImageItem's menu button
+    // (a hover-only overlay), this row's own menuButton below has no such gating -- it is a
+    // permanent, always-visible part of every row's layout -- so it stays eager; only its
+    // drop-down's item list is deferred (see the clicked() handler below).
     auto textColumn=new QFrame(this);
     textColumn->setObjectName("textColumn");
     pimpl->textColumnLayout=Layout::vertical(textColumn);
@@ -169,6 +174,27 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     // DropdownFrame reparents itself lazily to the trigger's actual window() on first opening,
     // so constructing it with a parent this early would just capture the wrong window
     pimpl->menu=new DropdownMenu();
+
+    // Menu items are only ever built the moment the menu button is actually clicked, not on
+    // every refresh() -- see rebuildMenu()'s doc comment -- via the button's own clicked()
+    // rather than DropdownFrame::aboutToShow(): DropdownFrame::popupBelow()/popupAt() already
+    // run fillContent()+measure() BEFORE beginOpen() emits aboutToShow() (despite that signal's
+    // "right before content is filled and measured" doc comment), so rebuilding on aboutToShow()
+    // is one step too late and measures an empty, tiny popup -- see
+    // ChatMessageImageItem::ensureMenuButton() for the full account of this bug. Connected here,
+    // BEFORE attachTo() below wires its own clicked handler that actually opens the dropdown, so
+    // this slot runs first -- Qt invokes same-signal slots in connection order.
+    connect(pimpl->menuButton,&IconTextButton::clicked,this,
+        [this]()
+        {
+            if (pimpl->menuDirty)
+            {
+                pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,false,pimpl->incoming,this));
+                pimpl->menuDirty=false;
+            }
+        }
+    );
+
     pimpl->menu->attachTo(pimpl->menuButton);
     connect(pimpl->menu,&DropdownMenu::itemTriggered,this,&ChatMessageFileItem::onMenuItemTriggered);
 }
@@ -212,7 +238,6 @@ void ChatMessageFileItem::refresh()
 {
     updateIconSlot();
     updateInfoLabels();
-    pimpl->loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);
 
     pimpl->nameLabel->setText(pimpl->item.fileName());
 
@@ -223,7 +248,7 @@ void ChatMessageFileItem::refresh()
 
 AbstractLoadControl* ChatMessageFileItem::loadControl() const
 {
-    return pimpl->loadControl->loadControl();
+    return ensureLoadControl()->loadControl();
 }
 
 //--------------------------------------------------------------------------
@@ -291,7 +316,11 @@ bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
 
 void ChatMessageFileItem::rebuildMenu()
 {
-    pimpl->menu->setItems(buildChatFileMenuItems(pimpl->item,false,pimpl->incoming,this));
+    // Deferred: buildChatFileMenuItems() (one svg-icon lookup per entry) only actually runs the
+    // next time the menu button is clicked (see the constructor's clicked() handler), not on
+    // every refresh() -- most refresh() calls are just a progress tick and the menu is never
+    // opened for most rows at all.
+    pimpl->menuDirty=true;
 }
 
 //--------------------------------------------------------------------------
@@ -303,13 +332,13 @@ void ChatMessageFileItem::updateIconSlot()
 
     pimpl->fileIcon->setVisible(false);
     pimpl->imagePreview->setVisible(false);
-    pimpl->loadControl->setVisible(false);
 
     if (!ready)
     {
-        pimpl->loadControl->setVisible(true);
-        pimpl->loadControl->setState(chatFileLoadControlState(it.state(),pimpl->incoming));
-        pimpl->loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(it.state()));
+        auto loadControl=ensureLoadControl();
+        loadControl->setVisible(true);
+        loadControl->setState(chatFileLoadControlState(it.state(),pimpl->incoming));
+        loadControl->loadControl()->setClickable(isChatFileLoadControlClickable(it.state()));
         // m_progress is a sticky member on the reused per-row LoadControl (setState() never
         // touches it) and paintEvent() draws the progress arc unconditionally from it, in
         // every state -- so every non-transferring state must explicitly zero it, not just
@@ -321,13 +350,23 @@ void ChatMessageFileItem::updateIconSlot()
             || it.state()==ChatFileTransferState::Paused
             || it.state()==ChatFileTransferState::Pending)
         {
-            pimpl->loadControl->setProgress(it.transferred(),it.size());
+            loadControl->setProgress(it.transferred(),it.size());
         }
         else
         {
-            pimpl->loadControl->setProgress(0.0);
+            loadControl->setProgress(0.0);
         }
+        // Only used to build the Pause/Cancel menu text (see LoadControlMenu::
+        // setFileDescription()'s doc comment), so only needed while the control is shown.
+        loadControl->setFileDescription(it.fileName(),it.isImage(),pimpl->incoming);
         return;
+    }
+
+    if (pimpl->loadControl!=nullptr)
+    {
+        // Never create a load control just to hide it -- an already-Ready row never needed one
+        // in the first place.
+        pimpl->loadControl->setVisible(false);
     }
 
     if (it.isImage())
@@ -379,6 +418,32 @@ void ChatMessageFileItem::updateInfoLabels()
 void ChatMessageFileItem::onMenuItemTriggered(int id)
 {
     emit menuTriggered(id);
+}
+
+//--------------------------------------------------------------------------
+
+LoadControlMenu* ChatMessageFileItem::ensureLoadControl() const
+{
+    if (pimpl->loadControl==nullptr)
+    {
+        auto self=const_cast<ChatMessageFileItem*>(this);
+
+        pimpl->loadControl=new LoadControlMenu(pimpl->iconSlot);
+        pimpl->loadControl->setObjectName("loadControl");
+        // iconSlot is a fixed-size frame (see IconSlotSize) -- unlike ChatMessageImageItem's
+        // overlays, this geometry is a one-time constant, not something a resizeEvent() needs
+        // to keep re-applying.
+        pimpl->loadControl->setGeometry(QRect(QPoint(0,0),IconSlotSize));
+        connect(pimpl->loadControl,&LoadControlMenu::clicked,self,&ChatMessageFileItem::loadControlClicked);
+        connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,self,&ChatMessageFileItem::pauseRequested);
+        connect(pimpl->loadControl,&LoadControlMenu::cancelRequested,self,&ChatMessageFileItem::cancelRequested);
+
+        // See ChatMessageImages::rebuildGrid()'s identical comment on freshly created tiles:
+        // QSS-driven content must be polished before its first paint.
+        pimpl->loadControl->ensurePolished();
+        pimpl->loadControl->show();
+    }
+    return pimpl->loadControl;
 }
 
 //--------------------------------------------------------------------------
