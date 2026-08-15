@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QClipboard>
 #include <QApplication>
+#include <QCursor>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
@@ -180,8 +181,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 
     m_listView->setItemsAlignment(FlyweightListViewAlignment::Begin);
     m_listView->setPrefetchItemWindowHint(20);
-    m_listView->setPrefetchScreensCount(3.0);
-    m_listView->setPrefetchItemCount(20);
+    m_listView->setPrefetchScreensCount(2);
+    m_listView->setPrefetchItemCount(10);
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
     m_listView->setVerticalScrollBarPlaceHolder(true);
@@ -857,7 +858,11 @@ typename ChatMessagesView<BaseMessageT,Traits>::Message* ChatMessagesView<BaseMe
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
 {
-    if (event->buttons() & Qt::LeftButton)
+    // !m_dragTrustSuspect -- see its own doc comment. Confirmed by log capture: after a
+    // fullscreen top-level window steals activation mid-click, buttons() keeps reporting
+    // LeftButton down on every subsequent plain move indefinitely, so this flag -- not
+    // buttons() -- is what actually gates drag-selection once it is set.
+    if (!m_dragTrustSuspect && (event->buttons() & Qt::LeftButton))
     {
         auto newPos=event->pos();
 
@@ -954,6 +959,15 @@ bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent
     if (event->type()==QEvent::WindowDeactivate && watched==window())
     {
         resetMouseSelectionState();
+        m_dragTrustSuspect=true;
+    }
+    else if (event->type()==QEvent::MouseButtonPress)
+    {
+        // Any real press anywhere in the app -- not scoped to this widget or its window --
+        // is independent evidence the OS's own mouse-button tracking is sane again (see
+        // m_dragTrustSuspect's own doc comment on why that evidence has to come from a fresh
+        // press rather than from resetting our own state).
+        m_dragTrustSuspect=false;
     }
     return QFrame::eventFilter(watched,event);
 }

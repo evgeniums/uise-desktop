@@ -1225,9 +1225,26 @@ void ImageViewer::fitImage()
     {
         m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
         auto viewRect=m_widget->pimpl->view->rect();
-        if (qFuzzyCompare(m_widget->pimpl->scale,1.0) && (px.width()>viewRect.width() || px.height() > viewRect.height()))
+        if (qFuzzyCompare(m_widget->pimpl->scale,1.0))
         {
-            m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
+            if (px.width()>viewRect.width() || px.height() > viewRect.height())
+            {
+                m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
+            }
+            else
+            {
+                // Not fitting this time -- make sure the view is actually at its natural 1:1
+                // transform rather than left at whatever an EARLIER fitInView() happened to
+                // leave it at (e.g. one computed against a not-yet-laid-out placeholder
+                // viewport during initial construction/popup, or against a previous,
+                // differently-sized image). fitInView()'s own resulting transform is never
+                // written back into pimpl->scale (only doReset()/zoomIn()/zoomOut() touch
+                // that), so this call has no other way to know the current transform isn't
+                // already clean -- without this, a later producer-driven pixmap update (which
+                // does not go through doReset(), unlike navigating to a different image) can
+                // leave a correctly-sized image visibly stuck at a stale, tiny zoom level.
+                m_widget->pimpl->view->resetTransform();
+            }
         }
         m_widget->updateButtonPositions();
     }

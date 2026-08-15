@@ -88,7 +88,10 @@ class UISE_DESKTOP_EXPORT ChatImageViewerWindow : public QFrame
         void setCaption(const QString& caption);
         QString caption() const;
 
-        //! Default OpenMode::FullScreen.
+        //! Default OpenMode::FullScreen. Emits openModeChanged() when mode actually differs
+        //! from the current value -- the single point every path that changes openMode() goes
+        //! through (popup()'s own callers, changeEvent()'s external-transition catch below),
+        //! so a host only ever needs the one connection to learn about every kind of change.
         void setOpenMode(OpenMode mode) noexcept;
         OpenMode openMode() const noexcept;
 
@@ -118,6 +121,13 @@ class UISE_DESKTOP_EXPORT ChatImageViewerWindow : public QFrame
         //! setOpenMode()+popup() itself.
         void openModeToggleRequested();
 
+        //! openMode() actually changed -- see setOpenMode()'s own doc comment for every path
+        //! that can trigger this, including ones with no call into openModeToggleRequested()
+        //! at all (e.g. macOS's native fullscreen enter/exit via changeEvent() below). This is
+        //! the one signal a host needs to keep e.g. a persisted "open fullscreen" setting in
+        //! sync with reality, regardless of what changed it.
+        void openModeChanged(OpenMode mode);
+
     public slots:
 
         //! Show, raise and activate the window according to openMode().
@@ -127,22 +137,24 @@ class UISE_DESKTOP_EXPORT ChatImageViewerWindow : public QFrame
 
         void closeEvent(QCloseEvent* event) override;
 
-        //! Catches a FullScreen -> non-FullScreen window-state transition arriving from
-        //! OUTSIDE popup() -- e.g. macOS's own native fullscreen-exit ("green traffic light")
+        //! Catches a FullScreen<->non-FullScreen window-state transition arriving from OUTSIDE
+        //! popup() -- e.g. macOS's own native fullscreen enter/exit ("green traffic light")
         //! button, which changes windowState() directly with no call into this class at all.
-        //! Without this, such a transition leaves the window at whatever "normal" geometry it
-        //! had before it was ever shown (never actually set, since FullScreen mode's own
-        //! popup() branch never resizes) -- visually a tiny/default-sized window, unlike the
-        //! same transition driven by openModeToggleRequested(), which goes through popup()'s
-        //! own sizing. Applies the identical one-time sizing popup()'s Window branch does
-        //! (still gated on windowPositioned, so a manual resize the user already made is never
-        //! undone) and syncs openMode() so a later toggle reflects what the window actually is.
+        //! Both directions sync openMode() (via setOpenMode(), so openModeChanged() fires and
+        //! e.g. a persisted setting stays correct regardless of how the mode actually changed)
+        //! so a later toggle reflects what the window actually is; the exit direction also
+        //! reapplies applyDefaultWindowSizing() -- popup()'s FullScreen branch already applies
+        //! it before ever entering fullscreen, precisely so this restore lands on the right
+        //! geometry with no visible tiny-then-resize flash, and this keeps that true for a
+        //! window whose sizing was still pending for some other reason (e.g. windowPositioned
+        //! reset by a future change).
         void changeEvent(QEvent* event) override;
 
     private:
 
-        //! One-time (per windowPositioned) resize+center to defaultWindowSize(), shared by
-        //! popup()'s own Window branch and changeEvent()'s external-transition catch.
+        //! One-time (per windowPositioned) resize+center to defaultWindowSize(), applied before
+        //! the window is ever shown in either mode (see popup()) and reapplied defensively by
+        //! changeEvent()'s external-transition catch.
         void applyDefaultWindowSizing();
 
         std::unique_ptr<ChatImageViewerWindow_p> pimpl;
