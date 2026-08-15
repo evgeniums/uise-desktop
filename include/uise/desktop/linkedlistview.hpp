@@ -76,6 +76,9 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
         void setAlignment(Qt::Alignment alignment) noexcept;
         Qt::Alignment alignment() const noexcept;
 
+        QSize sizeHint() const override;
+        QSize minimumSizeHint() const override;
+
     signals:
 
         void resized();
@@ -83,6 +86,7 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+        bool event(QEvent* event) override;
 
     private slots:
 
