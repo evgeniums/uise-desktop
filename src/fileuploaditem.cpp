@@ -31,6 +31,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QImageReader>
 #include <QMimeDatabase>
 #include <QDateTime>
+#include <QPainter>
+#include <QtSvg/QSvgRenderer>
 
 #include <uise/desktop/fileuploaditem.hpp>
 
@@ -177,6 +179,41 @@ QImage FileUploadItem::image() const
     {
         return m_image;
     }
+
+    if (mimeType()==QStringLiteral("image/svg+xml"))
+    {
+        // QImage(m_filePath) would decode via Qt's SVG plugin at the file's own declared
+        // size -- for an icon-style SVG with only a viewBox and no explicit width/height
+        // (e.g. a tabler.io icon, viewBox="0 0 24 24"), Qt correctly falls back to that
+        // viewBox size, but that is a tiny raster (24x24). FileUploadListItem::updatePreview()
+        // then scales THAT raster: the row/document chip's scaledAndCropped() deliberately
+        // upscales to fill its fixed 40x40 box and looks fine, but the full image preview's
+        // scaledToFit() deliberately never upscales past the source's own resolution (the
+        // right call for a genuinely low-res photo) -- so a 24x24 source inside an up-to-
+        // 220x260 box ends up rendered at a barely-visible ~24x24, not "poorly sized" so much
+        // as nearly invisible. Render the vector content ourselves at an adequately large
+        // target resolution instead, so every consumer downscales from a sharp source rather
+        // than upscaling (or failing to scale) a tiny one. Harmless for an SVG that already
+        // declares a large size -- QSvgRenderer::defaultSize() reports that, and scaling it to
+        // fit within longSide only ever shrinks it, exactly like the previous decode did.
+        QSvgRenderer renderer(m_filePath);
+        if (renderer.isValid())
+        {
+            auto native=renderer.defaultSize();
+            if (!native.isEmpty())
+            {
+                constexpr int longSide=512;
+                auto target=native.scaled(longSide,longSide,Qt::KeepAspectRatio);
+                QImage img(target,QImage::Format_ARGB32_Premultiplied);
+                img.fill(Qt::transparent);
+                QPainter painter(&img);
+                painter.setRenderHint(QPainter::Antialiasing);
+                renderer.render(&painter);
+                return img;
+            }
+        }
+    }
+
     return QImage(m_filePath);
 }
 
