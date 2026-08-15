@@ -71,6 +71,7 @@ class ChatImageViewerControls_p
         QPointer<DropdownMenu> menu;
 
         QDateTime dateTime;
+        bool counterVisible=true;
 };
 
 //--------------------------------------------------------------------------
@@ -210,6 +211,21 @@ ChatImageViewerControls::~ChatImageViewerControls()
 void ChatImageViewerControls::setCounter(size_t number, size_t total)
 {
     pimpl->counter->setText(tr("%1 of %2").arg(number).arg(total));
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewerControls::setCounterVisible(bool visible)
+{
+    pimpl->counterVisible=visible;
+    pimpl->counter->setVisible(visible);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatImageViewerControls::isCounterVisible() const
+{
+    return pimpl->counterVisible;
 }
 
 //--------------------------------------------------------------------------

@@ -84,6 +84,14 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         //! Set the "n of N" counter text.
         void setCounter(size_t number, size_t total);
 
+        //! Show/hide the counter label -- e.g. when the window() count behind imageCount()/
+        //! totalCountHint() is not a meaningful "how many images in this chat" number for the
+        //! caller (see AbstractImageViewer's own windowing model). Visible by default. Hiding
+        //! does not affect setCounter() itself -- the text is still computed and applied, only
+        //! not shown -- so a later setCounterVisible(true) reflects whatever was last set.
+        void setCounterVisible(bool visible);
+        bool isCounterVisible() const;
+
         void setSender(QString sender);
         QString sender() const;
 

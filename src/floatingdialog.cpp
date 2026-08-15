@@ -493,6 +493,29 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos)
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::popupAt(const QPoint& globalPos, Qt::Corner anchorCorner)
+{
+    adjustSize();
+
+    auto pos=globalPos;
+    if (anchorCorner==Qt::TopRightCorner || anchorCorner==Qt::BottomRightCorner)
+    {
+        pos.setX(pos.x()-width());
+    }
+    if (anchorCorner==Qt::BottomLeftCorner || anchorCorner==Qt::BottomRightCorner)
+    {
+        pos.setY(pos.y()-height());
+    }
+
+    clampFullyToScreen(pos);
+    move(pos);
+    pimpl->hasPosition=true;
+
+    showFrame(this,pimpl.get());
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::close(bool autoDestroy)
 {
     // With a fade the close becomes asynchronous, so closed() -- and therefore any
@@ -718,6 +741,61 @@ void FloatingDialogFrame::clampToScreen(QPoint& pos) const
     {
         pos.setY(maxY);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::clampFullyToScreen(QPoint& pos) const
+{
+    auto* screen=QGuiApplication::screenAt(pos);
+    if (screen==nullptr)
+    {
+        screen=this->screen();
+    }
+    if (screen==nullptr)
+    {
+        screen=QGuiApplication::primaryScreen();
+    }
+    if (screen==nullptr)
+    {
+        return;
+    }
+
+    auto avail=screen->availableGeometry();
+
+    // Unlike clampToScreen() (written for dragging, where only minVisibleMargin needs to stay
+    // on screen), a popup anchored to a UI control should stay fully visible when it fits --
+    // falling back to the ordinary margin-based clamp only if the frame itself is larger than
+    // the available screen area.
+    if (width()<=avail.width())
+    {
+        auto minX=avail.left();
+        auto maxX=avail.right()-width()+1;
+        if (pos.x()<minX)
+        {
+            pos.setX(minX);
+        }
+        else if (pos.x()>maxX)
+        {
+            pos.setX(maxX);
+        }
+    }
+
+    if (height()<=avail.height())
+    {
+        auto minY=avail.top();
+        auto maxY=avail.bottom()-height()+1;
+        if (pos.y()<minY)
+        {
+            pos.setY(minY);
+        }
+        else if (pos.y()>maxY)
+        {
+            pos.setY(maxY);
+        }
+    }
+
+    clampToScreen(pos);
 }
 
 //--------------------------------------------------------------------------

@@ -192,6 +192,20 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void popupAt(const QPoint& globalPos);
 
         /**
+         * @brief Show the frame anchored at a global position by an arbitrary corner.
+         * @param globalPos Global position that anchorCorner of the frame is placed at.
+         * @param anchorCorner Which corner of the frame lands on globalPos.
+         *
+         * The offset can only be applied here, not by the caller: the frame's size is only
+         * final after this method's own adjustSize(). Unlike the one-argument overload (which
+         * only nudges the frame by minVisibleMargin() when it drifts off-screen, matching drag
+         * behaviour), this keeps the whole frame within the screen's available geometry when it
+         * fits -- appropriate for a popup anchored to a UI control the user just clicked, which
+         * should stay fully visible rather than partially run off-screen.
+         */
+        void popupAt(const QPoint& globalPos, Qt::Corner anchorCorner);
+
+        /**
          * @brief Close the frame.
          * @param autoDestroy Destroy the content widget set with autoDestroy=true.
          *
@@ -212,6 +226,7 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void finishClose();
 
         void clampToScreen(QPoint& pos) const;
+        void clampFullyToScreen(QPoint& pos) const;
 
         std::unique_ptr<FloatingDialogFrame_p> pimpl;
 };

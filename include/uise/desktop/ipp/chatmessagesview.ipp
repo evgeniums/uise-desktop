@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
 #include <QClipboard>
+#include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/directchildwidget.hpp>
@@ -71,6 +72,31 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool ena
         dateSection=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
         dateSection->setType(AbstractChatSeparatorSection::TypeDate);
         sep->insertSection(dateSection,0);
+
+        // Clickable only as an affordance for the jump-to-date popup; the connection's context
+        // is m_ui (the message widget that owns the section), so Qt drops it when either the
+        // section widget or the owning message widget goes away -- the flyweight list may
+        // destroy and rebuild both independently of this item.
+        dateSection->setClickable(true);
+        QObject::connect(
+            dateSection,
+            &AbstractChatSeparatorSection::clicked,
+            m_ui,
+            [this,dateSection]()
+            {
+                if (!m_dateSectionClickedCb)
+                {
+                    return;
+                }
+                auto* pill=dateSection->clickableWidget();
+                if (pill==nullptr)
+                {
+                    return;
+                }
+                m_dateSectionClickedCb(m_msg->dateTime().date(),
+                                       pill->mapToGlobal(QPoint{0,pill->height()}));
+            }
+        );
     }
 
     dateSection->setVisible(enable);
@@ -140,6 +166,10 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 {
     setObjectName("uiseChatMessagesView");
 
+    // See eventFilter()'s own doc comment: catches this widget's own top-level window losing
+    // activation while mouseMoveEvent()'s drag-tracking state was left stuck "pressed".
+    qApp->installEventFilter(this);
+
     m_resizeTimer=new SingleShotTimer(this);
     m_selectionModeTimer=new SingleShotTimer(this);
 
@@ -157,6 +187,27 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setVerticalScrollBarPlaceHolder(true);
 
     m_dateSubtitle=new ChatDateSubtitle(m_listView->viewportFrame());
+
+    connect(
+        m_dateSubtitle,
+        &ChatDateSubtitle::clicked,
+        this,
+        [this]()
+        {
+            auto* section=m_dateSubtitle->section();
+            if (section==nullptr)
+            {
+                return;
+            }
+            auto* pill=section->clickableWidget();
+            if (pill==nullptr)
+            {
+                return;
+            }
+            emit dateSectionClicked(m_dateSubtitle->dateTime().date(),
+                                    pill->mapToGlobal(QPoint{0,pill->height()}));
+        }
+    );
 
     m_listView->setUserScrolledCb(
         [this]()
@@ -309,6 +360,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 template <typename BaseMessageT,typename Traits>
 ChatMessagesView<BaseMessageT,Traits>::~ChatMessagesView()
 {
+    qApp->removeEventFilter(this);
     m_listView->resetCallbacks();
 }
 
@@ -877,10 +929,33 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::mouseReleaseEvent(QMouseEvent* event)
 {
+    resetMouseSelectionState();
+    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::resetMouseSelectionState()
+{
     m_chatUnderMouse=nullptr;
     m_lastMousePos=QPoint{};
     m_mouseMoveUp.reset();
-    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent* event)
+{
+    // window(), not a cached pointer -- this widget can be reparented into a different
+    // top-level window over its lifetime (e.g. a chat page moved between MainWindows), so it
+    // must be re-resolved on every event rather than captured once.
+    if (event->type()==QEvent::WindowDeactivate && watched==window())
+    {
+        resetMouseSelectionState();
+    }
+    return QFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------
@@ -891,6 +966,17 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     // make message
     auto message=m_messageBuilder(data,m_listView);
     Assert(message,"Invalid chat message builder in UI factory");
+
+    // Set BEFORE anything can build a date separator: insertFetched() runs
+    // adjustMessageList() (-> setDateSeparatorVisible()) before loadItems(), i.e. before
+    // setInsertItemCb() would fire, so installing this in that callback would be too late for
+    // the initial load. `this` is the view, which outlives every item it owns.
+    message->setDateSectionClickedCb(
+        [this](const QDate& date, const QPoint& pos)
+        {
+            emit dateSectionClicked(date,pos);
+        }
+    );
 
     // set selection mode
     if (isSelectionMode())
