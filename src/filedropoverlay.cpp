@@ -77,16 +77,21 @@ class FileDropOverlay_p
         Label* imagesCaptionLabel=nullptr;
         Label* imagesSubtitleLabel=nullptr;
 
+        QFrame* photosPanel=nullptr;
+        RoundedImage* photosIcon=nullptr;
+        Label* photosCaptionLabel=nullptr;
+        Label* photosSubtitleLabel=nullptr;
+
         QString singleCaption;
         QString singleSubtitle;
-        QString documentsCaption;
-        QString documentsSubtitle;
         QString imagesCaption;
         QString imagesSubtitle;
+        QString photosCaption;
+        QString photosSubtitle;
 
         std::shared_ptr<SvgIcon> svgUploadIcon;
-        std::shared_ptr<SvgIcon> svgDocumentsIcon;
         std::shared_ptr<SvgIcon> svgImagesIcon;
+        std::shared_ptr<SvgIcon> svgPhotosIcon;
 
         QShortcut* escShortcut=nullptr;
         QTimer* leaveWatchdog=nullptr;
@@ -138,10 +143,10 @@ FileDropOverlay::FileDropOverlay(QWidget* host)
     setFocusPolicy(Qt::NoFocus);
 
     pimpl->singleCaption=tr("Drop files here to send as documents");
-    pimpl->documentsCaption=tr("Send as documents");
-    pimpl->documentsSubtitle=tr("Original files, no compression");
     pimpl->imagesCaption=tr("Send as images");
-    pimpl->imagesSubtitle=tr("Quick sending");
+    pimpl->imagesSubtitle=tr("Full quality, larger size");
+    pimpl->photosCaption=tr("Send as photos");
+    pimpl->photosSubtitle=tr("Adaptive quality, faster delivery");
 
     // Panel widgets are built here as plain children of `this`, deliberately NOT added to any
     // layout yet -- rebuildPanelsLayout() (called just below, and again from
@@ -184,6 +189,12 @@ FileDropOverlay::FileDropOverlay(QWidget* host)
     pimpl->imagesCaptionLabel=pimpl->imagesPanel->findChild<Label*>(QStringLiteral("panelCaption"));
     pimpl->imagesSubtitleLabel=pimpl->imagesPanel->findChild<Label*>(QStringLiteral("panelSubtitle"));
     pimpl->imagesPanel->setVisible(false);
+
+    pimpl->photosPanel=buildPanel(QStringLiteral("photosPanel"));
+    pimpl->photosIcon=pimpl->photosPanel->findChild<RoundedImage*>(QStringLiteral("panelIcon"));
+    pimpl->photosCaptionLabel=pimpl->photosPanel->findChild<Label*>(QStringLiteral("panelCaption"));
+    pimpl->photosSubtitleLabel=pimpl->photosPanel->findChild<Label*>(QStringLiteral("panelSubtitle"));
+    pimpl->photosPanel->setVisible(false);
 
     rebuildPanelsLayout();
     updateIcons();
@@ -346,6 +357,7 @@ QFrame* FileDropOverlay::panelFrame(Panel panel) const
     {
         case (Panel::Documents): return pimpl->documentsPanel;
         case (Panel::Images): return pimpl->imagesPanel;
+        case (Panel::Photos): return pimpl->photosPanel;
         case (Panel::None): break;
     }
     return nullptr;
@@ -383,36 +395,6 @@ QString FileDropOverlay::singleSubtitle() const
 
 //--------------------------------------------------------------------------
 
-void FileDropOverlay::setDocumentsCaption(const QString& text)
-{
-    pimpl->documentsCaption=text;
-    if (pimpl->active && pimpl->hasImages)
-    {
-        updatePanels();
-    }
-}
-
-QString FileDropOverlay::documentsCaption() const
-{
-    return pimpl->documentsCaption;
-}
-
-void FileDropOverlay::setDocumentsSubtitle(const QString& text)
-{
-    pimpl->documentsSubtitle=text;
-    if (pimpl->active && pimpl->hasImages)
-    {
-        updatePanels();
-    }
-}
-
-QString FileDropOverlay::documentsSubtitle() const
-{
-    return pimpl->documentsSubtitle;
-}
-
-//--------------------------------------------------------------------------
-
 void FileDropOverlay::setImagesCaption(const QString& text)
 {
     pimpl->imagesCaption=text;
@@ -439,6 +421,36 @@ void FileDropOverlay::setImagesSubtitle(const QString& text)
 QString FileDropOverlay::imagesSubtitle() const
 {
     return pimpl->imagesSubtitle;
+}
+
+//--------------------------------------------------------------------------
+
+void FileDropOverlay::setPhotosCaption(const QString& text)
+{
+    pimpl->photosCaption=text;
+    if (pimpl->active && pimpl->hasImages)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::photosCaption() const
+{
+    return pimpl->photosCaption;
+}
+
+void FileDropOverlay::setPhotosSubtitle(const QString& text)
+{
+    pimpl->photosSubtitle=text;
+    if (pimpl->active && pimpl->hasImages)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::photosSubtitle() const
+{
+    return pimpl->photosSubtitle;
 }
 
 //--------------------------------------------------------------------------
@@ -540,11 +552,15 @@ void FileDropOverlay::updateGeometryFromHost()
 void FileDropOverlay::rebuildPanelsLayout()
 {
     // Layout::box() deletes this widget's current layout (if any) before creating the new one --
-    // that only detaches documentsPanel/imagesPanel from it, it does not destroy them (a QLayout
-    // does not own the widgets placed into it), so both survive to be re-added below. See the
+    // that only detaches the panels from it, it does not destroy them (a QLayout does not own
+    // the widgets placed into it), so all three survive to be re-added below. See the
     // constructor's own comment on why panel construction and layout assembly are kept separate.
+    // Only two of the three are ever visible at once (updatePanels()), but all three stay in the
+    // layout permanently -- a hidden widget is skipped by the layout, so there is no need to
+    // add/remove on every hasImages change.
     auto* layout=Layout::box(this,pimpl->panelOrientation);
     layout->addWidget(pimpl->imagesPanel,1);
+    layout->addWidget(pimpl->photosPanel,1);
     layout->addWidget(pimpl->documentsPanel,1);
 }
 
@@ -553,18 +569,20 @@ void FileDropOverlay::rebuildPanelsLayout()
 void FileDropOverlay::updatePanels()
 {
     pimpl->imagesPanel->setVisible(pimpl->hasImages);
+    pimpl->photosPanel->setVisible(pimpl->hasImages);
+    pimpl->documentsPanel->setVisible(!pimpl->hasImages);
 
     if (pimpl->hasImages)
     {
-        pimpl->documentsIcon->setSvgIcon(pimpl->svgDocumentsIcon);
-        pimpl->documentsCaptionLabel->setText(pimpl->documentsCaption);
-        pimpl->documentsSubtitleLabel->setText(pimpl->documentsSubtitle);
-        pimpl->documentsSubtitleLabel->setVisible(!pimpl->documentsSubtitle.isEmpty());
-
         pimpl->imagesIcon->setSvgIcon(pimpl->svgImagesIcon);
         pimpl->imagesCaptionLabel->setText(pimpl->imagesCaption);
         pimpl->imagesSubtitleLabel->setText(pimpl->imagesSubtitle);
         pimpl->imagesSubtitleLabel->setVisible(!pimpl->imagesSubtitle.isEmpty());
+
+        pimpl->photosIcon->setSvgIcon(pimpl->svgPhotosIcon);
+        pimpl->photosCaptionLabel->setText(pimpl->photosCaption);
+        pimpl->photosSubtitleLabel->setText(pimpl->photosSubtitle);
+        pimpl->photosSubtitleLabel->setVisible(!pimpl->photosSubtitle.isEmpty());
     }
     else
     {
@@ -580,8 +598,8 @@ void FileDropOverlay::updatePanels()
 void FileDropOverlay::updateIcons()
 {
     pimpl->svgUploadIcon=fileDropOverlayIcon(QStringLiteral("upload"),this);
-    pimpl->svgDocumentsIcon=fileDropOverlayIcon(QStringLiteral("documents"),this);
     pimpl->svgImagesIcon=fileDropOverlayIcon(QStringLiteral("images"),this);
+    pimpl->svgPhotosIcon=fileDropOverlayIcon(QStringLiteral("photos"),this);
 }
 
 //--------------------------------------------------------------------------
@@ -595,6 +613,7 @@ void FileDropOverlay::setHoveredPanel(Panel panel)
 
     applyPanelHovered(pimpl->documentsPanel,pimpl->documentsIcon,pimpl->documentsCaptionLabel,pimpl->documentsSubtitleLabel,panel==Panel::Documents);
     applyPanelHovered(pimpl->imagesPanel,pimpl->imagesIcon,pimpl->imagesCaptionLabel,pimpl->imagesSubtitleLabel,panel==Panel::Images);
+    applyPanelHovered(pimpl->photosPanel,pimpl->photosIcon,pimpl->photosCaptionLabel,pimpl->photosSubtitleLabel,panel==Panel::Photos);
 
     pimpl->hoveredPanel=panel;
 
@@ -620,12 +639,12 @@ FileDropOverlay::Panel FileDropOverlay::panelAt(const QPoint& pos) const
     // arranges the panels along.
     if (pimpl->panelOrientation==Qt::Vertical)
     {
-        auto split=(pimpl->imagesPanel->geometry().bottom()+pimpl->documentsPanel->geometry().top())/2;
-        return pos.y()<split ? Panel::Images : Panel::Documents;
+        auto split=(pimpl->imagesPanel->geometry().bottom()+pimpl->photosPanel->geometry().top())/2;
+        return pos.y()<split ? Panel::Images : Panel::Photos;
     }
 
-    auto split=(pimpl->imagesPanel->geometry().right()+pimpl->documentsPanel->geometry().left())/2;
-    return pos.x()<split ? Panel::Images : Panel::Documents;
+    auto split=(pimpl->imagesPanel->geometry().right()+pimpl->photosPanel->geometry().left())/2;
+    return pos.x()<split ? Panel::Images : Panel::Photos;
 }
 
 //--------------------------------------------------------------------------

@@ -54,6 +54,7 @@ QString panelName(FileDropOverlay::Panel panel)
     {
         case (FileDropOverlay::Panel::Documents): return QStringLiteral("Documents");
         case (FileDropOverlay::Panel::Images): return QStringLiteral("Images");
+        case (FileDropOverlay::Panel::Photos): return QStringLiteral("Photos");
         case (FileDropOverlay::Panel::None): break;
     }
     return QStringLiteral("None");
@@ -115,7 +116,8 @@ int main(int argc, char *argv[])
 
     rootLayout->addWidget(new QLabel(QStringLiteral(
         "Drag files/images from your file manager onto the chat page area below.\n"
-        "A plain file shows one panel; an image file shows two -- Send as documents / Send as images.\n"
+        "A plain file shows one panel; an image file shows two -- Send as images (full rung) /\n"
+        "Send as photos (normal rung).\n"
         "The Preview buttons show the same layouts without needing an actual OS-level drag.")));
 
     // --- the "chat page": the whole point of auto-show mode is that this two-line integration
@@ -192,6 +194,7 @@ int main(int argc, char *argv[])
             uploadDialogFrame->openDialog(false,false);
             auto* widget=uploadDialogFrame->dialog()->fileUploadWidget();
             widget->setSendAsDocuments(panel==FileDropOverlay::Panel::Documents);
+            widget->setHighQuality(panel==FileDropOverlay::Panel::Images);
             widget->addFromMimeData(mimeData);
             uploadDialogFrame->showDialog();
         }

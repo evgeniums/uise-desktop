@@ -50,10 +50,13 @@ class FileDropOverlay_p;
  * A consumer page (a chat page, say) calls setAcceptDrops(true) once and install() once. As soon
  * as a drag carrying files or image data enters the page, the overlay covers it: a single
  * full-area panel ("Drop files here to send as documents") when the payload has no images, or two
- * panels ("Send as documents" / "Send as images") when it does -- side by side by default, or
- * stacked top-to-bottom, see setPanelOrientation(). Whichever panel the pointer is over
- * highlights via QSS; dropping on one emits dropped() with that panel, which is what a caller
- * uses to preset FileUploadWidget::setSendAsDocuments() before opening the upload dialog.
+ * panels ("Send as images" / "Send as photos") when it does -- side by side by default, or
+ * stacked top-to-bottom, see setPanelOrientation(). The two-panel split is NOT image-vs-document
+ * (both panels send images as images) -- it is the image version ladder's own top rung: the first
+ * panel (Images) is the `full` rung, never downscaled; the second (Photos) is the `normal` rung,
+ * adaptively scaled for faster transfer. Which panel the pointer is over highlights via QSS;
+ * dropping on one emits dropped() with that panel, which is what a caller uses to preset
+ * FileUploadWidget::setSendAsDocuments()/setHighQuality() before opening the upload dialog.
  *
  * Unlike RippleOverlay this widget must NOT be transparent for mouse events: Qt resolves a drag
  * target with QWidget::childAt(), which skips both hidden children and children with
@@ -87,8 +90,9 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         enum class Panel
         {
             None,       //!< the overlay is not active; never emitted by dropped()
-            Documents,  //!< "send as documents" -- original files, no compression
-            Images      //!< "send as images" -- quick sending, compressed
+            Documents,  //!< single full-area panel: payload has no images -- send as documents
+            Images,     //!< two-panel layout, first panel -- `full` rung, never downscaled
+            Photos      //!< two-panel layout, second panel -- `normal` rung, adaptively scaled
         };
         Q_ENUM(Panel)
 
@@ -136,10 +140,10 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         bool isAutoShow() const noexcept;
 
         /**
-         * @brief Whether the "send as images" panel may appear at all.
+         * @brief Whether the two-panel (Images/Photos) layout may appear at all.
          *
          * False forces the single full-area documents panel regardless of payload -- for a
-         * consumer that never compresses.
+         * consumer that never needs the rung choice.
          */
         void setImagesPanelAllowed(bool enable);
         bool isImagesPanelAllowed() const noexcept;
@@ -177,18 +181,19 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void setSingleSubtitle(const QString& text);
         QString singleSubtitle() const;
 
-        //! Caption of the documents panel in the two-panel layout (second/right/bottom, depending
-        //! on panelOrientation()).
-        void setDocumentsCaption(const QString& text);
-        QString documentsCaption() const;
-        void setDocumentsSubtitle(const QString& text);
-        QString documentsSubtitle() const;
-
-        //! Caption of the images panel in the two-panel layout (first/left/top).
+        //! Caption of the images panel in the two-panel layout (first/left/top) -- the `full`
+        //! rung, never downscaled.
         void setImagesCaption(const QString& text);
         QString imagesCaption() const;
         void setImagesSubtitle(const QString& text);
         QString imagesSubtitle() const;
+
+        //! Caption of the photos panel in the two-panel layout (second/right/bottom, depending
+        //! on panelOrientation()) -- the `normal` rung, adaptively scaled.
+        void setPhotosCaption(const QString& text);
+        QString photosCaption() const;
+        void setPhotosSubtitle(const QString& text);
+        QString photosSubtitle() const;
 
         /**
          * @brief Interval, in ms, at which an active overlay re-checks the real pointer position
@@ -233,7 +238,7 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
 
         /**
          * @brief A drop landed on one of the panels.
-         * @param panel Panel::Documents or Panel::Images, never Panel::None.
+         * @param panel Panel::Documents, Panel::Images, or Panel::Photos, never Panel::None.
          * @param mimeData Dropped payload.
          *
          * Emitted synchronously from inside dropEvent(), so mimeData is only valid for the

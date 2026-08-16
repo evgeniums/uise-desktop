@@ -3,13 +3,15 @@ background-color: rgba(30,30,32,230);
 }
 
 uise--FileDropOverlay #documentsPanel,
-uise--FileDropOverlay #imagesPanel {
+uise--FileDropOverlay #imagesPanel,
+uise--FileDropOverlay #photosPanel {
 border-color: #666666;
 background-color: transparent;
 }
 
 uise--FileDropOverlay #documentsPanel[hovered="true"],
-uise--FileDropOverlay #imagesPanel[hovered="true"] {
+uise--FileDropOverlay #imagesPanel[hovered="true"],
+uise--FileDropOverlay #photosPanel[hovered="true"] {
 border-color: #4C9AFF;
 background-color: rgba(76,154,255,25);
 }

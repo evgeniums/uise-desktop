@@ -261,7 +261,7 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     // trigger's actual window() on first opening (see FileUploadListItem for the same pattern)
     pimpl->headerMenu=new DropdownMenu();
     pimpl->headerMenu->setItems({
-        MenuItem::checkable(static_cast<int>(FileUploadMenuAction::HighQuality),tr("High quality"),pimpl->highQuality,fileUploadIcon(QStringLiteral("highQuality"),this)),
+        MenuItem::checkable(static_cast<int>(FileUploadMenuAction::HighQuality),tr("Full quality"),pimpl->highQuality,fileUploadIcon(QStringLiteral("highQuality"),this)),
         MenuItem::checkable(static_cast<int>(FileUploadMenuAction::SendAsDocuments),tr("Send as documents"),pimpl->sendAsDocuments,fileUploadIcon(QStringLiteral("documents"),this)),
         MenuItem::checkable(static_cast<int>(FileUploadMenuAction::GroupItems),tr("Group items"),pimpl->groupItems,fileUploadIcon(QStringLiteral("group"),this))
     });
@@ -707,7 +707,7 @@ void FileUploadWidget::updateAddEnabled()
 
 void FileUploadWidget::updateMenuVisibility()
 {
-    // presentAsImage(), not isImage(): "High quality"/"Send as documents" are only meaningful
+    // presentAsImage(), not isImage(): "Full quality"/"Send as documents" are only meaningful
     // for an item that would otherwise actually be shown as an image tile -- an item already
     // forced to a document row by the aspect-ratio guard gets no visible effect from either.
     auto hasImage=std::any_of(

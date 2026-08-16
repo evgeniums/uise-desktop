@@ -77,7 +77,8 @@ enum class ChatFileMenuAction : int
     SaveAs=2,
     Forward=3,
     ShowInFolder=4,
-    OpenWith=5,
+    OpenWith=5,       //!< labelled "Open in system app" -- unconditionally the OS default
+                      //!< application, never a chooser (see chatfileitem.cpp's own comment)
     CopyFileName=6,
     Pause=7,
     Resume=8,
@@ -316,8 +317,9 @@ class UISE_DESKTOP_EXPORT ChatFileItem
          * An empty list (the default) means "use the library's own default policy": Open, SaveAs,
          * Forward, plus ShowInFolder when isShowInFolderAvailable() -- i.e. today's menu, so every
          * existing caller is unaffected. A non-empty list is taken verbatim; the host is expected
-         * to already know which entries make sense for this item (e.g. an "embedded-viewer-capable"
-         * flag gating OpenWith is the host's own concern, not this class's). Listing
+         * to already know which entries make sense for this item -- e.g. whether an embedded
+         * viewer/editor actually exists for this item's mime is the host's own concern, not this
+         * class's, and gates whether OpenWith ("Open in system app") is listed at all. Listing
          * ChatFileMenuAction::Cancel is also what enables ChatMessageFileItem/ChatMessageImageItem's
          * always-visible Cancel control, not just the menu entry -- see isChatFileCancellable().
          */

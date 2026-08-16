@@ -47,7 +47,7 @@ void FileUploadDialog::construct()
     // Send) -- see AbstractFileUploadWidget -- so this dialog hides Dialog<>'s title-driven
     // caption in favor of the widget's, and drops the inherited default Close button. The
     // caption is genuinely redundant with setTitle() below, but the menu button has no
-    // dialog-level equivalent -- it is the only way to reach "High quality" (menu-only by
+    // dialog-level equivalent -- it is the only way to reach "Full quality" (menu-only by
     // design, unlike SendAsDocuments/GroupItems which also have checkboxes) -- so instead of
     // disappearing along with the rest of the header, it is relocated into the dialog's own
     // title bar. Reparenting leaves its DropdownMenu attachment and visibility logic (see

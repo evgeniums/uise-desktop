@@ -205,7 +205,12 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                 break;
 
             case (ChatFileMenuAction::OpenWith):
-                text=QCoreApplication::translate("ChatFileItem","Open with");
+                // Label reads "Open in system app", not "Open with" -- this entry no longer
+                // promises a choice (todos/todo-image-files-handling-followups.md item 2): it
+                // is unconditionally the OS default-application path, same as it always was,
+                // now named for what it actually does. The enum value/alias/signal names are
+                // unchanged, only the user-visible text.
+                text=QCoreApplication::translate("ChatFileItem","Open in system app");
                 alias=QStringLiteral("openWith");
                 break;
 

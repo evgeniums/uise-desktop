@@ -6,7 +6,8 @@ background-color: rgba(255,255,255,225);
 }
 
 uise--FileDropOverlay #documentsPanel,
-uise--FileDropOverlay #imagesPanel {
+uise--FileDropOverlay #imagesPanel,
+uise--FileDropOverlay #photosPanel {
 border-color: #B3B3B3;
 background-color: transparent;
 }
@@ -19,7 +20,8 @@ background-color: transparent;
    repolished with its own copy of the property rather than being matched through an ancestor
    attribute selector. */
 uise--FileDropOverlay #documentsPanel[hovered="true"],
-uise--FileDropOverlay #imagesPanel[hovered="true"] {
+uise--FileDropOverlay #imagesPanel[hovered="true"],
+uise--FileDropOverlay #photosPanel[hovered="true"] {
 border-color: #0A66C2;
 background-color: rgba(10,102,194,20);
 }
