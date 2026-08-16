@@ -112,6 +112,15 @@ void ChatMessageFiles::updateItem(const QUuid& id, const ChatFileItem& item)
         {
             pimpl->items[i]=item;
             auto incoming=(chatMessage()!=nullptr) && chatMessage()->isIncoming();
+
+            // pimpl->items and pimpl->rows are only kept in step by rebuildList(); a caller that
+            // reaches updateItem() before rebuildList() has created a row for this index would
+            // otherwise index pimpl->rows out of bounds.
+            if (i>=pimpl->rows.size())
+            {
+                return;
+            }
+
             pimpl->rows[i]->setItem(item,incoming);
             return;
         }
@@ -187,6 +196,23 @@ void ChatMessageFiles::rebuildList()
 
         pimpl->contentsLayout->addWidget(row);
         pimpl->rows.push_back(row);
+
+        // MUST be explicit, and MUST be here rather than left to Qt: QLayout::addChildWidget()
+        // (qlayout.cpp) only auto-shows a widget added to an ALREADY-VISIBLE parent via
+        //     QMetaObject::invokeMethod(w,"_q_showIfNotHidden",Qt::QueuedConnection) //show later
+        // i.e. asynchronously, on a LATER event-loop turn. Until that runs the row is still
+        // isHidden(), so QWidgetItem::isEmpty() is true and every enclosing layout leaves it out
+        // of sizeHint() entirely -- this body then measures 0-width (observed: bodySizeHint=0x4
+        // with a perfectly valid row[0]=123x64) and the bubble negotiates itself down to a
+        // squashed, content-less box. That is exactly what happens when setItems() runs on a
+        // message ALREADY on screen (e.g. once resolveLocalUids() resolves and refreshAllItems()
+        // re-pushes the item list), which is why the bug only ever showed up on already-rendered
+        // messages and "fixed itself" after any later relayout -- a scroll, or the deferred
+        // updatePosition() a selection toggle happens to schedule -- once the queued show landed.
+        // show() clears WA_WState_Hidden synchronously, so the very next sizeHint() counts this
+        // row. Safe when the parent is not visible either: the row is merely marked
+        // explicitly-shown and still only maps once its parent does.
+        row->show();
 
         // bubbleWidthHint() below reads row->sizeHint(), which is only meaningful once
         // chatmessagefiles.qss's min-width/padding rules are actually applied -- ensure that
