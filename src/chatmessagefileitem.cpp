@@ -118,6 +118,7 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     pimpl->imagePreview->setImageSize(IconSlotSize);
     pimpl->imagePreview->setGeometry(QRect(QPoint(0,0),IconSlotSize));
     pimpl->imagePreview->setClickable(true);
+    pimpl->imagePreview->setCursor(Qt::PointingHandCursor);
     connect(pimpl->imagePreview,&AvatarWidget::clicked,this,&ChatMessageFileItem::clicked);
 
     // The load control overlay is created lazily on first use (see ensureLoadControl()) -- an
@@ -356,6 +357,20 @@ void ChatMessageFileItem::updateIconSlot()
         {
             loadControl->setProgress(0.0);
         }
+        // A Running item with no measurable progress yet is exactly what Indeterminate exists
+        // for ("fixed-span arc circulating around the circle; progress() ignored") -- without
+        // this, such an item draws a zero-length Static arc, i.e. a Running control visually
+        // indistinguishable from a stalled one. Reachable whenever a transfer is underway but
+        // no bytes have moved yet: for an upload that covers the whole local prepare/create
+        // phase, which a host may legitimately report as Running (a sender's content can be
+        // fully prepared locally long before the first byte leaves). Paused/Pending stay
+        // Static deliberately -- a paused or queued item is NOT working, so a circulating arc
+        // would misrepresent it; they keep whatever partial ring they already earned.
+        loadControl->loadControl()->setProgressMode(
+            (it.state()==ChatFileTransferState::Running && it.transferred()<=0)
+                ? AbstractLoadControl::ProgressMode::Indeterminate
+                : AbstractLoadControl::ProgressMode::Static
+        );
         // Only used to build the Pause/Cancel menu text (see LoadControlMenu::
         // setFileDescription()'s doc comment), so only needed while the control is shown.
         loadControl->setFileDescription(it.fileName(),it.isImage(),pimpl->incoming);
