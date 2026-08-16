@@ -297,7 +297,19 @@ void LoadControl::updateProgress()
 
 void LoadControl::updateProgressMode()
 {
-    m_rotationPhase=0.0;
+    // AbstractLoadControl::setProgressMode() calls this unconditionally, even when the mode
+    // value hasn't actually changed -- a caller that re-applies the SAME mode on every refresh
+    // (e.g. re-deriving and re-setting AnimatedProgress on every progress tick while a
+    // download is running, rather than tracking whether the mode itself changed) must not
+    // snap the arc's start angle back to 12 o'clock while it's already mid-rotation, or the
+    // arc visibly jumps every tick instead of just growing/shrinking smoothly. Only reset the
+    // phase for a genuine transition into a running animation (the animation was stopped, e.g.
+    // coming from Static) -- switching between Indeterminate and AnimatedProgress, or a
+    // same-mode re-application, both keep m_anim running and must leave m_rotationPhase alone.
+    if (m_anim->state()!=QAbstractAnimation::Running)
+    {
+        m_rotationPhase=0.0;
+    }
     updateAnimation();
     update();
 }

@@ -238,11 +238,17 @@ void ChatMessageImageItem::refresh()
         // See ChatMessageFileItem::updateIconSlot()'s identical block for the rationale: a
         // Running item with no measurable progress yet draws a zero-length Static arc,
         // indistinguishable from stalled -- Indeterminate is the mode for exactly that.
-        loadControl->loadControl()->setProgressMode(
-            (pimpl->item.state()==ChatFileTransferState::Running && pimpl->item.transferred()<=0)
+        // Once real bytes are moving, AnimatedProgress keeps it circulating while still
+        // reflecting progress() like Static would, so it doesn't go visually still the
+        // moment a real number is available.
+        auto progressMode=AbstractLoadControl::ProgressMode::Static;
+        if (pimpl->item.state()==ChatFileTransferState::Running)
+        {
+            progressMode=(pimpl->item.transferred()<=0)
                 ? AbstractLoadControl::ProgressMode::Indeterminate
-                : AbstractLoadControl::ProgressMode::Static
-        );
+                : AbstractLoadControl::ProgressMode::AnimatedProgress;
+        }
+        loadControl->loadControl()->setProgressMode(progressMode);
         // Only used to build the Pause/Cancel menu text (see LoadControlMenu::
         // setFileDescription()'s doc comment), so only needed while the control is shown.
         loadControl->setFileDescription(pimpl->item.fileName(),pimpl->item.isImage(),pimpl->incoming);

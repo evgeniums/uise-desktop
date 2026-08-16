@@ -363,14 +363,21 @@ void ChatMessageFileItem::updateIconSlot()
         // indistinguishable from a stalled one. Reachable whenever a transfer is underway but
         // no bytes have moved yet: for an upload that covers the whole local prepare/create
         // phase, which a host may legitimately report as Running (a sender's content can be
-        // fully prepared locally long before the first byte leaves). Paused/Pending stay
-        // Static deliberately -- a paused or queued item is NOT working, so a circulating arc
-        // would misrepresent it; they keep whatever partial ring they already earned.
-        loadControl->loadControl()->setProgressMode(
-            (it.state()==ChatFileTransferState::Running && it.transferred()<=0)
+        // fully prepared locally long before the first byte leaves). Once real bytes are
+        // moving, AnimatedProgress is the mode that actually means "working, and here's how
+        // far" -- arc length still reflects progress() like Static, but it also circulates,
+        // so the control doesn't go visually still the moment a real number is available.
+        // Paused/Pending stay Static deliberately -- a paused or queued item is NOT working,
+        // so a circulating arc would misrepresent it; they keep whatever partial ring they
+        // already earned.
+        auto progressMode=AbstractLoadControl::ProgressMode::Static;
+        if (it.state()==ChatFileTransferState::Running)
+        {
+            progressMode=(it.transferred()<=0)
                 ? AbstractLoadControl::ProgressMode::Indeterminate
-                : AbstractLoadControl::ProgressMode::Static
-        );
+                : AbstractLoadControl::ProgressMode::AnimatedProgress;
+        }
+        loadControl->loadControl()->setProgressMode(progressMode);
         // Only used to build the Pause/Cancel menu text (see LoadControlMenu::
         // setFileDescription()'s doc comment), so only needed while the control is shown.
         loadControl->setFileDescription(it.fileName(),it.isImage(),pimpl->incoming);
