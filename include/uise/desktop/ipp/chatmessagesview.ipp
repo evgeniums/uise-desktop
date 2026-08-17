@@ -608,31 +608,47 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             // preprocess list with merged existing and new messages
             adjustMessageList(messages);
 
-            // adjust min and max sort values
-            if (messageItems.size()<static_cast<size_t>(wasRequestedMaxCount))
-            {
-                if (wasRequestedDirection==Direction::END)
-                {
-                    auto maxSortValue=messageItems.back().sortValue();
-                    if (m_listView->maxSortValue().isNull() || m_listView->maxSortValue()<maxSortValue)
-                    {
-                        m_listView->setMaxSortValue(maxSortValue);
-                    }
-                }
-                else
-                {
-                    auto minSortValue=messageItems.front().sortValue();
-                    if (m_listView->minSortValue().isNull() || minSortValue<m_listView->minSortValue())
-                    {
-                        m_listView->setMinSortValue(minSortValue);
-                    }
-                }
-            }
-
             // insert items to the list
             adjustMessagesSizes(&messages);
 
             m_listView->insertContinuousItems(messageItems,false);
+
+            // A batch shorter than requested means the db had nothing more on that side, so the
+            // newly-loaded edge item IS the boundary -- set the marker unconditionally (not
+            // widen-only as before) from the list's own post-insert edge. The previous
+            // widen-only guard (only raise max / only lower min) could never move a marker past
+            // the "unknown end" sentinel (an all-`f` ObjectId, larger than any real value, used
+            // by e.g. whitemdesktop's jump-to-date fetch) toward a real value, so a window opened
+            // mid-history kept the sentinel forever even once its true tail was loaded here --
+            // "jump to end" kept doing a full reload despite the true last message already being
+            // on screen. Reading the post-insert list edge (rather than messageItems' own front/
+            // back) keeps this correct if a live message arrived meanwhile via doInsertMessage().
+            // Must run before endUpdate(), which triggers resizeList()/viewportUpdated() --
+            // scroll-driven prefetch reads the marker there.
+            //
+            // Note: a batch shortened only because the caller's own item-building step silently
+            // dropped one malformed item still pins here -- the same pre-existing risk the
+            // empty-batch branch above already carries.
+            if (messageItems.size()<static_cast<size_t>(wasRequestedMaxCount))
+            {
+                if (wasRequestedDirection==Direction::END)
+                {
+                    auto last=m_listView->lastItem();
+                    if (last!=nullptr)
+                    {
+                        m_listView->setMaxSortValue(last->sortValue());
+                    }
+                }
+                else
+                {
+                    auto first=m_listView->firstItem();
+                    if (first!=nullptr)
+                    {
+                        m_listView->setMinSortValue(first->sortValue());
+                    }
+                }
+            }
+
             m_listView->endUpdate();
         }
     }

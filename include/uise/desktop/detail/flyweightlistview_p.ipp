@@ -2194,13 +2194,23 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction direction, bool forceLongfJump, Qt::KeyboardModifiers modifiers)
 {
+    // Must stay in lockstep with checkItemCount()'s canFetchBefore/canFetchAfter (this is
+    // literally their negation: "nothing more beyond the loaded window" <=> "a local scroll is
+    // enough"). checkItemCount() uses the live firstItem()/lastItem() and a strict less-than
+    // against m_minSortValue/m_maxSortValue; this used to instead test *exact* equality against
+    // the *cached* m_firstItem/m_lastItem. Those two only need to disagree once -- e.g. after a
+    // bulk load whose last item's sort value overshoots a stale m_maxSortValue (loadItems()/
+    // insertContinuousItems()/insertItems() never adjust it, and clear() never resets it) -- for
+    // the jump-edge button to trigger a full reload where the scroll-driven prefetch already
+    // considers the window complete.
     if (direction==Direction::END)
     {
+        auto last=lastItem();
         if (!m_enableFlyweight)
         {
             scrollToEdge(Direction::END);
         }
-        else if (m_lastItem!=nullptr && itemOrdersEqual(m_lastItem->sortValue(),m_maxSortValue))
+        else if (last!=nullptr && !m_orderComparer(last->sortValue(),m_maxSortValue))
         {
             scrollToEdge(Direction::END);
         }
@@ -2211,11 +2221,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
     }
     else
     {
+        auto first=firstItem();
         if (!m_enableFlyweight)
         {
             scrollToEdge(Direction::HOME);
         }
-        else if (m_firstItem!=nullptr && itemOrdersEqual(m_firstItem->sortValue(),m_minSortValue))
+        else if (first!=nullptr && !m_orderComparer(m_minSortValue,first->sortValue()))
         {
             scrollToEdge(Direction::HOME);
         }
