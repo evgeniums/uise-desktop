@@ -73,6 +73,7 @@ class ChatImageViewerControls_p
 
         QDateTime dateTime;
         bool counterVisible=true;
+        bool previewStripSuppressed=false;
 };
 
 //--------------------------------------------------------------------------
@@ -272,8 +273,46 @@ QDateTime ChatImageViewerControls::dateTime() const
 
 //--------------------------------------------------------------------------
 
+void ChatImageViewerControls::setSeparatorVisible(bool visible)
+{
+    pimpl->separator->setVisible(visible);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatImageViewerControls::isSeparatorVisible() const
+{
+    return pimpl->separator->isVisible();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewerControls::setPreviewStripSuppressed(bool suppressed)
+{
+    pimpl->previewStripSuppressed=suppressed;
+    if (suppressed)
+    {
+        // Widget itself stays visible/present -- see this method's own doc comment for why
+        // (its stretch-1 layout slot is load-bearing even with zero content).
+        pimpl->previewStrip->setPreviews({});
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatImageViewerControls::isPreviewStripSuppressed() const
+{
+    return pimpl->previewStripSuppressed;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatImageViewerControls::setPreviews(std::vector<ImagePreviewStrip::Preview> previews, int currentIndex)
 {
+    if (pimpl->previewStripSuppressed)
+    {
+        return;
+    }
     pimpl->previewStrip->setPreviews(std::move(previews),currentIndex);
 }
 

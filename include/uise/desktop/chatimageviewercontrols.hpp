@@ -98,7 +98,27 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         void setDateTime(QDateTime dateTime);
         QDateTime dateTime() const;
 
-        //! Forwarded to previewStrip()->setPreviews().
+        //! Show/hide the sender/datetime separator glyph, independently of setSender()/
+        //! setDateTime() -- meaningless when both are blank (a standalone/no-album session,
+        //! e.g. an image opened with no real chat message batch behind it, never has either).
+        //! Visible by default.
+        void setSeparatorVisible(bool visible);
+        bool isSeparatorVisible() const;
+
+        //! Suppress the preview strip's own content regardless of what setPreviews() is asked
+        //! to show (e.g. from ChatImageViewer::updateControls(), called automatically on every
+        //! currentImageIndexChanged()/windowChanged()) -- the strip widget itself stays present
+        //! so it keeps claiming its normal stretch-1 layout slot (what pins the toolbar to the
+        //! right edge and the text block to the left), it just never actually shows a tile. For
+        //! a standalone/no-album session where the strip would otherwise always show at least
+        //! one lone, meaningless tile of the current image itself (updateControls()'s own album-
+        //! scope range always includes the current index) -- worse still with no PixmapSource
+        //! to resolve any actual thumbnail from. Visible (not suppressed) by default.
+        void setPreviewStripSuppressed(bool suppressed);
+        bool isPreviewStripSuppressed() const;
+
+        //! Forwarded to previewStrip()->setPreviews(), unless setPreviewStripSuppressed(true)
+        //! is in effect, in which case this is a no-op (see that method's own doc comment).
         void setPreviews(std::vector<ImagePreviewStrip::Preview> previews, int currentIndex=0);
 
         //! Forwarded to previewStrip()->setCurrentIndex().

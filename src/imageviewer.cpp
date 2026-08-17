@@ -640,6 +640,21 @@ bool ImageViewerWidget::eventFilter(QObject* watched, QEvent* event)
     {
         switch (event->type())
         {
+            case QEvent::Resize:
+                // The viewport's OWN resize, not the outer view's/this widget's (resizeEvent()
+                // above already calls fitImage() on those, too early during the very first
+                // show -- see fitImage()'s own comment on view->viewport()->rect() for the full
+                // layout-order explanation). This is the authoritative point at which
+                // QGraphicsView::fitInView() will actually have a correctly-sized viewport to
+                // measure against, so re-running fitImage() here is what makes a session whose
+                // full-size pixmap is already set BEFORE the window's first show (e.g.
+                // ChatImageViewerController::openStandalone(), which never goes through an
+                // async producer callback arriving after layout the way the chained viewer
+                // does) end up at the right initial zoom instead of stuck at whatever fitImage()
+                // computed against the stale placeholder viewport during construction.
+                pimpl->ctrl->fitImage();
+                break;
+
             case QEvent::MouseMove:
             {
                 if (pimpl->controlsMode==AbstractImageViewer::ControlsMode::Overlay)
@@ -1484,7 +1499,17 @@ void ImageViewer::fitImage()
     if (!px.isNull() && m_widget->pimpl->imageItem!=nullptr)
     {
         m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
-        auto viewRect=m_widget->pimpl->view->rect();
+        // viewport()->rect(), not view->rect() -- QGraphicsView::fitInView() below measures
+        // against the VIEWPORT's own rect, and during the widget's first show the outer view
+        // is laid out (and resized) a step ahead of its viewport child (QAbstractScrollArea
+        // only relays a resize into the viewport once ITS OWN QEvent::Resize is delivered, see
+        // the ImageViewerWidget::eventFilter() QEvent::Resize case below, which exists
+        // specifically to re-run this once that catches up) -- reading view->rect() here could
+        // pass this fit-vs-1:1 decision against an already-correct size while fitInView()
+        // itself still computes the scale against a stale, tiny viewport left over from
+        // construction, producing a correctly-decided-to-fit image rendered at a near-zero
+        // scale that nothing ever corrects afterwards.
+        auto viewRect=m_widget->pimpl->view->viewport()->rect();
         if (qFuzzyCompare(m_widget->pimpl->scale,1.0))
         {
             if (px.width()>viewRect.width() || px.height() > viewRect.height())
