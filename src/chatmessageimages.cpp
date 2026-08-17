@@ -55,6 +55,13 @@ constexpr int DefaultMaxWidth=320;
 // them out at roughly this extent and the bubble ends up sized to match.
 constexpr int PlaceholderTileExtent=100;
 
+// How far a tile may upscale its content beyond the item's own natural (logical) resolution --
+// see ChatMessageImageItem::setMaxUpscale()'s own doc comment. albumLayout()'s natural-size cap
+// already keeps a tile from exceeding its image's own size, so in practice this only has to cover
+// the one case that cap cannot: an image smaller than AlbumLayoutOptions::minTile, whose tile is
+// floored at minTile and would otherwise show the image centred on a padded canvas.
+constexpr qreal TileMaxUpscale=2.0;
+
 }
 
 //--------------------------------------------------------------------------
@@ -116,7 +123,26 @@ void ChatMessageImages::setItems(ChatFileItems items)
     auto forMaxWidth=(chatContent()!=nullptr && chatContent()->maximumBubbleWidth()>0)
         ? chatContent()->maximumBubbleWidth()
         : DefaultMaxWidth;
+
+    auto previousGrid=pimpl->gridSize;
     rebuildGrid(forMaxWidth);
+
+    // The budget used above is the CURRENT bubble width, which was negotiated for whatever album
+    // this widget held before -- a different set of images can want a different width, and on the
+    // re-bind path of a flyweight chat list that stale width would simply stick, leaving the
+    // tiles in a bubble sized for the previous message. renegotiateBubbleWidth() re-runs the
+    // whole negotiation against the real available width (and no-ops before the first one has
+    // ever happened, see its own doc comment), after which updateMaximumBubbleWidth() keeps the
+    // result rather than re-laying it out -- see its own comment.
+    //
+    // Guarded on the album's footprint actually changing: setItems() is also the path every
+    // non-geometry refresh takes (a transfer-progress tick, see ChatMessage::refreshAllItems() in
+    // whitemdesktop), and those must stay as cheap as the layoutUnchanged memo makes them rather
+    // than dragging every sibling section through a re-measure several times a second.
+    if (pimpl->gridSize!=previousGrid && chatContent()!=nullptr)
+    {
+        chatContent()->renegotiateBubbleWidth();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -190,28 +216,39 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
     if (layoutUnchanged)
     {
         rects=pimpl->lastLayoutRects;
+        if (pimpl->items.empty())
+        {
+            // layoutUnchanged is trivially satisfied by an empty item list against a previous
+            // empty one, but it is ALSO satisfied against a stale signature left over from the
+            // last non-empty album (lastLayoutForMaxWidth/lastLayoutDpr unchanged, both
+            // pixel-size vectors empty) -- without this, gridSize/rects would keep describing
+            // that old album instead of the now-empty one.
+            pimpl->gridSize=QSize(0,0);
+        }
     }
     else
     {
+        // Doubles as both the albumLayout() input AND the layoutUnchanged signature stored below
+        // -- these used to be two separate vectors, one substituting unresolved items with a
+        // placeholder QSize(1,1), but albumLayout() already treats a non-positive width/height as
+        // aspect 1:1 (aspectOf()), so passing pixelSize() through as-is serves both purposes.
         std::vector<QSize> sizes;
         sizes.reserve(pimpl->items.size());
-        std::vector<QSize> rawPixelSizes;
-        rawPixelSizes.reserve(pimpl->items.size());
         bool allPlaceholders=!pimpl->items.empty();
         for (const auto& item : pimpl->items)
         {
             auto sz=item.pixelSize();
             bool known=sz.isValid() && sz.width()>0 && sz.height()>0;
             allPlaceholders=allPlaceholders && !known;
-            sizes.push_back(known ? sz : QSize(1,1));
-            // Stored as the layoutUnchanged signature below -- must be the RAW pixelSize(), not
-            // the placeholder-substituted value above, since that is what the next call's
-            // comparison (against pimpl->items[i].pixelSize()) actually checks against.
-            rawPixelSizes.push_back(sz);
+            sizes.push_back(sz);
         }
 
         AlbumLayoutOptions options;
         options.maxWidth=(forMaxWidth>0) ? forMaxWidth : DefaultMaxWidth;
+        // Feeds albumLayout()'s per-tile natural-size cap -- pixelSize() is in real pixels while
+        // the layout works in logical units, so a 200px-wide original covers exactly 100 logical
+        // px on a 2x display and must not be handed a tile wider than that.
+        options.devicePixelRatio=dpr;
 
         if (allPlaceholders)
         {
@@ -226,31 +263,12 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                 ? PlaceholderTileExtent
                 : qMin(options.maxHeight,PlaceholderTileExtent*2+options.spacing);
         }
-        else if (pimpl->items.size()==1)
-        {
-            // Never blow a SMALL image up to the full bubble budget -- albumLayout()'s n==1
-            // branch otherwise always spends the whole width budget, which turned a
-            // thumbnail-sized original into a tile several times its own resolution (observed at
-            // 2x-8x). Confirmed requirement: "show the full original image, only scaled DOWN to
-            // tile size; if the original is smaller, no scaling needed."
-            //
-            // Divided by devicePixelRatio because the budget is in LOGICAL units while
-            // pixelSize() is in real pixels: a 200px-wide original fills exactly 100 logical px
-            // on a 2x display, and asking for more than that is upscaling however good the
-            // source rung is.
-            //
-            // This caps against the ORIGINAL's own dimensions (pixelSize(), the sender's real
-            // image), NOT against whichever preview rung happens to be resolved right now -- tile
-            // geometry must never depend on the latter (confirmed requirement), and does not
-            // here.
-            //
-            // Deliberately n==1 only: for an album, one small image among large ones would drag
-            // the whole grid down with it (albumLayout()'s scale-downs are uniform, to preserve
-            // the ratios between tiles), which is worse than letting that one tile upscale.
-            const auto& sz=sizes.front();
-            options.maxWidth=qMin(options.maxWidth,qMax(options.minTile,qRound(sz.width()/dpr)));
-            options.maxHeight=qMin(options.maxHeight,qMax(options.minTile,qRound(sz.height()/dpr)));
-        }
+        // No single-image special case here any more: "never blow a SMALL image up to the full
+        // bubble budget" is now albumLayout()'s own per-tile natural-size cap (fed by
+        // options.devicePixelRatio above), which applies to every album size rather than only to
+        // n==1 -- that asymmetry was itself the reported bug, since a thumbnail sharing a message
+        // with a photo got a photo-sized tile while the same thumbnail sent alone got a
+        // thumbnail-sized one.
 
         QSize totalSize;
         rects=albumLayout(sizes,options,&totalSize);
@@ -258,7 +276,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
         pimpl->lastLayoutForMaxWidth=forMaxWidth;
         pimpl->lastLayoutDpr=dpr;
-        pimpl->lastLayoutPixelSizes=std::move(rawPixelSizes);
+        pimpl->lastLayoutPixelSizes=std::move(sizes);
         pimpl->lastLayoutRects=rects;
     }
 
@@ -350,6 +368,11 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
     for (size_t i=0;i<pimpl->items.size();++i)
     {
+        // setMaxUpscale() no-ops when unchanged (see its own doc comment), so unconditionally
+        // restating TileMaxUpscale here for every tile -- new or reused -- is cheap; keeps the
+        // paint-time allowance explicit at the one place tiles are populated, rather than relying
+        // on ChatMessageImageItem's own constructor default to happen to match.
+        pimpl->tiles[i]->setMaxUpscale(TileMaxUpscale);
         pimpl->tiles[i]->setItem(pimpl->items[i],incoming);
     }
 
@@ -536,6 +559,29 @@ int ChatMessageImages::bubbleWidthHint(int forMaxWidth)
 void ChatMessageImages::updateMaximumBubbleWidth()
 {
     auto forMaxWidth=(chatContent()!=nullptr) ? chatContent()->maximumBubbleWidth() : DefaultMaxWidth;
+
+    // This runs from AbstractChatMessageContent::setMaximumBubbleWidth(), i.e. immediately AFTER
+    // the negotiation pass that asked bubbleWidthHint() for this album's own width and then sized
+    // the bubble from it. Re-running the layout against that narrower number is not a refinement
+    // but a different question ("how would this album look in a bubble this wide?"), and the
+    // answer routinely differs: the album's width is not a fixed point of the layout, because how
+    // many tiles fit per row -- hence how tall the album is, hence how hard the maxHeight rescue
+    // shrinks it -- depends on the budget. Observed with a real 8-image message: negotiating at a
+    // 800px viewport produced a 381px-wide album, and laying that same album out again at 381
+    // produced a 179px-wide one. The bubble keeps the width it was already given, so the
+    // difference shows up as a band of empty space to the right of the tiles, nearly as wide as
+    // the album itself.
+    //
+    // So: keep the layout the negotiation settled on whenever it still fits, by re-running
+    // rebuildGrid() against the budget it was computed for (which hits its layoutUnchanged memo,
+    // leaving geometry untouched while still refreshing the tiles). Only a budget the album no
+    // longer fits into is a real constraint change worth re-laying out for. The bubble then ends
+    // up at exactly max(album width, whatever minimum the other sections impose -- see
+    // ChatMessageBottom::bubbleWidthHint()'s narrow-body rule).
+    if (pimpl->lastLayoutForMaxWidth>0 && pimpl->gridSize.width()<=forMaxWidth)
+    {
+        forMaxWidth=pimpl->lastLayoutForMaxWidth;
+    }
     rebuildGrid(forMaxWidth);
 
     if (!pimpl->commentText.isEmpty())

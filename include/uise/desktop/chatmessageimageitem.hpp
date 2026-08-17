@@ -111,6 +111,20 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         ImageLabel::AnimationMode animationMode() const noexcept;
 
         /**
+         * @brief Set how far this tile may upscale its content beyond the item's own natural
+         *  (logical) resolution, as a multiplier -- forwarded to utils/pixmapscale.hpp's
+         *  scaledToFitPadded() and used to size the placeholder crop the same way, so the
+         *  visible content box does not change size when a placeholder preview is replaced by
+         *  real content. Applied purely at paint time, to THIS tile's own already-decided rect --
+         *  never to album layout geometry (see albumLayout()'s own doc comment for why a
+         *  whole-album resolution clamp was tried and reverted). Set by the owning
+         *  ChatMessageImages (see its TileMaxUpscale constant).
+         */
+        void setMaxUpscale(qreal maxUpscale);
+
+        qreal maxUpscale() const noexcept;
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * See ChatMessageFileItem::closeMenu() -- same rationale.

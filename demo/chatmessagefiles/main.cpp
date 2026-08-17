@@ -679,6 +679,100 @@ int main(int argc, char *argv[])
     imgBody8->setComment(QStringLiteral("Queued upload -- hourglass load control, placeholder outline, pause-or-cancel popup on click."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody8));
 
+    rootLayout->addSpacing(8);
+    rootLayout->addWidget(new QLabel(QStringLiteral("Odd-combination regression cases (see todo-album-layout-odd-combinations.md):")));
+
+    // --- 11. all-thumbnail album -- the todo's own diagnosed root cause: several genuinely
+    // small (sub-100px) originals in one album. albumLayout()'s natural-size cap keeps every tile
+    // at its own image's size instead of stretching them to the bubble's width budget, so the
+    // whole album (and its bubble) stays small rather than showing five padded tiles. ---
+
+    ChatFileItems thumbItems;
+    {
+        const QSize sizes[]={{60,45},{70,50},{55,40},{65,48},{60,44}};
+        for (int i=0;i<5;++i)
+        {
+            auto hue=(i*53)%360;
+            auto c1=QColor::fromHsv(hue,150,235);
+            auto c2=QColor::fromHsv(hue,200,150);
+            thumbItems.push_back(makeImageEntry(sizes[i],c1,c2,QString::number(i+1),ChatFileTransferState::Ready));
+        }
+    }
+    auto* imgBody9=new ChatMessageImages();
+    imgBody9->setItems(thumbItems);
+    imgBody9->setComment(QStringLiteral("All-thumbnail album (five sub-100px originals) -- each tile fills via bounded upscale, no padding."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody9));
+
+    // --- 12. one small thumbnail among two large photos -- the case a whole-album resolution
+    // clamp would get wrong (crushing the two photo tiles down to match the thumbnail). The cap
+    // is per tile: the thumbnail's tile shrinks to its own size, the two photo tiles keep the
+    // size they would have had without it, and the row closes up rather than leaving a gap. ---
+
+    auto* imgBody10=new ChatMessageImages();
+    imgBody10->setItems({
+        makeImageEntry(QSize(1600,900),QColor("#4C9AFF"),QColor("#0A66C2"),QStringLiteral("a"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(1500,850),QColor("#FF8A65"),QColor("#D84315"),QStringLiteral("b"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(60,45),QColor("#9575CD"),QColor("#4527A0"),QStringLiteral("tiny"),ChatFileTransferState::Ready)
+    });
+    imgBody10->setComment(QStringLiteral("One tiny thumbnail among two large photos -- only its own tile shrinks, siblings unaffected."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody10));
+
+    // --- 12b. the exact pair from the bug report: a 100x100 thumbnail sent together with a
+    // 2048x2048 photo. Same aspect ratio, so the aspect-only templates used to hand them
+    // identical tiles; now the thumbnail gets a thumbnail-sized tile and the photo an
+    // unchanged one. Compare each tile against the same image sent on its own, right below. ---
+
+    auto* imgBody10b=new ChatMessageImages();
+    imgBody10b->setItems({
+        makeImageEntry(QSize(100,100),QColor("#80CBC4"),QColor("#00695C"),QStringLiteral("100"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(2048,2048),QColor("#FFAB91"),QColor("#BF360C"),QStringLiteral("2048"),ChatFileTransferState::Ready)
+    });
+    imgBody10b->setComment(QStringLiteral("100x100 + 2048x2048 in one message -- tile sizes now differ like the images do."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody10b));
+
+    auto* imgBody10c=new ChatMessageImages();
+    imgBody10c->setItems({
+        makeImageEntry(QSize(100,100),QColor("#80CBC4"),QColor("#00695C"),QStringLiteral("100"),ChatFileTransferState::Ready)
+    });
+    imgBody10c->setComment(QStringLiteral("The same 100x100 sent alone -- its tile should match the one in the pair above."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody10c));
+
+    // --- 13a/13b. the same three images (one wide, one tall, one near-square), sent in two
+    // different orders -- the todo's core complaint ("the same three images in a different
+    // order produce different layouts"). Both bubbles should look identical: the wide image is
+    // always the big tile, regardless of which slot it was sent in. ---
+
+    auto* imgBody11a=new ChatMessageImages();
+    imgBody11a->setItems({
+        makeImageEntry(QSize(2000,600),QColor("#4DB6AC"),QColor("#00695C"),QStringLiteral("wide"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(700,1000),QColor("#F06292"),QColor("#AD1457"),QStringLiteral("tall"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(1000,1050),QColor("#FFD54F"),QColor("#F57F17"),QStringLiteral("sq"),ChatFileTransferState::Ready)
+    });
+    imgBody11a->setComment(QStringLiteral("Wide/tall/square trio, order A -- compare with order B below."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody11a));
+
+    auto* imgBody11b=new ChatMessageImages();
+    imgBody11b->setItems({
+        makeImageEntry(QSize(700,1000),QColor("#F06292"),QColor("#AD1457"),QStringLiteral("tall"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(1000,1050),QColor("#FFD54F"),QColor("#F57F17"),QStringLiteral("sq"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(2000,600),QColor("#4DB6AC"),QColor("#00695C"),QStringLiteral("wide"),ChatFileTransferState::Ready)
+    });
+    imgBody11b->setComment(QStringLiteral("Same trio, order B -- should look the same as order A above."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody11b));
+
+    // --- 14. four images with no aspect-class majority (2 wide, 2 tall) -- the new 2x2 grid
+    // template, replacing the old always-a[0]-decides hero+stack template. ---
+
+    auto* imgBody12=new ChatMessageImages();
+    imgBody12->setItems({
+        makeImageEntry(QSize(1600,900),QColor("#4C9AFF"),QColor("#0A66C2"),QStringLiteral("w1"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(600,1200),QColor("#F06292"),QColor("#AD1457"),QStringLiteral("t1"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(1500,850),QColor("#4DB6AC"),QColor("#00695C"),QStringLiteral("w2"),ChatFileTransferState::Ready),
+        makeImageEntry(QSize(650,1250),QColor("#FFD54F"),QColor("#F57F17"),QStringLiteral("t2"),ChatFileTransferState::Ready)
+    });
+    imgBody12->setComment(QStringLiteral("Four images, no class majority (2 wide + 2 tall) -- 2x2 grid template."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody12));
+
     // --- wire up logging for every signal on every body ---
 
     auto logId=[logMsg](const QString& label, const QString& signalName, const QUuid& id)
@@ -726,6 +820,13 @@ int main(int argc, char *argv[])
     wireImages(imgBody6b,QStringLiteral("img6b"));
     wireImages(imgBody7,QStringLiteral("img7"));
     wireImages(imgBody8,QStringLiteral("img8"));
+    wireImages(imgBody9,QStringLiteral("img9"));
+    wireImages(imgBody10,QStringLiteral("img10"));
+    wireImages(imgBody10b,QStringLiteral("img10b"));
+    wireImages(imgBody10c,QStringLiteral("img10c"));
+    wireImages(imgBody11a,QStringLiteral("img11a"));
+    wireImages(imgBody11b,QStringLiteral("img11b"));
+    wireImages(imgBody12,QStringLiteral("img12"));
 
     // --- animation-mode selector, applied to every images body -- the direct demonstration of
     // AbstractChatMessageImages::setAnimationMode() being configurable per view/instance ---
@@ -747,10 +848,12 @@ int main(int argc, char *argv[])
         animModeCombo,
         &QComboBox::currentIndexChanged,
         central,
-        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8,animModeCombo](int index)
+        [imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8,
+         imgBody9,imgBody10,imgBody10b,imgBody10c,imgBody11a,imgBody11b,imgBody12,animModeCombo](int index)
         {
             auto mode=static_cast<ImageLabel::AnimationMode>(animModeCombo->itemData(index).toInt());
-            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8})
+            for (auto* body : {imgBody1,imgBody2,imgBody3,imgBody4,imgBody5,imgBody6,imgBody6b,imgBody7,imgBody8,
+                                imgBody9,imgBody10,imgBody10b,imgBody10c,imgBody11a,imgBody11b,imgBody12})
             {
                 body->setAnimationMode(mode);
             }

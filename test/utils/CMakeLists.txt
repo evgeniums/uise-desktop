@@ -7,6 +7,7 @@ SET (HEADERS
 SET (SOURCES
     testorientationinvariant.cpp
     testmiscutils.cpp
+    testalbumlayout.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

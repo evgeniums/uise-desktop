@@ -97,6 +97,46 @@ AnimatableContent animatableContent(const ChatFileItem& item)
     return {};
 }
 
+//! Size the real content (a rung sharing `natural`'s aspect ratio, up to rounding) would end up
+//! at when fitted into `box` via scaledToFit(box,natural,maxUpscale) -- computed from `natural`
+//! alone, without needing an actual QPixmap, so it can be reused as the placeholder's target
+//! crop size too (see updatePreview()) and keep the visible content box identical across the
+//! placeholder-to-real-content swap. Reproduces QPixmap::scaled(target,Qt::KeepAspectRatio)'s own
+//! size formula for a source whose size is `natural`.
+QSize fittedContentSize(const QSize& natural, const QSize& box, qreal maxUpscale)
+{
+    if (natural.width()<=0 || natural.height()<=0 || box.width()<=0 || box.height()<=0)
+    {
+        // no natural size to fit against -- fill the box, matching scaledAndCropped()'s own
+        // cover behaviour for the "pixelSize is unknown" case this falls back to
+        return box;
+    }
+    QSize limit=(maxUpscale>1.0)
+        ? QSize(qRound(natural.width()*maxUpscale),qRound(natural.height()*maxUpscale))
+        : natural;
+    QSize target(qMin(limit.width(),box.width()),qMin(limit.height(),box.height()));
+    auto factor=qMin(
+        static_cast<qreal>(target.width())/natural.width(),
+        static_cast<qreal>(target.height())/natural.height()
+    );
+    return QSize(qMax(1,qRound(natural.width()*factor)),qMax(1,qRound(natural.height()*factor)));
+}
+
+//! Compose `content` centred onto a transparent canvas of exactly `canvasSize` -- the same
+//! centring scaledToFitPadded() does for real content, reused for the placeholder crop so both
+//! states paint into the same content box (see updatePreview()).
+QPixmap composePadded(const QPixmap& content, const QSize& canvasSize)
+{
+    QPixmap canvas(canvasSize);
+    canvas.fill(Qt::transparent);
+    QPainter painter(&canvas);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    QRect target(QPoint(0,0),content.size());
+    target.moveCenter(QRect(QPoint(0,0),canvasSize).center());
+    painter.drawPixmap(target,content);
+    return canvas;
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -132,6 +172,13 @@ class ChatMessageImageItem_p
         QByteArray loadedData;
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
+
+        //! See ChatMessageImageItem::setMaxUpscale()'s own doc comment. Matches
+        //! ChatMessageImages::TileMaxUpscale, restated here as a plain default rather than
+        //! shared via a header the way DefaultMaxWidth/PlaceholderTileExtent are not either --
+        //! this tile has no dependency on albumlayout.hpp at all, only on whatever concrete
+        //! value its owner pushes through setMaxUpscale().
+        qreal maxUpscale=2.0;
 };
 
 //--------------------------------------------------------------------------
@@ -295,6 +342,25 @@ ImageLabel::AnimationMode ChatMessageImageItem::animationMode() const noexcept
 
 //--------------------------------------------------------------------------
 
+void ChatMessageImageItem::setMaxUpscale(qreal maxUpscale)
+{
+    if (pimpl->maxUpscale==maxUpscale)
+    {
+        return;
+    }
+    pimpl->maxUpscale=maxUpscale;
+    updatePreview();
+}
+
+//--------------------------------------------------------------------------
+
+qreal ChatMessageImageItem::maxUpscale() const noexcept
+{
+    return pimpl->maxUpscale;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImageItem::closeMenu()
 {
     if (!pimpl->menu.isNull())
@@ -424,23 +490,28 @@ void ChatMessageImageItem::updatePreview()
     {
         pimpl->preview->setSvgIcon(nullptr);
 
-        // Fit the WHOLE image inside the tile, preserving its own aspect ratio and never cropping
-        // it -- confirmed requirement: a chat image tile must show the full original image, only
-        // ever scaled down. scaledToFitPadded() (not scaledAndCropped()) composes the fitted
-        // image centred onto an exactly-tile-sized canvas, since RoundedImage::paintEvent()'s
-        // QBrush texture fill needs an exact-size pixmap to render correctly at all (a smaller
-        // one tiles instead of centering).
+        // Fit the image inside the tile, preserving its own aspect ratio and never cropping it --
+        // confirmed requirement: a chat image tile must show the full original image, only ever
+        // scaled down, bounded-upscaled at most maxUpscale() times its own natural resolution
+        // (see setMaxUpscale()'s doc comment) -- purely a paint-time allowance on THIS tile's own
+        // already-decided rect, never on album layout geometry (see albumLayout()'s own doc
+        // comment for why a whole-album resolution clamp was tried and reverted instead).
+        // scaledToFitPadded() (not scaledAndCropped()) composes the fitted image centred onto an
+        // exactly-tile-sized canvas, since RoundedImage::paintEvent()'s QBrush texture fill needs
+        // an exact-size pixmap to render correctly at all (a smaller one tiles instead of
+        // centering).
         //
         // ...but a PLACEHOLDER preview -- the embedded thumbnail files2 generates, a SQUARE
-        // centre-crop (ScaleMode::FillCrop) -- uses scaledAndCropped() instead: scale to COVER
-        // the tile, preserving the thumbnail's own aspect ratio, and centre-crop the overflow.
-        // Revised requirement (superseding the original "stretch to fill, losing aspect ratio"
-        // decision, whose distortion turned out to read poorly once animated tiles made the
-        // still ones' proportions easy to compare against): no letterboxing (scaledToFitPadded()
-        // on a square thumbnail into a non-square tile leaves large empty bars) and no
-        // distortion (the old stretchedToFill()) -- fill the tile with an aspect-correct crop,
-        // same policy every other thumbnail chip in this library already uses (see
-        // FileUploadListItem::updatePreviews(), ChatMessageFileItem, ImagePreviewStrip).
+        // centre-crop (ScaleMode::FillCrop) -- is cropped to fill CONTENT BOX SIZE below instead
+        // of the whole tile: scale to COVER that box, preserving the thumbnail's own aspect
+        // ratio, and centre-crop the overflow, same policy every other thumbnail chip in this
+        // library already uses (see FileUploadListItem::updatePreviews(), ChatMessageFileItem,
+        // ImagePreviewStrip) -- then padded onto the tile canvas exactly like real content is.
+        // Using the SAME content box for both states (fittedContentSize(), computed from
+        // item.pixelSize() alone, before any real content is local) is what keeps the visible
+        // box from jumping in size when the placeholder is later replaced by a real rung: without
+        // it, a small original's placeholder used to fill the whole tile and the real rung would
+        // then appear at a much smaller, padded size once it arrived.
         //
         // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
         // the brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
@@ -455,14 +526,15 @@ void ChatMessageImageItem::updatePreview()
         // is routinely SMALLER than this tile's physical box, and scaledToFit()'s never-upscale
         // rule would then centre it at native size and pad the remainder. The rule is about the
         // ORIGINAL's resolution, not the delivered rung's -- see scaledToFit()'s own doc
-        // comment. A genuinely small image is unaffected: there pixelSize() equals the delivered
-        // pixmap's size, so the clamp still refuses to enlarge it.
+        // comment. A genuinely small image is unaffected up to maxUpscale(): there pixelSize()
+        // equals the delivered pixmap's size, so the clamp still refuses to enlarge it further.
         const qreal dpr=devicePixelRatioF();
         QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
+        auto contentBox=fittedContentSize(pimpl->item.pixelSize(),physicalSize,pimpl->maxUpscale);
         auto srcPx=QPixmap::fromImage(preview);
         auto px=pimpl->item.isPreviewPlaceholder()
-            ? scaledAndCropped(srcPx,physicalSize)
-            : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize());
+            ? composePadded(scaledAndCropped(srcPx,contentBox),physicalSize)
+            : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize(),pimpl->maxUpscale);
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);
         setPlaceholderMode(false);

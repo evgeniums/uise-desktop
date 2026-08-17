@@ -87,22 +87,34 @@ inline QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
  *  canvas. Passing the original's own size keeps the rule honest in the case it was actually
  *  written for -- a genuinely small image (a 400x300 photo in a 1200px box) still refuses to be
  *  enlarged, because there contentSize equals src.size().
+ * @param maxUpscale How far the ORIGINAL may be enlarged beyond its own size, as a multiplier
+ *  (e.g. 2.0 allows up to double). 1.0 (the default) is the historical never-upscale rule,
+ *  unchanged for every existing caller. Used by chat album tiles (see
+ *  ChatMessageImageItem::setMaxUpscale()) so a genuinely small original still fills its tile,
+ *  bounded, instead of sitting at native size on a padded canvas -- see
+ *  ChatMessageImageItem::updatePreview(). Deliberately a paint-time-only allowance, applied to a
+ *  tile's own already-decided rect -- see albumLayout()'s own doc comment for why the analogous
+ *  layout-time idea (shrinking the whole album to bound one tile's upscale) was tried and
+ *  reverted.
  * @return A pixmap that fits inside boxSize with the source's own aspect ratio preserved (one
- *  dimension may be smaller than the box; never upscaled beyond contentSize, defaulting to the
- *  source's own size). Used for previews whose true aspect ratio should be visible (e.g. the
- *  file-upload dialog's big image preview).
+ *  dimension may be smaller than the box; never enlarged beyond contentSize*maxUpscale, where
+ *  contentSize defaults to the source's own size). Used for previews whose true aspect ratio
+ *  should be visible (e.g. the file-upload dialog's big image preview).
  */
-inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize, const QSize& contentSize=QSize())
+inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize, const QSize& contentSize=QSize(), qreal maxUpscale=1.0)
 {
-    // Never upscale beyond the ORIGINAL image's own size (this function's own documented
-    // contract above) -- clamp the scale target to boxSize on each axis. When src already fits
-    // and is itself the original, target equals src.size() and scaled() below is a same-size
-    // no-op; deliberately still routed through scaled() rather than returning src directly, so
-    // every result -- shrunk, enlarged or unchanged -- is a freshly produced QPixmap via the
-    // identical path a RoundedImage brush-texture paint (roundedimage.cpp) has always received
-    // here, rather than the caller's original QPixmap object (which callers may go on to
+    // Never upscale beyond the ORIGINAL image's own size, times maxUpscale (this function's own
+    // documented contract above) -- clamp the scale target to boxSize on each axis. When src
+    // already fits and is itself the original, target equals src.size() and scaled() below is a
+    // same-size no-op; deliberately still routed through scaled() rather than returning src
+    // directly, so every result -- shrunk, enlarged or unchanged -- is a freshly produced QPixmap
+    // via the identical path a RoundedImage brush-texture paint (roundedimage.cpp) has always
+    // received here, rather than the caller's original QPixmap object (which callers may go on to
     // mutate/reuse, e.g. FileUploadItem::image() callers).
-    const QSize limit=(contentSize.isValid() && !contentSize.isEmpty()) ? contentSize : src.size();
+    const QSize nat=(contentSize.isValid() && !contentSize.isEmpty()) ? contentSize : src.size();
+    const QSize limit=(maxUpscale>1.0)
+        ? QSize(qRound(nat.width()*maxUpscale),qRound(nat.height()*maxUpscale))
+        : nat;
     QSize target(
         qMin(limit.width(),boxSize.width()),
         qMin(limit.height(),boxSize.height())
@@ -125,16 +137,19 @@ inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize, const QSize
  * @param contentSize Full pixel size of the ORIGINAL image `src` represents when `src` is only a
  *  reduced-resolution rendition of it -- forwarded verbatim to scaledToFit(), see its own doc
  *  comment for the full rationale. Invalid/omitted keeps the historical behaviour.
- * @return A pixmap of exactly targetSize, transparent outside the centred, aspect-preserved,
- *  never-upscaled source content -- i.e. letterboxed/pillarboxed rather than cropped. Used for
- *  chat message image tiles (ChatMessageImageItem) showing REAL content, where displaying the
- *  full image at its own aspect ratio and never enlarging it past its own resolution was an
- *  explicit, confirmed requirement (unlike scaledAndCropped()'s square/fixed-chip use cases,
- *  which are unaffected). Those same tiles' low-resolution placeholder uses scaledAndCropped()
- *  instead, same as every other thumbnail chip -- see ChatMessageImageItem::updatePreview()'s
- *  own doc comment for why REAL content is padded but the placeholder is cropped.
+ * @param maxUpscale Forwarded verbatim to scaledToFit() -- see its own doc comment. 1.0 (the
+ *  default) is the historical never-upscale rule, unchanged for every existing caller.
+ * @return A pixmap of exactly targetSize, transparent outside the centred, aspect-preserved
+ *  source content, never enlarged beyond contentSize*maxUpscale -- i.e. letterboxed/pillarboxed
+ *  rather than cropped. Used for chat message image tiles (ChatMessageImageItem) showing REAL
+ *  content, where displaying the full image at its own aspect ratio was an explicit, confirmed
+ *  requirement (unlike scaledAndCropped()'s square/fixed-chip use cases, which are unaffected).
+ *  Those same tiles' low-resolution placeholder uses scaledAndCropped() instead, same as every
+ *  other thumbnail chip -- see ChatMessageImageItem::updatePreview()'s own doc comment for why
+ *  REAL content is padded but the placeholder is cropped, and for why maxUpscale is non-default
+ *  there (album tiles bounded-upscale a genuinely small original rather than pad it).
  */
-inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize, const QSize& contentSize=QSize())
+inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize, const QSize& contentSize=QSize(), qreal maxUpscale=1.0)
 {
     QPixmap canvas(targetSize);
     canvas.fill(Qt::transparent);
@@ -143,7 +158,7 @@ inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize, co
         return canvas;
     }
 
-    auto fitted=scaledToFit(src,targetSize,contentSize);
+    auto fitted=scaledToFit(src,targetSize,contentSize,maxUpscale);
 
     QPainter painter(&canvas);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
