@@ -18,7 +18,7 @@ You may select, at your option, one of the above-listed licenses.
 /** @file uise/test/utils/testalbumlayout.cpp
 *
 *  Test of albumLayout() -- geometry regression cases from
-*  whitemdesktop/todos/todo-album-layout-odd-combinations.md.
+*  whitemdesktop/todos/closed/todo-album-layout-odd-combinations.md.
 *
 */
 

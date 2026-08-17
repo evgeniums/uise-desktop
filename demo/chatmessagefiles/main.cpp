@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody8));
 
     rootLayout->addSpacing(8);
-    rootLayout->addWidget(new QLabel(QStringLiteral("Odd-combination regression cases (see todo-album-layout-odd-combinations.md):")));
+    rootLayout->addWidget(new QLabel(QStringLiteral("Odd-combination regression cases (see todos/closed/todo-album-layout-odd-combinations.md):")));
 
     // --- 11. all-thumbnail album -- the todo's own diagnosed root cause: several genuinely
     // small (sub-100px) originals in one album. albumLayout()'s natural-size cap keeps every tile
