@@ -75,23 +75,37 @@ inline QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
  * @param src Source pixmap.
  * @param boxSize Bounding box - same pixel-unit convention as scaledAndCropped()'s targetSize
  *  (already dpr-scaled by the caller when painted via a RoundedImage's brush texture path).
+ * @param contentSize Full pixel size of the ORIGINAL image `src` represents, when `src` is only a
+ *  reduced-resolution rendition of it (e.g. a chat image tile fed the 1080px `chat` rung of a
+ *  4000px photo). Same pixel units as src.size(). Invalid/omitted (the default) means "src IS the
+ *  original", i.e. the historical behaviour, unchanged for every existing caller.
+ *
+ *  This exists because the never-upscale rule below is about the ORIGINAL's resolution, not about
+ *  whichever rendition happened to be handed over: a tile given a 1080px rung of a 4000px photo,
+ *  inside a box needing 1200 physical px, must fill the box (the detail genuinely exists in the
+ *  image; only the delivered rendition is smaller) rather than sit at 1080 centred on a padded
+ *  canvas. Passing the original's own size keeps the rule honest in the case it was actually
+ *  written for -- a genuinely small image (a 400x300 photo in a 1200px box) still refuses to be
+ *  enlarged, because there contentSize equals src.size().
  * @return A pixmap that fits inside boxSize with the source's own aspect ratio preserved (one
- *  dimension may be smaller than the box; never upscaled beyond the source's own size). Used for
- *  previews whose true aspect ratio should be visible (e.g. the file-upload dialog's big image
- *  preview).
+ *  dimension may be smaller than the box; never upscaled beyond contentSize, defaulting to the
+ *  source's own size). Used for previews whose true aspect ratio should be visible (e.g. the
+ *  file-upload dialog's big image preview).
  */
-inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize)
+inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize, const QSize& contentSize=QSize())
 {
-    // Never upscale beyond the source's own size (this function's own documented contract
-    // above) -- clamp the scale target to boxSize on each axis. When src already fits, target
-    // equals src.size() and scaled() below is a same-size no-op; deliberately still routed
-    // through scaled() rather than returning src directly, so every result -- shrunk or not --
-    // is a freshly produced QPixmap via the identical path a RoundedImage brush-texture paint
-    // (roundedimage.cpp) has always received here, rather than the caller's original QPixmap
-    // object (which callers may go on to mutate/reuse, e.g. FileUploadItem::image() callers).
+    // Never upscale beyond the ORIGINAL image's own size (this function's own documented
+    // contract above) -- clamp the scale target to boxSize on each axis. When src already fits
+    // and is itself the original, target equals src.size() and scaled() below is a same-size
+    // no-op; deliberately still routed through scaled() rather than returning src directly, so
+    // every result -- shrunk, enlarged or unchanged -- is a freshly produced QPixmap via the
+    // identical path a RoundedImage brush-texture paint (roundedimage.cpp) has always received
+    // here, rather than the caller's original QPixmap object (which callers may go on to
+    // mutate/reuse, e.g. FileUploadItem::image() callers).
+    const QSize limit=(contentSize.isValid() && !contentSize.isEmpty()) ? contentSize : src.size();
     QSize target(
-        qMin(src.width(),boxSize.width()),
-        qMin(src.height(),boxSize.height())
+        qMin(limit.width(),boxSize.width()),
+        qMin(limit.height(),boxSize.height())
     );
     return src.scaled(target,Qt::KeepAspectRatio,Qt::SmoothTransformation);
 }
@@ -108,6 +122,9 @@ inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize)
  *  scaledAndCropped()'s targetSize (physical pixels; tag the RETURNED pixmap with
  *  QPixmap::setDevicePixelRatio() before setPixmap(), same rule as scaledAndCropped()'s own doc
  *  comment -- do NOT tag src or the intermediate scaledToFit() result).
+ * @param contentSize Full pixel size of the ORIGINAL image `src` represents when `src` is only a
+ *  reduced-resolution rendition of it -- forwarded verbatim to scaledToFit(), see its own doc
+ *  comment for the full rationale. Invalid/omitted keeps the historical behaviour.
  * @return A pixmap of exactly targetSize, transparent outside the centred, aspect-preserved,
  *  never-upscaled source content -- i.e. letterboxed/pillarboxed rather than cropped. Used for
  *  chat message image tiles (ChatMessageImageItem) showing REAL content, where displaying the
@@ -117,7 +134,7 @@ inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize)
  *  instead, same as every other thumbnail chip -- see ChatMessageImageItem::updatePreview()'s
  *  own doc comment for why REAL content is padded but the placeholder is cropped.
  */
-inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize)
+inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize, const QSize& contentSize=QSize())
 {
     QPixmap canvas(targetSize);
     canvas.fill(Qt::transparent);
@@ -126,7 +143,7 @@ inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize)
         return canvas;
     }
 
-    auto fitted=scaledToFit(src,targetSize);
+    auto fitted=scaledToFit(src,targetSize,contentSize);
 
     QPainter painter(&canvas);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);

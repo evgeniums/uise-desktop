@@ -447,12 +447,22 @@ void ChatMessageImageItem::updatePreview()
         // pixmapscale.hpp's own doc comments for the same rule). Without both halves --
         // physical-size canvas AND the tag -- the tile rasterises at 1x and reads as soft/blurry
         // on any HiDPI/Retina display.
+        // item.pixelSize() is the ORIGINAL image's own pixel size, known from the attachment
+        // metadata (chat_file_item::width/height) long before any content is local. Passing it
+        // is what stops a reduced-resolution RUNG from being letterboxed: the preview handed
+        // over here is whichever rung the image source resolved (for a chat tile, normally the
+        // 1080px `chat` rung -- see whitemdesktop's ChatImageSource), which on a HiDPI display
+        // is routinely SMALLER than this tile's physical box, and scaledToFit()'s never-upscale
+        // rule would then centre it at native size and pad the remainder. The rule is about the
+        // ORIGINAL's resolution, not the delivered rung's -- see scaledToFit()'s own doc
+        // comment. A genuinely small image is unaffected: there pixelSize() equals the delivered
+        // pixmap's size, so the clamp still refuses to enlarge it.
         const qreal dpr=devicePixelRatioF();
         QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
         auto srcPx=QPixmap::fromImage(preview);
         auto px=pimpl->item.isPreviewPlaceholder()
             ? scaledAndCropped(srcPx,physicalSize)
-            : scaledToFitPadded(srcPx,physicalSize);
+            : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize());
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);
         setPlaceholderMode(false);
