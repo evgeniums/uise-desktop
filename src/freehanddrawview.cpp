@@ -42,7 +42,7 @@ FreeHandDrawView::FreeHandDrawView(QWidget *parent)
       m_currentPathItem(nullptr),
       m_freeHandDrawEnabled(false),
       m_penColor(Qt::black),
-      m_penWidth(2),
+      m_penWidth(8),
       m_group(nullptr)
 {
     setMouseTracking(true);
