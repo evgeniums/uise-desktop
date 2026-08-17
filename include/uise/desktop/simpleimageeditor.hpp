@@ -81,6 +81,10 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
         void resetCropper();
         void destroyCropper();
 
+        //! Repaints the crop rect (if any) in place after a view-level zoom/pan change -- see the
+        //! definition's own doc for why this replaces resetCropper() on those paths.
+        void refreshCropperForViewChange();
+
         SimpleImageEditorWidget* m_widget;
 };
 

@@ -74,12 +74,20 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         //! (see AbstractImageViewer::setBottomWidget()).
         void currentImageAnimationStateChanged();
 
+        //! Relayed from the internal GraphicsViewZoom helper -- 1.0 means "at fit", above 1.0
+        //! means zoomed in. A host (e.g. ChatImageViewerControls) can use this to grey out its
+        //! zoom-in/zoom-out buttons at the configured limits. GraphicsViewZoom itself is not
+        //! reachable from a subclass: ImageViewerWidget::pimpl is `friend class ImageViewer` only
+        //! and friendship is not inherited (see the class doc on refreshOverlayGeometry()).
+        void zoomChanged(qreal zoomFactor);
+
     public slots:
 
         void reset() override;
 
         void zoomIn() override;
         void zoomOut() override;
+        void resetZoom() override;
         void flipVertical() override;
         void flipHorizontal() override;
         void rotate() override;

@@ -132,6 +132,29 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
 
         void adjustCropRect();
 
+        //! When true (default) adjustCropRect() intersects the crop rect with the currently
+        //! visible viewport area, so a huge unfitted image doesn't start with a crop rect running
+        //! off-screen. Must be turned off while the host view is zoomed in, or a rebuild of the
+        //! crop rect (rotate/flip/aspect-ratio change) collapses it down to whatever sliver of the
+        //! image happens to be on screen at that moment.
+        void setLimitToVisibleArea(bool value) noexcept
+        {
+            m_limitToVisibleArea=value;
+        }
+
+        bool isLimitToVisibleArea() const noexcept
+        {
+            return m_limitToVisibleArea;
+        }
+
+        //! Public wrapper of the private hit-test below, in scene coordinates -- lets a host (e.g.
+        //! a pan-filter callback) find out whether a point would land on a resize/move handle
+        //! without duplicating the hit-testing logic itself.
+        HandleType handleAt(const QPointF& scenePos) const
+        {
+            return getHandleType(mapFromScene(scenePos));
+        }
+
     protected:
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;        
@@ -181,6 +204,8 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         QRectF m_cropperRect;
 
         QGraphicsView* m_view=nullptr;
+
+        bool m_limitToVisibleArea=true;
 };
 
 UISE_DESKTOP_NAMESPACE_END

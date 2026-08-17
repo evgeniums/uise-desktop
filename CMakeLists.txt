@@ -55,6 +55,7 @@ SET (HEADERS
     include/uise/desktop/utils/directchildwidget.hpp
     include/uise/desktop/utils/substitutecolors.hpp
     include/uise/desktop/utils/wheeleventhandler.hpp
+    include/uise/desktop/utils/graphicsviewzoom.hpp
     include/uise/desktop/utils/makenullwidget.hpp
     include/uise/desktop/utils/withpathandsize.hpp
     include/uise/desktop/utils/enums.hpp
@@ -285,6 +286,7 @@ SET (SOURCES
     src/calendar.cpp
     src/calendarinput.cpp
     src/wheeleventhandler.cpp
+    src/graphicsviewzoom.cpp
     src/busywaiting.cpp
     src/abstractloadingwidget.cpp
     src/busywaitingframe.cpp

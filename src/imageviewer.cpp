@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/graphicsviewzoom.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -69,6 +70,7 @@ class ImageViewerWidget_p
         QGraphicsView *view;
         QGraphicsScene *scene;
         QGraphicsPixmapItem *imageItem = nullptr;
+        GraphicsViewZoom *zoom = nullptr;
 
         QFrame* controlsFrame;
         QFrame* mainButtonsFrame;
@@ -99,8 +101,6 @@ class ImageViewerWidget_p
         //! navigation stays live while a better version is being fetched.
         QFrame* loadingOverlayFrame;
         CircleBusy* loadingOverlay;
-
-        qreal scale=1.0;
 
         // --- ControlsMode::Overlay support ---
 
@@ -170,6 +170,22 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
     pimpl->view->viewport()->installEventFilter(this);
     pimpl->view->viewport()->setMouseTracking(true);
     setMouseTracking(true);
+
+    // Panning (see pimpl->zoom below) replaces visible scrollbars once zoomed in --
+    // ScrollBarAsNeeded would otherwise make scrollbars appear/disappear as fitImage() and the
+    // zoom clamp interact (each viewport resize this causes re-enters fitImage() via the
+    // QEvent::Resize case in eventFilter() below), which is both visually noisy for a photo
+    // viewer and a source of a few-pixel anchor nudge on the very first zoom step past fit.
+    pimpl->view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    pimpl->view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    pimpl->zoom=new GraphicsViewZoom(pimpl->view,this);
+    // updateEdgeNavigationHover()/clearEdgeNavigationHover() already own the viewport cursor
+    // (prev/next edge-navigation hover, and now also the pan open/closed-hand cursor -- see
+    // isInPrevNavigationZone()) -- letting the helper also set it would fight over it on every
+    // mouse move.
+    pimpl->zoom->setCursorManaged(false);
+    pimpl->zoom->setPanButtons(Qt::LeftButton|Qt::MiddleButton);
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -381,6 +397,12 @@ void ImageViewerWidget::updateButtonPositions()
 
 void ImageViewerWidget::keyPressEvent(QKeyEvent* event)
 {
+    // Qt maps the macOS Command key onto Qt::ControlModifier by default, so a single
+    // ControlModifier check covers Ctrl on Windows/Linux and Cmd on macOS -- mirrors
+    // calendar.cpp's own hasControlModifier().
+    bool ctrlOrCmd=event->modifiers().testFlag(Qt::ControlModifier)
+                   || event->modifiers().testFlag(Qt::MetaModifier);
+
     if (event->key()==Qt::Key_Left)
     {
         pimpl->ctrl->showPrevImage();
@@ -389,6 +411,23 @@ void ImageViewerWidget::keyPressEvent(QKeyEvent* event)
     else if (event->key()==Qt::Key_Right)
     {
         pimpl->ctrl->showNextImage();
+        event->accept();
+    }
+    else if (ctrlOrCmd && (event->key()==Qt::Key_Plus || event->key()==Qt::Key_Equal))
+    {
+        pimpl->ctrl->zoomIn();
+        event->accept();
+    }
+    else if (ctrlOrCmd && event->key()==Qt::Key_Minus)
+    {
+        pimpl->ctrl->zoomOut();
+        event->accept();
+    }
+    else if (ctrlOrCmd && event->key()==Qt::Key_0)
+    {
+        // ctrl->resetZoom(), not ctrl->fitImage() -- fitImage() is a no-op while already zoomed
+        // in (see its own doc), which is precisely the state the user is asking to leave here.
+        pimpl->ctrl->resetZoom();
         event->accept();
     }
     else if (event->key()==Qt::Key_Escape)
@@ -494,6 +533,15 @@ void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
 
 bool ImageViewerWidget::isInPrevNavigationZone(const QPoint& pos) const
 {
+    // While zoomed in (pannable), the whole image area is a drag-to-pan surface -- letting a
+    // short drag that starts in the edge strip fire prev/next navigation instead (as it would at
+    // fit scale) would be maddening. See updateEdgeNavigationHover()'s own pannable branch for
+    // the cursor side of this.
+    if (pimpl->zoom!=nullptr && pimpl->zoom->isPannable())
+    {
+        return false;
+    }
+
     // hasPrevImage(), not prevButton->isVisible() -- matches updateControlsVisibility()'s own
     // definition of "enabled" rather than the button's transient visibility during an
     // Overlay-mode fade (hovering the zone itself fades the controls back in, see
@@ -515,6 +563,11 @@ bool ImageViewerWidget::isInPrevNavigationZone(const QPoint& pos) const
 
 bool ImageViewerWidget::isInNextNavigationZone(const QPoint& pos) const
 {
+    if (pimpl->zoom!=nullptr && pimpl->zoom->isPannable())
+    {
+        return false;
+    }
+
     if (!pimpl->ctrl->hasNextImage())
     {
         return false;
@@ -531,6 +584,23 @@ bool ImageViewerWidget::isInNextNavigationZone(const QPoint& pos) const
 
 void ImageViewerWidget::updateEdgeNavigationHover(const QPoint& pos)
 {
+    if (pimpl->zoom!=nullptr && pimpl->zoom->isPannable())
+    {
+        // Zoomed in: no forced hover on the prev/next buttons (isInPrevNavigationZone()/
+        // isInNextNavigationZone() already return false in this state), and the cursor reflects
+        // pan affordance/state instead of edge-navigation intent. GraphicsViewZoom itself never
+        // touches the viewport cursor (setCursorManaged(false), see the constructor) specifically
+        // so this stays the single owner of it.
+        clearEdgeNavigationHover();
+        if (pimpl->view!=nullptr)
+        {
+            pimpl->view->viewport()->setCursor(
+                pimpl->zoom->isPanning() ? Qt::ClosedHandCursor : Qt::OpenHandCursor
+            );
+        }
+        return;
+    }
+
     auto prevHovered=isInPrevNavigationZone(pos);
     auto nextHovered=!prevHovered && isInNextNavigationZone(pos);
 
@@ -1118,6 +1188,13 @@ Widget* ImageViewer::doCreateActualWidget(QWidget* parent)
         &ImageViewer::showNextImage
     );
 
+    connect(
+        m_widget->pimpl->zoom,
+        &GraphicsViewZoom::zoomChanged,
+        this,
+        &ImageViewer::zoomChanged
+    );
+
     m_widget->setControlsMode(controlsMode());
 
     updateBusySpinner();
@@ -1144,7 +1221,7 @@ void ImageViewer::doReset()
     m_widget->pimpl->view->setSceneRect(QRectF{});
     m_widget->pimpl->imageItem = nullptr;
     m_widget->pimpl->angle=0;
-    m_widget->pimpl->scale=1.0;
+    m_widget->pimpl->zoom->setFitItem(nullptr);
 
     m_animator->clear();
     m_animatorKey=PixmapKey{};
@@ -1231,10 +1308,7 @@ void ImageViewer::zoomIn()
         return;
     }
 
-    auto t=m_widget->pimpl->view->transform();
-    t.scale(1.25, 1.25);
-    m_widget->pimpl->scale=m_widget->pimpl->scale*1.25;
-    m_widget->pimpl->view->setTransform(t);
+    m_widget->pimpl->zoom->zoomIn();
 }
 
 //--------------------------------------------------------------------------
@@ -1246,10 +1320,20 @@ void ImageViewer::zoomOut()
         return;
     }
 
-    auto t=m_widget->pimpl->view->transform();
-    t.scale(0.8, 0.8);
-    m_widget->pimpl->scale=m_widget->pimpl->scale*0.8;
-    m_widget->pimpl->view->setTransform(t);
+    m_widget->pimpl->zoom->zoomOut();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::resetZoom()
+{
+    if (m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    m_widget->pimpl->zoom->resetZoom();
+    m_widget->updateButtonPositions();
 }
 
 //--------------------------------------------------------------------------
@@ -1292,6 +1376,7 @@ void ImageViewer::applyCurrentPixmap()
             m_widget->pimpl->scene->removeItem(m_widget->pimpl->imageItem);
             delete m_widget->pimpl->imageItem;
             m_widget->pimpl->imageItem=nullptr;
+            m_widget->pimpl->zoom->setFitItem(nullptr);
         }
         return;
     }
@@ -1309,6 +1394,7 @@ void ImageViewer::applyCurrentPixmap()
     {
         m_widget->pimpl->imageItem->setPixmap(px);
     }
+    m_widget->pimpl->zoom->setFitItem(m_widget->pimpl->imageItem);
 }
 
 //--------------------------------------------------------------------------
@@ -1498,39 +1584,35 @@ void ImageViewer::fitImage()
     auto px=currentImage();
     if (!px.isNull() && m_widget->pimpl->imageItem!=nullptr)
     {
-        m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
-        // viewport()->rect(), not view->rect() -- QGraphicsView::fitInView() below measures
-        // against the VIEWPORT's own rect, and during the widget's first show the outer view
-        // is laid out (and resized) a step ahead of its viewport child (QAbstractScrollArea
-        // only relays a resize into the viewport once ITS OWN QEvent::Resize is delivered, see
-        // the ImageViewerWidget::eventFilter() QEvent::Resize case below, which exists
-        // specifically to re-run this once that catches up) -- reading view->rect() here could
-        // pass this fit-vs-1:1 decision against an already-correct size while fitInView()
-        // itself still computes the scale against a stale, tiny viewport left over from
-        // construction, producing a correctly-decided-to-fit image rendered at a near-zero
-        // scale that nothing ever corrects afterwards.
-        auto viewRect=m_widget->pimpl->view->viewport()->rect();
-        if (qFuzzyCompare(m_widget->pimpl->scale,1.0))
+        auto* zoom=m_widget->pimpl->zoom;
+
+        // Keep whatever scene point the viewport is currently centred on pinned in place across
+        // the scene rect change below -- otherwise a higher-resolution pixmap landing
+        // asynchronously while zoomed in (a version-ladder upgrade, see PixmapSource) would jump
+        // the visible area.
+        zoom->keepViewportCenter(
+            [this]()
+            {
+                m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
+            }
+        );
+
+        // GraphicsViewZoom::baselineScale()/fitToItem() measure against view->viewport()->rect(),
+        // not view->rect() -- during the widget's first show the outer view is laid out (and
+        // resized) a step ahead of its viewport child (QAbstractScrollArea only relays a resize
+        // into the viewport once ITS OWN QEvent::Resize is delivered, see the
+        // ImageViewerWidget::eventFilter() QEvent::Resize case below, which exists specifically
+        // to re-run this once that catches up), so this stays correct across the same
+        // layout-order hazard that motivated measuring against the viewport in the first place.
+        //
+        // isZoomed() reads the REAL transform (see GraphicsViewZoom::currentScale()), so unlike
+        // the old qFuzzyCompare(pimpl->scale,1.0) gate this can never desync from what
+        // fitInView() itself actually left the transform at.
+        if (!zoom->isZoomed())
         {
-            if (px.width()>viewRect.width() || px.height() > viewRect.height())
-            {
-                m_widget->pimpl->view->fitInView(m_widget->pimpl->imageItem, Qt::KeepAspectRatio);
-            }
-            else
-            {
-                // Not fitting this time -- make sure the view is actually at its natural 1:1
-                // transform rather than left at whatever an EARLIER fitInView() happened to
-                // leave it at (e.g. one computed against a not-yet-laid-out placeholder
-                // viewport during initial construction/popup, or against a previous,
-                // differently-sized image). fitInView()'s own resulting transform is never
-                // written back into pimpl->scale (only doReset()/zoomIn()/zoomOut() touch
-                // that), so this call has no other way to know the current transform isn't
-                // already clean -- without this, a later producer-driven pixmap update (which
-                // does not go through doReset(), unlike navigating to a different image) can
-                // leave a correctly-sized image visibly stuck at a stale, tiny zoom level.
-                m_widget->pimpl->view->resetTransform();
-            }
+            zoom->fitToItem();
         }
+
         m_widget->updateButtonPositions();
     }
 }

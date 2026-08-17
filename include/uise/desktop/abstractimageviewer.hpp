@@ -368,7 +368,15 @@ class UISE_DESKTOP_EXPORT AbstractImageViewer : public WidgetController
             rotate();
         }
 
+        //! Fit to the viewport -- a no-op while the image is already zoomed in, by design, so a
+        //! producer-driven pixmap update (see onPixmapUpdated()) doesn't yank a manually zoomed
+        //! view back to fit on every version-ladder upgrade.
         virtual void fitImage() {}
+
+        //! Unlike fitImage() above, this unconditionally returns to the fit/baseline zoom level
+        //! regardless of current zoom state. The Ctrl/Cmd+0 shortcut and a host's own "reset zoom"
+        //! affordance should use this, not fitImage().
+        virtual void resetZoom() {}
 
         //! Not itself virtual -- a single definition always dispatches to whatever
         //! closeRequested() is connected to; see ImageViewerWidget::keyPressEvent()'s Escape case.

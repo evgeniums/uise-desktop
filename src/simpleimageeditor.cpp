@@ -41,6 +41,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QtColorWidgets/HueSlider>
 
 #include <uise/desktop/utils/layout.hpp>
+#include <uise/desktop/utils/graphicsviewzoom.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -75,6 +76,7 @@ class SimpleImageEditorWidget_p
         QGraphicsScene *scene;
         QGraphicsPixmapItem *imageItem = nullptr;
         CropRectItem *cropperItem = nullptr;
+        GraphicsViewZoom *zoom = nullptr;
 
         QFrame* controlsFrame;
         QFrame* mainButtonsFrame;
@@ -123,6 +125,27 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->scene = new QGraphicsScene(this);
     pimpl->view->setScene(pimpl->scene);
     pimpl->layout->addWidget(pimpl->view,1);
+
+    pimpl->zoom=new GraphicsViewZoom(pimpl->view,this);
+    pimpl->zoom->setPanButtons(Qt::LeftButton|Qt::MiddleButton);
+    pimpl->zoom->setPanFilter(
+        [this](const QPoint& viewportPos)
+        {
+            // Freehand draw owns left-drag while enabled; a cropper (when present) owns drags
+            // that land on its rect/handles (see CropRectItem::handleAt()) -- only the dimmed
+            // margin outside it, or the whole image when there is no cropper, is a pan surface.
+            if (pimpl->view->isFreeHandDrawEnabled())
+            {
+                return false;
+            }
+            if (pimpl->cropperItem==nullptr)
+            {
+                return true;
+            }
+            auto scenePos=pimpl->view->mapToScene(viewportPos);
+            return pimpl->cropperItem->handleAt(scenePos)==CropRectItem::NoHandle;
+        }
+    );
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -385,6 +408,23 @@ Widget* SimpleImageEditor::doCreateActualWidget(QWidget* parent)
 {
     m_widget=new SimpleImageEditorWidget(this,parent);
     doUpdateFilenameState();
+
+    // Gesture/wheel zoom and drag-to-pan bypass zoomIn()/zoomOut() entirely (they act directly
+    // on the view via GraphicsViewZoom's own event filter), so the crop rect needs the same
+    // refresh those two get -- see refreshCropperForViewChange()'s own doc.
+    connect(
+        m_widget->pimpl->zoom,
+        &GraphicsViewZoom::zoomChanged,
+        this,
+        &SimpleImageEditor::refreshCropperForViewChange
+    );
+    connect(
+        m_widget->pimpl->zoom,
+        &GraphicsViewZoom::panned,
+        this,
+        &SimpleImageEditor::refreshCropperForViewChange
+    );
+
     return m_widget;
 }
 
@@ -394,6 +434,12 @@ void SimpleImageEditor::updateCropShape()
 {
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
+        // Refreshed here too, not just in resetCropper() -- setSquare()/setEllipse() below
+        // trigger adjustCropRect() on the EXISTING cropper item, which must know the CURRENT
+        // zoom state rather than whatever was true when the item was last (re)constructed (the
+        // zoom level can have changed since via zoomIn()/zoomOut(), which no longer rebuild the
+        // cropper -- see refreshCropperForViewChange()).
+        m_widget->pimpl->cropperItem->setLimitToVisibleArea(!m_widget->pimpl->zoom->isZoomed());
         m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
         m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
         m_widget->pimpl->cropperItem->update();
@@ -463,6 +509,8 @@ void SimpleImageEditor::updateAspectRatio()
 {
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
+        // See updateCropShape()'s own comment -- same reasoning applies here.
+        m_widget->pimpl->cropperItem->setLimitToVisibleArea(!m_widget->pimpl->zoom->isZoomed());
         m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
         m_widget->pimpl->cropperItem->update();
     }
@@ -483,6 +531,7 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->controlsFrame->setVisible(false);
     m_widget->pimpl->itemGroup=m_widget->pimpl->scene->createItemGroup(QList<QGraphicsItem *>{});
     m_widget->pimpl->view->setItemGroup(m_widget->pimpl->itemGroup);
+    m_widget->pimpl->zoom->setFitItem(nullptr);
 
     auto px=originalImage();
     if (px.isNull())
@@ -508,6 +557,7 @@ void SimpleImageEditor::doLoadImage()
     }
 
     m_widget->pimpl->itemGroup->addToGroup(m_widget->pimpl->imageItem);
+    m_widget->pimpl->zoom->setFitItem(m_widget->pimpl->itemGroup);
 
     resetCropper();
 }
@@ -629,6 +679,11 @@ void SimpleImageEditor::resetCropper()
 
     m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
     m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
+    // Before any setter/init() call below that triggers adjustCropRect() -- see
+    // setLimitToVisibleArea()'s own doc: while zoomed in, the crop rect must be derived from the
+    // full image bounds, not intersected with whatever sliver of the image the current pan/zoom
+    // happens to have on screen.
+    m_widget->pimpl->cropperItem->setLimitToVisibleArea(!m_widget->pimpl->zoom->isZoomed());
     m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
     m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
     m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
@@ -710,11 +765,8 @@ void SimpleImageEditor::zoomIn()
         return;
     }
 
-    auto t=m_widget->pimpl->view->transform();
-    t.scale(1.25, 1.25);
-    m_widget->pimpl->view->setTransform(t);
-
-    resetCropper();
+    m_widget->pimpl->zoom->zoomIn();
+    refreshCropperForViewChange();
 }
 
 //--------------------------------------------------------------------------
@@ -726,11 +778,24 @@ void SimpleImageEditor::zoomOut()
         return;
     }
 
-    auto t=m_widget->pimpl->view->transform();
-    t.scale(0.8, 0.8);
-    m_widget->pimpl->view->setTransform(t);
+    m_widget->pimpl->zoom->zoomOut();
+    refreshCropperForViewChange();
+}
 
-    resetCropper();
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::refreshCropperForViewChange()
+{
+    // The crop rect lives in imageItem-group coordinates, so it stays glued to the image under
+    // any view-level (purely visual) zoom/pan -- CropRectItem::paint()/getHandleType() already
+    // re-derive handle/border sizes from the view's scale (see imagecropper.cpp), so a repaint is
+    // all that's needed here. resetCropper() (destroy + recreate) is deliberately NOT called --
+    // that used to run on every zoomIn()/zoomOut() and threw away the user's crop selection on
+    // every step, which is the bug this replaces.
+    if (m_widget->pimpl->cropperItem!=nullptr)
+    {
+        m_widget->pimpl->cropperItem->update();
+    }
 }
 
 //--------------------------------------------------------------------------

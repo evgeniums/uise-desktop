@@ -238,8 +238,23 @@ void CropRectItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
         {
             // If moving, we let QGraphicsRectItem handle the initial press for movement
             QGraphicsRectItem::mousePressEvent(event);
+            return;
+        }
+        if (m_activeHandle != NoHandle)
+        {
+            return;
         }
     }
+
+    // Release the grab for a press outside the crop rect (the dimmed margin) or with a button
+    // other than left -- without this, ItemIsMovable (see init()) plus the accepted-by-default
+    // QGraphicsSceneMouseEvent makes this item the scene's mouse grabber for ANY press anywhere
+    // on the image, not just one that actually lands on the rect/a handle. The stray grab was
+    // previously harmless in practice (mouseMoveEvent()/mouseReleaseEvent() both no-op while
+    // m_activeHandle==NoHandle), but there is no reason to hold it, and a host adding its own
+    // pan/gesture handling on the view (see GraphicsViewZoom) is exactly the kind of caller that
+    // should not have to rely on that no-op guard to stay correct.
+    event->ignore();
 }
 
 //--------------------------------------------------------------------------
@@ -394,15 +409,26 @@ void CropRectItem::adjustCropRect()
     QRectF imageBoundsScene = m_imageItem->mapToScene(m_imageItem->boundingRect()).boundingRect();
     QRectF imageBounds=mapRectFromScene(imageBoundsScene);
 
-    QRect portRect = m_view->viewport()->rect();
-    QRectF sceneRect = m_view->mapToScene(portRect).boundingRect();
-    QRectF viewBounds = mapRectFromScene(sceneRect);
+    if (m_limitToVisibleArea)
+    {
+        QRect portRect = m_view->viewport()->rect();
+        QRectF sceneRect = m_view->mapToScene(portRect).boundingRect();
+        QRectF viewBounds = mapRectFromScene(sceneRect);
 
-    auto left=std::max(imageBounds.x(),viewBounds.x());
-    auto top=std::max(imageBounds.y(),viewBounds.y());
-    auto right=std::min(imageBounds.right(),viewBounds.right());
-    auto bottom=std::min(imageBounds.bottom(),viewBounds.bottom());
-    m_cropperRect=QRectF{QPointF{left,top},QPointF{right,bottom}};
+        auto left=std::max(imageBounds.x(),viewBounds.x());
+        auto top=std::max(imageBounds.y(),viewBounds.y());
+        auto right=std::min(imageBounds.right(),viewBounds.right());
+        auto bottom=std::min(imageBounds.bottom(),viewBounds.bottom());
+        m_cropperRect=QRectF{QPointF{left,top},QPointF{right,bottom}};
+    }
+    else
+    {
+        // The host view is zoomed in (see setLimitToVisibleArea()'s doc) -- intersecting with
+        // only the currently visible viewport would collapse the crop rect down to whatever
+        // sliver of the image happens to be on screen right now, so use the full image bounds
+        // instead.
+        m_cropperRect=imageBounds;
+    }
 
     if (m_square || m_keepAspectRatio)
     {

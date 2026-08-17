@@ -35,6 +35,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/widgetfactory.hpp>
 #include <uise/desktop/abstractimageviewer.hpp>
+#include <uise/desktop/imageviewer.hpp>
 #include <uise/desktop/directoryimagesviewer.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -87,6 +88,40 @@ int main(int argc, char *argv[])
             }
         }
     );
+
+    // Manual test rig for the trackpad/mouse zoom feature: pinch or Ctrl/Cmd+wheel over the
+    // image, or drag once zoomed in to pan -- this label makes the live GraphicsViewZoom state
+    // observable without a debugger. DirectoryImagesViewer always builds a concrete ImageViewer
+    // under the hood (see directoryimagesviewer.cpp), so the cast here is safe.
+    auto* imageViewer=qobject_cast<ImageViewer*>(viewer->viewer());
+    auto zoomRow=new QFrame(mainFrame);
+    auto zl=Layout::horizontal(zoomRow);
+    auto zoomLabel=new QLabel(zoomRow);
+    zoomLabel->setText("Zoom: 100%");
+    zl->addWidget(zoomLabel);
+    zl->addStretch(1);
+    auto resetZoomButton=new QPushButton(zoomRow);
+    resetZoomButton->setText("Reset zoom");
+    zl->addWidget(resetZoomButton);
+    l->addWidget(zoomRow);
+    if (imageViewer!=nullptr)
+    {
+        QObject::connect(
+            imageViewer,
+            &ImageViewer::zoomChanged,
+            zoomLabel,
+            [zoomLabel](qreal zoomFactor)
+            {
+                zoomLabel->setText(QString("Zoom: %1%").arg(qRound(zoomFactor*100)));
+            }
+        );
+        QObject::connect(
+            resetZoomButton,
+            &QPushButton::clicked,
+            imageViewer,
+            &ImageViewer::resetZoom
+        );
+    }
 
     w.setCentralWidget(mainFrame);
     w.resize(1000,700);
