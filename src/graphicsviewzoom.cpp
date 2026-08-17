@@ -81,7 +81,17 @@ QGraphicsView* GraphicsViewZoom::view() const noexcept
 
 void GraphicsViewZoom::setFitItem(QGraphicsItem* item)
 {
+    if (item==m_fitItem)
+    {
+        return;
+    }
     m_fitItem=item;
+
+    // A genuinely different item (navigating to another image, or unload/reset) has no relation
+    // to whatever zoom the PREVIOUS item was at -- unlike a host re-calling setFitItem() with the
+    // SAME item on every producer-driven pixmap update (a version-ladder upgrade), which must
+    // leave a deliberate user zoom alone.
+    m_userZoomed=false;
 }
 
 //--------------------------------------------------------------------------
@@ -187,6 +197,13 @@ bool GraphicsViewZoom::isZoomed() const
 
 //--------------------------------------------------------------------------
 
+bool GraphicsViewZoom::isUserZoomed() const noexcept
+{
+    return m_userZoomed;
+}
+
+//--------------------------------------------------------------------------
+
 bool GraphicsViewZoom::isPannable() const
 {
     if (m_view==nullptr)
@@ -220,6 +237,9 @@ void GraphicsViewZoom::fitToItem()
     {
         return;
     }
+
+    // Actually re-fitting -- whatever deliberate zoom the user had is gone now.
+    m_userZoomed=false;
 
     // Normalize the transform's scale magnitude to 1.0 first, mirroring the first step of
     // QGraphicsView::fitInView() itself -- this PRESERVES whatever rotation/flip is already in the
@@ -296,6 +316,10 @@ void GraphicsViewZoom::zoomTo(qreal absoluteScale, const QPoint& anchorViewportP
         m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value()+delta.y());
     }
     m_view->setTransformationAnchor(oldAnchor);
+
+    // Reflects intent, not just position: a zoom-out step that lands back on the baseline clamp
+    // clears the flag again, same as fitToItem()/resetZoom() would.
+    m_userZoomed=isZoomed();
 
     emit zoomChanged(zoomFactor());
 }

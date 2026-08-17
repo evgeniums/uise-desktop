@@ -1581,8 +1581,16 @@ void ImageViewer::refreshOverlayGeometry()
 
 void ImageViewer::fitImage()
 {
-    auto px=currentImage();
-    if (!px.isNull() && m_widget->pimpl->imageItem!=nullptr)
+    if (m_widget==nullptr)
+    {
+        return;
+    }
+
+    // imageItem!=nullptr alone, not also a currentImage()-non-null check -- applyCurrentPixmap()
+    // can populate imageItem purely from an animator frame while currentImage() is still null
+    // (animated-only content, see its own m_animator->isAnimated() branch), and that content
+    // needs fitting exactly the same as a static image does.
+    if (m_widget->pimpl->imageItem!=nullptr)
     {
         auto* zoom=m_widget->pimpl->zoom;
 
@@ -1605,10 +1613,13 @@ void ImageViewer::fitImage()
         // to re-run this once that catches up), so this stays correct across the same
         // layout-order hazard that motivated measuring against the viewport in the first place.
         //
-        // isZoomed() reads the REAL transform (see GraphicsViewZoom::currentScale()), so unlike
-        // the old qFuzzyCompare(pimpl->scale,1.0) gate this can never desync from what
-        // fitInView() itself actually left the transform at.
-        if (!zoom->isZoomed())
+        // isUserZoomed(), not isZoomed() -- isZoomed() is derived purely from the current
+        // transform vs. a freshly computed baselineScale(), so right after doReset() (identity
+        // transform) it reads true for any image larger than the viewport, indistinguishable from
+        // a deliberate zoom. isUserZoomed() tracks actual zoom actions instead, so a never-yet-
+        // fitted view always gets fitted here, while a real user zoom survives every subsequent
+        // resize/async-pixmap-upgrade call to this function untouched.
+        if (!zoom->isUserZoomed())
         {
             zoom->fitToItem();
         }

@@ -119,6 +119,17 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         //! zoomFactor() meaningfully above 1.0.
         bool isZoomed() const;
 
+        //! Whether the CURRENT zoom level was reached by an explicit user/host zoom action
+        //! (zoomTo()/zoomBy()/zoomIn()/zoomOut()/setZoomFactor(), wheel, pinch) rather than
+        //! merely being wherever the transform happens to sit relative to a freshly computed
+        //! baselineScale(). Unlike isZoomed(), this is false for a never-yet-fitted view whose
+        //! identity transform is above baseline only because the content is larger than the
+        //! viewport -- which is exactly the state a host's "re-fit unless the user zoomed in"
+        //! gate must not mistake for a deliberate zoom. Cleared by fitToItem()/resetZoom(), by
+        //! setFitItem() when the item actually changes, and by any explicit zoom that lands back
+        //! at the baseline.
+        bool isUserZoomed() const noexcept;
+
         //! Whether either scrollbar currently has a non-empty range -- i.e. there is anything to pan.
         bool isPannable() const;
 
@@ -203,6 +214,7 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         QGraphicsView* m_view;
         QGraphicsItem* m_fitItem=nullptr;
         bool m_fitOnlyIfLarger=true;
+        bool m_userZoomed=false;
 
         qreal m_stepFactor=DefaultStepFactor;
         qreal m_minZoomFactor=DefaultMinZoomFactor;

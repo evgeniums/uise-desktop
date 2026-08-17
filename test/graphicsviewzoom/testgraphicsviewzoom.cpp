@@ -251,4 +251,68 @@ BOOST_AUTO_TEST_CASE(TestPanning)
     ViewContainer::runTestCase(steps);
 }
 
+BOOST_AUTO_TEST_CASE(TestUserZoomIntent)
+{
+    auto init=[](ViewContainerPtr container){
+        auto view=new QGraphicsView();
+        auto scene=new QGraphicsScene(view);
+        view->setScene(scene);
+        // Larger than the test window, same as TestResetAndFit -- isZoomed() being true on a
+        // never-yet-fitted identity transform is exactly the regression isUserZoomed() exists to
+        // be distinguishable from (see ImageViewer::fitImage()'s own gate).
+        scene->addRect(0,0,2000,1500);
+        scene->addRect(0,0,1000,800);
+        ViewContainer::beginTestCase(container,view,"Test GraphicsViewZoom user-zoom intent");
+    };
+
+    auto checkUserZoomIntent=[](ViewContainerPtr container){
+        auto view=container->testWidget;
+        auto items=view->scene()->items();
+        UISE_TEST_REQUIRE(items.size()==2);
+
+        GraphicsViewZoom zoom(view);
+        zoom.setFitItem(items.at(1));
+
+        // Never-yet-fitted, identity transform, content larger than the viewport: isZoomed() is
+        // true (currentScale() 1.0 sits above a sub-1.0 baseline) but isUserZoomed() must be
+        // false -- this is the regression itself.
+        UISE_TEST_CHECK(zoom.isZoomed());
+        UISE_TEST_CHECK(!zoom.isUserZoomed());
+
+        zoom.fitToItem();
+        UISE_TEST_CHECK(!zoom.isUserZoomed());
+
+        zoom.zoomIn();
+        UISE_TEST_CHECK(zoom.isUserZoomed());
+
+        // Step back down to the baseline clamp -- the flag must clear again, not just isZoomed().
+        for(int i=0;i<20;i++)
+        {
+            zoom.zoomOut();
+        }
+        UISE_TEST_CHECK(!zoom.isZoomed());
+        UISE_TEST_CHECK(!zoom.isUserZoomed());
+
+        // Re-fitting a genuine zoom, then upgrading to a different item (navigating to another
+        // image) must drop the flag.
+        zoom.zoomIn();
+        zoom.zoomIn();
+        UISE_TEST_CHECK(zoom.isUserZoomed());
+        zoom.setFitItem(items.at(0));
+        UISE_TEST_CHECK(!zoom.isUserZoomed());
+
+        // But re-calling setFitItem() with the SAME item (a producer-driven pixmap update /
+        // version-ladder upgrade landing on the currently displayed image) must NOT disturb a
+        // deliberate zoom.
+        zoom.zoomIn();
+        zoom.zoomIn();
+        UISE_TEST_CHECK(zoom.isUserZoomed());
+        zoom.setFitItem(items.at(0));
+        UISE_TEST_CHECK(zoom.isUserZoomed());
+    };
+
+    std::vector<std::function<void (ViewContainerPtr container)>> steps={init,checkUserZoomIntent};
+    ViewContainer::runTestCase(steps);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
