@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_IPP
 
 #include <algorithm>
+#include <cstddef>
 
 #include <QApplication>
 #include <QResizeEvent>
@@ -223,12 +224,17 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
     m_ignoreUpdates=false;
     endItemRangeChange();
     viewportUpdated();
+
+    checkInvariants("endUpdate");
 }
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onListContentResized()
 {
+    // Shares m_resizeListTimer with configureWidget()'s widget-destroyed handler below --
+    // both must do the same superset of work, since SingleShotTimer::shot() keeps only the
+    // last-posted handler (see that call site's comment).
     m_resizeListTimer.shot(0,
         [this]()
         {
@@ -279,14 +285,25 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const 
                             m_lastItem=nullptr;
                         }
 
+                        // Same superset as onListContentResized()'s handler on this shared
+                        // timer -- SingleShotTimer::shot() keeps only the LAST-posted handler
+                        // (see its own doc comment), so whichever of the two wins the race must
+                        // still do everything the other one would have done. This used to
+                        // instead conditionally call endUpdate() based on m_ignoreUpdates
+                        // *captured at subscribe time* (i.e. when the item was originally
+                        // inserted, not when it was destroyed) -- stale by construction, and if
+                        // it won the race against onListContentResized()'s handler,
+                        // viewportUpdated() was skipped entirely: no checkItemCount(), no
+                        // prefetch, no scrollbar/jump-edge refresh, so the view could sit short
+                        // of items and never refill (the "gaps" variant of
+                        // todo-chat-messages-missing-after-insert.md). viewportUpdated() itself
+                        // already no-ops when m_ignoreUpdates is live-true (its own top-of-body
+                        // check), so there is no need to re-check it here.
                         m_resizeListTimer.shot(0,
-                                               [this,ignoreUpdates=m_ignoreUpdates]()
+                                               [this]()
                                                {
                                                    resizeList();
-                                                   if (!ignoreUpdates)
-                                                   {
-                                                       endUpdate();
-                                                   }
+                                                   viewportUpdated();
                                                }
                                             );
                      }
@@ -828,6 +845,73 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkInvariants(const char* op) const
+{
+    if (!fwlvDebugEnabled())
+    {
+        return;
+    }
+
+    const auto& order=itemOrder();
+
+    // 1) every item in the sort-order index must still be a live member of the linked list.
+    size_t orderCount=0;
+    for (auto it=order.begin();it!=order.end();++it)
+    {
+        ++orderCount;
+        auto widget=it->widget();
+        if (widget==nullptr)
+        {
+            std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: item at order pos " << (orderCount-1)
+                       << " has a null widget" << std::endl;
+            continue;
+        }
+        if (!m_llist->containsWidget(widget))
+        {
+            std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: item at order pos " << (orderCount-1)
+                       << " widget=" << static_cast<const void*>(widget)
+                       << " is orphaned from the linked list" << std::endl;
+        }
+    }
+
+    // 2) walking the linked list front-to-back must visit the same n widgets, in the same
+    // order, as iterating the sort-order index. widgetAtSeqPos() is O(pos) per call, so this
+    // is O(n^2); only ever runs under the debug env var. The probe is capped well beyond the
+    // expected length as a defensive bound in case the two have diverged in a way that would
+    // otherwise make this loop unbounded.
+    std::vector<QWidget*> llWidgets;
+    size_t maxProbe=orderCount+64;
+    for (size_t pos=0; pos<maxProbe; ++pos)
+    {
+        auto w=m_llist->widgetAtSeqPos(pos);
+        if (w==nullptr)
+        {
+            break;
+        }
+        llWidgets.push_back(w);
+    }
+
+    if (llWidgets.size()!=orderCount)
+    {
+        std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: linked-list length " << llWidgets.size()
+                   << " != sort-order length " << orderCount << std::endl;
+        return;
+    }
+
+    size_t i=0;
+    for (auto it=order.begin();it!=order.end();++it,++i)
+    {
+        if (it->widget()!=llWidgets[i])
+        {
+            std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: order/linked-list order mismatch at "
+                          "pos " << i << std::endl;
+            break;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContainer(const ItemT& item, bool findAfterWidget)
 {
     auto& idx=itemIdx();
@@ -843,6 +927,18 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
         }
         else
         {
+            //! @todo Latent hazard, not fixed in this pass: FlyweightListItem::sortValue()
+            //! reads the sort key *live* from the wrapped, mutable message object rather than
+            //! a value copied in at insertion time. This no-op modify() is here so boost knows
+            //! the ordered_non_unique index's key *might* have changed and should be
+            //! re-checked/re-positioned -- which is only correct because every real update
+            //! path today goes through the removeItem()+reinsert branch above instead of
+            //! mutating a still-inserted item's sort value directly. If any future path
+            //! (e.g. a resurrected ChatMessagesView::updateMessage()) ever changes an item's
+            //! sort value while it is live in this index without going through that branch,
+            //! this modify() call is exactly where it must be paired with the mutation, or the
+            //! ordered index silently corrupts (boost's contract: keys must not change without
+            //! notifying the index via modify()).
             idx.modify(result.first,[](auto&){});
         }
     }
@@ -889,6 +985,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item, bool adjustMinMax)
 {
+    //! @todo Landmine for the "message updated while scrolled away from the stick edge"
+    //! symptom in todo-chat-messages-missing-after-insert.md: below, an item whose sort value
+    //! moves it past the edge the view is NOT currently sticking to is not reordered but
+    //! *deleted* (removeItem()), silently, with no way for the caller to know it vanished from
+    //! the view. Currently unreachable from whitemdesktop (ChatMessagesView::updateMessage(),
+    //! the only caller, has no caller of its own there), but if that ever changes this is
+    //! exactly the mechanism the user described. Fixing it needs either re-fetching the item on
+    //! demand when scrolled back to that edge, or keeping it hidden-but-tracked instead of
+    //! dropped; out of scope for this pass.
     if (adjustMinMax)
     {
         if (m_orderComparer(item.sortValue(),m_minSortValue))
@@ -945,20 +1050,82 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertContinuousItems(
         return;
     }
 
+    // Insert every item into the sort-order/id container first, WITHOUT asking
+    // insertItemToContainer() for an anchor widget yet (findAfterWidget=false). Computing the
+    // anchor up front, at i==0, as this used to, is unsafe: a *later* iteration's dedup-by-id
+    // branch (see insertItemToContainer() above) can removeItem() an existing entry -- and
+    // that entry can be the very widget just captured as the anchor -- leaving
+    // insertWidgetsAfter() a dangling/orphaned pointer (the "insertWidgets() silently orphans
+    // the entire list" defect). Look the anchor up once, after every container mutation this
+    // batch will make is already done.
     std::vector<QWidget*> widgets;
-    QWidget* afterWidget=nullptr;
-    for (size_t i=0;i<items.size();i++)
+    widgets.reserve(items.size());
+    for (const auto& item : items)
     {
-        const auto& item=items[i];
-        auto afterWidgetTmp=insertItemToContainer(item,i==0);
-        if (i==0)
-        {
-            afterWidget=afterWidgetTmp;
-        }
+        insertItemToContainer(item,false);
         widgets.push_back(item.widget());
     }
 
-    m_llist->insertWidgetsAfter(widgets,afterWidget);
+    const auto& idx=itemIdx();
+    const auto& order=itemOrder();
+
+    QWidget* afterWidget=nullptr;
+    bool contiguous=false;
+    auto frontIdxIt=idx.find(items.front().id());
+    if (frontIdxIt!=idx.end())
+    {
+        auto orderIt=m_items.template project<0>(frontIdxIt);
+        if (orderIt!=order.begin())
+        {
+            auto beforeIt=orderIt;
+            --beforeIt;
+            afterWidget=beforeIt->widget();
+        }
+
+        // Verify the batch really is contiguous in the final sort order -- "items must be
+        // pre-sorted" (documented on the public overload) doesn't imply "contiguous with
+        // what's already loaded"; ChatMessagesView::insertFetched()'s incremental branch, for
+        // instance, hands whatever range the server returned. insertWidgetsAfter() places the
+        // whole batch as one contiguous run after a single anchor -- if some other,
+        // already-loaded item actually belongs between two entries of this batch, that
+        // placement would silently diverge from sort order, which is exactly the precondition
+        // for checkItemCount()'s underflow defect.
+        contiguous=true;
+        auto checkIt=orderIt;
+        for (size_t i=0;i<widgets.size();++i)
+        {
+            if (checkIt==order.end() || checkIt->widget()!=widgets[i])
+            {
+                contiguous=false;
+                break;
+            }
+            ++checkIt;
+        }
+    }
+
+    if (contiguous)
+    {
+        m_llist->insertWidgetsAfter(widgets,afterWidget);
+    }
+    else
+    {
+        // Fall back to placing items one at a time -- correct regardless of ordering, just
+        // O(n^2) for this batch. Each item is already registered in the container above, so
+        // insertItemToContainer() here only re-derives its (now authoritative) individual
+        // anchor; it does not insert a duplicate.
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: insertContinuousItems() batch of " << items.size()
+                       << " items is not contiguous with the existing sort order, falling back "
+                          "to per-item insert" << std::endl;
+        }
+        for (const auto& item : items)
+        {
+            m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item,true));
+        }
+    }
+
+    checkInvariants("insertContinuousItems");
 }
 
 //--------------------------------------------------------------------------
@@ -1443,6 +1610,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         return;
     }
 
+    checkInvariants("checkItemCount:enter");
+
     if (itemsCount()==0)
     {
         // don't request items if the list was not loaded yet
@@ -1462,7 +1631,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     {
         from=m_llist->widgetSeqPos(first->widget());
         to=m_llist->widgetSeqPos(firstVisible->widget());
-        hiddenBefore=to-from;
+        // `first` (sort order) and `firstVisible` (visual hit-test) should never disagree in
+        // direction, but if the linked list and the sort-order index have drifted apart (the
+        // defects guarded against above/below) `to` can end up less than `from`. On unsigned
+        // size_t that wraps to ~2^64 and removeExtraItemsFromBegin() below would try to evict
+        // the entire list. Compute signed and clamp instead of trusting the order blindly.
+        auto diff=static_cast<std::ptrdiff_t>(to)-static_cast<std::ptrdiff_t>(from);
+        if (diff<0)
+        {
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-FWLV-DEBUG: checkItemCount() hiddenBefore underflow guarded: "
+                             "from=" << from << " to=" << to << std::endl;
+            }
+            diff=0;
+        }
+        hiddenBefore=static_cast<size_t>(diff);
     }
     bool canFetchBefore=first && m_orderComparer(m_minSortValue,first->sortValue());
 
@@ -1509,7 +1693,18 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
     {
         fromAfter=m_llist->widgetSeqPos(lastVisible->widget());
         toAfter=m_llist->widgetSeqPos(last->widget());
-        hiddenAfter=toAfter-fromAfter;
+        // Mirrors the hiddenBefore underflow guard above -- see its comment.
+        auto diff=static_cast<std::ptrdiff_t>(toAfter)-static_cast<std::ptrdiff_t>(fromAfter);
+        if (diff<0)
+        {
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-FWLV-DEBUG: checkItemCount() hiddenAfter underflow guarded: "
+                             "fromAfter=" << fromAfter << " toAfter=" << toAfter << std::endl;
+            }
+            diff=0;
+        }
+        hiddenAfter=static_cast<size_t>(diff);
     }
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
@@ -1669,12 +1864,23 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromBe
         return;
     }
 
+    // Defensive boundary: whatever `count` says, never evict the item currently visible at the
+    // top of the viewport, or anything after it. `count` is derived from widgetSeqPos()
+    // distances that checkItemCount() already guards against going negative, but stopping at a
+    // real viewport boundary here makes "count too large -> whole list disappears" structurally
+    // impossible rather than merely unlikely -- belt and braces for the same underflow defect.
+    auto boundary=firstViewportItem();
+
     beginUpdate();
 
     auto& order=itemOrder();
     for (auto it=order.begin();it!=order.end();)
     {
         if (count--==0)
+        {
+            break;
+        }
+        if (boundary!=nullptr && &(*it)==boundary)
         {
             break;
         }
@@ -1697,12 +1903,19 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::removeExtraItemsFromEn
         return;
     }
 
+    // Mirrors removeExtraItemsFromBegin()'s boundary guard -- see its comment.
+    auto boundary=lastViewportItem();
+
     beginUpdate();
 
     auto& order=itemOrder();
     for (auto it=order.rbegin(), nit=it;it!=order.rend(); it=nit)
     {
         if (count--==0)
+        {
+            break;
+        }
+        if (boundary!=nullptr && &(*it)==boundary)
         {
             break;
         }

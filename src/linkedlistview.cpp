@@ -23,6 +23,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <cstdlib>
+#include <iostream>
+
 #include <QDebug>
 
 #include <uise/desktop/linkedlistviewitem.hpp>
@@ -40,6 +43,25 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStyle>
 #include <uise/desktop/utils/orientationinvariant.hpp>
 #endif
+
+namespace {
+
+/**
+ * @brief Check whether LinkedListView diagnostic tracing is enabled.
+ *
+ * Gated by the UISE_FWLV_CHECK environment variable rather than a compile-time macro, so it
+ * can be turned on for a single real-chat run without a rebuild. Kept as an independent copy
+ * of the matching helper in flyweightlistview_p.hpp (same env var), since this file has no
+ * dependency on that header. Temporary: remove once the chat-messages-missing-after-insert
+ * bug is confirmed fixed against real chats.
+ */
+inline bool llvDebugEnabled() noexcept
+{
+    static const bool enabled=std::getenv("UISE_FWLV_CHECK")!=nullptr;
+    return enabled;
+}
+
+} // anonymous namespace
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -325,9 +347,37 @@ class LinkedListView_p
 
             // check item for existing widget
             auto existingItem=LinkedListViewItem::getFromWidgetProperty(existingWidget);
-            if (existingWidget)
+            if (existingWidget && !existingItem)
             {
-                Q_ASSERT(existingItem);
+                // The requested anchor widget is no longer part of this list -- its
+                // LinkedListViewItem property was already cleared by a concurrent
+                // takeItem() (e.g. FlyweightListView_p::insertContinuousItems() dedup-removing
+                // an existing item further along in the same batch, and that item happening to
+                // be the anchor captured earlier). Q_ASSERT alone is a no-op in release builds,
+                // so this used to fall through with pos==0/firstItemIsHead==true below,
+                // re-heading the list and orphaning every item already linked from the real
+                // head -- the widgets stayed alive but became unreachable from head, so
+                // widgetSeqPos()/traversal/sizeHint() would all silently see only the new
+                // batch. Fall back to appending after the current tail instead: a
+                // temporarily-wrong position is recoverable on the next reorder/relayout, an
+                // orphaned chain is not.
+                if (llvDebugEnabled())
+                {
+                    std::cerr << "CHAT-FWLV-DEBUG: LinkedListView_p::insertWidgets() anchor "
+                                 "widget lost its LinkedListViewItem property, falling back to "
+                                 "tail append" << std::endl;
+                }
+                existingWidget=nullptr;
+                for (auto tail=head.lock(); tail; tail=tail->next())
+                {
+                    if (!tail->next())
+                    {
+                        existingItem=tail;
+                        existingWidget=tail->widget();
+                        break;
+                    }
+                }
+                after=true;
             }
 
             // calculate position of the first new item
@@ -749,6 +799,12 @@ size_t LinkedListView::widgetSeqPos(QObject *widget) const
         return item->pos();
     }
     return 0;
+}
+
+//--------------------------------------------------------------------------
+bool LinkedListView::containsWidget(QObject *widget) const
+{
+    return static_cast<bool>(LinkedListViewItem::getFromWidgetProperty(widget));
 }
 
 //--------------------------------------------------------------------------

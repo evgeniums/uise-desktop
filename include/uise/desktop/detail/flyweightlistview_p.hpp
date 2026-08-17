@@ -26,7 +26,9 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_HPP
 #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_HPP
 
+#include <cstdlib>
 #include <functional>
+#include <iostream>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -54,6 +56,22 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 namespace detail {
+
+/**
+ * @brief Check whether FlyweightListView_p invariant checking/diagnostic tracing is enabled.
+ *
+ * Gated by the UISE_FWLV_CHECK environment variable rather than a compile-time macro, so it
+ * can be turned on for a single real-chat run without a rebuild -- this is meant to pin down
+ * the trigger for whitemdesktop/todos/todo-chat-messages-missing-after-insert.md, a rare bug
+ * only ever seen in real chats. A matching, independent copy of this helper lives in
+ * linkedlistview.cpp (same env var; that file has no dependency on this header). Temporary:
+ * remove once the bug is confirmed fixed.
+ */
+inline bool fwlvDebugEnabled() noexcept
+{
+    static const bool enabled=std::getenv("UISE_FWLV_CHECK")!=nullptr;
+    return enabled;
+}
 
 class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
 {
@@ -181,6 +199,21 @@ class FlyweightListView_p : public OrientationInvariant
 
         void checkItemCount();
         void informViewportUpdated();
+
+        /**
+         * @brief Diagnostic-only cross-check between the sort-order/id index and the linked
+         *        list actually holding the item widgets.
+         * @param op Short tag identifying the call site, printed with any violation found.
+         *
+         * No-op unless fwlvDebugEnabled(). Verifies that every item in the sort-order index
+         * still has a live LinkedListViewItem (i.e. has not been silently orphaned -- see the
+         * "insertWidgets() silently orphans the entire list" defect) and that walking the
+         * linked list front-to-back visits the same widgets, in the same order, as iterating
+         * the sort-order index. A mismatch here is the structural precondition for the
+         * checkItemCount() underflow defect. Temporary: remove once the
+         * chat-messages-missing-after-insert bug is confirmed fixed against real chats.
+         */
+        void checkInvariants(const char* op) const;
 
         void scroll(int delta);
 

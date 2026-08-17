@@ -75,6 +75,19 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
         size_t widgetSeqPos(QObject* widget) const;
         QWidget* widgetAtSeqPos(size_t pos) const;
 
+        /**
+         * @brief Check if a widget is currently a live member of this list.
+         * @param widget Widget to check.
+         * @return True if the widget was inserted via insertWidget(s)After/Before and has not
+         *         since been taken/removed.
+         *
+         * Used to validate an "insert after" anchor candidate before handing it to
+         * insertWidgetAfter()/insertWidgetsAfter() -- a candidate captured earlier can already
+         * have been taken out of the list by the time it is used (e.g. a batched insert whose
+         * dedup-by-id step removes an existing item that happened to be the anchor).
+         */
+        bool containsWidget(QObject* widget) const;
+
         void clear(const DropWidgetHandler& dropWidget=destroyWidget);
 
         Qt::Orientation orientation() const noexcept;
