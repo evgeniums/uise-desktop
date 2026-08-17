@@ -44,6 +44,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QShowEvent>
+#include <QGuiApplication>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -65,6 +66,23 @@ std::shared_ptr<SvgIcon> fileUploadIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("FileUpload::%1").arg(alias),context);
 }
+
+//! RAII busy-cursor guard for addItems()'s own decode/preview loop below -- every add path
+//! (addFiles(), addFromMimeData()/drag-drop/paste, and the in-dialog Add button's
+//! requestAddFiles()) funnels through addItems(), so one guard here covers all of them, whether
+//! triggered before the dialog is shown (an external caller's addFiles()/addFromMimeData()) or
+//! from within the already-open dialog itself. Each row's decode (FileUploadItem::image(), a
+//! full-resolution QImage(path) read with no scaled/fast-decode path) plus its preview scaling
+//! (FileUploadListItem::updatePreview()) is synchronous on the GUI thread -- there is no progress
+//! signal to hook instead, so a plain override cursor is the only feedback available for however
+//! long several/large images take.
+class AddItemsBusyCursor
+{
+    public:
+
+        AddItemsBusyCursor() { QGuiApplication::setOverrideCursor(Qt::BusyCursor); }
+        ~AddItemsBusyCursor() { QGuiApplication::restoreOverrideCursor(); }
+};
 
 // QWidget::setMinimumHeight()/setMaximumHeight() (what updateListAreaHeight() below uses to
 // resize listArea) call updateGeometry(), which does not resize anything synchronously: it
@@ -529,9 +547,13 @@ int FileUploadWidget::addItems(FileUploadItems newItems)
         return 0;
     }
 
-    for (const auto& item : toInsert)
+    if (!toInsert.empty())
     {
-        addRowFor(item);
+        AddItemsBusyCursor busy;
+        for (const auto& item : toInsert)
+        {
+            addRowFor(item);
+        }
     }
 
     updateItemsState(wasEmpty,true);
@@ -566,9 +588,16 @@ void FileUploadWidget::setItems(FileUploadItems newItems)
         return;
     }
 
-    for (const auto& item : toInsert)
+    if (!toInsert.empty())
     {
-        addRowFor(item);
+        // Same decode/preview cost per item as addItems() -- see AddItemsBusyCursor's own doc
+        // comment. setItems() has its own separate loop (not routed through addItems(), see the
+        // comment at the top of this function) so it needs its own guard instance.
+        AddItemsBusyCursor busy;
+        for (const auto& item : toInsert)
+        {
+            addRowFor(item);
+        }
     }
 
     updateItemsState(wasEmpty,true);
