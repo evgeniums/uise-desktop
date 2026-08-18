@@ -59,11 +59,13 @@ uise--RippleOverlay {
  * centred rather than cursor-origin, so the ripple is unaffected by where within the button
  * the press landed.
  *
- * Base case, applies whenever text is visible (iconOnly=="false", see the more specific rule
- * below for icon-only buttons): a wide, flat ellipse -- radiusScaleX close to 1 reaches the
- * button's own left/right edges, radiusScaleY well under 1 keeps it from growing into a
- * circle, so it reads as a horizontal sweep across the button rather than a Material-style
- * blob. Clipped to "rounded" with a 4px corner radius, matching the FastSwitchButton/
+ * Base case, applies whenever text is visible (iconOnly=="false", see the more specific rules
+ * below for icon-only buttons and for AboveText/BelowText buttons): a wide, flat ellipse --
+ * radiusScaleX close to 1 reaches the button's own left/right edges, radiusScaleY well under 1
+ * keeps it from growing into a circle, so it reads as a horizontal sweep across the button
+ * rather than a Material-style blob. Tuned for BeforeText/AfterText rows specifically -- see
+ * the verticalLayout rule below for why AboveText/BelowText buttons need a different scale.
+ * Clipped to "rounded" with a 4px corner radius, matching the FastSwitchButton/
  * AbstractDialog button chrome default elsewhere in this stylesheet set -- override
  * rippleCornerRadius alongside any QSS rule that gives an IconTextButton a different
  * border-radius. */
@@ -73,6 +75,17 @@ uise--IconTextButton uise--RippleOverlay {
     qproperty-rippleOrigin: "center";
     qproperty-rippleRadiusScaleX: 1.0;
     qproperty-rippleRadiusScaleY: 0.35;
+}
+
+/* AboveText/BelowText buttons (icon stacked over/under a caption -- e.g. AddContactInfo's
+ * openChat/startCall/addContact, see icontextbutton.cpp's verticalLayout property) are much
+ * closer to square than the horizontal BeforeText/AfterText rows the base rule above was tuned
+ * for: the same 0.35 Y-scale there taps out well short of the button's actual height, so it
+ * reads as a thin flattened band instead of a ripple that fills the button. Match the icon-only
+ * treatment instead -- equal X/Y scale reaches every edge (padding included). */
+uise--IconTextButton[iconOnly="false"][verticalLayout="true"] uise--RippleOverlay {
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
 }
 
 /* Icon-only buttons (no text -- see IconTextButton::setText()) get a circular halo instead:

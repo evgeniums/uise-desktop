@@ -307,6 +307,13 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
     }
 
     m_trailingIcon->parentWidget()->setVisible(trailingVisible);
+
+    // Drives ripple.qss's choice between the wide/flat ellipse tuned for horizontal rows
+    // (BeforeText/AfterText) and the fuller fill needed for the much-closer-to-square
+    // AboveText/BelowText buttons -- see uise--IconTextButton[verticalLayout="..."]
+    // uise--RippleOverlay there.
+    setProperty("verticalLayout",m_iconPosition==IconPosition::AboveText || m_iconPosition==IconPosition::BelowText);
+    Style::updateWidgetStyle(this);
 }
 
 //--------------------------------------------------------------------------
