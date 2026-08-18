@@ -727,7 +727,7 @@ void ChatMessagesView<BaseMessageT,Traits>::clear()
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::jumpToEdge(Direction direction)
 {
-    m_listView->scrollToEdge(direction);
+    m_listView->jumpToEdge(direction);
 }
 
 //--------------------------------------------------------------------------

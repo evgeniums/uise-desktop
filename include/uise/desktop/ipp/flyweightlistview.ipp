@@ -348,6 +348,13 @@ const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::lastItem() const
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers)
+{
+    pimpl->jumpToEdge(direction,forceLongJump,modifiers);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 const ItemT* FlyweightListView<ItemT,OrderComparer,IdComparer>::lastViewportItem() const noexcept
 {
     return pimpl->lastViewportItem();

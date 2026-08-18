@@ -262,6 +262,11 @@ class ChatMessagesView : public AbstractChatMessagesView
         void removeMessage(const Id& id);
         void reorderMessage(const Id& id);
 
+        //! Jump to an edge of the message list -- exactly what clicking the JumpEdge control
+        //! does, including its fetch-if-the-loaded-window-is-not-the-true-edge fallback (through
+        //! this view's own RequestEndCb/RequestHomeCb -> onJumpRequested()). See
+        //! FlyweightListView::jumpToEdge()'s own doc comment; use scrollToEdge() instead for a
+        //! purely visual scroll within what is already loaded.
         void jumpToEdge(Direction direction);
 
         Message* message(const Id& id) const;

@@ -373,6 +373,24 @@ class FlyweightListView : public QFrame
         const ItemT* lastItem() const noexcept;
 
         /**
+         * @brief Jump to an edge of the list, fetching beyond the loaded window if needed.
+         * @param direction Which edge.
+         * @param forceLongJump Ask for a real fetch when the loaded window's own edge is not yet
+         *  the true data edge. True (the default) is what the JumpEdge control's own click
+         *  handler uses; false leaves the request to the RequestHomeCb/RequestEndCb consumer's
+         *  own discretion (the Home/End keys pass false, so only Ctrl+Home/Ctrl+End fetch).
+         * @param modifiers Forwarded to the RequestHomeCb/RequestEndCb consumer as-is.
+         *
+         * This is exactly what clicking the JumpEdge control does -- unlike scrollToEdge(), which
+         * is purely visual within whatever is already loaded, this first checks whether the
+         * loaded window's own edge IS the true data edge (maxSortValue()/minSortValue()) and only
+         * falls back to a fetch through RequestEndCb/RequestHomeCb when it isn't. Exposed so a
+         * host can trigger the same behaviour programmatically (e.g. "go to the latest message
+         * after sending one") without reimplementing that decision or reaching into internals.
+         */
+        void jumpToEdge(Direction direction, bool forceLongJump=true, Qt::KeyboardModifiers modifiers={});
+
+        /**
          * @brief Get the first visible item in the viewport.
          * @return First visible item or nullptr if the view is empty.
          */
