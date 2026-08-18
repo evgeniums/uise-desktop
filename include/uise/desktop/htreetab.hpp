@@ -68,6 +68,24 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         bool openPath(HTreePath path);
 
+        /**
+         * @brief Reconstruct \p node in place for \p path instead of destroying it and
+         * creating a fresh node -- see HTreeNode::reconstructFromPath(). \p node must already
+         * be one of this tab's currently open nodes (as returned by nodes()); node type/
+         * contentReloadable/isUnique() eligibility is the caller's responsibility (see
+         * HTreeNode::canReconstructFromPath()) -- this method does not check it again.
+         *
+         * Any node open deeper than \p node in this tab is closed first, exactly as it would
+         * be if \p node itself were being destroyed and replaced. Used both by openPath()'s own
+         * reconstruction shortcut and by HTreeBranch::loadNextNode(), so that a node reached
+         * via a branch's own openNextNode()/openNextNodeInNewTab() slots (e.g. a list item
+         * clicked directly, without going through HTree::openPath()) gets the same in-place
+         * reconstruction opportunity as a path opened through the tab.
+         *
+         * @return false if \p node is not currently open in this tab.
+         */
+        bool reconstructNode(HTreeNode* node, HTreePath path);
+
         HTreeNode* node() const;
         HTreeNode* node(const HTreePath& path, bool exact=true) const;
 

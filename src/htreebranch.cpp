@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QPointer>
+#include <QDebug>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -35,6 +36,17 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreebranch.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+//! Same UISE_HTREE_DEBUG gate as htreetab.cpp's own htreeTabDebug() (anonymous-namespaced
+//! there, so not reusable from this translation unit) -- temporary, added to trace which
+//! branch of loadNextNode() a node-identity change actually takes.
+bool htreeBranchDebug()
+{
+    static bool enabled=qEnvironmentVariableIsSet("UISE_HTREE_DEBUG");
+    return enabled;
+}
+}
 
 /*****************************HTreeBranch************************************/
 
@@ -76,10 +88,34 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement, bool l
             next->setExpanded(true);
             return next;
         }
-        else
+
+        if (next->canReconstructFromPath(pathElement))
         {
-            closeNextNode();
+            // Reuse next in place instead of destroying it and creating a fresh node (see
+            // HTreeNode::reconstructFromPath()'s own doc comment). This is the path taken by a
+            // branch's own openNextNode()/openNextNodeInNewTab() slots -- e.g. a list item
+            // clicked directly -- which never goes through HTreeTab::openPath() at all, so it
+            // needs this same opportunity independently of openPath()'s own reconstruction
+            // shortcut. HTreeTab::reconstructNode() closes anything opened deeper than next and
+            // updates setNextNodeId()/the navbar/tab-level signals itself.
+            bool reconstructed=treeTab()->reconstructNode(next,path().copyAppend(pathElement));
+            if (htreeBranchDebug())
+            {
+                qDebug().noquote() << "loadNextNode reconstruct" << (reconstructed?"OK":"FAILED, falling back to destroy+recreate")
+                                    << "for" << QString::fromStdString(pathElement.uniqueId());
+            }
+            if (reconstructed)
+            {
+                return next;
+            }
         }
+        else if (htreeBranchDebug())
+        {
+            qDebug().noquote() << "loadNextNode: next node not reconstructable, destroying+recreating for"
+                                << QString::fromStdString(pathElement.uniqueId());
+        }
+
+        closeNextNode();
     }
 
     HTreeNode* nextNode=nullptr;

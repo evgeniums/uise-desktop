@@ -111,6 +111,7 @@ class HTreeTab_p
         void truncate(int index);
         void scrollToNode(HTreeNode* node);
         void scrollToEnd();
+        bool reconstructLastNode(int index, HTreePath path);
 };
 
 //--------------------------------------------------------------------------
@@ -379,6 +380,71 @@ void HTreeTab_p::updateLastNode()
         self,
         &HTreeTab::iconUpdated
     );
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab_p::reconstructLastNode(int index, HTreePath path)
+{
+    auto* cand=nodes.at(static_cast<size_t>(index));
+
+    if (htreeTabDebug())
+    {
+        qDebug().noquote() << htreeTabDebugTs() << "reconstructLastNode index" << index
+                            << "from" << QString::fromStdString(cand->path().uniqueId())
+                            << "to" << QString::fromStdString(path.uniqueId());
+    }
+
+    // close/destroy any nodes that were opened deeper than the reconstructed one; a no-op
+    // when there is nothing deeper (see the index guard in HTreeTab_p::truncate())
+    self->truncate(static_cast<int>(path.elements().size()));
+
+    auto lastElement=path.elements().back();
+    cand->reconstructFromPath(std::move(path));
+
+    if (cand->parentNode()!=nullptr)
+    {
+        // HTreeBranch::loadNextNode() compares against this on the next navigation, so it
+        // must track the reconstructed node's new identity or the branch would believe a
+        // stale/wrong node is already open
+        cand->parentNode()->setNextNodeId(lastElement.uniqueId());
+    }
+
+    navbar->blockSignals(true);
+    navbar->setItemId(index,cand->id());
+    navbar->blockSignals(false);
+
+    // cand may or may not still carry the tab-level signal wiring from when it was last
+    // appended (it does if it was never superseded by a deeper node, it doesn't if it was and
+    // that deeper node was just truncated above) - disconnect unconditionally so updateLastNode()
+    // below cannot create a duplicate connection
+    disconnectNode(cand,false);
+    updateLastNode();
+
+    self->emitNodesReconfigured();
+    scrollToNode(cand);
+
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::reconstructNode(HTreeNode* node, HTreePath path)
+{
+    if (node==nullptr)
+    {
+        return false;
+    }
+
+    for (size_t i=0;i<pimpl->nodes.size();i++)
+    {
+        if (pimpl->nodes.at(i)==node)
+        {
+            return pimpl->reconstructLastNode(static_cast<int>(i),std::move(path));
+        }
+    }
+
+    return false;
 }
 
 //--------------------------------------------------------------------------
@@ -678,6 +744,16 @@ bool HTreeTab::openPath(HTreePath path)
         else
         {
             break;
+        }
+    }
+
+    if (truncIndex==static_cast<int>(path.elements().size())-1
+        && pimpl->nodes.size()>=path.elements().size())
+    {
+        auto* cand=pimpl->nodes.at(static_cast<size_t>(truncIndex));
+        if (cand->canReconstructFromPath(path.elements().back()))
+        {
+            return pimpl->reconstructLastNode(truncIndex,std::move(path));
         }
     }
 

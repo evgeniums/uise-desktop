@@ -263,6 +263,7 @@ class HTreeNode_p
         bool closeEnabled=true;
 
         bool unique=false;
+        bool contentReloadable=false;
 
         int prevMinWidth=0;
         int prevMaxWidth=0;
@@ -976,6 +977,54 @@ void HTreeNode::setUnique(bool enable)
 bool HTreeNode::isUnique() const
 {
     return pimpl->unique;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setContentReloadable(bool enable)
+{
+    pimpl->contentReloadable=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isContentReloadable() const
+{
+    return pimpl->contentReloadable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::canReconstructFromPath(const HTreePathElement& el) const
+{
+    if (!isContentReloadable() || isUnique())
+    {
+        return false;
+    }
+
+    auto last=path().last();
+    if (last==nullptr)
+    {
+        return false;
+    }
+
+    return last->type()==el.type();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::reconstructFromPath(HTreePath path)
+{
+    if (!pimpl->widget)
+    {
+        fillContent();
+    }
+
+    setPath(std::move(path));
+    doReconstructFromPath(this->path());
+
+    emit nameUpdated(name());
+    emit tooltipUpdated(nodeTooltip());
 }
 
 //--------------------------------------------------------------------------

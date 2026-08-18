@@ -201,6 +201,40 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setUnique(bool enable);
         bool isUnique() const;
 
+        /**
+         * @brief Enable/disable in-place reconstruction of this node when it is the last node
+         * of a tab's path and the tab is asked to open a path whose last element differs from
+         * this node's, but whose type matches (see canReconstructFromPath()).
+         *
+         * When enabled, HTreeTab::openPath() may call reconstructFromPath() on this node instead
+         * of destroying it and creating a new node. Default is disabled (the traditional
+         * destroy-and-recreate behaviour).
+         */
+        void setContentReloadable(bool enable);
+        bool isContentReloadable() const;
+
+        /**
+         * @brief Check whether this node can be reconstructed in place for the given path
+         * element instead of being destroyed and replaced by a freshly created node.
+         *
+         * Default implementation requires isContentReloadable(), !isUnique() (reconstructed
+         * nodes are never registered in HTreeNodeLocator's unique-node map, so a unique node
+         * changing its id in place would leave that map inconsistent), and that el.type()
+         * matches this node's current path type. Override to add further constraints (e.g.
+         * refuse reconstruction while some transient state is in progress).
+         */
+        virtual bool canReconstructFromPath(const HTreePathElement& el) const;
+
+        /**
+         * @brief Reconstruct this node in place for a new path, without destroying it.
+         *
+         * Fills content first if it was never filled, updates the node's path (see setPath()),
+         * invokes doReconstructFromPath() for subclasses to switch their content to match the
+         * new path, and re-emits nameUpdated()/tooltipUpdated() so dependent UI (tab title,
+         * breadcrumb) follows.
+         */
+        void reconstructFromPath(HTreePath path);
+
         void setNextNodeLocator(HTreeNodeLocator* locator);
         HTreeNodeLocator* nextNodeLocator() const;
 
@@ -278,6 +312,16 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         virtual QWidget* createContentWidget()=0;
 
         virtual void doInit()
+        {}
+
+        /**
+         * @brief Reconstruct this node's content for a new path, invoked by
+         * reconstructFromPath(). The base implementation does nothing; content-owning
+         * subclasses (e.g. a node hosting a stack of pre-built pages) override this to switch
+         * their displayed content to match the new path element. setPath() has already been
+         * called with the new path when this is invoked.
+         */
+        virtual void doReconstructFromPath(const HTreePath&)
         {}
 
         void fillContent();
