@@ -75,6 +75,7 @@ class QrCodeScanner_p
         qrcode::VideoReader* qrCodeReader;
 
         bool initialized=false;
+        bool permissionRequested=false;
         QSize previewSize;
 
         bool barcodeFound=false;
@@ -186,16 +187,6 @@ void QrCodeScanner::construct()
 
     updateCameras();
     connect(&pimpl->devices, &QMediaDevices::videoInputsChanged, this, &QrCodeScanner::updateCameras);
-
-    QTimer::singleShot(
-        100,
-        this,
-        [this]()
-        {
-            start();
-        }
-    );
-
 }
 
 //--------------------------------------------------------------------------
@@ -217,13 +208,23 @@ void QrCodeScanner::init()
     switch (qApp->checkPermission(cameraPermission))
     {
         case Qt::PermissionStatus::Undetermined:
-            qApp->requestPermission(cameraPermission, this, &QrCodeScanner::init);
+            if (pimpl->permissionRequested)
+            {
+                // Already requested once and the OS never resolved it away
+                // from Undetermined (e.g. NSCameraUsageDescription missing
+                // from Info.plist on this build) — requesting again would
+                // just repeat the same outcome forever. Report and stop.
+                emit displayError(tr("Camera permission is not granted!"));
+                return;
+            }
+            pimpl->permissionRequested=true;
+            qApp->requestPermission(cameraPermission, this, &QrCodeScanner::onCameraPermissionResult);
             return;
         case Qt::PermissionStatus::Denied:
             emit displayError(tr("Camera permission is not granted!"));
             return;
         case Qt::PermissionStatus::Granted:
-            pimpl->initialized=true;            
+            pimpl->initialized=true;
             break;
     }
 #endif
@@ -231,6 +232,28 @@ void QrCodeScanner::init()
     setCamera(QMediaDevices::defaultVideoInput());
     start();
 }
+
+//--------------------------------------------------------------------------
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+void QrCodeScanner::onCameraPermissionResult(const QPermission& permission)
+{
+    // Act on the status actually delivered by this request rather than
+    // re-querying qApp->checkPermission() — on some platforms the OS-level
+    // status can remain Undetermined even after the request completes (e.g.
+    // a missing Info.plist usage-description string on macOS), which would
+    // otherwise send init() straight back into requestPermission() forever.
+    if (permission.status() == Qt::PermissionStatus::Granted)
+    {
+        pimpl->initialized=true;
+        setCamera(QMediaDevices::defaultVideoInput());
+        start();
+        return;
+    }
+
+    emit displayError(tr("Camera permission is not granted!"));
+}
+#endif
 
 //--------------------------------------------------------------------------
 

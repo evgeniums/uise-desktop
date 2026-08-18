@@ -30,6 +30,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/frame.hpp>
 
 class QCameraDevice;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+class QPermission;
+#endif
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -128,6 +131,9 @@ class UISE_DESKTOP_EXPORT QrCodeScanner : public AbstractQrCodeScanner
         void onFoundBarcode(const UISE_DESKTOP_NAMESPACE::qrcode::Barcode& barcode);
         void onMissedBarcode();
         void onVideoSizeChanged();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        void onCameraPermissionResult(const QPermission& permission);
+#endif
 
     protected:
 
