@@ -39,14 +39,16 @@ namespace {
 const QSize IconSlotSize{32,32};
 const QSize QuoteIconSize{14,14};
 
-// The geometry below is QSS-driven (see replypreview.qss), but contentWidthHint()/
-// setContentMaxWidth() need to reason about it BEFORE the widget is ever polished (e.g. during
-// the very first bubble-width negotiation pass) -- these constants must therefore be kept in
-// sync with replypreview.qss's #accentBar/#iconSlot/#quoteIcon rules by hand, same as
-// IconSlotSize above mirrors ChatMessageFileItem's own #iconSlot sizing convention.
+// AccentBarWidth/AccentBarSpacing/QuoteIconSpacing mirror QSS geometry (replypreview.qss's
+// #accentBar/#quoteIcon rules) that contentWidthHint()/setContentMaxWidth() need to reason about
+// BEFORE the widget is ever polished (e.g. during the very first bubble-width negotiation pass)
+// -- these must be kept in sync with that QSS by hand, same as IconSlotSize above mirrors
+// ChatMessageFileItem's own #iconSlot sizing convention. IconSlotSpacing is different: it is the
+// fixed width this file itself gives #iconSlotGap in C++ (see the ctor), not QSS-driven at all,
+// so nothing to keep in sync there.
 constexpr int AccentBarWidth=3;
 constexpr int AccentBarSpacing=10;
-constexpr int IconSlotSpacing=12;
+constexpr int IconSlotSpacing=6;
 constexpr int QuoteIconSpacing=4;
 
 // Mirrors uise--AbstractReplyPreview's min-width in replypreview.qss -- folded into
@@ -68,6 +70,10 @@ class ReplyPreview_p
         //! Shown ONLY for a reply to an image message -- see ReplyPreview::isIconSlotVisible().
         QFrame* iconSlot;
         RoundedImage* thumbnail;
+        //! Fixed-width empty gap after iconSlot, shown/hidden together with it -- see
+        //! ReplyPreview::updateIconSlot()'s own comment on why this is a real widget rather than
+        //! a QSS margin on iconSlot.
+        QFrame* iconSlotGap;
 
         QFrame* textColumn;
         QBoxLayout* textColumnLayout;
@@ -112,6 +118,20 @@ ReplyPreview::ReplyPreview(QWidget* parent)
     pimpl->thumbnail->setCornersRadius(6,6);
     pimpl->thumbnail->setImageSize(IconSlotSize);
     pimpl->thumbnail->setGeometry(QRect(QPoint(0,0),IconSlotSize));
+
+    // Reserves IconSlotSpacing as a real layout item, not a QSS margin on iconSlot -- iconSlot
+    // is a setFixedSize() widget, and a QBoxLayout clamps a fixed-size item's occupied geometry
+    // to its literal minimumSize()/maximumSize(), which are pinned equal by setFixedSize() and
+    // so never grow to include a style-sheet margin on top (unlike a widget sized purely from
+    // its own sizeHint(), e.g. ReplyBar's configureButton/cancelButton, where margin-right/
+    // margin-left do work -- see replypreview.qss's own comment on those). This exact pattern --
+    // a dedicated fixed-size gap widget instead of margin on the fixed-size slot -- mirrors
+    // ChatMessageFileItem's #iconSlot/#textColumn convention in chatmessagefiles.qss (margin-
+    // left on #textColumn there, not margin-right on its own fixed-size #iconSlot).
+    pimpl->iconSlotGap=new QFrame(this);
+    pimpl->iconSlotGap->setObjectName("iconSlotGap");
+    pimpl->iconSlotGap->setFixedWidth(IconSlotSpacing);
+    pimpl->layout->addWidget(pimpl->iconSlotGap);
 
     pimpl->textColumn=new QFrame(this);
     pimpl->textColumn->setObjectName("textColumn");
@@ -341,7 +361,19 @@ void ReplyPreview::refresh()
 
     if (showTitle)
     {
-        pimpl->title->setText(pimpl->titleFormat.arg(d.senderTitle(),d.dateTime().toString(pimpl->dateTimeFormat)));
+        // Only substitute the markers the format actually carries: a caller that does not want
+        // the original's datetime shown (a chat bubble's own reply block, vs the editor's reply
+        // bar) sets a title format with %1 alone, and QString::arg() warns on any missing marker.
+        QString title=pimpl->titleFormat;
+        if (title.contains(QLatin1String("%2")))
+        {
+            title=title.arg(d.senderTitle(),d.dateTime().toString(pimpl->dateTimeFormat));
+        }
+        else if (title.contains(QLatin1String("%1")))
+        {
+            title=title.arg(d.senderTitle());
+        }
+        pimpl->title->setText(title);
     }
     // Hide the whole row, not just the label -- otherwise the (still-visible) quote icon would
     // be left floating next to an empty title.
@@ -355,6 +387,29 @@ void ReplyPreview::refresh()
     // why these are two distinct limits.
     auto charLimit=d.isQuote() ? quoteTrimLength() : textTrimLength();
     pimpl->text->setText(deleted ? pimpl->deletedText : trimReplyText(d.text(),charLimit));
+
+    // Turning deleted mid-lifetime (a bubble's placeholder resolving to "not found") would
+    // otherwise shrink this block by a whole row: buildReplySection() deliberately reserves
+    // titleRow's height from construction (its own blank-placeholder seed, see that function's
+    // comment) so the bubble never has to renegotiate width/height once the real title arrives
+    // -- but a DELETED result hides titleRow just like an empty one, throwing that same
+    // reservation away and shrinking the block a moment later, right back into the flicker the
+    // placeholder was meant to prevent. Once deleted, pin textColumn to the same total height
+    // titleRow+text would occupy together (both sizeHints are effectively constants -- fixed
+    // fonts, both labels capped at one line) and center the sole remaining line (deletedText)
+    // in the middle of that reserved space, rather than leaving it pinned to the top with a
+    // now-invisible gap where titleRow used to be.
+    if (deleted)
+    {
+        auto naturalHeight=pimpl->titleRow->sizeHint().height()+pimpl->text->sizeHint().height();
+        pimpl->textColumn->setMinimumHeight(naturalHeight);
+        pimpl->textColumnLayout->setAlignment(pimpl->text,Qt::AlignVCenter);
+    }
+    else
+    {
+        pimpl->textColumn->setMinimumHeight(0);
+        pimpl->textColumnLayout->setAlignment(pimpl->text,Qt::Alignment());
+    }
 
     updateIconSlot();
 
@@ -371,10 +426,12 @@ void ReplyPreview::updateIconSlot()
     if (!isIconSlotVisible())
     {
         pimpl->iconSlot->setVisible(false);
+        pimpl->iconSlotGap->setVisible(false);
         return;
     }
 
     pimpl->iconSlot->setVisible(true);
+    pimpl->iconSlotGap->setVisible(true);
 
     // Scale to PHYSICAL pixels and tag with devicePixelRatio -- same rule as
     // ChatMessageFileItem::updateIconSlot(), required for a sharp brush-texture paint on

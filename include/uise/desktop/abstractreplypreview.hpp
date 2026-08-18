@@ -89,7 +89,9 @@ class UISE_DESKTOP_EXPORT AbstractReplyPreview : public WidgetQFrame
         virtual void clear() =0;
 
         //! Default tr("Reply to %1, %2") -- %1 is data().senderTitle(), %2 is
-        //! data().dateTime() formatted per setDateTimeFormat().
+        //! data().dateTime() formatted per setDateTimeFormat(). %2 is optional: a format with
+        //! %1 alone omits the datetime entirely (only %1 is substituted); a format with neither
+        //! marker is rendered literally.
         virtual void setTitleFormat(const QString& format) =0;
         virtual QString titleFormat() const =0;
 

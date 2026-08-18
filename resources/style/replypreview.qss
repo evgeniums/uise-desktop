@@ -16,11 +16,13 @@ margin-right: 10px;
 }
 
 /* Icon slot: shown ONLY for a reply to an image message (its thumbnail) -- see
-   ReplyPreview::isIconSlotVisible(). Hidden entirely otherwise, including deleted. */
+   ReplyPreview::isIconSlotVisible(). Hidden entirely otherwise, including deleted. The gap
+   after it (#iconSlotGap, same IconSlotSpacing width) is a real widget, not a margin here --
+   iconSlot is fixed-size, and a QBoxLayout ignores style-sheet margin on a fixed-size item, see
+   ReplyPreview's own ctor comment on #iconSlotGap. */
 uise--AbstractReplyPreview #iconSlot {
 padding: 0;
 margin: 0;
-margin-right: 12px;
 }
 
 uise--AbstractReplyPreview #titleRow {
