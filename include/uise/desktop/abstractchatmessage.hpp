@@ -314,6 +314,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          */
         virtual void setCopyable(bool enable) {std::ignore=enable;}
 
+        /**
+         * @brief Select the first occurrence of `text` within this body's own content, if any.
+         * @param text Text to find and select -- typically a quote already picked once (e.g. a
+         *  message context menu's "Quote and reply"), being re-applied to a fresh preview of the
+         *  same message (e.g. AbstractReplyDialog's own static bubble) so the dialog opens with
+         *  that same fragment already highlighted instead of nothing selected.
+         *
+         * No-op by default -- a body with no selectable content at all never overrides this; a
+         * text body overrides it to search its own rendered plain text. Best-effort: silently
+         * does nothing if `text` isn't found (e.g. content changed since the quote was picked).
+         */
+        virtual void selectText(const QString& /*text*/) {}
+
     signals:
 
         //! Never emitted by the base class -- a body with genuine text selection (e.g.

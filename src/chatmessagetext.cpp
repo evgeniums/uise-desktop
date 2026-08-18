@@ -336,4 +336,22 @@ void ChatMessageText::setCopyable(bool enable)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageText::selectText(const QString& text)
+{
+    if (text.isEmpty())
+    {
+        return;
+    }
+    auto cursor=pimpl->text->document()->find(text);
+    if (cursor.isNull())
+    {
+        // Not found -- e.g. the quote was picked before an edit changed this text. Best-effort,
+        // see this method's own doc comment (abstractchatmessage.hpp): silently do nothing.
+        return;
+    }
+    pimpl->text->setTextCursor(cursor);
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

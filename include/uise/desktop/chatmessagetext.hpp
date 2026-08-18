@@ -122,6 +122,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         void setCopyable(bool enable) override;
 
+        void selectText(const QString& text) override;
+
     protected:
 
         void updateChatMessage() override;
