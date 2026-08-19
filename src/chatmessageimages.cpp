@@ -62,6 +62,21 @@ constexpr int PlaceholderTileExtent=100;
 // floored at minTile and would otherwise show the image centred on a padded canvas.
 constexpr qreal TileMaxUpscale=2.0;
 
+// Whether the comment section takes part in this body's geometry.
+//
+// Deliberately isHidden() rather than isVisible(): isVisible() is false for every widget whose
+// ancestors are not shown yet, which is exactly the state a chat message is in while the
+// flyweight list builds and measures it off-screen. Asked then, isVisible() says "no comment" and
+// the body reports a sizeHint() with no room for it at all, so the comment ends up overlapping
+// whatever sits below the album until some later relayout happens to run while the message is on
+// screen. isHidden() is the widget's own explicit show/hide state, independent of its ancestors,
+// and is exactly what QWidgetItem::isEmpty() consults to make the same decision inside a real
+// QLayout -- i.e. what ChatMessageFiles gets for free from its QVBoxLayout.
+inline bool commentShown(const ChatMessageText* comment)
+{
+    return comment!=nullptr && !comment->isHidden();
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -399,7 +414,7 @@ void ChatMessageImages::layoutChildren()
         }
     }
 
-    if (pimpl->comment!=nullptr && pimpl->comment->isVisible())
+    if (commentShown(pimpl->comment))
     {
         auto h=pimpl->comment->sizeHint().height();
         pimpl->comment->setGeometry(cr.x(),cr.y()+pimpl->gridSize.height(),cr.width(),h);
@@ -437,7 +452,19 @@ ChatMessageText* ChatMessageImages::ensureComment()
         pimpl->comment->setVisible(false);
         if (chatMessage()!=nullptr)
         {
+            // AbstractChatMessageChild::setChatMessage() reparents the comment onto
+            // chatMessage() as a side effect -- put it straight back under this widget, exactly
+            // as updateChatMessage() does for an already-existing comment. Without this the
+            // comment is left as a direct child of the MESSAGE widget while layoutChildren()
+            // keeps positioning it in THIS widget's coordinate space, so it lands somewhere over
+            // the message instead of below the album. This is the normal path, not an edge case:
+            // the body is wired into the content (and so given its chatMessage()) by
+            // setWidgets() before setComment() ever runs, so the very first ensureComment()
+            // always takes this branch. ChatMessageFiles never hit this because it creates its
+            // comment in the constructor -- before any chatMessage exists -- and its
+            // updateChatMessage() re-adds it to the body's own QLayout afterwards.
             pimpl->comment->setChatMessage(chatMessage());
+            pimpl->comment->setParent(this);
         }
         if (chatContent()!=nullptr)
         {
@@ -627,7 +654,7 @@ QSize ChatMessageImages::sizeHint() const
 
     int width=pimpl->gridSize.width();
     int height=pimpl->gridSize.height();
-    if (pimpl->comment!=nullptr && pimpl->comment->isVisible())
+    if (commentShown(pimpl->comment))
     {
         auto commentSize=pimpl->comment->sizeHint();
         width=std::max(width,commentSize.width());
