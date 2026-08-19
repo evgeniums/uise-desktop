@@ -113,6 +113,13 @@ min-width: 90px;
 qproperty-narrowBodyWidth: 200;
 }
 
+/* Hard cap on rendered text width -- a bubble that fills a wide window produces unreadably long
+ * lines. Matches ChatMessageText both as a message body and as the comment inside an image album
+ * or file list; 0 disables the cap. The album/file rows themselves are not affected. */
+uise--AbstractChatMessageText {
+qproperty-maxBubbleWidth: 600;
+}
+
 uise--AbstractChatMessage {
 qproperty-selectorPositionLeft: false;
 min-width: 400px;

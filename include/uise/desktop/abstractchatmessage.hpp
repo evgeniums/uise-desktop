@@ -832,13 +832,45 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
 {
     Q_OBJECT
 
+    Q_PROPERTY(int maxBubbleWidth READ maxBubbleWidth WRITE setMaxBubbleWidth)
+
     public:
+
+        constexpr static const int DefaultMaxBubbleWidth=600;
 
         using AbstractChatMessageBody::AbstractChatMessageBody;
 
         virtual void loadText(const QString& text, bool markdown=true) =0;
 
         virtual void clearText() =0;
+
+        //! Hard cap on the width of rendered text, regardless of how much room the view offers --
+        //! long lines are hard to read in a wide window. 0 disables the cap. Settable from QSS
+        //! via qproperty-maxBubbleWidth (see chat.qss). A plain setter like
+        //! AbstractChatMessageBottom::setNarrowBodyWidth(): changing it after the first layout
+        //! takes effect on the next negotiation pass, or immediately via
+        //! chatContent()->renegotiateBubbleWidth().
+        void setMaxBubbleWidth(int width) noexcept
+        {
+            m_maxBubbleWidth=width;
+        }
+
+        int maxBubbleWidth() const noexcept
+        {
+            return m_maxBubbleWidth;
+        }
+
+    protected:
+
+        //! Clamp a negotiation budget by maxBubbleWidth(), pass-through when the cap is disabled.
+        int clampToMaxBubbleWidth(int width) const noexcept
+        {
+            return (m_maxBubbleWidth>0 && width>m_maxBubbleWidth) ? m_maxBubbleWidth : width;
+        }
+
+    private:
+
+        int m_maxBubbleWidth=DefaultMaxBubbleWidth;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame

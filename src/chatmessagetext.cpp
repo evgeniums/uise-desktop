@@ -296,10 +296,15 @@ void ChatMessageText::adjustWrapWidth(int& value, bool add)
 
 int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 {
+    auto wrapWidth=clampToMaxBubbleWidth(forMaxWidth);
     auto t=const_cast<ChatMessageTextBrowser*>(pimpl->text);
-    t->setLineWrapColumnOrWidth(forMaxWidth);
+    t->setLineWrapColumnOrWidth(wrapWidth);
     pimpl->text->updateSize();
     auto w=static_cast<int>(t->document()->idealWidth());
+    if (w>wrapWidth)
+    {
+        w=wrapWidth;
+    }
     return w;
 }
 
@@ -307,7 +312,7 @@ int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 
 void ChatMessageText::updateMaximumBubbleWidth()
 {
-    auto wrapWidth=chatContent()->maximumBubbleWidth();
+    auto wrapWidth=clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth());
     pimpl->text->setLineWrapColumnOrWidth(wrapWidth);
     pimpl->text->updateSize();
 }
