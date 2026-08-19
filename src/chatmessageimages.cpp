@@ -366,6 +366,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                         case (ChatFileMenuAction::Cancel):
                             emit cancelRequested(id);
                             break;
+
+                        case (ChatFileMenuAction::Download):
+                            emit downloadRequested(id);
+                            break;
                     }
                 }
             );

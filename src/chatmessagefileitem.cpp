@@ -92,6 +92,12 @@ class ChatMessageFileItem_p
 
         bool dragEnabled=true;
         DragGesture dragGesture;
+
+        //! Set by the current handleDragPress() call -- whether THIS press originated on
+        //! fileIcon/nameLabel/imagePreview (via eventFilter()) rather than on the row's own
+        //! background/other children (via mousePressEvent()). Read back by handleDragRelease()
+        //! to gate clicked(); see handleDragPress()'s own doc comment (chatmessagefileitem.hpp).
+        bool pressedOnClickTarget=false;
 };
 
 //--------------------------------------------------------------------------
@@ -319,7 +325,10 @@ bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
                 auto me=static_cast<QMouseEvent*>(event);
                 if (me->button()==Qt::LeftButton)
                 {
-                    handleDragPress(child->mapTo(this,me->pos()));
+                    // isClickTarget=true -- this filter only ever runs for fileIcon/nameLabel/
+                    // imagePreview (see the obj== check above), the three widgets a plain click
+                    // is actually meant to open.
+                    handleDragPress(child->mapTo(this,me->pos()),true);
                     return true;
                 }
                 break;
@@ -356,11 +365,16 @@ bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageFileItem::handleDragPress(const QPoint& pos)
+void ChatMessageFileItem::handleDragPress(const QPoint& pos, bool isClickTarget)
 {
+    pimpl->pressedOnClickTarget=isClickTarget;
+
     if (!pimpl->dragEnabled)
     {
-        emit clicked();
+        if (isClickTarget)
+        {
+            emit clicked();
+        }
         return;
     }
 
@@ -392,7 +406,13 @@ void ChatMessageFileItem::handleDragRelease()
         return;
     }
 
-    if (pimpl->dragGesture.releaseIsClick())
+    // isClickTarget-gated: per AbstractChatMessageFiles::itemClicked's own contract
+    // ("icon/preview or file name"), a plain click landing anywhere ELSE on the row (its own
+    // background, or a leaked/unaccepted event from a child like menuButton -- see
+    // handleDragPress()'s own doc comment, chatmessagefileitem.hpp) must not open the file.
+    // The drag gesture itself is still tracked from anywhere on the row regardless (see
+    // dragGesture.reset() below, unconditional) -- only the click emission is scoped.
+    if (pimpl->dragGesture.releaseIsClick() && pimpl->pressedOnClickTarget)
     {
         emit clicked();
     }
@@ -405,7 +425,12 @@ void ChatMessageFileItem::mousePressEvent(QMouseEvent* event)
 {
     if (event->button()==Qt::LeftButton)
     {
-        handleDragPress(event->pos());
+        // isClickTarget=false -- a press reaching the frame's own handler landed on the row's
+        // background or on a child that doesn't route through eventFilter() above (e.g.
+        // menuButton, if its own accept() were ever missing) -- still a valid drag-gesture
+        // start (see handleDragPress()'s own doc comment), but never a click that opens the
+        // file.
+        handleDragPress(event->pos(),false);
         event->accept();
         return;
     }

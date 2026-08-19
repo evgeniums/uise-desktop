@@ -201,7 +201,16 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         //! (for presses landing on fileIcon/nameLabel/imagePreview, mapped to this widget's own
         //! coordinates) so the whole row -- background and every child alike -- is one drag
         //! handle driven by a single DragGesture.
-        void handleDragPress(const QPoint& pos);
+        //!
+        //! isClickTarget (handleDragPress() only) is true ONLY for the eventFilter() call sites
+        //! (fileIcon/nameLabel/imagePreview) -- it gates whether a plain (non-dragged) release
+        //! emits clicked() in handleDragRelease(). Per AbstractChatMessageFiles::itemClicked's
+        //! own contract ("icon/preview or file name"), a press starting on the row's background
+        //! or on a child that isn't one of those three (e.g. menuButton, before its own
+        //! mousePressEvent() started accepting its events) must still arm/track the drag
+        //! gesture -- the whole row is one drag handle -- but must NOT open the file on a plain
+        //! click there.
+        void handleDragPress(const QPoint& pos, bool isClickTarget);
         void handleDragMove(const QPoint& pos);
         void handleDragRelease();
 

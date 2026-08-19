@@ -15,7 +15,8 @@
                 "pause" : "${uise-svg-icons-1}/player-pause",
                 "resume" : "${uise-svg-icons-1}/player-play",
                 "retry" : "${uise-svg-icons-1}/refresh",
-                "cancel" : "${uise-svg-icons-1}/x"
+                "cancel" : "${uise-svg-icons-1}/x",
+                "download" : "${uise-svg-icons-1}/arrow-big-down"
             }
         }
     ]

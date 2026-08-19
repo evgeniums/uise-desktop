@@ -193,6 +193,10 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
         {
             continue;
         }
+        if (action==ChatFileMenuAction::Download && item.state()!=ChatFileTransferState::NotLoaded)
+        {
+            continue;
+        }
 
         QString text;
         QString alias;
@@ -268,6 +272,14 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                     ? QCoreApplication::translate("ChatFileItem","Cancel downloading")
                     : QCoreApplication::translate("ChatFileItem","Cancel sending");
                 alias=QStringLiteral("cancel");
+                break;
+
+            case (ChatFileMenuAction::Download):
+                // No incoming/outgoing split, unlike every action above -- NotLoaded (the
+                // only state this entry appears for, per the gate above) never occurs for an
+                // outgoing item, so there is no "outgoing" wording to write.
+                text=QCoreApplication::translate("ChatFileItem","Download");
+                alias=QStringLiteral("download");
                 break;
         }
 

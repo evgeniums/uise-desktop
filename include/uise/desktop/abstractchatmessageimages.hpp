@@ -130,6 +130,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
         void pauseRequested(const QUuid& id);
         void resumeRequested(const QUuid& id);
         void cancelRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted for ChatFileMenuAction::Download -- start a fresh download for an
+         *  item that has never been attempted (state() NotLoaded). Distinct from
+         *  resumeRequested(), which addresses an existing paused/failed transfer.
+         */
+        void downloadRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

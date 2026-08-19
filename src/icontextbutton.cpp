@@ -328,6 +328,14 @@ void IconTextButton::mousePressEvent(QMouseEvent* event)
     if (event->button()==Qt::LeftButton)
     {
         m_pressed=true;
+        // Claim the press -- otherwise an unaccepted QMouseEvent auto-propagates to the
+        // parent widget chain (Qt::WA_NoMousePropagation is off by default; DropdownFrame
+        // relies on the same mechanism, see dropdownframe.cpp's own setAttribute() call).
+        // Without this, a button embedded in a click-sensitive parent (e.g.
+        // ChatMessageFileItem's own menuButton) leaks its press up to the parent's
+        // mousePressEvent(), which then treats it as a click on the PARENT too.
+        event->accept();
+        return;
     }
     QFrame::mousePressEvent(event);
 }
@@ -343,6 +351,11 @@ void IconTextButton::mouseReleaseEvent(QMouseEvent* event)
         {
             click();
         }
+        // See mousePressEvent()'s identical comment -- the release must be claimed here too,
+        // or it leaks to the parent right after this button already acted on it (opening its
+        // own dropdown), double-firing whatever the parent's own release handler does.
+        event->accept();
+        return;
     }
     QFrame::mouseReleaseEvent(event);
 }
