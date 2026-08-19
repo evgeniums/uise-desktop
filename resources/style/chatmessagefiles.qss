@@ -23,6 +23,7 @@ margin:0;
 uise--ChatMessageFileItem #textColumn {
 padding:0;
 margin-left:8px;
+margin-right:8px;
 }
 
 /* same left edge as nameLabel above it -- no margin-left of its own, so the two lines stay
