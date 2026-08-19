@@ -65,6 +65,7 @@ SET (HEADERS
     include/uise/desktop/utils/pixmapscale.hpp
     include/uise/desktop/utils/albumlayout.hpp
     include/uise/desktop/utils/mimedatautils.hpp
+    include/uise/desktop/utils/dragsource.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -275,6 +276,7 @@ SET (SOURCES
     src/singleshottimer.cpp
     src/directchildwidget.cpp
     src/mimedatautils.cpp
+    src/dragsource.cpp
     src/alignedstretchingwidget.cpp
     src/editablelabel.cpp
     src/style.cpp

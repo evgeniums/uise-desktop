@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
+#include <QList>
+#include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/chatfileitem.hpp>
@@ -139,12 +141,41 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
 
         bool menuButtonVisibleOnHover() const noexcept;
 
+        /**
+         * @brief Set whether pressing and dragging the preview past the drag threshold starts
+         *  an outgoing file drag (see startDrag()) instead of a click. Default true.
+         */
+        void setDragEnabled(bool enable);
+
+        bool isDragEnabled() const noexcept;
+
+        /**
+         * @brief Start an outgoing QDrag carrying urls, using this tile's own preview image as
+         *  the drag pixmap. Called by the owner (ChatMessageImages) once it has resolved the
+         *  urls for dragStartRequested() -- this tile never resolves its own content.
+         */
+        void startDrag(const QList<QUrl>& urls);
+
     signals:
 
         /**
          * @brief Emitted when the preview is clicked.
          */
         void clicked();
+
+        /**
+         * @brief Emitted on press, before it is known whether the gesture turns into a drag or
+         *  a click -- the owner's cue to start resolving/exporting this tile's content so it is
+         *  ready by the time dragStartRequested() (if any) arrives.
+         */
+        void dragPrepareRequested();
+
+        /**
+         * @brief Emitted once the press has moved past the drag threshold. The owner is
+         *  expected to call startDrag() with whatever urls dragPrepareRequested() resolved, or
+         *  do nothing if they are not ready yet.
+         */
+        void dragStartRequested();
 
         /**
          * @brief Emitted when the load control is clicked in any state but Running -- see

@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/loadcontrolmenu.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/pixmapscale.hpp>
+#include <uise/desktop/utils/dragsource.hpp>
 #include <uise/desktop/chatmessageimageitem.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -179,6 +180,8 @@ class ChatMessageImageItem_p
         //! this tile has no dependency on albumlayout.hpp at all, only on whatever concrete
         //! value its owner pushes through setMaxUpscale().
         qreal maxUpscale=2.0;
+
+        bool dragEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -209,7 +212,10 @@ ChatMessageImageItem::ChatMessageImageItem(QWidget* parent)
     // than left to whatever ImageLabel's default happens to be.
     pimpl->preview->setCacheFrames(false);
     pimpl->preview->setPauseWhenWindowInactive(true);
+    pimpl->preview->setDragEnabled(pimpl->dragEnabled);
     connect(pimpl->preview,&ImageLabel::clicked,this,&ChatMessageImageItem::clicked);
+    connect(pimpl->preview,&ImageLabel::dragPrepareRequested,this,&ChatMessageImageItem::dragPrepareRequested);
+    connect(pimpl->preview,&ImageLabel::dragStartRequested,this,&ChatMessageImageItem::dragStartRequested);
 
     // The load control overlay, the menu button and its drop-down are all created lazily on
     // demand (see ensureLoadControl()/ensureMenuButton()) -- a transferred, never-hovered tile
@@ -387,6 +393,35 @@ void ChatMessageImageItem::setMenuButtonVisibleOnHover(bool enable)
 bool ChatMessageImageItem::menuButtonVisibleOnHover() const noexcept
 {
     return pimpl->menuButtonVisibleOnHover;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::setDragEnabled(bool enable)
+{
+    pimpl->dragEnabled=enable;
+    pimpl->preview->setDragEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImageItem::isDragEnabled() const noexcept
+{
+    return pimpl->dragEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::startDrag(const QList<QUrl>& urls)
+{
+    // A placeholder is a stand-in for content that hasn't resolved yet -- not worth using as a
+    // drag pixmap; Qt's own default drag cursor is a better signal than a blurry placeholder.
+    QPixmap preview;
+    if (!pimpl->item.isPreviewPlaceholder() && !pimpl->item.preview().isNull())
+    {
+        preview=scaledToFit(QPixmap::fromImage(pimpl->item.preview()),QSize(160,160));
+    }
+    startFileUrlDrag(this,urls,preview);
 }
 
 //--------------------------------------------------------------------------

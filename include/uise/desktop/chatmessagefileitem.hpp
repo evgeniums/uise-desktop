@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <memory>
 
 #include <QFrame>
+#include <QList>
+#include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/chatfileitem.hpp>
@@ -120,12 +122,41 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          */
         void closeMenu();
 
+        /**
+         * @brief Set whether pressing anywhere on the row and dragging past the drag threshold
+         *  starts an outgoing file drag (see startDrag()) instead of a click. Default true.
+         */
+        void setDragEnabled(bool enable);
+
+        bool isDragEnabled() const noexcept;
+
+        /**
+         * @brief Start an outgoing QDrag carrying urls, using this row's own icon/preview as
+         *  the drag pixmap. Called by the owner (ChatMessageFiles) once it has resolved the
+         *  urls for dragStartRequested() -- this row never resolves its own content.
+         */
+        void startDrag(const QList<QUrl>& urls);
+
     signals:
 
         /**
          * @brief Emitted when the file name or the icon/preview is clicked.
          */
         void clicked();
+
+        /**
+         * @brief Emitted on press, before it is known whether the gesture turns into a drag or
+         *  a click -- the owner's cue to start resolving/exporting this row's content so it is
+         *  ready by the time dragStartRequested() (if any) arrives.
+         */
+        void dragPrepareRequested();
+
+        /**
+         * @brief Emitted once the press has moved past the drag threshold. The owner is
+         *  expected to call startDrag() with whatever urls dragPrepareRequested() resolved, or
+         *  do nothing if they are not ready yet.
+         */
+        void dragStartRequested();
 
         /**
          * @brief Emitted when the load control is clicked in any state but Running -- see
@@ -156,11 +187,23 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+
     private:
 
         void rebuildMenu();
         void updateIconSlot();
         void updateInfoLabels();
+
+        //! Shared by mousePressEvent()/mouseMoveEvent()/mouseReleaseEvent() and eventFilter()
+        //! (for presses landing on fileIcon/nameLabel/imagePreview, mapped to this widget's own
+        //! coordinates) so the whole row -- background and every child alike -- is one drag
+        //! handle driven by a single DragGesture.
+        void handleDragPress(const QPoint& pos);
+        void handleDragMove(const QPoint& pos);
+        void handleDragRelease();
 
         //! Create the load control overlay on first use -- see loadControl()'s doc comment.
         //! const so the loadControl() accessor can call it directly: constness does not

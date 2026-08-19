@@ -82,6 +82,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         void setAnimationMode(ImageLabel::AnimationMode mode) override;
         ImageLabel::AnimationMode animationMode() const override;
 
+        void startItemDrag(const QUuid& id, const QList<QUrl>& urls) override;
+
         void clearContentSelection() override;
 
         QString selectedText() const override;

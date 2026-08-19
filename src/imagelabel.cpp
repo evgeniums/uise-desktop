@@ -460,6 +460,17 @@ void ImageLabel::mousePressEvent(QMouseEvent* event)
 {
     if (m_clickable && event->button()==Qt::LeftButton)
     {
+        if (m_dragEnabled)
+        {
+            // Accept the press instead of emitting clicked() right away -- a release only
+            // reaches the widget that accepted the press, so this is what makes
+            // mouseMoveEvent()/mouseReleaseEvent() below see the rest of the gesture.
+            m_dragGesture.press(event->pos());
+            emit dragPrepareRequested();
+            event->accept();
+            return;
+        }
+
         emit clicked();
         if (m_animator->animationMode()==AnimationMode::Manual)
         {
@@ -467,6 +478,43 @@ void ImageLabel::mousePressEvent(QMouseEvent* event)
         }
     }
     RoundedImage::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageLabel::mouseMoveEvent(QMouseEvent* event)
+{
+    if (m_dragEnabled && m_dragGesture.isArmed() && (event->buttons() & Qt::LeftButton))
+    {
+        if (m_dragGesture.movedPastThreshold(event->pos()))
+        {
+            emit dragStartRequested();
+        }
+        event->accept();
+        return;
+    }
+    RoundedImage::mouseMoveEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageLabel::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (m_dragEnabled && m_clickable && event->button()==Qt::LeftButton && m_dragGesture.isArmed())
+    {
+        if (m_dragGesture.releaseIsClick())
+        {
+            emit clicked();
+            if (m_animator->animationMode()==AnimationMode::Manual)
+            {
+                togglePlay();
+            }
+        }
+        m_dragGesture.reset();
+        event->accept();
+        return;
+    }
+    RoundedImage::mouseReleaseEvent(event);
 }
 
 //--------------------------------------------------------------------------

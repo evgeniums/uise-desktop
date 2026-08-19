@@ -371,6 +371,8 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
             );
             connect(tile,&ChatMessageImageItem::pauseRequested,this,[this,tile](){emit pauseRequested(tile->item().id());});
             connect(tile,&ChatMessageImageItem::cancelRequested,this,[this,tile](){emit cancelRequested(tile->item().id());});
+            connect(tile,&ChatMessageImageItem::dragPrepareRequested,this,[this,tile](){emit dragPrepareRequested(tile->item().id());});
+            connect(tile,&ChatMessageImageItem::dragStartRequested,this,[this,tile](){emit dragStartRequested(tile->item().id());});
 
             pimpl->tiles.push_back(tile);
 
@@ -559,6 +561,25 @@ void ChatMessageImages::setAnimationMode(ImageLabel::AnimationMode mode)
 ImageLabel::AnimationMode ChatMessageImages::animationMode() const
 {
     return pimpl->animationMode;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
+{
+    // Same linear scan as updateItem() -- tiles are only recreated when the item count changes
+    // (rebuildGrid()), so pimpl->tiles[i] is the right tile for pimpl->items[i] at any given time.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        if (pimpl->items[i].id()==id)
+        {
+            if (i<pimpl->tiles.size())
+            {
+                pimpl->tiles[i]->startDrag(urls);
+            }
+            return;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

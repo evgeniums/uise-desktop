@@ -27,6 +27,8 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGEFILES_HPP
 
 #include <QUuid>
+#include <QList>
+#include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
@@ -83,6 +85,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
 
         virtual Qt::Alignment textVerticalAlignment() const =0;
 
+        /**
+         * @brief Start an outgoing QDrag for one item, carrying urls.
+         * @param id Id of the item to drag (see ChatFileItem::id()).
+         * @param urls Local file URLs already resolved by the host -- this call does not
+         *  resolve/export/decrypt anything itself, see dragStartRequested().
+         *
+         * Called by the host once it has resolved urls for that item's dragStartRequested().
+         * A no-op if no item with this id is present.
+         */
+        virtual void startItemDrag(const QUuid& id, const QList<QUrl>& urls) =0;
+
     signals:
 
         /**
@@ -91,6 +104,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
         void itemClicked(const QUuid& id);
 
         void loadControlClicked(const QUuid& id);
+
+        /**
+         * @brief Emitted on press, before it is known whether the gesture turns into a drag or
+         *  a click -- the host's cue to start resolving/exporting this item's content so it is
+         *  ready by the time dragStartRequested() (if any) arrives.
+         */
+        void dragPrepareRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted once the press has moved past the drag threshold. The host is expected
+         *  to call startItemDrag() with whatever urls dragPrepareRequested() resolved, or do
+         *  nothing if they are not ready yet.
+         */
+        void dragStartRequested(const QUuid& id);
 
         void openRequested(const QUuid& id);
         void openWithRequested(const QUuid& id);

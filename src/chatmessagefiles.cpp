@@ -154,6 +154,8 @@ void ChatMessageFiles::rebuildList()
         auto id=item.id();
         connect(row,&ChatMessageFileItem::clicked,this,[this,id](){emit itemClicked(id);});
         connect(row,&ChatMessageFileItem::loadControlClicked,this,[this,id](){emit loadControlClicked(id);});
+        connect(row,&ChatMessageFileItem::dragPrepareRequested,this,[this,id](){emit dragPrepareRequested(id);});
+        connect(row,&ChatMessageFileItem::dragStartRequested,this,[this,id](){emit dragStartRequested(id);});
         connect(row,&ChatMessageFileItem::menuTriggered,this,
             [this,id](int action)
             {
@@ -297,6 +299,25 @@ void ChatMessageFiles::setTextVerticalAlignment(Qt::Alignment alignment)
 Qt::Alignment ChatMessageFiles::textVerticalAlignment() const
 {
     return pimpl->textVerticalAlignment;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
+{
+    // Same linear scan as updateItem() -- items and rows are only kept in step by
+    // rebuildList(), see its own comment.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        if (pimpl->items[i].id()==id)
+        {
+            if (i<pimpl->rows.size())
+            {
+                pimpl->rows[i]->startDrag(urls);
+            }
+            return;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

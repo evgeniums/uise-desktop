@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/imageanimator.hpp>
+#include <uise/desktop/utils/dragsource.hpp>
 
 class QResizeEvent;
 class QShowEvent;
@@ -227,6 +228,22 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
             return m_clickable;
         }
 
+        //! Set whether pressing and moving past the drag threshold starts an outgoing drag
+        //! gesture instead of a plain click -- see dragPrepareRequested()/dragStartRequested().
+        //! Default false, so every existing clickable() consumer (ImagePreviewStrip,
+        //! ChatMessageImageItem's own click-to-open-viewer) keeps emitting clicked() on press,
+        //! unchanged. A release only reaches the widget that accepted the press, so this and
+        //! click-on-release are one switch, not two.
+        void setDragEnabled(bool enable) noexcept
+        {
+            m_dragEnabled=enable;
+        }
+
+        bool isDragEnabled() const noexcept
+        {
+            return m_dragEnabled;
+        }
+
         //! Get the still (first) frame rendered for the current widget size, null when no content is loaded.
         QPixmap stillFrame() const
         {
@@ -271,8 +288,20 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
 
     signals:
 
-        //! Emitted on left mouse button press when isClickable() is true.
+        //! Emitted on left mouse button release when isClickable() is true -- on press when
+        //! isDragEnabled() is false (legacy behaviour), on a plain release-without-drag when
+        //! isDragEnabled() is true.
         void clicked();
+
+        //! Emitted on left mouse button press when isDragEnabled() is true -- the earliest
+        //! point a caller can start resolving/exporting the dragged content, before it is known
+        //! whether the press turns into a drag or a click.
+        void dragPrepareRequested();
+
+        //! Emitted once the press has moved past the drag threshold, when isDragEnabled() is
+        //! true. The caller is expected to start a QDrag (startFileUrlDrag()) if the content
+        //! prepared since dragPrepareRequested() is ready, or do nothing otherwise.
+        void dragStartRequested();
 
         //! Emitted whenever the effective running state of the animation changes.
         void playingChanged(bool playing);
@@ -299,6 +328,8 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
         void changeEvent(QEvent* event) override;
 
     private slots:
@@ -328,6 +359,8 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
         bool m_clickable;
         bool m_frameDirty;
         qreal m_contentOpacity=1.0;
+        bool m_dragEnabled=false;
+        DragGesture m_dragGesture;
 };
 
 UISE_DESKTOP_NAMESPACE_END

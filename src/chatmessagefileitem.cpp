@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/filesizeformat.hpp>
 #include <uise/desktop/utils/filetypeicon.hpp>
 #include <uise/desktop/utils/pixmapscale.hpp>
+#include <uise/desktop/utils/dragsource.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/avatar.hpp>
@@ -88,6 +89,9 @@ class ChatMessageFileItem_p
         //! (one svg-icon lookup per entry) from every refresh() call to only rows whose menu is
         //! actually opened.
         bool menuDirty=true;
+
+        bool dragEnabled=true;
+        DragGesture dragGesture;
 };
 
 //--------------------------------------------------------------------------
@@ -117,9 +121,12 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     pimpl->imagePreview->setAutoSize(false);
     pimpl->imagePreview->setImageSize(IconSlotSize);
     pimpl->imagePreview->setGeometry(QRect(QPoint(0,0),IconSlotSize));
-    pimpl->imagePreview->setClickable(true);
+    // Not clickable itself -- its clicks are now routed through this row's own event filter
+    // below, alongside fileIcon/nameLabel, so a press on it can also arm the drag gesture. A
+    // pure gating flag, no visual effect (avatar.hpp).
+    pimpl->imagePreview->setClickable(false);
     pimpl->imagePreview->setCursor(Qt::PointingHandCursor);
-    connect(pimpl->imagePreview,&AvatarWidget::clicked,this,&ChatMessageFileItem::clicked);
+    pimpl->imagePreview->installEventFilter(this);
 
     // The load control overlay is created lazily on first use (see ensureLoadControl()) -- an
     // already-transferred row never needs it, and this row lives in a chat message list where
@@ -302,15 +309,154 @@ void ChatMessageFileItem::closeMenu()
 
 bool ChatMessageFileItem::eventFilter(QObject* obj, QEvent* event)
 {
-    if ((obj==pimpl->fileIcon || obj==pimpl->nameLabel) && event->type()==QEvent::MouseButtonPress)
+    if (obj==pimpl->fileIcon || obj==pimpl->nameLabel || obj==pimpl->imagePreview)
     {
-        auto me=static_cast<QMouseEvent*>(event);
-        if (me->button()==Qt::LeftButton)
+        auto* child=qobject_cast<QWidget*>(obj);
+        switch (event->type())
         {
-            emit clicked();
+            case (QEvent::MouseButtonPress):
+            {
+                auto me=static_cast<QMouseEvent*>(event);
+                if (me->button()==Qt::LeftButton)
+                {
+                    handleDragPress(child->mapTo(this,me->pos()));
+                    return true;
+                }
+                break;
+            }
+
+            case (QEvent::MouseMove):
+            {
+                auto me=static_cast<QMouseEvent*>(event);
+                if (me->buttons() & Qt::LeftButton)
+                {
+                    handleDragMove(child->mapTo(this,me->pos()));
+                    return true;
+                }
+                break;
+            }
+
+            case (QEvent::MouseButtonRelease):
+            {
+                auto me=static_cast<QMouseEvent*>(event);
+                if (me->button()==Qt::LeftButton)
+                {
+                    handleDragRelease();
+                    return true;
+                }
+                break;
+            }
+
+            default:
+                break;
         }
     }
     return QFrame::eventFilter(obj,event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::handleDragPress(const QPoint& pos)
+{
+    if (!pimpl->dragEnabled)
+    {
+        emit clicked();
+        return;
+    }
+
+    pimpl->dragGesture.press(pos);
+    emit dragPrepareRequested();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::handleDragMove(const QPoint& pos)
+{
+    if (!pimpl->dragEnabled || !pimpl->dragGesture.isArmed())
+    {
+        return;
+    }
+
+    if (pimpl->dragGesture.movedPastThreshold(pos))
+    {
+        emit dragStartRequested();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::handleDragRelease()
+{
+    if (!pimpl->dragEnabled || !pimpl->dragGesture.isArmed())
+    {
+        return;
+    }
+
+    if (pimpl->dragGesture.releaseIsClick())
+    {
+        emit clicked();
+    }
+    pimpl->dragGesture.reset();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton)
+    {
+        handleDragPress(event->pos());
+        event->accept();
+        return;
+    }
+    QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::mouseMoveEvent(QMouseEvent* event)
+{
+    if (pimpl->dragEnabled && pimpl->dragGesture.isArmed() && (event->buttons() & Qt::LeftButton))
+    {
+        handleDragMove(event->pos());
+        event->accept();
+        return;
+    }
+    QFrame::mouseMoveEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (pimpl->dragEnabled && pimpl->dragGesture.isArmed() && event->button()==Qt::LeftButton)
+    {
+        handleDragRelease();
+        event->accept();
+        return;
+    }
+    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::setDragEnabled(bool enable)
+{
+    pimpl->dragEnabled=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageFileItem::isDragEnabled() const noexcept
+{
+    return pimpl->dragEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::startDrag(const QList<QUrl>& urls)
+{
+    startFileUrlDrag(this,urls,grab().scaled(160,160,Qt::KeepAspectRatio,Qt::SmoothTransformation));
 }
 
 //--------------------------------------------------------------------------
