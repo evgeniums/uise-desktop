@@ -119,6 +119,21 @@ uise--CalendarDateRow uise--RippleOverlay {
     qproperty-rippleCornerRadius: 4;
 }
 
+/* DropdownMenu rows (see dropdownmenu.qss) are vertical list items, not toolbar buttons -- the
+ * base IconTextButton rule above is tuned for a single BeforeText/AfterText button and flattens
+ * to a thin horizontal band (radiusScaleY: 0.35), which reads as a partial, off-looking fill on
+ * a full-width row. Match CalendarDateRow's full-row treatment instead: equal X/Y radius scale
+ * (the RippleOverlay default) reaches every edge, top and bottom included, clipped to the row's
+ * own 4px border-radius (see dropdownmenu.qss). More specific than the base IconTextButton
+ * selector above (three compound selectors vs two), so it always wins outright instead of tying
+ * on specificity. */
+uise--DropdownMenu uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}
+
 /* PushButton wraps a real QPushButton/QToolButton (m_button) -- the ripple installs directly
  * on that inner widget (see pushbutton.cpp), which is the actual clickable element regardless
  * of how PushButton's own outer frame aligns/pads around it. Left at rippleOrigin's default

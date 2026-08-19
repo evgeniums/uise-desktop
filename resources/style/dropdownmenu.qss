@@ -40,3 +40,33 @@ padding:6px 8px;
 border-radius:4px;
 border:1px solid transparent;
 }
+
+/* section headers (MenuItem::section()) -- these selectors carry an attribute so they
+   outrank the plain uise--IconTextButton padding rule above instead of tying with it */
+uise--DropdownMenu uise--IconTextButton[section="true"] {
+padding-left:8px;
+margin-top:8px;
+}
+
+uise--DropdownMenu uise--IconTextButton[section="true"][firstItem="true"] {
+margin-top:0px;
+}
+
+uise--DropdownMenu uise--IconTextButton[section="true"] #text {
+font-size:16px;
+}
+
+/* the row's ripple covers padding but not margin, so the top margin above must be excluded
+   from the ripple rect or the halo bleeds above the button */
+uise--DropdownMenu uise--IconTextButton[section="true"] uise--RippleOverlay {
+qproperty-rippleInsetTop: 8;
+}
+
+uise--DropdownMenu uise--IconTextButton[section="true"][firstItem="true"] uise--RippleOverlay {
+qproperty-rippleInsetTop: 0;
+}
+
+/* ordinary rows that follow a section, until the next separator or section */
+uise--DropdownMenu uise--IconTextButton[subsection="true"] {
+padding-left:24px;
+}

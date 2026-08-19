@@ -385,6 +385,13 @@ void DropdownMenu::fillContent()
 {
     pimpl->clearRows();
 
+    // tracks whether a section row has already been emitted, so every ordinary row that
+    // follows one (until the next separator) can be marked subsection="true" for QSS
+    // indentation, and whether this is the very first emitted row, so a leading section can
+    // have its top margin zeroed via firstItem="true"
+    bool sawSection=false;
+    bool firstRow=true;
+
     for (auto& item : pimpl->items)
     {
         if (!item.isVisible)
@@ -398,6 +405,8 @@ void DropdownMenu::fillContent()
             sep->setObjectName("separator");
             sep->setFrameShape(QFrame::HLine);
             pimpl->contentLayout->addWidget(sep);
+            sawSection=false;
+            firstRow=false;
             continue;
         }
 
@@ -408,6 +417,24 @@ void DropdownMenu::fillContent()
         }
         btn->setEnabled(item.isEnabled);
         btn->setCheckable(item.isCheckable);
+
+        // dynamic properties must be set before the row is added to the layout below, so that
+        // the polish pass DropdownFrame::measureContentSize() runs right after fillContent()
+        // sees them
+        if (item.isSection)
+        {
+            btn->setProperty("section",true);
+            sawSection=true;
+        }
+        else if (sawSection)
+        {
+            btn->setProperty("subsection",true);
+        }
+        if (firstRow)
+        {
+            btn->setProperty("firstItem",true);
+        }
+        firstRow=false;
 
         auto id=item.id;
         if (item.isCheckable)

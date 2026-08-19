@@ -80,6 +80,21 @@ class UISE_DESKTOP_EXPORT MenuItem
             return item;
         }
 
+        /**
+         * @brief Construct a section-header item.
+         *
+         * Purely presentational: a section is a normal clickable (or, with isEnabled=false,
+         * inert) row that carries the dynamic property section="true" for QSS. Rows that
+         * follow a section are automatically marked subsection="true" by
+         * DropdownMenu::fillContent(), until the next section/separator.
+         */
+        static MenuItem section(int id, QString text, std::shared_ptr<SvgIcon> icon={})
+        {
+            MenuItem item(id,std::move(text),std::move(icon));
+            item.isSection=true;
+            return item;
+        }
+
         int id=-1;
         QString text;
         std::shared_ptr<SvgIcon> icon;
@@ -88,6 +103,7 @@ class UISE_DESKTOP_EXPORT MenuItem
         bool isEnabled=true;
         bool isSeparator=false;
         bool isVisible=true;
+        bool isSection=false;
 
         /**
          * @brief Exclusive (radio-like) group this item belongs to, or -1 for none.

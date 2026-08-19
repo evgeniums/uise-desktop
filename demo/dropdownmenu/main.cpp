@@ -262,6 +262,46 @@ int main(int argc, char *argv[])
     bottomMenu->setItems(std::move(tallItems));
     bottomMenu->attachTo(bottomButton);
 
+    // --- 7. sectioned menu: section headers with indented subitems ---
+
+    auto* sectionedRow=new QFrame(central);
+    auto* sectionedRowL=Layout::horizontal(sectionedRow);
+    rootLayout->addWidget(sectionedRow);
+
+    sectionedRowL->addWidget(new QLabel(QStringLiteral("Sectioned menu:")));
+
+    auto* sectionedButton=new IconTextButton(QStringLiteral("Add"),sectionedRow);
+    sectionedRowL->addWidget(sectionedButton);
+    sectionedRowL->addStretch(1);
+
+    enum SectionedId
+    {
+        NewContact=1,
+        WithUsername,
+        WithLink,
+        NewGroup,
+        NewChannel
+    };
+
+    auto* sectionedMenu=new DropdownMenu(sectionedRow);
+    sectionedMenu->setItems({
+        MenuItem::section(NewContact,QStringLiteral("New contact")),
+        MenuItem(WithUsername,QStringLiteral("I know a username")),
+        MenuItem(WithLink,QStringLiteral("Use temporary code")),
+        MenuItem::section(NewGroup,QStringLiteral("New group")),
+        MenuItem::section(NewChannel,QStringLiteral("New channel"))
+    });
+    sectionedMenu->attachTo(sectionedButton);
+    QObject::connect(
+        sectionedMenu,
+        &DropdownMenu::itemTriggered,
+        log,
+        [logMsg](int id)
+        {
+            logMsg(QString("Sectioned menu: item %1 triggered").arg(id));
+        }
+    );
+
     w.setCentralWidget(mainFrame);
     w.resize(700,420);
     w.setWindowTitle("DropdownMenu Demo");
