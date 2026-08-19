@@ -48,9 +48,29 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
 {
     Q_OBJECT
 
+    Q_PROPERTY(int maxBubbleWidth READ maxBubbleWidth WRITE setMaxBubbleWidth)
+
     public:
 
+        constexpr static const int DefaultMaxBubbleWidth=600;
+
         using AbstractChatMessageBody::AbstractChatMessageBody;
+
+        //! Hard cap on the width of this message's bubble -- same idea, and same default, as
+        //! AbstractChatMessageText::maxBubbleWidth (see its own doc comment). A file row's width
+        //! is otherwise driven by its file-name label, whose natural width tracks the FULL,
+        //! unelided file name -- an arbitrarily long name would otherwise inflate the bubble just
+        //! as an arbitrarily long line of text would. 0 disables the cap. Settable from QSS via
+        //! qproperty-maxBubbleWidth (see chatmessagefiles.qss).
+        void setMaxBubbleWidth(int width) noexcept
+        {
+            m_maxBubbleWidth=width;
+        }
+
+        int maxBubbleWidth() const noexcept
+        {
+            return m_maxBubbleWidth;
+        }
 
         virtual void setItems(ChatFileItems items) =0;
         virtual const ChatFileItems& items() const =0;
@@ -95,6 +115,18 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          * A no-op if no item with this id is present.
          */
         virtual void startItemDrag(const QUuid& id, const QList<QUrl>& urls) =0;
+
+    protected:
+
+        //! Clamp a negotiation budget by maxBubbleWidth(), pass-through when the cap is disabled.
+        int clampToMaxBubbleWidth(int width) const noexcept
+        {
+            return (m_maxBubbleWidth>0 && width>m_maxBubbleWidth) ? m_maxBubbleWidth : width;
+        }
+
+    private:
+
+        int m_maxBubbleWidth=DefaultMaxBubbleWidth;
 
     signals:
 

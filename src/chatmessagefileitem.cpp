@@ -76,6 +76,7 @@ class ChatMessageFileItem_p
         AvatarWidget* imagePreview=nullptr;
         LoadControlMenu* loadControl=nullptr;
 
+        QFrame* textColumn=nullptr;
         ElidedLabel* nameLabel=nullptr;
         QLabel* infoLabel=nullptr;
         QVBoxLayout* textColumnLayout=nullptr;
@@ -140,10 +141,10 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     // (a hover-only overlay), this row's own menuButton below has no such gating -- it is a
     // permanent, always-visible part of every row's layout -- so it stays eager; only its
     // drop-down's item list is deferred (see the clicked() handler below).
-    auto textColumn=new QFrame(this);
-    textColumn->setObjectName("textColumn");
-    pimpl->textColumnLayout=Layout::vertical(textColumn);
-    layout->addWidget(textColumn,1);
+    pimpl->textColumn=new QFrame(this);
+    pimpl->textColumn->setObjectName("textColumn");
+    pimpl->textColumnLayout=Layout::vertical(pimpl->textColumn);
+    layout->addWidget(pimpl->textColumn,1);
 
     // top/bottom spacers bracketing the two labels -- textColumn's own height follows the row's
     // (56px, driven by iconSlot), well beyond what two lines of text need, and a plain QVBoxLayout
@@ -159,7 +160,7 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
     // the stored one.
     pimpl->textColumnLayout->addStretch(1);
 
-    pimpl->nameLabel=new ElidedLabel(textColumn);
+    pimpl->nameLabel=new ElidedLabel(pimpl->textColumn);
     pimpl->nameLabel->setObjectName("nameLabel");
     pimpl->nameLabel->setElideMode(Qt::ElideMiddle);
     pimpl->nameLabel->setCursor(Qt::PointingHandCursor);
@@ -168,7 +169,7 @@ ChatMessageFileItem::ChatMessageFileItem(QWidget* parent)
 
     pimpl->textColumnLayout->addSpacing(TextLineSpacing);
 
-    pimpl->infoLabel=new QLabel(textColumn);
+    pimpl->infoLabel=new QLabel(pimpl->textColumn);
     pimpl->infoLabel->setObjectName("infoLabel");
     pimpl->textColumnLayout->addWidget(pimpl->infoLabel);
 
@@ -299,6 +300,37 @@ void ChatMessageFileItem::setTextVerticalAlignment(Qt::Alignment alignment)
 Qt::Alignment ChatMessageFileItem::textVerticalAlignment() const noexcept
 {
     return pimpl->textVerticalAlignment;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::limitWidth(int totalWidth)
+{
+    if (totalWidth<=0)
+    {
+        pimpl->nameLabel->setMaximumWidth(QWIDGETSIZE_MAX);
+        return;
+    }
+
+    // Measured directly from widgets whose width is independent of the file name -- icon slot,
+    // menu button, textColumn's own QSS margins -- rather than derived by subtracting nameLabel's
+    // own sizeHint() from this row's sizeHint(). That subtraction raced with the very
+    // setMaximumWidth() call below (an earlier call's cap was still part of "this row's
+    // sizeHint()" whenever the layout hadn't re-settled yet), so the computed overhead drifted
+    // across repeated negotiation passes and the bubble visibly flickered between the full
+    // available width and the correctly capped one. None of the widgets read here are affected by
+    // nameLabel's own maximumWidth, so this is stable no matter how many times it is called.
+    auto textColumnMargins=pimpl->textColumn->contentsMargins();
+    auto overhead=pimpl->iconSlot->sizeHint().width()
+                 +pimpl->menuButton->sizeHint().width()
+                 +textColumnMargins.left()+textColumnMargins.right();
+
+    auto nameWidth=totalWidth-overhead;
+    if (nameWidth<0)
+    {
+        nameWidth=0;
+    }
+    pimpl->nameLabel->setMaximumWidth(nameWidth);
 }
 
 //--------------------------------------------------------------------------

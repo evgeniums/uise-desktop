@@ -231,6 +231,15 @@ void ChatMessageFiles::rebuildList()
         // before this row is ever measured, rather than relying on whatever repolish this
         // message's ancestors happen to get later (see makeMessage() in chatmessagesview.ipp).
         row->ensurePolished();
+
+        // Seed the width cap from whatever was last negotiated -- setItems() can rebuild the
+        // list on a message already on screen (see the comment above row->show()), and without
+        // this a freshly-created row would render at its full, uncapped name-label width until
+        // the next resize/negotiation pass happens to touch this message again.
+        if (chatContent()!=nullptr && chatContent()->maximumBubbleWidth()>0)
+        {
+            row->limitWidth(clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth()));
+        }
     }
 
     updateGeometry();
@@ -363,9 +372,12 @@ void ChatMessageFiles::selectText(const QString& text)
 
 int ChatMessageFiles::bubbleWidthHint(int forMaxWidth)
 {
+    auto capped=clampToMaxBubbleWidth(forMaxWidth);
+
     int width=0;
     for (auto* row : pimpl->rows)
     {
+        row->limitWidth(capped);
         width=std::max(width,row->sizeHint().width());
     }
 
@@ -382,6 +394,12 @@ int ChatMessageFiles::bubbleWidthHint(int forMaxWidth)
 
 void ChatMessageFiles::updateMaximumBubbleWidth()
 {
+    auto width=clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth());
+    for (auto* row : pimpl->rows)
+    {
+        row->limitWidth(width);
+    }
+
     if (!pimpl->commentText.isEmpty())
     {
         pimpl->comment->setChatContent(chatContent());

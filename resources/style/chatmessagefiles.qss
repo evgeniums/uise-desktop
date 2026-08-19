@@ -5,6 +5,13 @@ margin:0;
 margin-bottom:4px;
 }
 
+/* Hard cap on the bubble width of a file message -- same idea as chat.qss's
+ * qproperty-maxBubbleWidth on uise--AbstractChatMessageText: a row's width otherwise tracks its
+ * file name's full, unelided length. 0 disables the cap. */
+uise--ChatMessageFiles {
+qproperty-maxBubbleWidth: 600;
+}
+
 uise--ChatMessageFiles #contents {
 padding:0;
 margin:0;

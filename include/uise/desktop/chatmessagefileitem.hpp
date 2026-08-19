@@ -114,6 +114,23 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         Qt::Alignment textVerticalAlignment() const noexcept;
 
         /**
+         * @brief Cap this row's overall width by shrinking the file-name label's budget.
+         * @param totalWidth Target width for the WHOLE row (icon slot + name/size column + menu
+         *  button), not just the name label. Everything else in the row has a width independent
+         *  of the file name, so that fixed overhead is measured and subtracted here rather than
+         *  hardcoded, leaving the name label exactly what remains -- see
+         *  AbstractChatMessageFiles::maxBubbleWidth() for the caller.
+         * @param totalWidth <= 0 removes the cap (the name label reverts to eliding within
+         *  whatever width the row's own layout gives it).
+         *
+         * Needed because ElidedLabel::sizeHint() reports the width of the FULL, unelided text
+         * (see its own docs) -- without an explicit maximum, Qt's box layout cannot shrink an
+         * ElidedLabel with a MinimumExpanding size policy below that natural width, so a long
+         * file name would otherwise inflate this row (and so the whole bubble) instead of eliding.
+         */
+        void limitWidth(int totalWidth);
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * Meant for a host embedding this item in a scrolling list to call whenever the list
