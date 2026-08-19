@@ -247,6 +247,7 @@ class HTreeNode_p
         HTreeNode* parentNode=nullptr;
 
         QIcon icon;
+        std::shared_ptr<SvgIcon> titleIcon;
         QString tooltip;
 
         QFrame* mainFrame=nullptr;
@@ -557,6 +558,21 @@ void HTreeNode::setNodeIcon(const QIcon& val)
 {
     pimpl->icon=val;
     emit iconUpdated(val);
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> HTreeNode::titleIcon() const
+{
+    return pimpl->titleIcon;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setTitleIcon(std::shared_ptr<SvgIcon> icon)
+{
+    pimpl->titleIcon=icon;
+    emit titleIconUpdated(std::move(icon));
 }
 
 //--------------------------------------------------------------------------

@@ -173,6 +173,13 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         QIcon icon() const;
         QString nodeTooltip() const;
 
+        //! Leading/title icon shown in the navigation bar item for this node.
+        //! Stored on the node itself (unlike titleIconUpdated(), which is fire-and-forget) so
+        //! that HTreeTab_p::appendNode() can seed a freshly created navbar item with the
+        //! current icon instead of waiting for the node to emit it after the item already
+        //! exists with no icon slot.
+        std::shared_ptr<SvgIcon> titleIcon() const;
+
         void setContentWidget(QWidget* widget);
         QWidget* contentWidget() const;
 
@@ -273,6 +280,10 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setNodeName(const QString& val);
         void setNodeTooltip(const QString& val);
         void setNodeIcon(const QIcon& val);
+
+        //! Set the title icon and emit titleIconUpdated() -- storing and signalling can never
+        //! diverge since they happen in the same call.
+        void setTitleIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         void closeNode();
         void collapseNode();

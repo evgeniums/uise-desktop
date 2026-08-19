@@ -230,7 +230,12 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     auto index=splitter->count()-1;
 
     // add item to navigation bar
-    navbar->addItem(node->name(),node->nodeTooltip(),node->id());
+    // Pass the node's already-known title icon (if any) at creation time -- without it,
+    // NavigationBarItem is built with IconPosition::Invisible (no icon slot at all) and the
+    // icon only arrives later over titleIconUpdated, once the connection below is made. That
+    // gap is what makes a node's status icon (e.g. character online/offline) flicker in on
+    // every navbar item recreation.
+    navbar->addItem(node->name(),node->nodeTooltip(),node->id(),node->titleIcon());
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
 
@@ -412,6 +417,7 @@ bool HTreeTab_p::reconstructLastNode(int index, HTreePath path)
 
     navbar->blockSignals(true);
     navbar->setItemId(index,cand->id());
+    navbar->setItemIcon(index,cand->titleIcon());
     navbar->blockSignals(false);
 
     // cand may or may not still carry the tab-level signal wiring from when it was last
