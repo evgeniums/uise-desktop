@@ -157,13 +157,49 @@ void DateTimeInput::construct(DateTimeFields fields)
         m_dropdown->toggleBelow(this);
     });
 
+    // updateText() (the CLOSED field's own text) always tracks the picker live, buttons or not --
+    // it is what makes Cancel's revert (DateTimePickerDropdown's cancelButton handler, which
+    // calls picker->setDateTime(m_snapshot) and therefore re-fires this same connection) visible
+    // in the closed field once the dropdown closes. The external dateTimeChanged/dateChanged/
+    // timeChanged signals are a different matter: with buttons hidden (the EditableLabel-row
+    // default) they stay live, matching every existing consumer's expectation; with buttons
+    // shown, external listeners must see exactly one change on Apply and none on Cancel, not a
+    // stream of intermediate wheel positions - see the dropdown's applied() connection below.
     connect(m_dropdown->picker(),&DateTimePicker::dateTimeChanged,this,[this](const QDateTime& v)
     {
         updateText();
-        emit dateTimeChanged(v);
+        if (!m_dropdown->isButtonsVisible())
+        {
+            emit dateTimeChanged(v);
+        }
     });
-    connect(m_dropdown->picker(),&DateTimePicker::dateChanged,this,&DateTimeInput::dateChanged);
-    connect(m_dropdown->picker(),&DateTimePicker::timeChanged,this,&DateTimeInput::timeChanged);
+    connect(m_dropdown->picker(),&DateTimePicker::dateChanged,this,[this](const QDate& v)
+    {
+        if (!m_dropdown->isButtonsVisible())
+        {
+            emit dateChanged(v);
+        }
+    });
+    connect(m_dropdown->picker(),&DateTimePicker::timeChanged,this,[this](const QTime& v)
+    {
+        if (!m_dropdown->isButtonsVisible())
+        {
+            emit timeChanged(v);
+        }
+    });
+
+    // Buttons-visible mode's own commit point: Apply re-reads whatever the picker currently
+    // holds (already live-updated by the wheels, per the suppressed connections above) and
+    // emits it exactly once. Cancel needs no matching connection here - its handler already
+    // reverts the picker to the pre-open snapshot before this class ever sees a change, so the
+    // suppressed connections above simply never re-enable themselves for that revert either.
+    connect(m_dropdown,&DateTimePickerDropdown::applied,this,[this]()
+    {
+        auto* picker=m_dropdown->picker();
+        emit dateTimeChanged(picker->dateTime());
+        emit dateChanged(picker->date());
+        emit timeChanged(picker->time());
+    });
 
     updateText();
 }
