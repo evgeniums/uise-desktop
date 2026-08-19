@@ -315,6 +315,16 @@ void FileUploadListItem::beginRename()
 
 //--------------------------------------------------------------------------
 
+void FileUploadListItem::commitPendingRename()
+{
+    if (pimpl->nameLabel->isEditing())
+    {
+        pimpl->nameLabel->apply();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void FileUploadListItem::closeMenu()
 {
     if (!pimpl->menu.isNull())

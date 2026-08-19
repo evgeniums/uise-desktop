@@ -111,6 +111,16 @@ class UISE_DESKTOP_EXPORT FileUploadListItem : public QFrame
         void beginRename();
 
         /**
+         * @brief Apply an in-progress inline rename, if one is active.
+         *
+         * If the file name field is currently in editing mode (beginRename() was called but
+         * the user hasn't pressed Enter or clicked the apply control yet), this applies the
+         * pending edit, which synchronously emits renameRequested() with the new name.
+         * Does nothing if the name field isn't being edited.
+         */
+        void commitPendingRename();
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * Meant for a host that embeds this item in a scrolling list to call whenever the

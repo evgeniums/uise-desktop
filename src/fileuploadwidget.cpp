@@ -401,7 +401,23 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     pimpl->sendButton=new PushButton(tr("Send"),pimpl->buttonsFrame);
     pimpl->sendButton->setObjectName("sendButton");
     buttonsLayout->addWidget(pimpl->sendButton);
-    connect(pimpl->sendButton,&PushButton::clicked,this,&AbstractFileUploadWidget::sendRequested);
+    connect(
+        pimpl->sendButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            // a row's name field may still be in inline-editing mode if the user typed a new
+            // name but clicked Send instead of pressing Enter or the field's own apply control
+            // -- commit any such pending edit now, so items() reflects it before the host reads
+            // it in response to sendRequested below.
+            for (auto* row : pimpl->listItems)
+            {
+                row->commitPendingRename();
+            }
+            emit sendRequested();
+        }
+    );
 
     updateCaption();
     updateSendEnabled();
