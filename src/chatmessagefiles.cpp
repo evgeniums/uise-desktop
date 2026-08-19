@@ -79,6 +79,12 @@ ChatMessageFiles::ChatMessageFiles(QWidget* parent)
     pimpl->comment->setVisible(false);
     pimpl->layout->addWidget(pimpl->comment);
 
+    // Relayed here so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react to
+    // selection changes on this body's comment via AbstractChatMessageBody alone, without
+    // depending on the fact that the text lives in an embedded ChatMessageText -- same idiom
+    // ChatMessageText itself uses for its own underlying QTextEdit signal.
+    connect(pimpl->comment,&AbstractChatMessageBody::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
+
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
 
@@ -305,6 +311,27 @@ void ChatMessageFiles::clearContentSelection()
 QString ChatMessageFiles::selectedText() const
 {
     return pimpl->comment->selectedText();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageFiles::hasSelectableText() const
+{
+    return pimpl->comment->hasSelectableText();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::setCopyable(bool enable)
+{
+    pimpl->comment->setCopyable(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::selectText(const QString& text)
+{
+    pimpl->comment->selectText(text);
 }
 
 //--------------------------------------------------------------------------

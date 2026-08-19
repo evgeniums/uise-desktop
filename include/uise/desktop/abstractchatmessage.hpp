@@ -299,8 +299,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         //! via AbstractReplyDialog's "Quote selected" -- see ReplyDialog::updateCommentVisibility(),
         //! which uses this to decide whether the "you can select a part of the text" comment
         //! makes sense to show at all). False by default -- a body with no text at all
-        //! (ChatMessageFiles, ChatMessageImages, ChatMessageCall) never overrides this; a text
-        //! body overrides it based on whatever content it currently holds.
+        //! (ChatMessageCall, whose selectedText() returns a synthesized summary purely for Copy's
+        //! benefit) never overrides this. A text body overrides it based on whatever content it
+        //! currently holds; ChatMessageFiles/ChatMessageImages forward to their optional embedded
+        //! comment (a ChatMessageText), answering false when they carry none.
         virtual bool hasSelectableText() const {return false;}
 
         /**
@@ -310,7 +312,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          *  handles its own selection-mode gesture and right-click menu instead, and a focusable
          *  text body there would steal keyboard focus from the message editor. A host showing a
          *  message OUTSIDE that context (e.g. AbstractReplyDialog's static preview) opts in via
-         *  this. No-op for a body with no text at all.
+         *  this. No-op for a body with no text at all (ChatMessageCall); ChatMessageFiles/
+         *  ChatMessageImages forward to their optional comment, if any.
          */
         virtual void setCopyable(bool enable) {std::ignore=enable;}
 
@@ -321,9 +324,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          *  same message (e.g. AbstractReplyDialog's own static bubble) so the dialog opens with
          *  that same fragment already highlighted instead of nothing selected.
          *
-         * No-op by default -- a body with no selectable content at all never overrides this; a
-         * text body overrides it to search its own rendered plain text. Best-effort: silently
-         * does nothing if `text` isn't found (e.g. content changed since the quote was picked).
+         * No-op by default -- a body with no selectable content at all (ChatMessageCall) never
+         * overrides this; a text body overrides it to search its own rendered plain text.
+         * ChatMessageFiles/ChatMessageImages forward to their optional comment, if any. Best-
+         * effort: silently does nothing if `text` isn't found (e.g. content changed since the
+         * quote was picked) or the body has no comment to search.
          */
         virtual void selectText(const QString& /*text*/) {}
 
@@ -332,9 +337,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         //! Never emitted by the base class -- a body with genuine text selection (e.g.
         //! ChatMessageText, whose underlying QTextEdit already has this exact signal) connects
         //! it here, so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react
-        //! to selection changes without depending on a concrete body type. A body with no
-        //! selectable content (ChatMessageFiles, ChatMessageImages, ChatMessageCall) simply
-        //! never fires it.
+        //! to selection changes without depending on a concrete body type. ChatMessageFiles/
+        //! ChatMessageImages relay it from their optional embedded comment, if any. A body with no
+        //! selectable content at all (ChatMessageCall) simply never fires it.
         void selectionChanged();
 };
 

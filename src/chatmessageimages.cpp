@@ -97,6 +97,12 @@ class ChatMessageImages_p
         QString commentText;
         bool commentMarkdown=true;
 
+        // Cached the same way commentText/commentMarkdown are: setCopyable() may be called before
+        // the comment widget exists (most albums carry none at all, so it is created lazily on
+        // first non-empty setComment() -- see ensureComment()), and the flag must still apply once
+        // it is.
+        bool commentCopyable=false;
+
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
         // Signature of the last full rebuildGrid() layout pass -- lets a later call skip
@@ -470,6 +476,14 @@ ChatMessageText* ChatMessageImages::ensureComment()
         {
             pimpl->comment->setChatContent(chatContent());
         }
+        if (pimpl->commentCopyable)
+        {
+            pimpl->comment->setCopyable(true);
+        }
+        // Relayed here so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react
+        // to selection changes on this body's comment via AbstractChatMessageBody alone -- same
+        // idiom ChatMessageFiles uses in its own (eagerly created) comment's ctor.
+        connect(pimpl->comment,&AbstractChatMessageBody::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
         // See rebuildGrid()'s identical comment: freshly created QSS-dependent content must be
         // polished before its first paint.
         pimpl->comment->ensurePolished();
@@ -562,6 +576,36 @@ void ChatMessageImages::clearContentSelection()
 QString ChatMessageImages::selectedText() const
 {
     return (pimpl->comment!=nullptr) ? pimpl->comment->selectedText() : QString();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImages::hasSelectableText() const
+{
+    // Deliberately does NOT call ensureComment() -- most albums carry no comment at all, and this
+    // is a const query that must not allocate the widget just to answer "no text here".
+    return pimpl->comment!=nullptr && pimpl->comment->hasSelectableText();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setCopyable(bool enable)
+{
+    pimpl->commentCopyable=enable;
+    if (pimpl->comment!=nullptr)
+    {
+        pimpl->comment->setCopyable(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::selectText(const QString& text)
+{
+    if (pimpl->comment!=nullptr)
+    {
+        pimpl->comment->selectText(text);
+    }
 }
 
 //--------------------------------------------------------------------------

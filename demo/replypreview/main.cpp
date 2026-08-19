@@ -35,11 +35,16 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPlainTextEdit>
 #include <QScrollArea>
 #include <QDateTime>
+#include <QPainter>
+#include <QImage>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/chatmessage.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
+#include <uise/desktop/chatmessagefiles.hpp>
+#include <uise/desktop/chatmessageimages.hpp>
+#include <uise/desktop/chatfileitem.hpp>
 #include <uise/desktop/abstractreplypreview.hpp>
 #include <uise/desktop/chatmessagereply.hpp>
 #include <uise/desktop/replybar.hpp>
@@ -55,6 +60,129 @@ namespace {
 // this from the viewport width on every resize; this standalone demo has no viewport to derive
 // it from, see demo/chatmessagefiles/main.cpp's identical constant.
 constexpr int DemoBubbleWidth=360;
+
+// Which body the full-preview dialog below is built around -- exercises whitemdesktop's own
+// "quote the file/image comment" path (ChatMessageFiles::selectText()/hasSelectableText()/etc
+// forwarding to their embedded ChatMessageText comment), not reachable via the Text body alone.
+enum class DialogBodyKind
+{
+    Text,
+    FilesWithComment,
+    ImagesWithComment,
+    ImagesNoComment
+};
+
+// Sample-content helpers, copied from demo/chatmessagefiles/main.cpp -- this demo needs only
+// enough of that recipe to give ChatMessageFiles/ChatMessageImages a couple of rows/tiles plus a
+// comment; see that demo for the fuller item catalogue (animated GIFs, transfer states, etc).
+
+QImage makeSampleImage(const QSize& size, const QColor& c1, const QColor& c2, const QString& label)
+{
+    QImage img(size,QImage::Format_ARGB32);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::Antialiasing);
+    QLinearGradient grad(0,0,size.width(),size.height());
+    grad.setColorAt(0,c1);
+    grad.setColorAt(1,c2);
+    p.fillRect(img.rect(),grad);
+    p.setPen(Qt::white);
+    auto font=p.font();
+    font.setPointSize(14);
+    p.setFont(font);
+    p.drawText(img.rect(),Qt::AlignCenter,label);
+    p.end();
+    return img;
+}
+
+ChatFileItem makeFileEntry(QString name, qint64 size)
+{
+    ChatFileItem item;
+    item.setFileName(std::move(name));
+    item.setSize(size);
+    item.setState(ChatFileTransferState::Ready);
+    return item;
+}
+
+ChatFileItem makeImageEntry(const QSize& pixelSize, const QColor& c1, const QColor& c2, const QString& label)
+{
+    ChatFileItem item;
+    item.setFileName(label+QStringLiteral(".png"));
+    item.setMimeType(QStringLiteral("image/png"));
+    item.setPixelSize(pixelSize);
+    item.setSize(static_cast<qint64>(pixelSize.width())*pixelSize.height()*3);
+    item.setState(ChatFileTransferState::Ready);
+    item.setPreview(makeSampleImage(pixelSize,c1,c2,label));
+    return item;
+}
+
+// Builds the body the full-preview dialog shows, per DialogBodyKind -- the Files/Images branches
+// are what exercise the new selectText()/hasSelectableText()/setCopyable()/selectionChanged
+// forwarding this demo was extended to cover.
+AbstractChatMessageBody* makeDialogBody(DialogBodyKind kind)
+{
+    switch (kind)
+    {
+        case (DialogBodyKind::FilesWithComment):
+        {
+            auto* body=new ChatMessageFiles();
+            body->setItems({
+                makeFileEntry(QStringLiteral("quarterly-report.pdf"),842*1024),
+                makeFileEntry(QStringLiteral("appendix.docx"),128*1024)
+            });
+            body->setComment(QStringLiteral(
+                "Select some of this comment, then look at the Save button below -- it swaps to "
+                "\"Quote selected\" while a selection is active, exactly like it does for a plain "
+                "text message."
+            ),false);
+            return body;
+        }
+
+        case (DialogBodyKind::ImagesWithComment):
+        {
+            auto* body=new ChatMessageImages();
+            body->setItems({
+                makeImageEntry(QSize(640,480),QColor(80,140,220),QColor(40,80,160),QStringLiteral("A")),
+                makeImageEntry(QSize(480,640),QColor(220,140,80),QColor(160,80,40),QStringLiteral("B"))
+            });
+            body->setComment(QStringLiteral(
+                "Select some of this caption, then look at the Save button below -- it swaps to "
+                "\"Quote selected\" while a selection is active."
+            ),false);
+            return body;
+        }
+
+        case (DialogBodyKind::ImagesNoComment):
+        {
+            auto* body=new ChatMessageImages();
+            body->setItems({
+                makeImageEntry(QSize(640,480),QColor(80,140,220),QColor(40,80,160),QStringLiteral("A"))
+            });
+            // No comment at all -- regression check: the "you can select part of the text" hint
+            // must stay hidden and Save must never swap to "Quote selected" for this one.
+            return body;
+        }
+
+        case (DialogBodyKind::Text):
+        default:
+        {
+            auto* body=new ChatMessageText();
+            body->loadText(
+                QStringLiteral("Select some of this text, then look at the Save button below -- "
+                                "it swaps to \"Quote selected\" while a selection is active."
+                               "Select some of this text, then look at the Save button below -- "
+                               "it swaps to \"Quote selected\" while a selection is active."
+                               "Select some of this text, then look at the Save button below -- "
+                               "it swaps to \"Quote selected\" while a selection is active."
+                               "Select some of this text, then look at the Save button below -- "
+                               "it swaps to \"Quote selected\" while a selection is active."
+                               ),
+                false
+            );
+            return body;
+        }
+    }
+}
 
 // Builds a real ChatMessage/ChatMessageContent bubble around `body` (+ an optional `reply`
 // section), so bubble-width negotiation is genuinely exercised -- same recipe as
@@ -327,10 +455,25 @@ int main(int argc, char *argv[])
     dialogFrame->setMinimumSize(500,750);
     rootLayout->addWidget(dialogFrame);
 
+    // Which body the dialog's own preview bubble is built around -- see DialogBodyKind. Separate
+    // from kindCombo above (that one drives the reply BAR/bubble-section preview data, not the
+    // dialog's own message widget).
+    auto* dialogBodyFrame=new QFrame(central);
+    auto* dialogBodyLayout=Layout::horizontal(dialogBodyFrame);
+    rootLayout->addWidget(dialogBodyFrame);
+
+    dialogBodyLayout->addWidget(new QLabel(QStringLiteral("Dialog body:")));
+    auto* dialogBodyCombo=new QComboBox();
+    dialogBodyCombo->addItem(QStringLiteral("Text"),static_cast<int>(DialogBodyKind::Text));
+    dialogBodyCombo->addItem(QStringLiteral("Files + comment"),static_cast<int>(DialogBodyKind::FilesWithComment));
+    dialogBodyCombo->addItem(QStringLiteral("Images + comment"),static_cast<int>(DialogBodyKind::ImagesWithComment));
+    dialogBodyCombo->addItem(QStringLiteral("Images, no comment"),static_cast<int>(DialogBodyKind::ImagesNoComment));
+    dialogBodyLayout->addWidget(dialogBodyCombo,1);
+
     // Shared by the standalone button below AND replyBar's own configure button -- clicking
     // either one is exactly the "user wants to configure the reply operation" gesture the task
     // brief describes, so both open the same dialog.
-    auto openReplyDialog=[dialogFrame,central,logMsg,replyBar,kindCombo]()
+    auto openReplyDialog=[dialogFrame,central,logMsg,replyBar,kindCombo,dialogBodyCombo]()
     {
         // openDialog(true,false): create (or reuse) the dialog WITHOUT showing/measuring it
         // yet -- ModalPopup::popup() measures the dialog exactly once, from whatever content it
@@ -376,19 +519,8 @@ int main(int argc, char *argv[])
             );
         }
 
-        auto* body=new ChatMessageText();
-        body->loadText(
-            QStringLiteral("Select some of this text, then look at the Save button below -- "
-                            "it swaps to \"Quote selected\" while a selection is active."
-                           "Select some of this text, then look at the Save button below -- "
-                           "it swaps to \"Quote selected\" while a selection is active."
-                           "Select some of this text, then look at the Save button below -- "
-                           "it swaps to \"Quote selected\" while a selection is active."
-                           "Select some of this text, then look at the Save button below -- "
-                           "it swaps to \"Quote selected\" while a selection is active."
-                           ),
-            false
-        );
+        auto bodyKind=static_cast<DialogBodyKind>(dialogBodyCombo->currentData().toInt());
+        auto* body=makeDialogBody(bodyKind);
         auto* msg=makeMessage(dialogFrame,AbstractChatMessage::Direction::Received,body);
         dialogFrame->dialog()->setMessage(msg);
 

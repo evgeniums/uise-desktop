@@ -73,6 +73,12 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         QString selectedText() const override;
 
+        bool hasSelectableText() const override;
+
+        void setCopyable(bool enable) override;
+
+        void selectText(const QString& text) override;
+
         int bubbleWidthHint(int forMaxWidth) override;
 
         void updateMaximumBubbleWidth() override;
