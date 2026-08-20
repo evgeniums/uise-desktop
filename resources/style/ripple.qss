@@ -134,6 +134,17 @@ uise--DropdownMenu uise--IconTextButton uise--RippleOverlay {
     qproperty-rippleRadiusScaleY: 1.0;
 }
 
+/* FastSwitchButtonDropdown rows (see fastswitchbutton.qss) are the same kind of full-width
+ * vertical list item as DropdownMenu's rows above, just a separate QSS class -- goToChats and
+ * clearButton would otherwise fall through to the base IconTextButton rule and flatten to a
+ * thin horizontal band. Same full-row treatment, matching the row's own 4px border-radius. */
+uise--FastSwitchButtonDropdown uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}
+
 /* PushButton wraps a real QPushButton/QToolButton (m_button) -- the ripple installs directly
  * on that inner widget (see pushbutton.cpp), which is the actual clickable element regardless
  * of how PushButton's own outer frame aligns/pads around it. Left at rippleOrigin's default
