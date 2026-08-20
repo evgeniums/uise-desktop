@@ -239,7 +239,10 @@ ChatMessageImageItem::~ChatMessageImageItem()
 void ChatMessageImageItem::setItem(const ChatFileItem& item, bool incoming)
 {
     pimpl->item=item;
-    pimpl->incoming=incoming;
+    // todo-file-descriptor-content-missing-recovery.md: see ChatMessageFileItem::setItem()'s
+    // identical override - NotLoaded is unreachable for a genuinely not-yet-sent outgoing item,
+    // so it always means DOWNLOADED (recovered), never uploaded, regardless of direction.
+    pimpl->incoming=incoming || item.state()==ChatFileTransferState::NotLoaded;
     refresh();
 }
 

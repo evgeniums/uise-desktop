@@ -229,7 +229,13 @@ ChatMessageFileItem::~ChatMessageFileItem()
 void ChatMessageFileItem::setItem(const ChatFileItem& item, bool incoming)
 {
     pimpl->item=item;
-    pimpl->incoming=incoming;
+    // todo-file-descriptor-content-missing-recovery.md: NotLoaded is unreachable for a
+    // genuinely not-yet-sent outgoing item (it always starts Ready or Pending/Uploading, never
+    // NotLoaded) - so a NotLoaded item, regardless of message direction, is always asking to be
+    // DOWNLOADED (recovered), never uploaded. Override here so every consumer of pimpl->incoming
+    // (load control state icon via chatFileLoadControlState(), file-description text, this
+    // item's own context menu) agrees and shows Download rather than Upload.
+    pimpl->incoming=incoming || item.state()==ChatFileTransferState::NotLoaded;
     refresh();
 }
 
