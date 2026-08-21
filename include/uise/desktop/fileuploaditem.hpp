@@ -175,8 +175,37 @@ class UISE_DESKTOP_EXPORT FileUploadItem
 
         /**
          * @brief Get the MIME type, e.g. "image/png".
+         * @return explicitMimeType() if set; otherwise, for Type::ImageData, derived from
+         *  imageFormat(); for Type::File, QMimeDatabase's guess for filePath() -- extension
+         *  match falling back to content sniffing, which is unreliable for a file under an
+         *  application-private extension it has never seen before (see setExplicitMimeType()).
          */
         QString mimeType() const;
+
+        /**
+         * @brief Override mimeType()/isImage()'s own detection with a known-correct value.
+         * @param mime A real MIME type string (e.g. "application/octet-stream"), or empty to
+         *  go back to automatic detection.
+         *
+         * For content this class did not decode itself -- a Type::File item wrapping a caller-
+         * fabricated payload (not a file the user picked/dropped/pasted) -- QMimeDatabase's
+         * guess can be wrong: an unregistered extension falls back to sniffing the file's raw
+         * bytes, which can coincidentally match an unrelated format's magic bytes. Call this
+         * when the caller already knows the true type, so mimeType()/isImage()/presentAsImage()
+         * stop guessing and use it directly.
+         */
+        void setExplicitMimeType(QString mime)
+        {
+            m_explicitMimeType=std::move(mime);
+        }
+
+        /**
+         * @brief Get the override set via setExplicitMimeType(), empty if none.
+         */
+        const QString& explicitMimeType() const noexcept
+        {
+            return m_explicitMimeType;
+        }
 
         /**
          * @brief Get the decoded image.
@@ -262,6 +291,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         QUuid m_id;
         QString m_filePath;
         QString m_fileName;
+        QString m_explicitMimeType;
 
         QImage m_image;
         mutable QByteArray m_encoded;

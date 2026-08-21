@@ -157,6 +157,11 @@ QString FileUploadItem::suffix() const
 
 QString FileUploadItem::mimeType() const
 {
+    if (!m_explicitMimeType.isEmpty())
+    {
+        return m_explicitMimeType;
+    }
+
     if (m_type==Type::ImageData)
     {
         auto fmt=QString::fromLatin1(m_format).toLower();
