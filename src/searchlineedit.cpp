@@ -39,7 +39,7 @@ SearchLineEdit::SearchLineEdit(QWidget* parent)
       m_editing(false)
 {
     auto searchIcon=Style::instance().svgIconLocator().icon("LineEdit::search");
-    m_searchButton=LineEdit::addPushButton(searchIcon,QLineEdit::TrailingPosition);
+    m_searchButton=LineEdit::addPushButton(searchIcon,QLineEdit::LeadingPosition);
     m_searchButton->setObjectName("searchButton");
     auto cancelIcon=Style::instance().svgIconLocator().icon("LineEdit::cancel");
     m_cancelButton=LineEdit::addPushButton(cancelIcon,QLineEdit::TrailingPosition);
