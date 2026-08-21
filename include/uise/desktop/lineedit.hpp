@@ -73,9 +73,14 @@ class UISE_DESKTOP_EXPORT LineEdit : public QLineEdit
 
         void resetHover();
 
+    public slots:
+
+        virtual void cancel();
+
     signals:
 
         void hovered(bool enable);
+        void cancelled();
 
     protected:
 

@@ -238,6 +238,10 @@ void LineEdit::focusOutEvent(QFocusEvent* event)
 {
     resetHover();
     QLineEdit::focusOutEvent(event);
+    if (text().isEmpty())
+    {
+        cancel();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -264,6 +268,13 @@ bool LineEdit::eventFilter(QObject *object, QEvent *event)
         }
     }
     return QObject::eventFilter(object, event);
+}
+
+//--------------------------------------------------------------------------
+
+void LineEdit::cancel()
+{
+    emit cancelled();
 }
 
 //--------------------------------------------------------------------------

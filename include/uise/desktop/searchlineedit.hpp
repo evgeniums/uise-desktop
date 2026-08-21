@@ -49,14 +49,25 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
 
         void setSearchButtonVisible(bool enable);
 
+        /**
+         * @brief Enable/disable the built-in Escape-to-cancel shortcut. Enabled by default.
+         *
+         * That shortcut uses Qt::WidgetShortcut context, so while this line has focus Qt
+         * prefers it over any less specific binding of the same key -- including a
+         * Qt::WindowShortcut Escape on an enclosing dialog, which then never fires. Turn it
+         * off when the host owns Escape and the line should not intercept it.
+         */
+        void setCancelShortcutEnabled(bool enable);
+
+        bool isCancelShortcutEnabled() const;
+
     public slots:
 
-        void cancel();
+        virtual void cancel() override;
         void edit();
 
     signals:
 
-        void cancelled();
         void editingModeChanged(bool enable);
 
     protected:

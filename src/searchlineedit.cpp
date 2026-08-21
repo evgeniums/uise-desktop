@@ -121,7 +121,6 @@ void SearchLineEdit::edit()
     }
 
     m_editing=true;
-    m_searchButton->setVisible(false);
     m_cancelButton->setVisible(true);
     updateButtonPositions();
     emit editingModeChanged(m_editing);
@@ -162,7 +161,21 @@ void SearchLineEdit::leaveEvent(QEvent* event)
 void SearchLineEdit::setSearchButtonVisible(bool enable)
 {
     m_searchButtonVisible=enable;
-    m_searchButton->setVisible(m_searchButtonVisible && !m_editing);
+    m_searchButton->setVisible(m_searchButtonVisible);
+}
+
+//--------------------------------------------------------------------------
+
+void SearchLineEdit::setCancelShortcutEnabled(bool enable)
+{
+    m_cancelShortcut->setEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool SearchLineEdit::isCancelShortcutEnabled() const
+{
+    return m_cancelShortcut->isEnabled();
 }
 
 //--------------------------------------------------------------------------
