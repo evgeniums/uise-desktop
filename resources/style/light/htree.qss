@@ -10,7 +10,7 @@ uise--HTreeNodePlaceHolder {background-color: #C8C8C8;}
 uise--HTreeNodePlaceHolder QPushButton {background-color: #C8C8C8;}
 
 uise--HTreeStandardListItem QLabel {color:#000000;}
-uise--HTreeStandardListItem[hover="true"] {background-color:#ECECEC;}
+uise--HTreeStandardListItem[hover="true"] {background-color:#E8E8E8;}
 uise--HTreeStandardListItem[selected="true"] {background-color:#CCCCCC;}
 
 /* Update-ready list item — amber text to match the navbar button */
