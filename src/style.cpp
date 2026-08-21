@@ -146,13 +146,25 @@ void Style::reloadStyleSheet()
         auto defaultColorThemePath=QString("%1/%2").arg(folderPath,defaultColorTheme);
         auto themePath=QString("%1/%2").arg(folderPath,colorTheme);
 
-        // list deafult color theme files for dark or light
+        // List default color theme files for dark or light.
+        //
+        // Kept as an ordered list, not just a QSet: the concatenation order of these files IS
+        // the cascade order of the rules in them, so it decides which of two equally specific
+        // rules wins. QSet iterates in hash order, and QHash seeds its hash randomly per
+        // process, so appending straight out of the set made that order -- and therefore the
+        // resulting style -- differ from one run of the application to the next. The set is
+        // kept alongside purely as the O(1) "was this overridden" lookup below.
+        //
+        // entryInfoList() sorts by name (QDir's default sorting), which is what makes the
+        // ordered list deterministic.
+        QStringList defaultFileNames;
         QSet<QString> defaultFiles;
         QDir defaultStylesDir(defaultColorThemePath);
         defaultStylesDir.setNameFilters(filters());
         auto items=defaultStylesDir.entryInfoList(QDir::Files);
         for (auto&& item:items)
         {
+            defaultFileNames.append(item.fileName());
             defaultFiles.insert(item.fileName());
         }
 
@@ -176,9 +188,12 @@ void Style::reloadStyleSheet()
         }
 
         // append default color theme files that were not overriden in current color theme
-        for (auto&& file:defaultFiles)
+        for (auto&& fileName:defaultFileNames)
         {
-            files.append(defaultColorThemePath+"/"+file);
+            if (defaultFiles.contains(fileName))
+            {
+                files.append(defaultColorThemePath+"/"+fileName);
+            }
         }
     }
 
