@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QEvent>
 #include <QResizeEvent>
+#include <QMouseEvent>
 #include <QShortcut>
 #include <QPalette>
 #include <QBoxLayout>
@@ -50,6 +51,7 @@ class ModalPopup_p
         QShortcut* shortcut=nullptr;
 
         bool shortcutEnabled=true;
+        bool outsideClickEnabled=true;
         bool autoDestroy=false;
         bool inUpdate=false;
 };
@@ -186,6 +188,27 @@ void ModalPopup::resizeEvent(QResizeEvent *event)
 
 //--------------------------------------------------------------------------
 
+void ModalPopup::mousePressEvent(QMouseEvent* event)
+{
+    // This handler does NOT run only for presses that land on this frame's own backdrop: a
+    // press a descendant widget leaves unaccepted (QWidget::mousePressEvent's default impl
+    // calls event->ignore(), e.g. any control that reacts on release/clicked rather than press,
+    // such as AccountSelectButton) is redelivered by Qt to each ancestor up the parent chain
+    // until something accepts it or it reaches the top-level widget -- see DropdownFrame's own
+    // eventFilter() for the same mechanism spelled out in detail. Without the geometry check
+    // below, an unaccepted press anywhere inside the dialog would bubble all the way up to here
+    // and be misread as a click on the backdrop, closing the dialog out from under the user.
+    if (pimpl->outsideClickEnabled
+        && (pimpl->widget==nullptr || !pimpl->widget->geometry().contains(event->pos())))
+    {
+        close(pimpl->autoDestroy);
+        return;
+    }
+    QFrame::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
 void ModalPopup::updateWidgetGeometry()
 {
     if (pimpl->widget==nullptr)
@@ -315,6 +338,20 @@ void ModalPopup::setShortcutEnabled(bool enable)
 bool ModalPopup::isShortcutEnabled() const
 {
     return pimpl->shortcutEnabled;
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::setOutsideClickEnabled(bool enable)
+{
+    pimpl->outsideClickEnabled=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool ModalPopup::isOutsideClickEnabled() const
+{
+    return pimpl->outsideClickEnabled;
 }
 
 /****************************FrameWithModalPopup******************************/
@@ -457,6 +494,20 @@ void FrameWithModalPopup::setShortcutEnabled(bool enable)
 bool FrameWithModalPopup::isShortcutEnabled() const
 {
     return pimpl->popup->isShortcutEnabled();
+}
+
+//--------------------------------------------------------------------------
+
+void FrameWithModalPopup::setOutsideClickEnabled(bool enable)
+{
+    pimpl->popup->setOutsideClickEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool FrameWithModalPopup::isOutsideClickEnabled() const
+{
+    return pimpl->popup->isOutsideClickEnabled();
 }
 
 //--------------------------------------------------------------------------

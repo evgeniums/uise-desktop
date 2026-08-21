@@ -65,9 +65,17 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
         void setShortcutEnabled(bool enable);
         bool isShortcutEnabled() const;
 
+        //! Close when a mouse press lands directly on this frame rather than on its popup
+        //! widget child -- since the widget is sized/positioned to cover only its own rect
+        //! (see updateWidgetGeometry()), any press this frame itself receives is by
+        //! construction outside that widget.
+        void setOutsideClickEnabled(bool enable);
+        bool isOutsideClickEnabled() const;
+
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
+        void mousePressEvent(QMouseEvent* event) override;
         bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
@@ -167,6 +175,9 @@ class UISE_DESKTOP_EXPORT FrameWithModalPopup : public QFrame
 
         void setShortcutEnabled(bool enable);
         bool isShortcutEnabled() const;
+
+        void setOutsideClickEnabled(bool enable);
+        bool isOutsideClickEnabled() const;
 
         void setAutoColor(bool enable);
         bool isAutoColor() const;

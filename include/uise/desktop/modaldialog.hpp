@@ -71,6 +71,7 @@ class ModalDialog : public FrameWithModalPopup,
               m_defaultPopupMaxHeight(defaultPopupMaxHeight)
         {
             setShortcutEnabled(false);
+            setOutsideClickEnabled(false);
         }
 
         QWidget* qWidget() override
