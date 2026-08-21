@@ -471,10 +471,13 @@ void ImageLabel::mousePressEvent(QMouseEvent* event)
             return;
         }
 
-        emit clicked();
         if (m_animator->animationMode()==AnimationMode::Manual)
         {
             togglePlay();
+        }
+        else
+        {
+            emit clicked();
         }
     }
     RoundedImage::mousePressEvent(event);
@@ -504,10 +507,13 @@ void ImageLabel::mouseReleaseEvent(QMouseEvent* event)
     {
         if (m_dragGesture.releaseIsClick())
         {
-            emit clicked();
             if (m_animator->animationMode()==AnimationMode::Manual)
             {
                 togglePlay();
+            }
+            else
+            {
+                emit clicked();
             }
         }
         m_dragGesture.reset();
