@@ -86,6 +86,10 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement, bool l
         if (next->path().uniqueId()==pathElement.uniqueId())
         {
             next->setExpanded(true);
+            // The requested node is already the open next node -- setExpanded() above is a
+            // no-op in that case, so give action-style nodes (e.g. Quit) a chance to redo
+            // their action via reopen()/doReopen(). No-op by default for ordinary nodes.
+            next->reopen();
             return next;
         }
 

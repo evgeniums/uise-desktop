@@ -849,6 +849,14 @@ bool HTreeTab::openPath(HTreePath path)
         }
         pimpl->scrollToNode(nod);
     }
+    else if (truncIndex==static_cast<int>(path.elements().size()) && !pimpl->nodes.empty())
+    {
+        // The requested path is already fully open (the element loop above never ran), so
+        // give the currently open last node a chance to redo its action via
+        // reopen()/doReopen() -- e.g. re-clicking the Quit item's own navbar breadcrumb.
+        // No-op by default for ordinary nodes.
+        pimpl->nodes.back()->reopen();
+    }
     return true;
 }
 

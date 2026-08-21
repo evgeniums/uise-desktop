@@ -301,6 +301,20 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void activateToParent();
 
+        /**
+         * @brief Re-run this node's action because it was requested again while already the
+         * currently open next node (e.g. the same list item or navbar button was clicked a
+         * second time).
+         *
+         * For an ordinary content node this is a no-op by default -- the node is already open
+         * and showing its content, so there is nothing to redo. Action-style nodes (a node
+         * whose refresh() performs a one-shot action, e.g. a confirmation prompt, rather than
+         * displaying persistent content) override doReopen() to repeat that action, since
+         * HTreeBranch::loadNextNode() and HTreeTab::openPath() both short-circuit before
+         * reaching refresh()/doRefresh() when the requested node is already open.
+         */
+        void reopen();
+
     signals:
 
         void nameUpdated(const QString&);
@@ -313,6 +327,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void toggleExpanded(bool enable);
 
         void initRequested();
+
+        void reopenRequested();
 
         void aboutToDestroy(QObject* obj);
 
@@ -333,6 +349,13 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
          * called with the new path when this is invoked.
          */
         virtual void doReconstructFromPath(const HTreePath&)
+        {}
+
+        /**
+         * @brief Reimplement to redo this node's action when reopen() is invoked. See the
+         * reopen() doc comment. Default implementation does nothing.
+         */
+        virtual void doReopen()
         {}
 
         void fillContent();

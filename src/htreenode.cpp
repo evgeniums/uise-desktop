@@ -721,6 +721,14 @@ void HTreeNode::fillContent()
 
 //--------------------------------------------------------------------------
 
+void HTreeNode::reopen()
+{
+    doReopen();
+    emit reopenRequested();
+}
+
+//--------------------------------------------------------------------------
+
 bool HTreeNode::isExpanded() const
 {
     return pimpl->expanded;
