@@ -151,6 +151,7 @@ void AbstractChatMessageContent::rebuildSections()
     attach(m_header);
     attach(m_reply);
     attach(m_body);
+    attach(m_comment);
     attach(m_bottom);
 }
 
@@ -426,6 +427,10 @@ void ChatMessageContent::updateWidgets()
     {
         m_layout->addWidget(body(),0,Qt::AlignLeft);
     }
+    if (comment()!=nullptr)
+    {
+        m_layout->addWidget(comment(),0,Qt::AlignLeft);
+    }
     if (bottom()!=nullptr)
     {
         m_layout->addWidget(bottom(),0,Qt::AlignLeft);
@@ -450,6 +455,10 @@ void ChatMessageContent::clearContentSelection()
     {
         body()->clearContentSelection();
     }
+    if (comment()!=nullptr)
+    {
+        comment()->clearContentSelection();
+    }
     if (bottom()!=nullptr)
     {
         bottom()->clearContentSelection();
@@ -460,6 +469,7 @@ void ChatMessageContent::clearContentSelection()
 
 void ChatMessageContent::setSelected(bool enable)
 {
+    rememberSelected(enable);
     Style::setStyleProperty(this,"selected",enable);
     if (bottom())
     {
@@ -473,12 +483,17 @@ void ChatMessageContent::setSelected(bool enable)
     {
         reply()->setSelected(enable);
     }
+    if (comment())
+    {
+        comment()->setSelected(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::setSent(bool enable)
 {
+    rememberSent(enable);
     Style::setStyleProperty(this,"sent",enable);
     if (bottom())
     {
@@ -491,6 +506,10 @@ void ChatMessageContent::setSent(bool enable)
     if (reply())
     {
         reply()->setSent(enable);
+    }
+    if (comment())
+    {
+        comment()->setSent(enable);
     }
 }
 
@@ -911,11 +930,32 @@ std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
 
 QString ChatMessage::selectedText() const
 {
-    if (content() && content()->body())
+    if (!content())
     {
-        return content()->body()->selectedText();
+        return QString{};
     }
-    return QString{};
+
+    // Combine the body's selection with the comment section's own (a forwarded message's
+    // sender-comments block, see AbstractChatMessageComment) -- otherwise a selection made only
+    // in the comment block would be silently invisible to Copy.
+    QString text;
+    if (content()->body())
+    {
+        text=content()->body()->selectedText();
+    }
+    if (content()->comment())
+    {
+        auto commentText=content()->comment()->selectedText();
+        if (!commentText.isEmpty())
+        {
+            if (!text.isEmpty())
+            {
+                text+=QStringLiteral("\n");
+            }
+            text+=commentText;
+        }
+    }
+    return text;
 }
 
 /***************************ChatMessageSelector***************************/

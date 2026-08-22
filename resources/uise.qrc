@@ -172,6 +172,12 @@
         <file>style/light/replypreview.json</file>
         <file>style/dark/replypreview.qss</file>
         <file>style/light/replypreview.qss</file>
+        <file>style/forwardpreview.json</file>
+        <file>style/forwardpreview.qss</file>
+        <file>style/dark/forwardpreview.json</file>
+        <file>style/light/forwardpreview.json</file>
+        <file>style/dark/forwardpreview.qss</file>
+        <file>style/light/forwardpreview.qss</file>
         <file>style/dark/check.svg</file>
         <file>style/light/check.svg</file>
         <file>style/radio-dot.svg</file>

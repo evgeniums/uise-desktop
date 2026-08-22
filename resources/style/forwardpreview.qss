@@ -1,0 +1,147 @@
+/* ---- short forward bar above the chat editor ---- */
+
+uise--AbstractForwardBar {
+border-top: 1px solid transparent;
+padding: 6px 8px;
+}
+
+/* IconTextButton's icon has no sensible default size of its own -- must be set explicitly per
+   container, same as replypreview.qss does for AbstractReplyBar's own buttons. */
+uise--AbstractForwardBar uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--AbstractForwardBar uise--IconTextButton {
+padding: 4px;
+border-radius: 4px;
+border: 1px solid transparent;
+}
+
+uise--AbstractForwardBar #configureButton {
+margin-right: 8px;
+}
+
+uise--AbstractForwardBar #cancelButton {
+margin-left: 8px;
+}
+
+/* margin-right:8px/margin-left:8px above each grow their button's rect() 8px wider on ONE side
+   only -- an uncompensated ripple would grow into that band and paint as a flattened ellipse
+   rather than the circle an icon-only IconTextButton ripple should be, same gotcha
+   replypreview.qss documents for AbstractReplyBar's own buttons. */
+uise--AbstractForwardBar #configureButton uise--RippleOverlay {
+qproperty-rippleInsetRight: 8;
+}
+
+uise--AbstractForwardBar #cancelButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 8;
+}
+
+uise--AbstractForwardBar #countLabel {
+font-size: 12px;
+font-style: italic;
+}
+
+/* ---- bubble header: "Forwarded from <author>" ---- */
+
+/* Targets the CONCRETE class, not uise--AbstractChatMessageHeader -- Qt type selectors match
+   subclasses, and that abstract base is shared by every future header implementation (see
+   ChatMessageForwardHeader's own class doc comment). */
+uise--ChatMessageForwardHeader {
+border: none;
+padding: 0;
+qproperty-maxWidthHint: 320;
+}
+
+/* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's/dark/reset.qss's
+   global "QLabel { color: ... }" rule matches that internal QLabel DIRECTLY, which beats an
+   inherited color from a rule targeting #forwardPrefix/#forwardAuthor/#forwardSuffix
+   themselves -- same fix replypreview.qss's own #title/#text rules needed. */
+uise--ChatMessageForwardHeader #forwardPrefix QLabel,
+uise--ChatMessageForwardHeader #forwardSuffix QLabel {
+font-weight: normal;
+font-size: 11px;
+}
+
+uise--ChatMessageForwardHeader #forwardAuthor QLabel {
+font-weight: bold;
+font-size: 11px;
+}
+
+uise--ChatMessageForwardHeader #forwardAuthor QLabel[hovered="true"] {
+text-decoration: underline;
+}
+
+/* ---- bubble section: sender's own comments on a forwarded message ---- */
+
+uise--AbstractChatMessageComment {
+border-radius: 6px;
+padding: 4px 6px;
+margin-top: 4px;
+}
+
+uise--AbstractChatMessageComment uise--ChatMessageText uise--ChatMessageTextBrowser {
+font-size: 12px;
+font-style: italic;
+}
+
+/* ---- full "configure forward" dialog ---- */
+
+uise--ForwardDialog #messageArea {
+border: none;
+background-color: transparent;
+}
+
+uise--ForwardDialog #messageHolder {
+padding: 4px;
+}
+
+uise--ForwardDialog #countLabel {
+padding: 24px 4px;
+font-size: 13px;
+}
+
+/* No rules here, deliberately -- do NOT put `margin` (not even top/bottom alone) on a
+ * uise--AbstractCheckBox-derived selector such as #hideSenderName. Empirically confirmed: it
+ * makes the checkbox's own :hover border render shorter than its indicator, cutting through it
+ * instead of enclosing it, even though the checkbox's overall row height looks unaffected.
+ * `padding`/`border` on uise--AbstractCheckBox itself are fine (checkbox.qss's base rule uses
+ * both); it is specifically `margin` that breaks it. See checkbox.qss's own doc comment for the
+ * full note -- this file adds none of its own on top, plain contentLayout->addWidget() in
+ * src/forwarddialog.cpp already looks right without it.
+ */
+
+/* Menu-item look for the actions list -- same convention as replypreview.qss's #actions rules. */
+uise--ForwardDialog #actions {
+background-color: transparent;
+}
+
+uise--ForwardDialog #actions uise--IconTextButton {
+padding: 6px 8px;
+border-radius: 6px;
+background-color: transparent;
+}
+
+uise--ForwardDialog #actions uise--IconTextButton uise--RippleOverlay {
+qproperty-rippleClip: "rounded";
+qproperty-rippleCornerRadius: 6;
+qproperty-rippleRadiusScaleX: 1.0;
+qproperty-rippleRadiusScaleY: 1.0;
+}
+
+uise--ForwardDialog #actions uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--ForwardDialog #comment {
+font-size: 12px;
+font-style: italic;
+padding: 6px 8px;
+margin: 4px 0;
+}

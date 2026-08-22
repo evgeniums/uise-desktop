@@ -20,8 +20,24 @@ border-radius: 8px;
  */
 }
 
-uise--AbstractDialog #dialogIcon QPushButton {icon-size:40px;border:none;}
+/* background:transparent is required, not decorative -- `border:none` alone does not stop the
+ * native QStyle from still painting its own hover/pressed background underneath (Qt only fully
+ * hands background painting to the stylesheet once a `background`/`background-color` property
+ * is present); explicit :hover/:pressed overrides pin it transparent in every state too, since
+ * this button is purely decorative (see the comment below). */
+uise--AbstractDialog #dialogIcon QPushButton {icon-size:40px;border:none;background:transparent;}
+uise--AbstractDialog #dialogIcon QPushButton:hover,
+uise--AbstractDialog #dialogIcon QPushButton:pressed {background:transparent;}
 uise--AbstractDialog #dialogIcon {padding:0 8px;}
+
+/* Purely decorative -- Dialog<>::setSvgIcon() is used by every dialog in this library (e.g.
+ * ReplyDialog, ForwardDialog) to show a title icon, and nothing anywhere connects its inherited
+ * QPushButton::clicked(). Switching rippleEnabled off here (rather than in C++) follows this
+ * property's own documented purpose: "a stylesheet can switch the effect off for a given widget
+ * type or objectName without touching C++", see RippleOverlay's own class doc comment. */
+uise--AbstractDialog #dialogIcon uise--RippleOverlay {
+qproperty-rippleEnabled: false;
+}
 
 uise--AbstractDialog #titleFrame {padding: 4px 4px;border-top-left-radius:7px;border-top-right-radius:7px;}
 uise--AbstractDialog #titleFrame uise--PushButton {margin:0;}

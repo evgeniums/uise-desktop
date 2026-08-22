@@ -1,0 +1,30 @@
+{
+    "contexts" : [
+        {
+            "name" : "ForwardBar",
+            "aliases" : {
+                "configure" : "${uise-svg-icons-1}/adjustments-horizontal",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        },
+        {
+            "name" : "ForwardDialogIcon",
+            "aliases" : {
+                "forward" : "${uise-svg-icons-1}/arrow-forward-up"
+            }
+        },
+        {
+            "name" : "ForwardDialog",
+            "aliases" : {
+                "changeRecipient" : "${uise-svg-icons-1}/users-group",
+                "showInChat" : "${uise-svg-icons-1}/message-search"
+            }
+        },
+        {
+            "name" : "ForwardDialogDanger",
+            "aliases" : {
+                "doNotForward" : "${uise-svg-icons-1}/message-off"
+            }
+        }
+    ]
+}

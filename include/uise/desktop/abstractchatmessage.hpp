@@ -230,6 +230,9 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
         AbstractChatMessageContent* m_content=nullptr;        
 };
 
+//! Hosts whatever sits at the very top of the bubble -- currently ChatMessageForwardHeader
+//! ("Forwarded from <author>", see chatmessageforwardheader.hpp). A later group-chat
+//! sender-name header would extend the same concrete section rather than claim a new slot.
 class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public ChatMessageContentSection
 {
     Q_OBJECT
@@ -245,10 +248,9 @@ class AbstractReplyPreview;
  * @brief Section shown between the bubble header and the bubble body, previewing the message
  *  this message is a reply to.
  *
- * A genuine 4th AbstractChatMessageContent slot, deliberately kept separate from
- * AbstractChatMessageHeader -- the header slot stays free for a future sender-name header (it
- * has no concrete implementation anywhere yet), and this section gets its own QSS type
- * selector plus its own setSelected()/setSent() forwarding, independent of the header's.
+ * One of AbstractChatMessageContent's 5 slots, deliberately kept separate from
+ * AbstractChatMessageHeader -- this section gets its own QSS type selector plus its own
+ * setSelected()/setSent() forwarding, independent of the header's.
  * Decoration is entirely QSS-driven -- see replypreview.qss for the vertical accent bar +
  * tinted background convention.
  */
@@ -283,6 +285,48 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageReply : public ChatMessageContentSe
         //! message ("Show in chat"). Forwarded from preview()'s own
         //! AbstractReplyPreview::clicked().
         void clicked();
+};
+
+/**
+ * @brief Section shown between the bubble body and the bubble bottom, carrying the forwarding
+ *  sender's own comments on a forwarded message ("cited and quoted" form, see
+ *  tasks/task-message-forwarding.md).
+ *
+ * A genuine 5th AbstractChatMessageContent slot, deliberately kept as a sibling of
+ * AbstractChatMessageBody rather than a subclass of it -- a subclass would implicitly convert
+ * to setWidgets()'s `body` parameter, a silent mis-wiring footgun. Duplicates
+ * AbstractChatMessageBody's selection quartet (selectedText()/hasSelectableText()/
+ * setCopyable()/selectText()) and its selectionChanged() signal rather than inheriting them,
+ * for the same reason.
+ */
+class UISE_DESKTOP_EXPORT AbstractChatMessageComment : public ChatMessageContentSection
+{
+    Q_OBJECT
+
+    public:
+
+        using ChatMessageContentSection::ChatMessageContentSection;
+
+        virtual void setComment(const QString& text, bool markdown=true) =0;
+        virtual void clearComment() =0;
+        virtual QString comment() const =0;
+
+        virtual QString selectedText() const {return QString{};}
+
+        //! See AbstractChatMessageBody::hasSelectableText() -- same contract, applied to this
+        //! section's own embedded text instead of a body's.
+        virtual bool hasSelectableText() const {return false;}
+
+        //! See AbstractChatMessageBody::setCopyable().
+        virtual void setCopyable(bool enable) {std::ignore=enable;}
+
+        //! See AbstractChatMessageBody::selectText().
+        virtual void selectText(const QString& /*text*/) {}
+
+    signals:
+
+        //! See AbstractChatMessageBody::selectionChanged().
+        void selectionChanged();
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSection
@@ -387,14 +431,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
         /**
-         * @brief Set this bubble's up-to-4 content sections.
-         * @param reply Appended last, defaulted, so every existing call site (none of which
-         *  knows about the reply section) keeps compiling unchanged. Display order is header /
-         *  reply / body / bottom regardless of this parameter's position -- see
-         *  ChatMessageContent::updateWidgets().
+         * @brief Set this bubble's up-to-5 content sections.
+         * @param reply Defaulted, so every call site that predates the reply section keeps
+         *  compiling unchanged.
+         * @param comment Defaulted, so every call site that predates the comment section keeps
+         *  compiling unchanged. Display order is header / reply / body / comment / bottom
+         *  regardless of these parameters' position -- see ChatMessageContent::updateWidgets().
          */
         void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr,
-                        AbstractChatMessageBottom* bottom=nullptr, AbstractChatMessageReply* reply=nullptr)
+                        AbstractChatMessageBottom* bottom=nullptr, AbstractChatMessageReply* reply=nullptr,
+                        AbstractChatMessageComment* comment=nullptr)
         {
             destroyWidget(m_header);
             m_header=header;
@@ -404,20 +450,22 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             m_bottom=bottom;
             destroyWidget(m_reply);
             m_reply=reply;
+            destroyWidget(m_comment);
+            m_comment=comment;
             rebuildSections();
             updateWidgets();
         }
 
         /**
          * @brief Attach, replace or remove the reply section after construction, without
-         *  touching header()/body()/bottom().
+         *  touching header()/body()/comment()/bottom().
          * @param reply New section, or nullptr to remove it -- see clearReply(). Destroys
          *  whatever reply section was previously set.
          *
          * For a reply target resolved asynchronously (looked up after the bubble is already on
          * screen) or a reply whose original message is deleted while the bubble is visible --
          * setWidgets() itself would also work, but would needlessly repeat header()/body()/
-         * bottom().
+         * comment()/bottom().
          */
         void setReply(AbstractChatMessageReply* reply)
         {
@@ -425,11 +473,48 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             m_reply=reply;
             rebuildSections();
             updateWidgets();
+            // A section attached here (rather than via the initial setWidgets()) would
+            // otherwise never learn the bubble's current selected/sent state -- see
+            // setSelected()'s doc comment.
+            if (m_reply!=nullptr)
+            {
+                m_reply->setSelected(isContentSelected());
+                m_reply->setSent(isContentSent());
+            }
         }
 
         void clearReply()
         {
             setReply(nullptr);
+        }
+
+        /**
+         * @brief Attach, replace or remove the comment section after construction, without
+         *  touching header()/body()/reply()/bottom().
+         * @param comment New section, or nullptr to remove it -- see clearComment(). Destroys
+         *  whatever comment section was previously set.
+         *
+         * For a forwarded message whose sender comments are edited/resolved after the bubble is
+         * already on screen -- setWidgets() itself would also work, but would needlessly repeat
+         * header()/body()/reply()/bottom().
+         */
+        void setComment(AbstractChatMessageComment* comment)
+        {
+            destroyWidget(m_comment);
+            m_comment=comment;
+            rebuildSections();
+            updateWidgets();
+            // See setReply()'s identical re-application and setSelected()'s doc comment for why.
+            if (m_comment!=nullptr)
+            {
+                m_comment->setSelected(isContentSelected());
+                m_comment->setSent(isContentSent());
+            }
+        }
+
+        void clearComment()
+        {
+            setComment(nullptr);
         }
 
         AbstractChatMessageHeader* header() const noexcept
@@ -450,6 +535,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         AbstractChatMessageReply* reply() const noexcept
         {
             return m_reply;
+        }
+
+        AbstractChatMessageComment* comment() const noexcept
+        {
+            return m_comment;
         }
 
         int maximumBubbleWidth() const noexcept
@@ -477,7 +567,21 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bodyWidthHint;
         }
 
+        /**
+         * @brief Set whether this bubble is currently selected (selection-mode checkbox).
+         * @param enable New state.
+         *
+         * An override MUST also call rememberSelected(enable) (typically first) so that
+         * setReply()/setComment() can re-apply the current state to a section attached AFTER
+         * this was last called -- otherwise a section attached asynchronously (a reply target
+         * resolved late, or forwarded comments arriving after the bubble is already on screen)
+         * silently never receives the state at all, since AbstractChatMessage calls this once
+         * per state change, not once per section.
+         */
         virtual void setSelected(bool enable) =0;
+
+        //! See setSelected() -- same "must call rememberSent()" contract, for the [sent="..."]
+        //! QSS state instead of [selected="..."].
         virtual void setSent(bool enable) =0;
 
         void updateBubbleWidth(int forMaxWidthIn);
@@ -508,11 +612,33 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         virtual void updateWidgets() =0;
 
+        //! Record the current selected/sent state -- see setSelected()'s doc comment for why an
+        //! override must call these. isContentSelected()/isContentSent() below read it back.
+        void rememberSelected(bool enable) noexcept
+        {
+            m_selected=enable;
+        }
+
+        void rememberSent(bool enable) noexcept
+        {
+            m_sent=enable;
+        }
+
+        bool isContentSelected() const noexcept
+        {
+            return m_selected;
+        }
+
+        bool isContentSent() const noexcept
+        {
+            return m_sent;
+        }
+
     private:
 
-        //! Rebuilds m_sections from whichever of m_header/m_reply/m_body/m_bottom are
+        //! Rebuilds m_sections from whichever of m_header/m_reply/m_body/m_comment/m_bottom are
         //! currently non-null, in DISPLAY order, wiring each via setChatMessage()/
-        //! setChatContent(). Called by both setWidgets() and setReply() -- previously
+        //! setChatContent(). Called by setWidgets(), setReply() and setComment() -- previously
         //! setWidgets() only ever ran once per instance and just push_back()'d into
         //! m_sections without clearing it first, which left stale (dangling, past their
         //! destroyWidget() calls) entries the moment it ran a second time; setReply() makes a
@@ -522,7 +648,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         QPointer<AbstractChatMessageHeader> m_header=nullptr;
         QPointer<AbstractChatMessageReply> m_reply=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
+        QPointer<AbstractChatMessageComment> m_comment=nullptr;
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
+
+        bool m_selected=false;
+        bool m_sent=false;
 
         std::vector<ChatMessageContentSection*> m_sections;
         int m_maximumBubbleWidth=0;

@@ -1,0 +1,57 @@
+uise--AbstractForwardBar {
+background-color: #28282a;
+border-top-color: #444444;
+}
+
+uise--AbstractForwardBar #countLabel {
+color: #AAAAAA;
+}
+
+uise--ChatMessageForwardHeader #forwardPrefix QLabel,
+uise--ChatMessageForwardHeader #forwardSuffix QLabel {
+color: #AAAAAA;
+}
+
+uise--ChatMessageForwardHeader #forwardAuthor QLabel {
+color: #9CD5FF;
+}
+
+uise--ChatMessageForwardHeader #forwardAuthor QLabel[hovered="true"] {
+color: #FFFFFF;
+}
+
+uise--AbstractChatMessageComment {
+background-color: rgba(255,255,255,0.06);
+}
+
+uise--AbstractChatMessageComment[selected="true"] {
+background-color: rgba(255,255,255,0.10);
+}
+
+uise--ForwardDialog #countLabel {
+color: #BBBBBB;
+}
+
+uise--ForwardDialog #comment {
+color: #AAAAAA;
+}
+
+/* Icon mirrors text colour in both states -- see forwardpreview.json's "ForwardDialog" mode
+   ("normal"/"hovered"), which uses these exact same values. */
+uise--ForwardDialog #actions uise--IconTextButton #text {
+color: #9CD5FF;
+}
+
+uise--ForwardDialog #actions uise--IconTextButton #text[hovered="true"] {
+color: #FFFFFF;
+}
+
+/* "Do not forward" is destructive -- red palette, kept in step with forwardpreview.json's
+   "ForwardDialogDanger" mode. */
+uise--ForwardDialog #actions uise--IconTextButton#doNotForwardAction #text {
+color: #FF6B6B;
+}
+
+uise--ForwardDialog #actions uise--IconTextButton#doNotForwardAction #text[hovered="true"] {
+color: #FF8F8F;
+}

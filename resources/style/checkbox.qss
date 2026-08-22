@@ -39,6 +39,15 @@
  * never receive Enter/Leave and ":hover" can never match on them. Same contract as
  * IconTextButton.
  *
+ * Do NOT set `margin` on uise--CheckBox/uise--RadioBox itself (a consuming stylesheet's own
+ * per-instance rule, e.g. keyed on objectName) -- empirically confirmed to make the widget's
+ * own :hover border (painted via PE_Widget on its full rect(), see above) render SHORTER than
+ * #indicator, cutting through it instead of enclosing it, even though the row's overall height
+ * in its parent layout looks unaffected. `padding`/`border` directly on uise--CheckBox/
+ * uise--RadioBox are fine (this file's own base rule below uses both). For spacing around a
+ * checkbox, use the host layout instead -- e.g. QBoxLayout::addSpacing() around the
+ * addWidget() call -- not QSS margin on the checkbox.
+ *
  * qproperty-checkAnimationEnabled         - false switches instantly, no cross-fade
  * qproperty-checkAnimationDurationMs      - cross-fade duration, ms
  * qproperty-checkAnimationEasingCurveType - QEasingCurve::Type as int (6=OutCubic)

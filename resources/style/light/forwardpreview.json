@@ -1,0 +1,47 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ForwardBar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#777777" }
+                }
+            }
+        },
+        {
+            "name" : "ForwardDialogIcon",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#1e6091" }
+                }
+            }
+        },
+        {
+            "name" : "ForwardDialog",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#1e6091" },
+                    "on" :  { "currentColor" : "#1e6091" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#12405f" },
+                    "on" :  { "currentColor" : "#12405f" }
+                }
+            }
+        },
+        {
+            "name" : "ForwardDialogDanger",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#C0392B" },
+                    "on" :  { "currentColor" : "#C0392B" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#962D22" },
+                    "on" :  { "currentColor" : "#962D22" }
+                }
+            }
+        }
+    ]
+}

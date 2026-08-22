@@ -244,6 +244,13 @@ SET (HEADERS
     include/uise/desktop/abstractreplydialog.hpp
     include/uise/desktop/replydialog.hpp
 
+    include/uise/desktop/chatmessagecomment.hpp
+    include/uise/desktop/chatmessageforwardheader.hpp
+    include/uise/desktop/abstractforwardbar.hpp
+    include/uise/desktop/forwardbar.hpp
+    include/uise/desktop/abstractforwarddialog.hpp
+    include/uise/desktop/forwarddialog.hpp
+
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
@@ -422,6 +429,12 @@ SET (SOURCES
     src/replybar.cpp
     src/abstractreplydialog.cpp
     src/replydialog.cpp
+
+    src/chatmessagecomment.cpp
+    src/chatmessageforwardheader.cpp
+    src/forwardbar.cpp
+    src/abstractforwarddialog.cpp
+    src/forwarddialog.cpp
 
     src/messageeditor.cpp
     src/messageselectionpanel.cpp
