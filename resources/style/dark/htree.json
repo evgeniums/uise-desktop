@@ -86,6 +86,17 @@
             }
         },
         {
+            "name" : "HTreeTabBarItem",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        },
+        {
             "name" : "Update",
             "modes" : {
                 "normal" : {

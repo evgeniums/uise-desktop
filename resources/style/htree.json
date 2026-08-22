@@ -27,6 +27,12 @@
             "aliases" : {
                 "close" : "${uise-svg-icons-1}/x"
             }
+        },
+        {
+            "name" : "HTreeTabBarItem",
+            "aliases" : {
+                "close" : "${uise-svg-icons-1}/x"
+            }
         }
     ]
 }

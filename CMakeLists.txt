@@ -123,6 +123,7 @@ SET (HEADERS
     include/uise/desktop/htreebranch.hpp    
     include/uise/desktop/htreesidebar.hpp
     include/uise/desktop/htreetab.hpp
+    include/uise/desktop/htreetabbar.hpp
     include/uise/desktop/htreesplitter.hpp
     include/uise/desktop/htree.hpp
 
@@ -313,6 +314,7 @@ SET (SOURCES
     src/htreestandardlistitem.cpp
     src/htreelist.cpp
     src/htreetab.cpp
+    src/htreetabbar.cpp
     src/htreesplitter.cpp
     src/htreesidebar.cpp
 
