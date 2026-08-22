@@ -425,6 +425,24 @@ void Style::updateWidgetStyle(QWidget* source, QWidget* target)
     {
         target=source;
     }
+
+    // Nothing to RE-polish before the first polish has happened. A widget that has never been
+    // polished (typically one still inside its own constructor, setting up its initial dynamic
+    // properties) picks up whatever properties are set on it when Qt polishes it for the first
+    // time -- on ensurePolished() or on first show. Running unpolish()+polish() here would match
+    // the whole QSS against it just to have that result thrown away and recomputed moments
+    // later, and it resolves descendant selectors against an ancestor chain the widget may not
+    // even be in yet. Profiling found this to be a top cost when building many widgets at once:
+    // AbstractCheckBox's constructor alone (via applyPartState()) accounted for ~3% of total
+    // process CPU while loading a chat, entirely inside these premature repolishes.
+    //
+    // Qt sets WA_WState_Polished in QWidget::event() when it handles QEvent::Polish, and never
+    // clears it, so this only ever skips the pre-first-polish window.
+    if (!target->testAttribute(Qt::WA_WState_Polished))
+    {
+        return;
+    }
+
     if (styleDebugEnabled())
     {
         static size_t count=0;

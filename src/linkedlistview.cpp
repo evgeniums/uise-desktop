@@ -237,7 +237,10 @@ class LinkedListView_p
                 if (!destroyed && !keepWidgetAttached)
                 {
                     item->widget()->setVisible(false);
+#if 0
+    //! avoid reparenting because it causes cascade restyling
                     item->widget()->setParent(nullptr);
+#endif
                 }
                 if (!blockUpdate)
                 {
@@ -408,7 +411,9 @@ class LinkedListView_p
                 // of none (see takeItem()).
                 auto prevItem=LinkedListViewItem::getFromWidgetProperty(newWidget);
                 const bool alreadyOurs=newWidget->parentWidget()==view;
+#ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
                 const bool reordered=alreadyOurs && static_cast<bool>(prevItem);
+#endif
                 takeItem(prevItem,false,alreadyOurs);
                 auto newItem=itemForWidget(newWidget);
                 newItem->setPrevAuto(lastItem);

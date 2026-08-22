@@ -464,19 +464,14 @@ ChatMessageText* ChatMessageImages::ensureComment()
         pimpl->comment->setVisible(false);
         if (chatMessage()!=nullptr)
         {
-            // AbstractChatMessageChild::setChatMessage() reparents the comment onto
-            // chatMessage() as a side effect -- put it straight back under this widget, exactly
-            // as updateChatMessage() does for an already-existing comment. Without this the
-            // comment is left as a direct child of the MESSAGE widget while layoutChildren()
-            // keeps positioning it in THIS widget's coordinate space, so it lands somewhere over
-            // the message instead of below the album. This is the normal path, not an edge case:
-            // the body is wired into the content (and so given its chatMessage()) by
-            // setWidgets() before setComment() ever runs, so the very first ensureComment()
-            // always takes this branch. ChatMessageFiles never hit this because it creates its
-            // comment in the constructor -- before any chatMessage exists -- and its
-            // updateChatMessage() re-adds it to the body's own QLayout afterwards.
+            // The comment must stay a child of THIS widget: layoutChildren() positions it in
+            // this widget's coordinate space, so leaving it parented to the MESSAGE widget puts
+            // it somewhere over the message instead of below the album. It is created with
+            // `this` as parent just above and setChatMessage() no longer reparents (see
+            // AbstractChatMessageChild::setChatMessage()), so nothing to restore here -- the
+            // explicit setParent(this) this used to need is gone, since Qt does not short-circuit
+            // a same-parent setParent() and it would have cost a full subtree repolish.
             pimpl->comment->setChatMessage(chatMessage());
-            pimpl->comment->setParent(this);
         }
         if (chatContent()!=nullptr)
         {
@@ -697,12 +692,10 @@ void ChatMessageImages::updateChatMessage()
 {
     if (pimpl->comment!=nullptr)
     {
-        // AbstractChatMessageChild::setChatMessage() reparents the comment onto chatMessage()
-        // as a side effect, hiding it -- put it back under this widget and restore its
-        // visibility right after, exactly like ChatMessageContent::updateWidgets() does for a
-        // top-level header/body/bottom section.
+        // setChatMessage() no longer reparents (and so no longer hides) the comment -- see
+        // AbstractChatMessageChild::setChatMessage(). It stays the child of `this` that
+        // ensureComment() created, so only its visibility still needs asserting here.
         pimpl->comment->setChatMessage(chatMessage());
-        pimpl->comment->setParent(this);
         pimpl->comment->setVisible(!pimpl->commentText.isEmpty());
     }
 

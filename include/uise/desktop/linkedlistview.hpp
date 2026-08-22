@@ -40,7 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 // Undefine (default) to build the current implementation. Must be defined
 // consistently for linkedlistview.hpp and linkedlistview.cpp -- since the
 // .cpp includes this header, toggling the line below is enough.
-#define UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+//#define UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 

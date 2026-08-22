@@ -768,6 +768,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_content;
         }
 
+        /**
+         * @brief Widget the content bubble is ultimately parented to.
+         *
+         * Callers that build the content (and everything they nest inside it) should use this as
+         * the parent rather than the message itself: the content ends up under this widget either
+         * way, and building it elsewhere first means the whole subtree is reparented later, which
+         * with an app-wide stylesheet runs QWidgetPrivate::inheritStyle() over every descendant
+         * and re-polishes it against the QSS.
+         *
+         * Defaults to the message widget itself; subclasses that wrap the content in an
+         * intermediate frame override this to return that frame.
+         */
+        virtual QWidget* contentParentWidget()
+        {
+            return this;
+        }
+
         QDateTime datetime() const
         {
             return m_dateTime;
@@ -1034,7 +1051,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame
 
 inline void AbstractChatMessageChild::setChatMessage(AbstractChatMessage* chatMessage)
 {
-    setParent(chatMessage);
+    // Deliberately does NOT reparent onto chatMessage. It used to, and every single caller then
+    // had to undo it -- ChatMessageContent::updateWidgets() by re-adding the section to its own
+    // layout, ChatSeparator::doInsertSection() likewise, ChatMessageComment/ChatMessageFiles::
+    // updateChatMessage() likewise, and ChatMessageImages::updateChatMessage()/ensureComment()
+    // with an explicit setParent(this). So the widget was moved up to the message and straight
+    // back down again, and with an app-wide stylesheet each of those moves runs
+    // QWidgetPrivate::inheritStyle() over the widget's whole descendant subtree, re-polishing
+    // every widget in it against the QSS. Profiling put the pointless round trip at ~7% of total
+    // process CPU while loading a chat.
+    //
+    // Widgets are created under the parent they belong to (see ui::ChatMessage::doInit(), which
+    // builds every section under the content) and put into their final layout by the caller, so
+    // this setter now only records the association it is named for.
     m_chatMessage=chatMessage;
     updateChatMessage();
 }

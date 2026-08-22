@@ -273,6 +273,10 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         int bubbleOuterWidth() const override;
 
+        //! Returns the ChatMessageContentWrapper the content bubble lives in, so callers can
+        //! build the content there directly instead of having it reparented by setContent().
+        QWidget* contentParentWidget() override;
+
         void setAvatarPath(WithPath path) override;
         WithPath avatarPath() const override;
 
@@ -305,7 +309,17 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void construct() override;
 
-    private:        
+    private:
+
+        //! Builds the selection checkbox on first use and places it in the main layout.
+        //!
+        //! Deliberately NOT built in construct(): the selector is only ever shown in multi-select
+        //! mode, which is off for the overwhelming majority of a message's life, while building it
+        //! means building a whole uise::CheckBox (indicator parts, ripple overlay, animation,
+        //! label, SVG icon lookup). Profiling a chat load found that hidden checkbox to be the
+        //! single most expensive part of constructing a message bubble -- more than its entire
+        //! content body -- at ~5% of total process CPU.
+        void ensureSelector();
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };

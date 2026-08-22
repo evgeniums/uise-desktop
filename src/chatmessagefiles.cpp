@@ -412,9 +412,10 @@ void ChatMessageFiles::updateMaximumBubbleWidth()
 
 void ChatMessageFiles::updateChatMessage()
 {
-    // reparents comment to chatMessage() as a side effect (see AbstractChatMessageChild::
-    // setChatMessage()) -- put it back into our own layout right after, exactly like
-    // ChatMessageContent::updateWidgets() does for a top-level header/body/bottom section
+    // setChatMessage() no longer reparents the comment away (see AbstractChatMessageChild::
+    // setChatMessage()), so this addWidget() is now just asserting the layout slot -- and it
+    // short-circuits the reparent inside QLayout::addChildWidget(), since the comment is
+    // already a child of this widget.
     pimpl->comment->setChatMessage(chatMessage());
     pimpl->layout->addWidget(pimpl->comment);
 

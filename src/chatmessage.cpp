@@ -403,12 +403,15 @@ void ChatMessageContent::updateWidgets()
     // Must be idempotent -- setReply() can re-run this after setWidgets() already has (the
     // original single-shot version just kept appending and adding another trailing stretch).
     // QWidgetItem does not own its widget, so deleting the layout item only frees the item
-    // (and any stretch spacer); reparent every real widget item back onto `this` first so it
-    // survives to be re-added below.
+    // (and any stretch spacer); the widget itself is untouched and stays our child, ready to be
+    // re-added below. The setParent(this) that used to run here is guarded: taking a widget out
+    // of a layout does not reparent it, so on every real call the parent already IS `this`, and
+    // Qt does not short-circuit a same-parent setParent() -- it would run
+    // QWidgetPrivate::inheritStyle() over the section's whole subtree for nothing.
     while (m_layout->count()>0)
     {
         auto item=m_layout->takeAt(0);
-        if (item->widget()!=nullptr)
+        if (item->widget()!=nullptr && item->widget()->parentWidget()!=this)
         {
             item->widget()->setParent(this);
         }
@@ -562,7 +565,14 @@ ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(p
 void ChatMessageContentWrapper::setContent(AbstractChatMessageContent* content)
 {
     m_content=content;
-    m_content->setParent(this);
+    // Guarded: callers that built the content under AbstractChatMessage::contentParentWidget()
+    // (i.e. under this wrapper) are already correct, and Qt does not short-circuit a same-parent
+    // setParent() -- it would run QWidgetPrivate::inheritStyle() over the whole content subtree,
+    // the single largest one in the message, for nothing.
+    if (m_content->parentWidget()!=this)
+    {
+        m_content->setParent(this);
+    }
     updatePosition();
     m_content->installEventFilter(this);
     updateGeometry();
@@ -647,10 +657,14 @@ class ChatMessage_p
         ChatMessageAvatar* avatarFrame;
         QFrame* avatarFramePlaceholder;
 
-        ChatMessageContentWrapper* contentFrame;
+        //! Null until construct() runs -- contentParentWidget() is public and may be reached
+        //! before then, so it must be able to tell "not built yet" from a real frame.
+        ChatMessageContentWrapper* contentFrame=nullptr;
         QBoxLayout* contentLayout;
 
-        AbstractChatMessageSelector* selector;
+        //! Built lazily by ChatMessage::ensureSelector(), so null until multi-select mode is
+        //! first entered on this message. Every read must be guarded.
+        AbstractChatMessageSelector* selector=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -684,17 +698,7 @@ void ChatMessage::construct()
     pimpl->main->setObjectName("mainMessageFrame");
     pimpl->mainLayout=Layout::horizontal(pimpl->main);
 
-    pimpl->selector=makeWidget<AbstractChatMessageSelector,ChatMessageSelector>(pimpl->main);
-    connect(
-        pimpl->selector,
-        &AbstractChatMessageSelector::toggled,
-        this,
-        [this](bool checked)
-        {
-            setSelected(checked);
-        }
-    );
-    pimpl->selector->setVisible(false);
+    // Selector is built on demand, see ensureSelector().
 
     pimpl->avatarFrame=new ChatMessageAvatar(pimpl->main);
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
@@ -736,14 +740,62 @@ void ChatMessage::updateTopSeparator()
 
 //--------------------------------------------------------------------------
 
+void ChatMessage::ensureSelector()
+{
+    if (pimpl->selector!=nullptr)
+    {
+        return;
+    }
+
+    pimpl->selector=makeWidget<AbstractChatMessageSelector,ChatMessageSelector>(pimpl->main);
+    connect(
+        pimpl->selector,
+        &AbstractChatMessageSelector::toggled,
+        this,
+        [this](bool checked)
+        {
+            setSelected(checked);
+        }
+    );
+    // Explicit hide BEFORE it enters the layout: QBoxLayout auto-shows a child it adopts unless
+    // the child was explicitly hidden, and the caller decides visibility right after this.
+    pimpl->selector->setVisible(false);
+
+    // Adopt the current selection state: setSelected() is public and does not require selection
+    // mode, so a message can already be selected by the time its selector first gets built.
+    pimpl->selector->blockSignals(true);
+    pimpl->selector->setChecked(isSelected());
+    pimpl->selector->blockSignals(false);
+
+    // Same slot updateContent() would have put it in -- first when the selector sits on the
+    // left, last otherwise.
+    if (isSelectorOnLeft())
+    {
+        pimpl->mainLayout->insertWidget(0,pimpl->selector);
+    }
+    else
+    {
+        pimpl->mainLayout->addWidget(pimpl->selector);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessage::updateSelectionMode()
 {
-    pimpl->selector->setVisible(isSelectionMode());
-    if (!isSelectionMode())
+    if (isSelectionMode())
     {
-        pimpl->selector->blockSignals(true);
-        pimpl->selector->setChecked(false);
-        pimpl->selector->blockSignals(false);
+        ensureSelector();
+    }
+    if (pimpl->selector!=nullptr)
+    {
+        pimpl->selector->setVisible(isSelectionMode());
+        if (!isSelectionMode())
+        {
+            pimpl->selector->blockSignals(true);
+            pimpl->selector->setChecked(false);
+            pimpl->selector->blockSignals(false);
+        }
     }
     QTimer::singleShot(10,this,
     [this](){
@@ -761,9 +813,14 @@ void ChatMessage::updateSelection()
     content()->setSelected(isSelected());
     pimpl->avatarFrame->setSelected(isSelected());
 
-    pimpl->selector->blockSignals(true);
-    pimpl->selector->setChecked(isSelected());
-    pimpl->selector->blockSignals(false);
+    // Null unless multi-select mode was entered on this message, which is the only way it could
+    // have become selected in the first place.
+    if (pimpl->selector!=nullptr)
+    {
+        pimpl->selector->blockSignals(true);
+        pimpl->selector->setChecked(isSelected());
+        pimpl->selector->blockSignals(false);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -810,7 +867,9 @@ void ChatMessage::updateContent()
         pimpl->avatarFrame->setRight(isRight());
         pimpl->avatarFrame->setSent(isRight());
 
-        if (isSelectorOnLeft())
+        // Only re-slot the selector if it exists; ensureSelector() places it correctly on its own
+        // when it is built later.
+        if (isSelectorOnLeft() && pimpl->selector!=nullptr)
         {
             pimpl->mainLayout->addWidget(pimpl->selector);
         }
@@ -829,7 +888,7 @@ void ChatMessage::updateContent()
             pimpl->mainLayout->addWidget(pimpl->avatarFrame);
         }
 
-        if (!isSelectorOnLeft())
+        if (!isSelectorOnLeft() && pimpl->selector!=nullptr)
         {
             pimpl->mainLayout->addWidget(pimpl->selector);
         }
@@ -890,12 +949,22 @@ int ChatMessage::bubbleOuterWidth() const
 
     w+=pimpl->avatarFrame->minimumWidth();
     w+=pimpl->avatarFramePlaceholder->minimumWidth();
-    if (pimpl->selector->isVisible())
+    if (pimpl->selector!=nullptr && pimpl->selector->isVisible())
     {
         w+=pimpl->selector->minimumWidth();
     }
 
     return w;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* ChatMessage::contentParentWidget()
+{
+    // Before construct() there is no wrapper yet; fall back to the base behaviour rather than
+    // handing out a null parent.
+    return pimpl->contentFrame!=nullptr ? static_cast<QWidget*>(pimpl->contentFrame)
+                                        : AbstractChatMessage::contentParentWidget();
 }
 
 //--------------------------------------------------------------------------

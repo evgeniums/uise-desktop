@@ -174,9 +174,10 @@ void ChatMessageComment::setSent(bool enable)
 
 void ChatMessageComment::updateChatMessage()
 {
-    // reparents pimpl->text to chatMessage() as a side effect (see AbstractChatMessageChild::
-    // setChatMessage()) -- put it back into our own layout right after, exactly like
-    // ChatMessageFiles::updateChatMessage() does for its own embedded comment.
+    // setChatMessage() no longer reparents pimpl->text away (see AbstractChatMessageChild::
+    // setChatMessage()), so this addWidget() is now just asserting the layout slot -- and it
+    // short-circuits the reparent inside QLayout::addChildWidget(), since pimpl->text is
+    // already a child of this widget.
     pimpl->text->setChatMessage(chatMessage());
     pimpl->layout->addWidget(pimpl->text,1);
 }
