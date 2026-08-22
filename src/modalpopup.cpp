@@ -65,9 +65,44 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
     pimpl->parent=parent;
     pimpl->shortcut=new QShortcut(Qt::Key_Escape, this);
     pimpl->shortcut->setContext(Qt::WindowShortcut);
+    // QShortcut defaults to enabled -- popup()/close() toggle it correctly around actual
+    // show/hide, but nothing disabled it in between construction and the first popup()/close()
+    // call, so a ModalPopup that has never been opened yet still carries a LIVE, Qt::
+    // WindowShortcut-scoped Escape shortcut in the same top-level window as setVisible(false)
+    // just below suggests it shouldn't. Found live: a ChatPage eagerly constructs several
+    // FrameWithModalPopup hosts (fileUploadFrame/replyFrame/forwardFrame) up front, none of
+    // which the user may ever have opened -- each contributes one more enabled WindowShortcut
+    // Escape shortcut to the window regardless, and as soon as 2+ such shortcuts (any
+    // combination of these, or a THIRD popup like ModalChatSelectDialog opened on top) are
+    // simultaneously enabled, Qt treats Escape as ambiguous and it does nothing for ANY of
+    // them -- not even the intended, actually-visible top popup. Disabling here, matching
+    // setVisible(false), closes that gap; popup() still explicitly re-enables per
+    // shortcutEnabled on every actual open, so this has no effect once a popup has been shown
+    // at least once.
+    pimpl->shortcut->setEnabled(false);
     connect(
         pimpl->shortcut,
         &QShortcut::activated,
+        this,
+        [this]()
+        {
+            close(pimpl->autoDestroy);
+        }
+    );
+    // Same reasoning DropdownFrame's own Escape shortcut already documents (dropdownframe.cpp):
+    // when 2+ enabled Qt::WindowShortcut-context shortcuts share the same key sequence in the
+    // same top-level window, Qt fires activatedAmbiguously() on ALL of them instead of
+    // activated() on any -- disabling this shortcut whenever this popup itself is not the one
+    // open (see setEnabled(false) above/close()) narrows that window a lot, but does not close
+    // it entirely: this popup can legitimately be the CURRENTLY VISIBLE, topmost one while
+    // another ModalPopup instance elsewhere in the same window is ALSO legitimately open at
+    // once (e.g. this app's own nested reply/forward/file-upload dialog chain within one
+    // ChatPage, or a second independent popup opened on top, like the window-level chat-select
+    // dialog). Ambiguous or not, Escape should still close the actual visible popup -- treat
+    // both signals identically, exactly like DropdownFrame's own escShortcut does.
+    connect(
+        pimpl->shortcut,
+        &QShortcut::activatedAmbiguously,
         this,
         [this]()
         {
