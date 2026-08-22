@@ -30,7 +30,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QLocale>
 #include <QResizeEvent>
-#include <QTimer>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
@@ -418,25 +417,34 @@ void ChatMessageContent::updateWidgets()
         delete item;
     }
 
+    // show() clears WA_WState_Hidden synchronously, so the very next sizeHint() counts this
+    // section -- addWidget() alone leaves it hidden until a queued _q_showIfNotHidden when this
+    // frame is already visible (e.g. setReply()/setComment() re-running this on a bubble already
+    // on screen), and the bubble would be mis-measured until that queued show ran.
     if (header()!=nullptr)
     {
         m_layout->addWidget(header(),0,Qt::AlignLeft);
+        header()->show();
     }
     if (reply()!=nullptr)
     {
         m_layout->addWidget(reply(),0,Qt::AlignLeft);
+        reply()->show();
     }
     if (body()!=nullptr)
     {
         m_layout->addWidget(body(),0,Qt::AlignLeft);
+        body()->show();
     }
     if (comment()!=nullptr)
     {
         m_layout->addWidget(comment(),0,Qt::AlignLeft);
+        comment()->show();
     }
     if (bottom()!=nullptr)
     {
         m_layout->addWidget(bottom(),0,Qt::AlignLeft);
+        bottom()->show();
     }
     m_layout->addStretch(1);
     Style::updateWidgetStyle(this);
@@ -557,7 +565,6 @@ void ChatMessageContent::updateLastInBatch()
 
 ChatMessageContentWrapper::ChatMessageContentWrapper(QWidget* parent) : QFrame(parent)
 {
-    m_timer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -595,13 +602,25 @@ void ChatMessageContentWrapper::updatePosition()
     }
 
     m_content->resize(m_content->sizeHint());
+    applyContentPosition();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContentWrapper::applyContentPosition()
+{
+    if (!m_content)
+    {
+        return;
+    }
+
     if (m_right)
     {
-        m_content->move(width()+contentsMargins().left()-m_content->width(),0);
+        m_content->move(width()-contentsMargins().right()-m_content->width(),contentsMargins().top());
     }
     else
     {
-        m_content->move(contentsMargins().left(),0);
+        m_content->move(contentsMargins().left(),contentsMargins().top());
     }
 }
 
@@ -613,16 +632,68 @@ bool ChatMessageContentWrapper::eventFilter(QObject *obj, QEvent *event)
     {
         updatePosition();
         updateGeometry();
-        m_timer->shot(
-            1,
-            [this]()
-            {
-                updatePosition();
-                updateGeometry();
-            }
-        );
     }
     return QFrame::eventFilter(obj, event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContentWrapper::resizeEvent(QResizeEvent *event)
+{
+    QFrame::resizeEvent(event);
+
+    // Move-only: this wrapper is layout-managed by its parent, so it can be resized by that
+    // parent's layout pass before m_content's own geometry has ever been set from a real
+    // (non-default) width -- without this, the bubble is first positioned against Qt's default
+    // 100px child geometry (a negative x for any wider bubble, i.e. clipped flush left) and only
+    // catches up whenever something else happens to re-run updatePosition() later. Move-only
+    // also keeps this handler re-entrancy-safe: it can never resize m_content, so it can never
+    // trigger the Resize eventFilter above and loop back into this wrapper's own resizeEvent().
+    applyContentPosition();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContentWrapper::showEvent(QShowEvent *event)
+{
+    QFrame::showEvent(event);
+
+    // m_content's own body section (e.g. ChatMessageFiles) can report a bogus near-zero
+    // sizeHint() while still hidden -- its rows are shown individually
+    // (ChatMessageFiles::rebuildList()'s explicit row->show()), but the section widget itself
+    // only gets its OWN internal layout activated by Qt on its first real show, which is when its
+    // sizeHint() first becomes correct.
+    //
+    // That alone would self-correct once m_content's own m_layout (the QBoxLayout holding
+    // header/reply/body/comment/bottom) is re-queried -- except QBoxLayout wraps each
+    // addWidget()'d child in its own QWidgetItemV2, which caches that CHILD's size hint
+    // SEPARATELY from the box layout's own aggregate cache. Invalidating the box layout alone
+    // only clears the latter; the per-child item cache is only cleared when the CHILD ITSELF
+    // calls updateGeometry() (QWidgetPrivate::updateGeometry_helper() explicitly invalidates the
+    // QWidgetItem wrapping the widget in its parent's layout). Nothing else calls that for a
+    // section whose true size only became known once it was shown, so the box layout keeps
+    // reading each section's stale, pre-show item cache regardless of how many times it is
+    // itself invalidated. Call updateGeometry() on every section explicitly rather than special-
+    // casing body -- any section could in principle hit the same gap -- then invalidate the box
+    // layout so its own aggregate cache is rebuilt from the now-fresh per-child values, and
+    // finally re-apply the result via updatePosition() (m_content->resize(m_content->sizeHint())).
+    // Runs once, on this wrapper's own first show, which is exactly when the whole subtree --
+    // including every section -- has just been shown for real.
+    if (m_content!=nullptr && m_content->layout()!=nullptr)
+    {
+        auto* l=m_content->layout();
+        for (int i=0;i<l->count();++i)
+        {
+            auto* item=l->itemAt(i);
+            auto* w=item!=nullptr?item->widget():nullptr;
+            if (w!=nullptr)
+            {
+                w->updateGeometry();
+            }
+        }
+        l->invalidate();
+    }
+    updatePosition();
 }
 
 //--------------------------------------------------------------------------
@@ -797,13 +868,11 @@ void ChatMessage::updateSelectionMode()
             pimpl->selector->blockSignals(false);
         }
     }
-    QTimer::singleShot(10,this,
-    [this](){
-        pimpl->contentFrame->updateGeometry();
-        pimpl->contentFrame->updatePosition();
-
-        pimpl->main->updateGeometry();
-    });
+    // Selector insertion/removal above narrows/widens contentFrame via mainLayout, and
+    // ChatMessageContentWrapper::resizeEvent() now repositions the bubble synchronously as soon
+    // as that layout pass reaches it, so no deferred re-run is needed here.
+    pimpl->contentFrame->updateGeometry();
+    pimpl->main->updateGeometry();
 }
 
 //--------------------------------------------------------------------------

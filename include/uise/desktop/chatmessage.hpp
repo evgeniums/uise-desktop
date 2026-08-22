@@ -27,7 +27,6 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGE_HPP
 
 #include <uise/desktop/uisedesktop.hpp>
-#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 
 class QBoxLayout;
@@ -217,10 +216,18 @@ class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
 
         bool eventFilter(QObject *obj, QEvent *event) override;
 
-    private:        
+        void resizeEvent(QResizeEvent *event) override;
+
+        void showEvent(QShowEvent *event) override;
+
+    private:
+
+        //! Move m_content to its aligned position without touching its size.
+        //! Safe to call from resizeEvent() -- unlike updatePosition(), it can never trigger
+        //! another resize of m_content, so it cannot re-enter this wrapper's own resizeEvent().
+        void applyContentPosition();
 
         AbstractChatMessageContent* m_content=nullptr;
-        SingleShotTimer* m_timer=nullptr;
         bool m_right=false;
 };
 
