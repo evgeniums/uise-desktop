@@ -107,6 +107,7 @@ HTreeTabBarItem::HTreeTabBarItem(HTreeTab* tab, QWidget* parent)
     pimpl->closeButton->setObjectName("closeButton");
     pimpl->closeButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     pimpl->closeButton->setCursor(Qt::PointingHandCursor);
+    pimpl->closeButton->setToolTip(tr("Close"));
     connect(pimpl->closeButton,&PushButton::clicked,this,
             [this]()
             {
