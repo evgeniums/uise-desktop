@@ -610,6 +610,13 @@ QFrame* FlyweightListView<ItemT,OrderComparer,IdComparer>::viewportFrame() const
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+QWidget* FlyweightListView<ItemT,OrderComparer,IdComparer>::itemsParentWidget() const noexcept
+{
+    return pimpl->m_llist;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setPrefetchScreensCount(double value)
 {
     pimpl->setPrefetchScreensCount(value);

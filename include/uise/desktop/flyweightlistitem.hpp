@@ -220,7 +220,7 @@ class FlyweightListItem
             }
             else
             {
-                return destroyWidget;
+                return destroyWidgetFast;
             }
         }
 

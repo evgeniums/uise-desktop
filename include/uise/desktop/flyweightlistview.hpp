@@ -591,6 +591,22 @@ class FlyweightListView : public QFrame
          */
         QFrame* viewportFrame() const noexcept;
 
+        /**
+         * @brief Get the widget that item widgets are parented to once inserted into the list.
+         *
+         * Item widgets are NOT children of the FlyweightListView itself nor of \ref viewportFrame()
+         * -- they end up as children of the inner LinkedListView. Item builders should create
+         * their widgets with this as parent: otherwise insertion has to reparent every widget,
+         * and with an app-wide stylesheet in effect each reparent triggers
+         * QWidgetPrivate::inheritStyle(), which unpolishes and re-polishes the whole descendant
+         * subtree against the QSS. Building under the final parent also means any polish the
+         * builder performs itself (e.g. ensurePolished() before measuring a size hint) resolves
+         * QSS rules against the ancestor chain the widget will actually live in.
+         *
+         * @return Parent widget for item widgets.
+         */
+        QWidget* itemsParentWidget() const noexcept;
+
         void resetCallbacks();
 
         void setSortOrder(Order order) noexcept;

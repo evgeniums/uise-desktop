@@ -17,7 +17,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /** @file uise/desktop/utils/destroywidget.hpp
 *
-*  Defines destroyWidget() method.
+*  Defines destroyWidget() and destroyWidgetFast() methods.
 *
 */
 
@@ -43,7 +43,31 @@ inline void destroyWidget(QWidget* widget)
     if (widget)
     {
         widget->setVisible(false);
+/**
+ * Reparting causes cascade restyling whch is redundant when detroyng widget
+ * **/
+#if 0
         widget->setParent(nullptr);
+#endif
+        widget->deleteLater();
+    }
+}
+
+/**
+ * @brief Safely destroy widget without reparenting it first.
+ * @param widget Widget to destroy.
+ *
+ * Same as destroyWidget() but skips setParent(nullptr). Reparenting a widget with an app-wide
+ * stylesheet in effect triggers QWidgetPrivate::inheritStyle(), which re-polishes the whole
+ * descendant subtree against the QSS -- work that is entirely wasted for a widget that is about
+ * to be deleted anyway. Use this for widgets torn down in bulk (e.g. list views clearing their
+ * items) where the reparent step buys nothing observable before deleteLater() runs.
+ */
+inline void destroyWidgetFast(QWidget* widget)
+{
+    if (widget)
+    {
+        widget->setVisible(false);
         widget->deleteLater();
     }
 }

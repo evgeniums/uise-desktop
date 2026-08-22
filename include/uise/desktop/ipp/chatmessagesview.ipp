@@ -993,8 +993,14 @@ bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent
 template <typename BaseMessageT,typename Traits>
 ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>::makeMessage(const Data& data)
 {
-    // make message
-    auto message=m_messageBuilder(data,m_listView);
+    // Build the message under the widget it will actually be parented to once inserted (the
+    // list view's inner LinkedListView), NOT under m_listView. Insertion reparents anything
+    // whose parent differs, and with an app-wide stylesheet in effect every reparent runs
+    // QWidgetPrivate::inheritStyle() over the bubble's whole descendant subtree -- i.e. the
+    // ensurePolished() below would be redone from scratch a moment later. Building under the
+    // final parent also makes that polish resolve QSS against the real ancestor chain, which
+    // matters because the size hints it produces are measured right after.
+    auto message=m_messageBuilder(data,m_listView->itemsParentWidget());
     Assert(message,"Invalid chat message builder in UI factory");
 
     // Set BEFORE anything can build a date separator: insertFetched() runs

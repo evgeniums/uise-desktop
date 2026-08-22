@@ -1159,8 +1159,20 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
     {
         for (auto&& it : order)
         {
-            PointerHolder::clearProperty(it.widget(),ItemT::Property);
-            clearWidget(it.widget());
+            auto* widget=it.widget();
+
+            if (m_removeItemCb)
+            {
+                m_removeItemCb(widget);
+            }
+
+            // Widget is dropped (hidden + deleteLater()) below by m_llist->clear(), so there is
+            // no need to also take/unlink it from m_llist item by item first -- that would only
+            // pay for a redundant reparent (see destroyWidgetFast()) and linked-list bookkeeping
+            // that m_llist->clear() is about to discard wholesale anyway.
+            PointerHolder::clearProperty(widget,ItemT::Property);
+            widget->removeEventFilter(&m_qobjectHelper);
+            QObject::disconnect(widget,nullptr,&m_qobjectHelper,nullptr);
         }
     }
 

@@ -220,12 +220,21 @@ class LinkedListView_p
             return item;
         }
 
-        void takeItem(const std::shared_ptr<LinkedListViewItem>& item, bool destroyed=false)
+        //! Unlinks \p item from the list. Unless \p destroyed, the widget is also detached
+        //! (hidden and unparented) so that it survives independently of this view.
+        //!
+        //! \p keepWidgetAttached suppresses only that detach step, for callers that are about
+        //! to re-attach the very same widget to this same view (i.e. a reorder). Detaching
+        //! there would be pure overhead: setParent(nullptr) followed by setParent(view) runs
+        //! QWidgetPrivate::inheritStyle() twice, each time unpolishing and re-polishing the
+        //! widget's whole descendant subtree against the app stylesheet.
+        void takeItem(const std::shared_ptr<LinkedListViewItem>& item, bool destroyed=false,
+                      bool keepWidgetAttached=false)
         {
             if (item)
             {
                 LinkedListViewItem::clearWidgetProperty(item->widget());
-                if (!destroyed)
+                if (!destroyed && !keepWidgetAttached)
                 {
                     item->widget()->setVisible(false);
                     item->widget()->setParent(nullptr);
@@ -393,11 +402,26 @@ class LinkedListView_p
             std::shared_ptr<LinkedListViewItem> lastItem;
             for (auto&& newWidget : newWidgets)
             {
-                takeItem(LinkedListViewItem::getFromWidgetProperty(newWidget));
+                // Unlink any previous item for this widget, but keep the widget attached when it
+                // is already ours: it is re-attached to this same view a couple of lines below,
+                // so detaching it first would only buy two full restyles of its subtree instead
+                // of none (see takeItem()).
+                auto prevItem=LinkedListViewItem::getFromWidgetProperty(newWidget);
+                const bool alreadyOurs=newWidget->parentWidget()==view;
+                const bool reordered=alreadyOurs && static_cast<bool>(prevItem);
+                takeItem(prevItem,false,alreadyOurs);
                 auto newItem=itemForWidget(newWidget);
                 newItem->setPrevAuto(lastItem);
 
 #ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+                if (reordered)
+                {
+                    // Widget stayed parented, so it is still sitting at its old index in the
+                    // layout. Drop that layout item explicitly -- removeWidget() does not
+                    // reparent, unlike letting insertWidget()'s addChildWidget() discover the
+                    // stale entry itself.
+                    layout->removeWidget(newWidget);
+                }
                 layout->insertWidget(pos,newWidget,0,alignment);
                 newWidget->setVisible(true);
 #else
