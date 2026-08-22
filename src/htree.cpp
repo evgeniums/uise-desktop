@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QTabWidget>
 #include <QSplitter>
+#include <QTimer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -35,9 +36,24 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreesidebar.hpp>
 #include <uise/desktop/htreetab.hpp>
 #include <uise/desktop/htreenode.hpp>
+#include <uise/desktop/htreetabbar.hpp>
 #include <uise/desktop/htree.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+//! QTabWidget::setTabBar() is protected -- this exists solely to expose it to HTree_p. No
+//! Q_OBJECT/new behaviour of its own, so it needs no moc entry.
+class HTreeTabWidget : public QTabWidget
+{
+    public:
+
+        using QTabWidget::QTabWidget;
+        using QTabWidget::setTabBar;
+};
+
+}
 
 //--------------------------------------------------------------------------
 
@@ -49,11 +65,29 @@ class HTree_p
         QSplitter* splitter=nullptr;
         HTreeSideBar* sidebar=nullptr;
 
-        QTabWidget* tabs=nullptr;
+        HTreeTabWidget* tabs=nullptr;
+
+        // Always installed, from construction, as pimpl->tabs's tab bar -- QTabWidget::
+        // setTabBar() is documented undefined behaviour once tabs already exist, so this bar
+        // is created exactly once, before any addTab() call, rather than swapped in lazily
+        // when setTabBarBuilder() is first called. With no builder set, every tab's item()
+        // stays null and HTreeTabBar falls back to plain QTabBar rendering/sizing for that
+        // index (see htreetabbar.cpp), so behaviour is unaffected until a builder is set.
+        HTreeTabBar* bar=nullptr;
+        std::shared_ptr<HTreeTabBarBuilder> tabBarBuilder;
 
         HTreeNodeLocator* locator=nullptr;
 
         std::pair<HTreeTab*,int> addTab(const HTreePath& path);
+
+        //! The tab-bar item for \p tab, resolved fresh via indexOf() every time -- never
+        //! cache the result, same reasoning as addTab()'s own index-capture warning below.
+        HTreeTabBarItem* itemFor(HTreeTab* tab) const;
+
+        //! Builds (if a builder is set) and installs the tab-bar item for \p tab at \p index,
+        //! seeding it from whatever the QTabWidget already holds for that index and wiring
+        //! its closeRequested()/selectRequested() signals. A no-op if no builder is set.
+        void installItem(HTreeTab* tab, int index);
 
         bool singleCollapsePlaceholder=true;
         bool exlusivelyExpandableNode=false;
@@ -69,16 +103,126 @@ class HTree_p
 
 //--------------------------------------------------------------------------
 
+HTreeTabBarItem* HTree_p::itemFor(HTreeTab* tab) const
+{
+    if (tab==nullptr)
+    {
+        return nullptr;
+    }
+    auto idx=tabs->indexOf(tab);
+    if (idx<0)
+    {
+        return nullptr;
+    }
+    return bar->item(idx);
+}
+
+//--------------------------------------------------------------------------
+
+void HTree_p::installItem(HTreeTab* tab, int index)
+{
+    if (tabBarBuilder==nullptr)
+    {
+        return;
+    }
+
+    auto* item=tabBarBuilder->makeItem(tab,bar);
+    bar->setItem(index,item);
+    if (item==nullptr)
+    {
+        return;
+    }
+
+    item->connect(
+        item,
+        &HTreeTabBarItem::closeRequested,
+        self,
+        [this,tab]()
+        {
+            // Hide the whole tab -- shape and item alike -- synchronously, the instant the
+            // user clicks close. HTree::closeTab() below does the real removal, and closing
+            // the underlying HTreeTab is not meant to be instantaneous (destroyWidget()'s
+            // setParent(nullptr) on a fully-built page, e.g. a live ChatPage, can itself take
+            // a perceptible moment even though the actual content teardown is correctly
+            // deferred -- see ChatPageNode's own drain queue in chatpagenode.h); calling both
+            // in the same synchronous stretch left the tab visibly lingering until that work
+            // finished, since nothing forced a repaint in between. Deferring closeTab() by a
+            // few milliseconds gives Qt a chance to actually paint the hidden (and, below,
+            // relaid-out) tab first -- same idiom as ChatSwitchButton's own
+            // DeferredActionDelayMs (chatswitchbutton.cpp).
+            // Resolved fresh via indexOf() rather than cached -- same reasoning as every other
+            // index lookup in this file, see addTab()'s own comment.
+            auto idx=tabs->indexOf(tab);
+            if (idx>=0)
+            {
+                bar->setTabVisible(idx,false);
+
+                if (tabs->count()==2)
+                {
+                    // Exactly one other tab is left, and removeTab() hasn't run yet (it's
+                    // deferred below) -- so for the next few ms that other tab is still the
+                    // bar's only *visible* tab, and QTabBar::expanding immediately stretches
+                    // it to fill the whole bar width. setTabBarAutoHide() only hides the bar
+                    // once count() actually drops to 1, which is just as deferred -- so
+                    // without this, closing one of two tabs flashes a single tab stretched
+                    // across the full bar right before the bar disappears for good. Hiding it
+                    // too avoids that: the bar reads as empty immediately, exactly like it
+                    // will look once the close actually completes.
+                    for (int i=0;i<tabs->count();++i)
+                    {
+                        bar->setTabVisible(i,false);
+                    }
+                }
+
+                // setTabVisible() only hides a tab (and its item) and calls update() --
+                // unlike removeTab(), it never repositions the tabs after it, since it has no
+                // reason to assume the caller wants that (see its own doc comment: it's meant
+                // for toggling visibility, not shrinking the bar). Without this, closing a tab
+                // in the middle of 3+ open tabs left a visible gap where it used to be, with
+                // the tabs after it sitting at their old x-positions, until the deferred
+                // closeTab() below did a real removeTab() and finally triggered one.
+                bar->scheduleRelayout();
+            }
+            QTimer::singleShot(10,self,[this,tab](){ self->closeTab(tab); });
+        }
+    );
+    item->connect(
+        item,
+        &HTreeTabBarItem::selectRequested,
+        self,
+        [this,tab]()
+        {
+            self->setCurrentTab(tab);
+        }
+    );
+
+    // Seed from whatever the QTabWidget already holds at this index -- set moments ago by
+    // addTab() below for a brand new tab, or long ago for a pre-existing tab that is only
+    // now getting its first item because a builder was registered after tabs were already
+    // open. The nameUpdated()/iconUpdated()/tooltipUpdated() forwarders in addTab() keep it
+    // live from here on.
+    item->setTabText(tabs->tabText(index));
+    item->setTabIcon(tabs->tabIcon(index));
+    item->setTabTooltip(tabs->tabToolTip(index));
+    item->refresh();
+}
+
+//--------------------------------------------------------------------------
+
 std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
 {
     auto tab=new HTreeTab(self,splitter);
     auto index=tabs->addTab(tab,QString::fromStdString(path.name()));
 
+    installItem(tab,index);
+
     // The tab's index is deliberately NOT captured: QTabWidget re-indexes every tab on
     // removeTab(), so a captured index would, after any tab close, write one tab's
     // title/tooltip/icon onto another tab (or fall silently out of range for the highest tab).
     // tabs->indexOf(tab) is resolved fresh on every emission instead; the tab itself is stable
-    // for as long as these connections live, since it is their sender.
+    // for as long as these connections live, since it is their sender. The tab-bar item is
+    // resolved just as freshly via bar->item(idx) -- it is a different widget at a different
+    // index the moment another tab closes, exactly like the QTabWidget's own state below.
     tab->connect(
         tab,
         &HTreeTab::nameUpdated,
@@ -89,6 +233,10 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
             if (idx>=0)
             {
                 tabs->setTabText(idx,val);
+                if (auto* it=bar->item(idx))
+                {
+                    it->setTabText(val);
+                }
             }
         }
     );
@@ -104,7 +252,12 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
             {
                 // A tab-level tooltip override (see HTreeTab::setTabTooltip()) wins over the
                 // last node's own tooltip, which is what this signal argument otherwise carries.
-                tabs->setTabToolTip(idx,tab->hasTabTooltipOverride() ? tab->tabTooltip() : val);
+                auto effective=tab->hasTabTooltipOverride() ? tab->tabTooltip() : val;
+                tabs->setTabToolTip(idx,effective);
+                if (auto* it=bar->item(idx))
+                {
+                    it->setTabTooltip(effective);
+                }
             }
         }
     );
@@ -119,7 +272,12 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
             if (idx>=0)
             {
                 // Same override precedence as the tooltip above -- see HTreeTab::setTabIcon().
-                tabs->setTabIcon(idx,tab->hasTabIconOverride() ? tab->tabIcon() : val);
+                auto effective=tab->hasTabIconOverride() ? tab->tabIcon() : val;
+                tabs->setTabIcon(idx,effective);
+                if (auto* it=bar->item(idx))
+                {
+                    it->setTabIcon(effective);
+                }
             }
         }
     );
@@ -146,8 +304,23 @@ HTree::HTree(HTreeNodeLocator* locator, QWidget* parent)
     pimpl->sidebar=new HTreeSideBar(this,pimpl->splitter);
     pimpl->splitter->addWidget(pimpl->sidebar);
 
-    pimpl->tabs=new QTabWidget(pimpl->splitter);
+    pimpl->tabs=new HTreeTabWidget(pimpl->splitter);
     pimpl->tabs->setObjectName("hTreeTabs");
+
+    // Installed unconditionally, before setTabBarAutoHide()/setTabsClosable()/addWidget() and
+    // long before any tab exists -- QTabWidget::setTabBar()'s own doc warns the behaviour is
+    // undefined once tabs have already been added. See HTree_p::bar's own comment for why the
+    // bar stays installed (with every item() null) even when no HTreeTabBarBuilder is ever
+    // registered.
+    pimpl->bar=new HTreeTabBar(pimpl->tabs);
+    pimpl->tabs->setTabBar(pimpl->bar);
+
+    // Both must run after setTabBar(): QTabWidget::setTabBarAutoHide()/setTabsClosable() set
+    // properties on -- and (for setTabsClosable) wire tabCloseRequested forwarding against --
+    // whichever QTabBar is installed *at the time of the call*. Calling either before
+    // setTabBar() would touch the default bar Qt discards a moment later, leaving the real one
+    // with autoHide off and tabCloseRequested unwired -- which is exactly what happened here
+    // the first time around: the tab bar stayed visible with a single tab open.
     pimpl->tabs->setTabBarAutoHide(true);
     pimpl->tabs->setTabsClosable(true);
     pimpl->splitter->addWidget(pimpl->tabs);
@@ -156,7 +329,7 @@ HTree::HTree(HTreeNodeLocator* locator, QWidget* parent)
         pimpl->tabs,
         &QTabWidget::tabCloseRequested,
         this,
-        &HTree::closeTab
+        QOverload<int>::of(&HTree::closeTab)
     );
 
     connect(
@@ -165,6 +338,17 @@ HTree::HTree(HTreeNodeLocator* locator, QWidget* parent)
         this,
         [this](int index)
         {
+            if (pimpl->tabBarBuilder!=nullptr)
+            {
+                for (int i=0;i<pimpl->tabs->count();++i)
+                {
+                    if (auto* it=pimpl->bar->item(i))
+                    {
+                        it->setCurrent(i==index);
+                    }
+                }
+            }
+
             // index==-1 is QTabWidget's own "no current tab" -- NOT HTree::CurrentTabIndex, so
             // it must not be forwarded into tab(), which would recurse into currentTab().
             emit currentTabChanged(index<0 ? nullptr : tab(index));
@@ -240,6 +424,24 @@ void HTree::closeAllTabs()
     while (tabCount()>0)
     {
         closeTab(0);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::closeTab(HTreeTab* tab)
+{
+    if (tab==nullptr)
+    {
+        return;
+    }
+
+    // Resolved fresh rather than accepted as an index from the caller -- same reasoning as
+    // every other index lookup in this file, see HTree_p::addTab()'s own comment.
+    auto idx=pimpl->tabs->indexOf(tab);
+    if (idx>=0)
+    {
+        closeTab(idx);
     }
 }
 
@@ -518,6 +720,79 @@ void HTree::setNavbarSingleVisibleMode(bool enable)
 bool HTree::isNavbarSingleVisibleMode() const noexcept
 {
     return pimpl->navbarSIngleVisibleMode;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setTabBarBuilder(std::shared_ptr<HTreeTabBarBuilder> builder)
+{
+    pimpl->tabBarBuilder=std::move(builder);
+
+    // Native QTabWidget::setTabsClosable() close-x only when nothing else is managing close
+    // (see HTreeTabBarItem's own close button once a builder is set).
+    pimpl->tabs->setTabsClosable(pimpl->tabBarBuilder==nullptr);
+
+    for (int i=0;i<pimpl->tabs->count();++i)
+    {
+        auto* t=tab(i);
+        if (t==nullptr)
+        {
+            continue;
+        }
+
+        if (pimpl->tabBarBuilder!=nullptr)
+        {
+            // Only fit tabs that don't already have an item -- calling this again with the
+            // same builder must not rebuild every open tab's item from scratch.
+            if (pimpl->bar->item(i)==nullptr)
+            {
+                pimpl->installItem(t,i);
+            }
+        }
+        else
+        {
+            pimpl->bar->setItem(i,nullptr);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<HTreeTabBarBuilder> HTree::tabBarBuilder() const
+{
+    return pimpl->tabBarBuilder;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeTabBar* HTree::htreeTabBar() const
+{
+    return pimpl->tabBarBuilder!=nullptr ? pimpl->bar : nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+HTreeTabBarItem* HTree::tabBarItem(HTreeTab* tab) const
+{
+    if (pimpl->tabBarBuilder==nullptr)
+    {
+        return nullptr;
+    }
+    return pimpl->itemFor(tab);
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setTabBarAutoHide(bool enable)
+{
+    pimpl->tabs->setTabBarAutoHide(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTree::isTabBarAutoHide() const noexcept
+{
+    return pimpl->tabs->tabBarAutoHide();
 }
 
 //--------------------------------------------------------------------------

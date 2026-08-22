@@ -43,6 +43,9 @@ class HTreeNode;
 class HTreeTab;
 class HTreeNodeLocator;
 class HTreeSideBar;
+class HTreeTabBar;
+class HTreeTabBarItem;
+class HTreeTabBarBuilder;
 class HTree_p;
 
 class UISE_DESKTOP_EXPORT HTree : public QFrame
@@ -118,6 +121,30 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setNavbarSingleVisibleMode(bool enable);
         bool isNavbarSingleVisibleMode() const noexcept;
 
+        //! Install a builder that gives every tab its own composite tab-bar widget (see
+        //! HTreeTabBar/HTreeTabBarItem) in place of the plain QTabBar label/icon. Existing
+        //! tabs are fitted with an item immediately; every later tab gets one as it is
+        //! created. Passing nullptr reverts to the plain QTabBar -- existing items are
+        //! destroyed. With no builder ever set, HTree behaves exactly as it did before this
+        //! API existed.
+        void setTabBarBuilder(std::shared_ptr<UISE_DESKTOP_NAMESPACE::HTreeTabBarBuilder> builder);
+        std::shared_ptr<UISE_DESKTOP_NAMESPACE::HTreeTabBarBuilder> tabBarBuilder() const;
+
+        //! The custom tab bar, or nullptr if no builder has been set.
+        UISE_DESKTOP_NAMESPACE::HTreeTabBar* htreeTabBar() const;
+
+        //! The tab-bar item for \p tab, or nullptr if no builder has been set or \p tab is
+        //! not one of this tree's tabs.
+        UISE_DESKTOP_NAMESPACE::HTreeTabBarItem* tabBarItem(UISE_DESKTOP_NAMESPACE::HTreeTab* tab) const;
+
+        //! Whether the tab bar (native or custom) hides itself while only one tab is open --
+        //! on by default, matching QTabWidget::tabBarAutoHide()'s own default. Exposed here
+        //! (rather than reaching for the QTabWidget directly, which HTree keeps private) so a
+        //! custom-tab-bar application can flip it without another uise-desktop change if a
+        //! bar control (e.g. a pin toggle) needs to stay reachable with a single tab open.
+        void setTabBarAutoHide(bool enable);
+        bool isTabBarAutoHide() const noexcept;
+
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
@@ -133,6 +160,11 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setCurrentTab(int tabIndex);
         void setCurrentTab(UISE_DESKTOP_NAMESPACE::HTreeTab* tab);
         void closeTab(int tabIndex);
+
+        //! Resolves \p tab's current index itself (see HTree_p::addTab()'s own doc comment on
+        //! why an index must never be cached across a tab close) and closes it. A no-op if
+        //! \p tab is null or not one of this tree's tabs -- e.g. already closed.
+        void closeTab(UISE_DESKTOP_NAMESPACE::HTreeTab* tab);
 
         void activate();
 

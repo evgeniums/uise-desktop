@@ -54,6 +54,53 @@ uise--HTreeTab #hTreeTabs {
 border:none;
 }
 
+/* Mirrors reset.qss's QTabBar::tab/:disabled/:selected/:selected:disabled rules value-for
+   -value -- same colors, same border/radius -- so a custom-tab-bar HTree looks like any other
+   tab widget in the app. #hTreeTabBar::tab is an ID+subcontrol selector, so it outranks the
+   generic QTabBar::tab rules on specificity regardless of stylesheet load order (see
+   htreetabbar.hpp's own doc comment on HTreeTabBar). `padding`/`color` are deliberately NOT
+   mirrored here -- the item widget fills the whole tab rect itself (see
+   HTree::htreeTabBar()->setItemMargins(), set from whitemdesktop to the same 6px/10px reset.qss
+   uses) and paints its own text (see uise--HTreeTabBarItem below), so this rule only needs to
+   supply the shape's background/border. Dark reset.qss's own base QTabBar::tab sets no
+   background-color either (only border/padding/border-bottom) -- mirrored as-is. */
+#hTreeTabBar::tab {
+border: 1px solid #333333;
+border-bottom: none;
+}
+
+#hTreeTabBar::tab:disabled {
+background-color: #656565;
+}
+
+#hTreeTabBar::tab:selected {
+background-color: #1e6091;
+border-top-left-radius: 4px;
+border-top-right-radius: 4px;
+}
+
+#hTreeTabBar::tab:selected:disabled {
+background-color: #404040;
+border-top-left-radius: 4px;
+border-top-right-radius: 4px;
+}
+
+uise--HTreeTabBarItem {
+background-color: transparent;
+}
+
+/* Text color mirrors QTabBar::tab's own color/:selected color (reset.qss) -- current here is
+   this item's own "current" property (see HTreeTabBarItem::setCurrent()), not a native QSS
+   pseudo-state, since the item intercepts mouse/paint and QTabBar never sees this tab as
+   selected in the native sense. */
+uise--HTreeTabBarItem #text {
+color: #CCCCCC;
+}
+
+uise--HTreeTabBarItem[current="true"] #text {
+color: #EEEEEE;
+}
+
 uise--AlignedStretchingWidget,
 uise--HTreeSplitterInternal,
 uise--HTreeSplitter {
