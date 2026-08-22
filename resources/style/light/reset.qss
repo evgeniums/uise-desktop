@@ -6,7 +6,8 @@ QLineEdit, QTextEdit {
 color: #000000;
 }
 
-QFrame:disabled, QLabel:disabled, QComboBox:disabled, QLineEdit:disabled, QCheckBox:disabled, QPushButton:disabled {
+QFrame:disabled, QLabel:disabled, QComboBox:disabled, QLineEdit:disabled, QCheckBox:disabled, QPushButton:disabled,
+QSpinBox:disabled, QDoubleSpinBox:disabled, QDateTimeEdit:disabled {
 background-color: transparent;
 border: 1px solid transparent;
 color: #999;

@@ -90,6 +90,11 @@ class HTreeTab_p
         SingleShotTimer* closeWarnTimer;
         SingleShotTimer* closeWarnDisableTimer;
 
+        QIcon tabIconOverride;
+        bool tabIconOverrideSet=false;
+        QString tabTooltipOverride;
+        bool tabTooltipOverrideSet=false;
+
         ~HTreeTab_p()
         {
             for (auto& node : nodes)
@@ -890,6 +895,52 @@ HTreePath HTreeTab::path() const
     }
 
     return p;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::setTabIcon(const QIcon& icon)
+{
+    pimpl->tabIconOverride=icon;
+    pimpl->tabIconOverrideSet=true;
+    emit iconUpdated(icon);
+}
+
+//--------------------------------------------------------------------------
+
+QIcon HTreeTab::tabIcon() const
+{
+    return pimpl->tabIconOverride;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::hasTabIconOverride() const noexcept
+{
+    return pimpl->tabIconOverrideSet;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::setTabTooltip(const QString& tooltip)
+{
+    pimpl->tabTooltipOverride=tooltip;
+    pimpl->tabTooltipOverrideSet=true;
+    emit tooltipUpdated(tooltip);
+}
+
+//--------------------------------------------------------------------------
+
+QString HTreeTab::tabTooltip() const
+{
+    return pimpl->tabTooltipOverride;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::hasTabTooltipOverride() const noexcept
+{
+    return pimpl->tabTooltipOverrideSet;
 }
 
 //--------------------------------------------------------------------------

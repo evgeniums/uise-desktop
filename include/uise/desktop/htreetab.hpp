@@ -91,6 +91,23 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         HTreePath path() const;
 
+        //! Override the tab bar's icon/tooltip for this tab, independent of the last node's own
+        //! icon/tooltip -- which continue to drive iconUpdated()/tooltipUpdated() as before,
+        //! see HTreeTab_p::updateLastNode(). Without this, the tab bar always mirrors the last
+        //! node's icon/tooltip, so an externally set value would be overwritten on the very next
+        //! node append/truncate. An application uses this to give a tab an identity of its own
+        //! (e.g. which account/character a tab belongs to) that survives navigation inside the
+        //! tab. Passing a null QIcon()/empty QString() is a valid override -- "no icon/tooltip
+        //! for this tab" -- distinct from never calling the setter at all, which is why
+        //! hasTabIconOverride()/hasTabTooltipOverride() exist alongside the plain getters.
+        void setTabIcon(const QIcon& icon);
+        QIcon tabIcon() const;
+        bool hasTabIconOverride() const noexcept;
+
+        void setTabTooltip(const QString& tooltip);
+        QString tabTooltip() const;
+        bool hasTabTooltipOverride() const noexcept;
+
         void appendNode(HTreeNode* node);
         void closeNode(HTreeNode* node);
 

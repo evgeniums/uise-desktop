@@ -74,13 +74,22 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
     auto tab=new HTreeTab(self,splitter);
     auto index=tabs->addTab(tab,QString::fromStdString(path.name()));
 
+    // The tab's index is deliberately NOT captured: QTabWidget re-indexes every tab on
+    // removeTab(), so a captured index would, after any tab close, write one tab's
+    // title/tooltip/icon onto another tab (or fall silently out of range for the highest tab).
+    // tabs->indexOf(tab) is resolved fresh on every emission instead; the tab itself is stable
+    // for as long as these connections live, since it is their sender.
     tab->connect(
         tab,
         &HTreeTab::nameUpdated,
         self,
-        [self=self,this,index](const QString& val)
+        [this,tab](const QString& val)
         {
-           tabs->setTabText(index,val);
+            auto idx=tabs->indexOf(tab);
+            if (idx>=0)
+            {
+                tabs->setTabText(idx,val);
+            }
         }
     );
 
@@ -88,9 +97,15 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
         tab,
         &HTreeTab::tooltipUpdated,
         self,
-        [self=self,this,index](const QString& val)
+        [this,tab](const QString& val)
         {
-            tabs->setTabToolTip(index,val);
+            auto idx=tabs->indexOf(tab);
+            if (idx>=0)
+            {
+                // A tab-level tooltip override (see HTreeTab::setTabTooltip()) wins over the
+                // last node's own tooltip, which is what this signal argument otherwise carries.
+                tabs->setTabToolTip(idx,tab->hasTabTooltipOverride() ? tab->tabTooltip() : val);
+            }
         }
     );
 
@@ -98,9 +113,14 @@ std::pair<HTreeTab*,int> HTree_p::addTab(const HTreePath& path)
         tab,
         &HTreeTab::iconUpdated,
         self,
-        [self=self,this,index](const QIcon& val)
+        [this,tab](const QIcon& val)
         {
-            tabs->setTabIcon(index,val);
+            auto idx=tabs->indexOf(tab);
+            if (idx>=0)
+            {
+                // Same override precedence as the tooltip above -- see HTreeTab::setTabIcon().
+                tabs->setTabIcon(idx,tab->hasTabIconOverride() ? tab->tabIcon() : val);
+            }
         }
     );
 
@@ -137,6 +157,18 @@ HTree::HTree(HTreeNodeLocator* locator, QWidget* parent)
         &QTabWidget::tabCloseRequested,
         this,
         &HTree::closeTab
+    );
+
+    connect(
+        pimpl->tabs,
+        &QTabWidget::currentChanged,
+        this,
+        [this](int index)
+        {
+            // index==-1 is QTabWidget's own "no current tab" -- NOT HTree::CurrentTabIndex, so
+            // it must not be forwarded into tab(), which would recurse into currentTab().
+            emit currentTabChanged(index<0 ? nullptr : tab(index));
+        }
     );
 }
 
@@ -269,7 +301,7 @@ void HTree::loadPaths(const std::vector<HTreePath>& paths)
 
 //--------------------------------------------------------------------------
 
-void HTree::openPath(HTreePath path, int tabIndex)
+HTreeTab* HTree::openPath(HTreePath path, int tabIndex)
 {
     auto t=tab(tabIndex);
     if (t==nullptr)
@@ -280,6 +312,7 @@ void HTree::openPath(HTreePath path, int tabIndex)
     }
     setCurrentTab(tabIndex);
     t->openPath(std::move(path));
+    return t;
 }
 
 //--------------------------------------------------------------------------

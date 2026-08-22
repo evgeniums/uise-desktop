@@ -73,7 +73,10 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setNodeLocator(HTreeNodeLocator* locator) noexcept;
         HTreeNodeLocator* nodeLocator() const noexcept;
 
-        void openPath(HTreePath path, int tabIndex=CurrentTabIndex);
+        //! Returns the tab \p path was opened in -- either an existing tab reused/switched to,
+        //! or a freshly created one -- or nullptr if no tab could be resolved. Source-compatible
+        //! with the previous void return: every existing caller discards the result.
+        HTreeTab* openPath(HTreePath path, int tabIndex=CurrentTabIndex);
 
         void loadPaths(const std::vector<HTreePath>& paths);
         std::vector<HTreePath> paths() const;
@@ -118,6 +121,12 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
     signals:
 
         void newTreeRequested(const UISE_DESKTOP_NAMESPACE::HTreePath& path);
+
+        //! Emitted whenever the current tab changes -- tab creation, tab close, openPath()
+        //! switching tabs, and the user clicking the tab bar all go through the same internal
+        //! QTabWidget::currentChanged() this forwards. \p tab is nullptr once the last tab is
+        //! closed.
+        void currentTabChanged(UISE_DESKTOP_NAMESPACE::HTreeTab* tab);
 
     public slots:
 
