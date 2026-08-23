@@ -89,6 +89,15 @@ class AbstractCheckBox_p
         bool hovered=false;
         bool parentHovered=false;
         bool structureUpdateScheduled=false;
+        //! Mirrors isChecked() as last painted -- set by syncCheckedState(), which is the
+        //! only path that touches updateCheckedState()/applyPartState() now that neither is
+        //! driven from toggled(). Lets checkStateSet()/nextCheckState() both call through
+        //! syncCheckedState() unconditionally (QAbstractButton::setChecked() calls
+        //! checkStateSet() even on a no-op call) without doing the repolish work twice for a
+        //! single logical change that runs through both hooks (an exclusive group's uncheck
+        //! of the previous button: notifyChecked() -> previous->nextCheckState() ->
+        //! setChecked() -> checkStateSet()).
+        bool visualChecked=false;
         //! Set by mousePressEvent() just before QAbstractButton::mousePressEvent() -- read
         //! and cleared by the pressed() handler, see there.
         bool suppressNextRipple=false;
@@ -239,18 +248,9 @@ AbstractCheckBox::AbstractCheckBox(QWidget* parent)
         }
     );
     connect(this,&QAbstractButton::released,this,&AbstractCheckBox::endRipple);
-    // toggled(), NOT the checkStateSet() virtual: QAbstractButton::setChecked() only calls
-    // checkStateSet() when !blockRefresh, and QAbstractButtonPrivate::click() sets
-    // blockRefresh around its nextCheckState() call -- so checkStateSet() is silently skipped
-    // for every user-driven toggle. toggled() is emitted on every path, including a
-    // QButtonGroup unchecking a sibling.
-    connect(this,&QAbstractButton::toggled,this,
-        [this](bool)
-        {
-            updateCheckedState(true);
-            applyPartState();
-        }
-    );
+    // See checkStateSet()/nextCheckState() overrides below for how the visual state is kept
+    // in sync with isChecked() -- deliberately NOT a connect() on this widget's own toggled()
+    // signal, since a QSignalBlocker on this widget would then silently break the repaint.
 
     applyCursor();
     applyPartState();
@@ -801,6 +801,42 @@ void AbstractCheckBox::updateCheckedState(bool animate)
     pimpl->checkAnim->setDuration(pimpl->durationMs);
     pimpl->checkAnim->setEasingCurve(pimpl->easingType);
     pimpl->checkAnim->start();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractCheckBox::checkStateSet()
+{
+    QAbstractButton::checkStateSet();
+    syncCheckedState();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractCheckBox::nextCheckState()
+{
+    QAbstractButton::nextCheckState();
+    syncCheckedState();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractCheckBox::syncCheckedState()
+{
+    // Idempotent by design: QAbstractButton::setChecked() calls checkStateSet() even when the
+    // value did not change, and an exclusive group's uncheck of the previous button routes
+    // through BOTH hooks (notifyChecked() -> previous->nextCheckState() -> setChecked() ->
+    // checkStateSet()). Bailing out unless the state actually changed keeps applyPartState()'s
+    // per-part repolish -- measurably hot, see Style::updateWidgetStyle() -- off every
+    // redundant path, exactly as the previous toggled()-driven update did (toggled() is only
+    // emitted on a real change).
+    if (pimpl->visualChecked==isChecked())
+    {
+        return;
+    }
+    pimpl->visualChecked=isChecked();
+    updateCheckedState(true);
+    applyPartState();
 }
 
 //--------------------------------------------------------------------------

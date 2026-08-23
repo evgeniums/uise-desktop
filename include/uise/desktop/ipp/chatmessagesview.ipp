@@ -716,6 +716,35 @@ bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessage(const Id& id, int of
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::highlightMessage(const Id& id)
+{
+    auto item=m_listView->item(id);
+    if (item==nullptr || item->item()==nullptr)
+    {
+        return false;
+    }
+    auto* ui=item->item()->ui();
+    if (ui==nullptr)
+    {
+        return false;
+    }
+
+    // At most one row highlighted at a time -- clear whatever a previous jump lit, even if it is
+    // still fading. QPointer so this is a no-op if that message has since scrolled out of the
+    // loaded window and been destroyed.
+    if (m_highlightedMessage && m_highlightedMessage!=ui)
+    {
+        m_highlightedMessage->clearHighlight();
+    }
+
+    m_highlightedMessage=ui;
+    ui->startHighlight();
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::clear()
 {
     m_listView->clear();

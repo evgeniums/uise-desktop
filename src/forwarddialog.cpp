@@ -72,9 +72,7 @@ class ForwardDialog_p
 
         CheckBox* hideSenderName=nullptr;
         //! Guards against setHideSenderName()'s own setChecked() call re-triggering
-        //! hideSenderNameChanged() a second time via the checkbox's toggled() signal -- a plain
-        //! flag, not QSignalBlocker, which would also suppress CheckBox's own repaint (see
-        //! uise-checkbox-qsignalblocker-gotcha).
+        //! hideSenderNameChanged() a second time via the checkbox's toggled() signal.
         bool settingHideSenderName=false;
 
         ButtonsList* actions=nullptr;

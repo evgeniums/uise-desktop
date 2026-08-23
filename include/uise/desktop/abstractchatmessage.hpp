@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QDateTime>
+#include <QColor>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -37,9 +38,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/withpathandsize.hpp>
 #include <uise/desktop/replypreviewdata.hpp>
 
+class QVariantAnimation;
+
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class AvatarWidget;
+class SingleShotTimer;
 
 class AbstractChatMessage;
 
@@ -672,6 +676,18 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
     Q_PROPERTY(bool selectorPositionLeft READ isSelectorOnLeft WRITE setSelectorOnLeft NOTIFY selectorPositionChanged FINAL)
 
+    //! Transient jump-to-message highlight -- see startHighlight()/highlightRect() below.
+    //! highlightColor's own alpha combines multiplicatively with highlightOpacity, same
+    //! convention as RippleOverlay::rippleColor/rippleOpacity (see ripple.hpp): a fully opaque
+    //! QSS colour plus a fractional opacity is the usual way to tune this.
+    Q_PROPERTY(QColor highlightColor READ highlightColor WRITE setHighlightColor)
+    Q_PROPERTY(qreal highlightOpacity READ highlightOpacity WRITE setHighlightOpacity)
+    Q_PROPERTY(int highlightHoldMs READ highlightHoldMs WRITE setHighlightHoldMs)
+    Q_PROPERTY(int highlightFadeMs READ highlightFadeMs WRITE setHighlightFadeMs)
+    //! QEasingCurve::Type as int (e.g. 6=OutCubic) -- same qproperty-*EasingCurveType idiom as
+    //! RippleOverlay::rippleEasingCurveType (ripple.hpp).
+    Q_PROPERTY(int highlightEasingCurveType READ highlightEasingCurveType WRITE setHighlightEasingCurveType)
+
     public:
 
         enum class Direction : int
@@ -832,6 +848,62 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_right;
         }
 
+        QColor highlightColor() const noexcept
+        {
+            return m_highlightColor;
+        }
+
+        void setHighlightColor(const QColor& color) noexcept
+        {
+            m_highlightColor=color;
+        }
+
+        qreal highlightOpacity() const noexcept
+        {
+            return m_highlightOpacity;
+        }
+
+        void setHighlightOpacity(qreal value) noexcept
+        {
+            m_highlightOpacity=value;
+        }
+
+        int highlightHoldMs() const noexcept
+        {
+            return m_highlightHoldMs;
+        }
+
+        void setHighlightHoldMs(int value) noexcept
+        {
+            m_highlightHoldMs=value;
+        }
+
+        int highlightFadeMs() const noexcept
+        {
+            return m_highlightFadeMs;
+        }
+
+        void setHighlightFadeMs(int value) noexcept
+        {
+            m_highlightFadeMs=value;
+        }
+
+        int highlightEasingCurveType() const noexcept
+        {
+            return m_highlightEasingCurveType;
+        }
+
+        void setHighlightEasingCurveType(int value) noexcept
+        {
+            m_highlightEasingCurveType=value;
+        }
+
+        //! True for as long as any part of the highlight (hold or fade) is still visible.
+        bool isHighlighted() const noexcept
+        {
+            return m_highlightFactor>0.0;
+        }
+
     public slots:
 
         void toggleSelected()
@@ -911,6 +983,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit dateTimeUpdated();
         }
 
+        //! (Re)start the transient jump-to-message highlight: snaps to fully highlighted, holds
+        //! for highlightHoldMs(), then fades to transparent over highlightFadeMs(). Safe to call
+        //! again while already highlighted or fading -- restarts from full rather than stacking.
+        //! Only an EXPLICIT jump (ChatMessages::jumpToMessage()) should ever call this -- see its
+        //! own doc comment for why implicit jumps (jumpToDate()/jumpToFirstUnread()/
+        //! jumpToEdge()/openLoad()) must not.
+        void startHighlight();
+
+        //! Cancel any running/pending highlight immediately, with no fade.
+        void clearHighlight();
+
     signals:
 
         void topSeparatorUpdated();
@@ -959,7 +1042,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         virtual void updateDateTime()
         {}
 
+        //! Rect the highlight paints into, in this widget's own coordinates -- defaults to the
+        //! whole widget. ChatMessage overrides this to exclude its top separator band (the
+        //! date/unread pill), see ChatMessage::highlightRect().
+        virtual QRect highlightRect() const
+        {
+            return rect();
+        }
+
+        void paintEvent(QPaintEvent* event) override;
+
     private:
+
+        void ensureHighlightAnimation();
+        void setHighlightFactor(qreal value);
 
         AbstractChatSeparator* m_topSeparator=nullptr;
         AbstractChatMessageContent* m_content=nullptr;
@@ -978,6 +1074,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_right=false;
 
         QDateTime m_dateTime;
+
+        QColor m_highlightColor{0,0,0};
+        qreal m_highlightOpacity=0.05;
+        int m_highlightHoldMs=400;
+        int m_highlightFadeMs=1200;
+        int m_highlightEasingCurveType=6; // QEasingCurve::OutCubic
+        qreal m_highlightFactor=0.0;
+        QVariantAnimation* m_highlightAnim=nullptr;
+        SingleShotTimer* m_highlightHoldTimer=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody

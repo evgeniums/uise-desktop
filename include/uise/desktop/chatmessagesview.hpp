@@ -254,6 +254,12 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! via loadMessagesAround()).
         bool scrollToMessage(const Id& id, int offset=0);
 
+        //! Start the transient jump-to-message highlight (see AbstractChatMessage::
+        //! startHighlight()) on a message already present in the loaded window. False if `id`
+        //! isn't loaded -- same never-fetches contract as scrollToMessage(). Any previously
+        //! highlighted message is cleared first, so at most one row is ever lit at a time.
+        bool highlightMessage(const Id& id);
+
         void clear();
 
         void insertMessage(const Data& item);
@@ -330,6 +336,7 @@ class ChatMessagesView : public AbstractChatMessagesView
         MessageBuilder m_messageBuilder;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
+        QPointer<AbstractChatMessage> m_highlightedMessage;
         QPoint m_lastMousePos;
         std::map<Id,Data> m_selectedMessages;
         std::optional<bool> m_mouseMoveUp;

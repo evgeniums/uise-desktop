@@ -120,9 +120,17 @@ uise--AbstractChatMessageText {
 qproperty-maxBubbleWidth: 600;
 }
 
+/* Jump-to-message highlight timing -- theme-independent, colour lives in light/chat.qss and
+ * dark/chat.qss (see AbstractChatMessage::startHighlight()). Snaps to full, holds
+ * highlightHoldMs so the eye catches it once the jump's own scroll settles, then fades over
+ * highlightFadeMs. qproperty-highlightEasingCurveType is QEasingCurve::Type as int
+ * (6=OutCubic), same qproperty-*EasingCurveType idiom as RippleOverlay (see ripple.qss). */
 uise--AbstractChatMessage {
 qproperty-selectorPositionLeft: false;
 min-width: 400px;
+qproperty-highlightHoldMs: 400;
+qproperty-highlightFadeMs: 1200;
+qproperty-highlightEasingCurveType: 6;
 }
 
 /* ChatMessageSelector is a uise--CheckBox styled as a round, glyph-less selection dot -- see

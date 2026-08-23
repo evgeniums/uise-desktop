@@ -30,12 +30,18 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QLocale>
 #include <QResizeEvent>
+#include <QVariantAnimation>
+#include <QEasingCurve>
+#include <QPainter>
+#include <QStyleOption>
+#include <QStyle>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/checkbox.hpp>
+#include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/chatmessage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -87,6 +93,109 @@ void AbstractChatMessage::detectMouseSelection(std::optional<bool> select)
     }
     else
     {
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessage::ensureHighlightAnimation()
+{
+    if (m_highlightAnim!=nullptr)
+    {
+        return;
+    }
+
+    m_highlightHoldTimer=new SingleShotTimer(this);
+
+    m_highlightAnim=new QVariantAnimation(this);
+    connect(
+        m_highlightAnim,
+        &QVariantAnimation::valueChanged,
+        this,
+        [this](const QVariant& value)
+        {
+            setHighlightFactor(value.toReal());
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessage::setHighlightFactor(qreal value)
+{
+    m_highlightFactor=value;
+    update(highlightRect());
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessage::startHighlight()
+{
+    ensureHighlightAnimation();
+
+    m_highlightHoldTimer->cancel();
+
+    // QAbstractAnimation::stop() emits finished() as a side effect (see DropdownFrame's/
+    // RippleOverlay's own animations for the same house pitfall) -- harmless here, nothing is
+    // connected to m_highlightAnim's finished(), only its valueChanged() above.
+    m_highlightAnim->stop();
+    setHighlightFactor(1.0);
+
+    // restart=true: a re-jump onto an already-highlighted (or fading) message always restarts
+    // the hold from a full highlightHoldMs(), rather than firing at whatever point the first
+    // jump's timer was already at.
+    m_highlightHoldTimer->shot(
+        static_cast<size_t>(qMax(0,m_highlightHoldMs)),
+        [this]()
+        {
+            m_highlightAnim->setStartValue(1.0);
+            m_highlightAnim->setEndValue(0.0);
+            m_highlightAnim->setDuration(qMax(0,m_highlightFadeMs));
+            m_highlightAnim->setEasingCurve(static_cast<QEasingCurve::Type>(m_highlightEasingCurveType));
+            m_highlightAnim->start();
+        },
+        true
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessage::clearHighlight()
+{
+    if (m_highlightHoldTimer!=nullptr)
+    {
+        m_highlightHoldTimer->cancel();
+    }
+    if (m_highlightAnim!=nullptr)
+    {
+        m_highlightAnim->stop();
+    }
+    setHighlightFactor(0.0);
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessage::paintEvent(QPaintEvent* event)
+{
+    Q_UNUSED(event)
+
+    // Re-invoke the stylesheet's own frame painting explicitly -- required once a widget
+    // overrides paintEvent(), same idiom as DropdownFrame::paintEvent()/FloatingDialogFrame::
+    // paintEvent() (see either for the longer explanation). Without this, any current/future QSS
+    // background/border rule on uise--AbstractChatMessage would silently stop rendering.
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter painter(this);
+    style()->drawPrimitive(QStyle::PE_Widget,&opt,&painter,this);
+
+    if (m_highlightFactor>0.0)
+    {
+        // Same opacity convention as RippleOverlay::paintEvent() (ripple.cpp): the colour's own
+        // alpha, highlightOpacity's peak fraction, and the current fade factor all multiply
+        // together, rather than one overriding the others.
+        QColor c=m_highlightColor;
+        c.setAlphaF(qBound(0.0,c.alphaF()*m_highlightOpacity*m_highlightFactor,1.0));
+        painter.fillRect(highlightRect(),c);
     }
 }
 
@@ -795,6 +904,22 @@ void ChatMessage::construct()
     // neither recursive nor idempotent. This is what makeMessage() (chatmessagesview.ipp) relies
     // on before it reads bubbleOuterWidth()/minimumWidth()/maximumWidth() off this widget.
     ensurePolished();
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessage::highlightRect() const
+{
+    // Anchored on #mainMessageFrame's own geometry rather than rect() minus a computed offset,
+    // so this stays correct whether or not #separatorFrame is currently visible, and skips this
+    // row's own "margin-top: 2px" QSS band (chat.qss) so the highlight never bleeds into the
+    // previous message.
+    QRect r=pimpl->main->geometry();
+    if (pimpl->bottomSpace->isVisible())
+    {
+        r=r.united(pimpl->bottomSpace->geometry());
+    }
+    return QRect{0,r.top(),width(),r.height()};
 }
 
 //--------------------------------------------------------------------------

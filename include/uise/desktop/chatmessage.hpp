@@ -294,6 +294,11 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
     protected:
 
+        //! Excludes #separatorFrame's band (the date/unread separator pill) -- covers
+        //! #mainMessageFrame plus #bottomSpace only, see AbstractChatMessage::highlightRect()'s
+        //! own doc comment.
+        QRect highlightRect() const override;
+
         void updateTopSeparator() override;
 
         void updateSelectionMode() override;

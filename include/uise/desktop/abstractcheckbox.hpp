@@ -224,12 +224,26 @@ class UISE_DESKTOP_EXPORT AbstractCheckBox : public QAbstractButton
         void mouseReleaseEvent(QMouseEvent* event) override;
         void changeEvent(QEvent* event) override;
 
+        //! Both QAbstractButton state hooks are overridden instead of listening to this
+        //! widget's OWN toggled() signal: the appearance here is not painted by a QStyle but
+        //! driven by updateCheckedState()/applyPartState(), and a caller wrapping the widget
+        //! in a QSignalBlocker -- the standard way to push state in without echoing it back
+        //! out as a user edit -- would suppress an internal toggled() listener too, flipping
+        //! the logical state while the widget kept painting the old one. checkStateSet()
+        //! covers every programmatic setChecked(); nextCheckState() covers the one path that
+        //! skips it, since QAbstractButtonPrivate::click() sets blockRefresh around its
+        //! nextCheckState() call. Between them every path that can change the checked state
+        //! is covered, including a QButtonGroup unchecking a sibling.
+        void checkStateSet() override;
+        void nextCheckState() override;
+
     private:
 
         void setHovered(bool enable);
         void applyPartState();
         void applyCursor();
         void updateCheckedState(bool animate);
+        void syncCheckedState();
         void endRipple();
         void applyTextPosition();
         void applyIndicatorMode();

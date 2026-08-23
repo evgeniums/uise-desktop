@@ -33,6 +33,17 @@ border:none;
 selection-background-color: #AFC8E8; /* selected message */
 }
 
+/* Jump-to-message highlight -- same tint as a reply block's own background (see
+ * uise--AbstractChatMessageReply in replypreview.qss/light/replypreview.qss: a plain black wash
+ * at 5% opacity), reused here rather than a distinct hue so both "something else refers to this
+ * message" cues (a reply quote, a landed-on jump) read as the same visual language.
+ * highlightColor is opaque; highlightOpacity is the peak fraction the fade animates against 0,
+ * same rippleColor/rippleOpacity convention as RippleOverlay. */
+uise--AbstractChatMessage {
+qproperty-highlightColor: #000000;
+qproperty-highlightOpacity: 0.05;
+}
+
 uise--ChatMessageBottom QLabel {
 color: #888888;
 }

@@ -36,12 +36,15 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  *
  * Differs from CheckBox only in the mark icon it resolves from the icon locator
  * ("RadioBox::mark", see checkbox.json), its default indicator shape (IndicatorShape::Circle)
- * and setAutoExclusive(true). No nextCheckState() override is needed to enforce exclusivity:
- * QAbstractButtonPrivate::click() already refuses to uncheck the checked member of an
- * auto-exclusive group before calling nextCheckState(), which is exactly the mutual-exclusion
- * behaviour a radio button needs. A RadioBox can be grouped either by sharing a parent
- * (autoExclusive() alone) or by explicit QButtonGroup membership -- both work unchanged,
- * since AbstractCheckBox derives from QAbstractButton.
+ * and setAutoExclusive(true). No nextCheckState() override is needed here to enforce
+ * exclusivity: QAbstractButtonPrivate::click() already refuses to uncheck the checked member
+ * of an auto-exclusive group before calling nextCheckState(), which is exactly the
+ * mutual-exclusion behaviour a radio button needs. (AbstractCheckBox itself does override
+ * nextCheckState(), but only to keep the painted state in sync with isChecked() -- see its
+ * checkStateSet()/nextCheckState() overrides -- which is orthogonal to exclusivity.) A
+ * RadioBox can be grouped either by sharing a parent (autoExclusive() alone) or by explicit
+ * QButtonGroup membership -- both work unchanged, since AbstractCheckBox derives from
+ * QAbstractButton.
  */
 class UISE_DESKTOP_EXPORT RadioBox : public AbstractCheckBox
 {
