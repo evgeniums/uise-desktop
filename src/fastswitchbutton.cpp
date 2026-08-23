@@ -43,30 +43,6 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 //--------------------------------------------------------------------------
 
-namespace {
-
-// QWidget::updateGeometry() -- which is what a hidden layout item uses to tell its
-// containing layout that its contribution to sizeHint() changed -- does not recompute
-// anything synchronously: it posts a QEvent::LayoutRequest, processed on the NEXT event
-// loop iteration. So hiding extraClip correctly excludes it from FastSwitchButton's own
-// layout eventually, but FastSwitchButton's actual on-screen width (and everything a
-// containing navbar/leftFrame lays out relative to it) stays stale for that one deferred
-// round-trip, which reads as a brief, visible size glitch. Force every ancestor's layout to
-// re-activate synchronously, right now, instead of waiting for that deferred event.
-void activateLayoutsUpward(QWidget* widget)
-{
-    for (auto* w=widget; w!=nullptr; w=w->parentWidget())
-    {
-        if (w->layout()!=nullptr)
-        {
-            w->layout()->invalidate();
-            w->layout()->activate();
-        }
-    }
-}
-
-}
-
 class FastSwitchButton_p
 {
     public:
@@ -782,10 +758,10 @@ void FastSwitchButton::finishExtraAnimation(bool forward)
         pimpl->extraClip->setVisible(false);
         // force the containing navbar/layout chain to shrink around the now-hidden clip
         // right now, instead of waiting for a deferred QEvent::LayoutRequest -- see
-        // activateLayoutsUpward(). Start from `this`, not parentWidget(): this control's
+        // Layout::activateUpward(). Start from `this`, not parentWidget(): this control's
         // own layout cache must be busted first, so the parent's activate() below picks up
         // the fresh (post-hide) sizeHint rather than a stale, still-wide cached one.
-        activateLayoutsUpward(this);
+        Layout::activateUpward(this);
     }
     if (!pimpl->extraWidget.isNull())
     {

@@ -53,20 +53,6 @@ namespace {
 constexpr int MinMessageAreaHeight=80;
 constexpr int MaxMessageAreaHeight=500;
 
-// Same helper as ReplyDialog's own copy -- see replydialog.cpp's identical function for why.
-void activateLayoutsUpward(QWidget* widget)
-{
-    for (auto* w=widget; w!=nullptr; w=w->parentWidget())
-    {
-        if (w->layout()!=nullptr)
-        {
-            w->layout()->invalidate();
-            w->layout()->activate();
-        }
-        w->update();
-    }
-}
-
 }
 
 //--------------------------------------------------------------------------
@@ -486,7 +472,7 @@ void ForwardDialog::updateMessageAreaHeight()
     pimpl->messageArea->setMinimumHeight(h);
     pimpl->messageArea->setMaximumHeight(h);
 
-    activateLayoutsUpward(this);
+    Layout::activateUpward(this);
 }
 
 //--------------------------------------------------------------------------

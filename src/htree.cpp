@@ -513,6 +513,17 @@ HTreeTab* HTree::openPath(HTreePath path, int tabIndex)
         tabIndex=r.second;
     }
     setCurrentTab(tabIndex);
+
+    // Give every ancestor's layout (this HTree, the surrounding QTabWidget/QSplitter, the host
+    // window's own layout, ...) a real, synchronous geometry pass before t->openPath() below
+    // builds and inserts this tab's nodes. Without this, the very first openPath() call on a
+    // window that has been constructed but never shown/laid out yet (e.g. the initial
+    // locked-state path opened from MainWindow's constructor, before MainWindow::show()) leaves
+    // HTreeTab's navbar and HTreeSplitterInternal to compute their child geometry from Qt's
+    // un-laid-out default widget size -- producing a one-frame flash of stale/short panels that
+    // only self-corrects once the deferred layout timers fire on the next event loop turn.
+    Layout::activateUpward(t);
+
     t->openPath(std::move(path));
     return t;
 }

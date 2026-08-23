@@ -65,3 +65,10 @@ border-radius:16px;
 uise--HTreeTab #closeWarnFrame uise--PushButton uise--RippleOverlay {
 qproperty-rippleCornerRadius: 16;
 }
+
+/* IconTextButton's icon has no sensible default size of its own -- see the identical rules in
+   chatmessagefiles.qss / forwardpreview.qss. */
+uise--HTreeTabBarItem #closeButton uise--RoundedImage {
+min-width: 16px; max-width: 16px; min-height: 16px; max-height: 16px;
+}
+uise--HTreeTabBarItem #closeButton { padding: 0; border: none; }

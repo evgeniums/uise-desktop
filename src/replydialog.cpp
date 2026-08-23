@@ -55,23 +55,6 @@ namespace {
 constexpr int MinMessageAreaHeight=80;
 constexpr int MaxMessageAreaHeight=500;
 
-// Force every ancestor's layout to re-activate synchronously instead of waiting for the next
-// event loop turn to catch up -- same fix, same underlying Qt behavior, as
-// FileUploadWidget::activateLayoutsUpward() (src/fileuploadwidget.cpp) and
-// FastSwitchButton's own copy of it.
-void activateLayoutsUpward(QWidget* widget)
-{
-    for (auto* w=widget; w!=nullptr; w=w->parentWidget())
-    {
-        if (w->layout()!=nullptr)
-        {
-            w->layout()->invalidate();
-            w->layout()->activate();
-        }
-        w->update();
-    }
-}
-
 }
 
 //--------------------------------------------------------------------------
@@ -413,7 +396,7 @@ void ReplyDialog::updateMessageAreaHeight()
     // The two lines above only give messageArea the right constraints; this is what actually
     // gets that new size reflected on screen (and up through ModalPopup's own geometry), same
     // as doUpdateListAreaHeight()'s identical closing call.
-    activateLayoutsUpward(this);
+    Layout::activateUpward(this);
 }
 
 //--------------------------------------------------------------------------

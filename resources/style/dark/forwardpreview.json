@@ -6,6 +6,9 @@
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#AAAAAA" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
                 }
             }
         },

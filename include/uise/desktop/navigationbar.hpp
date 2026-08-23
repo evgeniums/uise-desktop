@@ -421,6 +421,11 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void resizeEvent(QResizeEvent* event) override;
         void showEvent(QShowEvent* event) override;
 
+        //! Watches the scroll area's horizontal scrollbar for Show/Hide so that the height
+        //! reserved for it follows QAbstractScrollArea's own decision instead of trying to
+        //! predict it from geometry that is not laid out yet -- see updateScrollArea().
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
         void updateSingleItemVisibleMode();
 
     private:

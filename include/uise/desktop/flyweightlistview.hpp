@@ -646,6 +646,7 @@ class FlyweightListView : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
+        void showEvent(QShowEvent *event) override;
         void keyPressEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
 

@@ -98,7 +98,7 @@ color: #CCCCCC;
 }
 
 uise--HTreeTabBarItem[current="true"] #text {
-color: #EEEEEE;
+color: #FFFFFF;
 }
 
 uise--AlignedStretchingWidget,

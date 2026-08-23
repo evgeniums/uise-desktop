@@ -281,8 +281,6 @@ class NavigationBar_p
 {
     public:
 
-        NavigationBar* self=nullptr;
-
         ScrollArea* scArea=nullptr;
         NavigationBarPanel* panel=nullptr;
         QHBoxLayout* layout=nullptr;
@@ -302,9 +300,7 @@ class NavigationBar_p
             return -1;
         }
 
-        void updateScrollArea(int addWidth=0);
-
-        int prevWidth=0;
+        void updateScrollArea();
 
         NavigationBarSeparator* sepSample=nullptr;
         bool sepsVisible=true;
@@ -331,22 +327,35 @@ class NavigationBar_p
 
 //--------------------------------------------------------------------------
 
-void NavigationBar_p::updateScrollArea(int addWidth)
+void NavigationBar_p::updateScrollArea()
 {
-    auto newWidth=prevWidth+addWidth;
-    auto w=panel->width();
-    if (addWidth!=0)
-    {
-        w=newWidth;
-    }
-    auto h=panel->height();
-    if (w>self->width())
-    {
-        h+=scArea->horizontalScrollBar()->height();
-    }
-    prevWidth=w;
+    // panel is QSizePolicy::Fixed vertically, so sizeHint() already equals its laid-out height --
+    // but unlike height(), it is ALSO correct before the panel has ever been laid out (on the
+    // calls that run during construction, height() is still Qt's pre-layout default).
+    auto h=panel->sizeHint().height();
 
-    if (h>0)
+    // Reserve room for the horizontal scrollbar only when the bar is ACTUALLY there, never by
+    // predicting it from panel-width-vs-viewport-width. That prediction cannot work before the
+    // first real layout: viewport()->width() is then a fresh QScrollArea's pre-layout default
+    // (~98px), which any populated panel "overflows", so every call made while the tree is
+    // being built latches 8px of reserved height that the first real resize then has to take
+    // back. That mismatch is what painted as two bad startup frames -- one with a full-width
+    // 8px scrollbar under the navbar, then one with the panel sitting centred in a bar still
+    // 8px too tall -- before the navbar finally settled at the panel's own height.
+    //
+    // QAbstractScrollArea decides the bar's visibility itself, from geometry that is real by
+    // the time it decides; eventFilter() below calls back here on the bar's Show/Hide so the
+    // reservation simply follows that decision. Pre-layout the bar is never visible, so nothing
+    // is reserved and the navbar keeps the panel's own height from the very first frame.
+    //
+    // sizeHint(), not height(): an as-yet-unlaid-out bar reports Qt's default 30px rather than
+    // the 8px the style sheet gives it (see QScrollBar:horizontal in reset.qss).
+    if (scArea->horizontalScrollBar()->isVisible())
+    {
+        h+=scArea->horizontalScrollBar()->sizeHint().height();
+    }
+
+    if (h>0 && h!=scArea->minimumHeight())
     {
         scArea->setMinimumHeight(h);
     }
@@ -369,7 +378,6 @@ NavigationBar::NavigationBar(QWidget* parent)
 {
     setObjectName("NavigationBar");
 
-    pimpl->self=this;
     auto vl=Layout::vertical(this);
 
     pimpl->scArea=new ScrollArea(this);
@@ -378,6 +386,11 @@ NavigationBar::NavigationBar(QWidget* parent)
     pimpl->scArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     pimpl->scArea->setWidgetResizable(true);
+
+    // updateScrollArea() reserves height for the horizontal scrollbar based on whether the bar
+    // is actually visible, so it has to be re-run whenever that changes -- QAbstractScrollArea
+    // shows/hides the bar on its own, without any signal to connect to.
+    pimpl->scArea->horizontalScrollBar()->installEventFilter(this);
 
     pimpl->panel=new NavigationBarPanel(pimpl->scArea);
     pimpl->layout=pimpl->panel->hLayout();
@@ -429,6 +442,24 @@ void  NavigationBar::showEvent(QShowEvent* event)
 {
     QFrame::showEvent(event);
     pimpl->updateScrollArea();
+}
+
+//--------------------------------------------------------------------------
+
+bool NavigationBar::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==pimpl->scArea->horizontalScrollBar()
+        &&
+        (event->type()==QEvent::Show || event->type()==QEvent::Hide))
+    {
+        // The bar just appeared or disappeared, so the height that must be reserved for it
+        // changed -- see updateScrollArea(), which reads the bar's visibility rather than
+        // predicting it. Never filters the event out: QAbstractScrollArea's own handling of
+        // its scrollbars must still run.
+        pimpl->updateScrollArea();
+    }
+
+    return QFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------
@@ -527,7 +558,6 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         }
     );
 
-    int w=0;
     if (prevCount>0)
     {
         NavigationBarSeparator* sep=nullptr;
@@ -545,11 +575,7 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
         index++;
 
         pimpl->separators.emplace_back(sep);
-        if (pimpl->sepsVisible && !pimpl->singleItemVisibleMode)
-        {
-            w+=sep->sizeHint().width();
-        }
-        else
+        if (!pimpl->sepsVisible || pimpl->singleItemVisibleMode)
         {
             sep->hide();
         }
@@ -579,9 +605,12 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
     }
 
     pimpl->layout->insertWidget(index,button,0,Qt::AlignCenter);
-    w+=button->sizeHint().width();
 
-    pimpl->updateScrollArea(w);
+    // Settles which items single-visible-mode hides, then calls updateScrollArea() itself
+    // (see its own end) -- moved ahead of that scrollTimer call so the scroll area is sized
+    // from the panel's real, post-hide content, not from a still-visible earlier breadcrumb
+    // that is about to be hidden by this very call.
+    updateSingleItemVisibleMode();
 
     pimpl->scrollTimer->shot(70,
          [this]()
@@ -590,8 +619,6 @@ void NavigationBar::addItem(const QString& name, const QString& tooltip, const Q
          },
          true
     );
-
-    updateSingleItemVisibleMode();
 }
 
 //--------------------------------------------------------------------------
@@ -737,19 +764,15 @@ void NavigationBar::clear()
 
 void NavigationBar::truncate(int index)
 {
-    int w=0;
-
     for (int i=static_cast<int>(pimpl->items.size())-1;i>=index;i--)
     {
         auto button=pimpl->items[i];
-        w-=button->sizeHint().width();
         button->disconnect(this);
         destroyWidget(button);
 
         if (i>0)
         {
             auto sep=pimpl->separators[static_cast<size_t>(i)-1];
-            w-=sep->sizeHint().width();
             destroyWidget(sep);
         }
     }
@@ -765,7 +788,7 @@ void NavigationBar::truncate(int index)
         pimpl->separators.clear();
     }
 
-    pimpl->updateScrollArea(w);
+    pimpl->updateScrollArea();
 
     updateSingleItemVisibleMode();
 }

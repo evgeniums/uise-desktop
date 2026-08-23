@@ -182,6 +182,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         void onViewportResized(QResizeEvent* event);
         void onResized();
+        void onFirstShow();
 
         void keepCurrentConfiguration();
 
@@ -413,6 +414,11 @@ class FlyweightListView_p : public OrientationInvariant
         size_t m_jumpEdgeInvisibleItemCount;
 
         FlyweightListViewAlignment m_itemsAlignment;
+
+        // Guards onFirstShow() so the deferred setupUi() singleShot(0) onResized() call (which
+        // still fires normally, to catch resizes/reparents that happen before the first show)
+        // is not duplicated by it.
+        bool m_firstShowDone;
 };
 
 } // namespace detail

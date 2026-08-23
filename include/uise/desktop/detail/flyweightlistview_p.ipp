@@ -107,7 +107,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_jumpEdge(nullptr),
         m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
         m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
-        m_itemsAlignment(FlyweightListViewAlignment::Center)
+        m_itemsAlignment(FlyweightListViewAlignment::Center),
+        m_firstShowDone(false)
 {
     m_currentBatchCount=0;    
 }
@@ -203,6 +204,36 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
 
     updateListAlignment();
     QTimer::singleShot(0,m_obj,[this](){onResized();});
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onFirstShow()
+{
+    if (m_firstShowDone)
+    {
+        return;
+    }
+    m_firstShowDone=true;
+
+    // setupUi()'s own QTimer::singleShot(0,...) onResized() call above exists precisely because
+    // m_obj can still have Qt's pre-layout default size when it is constructed, and that call
+    // is what eventually corrects it -- one event loop turn later. A host that builds and shows
+    // its whole widget tree in one synchronous pass (e.g. a window opening its initial content
+    // from its own constructor, before its own show()) paints that one deferred turn as a
+    // visible first-frame flash: the list area empty, then populated. Forcing m_obj's own
+    // layout to activate synchronously right on first show -- instead of waiting for the
+    // deferred call -- gives middleFrame/m_hbar/m_view their real geometry immediately; m_view
+    // resizing in turn fires the QResizeEvent that the eventFilter() above forwards to
+    // onViewportResized(), which is what actually populates/positions the list content. This is
+    // additive, not a replacement: the deferred call above still runs normally and stays a
+    // no-op once geometry has already settled here.
+    if (m_obj->layout()!=nullptr)
+    {
+        m_obj->layout()->invalidate();
+        m_obj->layout()->activate();
+    }
+    onResized();
 }
 
 //--------------------------------------------------------------------------

@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_IPP
 
 #include <QEvent>
+#include <QShowEvent>
 #include <QKeyEvent>
 
 #include <uise/desktop/flyweightlistview.hpp>
@@ -394,6 +395,14 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::resizeEvent(QResizeEvent
 {
     QFrame::resizeEvent(event);
     pimpl->onResized();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::showEvent(QShowEvent *event)
+{
+    QFrame::showEvent(event);
+    pimpl->onFirstShow();
 }
 
 //--------------------------------------------------------------------------

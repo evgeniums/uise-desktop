@@ -91,32 +91,15 @@ class AddItemsBusyCursor
 // on-screen size of this widget (and everything above it) stays stale until that deferred
 // event is processed -- which is exactly why an unrelated later interaction (a checkbox
 // click, a theme toggle) appeared to "fix" a resize that a plain addItems() call did not:
-// those pump the event loop and catch up the backlog, they don't cause it. Force every
-// ancestor's layout to re-activate synchronously instead of waiting for it (same fix as
-// FastSwitchButton's own activateLayoutsUpward(), for the same underlying Qt behavior).
-void activateLayoutsUpward(QWidget* widget)
-{
-    for (auto* w=widget; w!=nullptr; w=w->parentWidget())
-    {
-        if (w->layout()!=nullptr)
-        {
-            w->layout()->invalidate();
-            w->layout()->activate();
-        }
-
-        // layout()->activate() moves/resizes children synchronously via setGeometry(), which
-        // schedules a repaint of the affected regions -- but only once this event loop turn is
-        // processed. Force it explicitly instead of trusting that to happen before the next
-        // paint: several widgets in this tree (headerFrame, list items, checkboxes) have an
-        // explicitly transparent QSS background (see fileupload.qss), so a region vacated by a
-        // shrinking/relocating listArea composites the new, transparent sibling directly over
-        // whatever pixels are still sitting in the backing store from listArea's previous,
-        // larger paint -- exactly the "preview list behind the rest of the content" symptom
-        // seen when the widget's first real size settles well after construction, as it does
-        // inside the modal dialog.
-        w->update();
-    }
-}
+// those pump the event loop and catch up the backlog, they don't cause it. Layout::activateUpward()
+// (utils/layout.hpp) forces every ancestor's layout to re-activate synchronously instead of
+// waiting for it -- several widgets in this tree (headerFrame, list items, checkboxes) also have
+// an explicitly transparent QSS background (see fileupload.qss), so without its trailing update()
+// a region vacated by a shrinking/relocating listArea would composite the new, transparent
+// sibling directly over whatever pixels are still sitting in the backing store from listArea's
+// previous, larger paint -- exactly the "preview list behind the rest of the content" symptom
+// seen when the widget's first real size settles well after construction, as it does inside the
+// modal dialog.
 
 // True duplicate: same file name AND same content as an item already present (either already
 // in the list, or already accepted earlier in this same batch). An item that shares a name but
@@ -247,7 +230,7 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
         this,
         [this]()
         {
-            activateLayoutsUpward(pimpl->messageEditor->qWidget());
+            Layout::activateUpward(pimpl->messageEditor->qWidget());
         }
     );
 
@@ -818,7 +801,7 @@ void FileUploadWidget::updateCommentsAreaHeight()
     // tracking, same as the list area) has not settled by the time this call returns. This
     // fires on every keystroke, so the re-run timer is coalesced the same way as
     // updateListAreaHeight()'s, rather than allocating a fresh QTimer::singleShot() per call.
-    activateLayoutsUpward(pimpl->messageEditor->qWidget());
+    Layout::activateUpward(pimpl->messageEditor->qWidget());
     pimpl->commentsUpdateTimer->start();
 }
 
@@ -849,7 +832,7 @@ void FileUploadWidget::doUpdateListAreaHeight()
     // posted, asynchronous QEvent::LayoutRequest, so a single synchronous invalidate()+
     // activate() can still answer sizeHint() from a stale cache -- pass 1 primes geometry
     // with the initial hint, pass 2 re-measures after the subtree has gone through a real
-    // layout cycle. This gets the CONTENT HEIGHT NUMBER right; activateLayoutsUpward() below
+    // layout cycle. This gets the CONTENT HEIGHT NUMBER right; Layout::activateUpward() below
     // is the other half -- getting that number actually reflected on screen.
     auto invalidateAll=[this,&rows]()
     {
@@ -906,9 +889,9 @@ void FileUploadWidget::doUpdateListAreaHeight()
     // from it, is what shrank the whole dialog to a tiny top-left rectangle. activate() calls
     // (here and in the deferred re-run below) already call setGeometry() on any child whose
     // size actually changed, which does send a real, synchronous QResizeEvent -- there is
-    // nothing this extra call was doing that activateLayoutsUpward() does not already cover,
+    // nothing this extra call was doing that Layout::activateUpward() does not already cover,
     // without the risk of freezing a bad size before the real layout has had a chance to run.
-    activateLayoutsUpward(this);
+    Layout::activateUpward(this);
 }
 
 //--------------------------------------------------------------------------

@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
+#include <QWidget>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -125,6 +126,45 @@ class Layout
         static Qt::Orientation orthOrientation(Qt::Orientation orientation) noexcept
         {
             return orientation==Qt::Horizontal?Qt::Vertical:Qt::Horizontal;
+        }
+
+        /**
+         * @brief Force every ancestor's layout to re-activate synchronously, right now.
+         *
+         * QWidget::updateGeometry() -- which is what a hidden/resized layout item uses to tell
+         * its containing layout that its contribution to sizeHint() changed -- does not
+         * recompute anything synchronously: it posts a QEvent::LayoutRequest, processed on the
+         * NEXT event loop iteration. Until then, the widget's actual on-screen geometry (and
+         * everything a containing layout places relative to it) stays stale, which reads as a
+         * brief, visible size/position glitch -- or, if a widget in the same tree paints with a
+         * transparent QSS background, a region vacated by a shrinking sibling can composite the
+         * new transparent pixels directly over stale ones still sitting in the backing store.
+         * Call this to force the correction now instead of waiting for that deferred event --
+         * e.g. right after building/reconfiguring a subtree that has never been laid out yet, or
+         * right before the widget's own current geometry is read for further placement.
+         *
+         * Was duplicated verbatim across several call sites (FastSwitchButton, ForwardDialog,
+         * ReplyDialog, FileUploadWidget) before being promoted here.
+         *
+         * @param widget Widget to start from; its own layout (if any) is activated first, then
+         * every ancestor's, walking up via parentWidget().
+         */
+        static void activateUpward(QWidget* widget)
+        {
+            for (auto* w=widget; w!=nullptr; w=w->parentWidget())
+            {
+                if (w->layout()!=nullptr)
+                {
+                    w->layout()->invalidate();
+                    w->layout()->activate();
+                }
+
+                // layout()->activate() moves/resizes children synchronously via setGeometry(),
+                // which schedules a repaint of the affected regions -- but only once this event
+                // loop turn is processed. Force it explicitly instead of trusting that to happen
+                // before the next paint (see the class comment above for why that matters).
+                w->update();
+            }
         }
 };
 
