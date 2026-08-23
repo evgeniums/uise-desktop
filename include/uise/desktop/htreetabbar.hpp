@@ -42,7 +42,7 @@ class QStyleOptionTab;
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 class HTreeTab;
-class PushButton;
+class IconTextButton;
 
 class HTreeTabBarItem_p;
 
@@ -143,7 +143,7 @@ class UISE_DESKTOP_EXPORT HTreeTabBarItem : public QFrame
         //! call. Re-enabling restores whatever setTabText()/setTabIcon() last set.
         void setBaseLabelsVisible(bool enable);
 
-        PushButton* closeButton() const;
+        IconTextButton* closeButton() const;
         QBoxLayout* contentLayout() const;
 
         void mousePressEvent(QMouseEvent* event) override;

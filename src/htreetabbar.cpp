@@ -33,7 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
-#include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/htreetab.hpp>
 
 #include <uise/desktop/htreetabbar.hpp>
@@ -66,7 +66,7 @@ class HTreeTabBarItem_p
         QPointer<HTreeTab> tab;
 
         QBoxLayout* layout=nullptr;
-        PushButton* closeButton=nullptr;
+        IconTextButton* closeButton=nullptr;
         QLabel* iconLabel=nullptr;
         QLabel* textLabel=nullptr;
 
@@ -103,15 +103,30 @@ HTreeTabBarItem::HTreeTabBarItem(HTreeTab* tab, QWidget* parent)
     pimpl->textLabel->setObjectName("text");
 
     auto icon=Style::instance().svgIconLocator().icon(QStringLiteral("HTreeTabBarItem::close"),this);
-    pimpl->closeButton=new PushButton(icon,this);
+    pimpl->closeButton=new IconTextButton(icon,this,IconTextButton::IconPosition::BeforeText);
     pimpl->closeButton->setObjectName("closeButton");
-    pimpl->closeButton->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     pimpl->closeButton->setCursor(Qt::PointingHandCursor);
     pimpl->closeButton->setToolTip(tr("Close"));
-    connect(pimpl->closeButton,&PushButton::clicked,this,
+
+    // Checkable so setCurrent() below can drive the close icon's checked/checked-hovered color
+    // modes (see IconTextButton::setChecked()/RoundedImage::currentSvgIconMode()) -- "checked"
+    // here means "my tab is current", not a user-toggleable state.
+    pimpl->closeButton->setCheckable(true);
+    connect(pimpl->closeButton,&IconTextButton::clicked,this,
             [this]()
             {
                 emit closeRequested();
+            }
+    );
+    // IconTextButton::click() unconditionally toggles right after emitting clicked() -- without
+    // this, clicking the button would flip its checked state away from "current" and leave the
+    // icon in the wrong color for however long the tab takes to actually close (HTree_p defers
+    // the real removal by 10ms, see htree.cpp). Re-asserting the real state here only re-emits
+    // toggled() if it actually changed, so this does not loop.
+    connect(pimpl->closeButton,&IconTextButton::toggled,this,
+            [this](bool)
+            {
+                pimpl->closeButton->setChecked(pimpl->current);
             }
     );
 
@@ -233,7 +248,14 @@ void HTreeTabBarItem::setCurrent(bool enable)
     }
     pimpl->current=enable;
     setProperty("current",enable);
-    Style::updateWidgetStyle(this);
+    pimpl->closeButton->setChecked(enable);
+
+    // The QSS rules keyed on the "current" property are descendant selectors (#text in
+    // htree.qss, and a subclass's own AvatarButton label, e.g. ChatTabBarItem) -- repolishing
+    // only `this` leaves every child painting with its previously resolved color until
+    // something else happens to repolish it (e.g. a hover). repolishRecursive() covers the
+    // whole subtree in one call.
+    Style::repolishRecursive(this);
 }
 
 //--------------------------------------------------------------------------
@@ -282,7 +304,7 @@ void HTreeTabBarItem::addContentWidget(QWidget* w, int stretch )
 
 //--------------------------------------------------------------------------
 
-PushButton* HTreeTabBarItem::closeButton() const
+IconTextButton* HTreeTabBarItem::closeButton() const
 {
     return pimpl->closeButton;
 }
