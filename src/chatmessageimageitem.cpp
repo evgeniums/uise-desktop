@@ -48,6 +48,7 @@ namespace {
 // stylesheet-only min/max constraint does not necessarily make accurate.
 const QSize LoadControlSize{56,56};
 
+
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);

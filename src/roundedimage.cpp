@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+
 /************************** RoundedImage **********************************/
 
 //--------------------------------------------------------------------------
