@@ -14,6 +14,13 @@ min-height: 18px;
 max-height: 18px;
 }
 
+uise--AbstractForwardBar uise--IconTextButton#configureButton uise--RoundedImage {
+min-width: 24px;
+max-width: 24px;
+min-height: 24px;
+max-height: 24px;
+}
+
 uise--AbstractForwardBar uise--IconTextButton {
 padding: 4px;
 border-radius: 4px;
@@ -22,6 +29,7 @@ border: 1px solid transparent;
 
 uise--AbstractForwardBar #configureButton {
 margin-right: 8px;
+padding: 1px;
 }
 
 uise--AbstractForwardBar #cancelButton {
@@ -41,7 +49,7 @@ qproperty-rippleInsetLeft: 8;
 }
 
 uise--AbstractForwardBar #countLabel {
-font-size: 12px;
+font-size: 14px;
 font-style: italic;
 }
 
@@ -54,6 +62,7 @@ uise--ChatMessageForwardHeader {
 border: none;
 padding: 0;
 qproperty-maxWidthHint: 320;
+margin-bottom: 4px;
 }
 
 /* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's/dark/reset.qss's
@@ -63,12 +72,10 @@ qproperty-maxWidthHint: 320;
 uise--ChatMessageForwardHeader #forwardPrefix QLabel,
 uise--ChatMessageForwardHeader #forwardSuffix QLabel {
 font-weight: normal;
-font-size: 11px;
 }
 
 uise--ChatMessageForwardHeader #forwardAuthor QLabel {
 font-weight: bold;
-font-size: 11px;
 }
 
 uise--ChatMessageForwardHeader #forwardAuthor QLabel[hovered="true"] {
@@ -84,7 +91,6 @@ margin-top: 4px;
 }
 
 uise--AbstractChatMessageComment uise--ChatMessageText uise--ChatMessageTextBrowser {
-font-size: 12px;
 font-style: italic;
 }
 
@@ -101,7 +107,7 @@ padding: 4px;
 
 uise--ForwardDialog #countLabel {
 padding: 24px 4px;
-font-size: 13px;
+font-size: 14px;
 }
 
 /* No rules here, deliberately -- do NOT put `margin` (not even top/bottom alone) on a
@@ -140,7 +146,6 @@ max-height: 18px;
 }
 
 uise--ForwardDialog #comment {
-font-size: 12px;
 font-style: italic;
 padding: 6px 8px;
 margin: 4px 0;
