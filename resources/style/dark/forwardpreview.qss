@@ -9,15 +9,15 @@ color: #AAAAAA;
 
 uise--ChatMessageForwardHeader #forwardPrefix QLabel,
 uise--ChatMessageForwardHeader #forwardSuffix QLabel {
-color: #AAAAAA;
-}
-
-uise--ChatMessageForwardHeader #forwardAuthor QLabel {
 color: #9CD5FF;
 }
 
-uise--ChatMessageForwardHeader #forwardAuthor QLabel[hovered="true"] {
-color: #FFFFFF;
+uise--ChatMessageForwardHeader #forwardAuthor QLabel {
+color: #00b4d8;
+}
+
+uise--ChatMessageForwardHeader #forwardAuthor QLabel:hover {
+color: #00C8E4;
 }
 
 uise--AbstractChatMessageComment {

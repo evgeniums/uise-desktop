@@ -11,14 +11,14 @@ background-color: #4A70A9;
 }
 
 uise--AbstractChatMessageReply[sent="true"] uise--AbstractReplyPreview #accentBar {
-background-color: #1e6091;
+background-color: #3e90b1;
 }
 
 /* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's "QLabel { color:
    #333333; }" matches that internal QLabel DIRECTLY, which beats an inherited color from this
    rule if it targeted #title/#text themselves, see replypreview.qss's own comment on #title. */
 uise--AbstractReplyPreview #title QLabel {
-color: #1e6091;
+color: #3e90b1;
 }
 
 uise--AbstractReplyPreview #text QLabel {
@@ -41,7 +41,7 @@ color: #777777;
 /* Icon mirrors text colour in both states -- see replypreview.json's "ReplyDialog" mode
    ("normal"/"hovered"), which uses these exact same values. */
 uise--ReplyDialog #actions uise--IconTextButton #text {
-color: #1e6091;
+color: #3e90b1;
 }
 
 uise--ReplyDialog #actions uise--IconTextButton #text[hovered="true"] {

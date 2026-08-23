@@ -60,9 +60,8 @@ font-style: italic;
    ChatMessageForwardHeader's own class doc comment). */
 uise--ChatMessageForwardHeader {
 border: none;
-padding: 0;
 qproperty-maxWidthHint: 320;
-margin-bottom: 4px;
+margin-bottom: 6px;
 }
 
 /* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's/dark/reset.qss's
@@ -71,14 +70,14 @@ margin-bottom: 4px;
    themselves -- same fix replypreview.qss's own #title/#text rules needed. */
 uise--ChatMessageForwardHeader #forwardPrefix QLabel,
 uise--ChatMessageForwardHeader #forwardSuffix QLabel {
-font-weight: normal;
+font-weight: bold;
 }
 
 uise--ChatMessageForwardHeader #forwardAuthor QLabel {
 font-weight: bold;
 }
 
-uise--ChatMessageForwardHeader #forwardAuthor QLabel[hovered="true"] {
+uise--ChatMessageForwardHeader #forwardAuthor QLabel:hover {
 text-decoration: underline;
 }
 

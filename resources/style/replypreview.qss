@@ -99,6 +99,13 @@ min-height: 18px;
 max-height: 18px;
 }
 
+uise--AbstractReplyBar uise--IconTextButton#configureButton uise--RoundedImage {
+min-width: 24px;
+max-width: 24px;
+min-height: 24px;
+max-height: 24px;
+}
+
 uise--AbstractReplyBar uise--IconTextButton {
 padding: 4px;
 border-radius: 4px;
@@ -107,6 +114,7 @@ border: 1px solid transparent;
 
 uise--AbstractReplyBar #configureButton {
 margin-right: 8px;
+padding: 1px;
 }
 
 uise--AbstractReplyBar #cancelButton {
