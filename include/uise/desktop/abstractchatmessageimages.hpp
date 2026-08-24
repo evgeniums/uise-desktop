@@ -68,7 +68,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
          */
         virtual void updateItem(const QUuid& id, const ChatFileItem& item) =0;
 
-        virtual void setComment(const QString& text, bool markdown=true) =0;
+        virtual void setComment(const QString& text, TextFormat format=TextFormat::Markdown) =0;
         virtual void clearComment() =0;
         virtual QString comment() const =0;
 

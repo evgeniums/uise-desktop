@@ -42,7 +42,7 @@ class ChatMessageComment_p
         // layout -- from updateChatMessage(), mirroring ChatMessageFiles's own embedded comment.
         ChatMessageText* text=nullptr;
         QString commentText;
-        bool commentMarkdown=true;
+        TextFormat commentFormat=TextFormat::Markdown;
 };
 
 //--------------------------------------------------------------------------
@@ -62,6 +62,9 @@ ChatMessageComment::ChatMessageComment(QWidget* parent)
     // ChatMessageFiles uses for its own embedded comment.
     connect(pimpl->text,&AbstractChatMessageBody::selectionChanged,this,&AbstractChatMessageComment::selectionChanged);
 
+    // Same idiom, for a clicked hyperlink (task-urls-and characters-in-messages.md, Stage 1).
+    connect(pimpl->text,&AbstractChatMessageBody::linkActivated,this,&AbstractChatMessageComment::linkActivated);
+
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 }
 
@@ -72,10 +75,10 @@ ChatMessageComment::~ChatMessageComment()
 
 //--------------------------------------------------------------------------
 
-void ChatMessageComment::setComment(const QString& text, bool markdown)
+void ChatMessageComment::setComment(const QString& text, TextFormat format)
 {
     pimpl->commentText=text;
-    pimpl->commentMarkdown=markdown;
+    pimpl->commentFormat=format;
 
     if (text.isEmpty())
     {
@@ -83,7 +86,7 @@ void ChatMessageComment::setComment(const QString& text, bool markdown)
     }
     else
     {
-        pimpl->text->loadText(text,markdown);
+        pimpl->text->loadText(text,format);
     }
 }
 
@@ -91,7 +94,7 @@ void ChatMessageComment::setComment(const QString& text, bool markdown)
 
 void ChatMessageComment::clearComment()
 {
-    setComment(QString(),true);
+    setComment(QString(),TextFormat::Markdown);
 }
 
 //--------------------------------------------------------------------------
@@ -134,6 +137,13 @@ void ChatMessageComment::setCopyable(bool enable)
 void ChatMessageComment::selectText(const QString& text)
 {
     pimpl->text->selectText(text);
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageComment::linkAt(const QPoint& pos) const
+{
+    return pimpl->text->linkAt(pimpl->text->mapFrom(this,pos));
 }
 
 //--------------------------------------------------------------------------

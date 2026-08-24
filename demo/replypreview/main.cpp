@@ -134,7 +134,7 @@ AbstractChatMessageBody* makeDialogBody(DialogBodyKind kind)
                 "Select some of this comment, then look at the Save button below -- it swaps to "
                 "\"Quote selected\" while a selection is active, exactly like it does for a plain "
                 "text message."
-            ),false);
+            ),TextFormat::Plain);
             return body;
         }
 
@@ -148,7 +148,7 @@ AbstractChatMessageBody* makeDialogBody(DialogBodyKind kind)
             body->setComment(QStringLiteral(
                 "Select some of this caption, then look at the Save button below -- it swaps to "
                 "\"Quote selected\" while a selection is active."
-            ),false);
+            ),TextFormat::Plain);
             return body;
         }
 
@@ -177,7 +177,7 @@ AbstractChatMessageBody* makeDialogBody(DialogBodyKind kind)
                                "Select some of this text, then look at the Save button below -- "
                                "it swaps to \"Quote selected\" while a selection is active."
                                ),
-                false
+                TextFormat::Plain
             );
             return body;
         }
@@ -362,13 +362,13 @@ int main(int argc, char *argv[])
     rootLayout->addWidget(new QLabel(QStringLiteral("Messages with a reply section (between header and body):")));
 
     auto* receivedBody=new ChatMessageText();
-    receivedBody->loadText(QStringLiteral("Sure, here you go!"),false);
+    receivedBody->loadText(QStringLiteral("Sure, here you go!"),TextFormat::Plain);
     auto* receivedReply=new ChatMessageReply();
     auto* receivedMsg=makeMessage(central,AbstractChatMessage::Direction::Received,receivedBody,receivedReply);
     rootLayout->addWidget(receivedMsg);
 
     auto* sentBody=new ChatMessageText();
-    sentBody->loadText(QStringLiteral("Thanks, got it."),false);
+    sentBody->loadText(QStringLiteral("Thanks, got it."),TextFormat::Plain);
     auto* sentReply=new ChatMessageReply();
     auto* sentMsg=makeMessage(central,AbstractChatMessage::Direction::Sent,sentBody,sentReply);
     rootLayout->addWidget(sentMsg);

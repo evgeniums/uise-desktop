@@ -136,7 +136,7 @@ AbstractChatMessageBody* makeBody(DemoBodyKind kind)
                 "This is the FILE BODY's own comment (e.g. a caption typed when the file was "
                 "first sent) -- distinct from the forwarding sender's comment, which shows up as "
                 "a separate section below the whole bubble."
-            ),false);
+            ),TextFormat::Plain);
             return body;
         }
 
@@ -147,7 +147,7 @@ AbstractChatMessageBody* makeBody(DemoBodyKind kind)
                 makeImageEntry(QSize(640,480),QColor(80,140,220),QColor(40,80,160),QStringLiteral("A")),
                 makeImageEntry(QSize(480,640),QColor(220,140,80),QColor(160,80,40),QStringLiteral("B"))
             });
-            body->setComment(QStringLiteral("The IMAGE BODY's own caption."),false);
+            body->setComment(QStringLiteral("The IMAGE BODY's own caption."),TextFormat::Plain);
             return body;
         }
 
@@ -169,7 +169,7 @@ AbstractChatMessageBody* makeBody(DemoBodyKind kind)
                                 "\"cited\" form) -- select some of it in the full-preview dialog "
                                 "below and Save swaps to \"Quote selected\", exactly like the "
                                 "reply feature's own dialog."),
-                false
+                TextFormat::Plain
             );
             return body;
         }
@@ -377,18 +377,18 @@ int main(int argc, char *argv[])
     ));
 
     auto* receivedBody=new ChatMessageText();
-    receivedBody->loadText(QStringLiteral("Sure, here you go!"),false);
+    receivedBody->loadText(QStringLiteral("Sure, here you go!"),TextFormat::Plain);
     auto* receivedHeader=new ChatMessageForwardHeader();
     auto* receivedComment=new ChatMessageComment();
-    receivedComment->setComment(QStringLiteral("Thought you might find this useful."),false);
+    receivedComment->setComment(QStringLiteral("Thought you might find this useful."),TextFormat::Plain);
     auto* receivedMsg=makeMessage(central,AbstractChatMessage::Direction::Received,receivedBody,receivedHeader,receivedComment);
     rootLayout->addWidget(receivedMsg);
 
     auto* sentBody=new ChatMessageText();
-    sentBody->loadText(QStringLiteral("Thanks, got it."),false);
+    sentBody->loadText(QStringLiteral("Thanks, got it."),TextFormat::Plain);
     auto* sentHeader=new ChatMessageForwardHeader();
     auto* sentComment=new ChatMessageComment();
-    sentComment->setComment(QStringLiteral("Passing this along, let me know what you think."),false);
+    sentComment->setComment(QStringLiteral("Passing this along, let me know what you think."),TextFormat::Plain);
     auto* sentMsg=makeMessage(central,AbstractChatMessage::Direction::Sent,sentBody,sentHeader,sentComment);
     rootLayout->addWidget(sentMsg);
 
@@ -454,7 +454,7 @@ int main(int argc, char *argv[])
                 // [selected]/[sent] state the bubble already has, not just whatever it had at
                 // construction.
                 auto* comment=new ChatMessageComment();
-                comment->setComment(QStringLiteral("Re-attached comment section."),false);
+                comment->setComment(QStringLiteral("Re-attached comment section."),TextFormat::Plain);
                 content->setComment(comment);
                 content->updateBubbleWidth(DemoBubbleWidth);
                 logMsg(QStringLiteral("sent bubble: comment reattached"));

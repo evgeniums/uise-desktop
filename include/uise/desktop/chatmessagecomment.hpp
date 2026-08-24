@@ -55,7 +55,7 @@ class UISE_DESKTOP_EXPORT ChatMessageComment : public AbstractChatMessageComment
         ChatMessageComment& operator=(const ChatMessageComment&)=delete;
         ChatMessageComment& operator=(ChatMessageComment&&)=delete;
 
-        void setComment(const QString& text, bool markdown=true) override;
+        void setComment(const QString& text, TextFormat format=TextFormat::Markdown) override;
         void clearComment() override;
         QString comment() const override;
 
@@ -64,6 +64,7 @@ class UISE_DESKTOP_EXPORT ChatMessageComment : public AbstractChatMessageComment
         bool hasSelectableText() const override;
         void setCopyable(bool enable) override;
         void selectText(const QString& text) override;
+        QString linkAt(const QPoint& pos) const override;
 
         int bubbleWidthHint(int forMaxWidth) override;
         void updateMaximumBubbleWidth() override;

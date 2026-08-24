@@ -51,7 +51,7 @@ class ChatMessageFiles_p
 
         ChatMessageText* comment=nullptr;
         QString commentText;
-        bool commentMarkdown=true;
+        TextFormat commentFormat=TextFormat::Markdown;
 
         // matches ChatMessageFileItem's own default -- see its docs for the rationale
         Qt::Alignment textVerticalAlignment=Qt::AlignVCenter;
@@ -84,6 +84,10 @@ ChatMessageFiles::ChatMessageFiles(QWidget* parent)
     // depending on the fact that the text lives in an embedded ChatMessageText -- same idiom
     // ChatMessageText itself uses for its own underlying QTextEdit signal.
     connect(pimpl->comment,&AbstractChatMessageBody::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
+
+    // Same idiom, for a clicked hyperlink in the caption (task-urls-and characters-in-
+    // messages.md, Stage 1).
+    connect(pimpl->comment,&AbstractChatMessageBody::linkActivated,this,&AbstractChatMessageBody::linkActivated);
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
@@ -247,10 +251,10 @@ void ChatMessageFiles::rebuildList()
 
 //--------------------------------------------------------------------------
 
-void ChatMessageFiles::setComment(const QString& text, bool markdown)
+void ChatMessageFiles::setComment(const QString& text, TextFormat format)
 {
     pimpl->commentText=text;
-    pimpl->commentMarkdown=markdown;
+    pimpl->commentFormat=format;
 
     if (text.isEmpty())
     {
@@ -259,7 +263,7 @@ void ChatMessageFiles::setComment(const QString& text, bool markdown)
     }
     else
     {
-        pimpl->comment->loadText(text,markdown);
+        pimpl->comment->loadText(text,format);
         pimpl->comment->setVisible(true);
     }
 }
@@ -268,7 +272,7 @@ void ChatMessageFiles::setComment(const QString& text, bool markdown)
 
 void ChatMessageFiles::clearComment()
 {
-    setComment(QString(),true);
+    setComment(QString(),TextFormat::Markdown);
 }
 
 //--------------------------------------------------------------------------
@@ -366,6 +370,13 @@ void ChatMessageFiles::setCopyable(bool enable)
 void ChatMessageFiles::selectText(const QString& text)
 {
     pimpl->comment->selectText(text);
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageFiles::linkAt(const QPoint& pos) const
+{
+    return pimpl->comment->linkAt(pimpl->comment->mapFrom(this,pos));
 }
 
 //--------------------------------------------------------------------------

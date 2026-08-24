@@ -29,6 +29,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QDateTime>
 #include <QColor>
+#include <QUrl>
+#include <QPoint>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -37,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/utils/withpathandsize.hpp>
 #include <uise/desktop/replypreviewdata.hpp>
+#include <uise/desktop/abstractmessageeditor.hpp> // TextFormat, shared with loadText()/setComment()
 
 class QVariantAnimation;
 
@@ -311,7 +314,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageComment : public ChatMessageContent
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
-        virtual void setComment(const QString& text, bool markdown=true) =0;
+        virtual void setComment(const QString& text, TextFormat format=TextFormat::Markdown) =0;
         virtual void clearComment() =0;
         virtual QString comment() const =0;
 
@@ -327,10 +330,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageComment : public ChatMessageContent
         //! See AbstractChatMessageBody::selectText().
         virtual void selectText(const QString& /*text*/) {}
 
+        //! See AbstractChatMessageBody::linkAt().
+        virtual QString linkAt(const QPoint& /*pos*/) const {return QString{};}
+
     signals:
 
         //! See AbstractChatMessageBody::selectionChanged().
         void selectionChanged();
+
+        //! See AbstractChatMessageBody::linkActivated().
+        void linkActivated(const QUrl& url);
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSection
@@ -380,6 +389,22 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          */
         virtual void selectText(const QString& /*text*/) {}
 
+        /**
+         * @brief Href of the hyperlink rendered at widget-local position `pos`, or empty if
+         *  there is none there.
+         *
+         * task-urls-and characters-in-messages.md follow-up: lets a host offer a "Copy Link"
+         * action in its OWN context menu (e.g. whitemdesktop's per-message
+         * ChatMessage::showMessageContextMenu()) without that host needing to know this is a
+         * QTextBrowser-backed widget under the hood -- deliberately a plain query rather than a
+         * second context-menu mechanism of this widget's own. No-op by default (ChatMessageCall,
+         * which renders no links at all); a text body overrides it against its own rendered
+         * anchors, and ChatMessageFiles/ChatMessageImages forward to their optional embedded
+         * comment, if any -- same forwarding pattern as hasSelectableText()/setCopyable()/
+         * selectText() above.
+         */
+        virtual QString linkAt(const QPoint& /*pos*/) const {return QString{};}
+
     signals:
 
         //! Never emitted by the base class -- a body with genuine text selection (e.g.
@@ -389,6 +414,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         //! ChatMessageImages relay it from their optional embedded comment, if any. A body with no
         //! selectable content at all (ChatMessageCall) simply never fires it.
         void selectionChanged();
+
+        //! A hyperlink rendered inside this body's text was clicked (task-urls-and characters-in-
+        //! messages.md, Stage 1). Never emitted by the base class -- ChatMessageText relays its
+        //! ChatMessageTextBrowser's own anchorClicked() here, exactly like selectionChanged()
+        //! above. Activation itself (opening the OS browser, or -- once Stage 3 lands -- routing an
+        //! in-app mention scheme) is deliberately NOT decided here; the host owns that policy, see
+        //! whitemdesktop's ChatMessages::onLinkActivated().
+        void linkActivated(const QUrl& url);
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
@@ -1097,7 +1130,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
 
         using AbstractChatMessageBody::AbstractChatMessageBody;
 
-        virtual void loadText(const QString& text, bool markdown=true) =0;
+        virtual void loadText(const QString& text, TextFormat format=TextFormat::Markdown) =0;
 
         virtual void clearText() =0;
 

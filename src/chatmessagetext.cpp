@@ -28,6 +28,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QWheelEvent>
 #include <QMouseEvent>
 #include <QMenu>
+#include <QTextCursor>
+#include <QTextBlock>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -48,6 +50,18 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
 
     setLineWrapMode(FixedPixelWidth);
+
+    // task-urls-and characters-in-messages.md, Stage 1: without this, QTextBrowser's default
+    // openLinks=true/openExternalLinks=false makes a click call setSource() on itself, which
+    // blanks the bubble instead of doing anything useful. Activation is relayed via
+    // linkActivated() instead -- the host (whitemdesktop) decides what a click actually does.
+    setOpenLinks(false);
+    connect(this,&QTextBrowser::anchorClicked,this,&ChatMessageTextBrowser::linkActivated);
+
+    // This is a read-only display widget -- nothing ever exposes Ctrl+Z/Ctrl+Shift+Z here, and
+    // updateHoveredAnchor()'s underline toggling would otherwise silently grow an unused undo
+    // stack every time the mouse crosses a link.
+    document()->setUndoRedoEnabled(false);
 
     // Qt's macOS style draws the native Cocoa focus ring itself, outside the stylesheet paint
     // path entirely -- chat.qss's "outline: none;" on :focus (a QSS-level property) has no
@@ -120,10 +134,144 @@ void ChatMessageTextBrowser::setMessageTextWidget(AbstractChatMessageText* widge
 
 //--------------------------------------------------------------------------
 
+void ChatMessageTextBrowser::setHtmlContent(const QString& html)
+{
+    m_lastHtml=html;
+    setHtml(html);
+    // setHtml() replaces the document, so any style already set via setDefaultStyleSheet()
+    // before this call is naturally in effect -- nothing else to do here, applyLinkStyle() is
+    // only needed when the style changes AFTER content is already loaded (see below).
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setLinkColor(const QColor& color)
+{
+    if (m_linkColor==color)
+    {
+        return;
+    }
+    m_linkColor=color;
+    applyLinkStyle();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setLinkUnderline(bool enable)
+{
+    if (m_linkUnderline==enable)
+    {
+        return;
+    }
+    m_linkUnderline=enable;
+    applyLinkStyle();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyLinkStyle()
+{
+    QString css=QStringLiteral("a { text-decoration: %1; }").arg(m_linkUnderline ? "underline" : "none");
+    if (m_linkColor.isValid())
+    {
+        css=QStringLiteral("a { color: %1; text-decoration: %2; }")
+                .arg(m_linkColor.name(),m_linkUnderline ? "underline" : "none");
+    }
+    document()->setDefaultStyleSheet(css);
+
+    // setDefaultStyleSheet() only affects content set AFTERWARDS -- reapply the last HTML we
+    // know about so an already-rendered bubble picks up a theme/color change immediately (e.g.
+    // Style::updateWidgetStyle()'s repolish on a light/dark switch) instead of only the next
+    // message that happens to load.
+    if (!m_lastHtml.isEmpty())
+    {
+        setHtml(m_lastHtml);
+        // The reload above reset every anchor to the base style, including one that was mid-hover
+        // -- re-apply its hover-underline immediately rather than waiting for the next mouse move.
+        if (!m_hoveredAnchor.isEmpty())
+        {
+            setAnchorUnderline(m_hoveredAnchor,true);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setAnchorUnderline(const QString& href, bool enable)
+{
+    if (href.isEmpty())
+    {
+        return;
+    }
+    QTextCursor cursor(document());
+    for (auto block=document()->begin();block!=document()->end();block=block.next())
+    {
+        for (auto it=block.begin();!it.atEnd();++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+            auto format=fragment.charFormat();
+            if (!format.isAnchor() || format.anchorHref()!=href)
+            {
+                continue;
+            }
+            cursor.setPosition(fragment.position());
+            cursor.setPosition(fragment.position()+fragment.length(),QTextCursor::KeepAnchor);
+            format.setFontUnderline(enable);
+            cursor.setCharFormat(format);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateHoveredAnchor(const QPoint& pos)
+{
+    auto href=anchorAt(pos);
+    if (href==m_hoveredAnchor)
+    {
+        return;
+    }
+    if (!m_hoveredAnchor.isEmpty())
+    {
+        setAnchorUnderline(m_hoveredAnchor,m_linkUnderline);
+    }
+    m_hoveredAnchor=href;
+    if (!m_hoveredAnchor.isEmpty())
+    {
+        setAnchorUnderline(m_hoveredAnchor,true);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::clearHoveredAnchor()
+{
+    if (m_hoveredAnchor.isEmpty())
+    {
+        return;
+    }
+    setAnchorUnderline(m_hoveredAnchor,m_linkUnderline);
+    m_hoveredAnchor.clear();
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::mousePressEvent(QMouseEvent* event)
 {
+    // Don't also relay a link click to the parent as a bubble-selection/content-menu gesture --
+    // task-urls-and characters-in-messages.md, Stage 1. Only suppressed outside selection mode,
+    // where a click already means "select this message", not "follow this link" -- anchorAt()
+    // still resolves an anchor there, but activation itself is separately gated the same way in
+    // mouseMoveEvent() below.
+    bool onLink=!anchorAt(event->pos()).isEmpty();
+    bool selecting=m_messageTextWidget && m_messageTextWidget->chatMessage()->isSelectionMode();
+
     QTextBrowser::mousePressEvent(event);
-    if (parentWidget())
+    if (parentWidget() && !(onLink && !selecting))
     {
         QMouseEvent *cloned = event->clone();
         QCoreApplication::sendEvent(parentWidget(), cloned);
@@ -137,19 +285,30 @@ void ChatMessageTextBrowser::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_messageTextWidget && m_messageTextWidget->chatMessage()->isSelectionMode())
     {
+        clearHoveredAnchor();
         event->ignore();
     }
     else
     {
         if (!rect().contains(event->pos()))
-        {            
+        {
+            clearHoveredAnchor();
             event->ignore();
         }
         else
         {
+            updateHoveredAnchor(event->pos());
             QTextBrowser::mouseMoveEvent(event);
         }
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::leaveEvent(QEvent* event)
+{
+    clearHoveredAnchor();
+    QTextBrowser::leaveEvent(event);
 }
 
 //--------------------------------------------------------------------------
@@ -221,6 +380,10 @@ ChatMessageText::ChatMessageText(QWidget* parent)
     // AbstractChatMessageBody alone, without depending on this concrete body type.
     connect(pimpl->text,&QTextEdit::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
 
+    // Same idiom, for a clicked hyperlink (task-urls-and characters-in-messages.md, Stage 1) --
+    // see AbstractChatMessageBody::linkActivated()'s own doc comment.
+    connect(pimpl->text,&ChatMessageTextBrowser::linkActivated,this,&AbstractChatMessageBody::linkActivated);
+
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
 
@@ -231,15 +394,19 @@ ChatMessageText::~ChatMessageText()
 
 //--------------------------------------------------------------------------
 
-void ChatMessageText::loadText(const QString& text, bool markdown)
+void ChatMessageText::loadText(const QString& text, TextFormat format)
 {
-    if (markdown)
+    switch (format)
     {
-        pimpl->text->setMarkdown(text);
-    }
-    else
-    {
-        pimpl->text->setPlainText(text);
+        case TextFormat::Html:
+            pimpl->text->setHtmlContent(text);
+            break;
+        case TextFormat::Markdown:
+            pimpl->text->setMarkdown(text);
+            break;
+        case TextFormat::Plain:
+            pimpl->text->setPlainText(text);
+            break;
     }
 }
 
@@ -247,7 +414,8 @@ void ChatMessageText::loadText(const QString& text, bool markdown)
 
 void ChatMessageText::clearText()
 {
-    pimpl->text->clear();    
+    pimpl->text->setHtmlContent(QString{});
+    pimpl->text->clear();
 }
 
 //--------------------------------------------------------------------------
@@ -355,6 +523,13 @@ void ChatMessageText::selectText(const QString& text)
         return;
     }
     pimpl->text->setTextCursor(cursor);
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageText::linkAt(const QPoint& pos) const
+{
+    return pimpl->text->anchorAt(pimpl->text->mapFrom(this,pos));
 }
 
 //--------------------------------------------------------------------------

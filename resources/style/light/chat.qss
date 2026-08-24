@@ -31,6 +31,8 @@ uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
 selection-background-color: #AFC8E8; /* selected message */
+qproperty-linkColor: #1A6FD4; /* task-urls-and characters-in-messages.md, Stage 1 */
+qproperty-linkUnderline: false;
 }
 
 /* Jump-to-message highlight -- same tint as a reply block's own background (see

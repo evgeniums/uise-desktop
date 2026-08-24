@@ -95,9 +95,9 @@ class ChatMessageImages_p
 
         ChatMessageText* comment=nullptr;
         QString commentText;
-        bool commentMarkdown=true;
+        TextFormat commentFormat=TextFormat::Markdown;
 
-        // Cached the same way commentText/commentMarkdown are: setCopyable() may be called before
+        // Cached the same way commentText/commentFormat are: setCopyable() may be called before
         // the comment widget exists (most albums carry none at all, so it is created lazily on
         // first non-empty setComment() -- see ensureComment()), and the flag must still apply once
         // it is.
@@ -485,6 +485,9 @@ ChatMessageText* ChatMessageImages::ensureComment()
         // to selection changes on this body's comment via AbstractChatMessageBody alone -- same
         // idiom ChatMessageFiles uses in its own (eagerly created) comment's ctor.
         connect(pimpl->comment,&AbstractChatMessageBody::selectionChanged,this,&AbstractChatMessageBody::selectionChanged);
+        // Same idiom, for a clicked hyperlink in the caption (task-urls-and characters-in-
+        // messages.md, Stage 1).
+        connect(pimpl->comment,&AbstractChatMessageBody::linkActivated,this,&AbstractChatMessageBody::linkActivated);
         // See rebuildGrid()'s identical comment: freshly created QSS-dependent content must be
         // polished before its first paint.
         pimpl->comment->ensurePolished();
@@ -494,10 +497,10 @@ ChatMessageText* ChatMessageImages::ensureComment()
 
 //--------------------------------------------------------------------------
 
-void ChatMessageImages::setComment(const QString& text, bool markdown)
+void ChatMessageImages::setComment(const QString& text, TextFormat format)
 {
     pimpl->commentText=text;
-    pimpl->commentMarkdown=markdown;
+    pimpl->commentFormat=format;
 
     if (text.isEmpty())
     {
@@ -512,7 +515,7 @@ void ChatMessageImages::setComment(const QString& text, bool markdown)
     else
     {
         auto comment=ensureComment();
-        comment->loadText(text,markdown);
+        comment->loadText(text,format);
         comment->setVisible(true);
     }
 
@@ -524,7 +527,7 @@ void ChatMessageImages::setComment(const QString& text, bool markdown)
 
 void ChatMessageImages::clearComment()
 {
-    setComment(QString(),true);
+    setComment(QString(),TextFormat::Markdown);
 }
 
 //--------------------------------------------------------------------------
@@ -626,6 +629,18 @@ void ChatMessageImages::selectText(const QString& text)
     {
         pimpl->comment->selectText(text);
     }
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageImages::linkAt(const QPoint& pos) const
+{
+    // Deliberately does NOT call ensureComment() -- same reasoning as hasSelectableText() above.
+    if (pimpl->comment==nullptr)
+    {
+        return QString();
+    }
+    return pimpl->comment->linkAt(pimpl->comment->mapFrom(this,pos));
 }
 
 //--------------------------------------------------------------------------

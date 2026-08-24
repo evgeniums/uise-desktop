@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
     rootLayout->addWidget(new QLabel(QStringLiteral("Text messages (narrow-body threshold check):")));
 
     auto* textBodyShort=new ChatMessageText();
-    textBodyShort->loadText(QStringLiteral("Ok"),false);
+    textBodyShort->loadText(QStringLiteral("Ok"),TextFormat::Plain);
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,textBodyShort));
 
     auto* textBodyLong=new ChatMessageText();
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
                         "and end up wider than the narrow-body threshold, so the bubble should "
                         "hug the wrapped text with the time sitting on its own row underneath, "
                         "not appended as extra blank space to the right."),
-        false
+        TextFormat::Plain
     );
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,textBodyLong));
 
