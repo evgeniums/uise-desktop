@@ -102,11 +102,23 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool ena
 
     dateSection->setVisible(enable);
     auto localDt=m_msg->dateTime();
+    auto dt=localDt.date();
+    auto curr=QDate::currentDate();
+    auto today=dt==curr;
+    auto yesterday=curr.addDays(-1)==dt;
 
     auto str=dateAsMonthAndDay(localDt);
     if (withYear)
     {
         str=QString{"%1, %2"}.arg(str,localDt.date().year());
+    }
+    else if (today)
+    {
+        str=QObject::tr("Today","ChatMessagesView");
+    }
+    else if (yesterday)
+    {
+        str=QObject::tr("Yesterday","ChatMessagesView");
     }
     dateSection->setText(str);
 }
@@ -493,7 +505,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         if (i==0)
         {
             auto current=QDateTime::currentDateTime().date();
-            dateVisible=dt.date()!=current;
+            dateVisible=dt.date()==current;
             withYear=dt.date().year()!=current.year();
         }
         else
