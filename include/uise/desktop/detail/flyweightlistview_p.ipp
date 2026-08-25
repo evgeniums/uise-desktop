@@ -167,6 +167,24 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     m_llist=new LinkedListView(m_view);
     m_llist->setFocusProxy(m_view);
 
+    // LinkedListView::resized() used to be emitted with nothing connected to it anywhere --
+    // the only thing that re-validated the jump-edge/viewport bounds after m_llist's own size
+    // changed was viewportUpdated()'s change-gate on the boundary item's id/sort-value, which
+    // can freeze on a stale hit-test and then never re-fire (see checkInvariants()'s geometry
+    // assertion below for the case this is meant to catch). Wiring this in gives a second,
+    // geometry-driven trigger that doesn't depend on the boundary item happening to change.
+    // Deferred work only (m_informViewportUpdateTimer/m_checkItemCountTimer), so no
+    // synchronous re-entrancy risk into resizeList()/relayout() from within resizeEvent().
+    QObject::connect(
+        m_llist,
+        &LinkedListView::resized,
+        m_view,
+        [this]()
+        {
+            viewportUpdated();
+        }
+    );
+
     updatePageStep();
     resizeList();
 
@@ -402,7 +420,25 @@ size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::visibleCount() const
     {
         auto firstPos=m_llist->widgetSeqPos(first->widget());
         auto lastPos=m_llist->widgetSeqPos(last->widget());
-        count=lastPos-firstPos+1;
+        // Mirrors checkItemCount()'s own hiddenBefore/hiddenAfter underflow guard -- see its
+        // comment. firstViewportItem()/lastViewportItem() are independent hit-tests (one has a
+        // lastItem() fallback the other doesn't) that can disagree in direction if a widget is
+        // unlinked/stale, and widgetSeqPos() returns 0 for a widget it doesn't recognise --
+        // either way an unsigned lastPos-firstPos can wrap to ~2^64. That feeds straight into
+        // the monotonically-non-decreasing m_prefetchItemWindow (autoPrefetchCount() below),
+        // which only clear() ever resets -- one bad hit-test would otherwise poison it for the
+        // rest of the view's life, silently disabling eviction and triggering endless prefetch.
+        auto diff=static_cast<std::ptrdiff_t>(lastPos)-static_cast<std::ptrdiff_t>(firstPos);
+        if (diff<0)
+        {
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-FWLV-DEBUG: visibleCount() underflow guarded: firstPos="
+                           << firstPos << " lastPos=" << lastPos << std::endl;
+            }
+            diff=-1;
+        }
+        count=static_cast<size_t>(diff)+1;
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
         qDebug() << printCurrentDateTime() << ": visibleCount() firstPos="<<firstPos<<" lastPos="<<lastPos<<" count=" << count;
 #endif
@@ -905,7 +941,31 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkInvariants(const 
         }
     }
 
-    // 2) walking the linked list front-to-back must visit the same n widgets, in the same
+    // 2) m_llist must never be smaller (main axis) than its own sizeHint(). relayout() has no
+    // bound against placing items past the widget's current rect -- if resizeList() hasn't
+    // caught up to the true content size yet (e.g. adjustCurrentMessagesList() toggling
+    // separator visibility on other items between an insert's own synchronous relayout() and
+    // endUpdate()'s resizeList() call), trailing items are positioned past m_llist's
+    // bottom/right edge and silently clipped by Qt: still fully "loaded" (present in the index,
+    // linked into m_llist, isVisible()==true) but never actually drawn. Checks 1/3 above/below
+    // only look at membership and order, not size, so this is the one gap they can't see -- see
+    // todo-chat-messages-missing-after-insert.md.
+    {
+        auto currentMain=oprop(m_llist->size(),OProp::size);
+        auto hintMain=oprop(m_llist->sizeHint(),OProp::size);
+        // currentMain>0: a zero-size list is "not sized yet", not "undersized" -- endUpdate()'s
+        // own resizeList() call is about to give it its first real size. insertContinuousItems()
+        // runs its check before that, so without this guard every batch load reports a false
+        // positive (observed: "size 0 is smaller than its own sizeHint() 424" on chat open).
+        if (currentMain>0 && currentMain<hintMain)
+        {
+            std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: m_llist main-axis size " << currentMain
+                       << " is smaller than its own sizeHint() " << hintMain
+                       << " -- trailing items may be clipped past its edge" << std::endl;
+        }
+    }
+
+    // 3) walking the linked list front-to-back must visit the same n widgets, in the same
     // order, as iterating the sort-order index. widgetAtSeqPos() is O(pos) per call, so this
     // is O(n^2); only ever runs under the debug env var. The probe is capped well beyond the
     // expected length as a defensive bound in case the two have diverged in a way that would
@@ -962,14 +1022,16 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
             //! reads the sort key *live* from the wrapped, mutable message object rather than
             //! a value copied in at insertion time. This no-op modify() is here so boost knows
             //! the ordered_non_unique index's key *might* have changed and should be
-            //! re-checked/re-positioned -- which is only correct because every real update
-            //! path today goes through the removeItem()+reinsert branch above instead of
-            //! mutating a still-inserted item's sort value directly. If any future path
-            //! (e.g. a resurrected ChatMessagesView::updateMessage()) ever changes an item's
-            //! sort value while it is live in this index without going through that branch,
-            //! this modify() call is exactly where it must be paired with the mutation, or the
-            //! ordered index silently corrupts (boost's contract: keys must not change without
-            //! notifying the index via modify()).
+            //! re-checked/re-positioned -- which is only correct because no live update path
+            //! mutates a still-inserted item's sort value. The two that could are both
+            //! accounted for: the dedup branch above goes through removeItem()+reinsert, and
+            //! ChatMessagesView::updateMessage() (which DOES have a caller now --
+            //! ChatMessages::upsertMessage()) only ever runs for changes that leave
+            //! chat_msg::sort_oid untouched, because ChatMessages::inPlaceUpdateFields()
+            //! refuses any sort-key change outright. If a future path ever does change an
+            //! item's sort value while it is live in this index, this modify() call is exactly
+            //! where it must be paired with the mutation, or the ordered index silently
+            //! corrupts (boost's contract: keys must not change without notifying the index).
             idx.modify(result.first,[](auto&){});
         }
     }
@@ -988,6 +1050,28 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
             --it;
             afterWidget=it->widget();
         }
+    }
+
+    // The batch path (insertContinuousItems()) is protected against a stale anchor by
+    // LinkedListView_p::insertWidgets()'s own tail-append fallback (triggered when the anchor's
+    // LinkedListViewItem property is gone) -- but that fallback is reached only downstream, by
+    // accident of what insertWidgets() happens to catch. This single-item path -- used for
+    // every dedup remove+reinsert (an already-displayed id whose widget changed) and every live
+    // arrival -- had no equivalent check of its own before handing the anchor off.
+    // containsWidget() exists specifically to validate an anchor (added for the batch-path fix)
+    // but until now was only ever called from the debug-only checkInvariants(). Validate here
+    // too: an anchor insertWidgetAfter() can't actually find is worse than no anchor at all --
+    // falling back to nullptr (insertWidgetAfter()'s own "no anchor" branch resolves to
+    // inserting before head) is always safe, whereas handing over a stale pointer risks
+    // whatever insertWidgets() does when its own downstream checks don't happen to catch it.
+    if (afterWidget!=nullptr && !m_llist->containsWidget(afterWidget))
+    {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: insertItemToContainer() anchor widget is not (or no "
+                         "longer) part of the linked list, falling back to no anchor" << std::endl;
+        }
+        afterWidget=nullptr;
     }
 
     return afterWidget;
@@ -1020,11 +1104,17 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
     //! symptom in todo-chat-messages-missing-after-insert.md: below, an item whose sort value
     //! moves it past the edge the view is NOT currently sticking to is not reordered but
     //! *deleted* (removeItem()), silently, with no way for the caller to know it vanished from
-    //! the view. Currently unreachable from whitemdesktop (ChatMessagesView::updateMessage(),
-    //! the only caller, has no caller of its own there), but if that ever changes this is
-    //! exactly the mechanism the user described. Fixing it needs either re-fetching the item on
-    //! demand when scrolled back to that edge, or keeping it hidden-but-tracked instead of
-    //! dropped; out of scope for this pass.
+    //! the view.
+    //!
+    //! Still unreachable from whitemdesktop, but NOT for the reason this comment used to give
+    //! (that ChatMessagesView::updateMessage() had no caller of its own -- it does now, see
+    //! ChatMessages::upsertMessage()). What keeps it unreachable is that
+    //! ChatMessages::inPlaceUpdateFields() deliberately does NOT exclude chat_msg::sort_oid
+    //! from its comparison, so any sort-key change fails the in-place test and falls back to a
+    //! full rebuild rather than reaching updateMessage()'s reorder branch. Keep that property
+    //! in mind before loosening that check. Fixing this properly needs either re-fetching the
+    //! item on demand when scrolled back to that edge, or keeping it hidden-but-tracked
+    //! instead of dropped; still out of scope.
     if (adjustMinMax)
     {
         if (m_orderComparer(item.sortValue(),m_minSortValue))
@@ -2157,7 +2247,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
     }
     else
     {
-        for (auto it=order.find(m_lastViewportSortValue);it!=order.end();++it)
+        // Exclude the last-viewport item itself, matching the HOME branch's own [begin, it)
+        // above, which never counts its own boundary item -- this used to start the count AT
+        // m_lastViewportSortValue's own hit, so the control showed with one fewer genuinely
+        // below-the-fold item than the HOME direction required.
+        //
+        // Briefly reverted on 2026-08-25 while todo-chat-messages-missing-after-insert.md was
+        // open: that bug left trailing items in the index but undrawn, and the off-by-one was
+        // the only visual cue they existed. Re-applied once the root cause (the setNextAuto()
+        // ordering defect in LinkedListView_p::insertWidgets(), see linkedlistview.cpp) was
+        // fixed and confirmed, so the control no longer has to double as a bug indicator.
+        auto it=order.find(m_lastViewportSortValue);
+        if (it!=order.end())
+        {
+            ++it;
+        }
+        for (;it!=order.end();++it)
         {
             invisibleCount++;
             if (invisibleCount==jumpEdgeInvisibleItemCount)

@@ -52,8 +52,10 @@ namespace {
  * Gated by the UISE_FWLV_CHECK environment variable rather than a compile-time macro, so it
  * can be turned on for a single real-chat run without a rebuild. Kept as an independent copy
  * of the matching helper in flyweightlistview_p.hpp (same env var), since this file has no
- * dependency on that header. Temporary: remove once the chat-messages-missing-after-insert
- * bug is confirmed fixed against real chats.
+ * dependency on that header.
+ *
+ * Retained after the bug it was written for was fixed -- see that helper's own doc comment for
+ * why. Disabled cost is one predictable branch on a function-local static.
  */
 inline bool llvDebugEnabled() noexcept
 {
@@ -458,8 +460,30 @@ class LinkedListView_p
             {
                 if (after)
                 {
-                    lastItem->setNextAuto(existingItem->next());
+                    // ORDER IS LOAD-BEARING -- see todo-chat-messages-missing-after-insert.md.
+                    // setNextAuto() unconditionally clears its CURRENT next's m_prev before
+                    // relinking, so doing these two in the obvious order silently undoes the
+                    // first one: `lastItem->setNextAuto(existingItem->next())` correctly set
+                    // oldNext->m_prev=lastItem, and then `existingItem->setNextAuto(firstItem)`
+                    // saw oldNext still sitting in ITS m_next and cleared that same m_prev back
+                    // to null.
+                    //
+                    // The forward chain looked fine, so this stayed invisible until oldNext was
+                    // itself later removed: takeItem() relinks the chain via
+                    // `prev->setNextAuto(next)` and skips it entirely when prev is null, leaving
+                    // lastItem->m_next pointing at an item that then gets reset() and destroyed
+                    // (every link is a weak_ptr whose only strong ref is the widget property).
+                    // lastItem->next() then returns null and the whole tail past it is orphaned
+                    // -- still in the sort-order index, still holding its own property, so
+                    // containsWidget() reports it as present, but unreachable from head and
+                    // therefore never positioned by relayout() nor counted by calcSizeHint().
+                    //
+                    // Detaching the anchor FIRST, then attaching oldNext after lastItem, leaves
+                    // both directions correct: the clear-then-set inside each call now applies
+                    // to a link nothing else is about to overwrite.
+                    auto oldNext=existingItem->next();
                     existingItem->setNextAuto(firstItem);
+                    lastItem->setNextAuto(oldNext);
                 }
                 else
                 {

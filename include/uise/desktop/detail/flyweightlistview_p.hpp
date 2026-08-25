@@ -61,11 +61,16 @@ namespace detail {
  * @brief Check whether FlyweightListView_p invariant checking/diagnostic tracing is enabled.
  *
  * Gated by the UISE_FWLV_CHECK environment variable rather than a compile-time macro, so it
- * can be turned on for a single real-chat run without a rebuild -- this is meant to pin down
- * the trigger for whitemdesktop/todos/todo-chat-messages-missing-after-insert.md, a rare bug
- * only ever seen in real chats. A matching, independent copy of this helper lives in
- * linkedlistview.cpp (same env var; that file has no dependency on this header). Temporary:
- * remove once the bug is confirmed fixed.
+ * can be turned on for a single real-chat run without a rebuild -- originally to pin down the
+ * trigger for whitemdesktop/todos/testing/todo-chat-messages-missing-after-insert.md, a bug only
+ * ever seen against real chats, which it did (the setNextAuto() ordering defect in
+ * LinkedListView_p::insertWidgets()). A matching, independent copy of this helper lives in
+ * linkedlistview.cpp (same env var; that file has no dependency on this header).
+ *
+ * Kept rather than removed after that fix: this subsystem's failures are structural (a broken
+ * chain or index/list divergence) and invisible until they surface as a rendering symptom much
+ * later, so a cheap way to assert the invariant directly is worth retaining. Disabled cost is
+ * one predictable branch on a function-local static.
  */
 inline bool fwlvDebugEnabled() noexcept
 {
@@ -208,11 +213,19 @@ class FlyweightListView_p : public OrientationInvariant
          *
          * No-op unless fwlvDebugEnabled(). Verifies that every item in the sort-order index
          * still has a live LinkedListViewItem (i.e. has not been silently orphaned -- see the
-         * "insertWidgets() silently orphans the entire list" defect) and that walking the
-         * linked list front-to-back visits the same widgets, in the same order, as iterating
-         * the sort-order index. A mismatch here is the structural precondition for the
-         * checkItemCount() underflow defect. Temporary: remove once the
-         * chat-messages-missing-after-insert bug is confirmed fixed against real chats.
+         * "insertWidgets() silently orphans the entire list" defect), that m_llist's current
+         * main-axis size is not smaller than its own sizeHint() (a gap relayout()'s unbounded
+         * packing can otherwise leave trailing items clipped past its edge -- present and
+         * linked, but never drawn), and that walking the linked list front-to-back visits the
+         * same widgets, in the same order, as iterating the sort-order index. A mismatch in the
+         * last of these is the structural precondition for the checkItemCount() underflow
+         * defect.
+         *
+         * Originally added as temporary instrumentation and KEPT deliberately: the length/order
+         * check located the setNextAuto() ordering defect in LinkedListView_p::insertWidgets()
+         * (see linkedlistview.cpp) in a single run, after two rounds of careful static reading
+         * had missed it. Cost when disabled is one predictable branch on a function-local
+         * static; the O(n^2) walk only runs with UISE_FWLV_CHECK set in the environment.
          */
         void checkInvariants(const char* op) const;
 
