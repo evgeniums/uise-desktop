@@ -8,7 +8,12 @@
                 "delete" : "${uise-svg-icons-1}/trash",
                 "highQuality" : "${uise-svg-icons-1}/badge-hd",
                 "documents" : "${uise-svg-icons-1}/files",
-                "group" : "${uise-svg-icons-1}/layout-grid"
+                "group" : "${uise-svg-icons-1}/layout-grid",
+                "cut" : "${uise-svg-icons-1}/cut",
+                "copy" : "${uise-svg-icons-1}/copy",
+                "paste" : "${uise-svg-icons-1}/clipboard",
+                "selectAll" : "${uise-svg-icons-1}/select-all",
+                "clear" : "${uise-svg-icons-1}/trash"
             }
         }
     ]

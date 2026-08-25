@@ -27,13 +27,31 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextEdit>
 #include <QTextDocumentFragment>
 #include <QMimeData>
+#include <QApplication>
+#include <QClipboard>
+#include <QPointer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/mimedatautils.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+//! Rows of MessageEditor's own Cut/Copy/Paste/Select all/Clear context menu -- ordinary
+//! drop-down menu rows on the menu background, so they resolve against the generic
+//! DropdownMenu context rather than owning one of their own (compare LoadControlMenu's
+//! private context, which exists because those rows sit on a different background).
+std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
+{
+    return Style::instance().svgIconLocator().icon(QString("DropdownMenu::%1").arg(alias),context);
+}
+
+}
 
 /******************************EnhancedTextEdit********************************/
 
@@ -43,6 +61,11 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
     m_autoResize(true),
     m_newLineOnEnter(false)
 {
+    // Right-click is handled by MessageEditor's own DropdownMenu (see showContextMenu()),
+    // not Qt's stock createStandardContextMenu() -- its Paste entry is driven by canPaste(),
+    // which would report nothing-to-paste for an attachment payload (see
+    // canInsertFromMimeData() below).
+    setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
 //--------------------------------------------------------------------------
@@ -154,6 +177,35 @@ void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
     QTextEdit::insertFromMimeData(source);
 }
 
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::pasteFromClipboard()
+{
+    QTextEdit::paste();
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::canPasteFromClipboard() const
+{
+    if (isReadOnly())
+    {
+        return false;
+    }
+
+    const auto* mimeData=QApplication::clipboard()->mimeData();
+    return mimeDataHasAttachments(mimeData) || canPaste();
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::clearUndoable()
+{
+    auto cursor=textCursor();
+    cursor.select(QTextCursor::Document);
+    cursor.removeSelectedText();
+}
+
 /********************************MessageEditor*********************************/
 
 //--------------------------------------------------------------------------
@@ -165,6 +217,8 @@ class MessageEditor_p
         QBoxLayout* layout;
 
         EnhancedTextEdit* editor;
+
+        QPointer<DropdownMenu> contextMenu;
 };
 
 //--------------------------------------------------------------------------
@@ -210,12 +264,25 @@ MessageEditor::MessageEditor(QWidget* parent)
         this,
         &AbstractMessageEditor::attachmentsPasted
     );
+
+    connect(
+        pimpl->editor,
+        &QWidget::customContextMenuRequested,
+        this,
+        &MessageEditor::showContextMenu
+    );
 }
 
 //--------------------------------------------------------------------------
 
 MessageEditor::~MessageEditor()
-{}
+{
+    if (!pimpl->contextMenu.isNull())
+    {
+        pimpl->contextMenu->closeDropdown(true);
+        destroyWidget(pimpl->contextMenu);
+    }
+}
 
 //--------------------------------------------------------------------------
 
@@ -333,6 +400,50 @@ void MessageEditor::selectAll()
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::cut()
+{
+    // QTextEdit's own clipboard behavior, matching the composer's stock text-edit actions --
+    // deliberately not selectedText(TextFormat::Markdown) plus a manual delete.
+    pimpl->editor->cut();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::copy()
+{
+    pimpl->editor->copy();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::paste()
+{
+    pimpl->editor->pasteFromClipboard();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::hasSelection() const
+{
+    return pimpl->editor->textCursor().hasSelection();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isEmpty() const
+{
+    return pimpl->editor->document()->isEmpty();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::canPasteFromClipboard() const
+{
+    return pimpl->editor->canPasteFromClipboard();
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::setFocusIn()
 {
     pimpl->editor->setFocus();
@@ -392,6 +503,136 @@ void MessageEditor::setupReturnPressed()
 void MessageEditor::setPlaceHolderText(const QString& text)
 {
     pimpl->editor->setPlaceholderText(text);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::showContextMenu(const QPoint& pos)
+{
+    if (!isContextMenuEnabled())
+    {
+        return;
+    }
+
+    if (pimpl->contextMenu.isNull())
+    {
+        pimpl->contextMenu=new DropdownMenu();
+        // a context menu is expected to pop up instantly, like the native QTextEdit menu it
+        // replaces, rather than visibly grow -- same reasoning as ChatMessage's own context
+        // menu (uichatmessage.cpp).
+        pimpl->contextMenu->setAnimationDurationMs(0);
+        // deliberately no setTriggerWidget(): DropdownFrame::eventFilter() consumes a press on
+        // the trigger widget to turn it into a toggle-close, which would swallow a *second*
+        // right-click instead of letting the menu reopen at the new cursor position. A genuine
+        // outside click already closes the frame and passes the press through, which is what
+        // moves the caret on a plain left-click elsewhere in the editor.
+        connect(pimpl->contextMenu,&DropdownMenu::itemTriggered,this,&MessageEditor::onContextMenuItemTriggered);
+    }
+    else if (pimpl->contextMenu->isOpen())
+    {
+        pimpl->contextMenu->closeDropdown(true);
+    }
+
+    std::vector<MenuItem> items;
+
+    items.push_back(MenuItem(
+        static_cast<int>(MessageEditorMenuAction::Cut),
+        tr("Cut"),
+        menuIcon(QStringLiteral("cut"),pimpl->editor)
+    ));
+    items.back().isEnabled=hasSelection() && !pimpl->editor->isReadOnly();
+
+    items.push_back(MenuItem(
+        static_cast<int>(MessageEditorMenuAction::Copy),
+        tr("Copy"),
+        menuIcon(QStringLiteral("copy"),pimpl->editor)
+    ));
+    items.back().isEnabled=hasSelection();
+
+    items.push_back(MenuItem(
+        static_cast<int>(MessageEditorMenuAction::Paste),
+        tr("Paste"),
+        menuIcon(QStringLiteral("paste"),pimpl->editor)
+    ));
+    items.back().isEnabled=canPasteFromClipboard();
+
+    items.push_back(MenuItem::separator());
+
+    items.push_back(MenuItem(
+        static_cast<int>(MessageEditorMenuAction::SelectAll),
+        tr("Select all"),
+        menuIcon(QStringLiteral("selectAll"),pimpl->editor)
+    ));
+    items.back().isEnabled=!isEmpty();
+
+    items.push_back(MenuItem(
+        static_cast<int>(MessageEditorMenuAction::Clear),
+        tr("Clear"),
+        menuIcon(QStringLiteral("clear"),pimpl->editor)
+    ));
+    items.back().isEnabled=!isEmpty();
+
+    if (contextMenuHandler())
+    {
+        contextMenuHandler()(items);
+    }
+
+    if (items.empty())
+    {
+        return;
+    }
+
+    pimpl->contextMenu->setItems(std::move(items));
+    pimpl->contextMenu->popupAt(pimpl->editor->mapToGlobal(pos));
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onContextMenuItemTriggered(int id)
+{
+    switch (static_cast<MessageEditorMenuAction>(id))
+    {
+        case (MessageEditorMenuAction::Cut):
+        {
+            cut();
+            break;
+        }
+
+        case (MessageEditorMenuAction::Copy):
+        {
+            copy();
+            break;
+        }
+
+        case (MessageEditorMenuAction::Paste):
+        {
+            paste();
+            break;
+        }
+
+        case (MessageEditorMenuAction::SelectAll):
+        {
+            selectAll();
+            break;
+        }
+
+        case (MessageEditorMenuAction::Clear):
+        {
+            // Not clear(): that also purges the undo/redo history (QTextEdit::clear()'s
+            // documented behavior), which is right for the "message sent, wipe everything"
+            // call sites (ChatPageBottom::acceptOperation(), FileUploadWidget::reset()) but
+            // wrong for this menu action, which the user expects to be undoable like any other
+            // edit.
+            pimpl->editor->clearUndoable();
+            break;
+        }
+
+        default:
+        {
+            emit contextMenuItemTriggered(id);
+            break;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

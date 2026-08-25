@@ -59,6 +59,36 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
             return m_newLineOnEnter;
         }
 
+        /**
+         * @brief Paste the clipboard's current content, image/file payloads included.
+         *
+         * Implemented as QTextEdit::paste() rather than e.g. insertPlainText(clipboard->text()):
+         * QWidgetTextControl::paste() funnels straight into insertFromMimeData() with no
+         * canPaste() gate in front of it, so an attachment payload still reaches
+         * insertFromMimeData()'s attachmentsPasted() branch below, exactly as Ctrl+V does.
+         */
+        void pasteFromClipboard();
+
+        /**
+         * @brief Whether pasteFromClipboard() would do anything right now.
+         *
+         * Deliberately not just canPaste(): canPaste() consults canInsertFromMimeData(), which
+         * returns false for an attachment payload by design (see canInsertFromMimeData() below),
+         * so it would report nothing-to-paste for exactly the image/file case that has to work.
+         */
+        bool canPasteFromClipboard() const;
+
+        /**
+         * @brief Remove all text as a single undoable edit.
+         *
+         * Deliberately not QTextEdit::clear(): its documented behavior is to also purge the
+         * undo/redo history, which is exactly right for MessageEditor::clear() (e.g. wiping the
+         * composer after a message is sent -- an undo there must not resurrect the sent text)
+         * but wrong for a user-facing "Clear" context-menu action, which is expected to be
+         * undoable like any other edit.
+         */
+        void clearUndoable();
+
     signals:
 
         void returnPressed();
@@ -127,6 +157,12 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
 
         void setPlaceHolderText(const QString& text) override;
 
+        bool hasSelection() const override;
+
+        bool isEmpty() const override;
+
+        bool canPasteFromClipboard() const override;
+
     public slots:
 
         void selectAll() override;
@@ -134,6 +170,12 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void clearSelection() override;
 
         void clear() override;
+
+        void cut() override;
+
+        void copy() override;
+
+        void paste() override;
 
     protected:
 
@@ -146,6 +188,11 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void setupReturnPressed();
 
         std::unique_ptr<MessageEditor_p> pimpl;
+
+    private slots:
+
+        void showContextMenu(const QPoint& pos);
+        void onContextMenuItemTriggered(int id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

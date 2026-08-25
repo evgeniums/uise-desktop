@@ -26,8 +26,12 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_ABSTRACTMESSAGEEDITOR_HPP
 #define UISE_DESKTOP_ABSTRACTMESSAGEEDITOR_HPP
 
+#include <functional>
+#include <vector>
+
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/frame.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
 
 class QMimeData;
 
@@ -40,6 +44,23 @@ enum class TextFormat : int
     Html
 };
 
+/**
+ * @brief Ids of the standard rows AbstractMessageEditor's own context menu builds and handles
+ *  itself (see AbstractMessageEditor::setContextMenuHandler()).
+ */
+enum class MessageEditorMenuAction : int
+{
+    Cut=1,
+    Copy=2,
+    Paste=3,
+    SelectAll=4,
+    Clear=5,
+
+    //! First id free for a consumer's own items -- the editor never acts on an id >= this
+    //! itself, it only relays it through contextMenuItemTriggered().
+    UserAction=1000
+};
+
 class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 {
     Q_OBJECT
@@ -47,6 +68,16 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     public:
 
         using WidgetQFrame::WidgetQFrame;
+
+        /**
+         * @brief Callback invoked right before the context menu opens.
+         * @param items The menu's items, already populated with the standard Cut/Copy/Paste/
+         *  Select all/Clear rows and their isEnabled already computed from live editor state.
+         *  The handler may append, remove, reorder, relabel or re-enable anything in place;
+         *  leaving the vector empty suppresses the menu for that click. An id the handler adds
+         *  is never acted on by the editor itself -- it comes back via contextMenuItemTriggered().
+         */
+        using ContextMenuHandler=std::function<void(std::vector<MenuItem>& items)>;
 
         virtual void loadText(const QString& text, TextFormat format=TextFormat::Markdown) =0;
 
@@ -80,6 +111,31 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 
         virtual void setPlaceHolderText(const QString& text) =0;
 
+        /**
+         * @brief Set the handler consulted right before the context menu opens.
+         * @param handler See ContextMenuHandler.
+         */
+        void setContextMenuHandler(ContextMenuHandler handler)
+        {
+            m_contextMenuHandler=std::move(handler);
+        }
+
+        void setContextMenuEnabled(bool enable) noexcept
+        {
+            m_contextMenuEnabled=enable;
+        }
+
+        bool isContextMenuEnabled() const noexcept
+        {
+            return m_contextMenuEnabled;
+        }
+
+        virtual bool hasSelection() const =0;
+
+        virtual bool isEmpty() const =0;
+
+        virtual bool canPasteFromClipboard() const =0;
+
     public slots:
 
         void finishEditing()
@@ -93,6 +149,12 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         virtual void clearSelection() =0;
 
         virtual void clear() =0;
+
+        virtual void cut() =0;
+
+        virtual void copy() =0;
+
+        virtual void paste() =0;
 
     signals:
 
@@ -110,16 +172,30 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          */
         void attachmentsPasted(const QMimeData* mimeData);
 
+        /**
+         * @brief A context-menu item was triggered whose id is not one of the standard
+         *  MessageEditorMenuAction rows the editor already handles itself -- i.e. an item a
+         *  ContextMenuHandler added.
+         */
+        void contextMenuItemTriggered(int id);
+
     protected:
 
         virtual void updateEditingMode() {}
         virtual void updateFinishOnEnter() {}
         virtual void updateEditingFinished() {}
 
+        const ContextMenuHandler& contextMenuHandler() const
+        {
+            return m_contextMenuHandler;
+        }
+
     private:
 
         Qt::TextFormat m_editingMode=Qt::RichText;
         bool m_finishOnEnter=true;
+        bool m_contextMenuEnabled=true;
+        ContextMenuHandler m_contextMenuHandler;
 };
 
 UISE_DESKTOP_NAMESPACE_END

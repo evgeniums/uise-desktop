@@ -11,6 +11,12 @@ uise--DropdownMenu uise--IconTextButton[hovered="true"] {
 background-color: rgba(0,0,0,8);
 }
 
+/* same muted gray as the app's placeholder-text-color (global.qss) -- reused rather than a
+   new hue, see uise--DropdownMenu #text's icon-mode counterpart in dropdownmenu.json */
+uise--DropdownMenu uise--IconTextButton #text:disabled {
+color: #888888;
+}
+
 /* checkable items are marked by their trailing check icon alone (see DropdownMenu::
    onItemToggled()) -- no extra "selected" background, it would be redundant next to the
    checkmark and makes hover state (above) harder to read on a checked row */

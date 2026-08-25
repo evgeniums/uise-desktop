@@ -12,6 +12,10 @@
                     "off" : { "currentColor" : "#FFFFFF" },
                     "on" : { "currentColor" : "#FFFFFF" }
                 },
+                "disabled" : {
+                    "off" : { "currentColor" : "#888888" },
+                    "on" :  { "currentColor" : "#888888" }
+                },
                 "checked" : {
                     "off" : { "currentColor" : "#4C9AFF" },
                     "on" :  { "currentColor" : "#4C9AFF" }
