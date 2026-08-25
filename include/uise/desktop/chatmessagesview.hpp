@@ -263,7 +263,20 @@ class ChatMessagesView : public AbstractChatMessagesView
         void clear();
 
         void insertMessage(const Data& item);
-        void updateMessage(const Data& item);
+
+        //! Update a message already present in the loaded window in place -- swap its data and
+        //! repaint only what changed -- instead of destroying and re-inserting its widget.
+        //! No-op if `item`'s id isn't loaded.
+        //!
+        //! `fields` is forwarded verbatim to BaseMessageT::updateData() and is deliberately a
+        //! deduced template parameter: which fields exist, and which of them a widget can
+        //! repaint without being rebuilt, is entirely the message type's business, not this
+        //! view's. Passing the caller's own narrowed mask (rather than letting updateData()
+        //! fall back to its "everything" default) is what keeps an update that only changed,
+        //! say, a status icon from also re-running the expensive repaint paths.
+        template <typename FieldsT>
+        void updateMessage(const Data& item, FieldsT fields);
+
         void replaceMessage(const Id& replaceId, const Data& newItem);
         void removeMessage(const Id& id);
         void reorderMessage(const Id& id);

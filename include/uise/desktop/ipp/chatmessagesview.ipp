@@ -869,7 +869,8 @@ void ChatMessagesView<BaseMessageT,Traits>::doReorderMessage(const Id& id)
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
+template <typename FieldsT>
+void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, FieldsT fields)
 {
     auto msg=message(Traits::id(dbItem));
     if (msg==nullptr)
@@ -888,7 +889,7 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
 
     m_listView->beginUpdate();
 
-    msg->updateData(dbItem);
+    msg->updateData(dbItem,fields);
 
     // sortValue() reads the key live from the (now replaced) DU -- see
     // insertItemToContainer()'s own @todo: a live sort-key mutation MUST be paired with
