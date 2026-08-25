@@ -50,13 +50,23 @@ class FileDropOverlay_p;
  * A consumer page (a chat page, say) calls setAcceptDrops(true) once and install() once. As soon
  * as a drag carrying files or image data enters the page, the overlay covers it: a single
  * full-area panel ("Drop files here to send as documents") when the payload has no images, or two
- * panels ("Send as images" / "Send as photos") when it does -- side by side by default, or
- * stacked top-to-bottom, see setPanelOrientation(). The two-panel split is NOT image-vs-document
- * (both panels send images as images) -- it is the image version ladder's own top rung: the first
- * panel (Images) is the `full` rung, never downscaled; the second (Photos) is the `normal` rung,
- * adaptively scaled for faster transfer. Which panel the pointer is over highlights via QSS;
- * dropping on one emits dropped() with that panel, which is what a caller uses to preset
- * FileUploadWidget::setSendAsDocuments()/setHighQuality() before opening the upload dialog.
+ * panels when it does -- side by side by default, or stacked top-to-bottom, see
+ * setPanelOrientation(). Which pair of panels is offered is controlled by setImagesMode():
+ *
+ * - ImagesMode::DocumentsAndNormal (the default) -- "Send as documents" (the original files,
+ *   uncompressed) next to "Send as images" (the `normal` rung, adaptively scaled). This is NOT
+ *   image-vs-document on the second panel: it still sends images as images, just at the `normal`
+ *   rung rather than the original file.
+ * - ImagesMode::FullAndNormal -- the image version ladder's own top two rungs: "Send as images"
+ *   is the `full` rung, never downscaled; "Send as photos" is the `normal` rung, adaptively
+ *   scaled for faster transfer. Both panels send images as images.
+ *
+ * In both modes the second panel is always the `normal` rung and always emits Panel::Photos, only
+ * the caption/subtitle text differs by mode; the first panel emits Panel::Documents in
+ * DocumentsAndNormal and Panel::Images in FullAndNormal. Which panel the pointer is over
+ * highlights via QSS; dropping on one emits dropped() with that panel, which is what a caller
+ * uses to preset FileUploadWidget::setSendAsDocuments()/setHighQuality() before opening the
+ * upload dialog.
  *
  * Unlike RippleOverlay this widget must NOT be transparent for mouse events: Qt resolves a drag
  * target with QWidget::childAt(), which skips both hidden children and children with
@@ -84,22 +94,44 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
     //! QSS: qproperty-panelOrientation: "horizontal" | "vertical";
     Q_PROPERTY(QString panelOrientation READ panelOrientationName WRITE setPanelOrientationName)
 
+    //! QSS: qproperty-imagesMode: "documents-normal" | "full-normal"; -- see setImagesMode().
+    //! Deliberately left unset in the library's own filedropoverlay.qss: unlike
+    //! panelOrientation, a repolish (e.g. a theme reload) would silently override a consumer's
+    //! or a demo's own setImagesMode() call, since QSS-supplied qproperty-* values win on every
+    //! repolish.
+    Q_PROPERTY(QString imagesMode READ imagesModeName WRITE setImagesModeName)
+
     public:
 
-        /** @brief Which drop panel an interaction refers to. */
+        /**
+         * @brief Which drop panel an interaction refers to.
+         *
+         * Documents and Images are mutually exclusive: which one appears (alongside Photos)
+         * depends on ImagesMode -- see setImagesMode(). Photos always means the `normal` rung,
+         * in both modes.
+         */
         enum class Panel
         {
             None,       //!< the overlay is not active; never emitted by dropped()
-            Documents,  //!< single full-area panel: payload has no images -- send as documents
-            Images,     //!< two-panel layout, first panel -- `full` rung, never downscaled
-            Photos      //!< two-panel layout, second panel -- `normal` rung, adaptively scaled
+            Documents,  //!< single full-area panel (no images), or first panel in DocumentsAndNormal mode
+            Images,     //!< two-panel layout, first panel in FullAndNormal mode -- `full` rung, never downscaled
+            Photos      //!< two-panel layout, second panel in either mode -- `normal` rung, adaptively scaled
         };
         Q_ENUM(Panel)
+
+        /** @brief Which pair of panels the two-panel (has-images) layout offers. */
+        enum class ImagesMode
+        {
+            DocumentsAndNormal, //!< default: Documents (the original files) + Photos (`normal` rung, captioned "Send as images")
+            FullAndNormal       //!< Images (`full` rung, captioned "Send as images") + Photos (`normal` rung, captioned "Send as photos")
+        };
+        Q_ENUM(ImagesMode)
 
         constexpr static const bool DefaultAutoShow=true;
         constexpr static const bool DefaultImagesPanelAllowed=true;
         constexpr static const int DefaultLeaveWatchdogIntervalMs=200;
         constexpr static const Qt::Orientation DefaultPanelOrientation=Qt::Vertical;
+        constexpr static const ImagesMode DefaultImagesMode=ImagesMode::DocumentsAndNormal;
 
         explicit FileDropOverlay(QWidget* host);
 
@@ -140,19 +172,38 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         bool isAutoShow() const noexcept;
 
         /**
-         * @brief Whether the two-panel (Images/Photos) layout may appear at all.
+         * @brief Whether the two-panel layout may appear at all.
          *
          * False forces the single full-area documents panel regardless of payload -- for a
-         * consumer that never needs the rung choice.
+         * consumer that never needs the pair offered by imagesMode().
          */
         void setImagesPanelAllowed(bool enable);
         bool isImagesPanelAllowed() const noexcept;
 
         /**
+         * @brief Which pair of panels the two-panel (has-images) layout offers.
+         *
+         * ImagesMode::DocumentsAndNormal (the default) is the Telegram-style pairing: "Send as
+         * documents" (the original files, emits Panel::Documents) next to "Send as images" (the
+         * `normal` rung, emits Panel::Photos). ImagesMode::FullAndNormal instead offers the image
+         * version ladder's own top two rungs: "Send as images" (the `full` rung, emits
+         * Panel::Images) next to "Send as photos" (the `normal` rung, emits Panel::Photos). Only
+         * affects the two-panel layout; the single full-area panel shown when there are no images
+         * is unaffected either way. See setDocumentsCaption()/setNormalImagesCaption() (used in
+         * DocumentsAndNormal) and setImagesCaption()/setPhotosCaption() (used in FullAndNormal).
+         */
+        void setImagesMode(ImagesMode mode);
+        ImagesMode imagesMode() const noexcept;
+
+        //! QSS-friendly string form: "documents-normal" | "full-normal".
+        void setImagesModeName(const QString& name);
+        QString imagesModeName() const;
+
+        /**
          * @brief How the two panels are arranged in the two-panel (has-images) layout.
          *
          * Qt::Horizontal (the default) is the brief's own "two panels side by side"; Qt::Vertical
-         * stacks documents above images instead -- useful for a host that is taller than it is
+         * stacks the panels top-to-bottom instead -- useful for a host that is taller than it is
          * wide (a narrow chat sidebar, say). Only affects the two-panel layout; the single
          * full-area panel shown when there are no images is unaffected either way.
          */
@@ -181,15 +232,32 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void setSingleSubtitle(const QString& text);
         QString singleSubtitle() const;
 
-        //! Caption of the images panel in the two-panel layout (first/left/top) -- the `full`
-        //! rung, never downscaled.
+        //! Caption of the documents panel in the two-panel layout, ImagesMode::DocumentsAndNormal
+        //! only (first/left/top) -- the original files, sent uncompressed.
+        void setDocumentsCaption(const QString& text);
+        QString documentsCaption() const;
+        void setDocumentsSubtitle(const QString& text);
+        QString documentsSubtitle() const;
+
+        //! Caption of the images panel in the two-panel layout, ImagesMode::FullAndNormal only
+        //! (first/left/top) -- the `full` rung, never downscaled.
         void setImagesCaption(const QString& text);
         QString imagesCaption() const;
         void setImagesSubtitle(const QString& text);
         QString imagesSubtitle() const;
 
-        //! Caption of the photos panel in the two-panel layout (second/right/bottom, depending
-        //! on panelOrientation()) -- the `normal` rung, adaptively scaled.
+        //! Caption of the second/right/bottom panel (depending on panelOrientation()) in
+        //! ImagesMode::DocumentsAndNormal -- the `normal` rung, adaptively scaled, paired next to
+        //! the documents panel. See setPhotosCaption() for the same panel's text in
+        //! ImagesMode::FullAndNormal.
+        void setNormalImagesCaption(const QString& text);
+        QString normalImagesCaption() const;
+        void setNormalImagesSubtitle(const QString& text);
+        QString normalImagesSubtitle() const;
+
+        //! Caption of the photos panel in the two-panel layout, ImagesMode::FullAndNormal only
+        //! (second/right/bottom, depending on panelOrientation()) -- the `normal` rung,
+        //! adaptively scaled, paired next to the images panel.
         void setPhotosCaption(const QString& text);
         QString photosCaption() const;
         void setPhotosSubtitle(const QString& text);

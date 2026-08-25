@@ -66,6 +66,7 @@ class FileDropOverlay_p
         FileDropOverlay::Panel hoveredPanel=FileDropOverlay::Panel::None;
         int leaveWatchdogIntervalMs=FileDropOverlay::DefaultLeaveWatchdogIntervalMs;
         Qt::Orientation panelOrientation=FileDropOverlay::DefaultPanelOrientation;
+        FileDropOverlay::ImagesMode imagesMode=FileDropOverlay::DefaultImagesMode;
 
         QFrame* documentsPanel=nullptr;
         RoundedImage* documentsIcon=nullptr;
@@ -84,12 +85,17 @@ class FileDropOverlay_p
 
         QString singleCaption;
         QString singleSubtitle;
+        QString documentsCaption;
+        QString documentsSubtitle;
         QString imagesCaption;
         QString imagesSubtitle;
+        QString normalImagesCaption;
+        QString normalImagesSubtitle;
         QString photosCaption;
         QString photosSubtitle;
 
         std::shared_ptr<SvgIcon> svgUploadIcon;
+        std::shared_ptr<SvgIcon> svgDocumentsIcon;
         std::shared_ptr<SvgIcon> svgImagesIcon;
         std::shared_ptr<SvgIcon> svgPhotosIcon;
 
@@ -143,16 +149,21 @@ FileDropOverlay::FileDropOverlay(QWidget* host)
     setFocusPolicy(Qt::NoFocus);
 
     pimpl->singleCaption=tr("Drop files here to send as documents");
+    pimpl->documentsCaption=tr("Send as documents");
+    pimpl->documentsSubtitle=tr("Original files, no compression");
     pimpl->imagesCaption=tr("Send as images");
     pimpl->imagesSubtitle=tr("Full quality, larger size");
+    pimpl->normalImagesCaption=tr("Send as images");
+    pimpl->normalImagesSubtitle=tr("Adaptive quality, faster delivery");
     pimpl->photosCaption=tr("Send as photos");
     pimpl->photosSubtitle=tr("Adaptive quality, faster delivery");
 
     // Panel widgets are built here as plain children of `this`, deliberately NOT added to any
     // layout yet -- rebuildPanelsLayout() (called just below, and again from
-    // setPanelOrientation()) is the single place a QBoxLayout is created and both panels are
-    // added to it, so switching orientation later is just "delete the old layout, build a new
-    // one the other way, re-add the same two widgets" rather than duplicating this construction.
+    // setPanelOrientation()/setImagesMode()) is the single place a QBoxLayout is created and all
+    // three panels are added to it, so switching orientation or mode later is just "delete the
+    // old layout, build a new one, re-add the same three widgets" rather than duplicating this
+    // construction.
     auto buildPanel=[this](const QString& objName) -> QFrame*
     {
         auto* panel=new QFrame(this);
@@ -301,6 +312,42 @@ bool FileDropOverlay::isImagesPanelAllowed() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FileDropOverlay::setImagesMode(ImagesMode mode)
+{
+    if (pimpl->imagesMode==mode)
+    {
+        return;
+    }
+    pimpl->imagesMode=mode;
+    rebuildPanelsLayout();
+    if (pimpl->active)
+    {
+        // The previously hovered panel may no longer be part of the pair -- clear its "hovered"
+        // property before recomputing text/visibility, same order as showForMimeData().
+        setHoveredPanel(Panel::None);
+        updatePanels();
+    }
+}
+
+FileDropOverlay::ImagesMode FileDropOverlay::imagesMode() const noexcept
+{
+    return pimpl->imagesMode;
+}
+
+void FileDropOverlay::setImagesModeName(const QString& name)
+{
+    setImagesMode(
+        name.compare(QStringLiteral("full-normal"),Qt::CaseInsensitive)==0 ? ImagesMode::FullAndNormal : ImagesMode::DocumentsAndNormal
+    );
+}
+
+QString FileDropOverlay::imagesModeName() const
+{
+    return pimpl->imagesMode==ImagesMode::FullAndNormal ? QStringLiteral("full-normal") : QStringLiteral("documents-normal");
+}
+
+//--------------------------------------------------------------------------
+
 void FileDropOverlay::setPanelOrientation(Qt::Orientation orientation)
 {
     if (pimpl->panelOrientation==orientation)
@@ -365,10 +412,14 @@ QFrame* FileDropOverlay::panelFrame(Panel panel) const
 
 //--------------------------------------------------------------------------
 
+// Every setter below just stores the text and, while active, calls updatePanels() to refresh
+// whatever is currently visible -- simpler and just as cheap as gating each one on the specific
+// hasImages/imagesMode combination its own panel is shown under.
+
 void FileDropOverlay::setSingleCaption(const QString& text)
 {
     pimpl->singleCaption=text;
-    if (pimpl->active && !pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -382,7 +433,7 @@ QString FileDropOverlay::singleCaption() const
 void FileDropOverlay::setSingleSubtitle(const QString& text)
 {
     pimpl->singleSubtitle=text;
-    if (pimpl->active && !pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -395,10 +446,40 @@ QString FileDropOverlay::singleSubtitle() const
 
 //--------------------------------------------------------------------------
 
+void FileDropOverlay::setDocumentsCaption(const QString& text)
+{
+    pimpl->documentsCaption=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::documentsCaption() const
+{
+    return pimpl->documentsCaption;
+}
+
+void FileDropOverlay::setDocumentsSubtitle(const QString& text)
+{
+    pimpl->documentsSubtitle=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::documentsSubtitle() const
+{
+    return pimpl->documentsSubtitle;
+}
+
+//--------------------------------------------------------------------------
+
 void FileDropOverlay::setImagesCaption(const QString& text)
 {
     pimpl->imagesCaption=text;
-    if (pimpl->active && pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -412,7 +493,7 @@ QString FileDropOverlay::imagesCaption() const
 void FileDropOverlay::setImagesSubtitle(const QString& text)
 {
     pimpl->imagesSubtitle=text;
-    if (pimpl->active && pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -425,10 +506,40 @@ QString FileDropOverlay::imagesSubtitle() const
 
 //--------------------------------------------------------------------------
 
+void FileDropOverlay::setNormalImagesCaption(const QString& text)
+{
+    pimpl->normalImagesCaption=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::normalImagesCaption() const
+{
+    return pimpl->normalImagesCaption;
+}
+
+void FileDropOverlay::setNormalImagesSubtitle(const QString& text)
+{
+    pimpl->normalImagesSubtitle=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::normalImagesSubtitle() const
+{
+    return pimpl->normalImagesSubtitle;
+}
+
+//--------------------------------------------------------------------------
+
 void FileDropOverlay::setPhotosCaption(const QString& text)
 {
     pimpl->photosCaption=text;
-    if (pimpl->active && pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -442,7 +553,7 @@ QString FileDropOverlay::photosCaption() const
 void FileDropOverlay::setPhotosSubtitle(const QString& text)
 {
     pimpl->photosSubtitle=text;
-    if (pimpl->active && pimpl->hasImages)
+    if (pimpl->active)
     {
         updatePanels();
     }
@@ -557,32 +668,63 @@ void FileDropOverlay::rebuildPanelsLayout()
     // constructor's own comment on why panel construction and layout assembly are kept separate.
     // Only two of the three are ever visible at once (updatePanels()), but all three stay in the
     // layout permanently -- a hidden widget is skipped by the layout, so there is no need to
-    // add/remove on every hasImages change.
+    // add/remove on every hasImages/imagesMode change.
+    //
+    // The first panel of the pair depends on imagesMode(): documentsPanel in DocumentsAndNormal,
+    // imagesPanel in FullAndNormal -- photosPanel (the `normal` rung) is always second. When
+    // !hasImages documentsPanel is the only visible panel regardless of its layout position, so
+    // its place in the FullAndNormal ordering below is immaterial.
     auto* layout=Layout::box(this,pimpl->panelOrientation);
-    layout->addWidget(pimpl->imagesPanel,1);
-    layout->addWidget(pimpl->photosPanel,1);
-    layout->addWidget(pimpl->documentsPanel,1);
+    if (pimpl->imagesMode==ImagesMode::FullAndNormal)
+    {
+        layout->addWidget(pimpl->imagesPanel,1);
+        layout->addWidget(pimpl->photosPanel,1);
+        layout->addWidget(pimpl->documentsPanel,1);
+    }
+    else
+    {
+        layout->addWidget(pimpl->documentsPanel,1);
+        layout->addWidget(pimpl->photosPanel,1);
+        layout->addWidget(pimpl->imagesPanel,1);
+    }
 }
 
 //--------------------------------------------------------------------------
 
 void FileDropOverlay::updatePanels()
 {
-    pimpl->imagesPanel->setVisible(pimpl->hasImages);
+    auto fullAndNormal=pimpl->imagesMode==ImagesMode::FullAndNormal;
+
+    pimpl->imagesPanel->setVisible(pimpl->hasImages && fullAndNormal);
     pimpl->photosPanel->setVisible(pimpl->hasImages);
-    pimpl->documentsPanel->setVisible(!pimpl->hasImages);
+    pimpl->documentsPanel->setVisible(!pimpl->hasImages || !fullAndNormal);
 
     if (pimpl->hasImages)
     {
-        pimpl->imagesIcon->setSvgIcon(pimpl->svgImagesIcon);
-        pimpl->imagesCaptionLabel->setText(pimpl->imagesCaption);
-        pimpl->imagesSubtitleLabel->setText(pimpl->imagesSubtitle);
-        pimpl->imagesSubtitleLabel->setVisible(!pimpl->imagesSubtitle.isEmpty());
+        if (fullAndNormal)
+        {
+            pimpl->imagesIcon->setSvgIcon(pimpl->svgImagesIcon);
+            pimpl->imagesCaptionLabel->setText(pimpl->imagesCaption);
+            pimpl->imagesSubtitleLabel->setText(pimpl->imagesSubtitle);
+            pimpl->imagesSubtitleLabel->setVisible(!pimpl->imagesSubtitle.isEmpty());
 
-        pimpl->photosIcon->setSvgIcon(pimpl->svgPhotosIcon);
-        pimpl->photosCaptionLabel->setText(pimpl->photosCaption);
-        pimpl->photosSubtitleLabel->setText(pimpl->photosSubtitle);
-        pimpl->photosSubtitleLabel->setVisible(!pimpl->photosSubtitle.isEmpty());
+            pimpl->photosIcon->setSvgIcon(pimpl->svgPhotosIcon);
+            pimpl->photosCaptionLabel->setText(pimpl->photosCaption);
+            pimpl->photosSubtitleLabel->setText(pimpl->photosSubtitle);
+            pimpl->photosSubtitleLabel->setVisible(!pimpl->photosSubtitle.isEmpty());
+        }
+        else
+        {
+            pimpl->documentsIcon->setSvgIcon(pimpl->svgDocumentsIcon);
+            pimpl->documentsCaptionLabel->setText(pimpl->documentsCaption);
+            pimpl->documentsSubtitleLabel->setText(pimpl->documentsSubtitle);
+            pimpl->documentsSubtitleLabel->setVisible(!pimpl->documentsSubtitle.isEmpty());
+
+            pimpl->photosIcon->setSvgIcon(pimpl->svgPhotosIcon);
+            pimpl->photosCaptionLabel->setText(pimpl->normalImagesCaption);
+            pimpl->photosSubtitleLabel->setText(pimpl->normalImagesSubtitle);
+            pimpl->photosSubtitleLabel->setVisible(!pimpl->normalImagesSubtitle.isEmpty());
+        }
     }
     else
     {
@@ -598,6 +740,7 @@ void FileDropOverlay::updatePanels()
 void FileDropOverlay::updateIcons()
 {
     pimpl->svgUploadIcon=fileDropOverlayIcon(QStringLiteral("upload"),this);
+    pimpl->svgDocumentsIcon=fileDropOverlayIcon(QStringLiteral("documents"),this);
     pimpl->svgImagesIcon=fileDropOverlayIcon(QStringLiteral("images"),this);
     pimpl->svgPhotosIcon=fileDropOverlayIcon(QStringLiteral("photos"),this);
 }
@@ -632,19 +775,23 @@ FileDropOverlay::Panel FileDropOverlay::panelAt(const QPoint& pos) const
         return Panel::Documents;
     }
 
+    // First panel of the pair depends on imagesMode() -- see rebuildPanelsLayout(); photosPanel
+    // is always second and always added right after it.
+    auto fullAndNormal=pimpl->imagesMode==ImagesMode::FullAndNormal;
+    auto* firstPanel=fullAndNormal ? pimpl->imagesPanel : pimpl->documentsPanel;
+    auto firstPanelResult=fullAndNormal ? Panel::Images : Panel::Documents;
+
     // Midpoint split, not strict rect containment, so the padding band and inter-panel gap have
-    // no dead zone -- panelAt() always resolves to one panel or the other. imagesPanel is
-    // always added to the layout first (see rebuildPanelsLayout()), so it is the left panel in
-    // Qt::Horizontal and the top panel in Qt::Vertical; split on the axis the layout actually
-    // arranges the panels along.
+    // no dead zone -- panelAt() always resolves to one panel or the other. Split on the axis the
+    // layout actually arranges the panels along.
     if (pimpl->panelOrientation==Qt::Vertical)
     {
-        auto split=(pimpl->imagesPanel->geometry().bottom()+pimpl->photosPanel->geometry().top())/2;
-        return pos.y()<split ? Panel::Images : Panel::Photos;
+        auto split=(firstPanel->geometry().bottom()+pimpl->photosPanel->geometry().top())/2;
+        return pos.y()<split ? firstPanelResult : Panel::Photos;
     }
 
-    auto split=(pimpl->imagesPanel->geometry().right()+pimpl->photosPanel->geometry().left())/2;
-    return pos.x()<split ? Panel::Images : Panel::Photos;
+    auto split=(firstPanel->geometry().right()+pimpl->photosPanel->geometry().left())/2;
+    return pos.x()<split ? firstPanelResult : Panel::Photos;
 }
 
 //--------------------------------------------------------------------------

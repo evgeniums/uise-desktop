@@ -8,10 +8,17 @@
  *   not the primary hide path -- see filedropoverlay.hpp.
  *
  * qproperty-panelOrientation - "horizontal" (default, panels side by side) or "vertical"
- *   (images above photos) for the two-panel (has-images) layout; the single full-area panel
+ *   (first panel above photos) for the two-panel (has-images) layout; the single full-area panel
  *   shown when there are no images is unaffected either way. Like every other qproperty-* here,
  *   this is reapplied on every repolish (e.g. a theme reload) -- a C++ setPanelOrientation()
  *   call overrides it only until the next one.
+ *
+ * qproperty-imagesMode is deliberately NOT set here, unlike panelOrientation above: it would
+ *   silently override a consumer's or a demo's own setImagesMode() call on every repolish, the
+ *   same trap the panelOrientation comment describes -- except there the C++ default and the QSS
+ *   default agree, so it goes unnoticed. See FileDropOverlay::ImagesMode and the Q_PROPERTY
+ *   comment in filedropoverlay.hpp; the C++-side default (ImagesMode::DocumentsAndNormal) is what
+ *   actually applies unless a consumer calls setImagesMode()/setImagesModeName() itself.
  */
 
 uise--FileDropOverlay {

@@ -114,11 +114,9 @@ int main(int argc, char *argv[])
     auto* rootLayout=Layout::vertical(central,false);
     mainFrame->setWidget(central);
 
-    rootLayout->addWidget(new QLabel(QStringLiteral(
-        "Drag files/images from your file manager onto the chat page area below.\n"
-        "A plain file shows one panel; an image file shows two -- Send as images (full rung) /\n"
-        "Send as photos (normal rung).\n"
-        "The Preview buttons show the same layouts without needing an actual OS-level drag.")));
+    auto* introLabel=new QLabel();
+    introLabel->setWordWrap(true);
+    rootLayout->addWidget(introLabel);
 
     // --- the "chat page": the whole point of auto-show mode is that this two-line integration
     // is everything a consumer needs -- setAcceptDrops(true) + install(), nothing else ---
@@ -140,6 +138,18 @@ int main(int argc, char *argv[])
 
     chatPage->setAcceptDrops(true);
     auto* overlay=FileDropOverlay::install(chatPage);
+
+    auto updateIntroLabel=[introLabel](FileDropOverlay::ImagesMode mode)
+    {
+        auto pairText=(mode==FileDropOverlay::ImagesMode::FullAndNormal)
+            ? QStringLiteral("Send as images (full rung) / Send as photos (normal rung)")
+            : QStringLiteral("Send as documents (original files) / Send as images (normal rung)");
+        introLabel->setText(QStringLiteral(
+            "Drag files/images from your file manager onto the chat page area below.\n"
+            "A plain file shows one panel; an image file shows two -- %1.\n"
+            "The Preview buttons show the same layouts without needing an actual OS-level drag.").arg(pairText));
+    };
+    updateIntroLabel(overlay->imagesMode());
 
     // --- log ---
 
@@ -249,6 +259,21 @@ int main(int argc, char *argv[])
     imagesAllowedCheck->setChecked(overlay->isImagesPanelAllowed());
     controlsLayout->addWidget(imagesAllowedCheck);
     QObject::connect(imagesAllowedCheck,&QCheckBox::toggled,overlay,&FileDropOverlay::setImagesPanelAllowed);
+
+    controlsLayout->addWidget(new QLabel(QStringLiteral("Images mode:")));
+    auto* imagesModeCombo=new QComboBox();
+    imagesModeCombo->addItem(QStringLiteral("Documents + normal"),static_cast<int>(FileDropOverlay::ImagesMode::DocumentsAndNormal));
+    imagesModeCombo->addItem(QStringLiteral("Full + normal"),static_cast<int>(FileDropOverlay::ImagesMode::FullAndNormal));
+    imagesModeCombo->setCurrentIndex(imagesModeCombo->findData(static_cast<int>(overlay->imagesMode())));
+    controlsLayout->addWidget(imagesModeCombo);
+    QObject::connect(imagesModeCombo,&QComboBox::currentIndexChanged,overlay,
+        [overlay,imagesModeCombo,updateIntroLabel](int index)
+        {
+            auto mode=static_cast<FileDropOverlay::ImagesMode>(imagesModeCombo->itemData(index).toInt());
+            overlay->setImagesMode(mode);
+            updateIntroLabel(mode);
+        }
+    );
 
     controlsLayout->addWidget(new QLabel(QStringLiteral("Panel orientation:")));
     auto* orientationCombo=new QComboBox();
