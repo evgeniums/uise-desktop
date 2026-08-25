@@ -877,16 +877,23 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem)
         return;
     }
 
+    // Traits::sortValue(dbItem) is not necessarily the same key as msg->sortValue() -- e.g.
+    // whitemdesktop's ChatMessage::sortValue() reads chat_msg::sort_oid while its
+    // ChatMessageTraits::sortValue() reads at_server::server_oid. Comparing the item's own
+    // accessor before and after updateData() keeps both sides on the same key, so a change in
+    // one but not the other doesn't spuriously (or silently) skip the required reorder.
     auto oldSortValue=msg->sortValue();
-    auto newSortValue=Traits::sortValue(dbItem);
-    auto reorder=oldSortValue != newSortValue;
 
     replaceSelectedData(msg);
 
     m_listView->beginUpdate();
 
     msg->updateData(dbItem);
-    if (reorder)
+
+    // sortValue() reads the key live from the (now replaced) DU -- see
+    // insertItemToContainer()'s own @todo: a live sort-key mutation MUST be paired with
+    // reordering the index, or the ordered index silently corrupts.
+    if (msg->sortValue() != oldSortValue)
     {
         doReorderMessage(Traits::id(dbItem));
     }

@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_MIMEDATAUTILS_HPP
 #define UISE_DESKTOP_MIMEDATAUTILS_HPP
 
+#include <QString>
 #include <QStringList>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -77,6 +78,45 @@ UISE_DESKTOP_EXPORT bool mimeDataHasImages(const QMimeData* mimeData);
  * the widget would do once it does.
  */
 UISE_DESKTOP_EXPORT bool mimeDataHasAttachments(const QMimeData* mimeData);
+
+/**
+ * @brief Get the private MIME format this application uses to carry an explicit filename
+ *  alongside image bits it itself put on the clipboard (e.g. ChatImageViewerController's
+ *  Copy action).
+ * @return "application/x-uise-image-filename" -- ignored by every other application, so
+ *  nothing else on the clipboard is affected by its presence.
+ *
+ * This is what lets a copy -> paste round trip *within* the app keep the image's original
+ * filename, which mimeDataImageFileNameHint() below reads back first, ahead of any other hint.
+ */
+UISE_DESKTOP_EXPORT const QString& imageFileNameMimeFormat();
+
+/**
+ * @brief Best-effort original filename for image BITS carried by mimeData (as opposed to a
+ *  local file URL, which already has a real name via QFileInfo -- callers should check
+ *  mimeDataLocalFilePaths() first and only fall back to this for the raw-bitmap case).
+ * @param mimeData Payload to inspect; nullptr yields an empty result.
+ * @return A validated, sanitized filename with an image/... extension, or an empty string when
+ *  mimeData carries no usable hint -- the normal case for e.g. a macOS screenshot copied
+ *  straight to the clipboard, which has no filename flavor at all.
+ *
+ * Tries, in order, stopping at the first candidate that survives validation:
+ *  1. imageFileNameMimeFormat() -- this application's own copy -> paste round trip.
+ *  2. The first non-local URL in mimeData->urls() (a browser's "Copy Image" commonly supplies
+ *     the image's own remote URL).
+ *  3. The src="..." of the first <img> tag in mimeData->html() (what browsers put on the
+ *     clipboard alongside the bitmap for "Copy Image").
+ *
+ * text/plain is deliberately not consulted -- too easy to pick up unrelated copied text that
+ * happens to look like a filename.
+ *
+ * Every candidate is validated before being accepted: percent-decoded, reduced to a bare
+ * filename (no path separators, no "."/".."), stripped of characters illegal in filenames, and
+ * required to have a suffix that QMimeDatabase resolves to an image/... type -- the same
+ * extension-sniff idiom mimeDataHasImages() already uses. This is the guard against a false
+ * positive from unrelated clipboard content.
+ */
+UISE_DESKTOP_EXPORT QString mimeDataImageFileNameHint(const QMimeData* mimeData);
 
 UISE_DESKTOP_NAMESPACE_END
 

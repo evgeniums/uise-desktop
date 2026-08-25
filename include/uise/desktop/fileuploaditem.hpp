@@ -285,6 +285,20 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          */
         static void setAutoFileNameTemplate(QString prefix);
 
+        /**
+         * @brief Make @a fileName end in @a suffix, replacing whatever suffix it already has.
+         * @param fileName A hinted name, e.g. from mimeDataImageFileNameHint() -- may already
+         *  disagree with the actual encoding (a URL may say ".jpg" while the clipboard bitmap
+         *  was actually re-encoded as PNG).
+         * @param suffix File extension without the dot, e.g. "png". Comparison against
+         *  fileName's existing suffix is case-insensitive and treats "jpg"/"jpeg" as equal, so
+         *  a correct ".jpeg" name is not needlessly rewritten to ".jpg".
+         * @return fileName unchanged if it is empty (nothing to fix) or its suffix already
+         *  matches; otherwise fileName with its suffix replaced by @a suffix, or, if fileName
+         *  had no suffix at all, @a suffix appended.
+         */
+        static QString fileNameWithSuffix(QString fileName, const QString& suffix);
+
     private:
 
         Type m_type=Type::File;

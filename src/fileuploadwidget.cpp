@@ -356,6 +356,24 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
             updateCommentsAreaHeight();
         }
     );
+    // Without this, a paste with focus in the comment box is silently swallowed: EnhancedTextEdit
+    // ::insertFromMimeData() recognizes attachment mime data and emits attachmentsPasted() instead
+    // of inserting it as text, but until now nothing here was listening -- so the event was eaten
+    // and nothing happened. mimeData is only valid for the duration of this slot (see
+    // AbstractMessageEditor::attachmentsPasted()'s own doc comment), which addFromMimeData()
+    // already consumes synchronously.
+    connect(
+        pimpl->messageEditor,
+        &AbstractMessageEditor::attachmentsPasted,
+        this,
+        [this](const QMimeData* mimeData)
+        {
+            if (!isAtMaxFileCount())
+            {
+                addFromMimeData(mimeData);
+            }
+        }
+    );
 
     // --- buttons: Add on the left, Cancel/Send on the right ---
     //
@@ -1319,12 +1337,21 @@ void FileUploadWidget::addFromMimeData(const QMimeData* mimeData)
         }
     }
 
+    // Best-effort original name for raw image bits with no file URL of their own -- a browser's
+    // "Copy Image" or our own in-app Copy round trip; empty when the clipboard carries no such
+    // hint (e.g. a macOS screenshot), in which case ensureFileName() mints the usual
+    // "image_<timestamp>_<n>" name later, unchanged from before.
+    auto hint=mimeDataImageFileNameHint(mimeData);
+
     if (mimeData->hasImage())
     {
         auto image=qvariant_cast<QImage>(mimeData->imageData());
         if (!image.isNull())
         {
-            addItems({FileUploadItem::fromImage(image)});
+            // Re-encoded as PNG below (fromImage()'s default format), so the hinted name's
+            // suffix must agree even if the hint itself said e.g. ".jpg".
+            auto fileName=FileUploadItem::fileNameWithSuffix(hint,QStringLiteral("png"));
+            addItems({FileUploadItem::fromImage(image,fileName)});
             return;
         }
     }
@@ -1337,7 +1364,10 @@ void FileUploadWidget::addFromMimeData(const QMimeData* mimeData)
             if (!bytes.isEmpty())
             {
                 auto subtype=fmt.section(QLatin1Char('/'),1).toUpper();
-                addItems({FileUploadItem::fromEncodedImage(bytes,{},subtype.toUtf8())});
+                // Bytes are kept verbatim in this subtype, so the name's suffix must agree
+                // with it, not with whatever the hint originally said.
+                auto fileName=FileUploadItem::fileNameWithSuffix(hint,subtype.toLower());
+                addItems({FileUploadItem::fromEncodedImage(bytes,fileName,subtype.toUtf8())});
                 return;
             }
         }

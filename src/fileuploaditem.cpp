@@ -321,4 +321,38 @@ void FileUploadItem::setAutoFileNameTemplate(QString prefix)
 
 //--------------------------------------------------------------------------
 
+QString FileUploadItem::fileNameWithSuffix(QString fileName, const QString& suffix)
+{
+    if (fileName.isEmpty() || suffix.isEmpty())
+    {
+        return fileName;
+    }
+
+    // jpg/jpeg are the same format under two spellings -- don't rewrite a correct ".jpeg" name
+    // just because the re-encoded suffix happens to be spelled "jpg" (or vice versa).
+    auto normalize=[](QString s)
+    {
+        s=s.toLower();
+        return s==QStringLiteral("jpeg") ? QStringLiteral("jpg") : s;
+    };
+
+    QFileInfo fi(fileName);
+    auto existingSuffix=fi.suffix();
+    if (!existingSuffix.isEmpty() && normalize(existingSuffix)==normalize(suffix))
+    {
+        return fileName;
+    }
+
+    auto base=fi.completeBaseName();
+    if (base.isEmpty())
+    {
+        // fileName had no suffix at all (completeBaseName() == fileName in that case) --
+        // keep it whole and just append the suffix.
+        base=fileName;
+    }
+    return base+QLatin1Char('.')+suffix;
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
