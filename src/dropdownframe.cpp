@@ -929,6 +929,92 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
         }
         break;
 
+        case (QEvent::NonClientAreaMouseButtonPress): [[fallthrough]];
+        case (QEvent::NonClientAreaMouseButtonDblClick):
+        {
+            // a press on a window's native frame -- title bar, its minimize/zoom/close buttons,
+            // a resize border -- never reaches any widget's mousePressEvent()/this filter's own
+            // MouseButtonPress case above, because it is handled entirely outside Qt's widget
+            // event delivery. Qt still surfaces it though: QWidgetPrivate::create() turns on
+            // frame-strut events for every top-level widget unconditionally
+            // (QPlatformWindow::setFrameStrutEventsEnabled(true)), and each platform plugin
+            // funnels a frame press into these NonClientArea* events (macOS:
+            // QNSWindow::sendEvent + handleFrameStrutMouseEvent; Windows: the WM_NC* handlers in
+            // qwindowspointerhandler.cpp). Treat it exactly like an outside click: whichever
+            // window the user actually clicked, they did not click inside this dropdown.
+            //
+            // isVisible() guards against a double emit: QWidgetWindow::handleNonClientAreaMouseEvent
+            // forwards the same press to the top-level QWidget via QApplication::forwardEvent(),
+            // so a qApp-wide filter observes it twice (once per QObject in the chain) for a
+            // single physical click.
+            //
+            // No obj==hostWindow check, unlike WindowDeactivate/Move/Resize above: this frame is
+            // Qt::FramelessWindowHint and never generates a NonClientArea event of its own, so a
+            // frame press on any window in the application is unambiguously outside this
+            // dropdown. A frame press in a different application is already covered by
+            // WindowDeactivate.
+            //
+            // Known gap: on X11 window decorations are drawn and owned by the window manager, not
+            // by the Qt window, so no frame-strut events are generated there and a bare title-bar
+            // click is not observed by this filter -- Move/Resize (dragging), WindowDeactivate
+            // (switching away) and ApplicationStateChange (hiding the app) below still dismiss
+            // the dropdown on Linux.
+            if (isVisible())
+            {
+                emit closeRequested(CloseReason::OutsideClick);
+                closeDropdown(true);
+            }
+        }
+        break;
+
+        case (QEvent::Hide): [[fallthrough]];
+        case (QEvent::Close):
+        {
+            // the host window disappeared outright (hidden, or closed without necessarily being
+            // destroyed) -- with no host left to anchor to or to reactivate, leaving the frame up
+            // would strand it floating on screen with no parent window at all. Same insurance
+            // FloatingDialogFrame and FileDropOverlay already carry for their own top-level
+            // frames; DropdownFrame never had it.
+            if (obj==pimpl->hostWindow.data())
+            {
+                emit closeRequested(CloseReason::WindowChanged);
+                closeDropdown(true);
+            }
+        }
+        break;
+
+        case (QEvent::WindowStateChange):
+        {
+            // minimizing leaves the host isVisible()==true (no Hide event above) and, since the
+            // frame never takes activation, does not necessarily deactivate it either -- check
+            // the state explicitly.
+            if (obj==pimpl->hostWindow.data() &&
+                pimpl->hostWindow->windowState().testFlag(Qt::WindowMinimized))
+            {
+                emit closeRequested(CloseReason::WindowChanged);
+                closeDropdown(true);
+            }
+        }
+        break;
+
+        case (QEvent::ApplicationStateChange):
+        {
+            // delivered to qApp itself (obj==qApp here, not a per-window event), so this is a
+            // safety net for platform paths where the host's own WindowDeactivate/Hide never
+            // fires as the application as a whole loses activation -- e.g. macOS Cmd+H / Hide
+            // Application, Mission Control, or the app losing focus without any single window
+            // reporting it. Safe unconditionally: the frame never accepts activation itself
+            // (Qt::WindowDoesNotAcceptFocus), so opening it can never flip the application state
+            // and cause a spurious self-close here.
+            auto* se=static_cast<QApplicationStateChangeEvent*>(event);
+            if (se->applicationState()!=Qt::ApplicationActive)
+            {
+                emit closeRequested(CloseReason::WindowChanged);
+                closeDropdown(true);
+            }
+        }
+        break;
+
         default:
             break;
     }

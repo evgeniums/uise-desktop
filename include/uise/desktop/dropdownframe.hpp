@@ -53,6 +53,14 @@ class DropdownFrame_p;
  * active while the frame is open, so opening it never triggers the frame's own
  * CloseReason::WindowChanged dismissal.
  *
+ * Self-dismissal also covers a press on a window's native frame (title bar, its minimize/zoom/
+ * close buttons, a resize border) and the host window being hidden, minimized, closed, or the
+ * whole application losing activation (see eventFilter()) -- without this a dropdown could
+ * otherwise be left floating on screen with no parent window still visible. On X11 the window
+ * manager owns the decorations rather than Qt, so a bare title-bar click there is not observed;
+ * dragging/resizing the host, switching applications, and hiding/minimizing it still dismiss the
+ * dropdown correctly on that platform.
+ *
  * The frame intentionally has NO QLayout. Its content() widget is sized once per opening and
  * never touched again; growing/shrinking the frame with setGeometry() therefore clips the
  * content instead of relaying it out, which is what makes the width+height animation a clip
@@ -82,9 +90,12 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         {
             Programmatic,   //!< closeDropdown() was called directly by the owner.
             Escape,         //!< the Escape key was pressed while the frame was open.
-            OutsideClick,   //!< a mouse press landed outside both the frame and the trigger widget.
+            OutsideClick,   //!< a mouse press landed outside both the frame and the trigger widget,
+                            //!< including a press on any window's native frame (title bar, its
+                            //!< minimize/zoom/close buttons, a resize border).
             TriggerClick,   //!< a mouse press landed on the trigger widget while open (a toggle-close).
-            WindowChanged   //!< the host window was deactivated, moved or resized.
+            WindowChanged   //!< the host window was deactivated, moved, resized, hidden, minimized
+                            //!< or closed, or the application as a whole lost activation.
         };
         Q_ENUM(CloseReason)
 
