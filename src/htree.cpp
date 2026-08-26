@@ -165,13 +165,19 @@ void HTree_p::installItem(HTreeTab* tab, int index)
                     // it to fill the whole bar width. setTabBarAutoHide() only hides the bar
                     // once count() actually drops to 1, which is just as deferred -- so
                     // without this, closing one of two tabs flashes a single tab stretched
-                    // across the full bar right before the bar disappears for good. Hiding it
-                    // too avoids that: the bar reads as empty immediately, exactly like it
-                    // will look once the close actually completes.
-                    for (int i=0;i<tabs->count();++i)
-                    {
-                        bar->setTabVisible(i,false);
-                    }
+                    // across the full bar right before the bar disappears for good.
+                    //
+                    // Hide the bar widget itself here, NOT the survivor's tab via
+                    // setTabVisible(). QTabBar::visible is persistent per-tab state that
+                    // removeTab() of a *different* index never resets (verified in
+                    // qtabbar.cpp) -- so setTabVisible(i,false) on the surviving tab would
+                    // leave it permanently flagged invisible after the close completes,
+                    // reappearing as a missing/blank tab the next time the bar is shown
+                    // again (setTabBarAutoHide() only toggles the whole bar's widget
+                    // visibility, it never restores any individual tab's flag). Hiding the
+                    // bar widget is purely transient view state Qt recomputes from count()
+                    // on every insert/remove, so it can't leak like that.
+                    bar->hide();
                 }
 
                 // setTabVisible() only hides a tab (and its item) and calls update() --
@@ -415,6 +421,43 @@ void HTree::closeTab(int tabIndex)
     }
     pimpl->tabs->removeTab(tabIndex);
     destroyWidget(w);
+
+    // Self-correcting sweep, independent of whatever hid these tabs: QTabBar::visible is
+    // per-tab state that removeTab() only ever clears for the removed index itself (verified
+    // in qtabbar.cpp), so any tab left flagged invisible by an earlier close-in-progress (see
+    // the setTabVisible()/bar->hide() handling in HTree_p::installItem()) would otherwise
+    // survive this removal and render as a missing/blank tab forever after.
+    bool restored=false;
+    for (int i=0;i<pimpl->tabs->count();++i)
+    {
+        // Guarded: QTabBar::setTabVisible() assigns d->layoutDirty=(visible!=tab->visible)
+        // before its early-return, so an unconditional call would clobber a genuinely
+        // pending relayout for tabs that were already visible.
+        if (!pimpl->bar->isTabVisible(i))
+        {
+            pimpl->bar->setTabVisible(i,true);
+            restored=true;
+        }
+    }
+    if (restored)
+    {
+        // setTabVisible(true) only calls update() -- it does not resize the item widget
+        // back up from the empty tabRect() an invisible tab reports (see
+        // HTreeTabBar::tabLayoutChange()), so a relayout pass is required, not cosmetic.
+        pimpl->bar->scheduleRelayout();
+    }
+
+    // Belt and braces: nothing currently drives currentIndex() to -1 while tabs remain (the
+    // fix above removes the only known producer of that state), but QTabWidget ignores a
+    // negative index when syncing its page stack (verified in qtabwidget.cpp), so guard
+    // against the tab bar's current-tab highlighting silently drifting from whatever page is
+    // actually on screen.
+    if (pimpl->tabs->count()>0 && pimpl->tabs->currentIndex()<0)
+    {
+        auto* shown=pimpl->tabs->currentWidget();
+        auto idx=shown!=nullptr ? pimpl->tabs->indexOf(shown) : -1;
+        pimpl->tabs->setCurrentIndex(idx>=0 ? idx : 0);
+    }
 }
 
 //--------------------------------------------------------------------------
