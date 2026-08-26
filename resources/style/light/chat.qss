@@ -2,23 +2,23 @@ uise--AbstractChatMessagesView,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
 {
-background-color: #F8FFFF; /* chat background */
+background-color: #F8F8F8; /* chat background */
 }
 
 uise--AbstractChatMessageContent,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
-background-color: #DFF1F1; /* received message */
+background-color: #ECF5D5; /* received message */
 }
 
 uise--AbstractChatMessageContent[selected="true"],
 uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]
 {
-background-color: #C1EBE9; /* selected received message */
+background-color: #AEE2FF; /* selected received message */
 }
 
 uise--AbstractChatMessageContent[sent="true"],
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"]{
-background-color: #D0E8F8; /* sent message */
+background-color: #DFF1F1; /* sent message */
 }
 
 uise--AbstractChatMessageContent[selected="true"][sent="true"],
@@ -47,7 +47,7 @@ qproperty-highlightOpacity: 0.05;
 }
 
 uise--ChatMessageBottom QLabel {
-color: #888888;
+color: #3F8C6F;
 }
 
 uise--ChatMessageBottom QLabel[sent="true"]{
