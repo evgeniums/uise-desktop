@@ -238,7 +238,11 @@ class FlyweightListView_p : public OrientationInvariant
 
         void scrollTo(const std::function<int (int, int, int)>& cb);
 
-        void resizeList();
+        //! `caller` is a short tag identifying the call site, printed with any CHAT-FWLV-DEBUG
+        //! output -- temporary, added to distinguish endUpdate()'s own resize from the deferred
+        //! onListContentResized()/widget-destroyed paths while chasing
+        //! todo-chat-messages-missing-after-insert.md's sibling scroll-drift bug.
+        void resizeList(const char* caller);
 
         void clearWidget(typename ItemT::WidgetType* widget);
         void removeItem(ItemT* item);

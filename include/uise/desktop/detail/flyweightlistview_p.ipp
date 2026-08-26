@@ -167,26 +167,29 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     m_llist=new LinkedListView(m_view);
     m_llist->setFocusProxy(m_view);
 
-    // LinkedListView::resized() used to be emitted with nothing connected to it anywhere --
-    // the only thing that re-validated the jump-edge/viewport bounds after m_llist's own size
-    // changed was viewportUpdated()'s change-gate on the boundary item's id/sort-value, which
-    // can freeze on a stale hit-test and then never re-fire (see checkInvariants()'s geometry
-    // assertion below for the case this is meant to catch). Wiring this in gives a second,
-    // geometry-driven trigger that doesn't depend on the boundary item happening to change.
-    // Deferred work only (m_informViewportUpdateTimer/m_checkItemCountTimer), so no
-    // synchronous re-entrancy risk into resizeList()/relayout() from within resizeEvent().
-    QObject::connect(
-        m_llist,
-        &LinkedListView::resized,
-        m_view,
-        [this]()
-        {
-            viewportUpdated();
-        }
-    );
+    // REVERTED 2026-08-26 (see todo-chat-scroll-drift-on-history-prefetch.md "Round 4: found and
+    // reverted"): this connection was added believing it was safe because the work it triggers
+    // (m_informViewportUpdateTimer/m_checkItemCountTimer) is deferred -- but viewportUpdated()'s
+    // FIRST action, keepCurrentConfiguration(), is NOT deferred, and it overwrites m_atEnd/
+    // m_atBegin/m_firstWidgetPos synchronously. resizeList() relies on those staying exactly as
+    // they were *before* its own m_llist->resize() call, so compensateSizeChange() (called right
+    // after) can correctly decide "was the view at the edge before this specific change." Since
+    // resize() synchronously emits resized() before returning, this connection refreshed that
+    // state in between resizeList()'s own resize() and compensateSizeChange() calls -- so
+    // compensateSizeChange() saw the *post*-growth, transiently-not-at-end geometry (the
+    // compensating move hadn't happened yet) instead of the correct *pre*-growth snapshot, took
+    // the anchor-preserving branch instead of the true-edge snap, and left the list permanently
+    // short of the real end by however much the triggering resize grew it. Confirmed via
+    // UISE_FWLV_CHECK=1 trace: m_atEnd read 1 going into resizeList(), then flipped to 0 by a
+    // keepCurrentConfiguration() call sandwiched between the resize and the compensate, which
+    // then took the wrong branch. The two other m_llist->resize() call sites do not need this
+    // wiring: onViewportResized() already calls viewportUpdated() itself right after its own
+    // resize, and clear()'s resize runs under blockSignals(true) so this would not have fired
+    // there anyway. No remaining call site benefits from this connection; only resizeList() was
+    // harmed by it.
 
     updatePageStep();
-    resizeList();
+    resizeList("setupUi");
 
     m_qobjectHelper.setListResizeHandler([this](){onListContentResized();});
 
@@ -269,7 +272,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
 #if 0
     qDebug() << printCurrentDateTime() << ": FlyweightListView_p::endUpdate()  " << m_obj;
 #endif
-    resizeList();
+    resizeList("endUpdate");
     m_ignoreUpdates=false;
     endItemRangeChange();
     viewportUpdated();
@@ -290,7 +293,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onListContentResized()
 #if 0
             qDebug() << printCurrentDateTime() << ": FlyweightListView_p::onListContentResized() shot 0 " << m_obj;
 #endif
-            resizeList();
+            resizeList("onListContentResized");
             viewportUpdated();
         }
     );
@@ -351,7 +354,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::configureWidget(const 
                         m_resizeListTimer.shot(0,
                                                [this]()
                                                {
-                                                   resizeList();
+                                                   resizeList("widget-destroyed");
                                                    viewportUpdated();
                                                }
                                             );
@@ -612,11 +615,29 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateStickingPosition
 
     if (begin>0)
     {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: updateStickingPositions() begin=" << begin
+                       << ">0 -> scrollToEdge(HOME), overriding whatever compensateSizeChange() "
+                          "just set (m_stick=" << static_cast<int>(m_stick) << ")" << std::endl;
+        }
         scrollToEdge(Direction::HOME);
     }
     else if (end<(viewPortSize-1))
     {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: updateStickingPositions() end=" << end << " < "
+                          "viewPortSize-1=" << (viewPortSize-1) << " -> scrollToEdge(END), "
+                          "overriding whatever compensateSizeChange() just set (m_stick="
+                       << static_cast<int>(m_stick) << ")" << std::endl;
+        }
         scrollToEdge(Direction::END);
+    }
+    else if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: updateStickingPositions() begin=" << begin << " end="
+                   << end << " viewPortSize=" << viewPortSize << " -- no edge snap" << std::endl;
     }
 }
 
@@ -721,6 +742,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
 {
     if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
     {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() at-edge branch, m_stick="
+                       << static_cast<int>(m_stick) << " llist.pos=" << oprop(m_llist->pos(),OProp::pos)
+                       << " -> scrollToEdge" << std::endl;
+        }
         scrollToEdge(m_stick);
         return;
     }
@@ -750,11 +777,24 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
     }
     if (!oldItem)
     {
+        if (fwlvDebugEnabled())
+        {
+            // ItemT::IdType is generic (not necessarily std::ostream-streamable, e.g. ObjectId
+            // in the whitemdesktop chat instantiation only has toString()) -- not printed here.
+            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor item not found at all "
+                          "(neither by id, by sort value, nor by linear scan) -- no compensation "
+                          "applied" << std::endl;
+        }
         return;
     }
     auto oldWidget=oldItem->widget();
     if (!oldWidget)
     {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor item found but has a "
+                          "null widget -- no compensation applied" << std::endl;
+        }
         return;
     }
 
@@ -763,8 +803,21 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
     {
         auto delta=m_firstWidgetPos-oldWidgetPos;
         auto pos=m_llist->pos();
+        auto oldListPos=oprop(pos,OProp::pos);
         setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+delta);
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based: rememberedPos="
+                       << m_firstWidgetPos << " currentPos=" << oldWidgetPos << " delta=" << delta
+                       << " llist.pos " << oldListPos << " -> " << oprop(pos,OProp::pos)
+                       << std::endl;
+        }
         m_llist->move(pos);
+    }
+    else if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based: no change, anchor "
+                      "already at remembered pos " << m_firstWidgetPos << std::endl;
     }
 
     m_updateStickingPositionsTimer.shot(
@@ -1251,7 +1304,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertContinuousItems(
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
-void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList()
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList(const char* caller)
 {
     auto newSize=oprop(m_llist->sizeHint(),OProp::size);
     QSize listSize;
@@ -1262,11 +1315,26 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList()
     setOProp(listSize,OProp::size,newSize);
     if (m_llist->size()!=listSize)
     {
+        if (fwlvDebugEnabled())
+        {
+            auto oldListSize=m_llist->size();
+            std::cerr << "CHAT-FWLV-DEBUG: resizeList[" << caller << "]() m_llist.size ("
+                       << oldListSize.width() << "x" << oldListSize.height() << ") -> ("
+                       << listSize.width() << "x" << listSize.height() << ") (sizeHint main="
+                       << newSize << ") m_atEnd=" << m_atEnd << " m_atBegin=" << m_atBegin
+                       << std::endl;
+        }
 #if 0
         qDebug() << printCurrentDateTime() << ": FlyweightListView_p::resizeList()  " << m_obj << " set size " << listSize;
 #endif
         m_llist->resize(listSize);
         compensateSizeChange();
+    }
+    else if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: resizeList[" << caller << "]() no change, m_llist.size "
+                      "already (" << listSize.width() << "x" << listSize.height() << ")"
+                   << std::endl;
     }
 }
 
@@ -1550,6 +1618,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
     };
 
     const auto* item=firstViewportItem();
+    bool firstFound=item!=nullptr;
 
     if (item && item->widget())
     {
@@ -1569,6 +1638,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
 
     m_atBegin=isAtBegin();
     m_atEnd=isAtEnd();
+
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: keepCurrentConfiguration() firstViewportItem="
+                   << (firstFound ? "found" : "null") << " lastViewportItem="
+                   << (item!=nullptr ? "found" : "null") << " m_firstWidgetPos=" << m_firstWidgetPos
+                   << " llist.pos=" << oprop(m_llist->pos(),OProp::pos) << " -> m_atBegin="
+                   << m_atBegin << " m_atEnd=" << m_atEnd << std::endl;
+    }
 }
 
 //--------------------------------------------------------------------------

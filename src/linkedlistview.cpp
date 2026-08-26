@@ -773,6 +773,28 @@ bool LinkedListView::event(QEvent *event)
         case (QEvent::LayoutRequest): [[fallthrough]];
         case (QEvent::ContentsRectChange):
         {
+            // A bare LayoutRequest/ContentsRectChange reaching here only re-runs relayout() --
+            // unlike resizeList() (FlyweightListView_p), nothing here resizes m_llist itself or
+            // calls compensateSizeChange(). If a child's sizeHint() grew between the last
+            // resizeList() and this event (e.g. a widget shown via Qt's queued auto-show after
+            // being added to an already-visible layout, see qt-layout-queued-autoshow-gotcha),
+            // relayout() will reposition everything using the new, larger content extent while
+            // this widget's own size stays whatever resizeList() last set it to -- growing the
+            // list with no compensating scroll-position shift. That is indistinguishable on
+            // screen from the view scrolling by the difference. Log whenever this event finds
+            // a content/size mismatch, which is exactly that scenario caught in the act.
+            if (llvDebugEnabled())
+            {
+                auto contentMain=pimpl->oprop(pimpl->calcSizeHint(false),OProp::size);
+                auto currentMain=pimpl->oprop(size(),OProp::size);
+                if (contentMain!=currentMain)
+                {
+                    std::cerr << "CHAT-FWLV-DEBUG: LinkedListView::event(" << static_cast<int>(event->type())
+                               << ") content main-axis size is now " << contentMain
+                               << " but m_llist main-axis size is still " << currentMain
+                               << " -- uncompensated relayout() about to run" << std::endl;
+                }
+            }
             pimpl->relayout();
         }
         break;

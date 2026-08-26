@@ -931,6 +931,20 @@ void ChatMessage::updateTopSeparator()
     if (sepVisible)
     {
         pimpl->separatorLayout->addWidget(topSeparator());
+
+        // QLayout::addWidget() on an already-visible parent (separatorFrame, just shown above,
+        // is one for any message that's already on screen) only auto-shows the new child via a
+        // QUEUED invocation -- see qt-layout-queued-autoshow-gotcha. Until the next event-loop
+        // turn the separator stays isHidden()/isEmpty(), so it contributes zero to this
+        // message's sizeHint(). Harmless for a message built while still hidden (the normal
+        // parent-show cascade shows it synchronously), but for an ALREADY-DISPLAYED message
+        // retroactively gaining a top separator -- exactly what prepending older messages does
+        // when it shifts date-group boundaries -- this made resizeList() undersize m_llist by
+        // one separator's height for the rest of that turn, and the correction that showed up a
+        // turn later (via a posted LayoutRequest reaching relayout()) had no paired
+        // compensateSizeChange() call to keep the scroll-anchor's screen position steady:
+        // exactly the "view creeps up a few pixels after a history prefetch" symptom.
+        topSeparator()->show();
     }
 }
 
