@@ -14,9 +14,14 @@
             }
         },
         {
+            "name" : "ReplyDialogIcon",
+            "aliases" : {
+                "reply" : "${uise-svg-icons-1}/corner-up-left"
+            }
+        },
+        {
             "name" : "ReplyDialog",
             "aliases" : {
-                "reply" : "${uise-svg-icons-1}/corner-up-left",
                 "showInChat" : "${uise-svg-icons-1}/message-search"
             }
         },

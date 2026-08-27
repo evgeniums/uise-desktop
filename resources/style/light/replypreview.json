@@ -21,6 +21,14 @@
             }
         },
         {
+            "name" : "ReplyDialogIcon",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#1e6091" }
+                }
+            }
+        },
+        {
             "name" : "ReplyDialog",
             "modes" : {
                 "normal" : {

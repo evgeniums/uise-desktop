@@ -96,7 +96,15 @@ ReplyDialog::ReplyDialog(QWidget* parent)
     pimpl->commentText=tr("You can select a part of the text to quote only that part.");
 
     setTitle(tr("Reply to message"));
-    setSvgIcon(Style::instance().svgIconLocator().icon(QStringLiteral("ReplyDialog::reply"),this));
+    // ReplyDialogIcon is a DEDICATED context (not "ReplyDialog", which the #actions row
+    // icons also use) with no "hovered" mode defined at all -- this title icon is purely
+    // decorative (see abstractdialog.qss's #dialogIcon notes: nothing ever connects its
+    // clicked()), but PushButton::enterEvent() unconditionally swaps to the icon's hoverIcon()
+    // on mouse-enter regardless of whether the button does anything on click (src/pushbutton.cpp)
+    // -- there is no per-instance way to opt out of that swap, only to make it invisible by
+    // giving the icon no "hovered" colour to swap to, so SvgIcon::offContent()'s own fallback
+    // (missing mode -> IconMode::Normal) renders the same colour either way.
+    setSvgIcon(Style::instance().svgIconLocator().icon(QStringLiteral("ReplyDialogIcon::reply"),this));
 
     auto content=new QFrame(this);
     auto contentLayout=Layout::vertical(content);
