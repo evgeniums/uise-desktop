@@ -89,6 +89,11 @@ void ChatMessageReply::setOriginalDeleted(bool enable)
     auto data=pimpl->preview->data();
     data.setDeleted(enable);
     pimpl->preview->setData(std::move(data));
+
+    // preview->setData() above already swaps its OWN cursor (ReplyPreview::refresh()) -- this
+    // covers the margin band around it that belongs to this block as a whole, set once in the
+    // ctor to PointingHandCursor.
+    setCursor(enable ? Qt::ArrowCursor : Qt::PointingHandCursor);
 }
 
 //--------------------------------------------------------------------------

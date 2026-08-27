@@ -174,8 +174,13 @@ ReplyPreview::ReplyPreview(QWidget* parent)
     pimpl->text->setMaxLines(1);
     pimpl->textColumnLayout->addWidget(pimpl->text);
 
-    setCursor(Qt::PointingHandCursor);
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+
+    // Initial cursor -- refresh() (called just below) immediately overrides this with
+    // originalDeleted()'s own arrow/pointing-hand split, but pimpl->data is still default-
+    // constructed (not deleted) at this point either way, so this literal matches what
+    // refresh() would pick anyway.
+    setCursor(Qt::PointingHandCursor);
 
     refresh();
 }
@@ -343,7 +348,11 @@ void ReplyPreview::mouseReleaseEvent(QMouseEvent* event)
     if (event->button()==Qt::LeftButton && pimpl->pressed)
     {
         pimpl->pressed=false;
-        if (rect().contains(event->pos()))
+        // A deleted original has nothing left to jump to -- every host of clicked()
+        // (ChatMessageReply, ReplyBar, EditBar's jumpRequested, ForwardBar) treats it as
+        // "navigate to the original message", which would otherwise land on/highlight
+        // whichever neighbouring message the jump's fallback happened to pick instead.
+        if (rect().contains(event->pos()) && !originalDeleted())
         {
             emit clicked();
         }
@@ -356,7 +365,7 @@ void ReplyPreview::mouseReleaseEvent(QMouseEvent* event)
 void ReplyPreview::refresh()
 {
     const auto& d=pimpl->data;
-    const bool deleted=d.isDeleted() || d.kind()==ReplyMessageKind::Deleted;
+    const bool deleted=originalDeleted();
     const bool showTitle=isTitleShown();
 
     if (showTitle)
@@ -426,7 +435,19 @@ void ReplyPreview::refresh()
     Style::setStyleProperty(this,"deleted",deleted);
     Style::setStyleProperty(this,"quote",d.isQuote() && !deleted);
 
+    // A deleted original is not clickable (see mouseReleaseEvent()) -- don't advertise
+    // otherwise via the pointing-hand cursor.
+    setCursor(deleted ? Qt::ArrowCursor : Qt::PointingHandCursor);
+
     updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+bool ReplyPreview::originalDeleted() const
+{
+    const auto& d=pimpl->data;
+    return d.isDeleted() || d.kind()==ReplyMessageKind::Deleted;
 }
 
 //--------------------------------------------------------------------------

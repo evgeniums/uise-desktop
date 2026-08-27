@@ -103,6 +103,13 @@ class UISE_DESKTOP_EXPORT ReplyPreview : public AbstractReplyPreview
         //! title row to sit in, regardless of the property.
         bool isQuoteIconShown() const;
 
+        //! True when pimpl->data names a message that no longer exists -- same condition
+        //! refresh() already renders deletedText() for. Consulted by mouseReleaseEvent() (a
+        //! dead block emits no clicked(), see that method's own doc comment) and by refresh()
+        //! itself (swaps the pointing-hand cursor for an arrow) so both stay in sync off one
+        //! definition.
+        bool originalDeleted() const;
+
         std::unique_ptr<ReplyPreview_p> pimpl;
 };
 
