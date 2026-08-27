@@ -1143,7 +1143,23 @@ void ChatMessage::updateDateTime()
     {
         QLocale locale;
         auto dt=datetime();
-        auto tooltip=locale.toString(dt, QLocale::LongFormat);
+        auto editedDt=editedDatetime();
+
+        // One tooltip shared by the "edited" marker and the time label -- hovering either shows
+        // the same thing, which is what makes the marker's own hover useful (it has no text of
+        // its own worth explaining). The "Edited" line is present only for a message that
+        // actually has an edit datetime; an unedited message keeps a single-line tooltip
+        // identical to what this method produced before the marker existed, minus the label.
+        auto tooltip=tr("Created: %1").arg(locale.toString(dt,QLocale::LongFormat));
+        if (editedDt.isValid())
+        {
+            tooltip+=QStringLiteral("\n")+tr("Edited: %1").arg(locale.toString(editedDt,QLocale::LongFormat));
+        }
+
+        // Empty text hides the marker outright (AbstractChatMessageBottom::setEdited()), so an
+        // invalid editedDatetime() is all "never edited" needs to mean here.
+        c->bottom()->setEdited(editedDt.isValid() ? tr("edited") : QString(),tooltip);
+
         auto time=locale.toString(dt.time(), QLocale::ShortFormat);
         c->bottom()->setTimeString(time,tooltip);
     }

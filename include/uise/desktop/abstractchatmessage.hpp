@@ -839,6 +839,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_dateTime;
         }
 
+        //! When this message was last edited, or an invalid QDateTime if it never was -- which is
+        //! how "not edited" is expressed, there is no separate flag. Drives both the bottom row's
+        //! "edited" marker and the created/edited tooltip shared by that marker and the time
+        //! label, see ChatMessage::updateDateTime().
+        QDateTime editedDatetime() const
+        {
+            return m_editedDateTime;
+        }
+
         void setSelectDetectionBlocked(bool enable)
         {
             m_blockSelectDetection=enable;
@@ -1016,6 +1025,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit dateTimeUpdated();
         }
 
+        //! Pass an invalid QDateTime (the default) for a message that has never been edited --
+        //! see editedDatetime(). Routed through the same updateDateTime() hook as setDateTime()
+        //! because the two are rendered together: the marker's visibility and the tooltip both
+        //! depend on this value, and the tooltip is shared with the time label.
+        void setEditedDateTime(const QDateTime& dt)
+        {
+            m_editedDateTime=dt;
+            updateDateTime();
+            emit dateTimeUpdated();
+        }
+
         //! (Re)start the transient jump-to-message highlight: snaps to fully highlighted, holds
         //! for highlightHoldMs(), then fades to transparent over highlightFadeMs(). Safe to call
         //! again while already highlighted or fading -- restarts from full rather than stacking.
@@ -1107,6 +1127,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_right=false;
 
         QDateTime m_dateTime;
+        QDateTime m_editedDateTime;
 
         QColor m_highlightColor{0,0,0};
         qreal m_highlightOpacity=0.05;

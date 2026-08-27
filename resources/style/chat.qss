@@ -173,6 +173,15 @@ margin-left:8px;
 margin-right:0;
 }
 
+/* The "edited" marker sits immediately before #time in the bottom row's layout, which has no
+ * spacing of its own -- without this the two run together as "editedhh:mm". Colour/size are
+ * deliberately not set here: the generic "uise--ChatMessageBottom QLabel" rule in light/chat.qss
+ * and dark/chat.qss already covers both this label and #time, so the marker matches the time it
+ * sits next to by construction. */
+uise--ChatMessageBottom #edited {
+margin-right:5px;
+}
+
 uise--ChatMessageBottom uise--WithRoundedImage,
 uise--ChatMessageBottom uise--RoundedImage {
 min-width: 16px;
