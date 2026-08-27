@@ -1025,20 +1025,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit dateTimeUpdated();
         }
 
-        //! An invalid QDateTime IS how "never edited" is expressed -- deliberately symmetric
-        //! with setDateTime()/datetime(), routed through the same updateDateTime() hook, since
-        //! the two render together (see ChatMessage::updateDateTime()).
-        void setEditedDateTime(const QDateTime& dt)
-        {
-            m_editedDateTime=dt;
-            updateDateTime();
-            emit editedDateTimeUpdated();
-        }
-
         //! Pass an invalid QDateTime (the default) for a message that has never been edited --
         //! see editedDatetime(). Routed through the same updateDateTime() hook as setDateTime()
         //! because the two are rendered together: the marker's visibility and the tooltip both
-        //! depend on this value, and the tooltip is shared with the time label.
+        //! depend on this value, and the tooltip is shared with the time label. Reuses
+        //! dateTimeUpdated() rather than a new signal -- nothing needs to distinguish the two.
         void setEditedDateTime(const QDateTime& dt)
         {
             m_editedDateTime=dt;
