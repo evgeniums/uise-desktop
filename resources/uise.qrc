@@ -178,6 +178,12 @@
         <file>style/light/forwardpreview.json</file>
         <file>style/dark/forwardpreview.qss</file>
         <file>style/light/forwardpreview.qss</file>
+        <file>style/editbar.json</file>
+        <file>style/editbar.qss</file>
+        <file>style/dark/editbar.json</file>
+        <file>style/light/editbar.json</file>
+        <file>style/dark/editbar.qss</file>
+        <file>style/light/editbar.qss</file>
         <file>style/dark/check.svg</file>
         <file>style/light/check.svg</file>
         <file>style/radio-dot.svg</file>

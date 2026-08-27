@@ -252,6 +252,9 @@ SET (HEADERS
     include/uise/desktop/abstractforwarddialog.hpp
     include/uise/desktop/forwarddialog.hpp
 
+    include/uise/desktop/abstracteditbar.hpp
+    include/uise/desktop/editbar.hpp
+
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
@@ -437,6 +440,8 @@ SET (SOURCES
     src/forwardbar.cpp
     src/abstractforwarddialog.cpp
     src/forwarddialog.cpp
+
+    src/editbar.cpp
 
     src/messageeditor.cpp
     src/messageselectionpanel.cpp

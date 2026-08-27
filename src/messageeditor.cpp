@@ -120,6 +120,26 @@ QSize EnhancedTextEdit::sizeHint() const
 
 void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
 {
+    // Up-arrow in an EMPTY editor is a free gesture: there is no line above the caret to move to,
+    // so the default handling is a visible no-op and claiming the key here costs nothing. Gated
+    // strictly on emptiness -- with any text present, Up must keep moving the caret, and a host
+    // acting on this signal would clobber an in-progress draft. Unmodified Up only: a modified Up
+    // (Shift-select, Ctrl-scroll, ...) keeps its standard meaning.
+    //
+    // Tested as a MASK over the modifiers that actually change the gesture's meaning, never as
+    // `modifiers()==Qt::NoModifier`: macOS sets NSEventModifierFlagNumericPad on the arrow keys,
+    // which Qt surfaces as Qt::KeypadModifier, so an equality test silently never matches there.
+    // (Same reason the Key_Return branch just below masks instead of comparing, and why every
+    // other arrow-key handler in this library -- Calendar, Spinner, DateTimeInput -- ignores
+    // modifiers altogether.)
+    if (event->key() == Qt::Key_Up
+        && !(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier))
+        && document()->isEmpty())
+    {
+        emit editPreviousRequested();
+        return;
+    }
+
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     {
         if (m_newLineOnEnter)
@@ -263,6 +283,13 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::attachmentsPasted,
         this,
         &AbstractMessageEditor::attachmentsPasted
+    );
+
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::editPreviousRequested,
+        this,
+        &AbstractMessageEditor::editPreviousRequested
     );
 
     connect(

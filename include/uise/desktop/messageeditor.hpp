@@ -101,6 +101,12 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
          */
         void attachmentsPasted(const QMimeData* mimeData);
 
+        /**
+         * @brief See AbstractMessageEditor::editPreviousRequested() -- relayed there verbatim by
+         *  MessageEditor. Emitted for a plain Up-arrow while the document is empty.
+         */
+        void editPreviousRequested();
+
     protected:
 
         void keyPressEvent(QKeyEvent* event) override;

@@ -1,0 +1,16 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "EditBar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" }
+                }
+            }
+        }
+    ]
+}

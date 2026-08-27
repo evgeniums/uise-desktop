@@ -1,0 +1,53 @@
+/* ---- short edit bar above the chat editor ---- */
+
+/* The embedded AbstractReplyPreview's own look (accent bar, title/text colours) comes from
+   replypreview.qss's base uise--AbstractReplyPreview rules -- shared across all three bars, see
+   that file's own header comment. Nothing to repeat here. */
+
+uise--AbstractEditBar {
+border-top: 1px solid transparent;
+padding: 6px 8px;
+}
+
+/* IconTextButton's icon has no sensible default size of its own -- must be set explicitly per
+   container, same as replypreview.qss does for AbstractReplyBar's own buttons. */
+uise--AbstractEditBar uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--AbstractEditBar uise--IconTextButton#editButton uise--RoundedImage {
+min-width: 24px;
+max-width: 24px;
+min-height: 24px;
+max-height: 24px;
+}
+
+uise--AbstractEditBar uise--IconTextButton {
+padding: 4px;
+border-radius: 4px;
+border: 1px solid transparent;
+}
+
+uise--AbstractEditBar #editButton {
+margin-right: 8px;
+padding: 1px;
+}
+
+uise--AbstractEditBar #cancelButton {
+margin-left: 8px;
+}
+
+/* margin-right:8px/margin-left:8px above each grow their button's rect() 8px wider on ONE side
+   only -- an uncompensated ripple would grow into that band and paint as a flattened ellipse
+   rather than the circle an icon-only IconTextButton ripple should be, same gotcha
+   replypreview.qss documents for AbstractReplyBar's own buttons. */
+uise--AbstractEditBar #editButton uise--RippleOverlay {
+qproperty-rippleInsetRight: 8;
+}
+
+uise--AbstractEditBar #cancelButton uise--RippleOverlay {
+qproperty-rippleInsetLeft: 8;
+}

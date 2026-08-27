@@ -1,0 +1,11 @@
+{
+    "contexts" : [
+        {
+            "name" : "EditBar",
+            "aliases" : {
+                "edit" : "${uise-svg-icons-1}/edit",
+                "cancel" : "${uise-svg-icons-1}/x"
+            }
+        }
+    ]
+}

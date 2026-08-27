@@ -364,14 +364,24 @@ void ReplyPreview::refresh()
         // Only substitute the markers the format actually carries: a caller that does not want
         // the original's datetime shown (a chat bubble's own reply block, vs the editor's reply
         // bar) sets a title format with %1 alone, and QString::arg() warns on any missing marker.
+        // A %2-only format (no %1 at all -- e.g. AbstractEditBar's "Edit message, %2", which has
+        // no sender to show) needs its own branch: QString::arg(a,b) always fills the LOWEST-
+        // numbered marker present first, so calling the two-argument overload here would put
+        // senderTitle() into %2 and drop the datetime instead of substituting it.
         QString title=pimpl->titleFormat;
-        if (title.contains(QLatin1String("%2")))
+        bool hasSender=title.contains(QLatin1String("%1"));
+        bool hasDateTime=title.contains(QLatin1String("%2"));
+        if (hasSender && hasDateTime)
         {
             title=title.arg(d.senderTitle(),d.dateTime().toString(pimpl->dateTimeFormat));
         }
-        else if (title.contains(QLatin1String("%1")))
+        else if (hasSender)
         {
             title=title.arg(d.senderTitle());
+        }
+        else if (hasDateTime)
+        {
+            title=title.arg(d.dateTime().toString(pimpl->dateTimeFormat));
         }
         pimpl->title->setText(title);
     }

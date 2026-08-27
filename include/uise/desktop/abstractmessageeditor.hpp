@@ -173,6 +173,17 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         void attachmentsPasted(const QMimeData* mimeData);
 
         /**
+         * @brief A plain Up-arrow was pressed while the editor was EMPTY.
+         *
+         * Purely a gesture report -- this widget does nothing else with it. A chat host typically
+         * uses it to reopen the most recent message for editing, the usual messenger shortcut.
+         * Emitted only while the editor is empty, so acting on it can never clobber a draft the
+         * user is part-way through typing; with any text present, Up keeps its normal
+         * caret-movement meaning and this is not emitted at all.
+         */
+        void editPreviousRequested();
+
+        /**
          * @brief A context-menu item was triggered whose id is not one of the standard
          *  MessageEditorMenuAction rows the editor already handles itself -- i.e. an item a
          *  ContextMenuHandler added.
