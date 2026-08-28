@@ -318,29 +318,36 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
     if (editingMode()!=Qt::RichText)
     {
         pimpl->editor->setPlainText(text);
-        return;
     }
-
-    switch (format)
+    else
     {
-        case (TextFormat::Markdown):
+        switch (format)
         {
-            pimpl->editor->setMarkdown(text);
-            break;
-        }
+            case (TextFormat::Markdown):
+            {
+                pimpl->editor->setMarkdown(text);
+                break;
+            }
 
-        case (TextFormat::Plain):
-        {
-            pimpl->editor->setPlainText(text);
-            break;
-        }
+            case (TextFormat::Plain):
+            {
+                pimpl->editor->setPlainText(text);
+                break;
+            }
 
-        case (TextFormat::Html):
-        {
-            pimpl->editor->setHtml(text);
-            break;
+            case (TextFormat::Html):
+            {
+                pimpl->editor->setHtml(text);
+                break;
+            }
         }
     }
+
+    // setPlainText()/setMarkdown()/setHtml() all leave the cursor at the start of the document;
+    // loading a message for editing should instead land the cursor where typing continues.
+    auto cursor=pimpl->editor->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    pimpl->editor->setTextCursor(cursor);
 }
 
 //--------------------------------------------------------------------------
