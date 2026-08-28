@@ -505,7 +505,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         if (i==0)
         {
             auto current=QDateTime::currentDateTime().date();
-            dateVisible=dt.date()==current;
+            dateVisible=true;
             withYear=dt.date().year()!=current.year();
         }
         else
