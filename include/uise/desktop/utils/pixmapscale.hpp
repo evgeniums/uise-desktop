@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_PIXMAPSCALE_HPP
 #define UISE_DESKTOP_PIXMAPSCALE_HPP
 
+#include <QtGlobal>
 #include <QPixmap>
 #include <QSize>
 #include <QRect>
@@ -36,6 +37,36 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+/**
+ * @brief Check whether two sizes share (approximately) the same aspect ratio.
+ * @param a First size.
+ * @param b Second size.
+ * @param tolerance Relative slack, as a fraction of the larger of the two aspect ratios --
+ *  0.04 (the default) absorbs the rounding a FitInside scale introduces (well under 1% for a
+ *  typical photo) while still flagging a square crop of a near-square original (aspect 1.0 vs.
+ *  e.g. 1.33, an 33% difference).
+ * @return False if either size is invalid/empty (nothing to compare) or the aspects differ by
+ *  more than `tolerance`; true otherwise.
+ *
+ * Exists so a host can tell whether a low-resolution placeholder shares its framing with the
+ * real content it stands in for -- see ChatMessageImageItem::updatePreview()'s own doc comment
+ * (todo-aspect-preserving-embedded-thumbnails.md): a thumbnail generated at the source's own
+ * aspect ratio agrees with the real rung and can be painted with the same aspect-preserving fit,
+ * while a legacy/mobile-supplied SQUARE thumbnail still disagrees with a non-square original and
+ * must keep the cover-and-crop treatment instead.
+ */
+inline bool sameAspect(const QSize& a, const QSize& b, qreal tolerance=0.04)
+{
+    if (a.width()<=0 || a.height()<=0 || b.width()<=0 || b.height()<=0)
+    {
+        return false;
+    }
+    auto aspectA=static_cast<qreal>(a.width())/static_cast<qreal>(a.height());
+    auto aspectB=static_cast<qreal>(b.width())/static_cast<qreal>(b.height());
+    auto diff=qAbs(aspectA-aspectB);
+    return diff<=tolerance*qMax(aspectA,aspectB);
+}
 
 /**
  * @brief Scale a pixmap to COVER a box and centre-crop the overflow, so the result is exactly

@@ -405,7 +405,8 @@ BOOST_AUTO_TEST_CASE(TestAllThumbnails)
 
     for (size_t i=0;i<rects.size();++i)
     {
-        // no tile wider than its own image (allowing the minTile floor and 1px of rounding)
+        // no tile wider than its own image (allowing the minTile floor -- minCappedTile is unset
+        // here, so it falls back to minTile -- and 1px of rounding)
         auto limit=qMax(options.minTile,thumbs[i].width())+1;
         UISE_TEST_CHECK(rects[i].width()<=limit);
     }
@@ -418,6 +419,10 @@ BOOST_AUTO_TEST_CASE(TestNaturalSizeCap)
     // aspect ratio, so the aspect-only template gives them identical tiles -- the cap must shrink
     // the thumbnail's tile to its own size while leaving the photo's tile alone, and the row must
     // close up behind it rather than leaving a gap.
+    //
+    // options.minCappedTile is left at its default (0, "use minTile") throughout this test --
+    // see TestMinCappedTileFloor below for the configurable floor todo-album-layout-small-tile-
+    // packing.md added, which this same cap mechanism now also serves.
     AlbumLayoutOptions options;
     QSize totalSize;
 
@@ -459,6 +464,58 @@ BOOST_AUTO_TEST_CASE(TestNaturalSizeCap)
     UISE_TEST_CHECK_GE(tiny[0].width(),options.minTile);
     UISE_TEST_CHECK_GE(tiny[0].height(),options.minTile);
     checkValidGeometry(tiny,totalSize);
+}
+
+BOOST_AUTO_TEST_CASE(TestMinCappedTileFloor)
+{
+    // todo-album-layout-small-tile-packing.md: rather than a 2D packing pass grouping small tiles
+    // together, a small image's tile is floored at a configurable, larger-than-minTile size and
+    // the image is scaled up to fill it (aspect preserved) -- exercised here via the same tiny
+    // 4x4-vs-2048 pairing TestNaturalSizeCap uses for the minTile floor above.
+    AlbumLayoutOptions options;
+    const QSize tinyImg(4,4);
+    const QSize big(2048,2048);
+
+    // default (0) still falls back to minTile -- reproduces TestNaturalSizeCap's own floor
+    // exactly, proving the new field is opt-in and changes nothing when left unset.
+    QSize defaultTotal;
+    auto atDefault=albumLayout({tinyImg,big},options,&defaultTotal);
+    UISE_TEST_REQUIRE_EQUAL(atDefault.size(),static_cast<size_t>(2));
+    UISE_TEST_CHECK_EQUAL(atDefault[0].width(),options.minTile);
+    UISE_TEST_CHECK_EQUAL(atDefault[0].height(),options.minTile);
+    checkValidGeometry(atDefault,defaultTotal);
+
+    // explicit minTile-equal value reproduces the exact same geometry (the "second run with
+    // minCappedTile=60" case) -- the knob is a genuine substitute for minTile, not a second,
+    // independently-behaving mechanism.
+    options.minCappedTile=options.minTile;
+    QSize sameTotal;
+    auto atSameFloor=albumLayout({tinyImg,big},options,&sameTotal);
+    UISE_TEST_REQUIRE_EQUAL(atSameFloor.size(),static_cast<size_t>(2));
+    UISE_TEST_CHECK(atSameFloor[0]==atDefault[0]);
+    UISE_TEST_CHECK(atSameFloor[1]==atDefault[1]);
+    UISE_TEST_CHECK(sameTotal==defaultTotal);
+
+    // a larger floor (100, the default ChatMessageImages ships -- see chatmessagefiles.qss)
+    // scales the tiny image's tile up accordingly, aspect preserved (1:1 source -> square tile),
+    // still without dragging the photo's own tile down and still closing the row's gap.
+    options.minCappedTile=100;
+    QSize totalSize;
+    auto rects=albumLayout({tinyImg,big},options,&totalSize);
+    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
+    checkValidGeometry(rects,totalSize);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.minCappedTile);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.minCappedTile);
+    UISE_TEST_CHECK_EQUAL(rects[1].x(),rects[0].width()+options.spacing);
+    UISE_TEST_CHECK_GT(rects[1].width(),rects[0].width());
+    UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
+
+    // the photo alone still gets exactly the same tile regardless of minCappedTile -- the floor
+    // must never drag an already-adequately-sized neighbour's tile with it.
+    QSize soloTotal;
+    auto solo=albumLayout({big},options,&soloTotal);
+    UISE_TEST_REQUIRE_EQUAL(solo.size(),static_cast<size_t>(1));
+    UISE_TEST_CHECK_GE(solo[0].width(),rects[1].width());
 }
 
 BOOST_AUTO_TEST_CASE(TestNormalPhotosNotCapped)
@@ -536,7 +593,9 @@ BOOST_AUTO_TEST_CASE(TestRealWorldMixAcrossBudgets)
         UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
         UISE_TEST_CHECK(totalSize.height()<=options.maxHeight);
 
-        // every tile capped to its own image's logical size, floored at minTile
+        // every tile capped to its own image's logical size, floored at minTile (minCappedTile
+        // is left at its default here, i.e. 0 -> falls back to minTile -- see
+        // TestMinCappedTileFloor for the configurable floor itself)
         for (size_t i=0;i<rects.size();++i)
         {
             auto natW=qMax(options.minTile,qRound(mix[i].width()/options.devicePixelRatio));

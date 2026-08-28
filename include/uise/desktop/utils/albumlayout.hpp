@@ -43,7 +43,19 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
     int maxWidth=420;   //!< Bubble content width budget -- rows sum to exactly this unless a tile
                         //!< was shrunk by the natural-size cap below, see albumLayout().
     int maxHeight=420;  //!< Total height budget; exceeding it triggers a uniform scale-down.
-    int minTile=60;     //!< Floor on any single tile's width/height.
+    int minTile=60;     //!< Floor on any single tile's width/height -- including a TEMPLATE's own
+                        //!< row/column height (e.g. stackByAspect()), not just the natural-size
+                        //!< cap below. Keep this modest: raising it distorts legitimate rows (a
+                        //!< very wide image wants a short row).
+    //! Floor on the SHORT side of a tile the natural-size cap (see albumLayout()) shrinks --
+    //! todo-album-layout-small-tile-packing.md's "pack small tiles" ask, taken Telegram-style:
+    //! rather than a 2D packing pass, a small image's tile is floored at this size and the image
+    //! is expected to be scaled UP to fill it, aspect preserved (see ChatMessageImageItem::
+    //! setMaxUpscale()/scaledToFitPadded()'s maxUpscale). Deliberately separate from minTile
+    //! above: minTile also bounds ordinary template row heights, and raising IT to a
+    //! thumbnail-sized floor would clamp and distort rows of normal-sized images too. 0 means
+    //! "use minTile" (the pre-existing behaviour).
+    int minCappedTile=0;
     int spacing=2;      //!< Gap between adjacent tiles.
 
     //! Converts pixelSizes (device pixels) into the logical units the returned rects are in, so
@@ -79,11 +91,13 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
  *     Templates deliberately prefer spending the horizontal budget (a hero image plus a packed
  *     row) over stacking every image into a narrow tall column.
  *  2. A per-tile NATURAL-SIZE CAP: no tile may exceed the image's own size in logical units
- *     (pixelSizes divided by options.devicePixelRatio), floored at options.minTile so a very
- *     small image still gets a usable tile. A capped tile is shrunk in place, preserving the
- *     shape its template chose, and its row is then re-flowed left-to-right so no gap is left
- *     where it shrank. Rows containing a capped tile therefore do NOT sum to maxWidth, and the
- *     album as a whole can be narrower than the budget.
+ *     (pixelSizes divided by options.devicePixelRatio), floored at options.minCappedTile (or
+ *     options.minTile if that is 0) so a very small image still gets a usable tile -- expected to
+ *     be filled by scaling the image UP to that floor, aspect preserved, rather than padding it
+ *     (todo-album-layout-small-tile-packing.md). A capped tile is shrunk (or floored) in place,
+ *     preserving the shape its template chose, and its row is then re-flowed left-to-right so no
+ *     gap is left where it shrank. Rows containing a capped tile therefore do NOT sum to
+ *     maxWidth, and the album as a whole can be narrower than the budget.
  *
  *  The cap is what keeps a 100px thumbnail from being handed the same tile as a 2048px photo just
  *  because they share an aspect ratio -- their tiles now differ in size the same way the images

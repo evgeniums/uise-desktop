@@ -540,17 +540,31 @@ void ChatMessageImageItem::updatePreview()
         // an exact-size pixmap to render correctly at all (a smaller one tiles instead of
         // centering).
         //
-        // ...but a PLACEHOLDER preview -- the embedded thumbnail files2 generates, a SQUARE
-        // centre-crop (ScaleMode::FillCrop) -- is cropped to fill CONTENT BOX SIZE below instead
-        // of the whole tile: scale to COVER that box, preserving the thumbnail's own aspect
-        // ratio, and centre-crop the overflow, same policy every other thumbnail chip in this
-        // library already uses (see FileUploadListItem::updatePreviews(), ChatMessageFileItem,
+        // ...but a PLACEHOLDER preview whose own framing disagrees with the real content's --
+        // i.e. a SQUARE centre-crop of a non-square original -- cannot be fitted the same way
+        // without visibly stretching/misrepresenting it, so it is instead cropped to fill CONTENT
+        // BOX SIZE below: scale to COVER that box, preserving the thumbnail's own aspect ratio,
+        // and centre-crop the overflow, same policy every other thumbnail chip in this library
+        // already uses (see FileUploadListItem::updatePreviews(), ChatMessageFileItem,
         // ImagePreviewStrip) -- then padded onto the tile canvas exactly like real content is.
         // Using the SAME content box for both states (fittedContentSize(), computed from
         // item.pixelSize() alone, before any real content is local) is what keeps the visible
         // box from jumping in size when the placeholder is later replaced by a real rung: without
         // it, a small original's placeholder used to fill the whole tile and the real rung would
         // then appear at a much smaller, padded size once it arrived.
+        //
+        // todo-aspect-preserving-embedded-thumbnails.md: since the embedded thumbnail rung is now
+        // generated at the ORIGINAL's own aspect ratio (files2::ImageManager::versionBoxFor(),
+        // ScaleMode::FitInside), an up-to-date placeholder's framing already agrees with the real
+        // rung's, so it is fitted exactly like real content -- the crop branch above is dead code
+        // for a freshly generated thumbnail and survives only for framings that still disagree:
+        // an already-sent message's pre-change square thumbnail, or one supplied by a mobile
+        // client (whitembridge, outside this repo), which still crops. sameAspect() (see
+        // pixmapscale.hpp) is what tells the two apart -- comparing the PLACEHOLDER's own decoded
+        // size against item.pixelSize() (the original's), not against the tile's box, so the
+        // check is unaffected by which box this tile happens to be laid out at.
+        bool cropFraming=pimpl->item.isPreviewPlaceholder()
+            && !sameAspect(preview.size(),pimpl->item.pixelSize());
         //
         // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
         // the brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
@@ -571,7 +585,7 @@ void ChatMessageImageItem::updatePreview()
         QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
         auto contentBox=fittedContentSize(pimpl->item.pixelSize(),physicalSize,pimpl->maxUpscale);
         auto srcPx=QPixmap::fromImage(preview);
-        auto px=pimpl->item.isPreviewPlaceholder()
+        auto px=cropFraming
             ? composePadded(scaledAndCropped(srcPx,contentBox),physicalSize)
             : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize(),pimpl->maxUpscale);
         px.setDevicePixelRatio(dpr);

@@ -499,6 +499,12 @@ std::vector<QRect> albumLayout(
     // drag its neighbours' tiles down with it.
     if (options.devicePixelRatio>0)
     {
+        // todo-album-layout-small-tile-packing.md: the floor a capped tile is never shrunk below
+        // is minCappedTile when set, not the (much smaller, 60px) minTile used for template row
+        // heights elsewhere in this function -- see AlbumLayoutOptions::minCappedTile's own
+        // comment for why these are deliberately two different knobs.
+        const auto cappedFloor=(options.minCappedTile>0) ? options.minCappedTile : options.minTile;
+
         std::vector<qreal> scale(static_cast<size_t>(n),1.0);
         bool anyCapped=false;
 
@@ -519,11 +525,11 @@ std::vector<QRect> albumLayout(
                 continue;
             }
 
-            // keep the tile usable: never shrink either axis below minTile. Raising the single
+            // keep the tile usable: never shrink either axis below cappedFloor. Raising the single
             // scale factor (rather than clamping each axis) preserves the shape the template
             // chose for this tile.
-            auto floorF=qMin(1.0,qMax(static_cast<qreal>(options.minTile)/r.width(),
-                                      static_cast<qreal>(options.minTile)/r.height()));
+            auto floorF=qMin(1.0,qMax(static_cast<qreal>(cappedFloor)/r.width(),
+                                      static_cast<qreal>(cappedFloor)/r.height()));
             f=qMax(f,floorF);
             if (f<1.0)
             {

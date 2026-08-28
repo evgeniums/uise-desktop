@@ -47,8 +47,11 @@ class ChatMessageImageItem_p;
 /**
  * @brief One tile of an image chat message's album grid.
  *
- * A clickable, center-cropped preview filling whatever rect the owning ChatMessageImages gives
- * it (see albumLayout()), with a drop-down menu button floating over its top-right corner and,
+ * A clickable preview filling whatever rect the owning ChatMessageImages gives it (see
+ * albumLayout()), fitted inside that rect with its own aspect ratio preserved -- see
+ * updatePreview()'s own doc comment for the one exception (a placeholder preview whose framing
+ * disagrees with the real content, still centre-cropped to avoid misrepresenting it) -- with a
+ * drop-down menu button floating over its top-right corner and,
  * while the image is not yet transferred, a LoadControlMenu -- wrapping an AbstractLoadControl
  * -- centered on top of it. That load control offers pause-or-cancel directly on click while
  * running -- see its own docs -- so this tile has no separate always-visible Cancel control of

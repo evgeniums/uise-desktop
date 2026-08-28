@@ -58,6 +58,13 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 {
     Q_OBJECT
 
+    // todo-album-layout-small-tile-packing.md: QSS-settable, same idiom as qproperty-
+    // maxBubbleWidth on uise--ChatMessageFiles (see chatmessagefiles.qss) -- declared here rather
+    // than on AbstractChatMessageImages because the setters must invalidate THIS class's own
+    // layout memo (see rebuildGrid()'s layoutUnchanged check).
+    Q_PROPERTY(int minTileSize READ minTileSize WRITE setMinTileSize)
+    Q_PROPERTY(qreal tileMaxUpscale READ tileMaxUpscale WRITE setTileMaxUpscale)
+
     public:
 
         explicit ChatMessageImages(QWidget* parent=nullptr);
@@ -103,6 +110,28 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         QSize sizeHint() const override;
 
         QSize minimumSizeHint() const override;
+
+        /**
+         * @brief Floor (logical px) a small image's tile is scaled up to, aspect preserved,
+         *  instead of being left genuinely tiny -- see AlbumLayoutOptions::minCappedTile's own
+         *  doc comment for the mechanism (albumlayout.hpp) and TileMaxUpscale/tileMaxUpscale()
+         *  for the paint-time counterpart that actually fills the floored tile.
+         *  Settable from QSS via qproperty-minTileSize (see chatmessagefiles.qss).
+         */
+        void setMinTileSize(int size);
+
+        int minTileSize() const noexcept;
+
+        /**
+         * @brief How far a tile may enlarge its content beyond the image's own natural
+         *  resolution -- forwarded to every tile via ChatMessageImageItem::setMaxUpscale(). Needs
+         *  to be raised together with minTileSize() so a small source can actually reach the new
+         *  floor rather than sitting centred on a padded canvas (see this class's own rebuildGrid()
+         *  for the derivation). Settable from QSS via qproperty-tileMaxUpscale.
+         */
+        void setTileMaxUpscale(qreal maxUpscale);
+
+        qreal tileMaxUpscale() const noexcept;
 
     protected:
 

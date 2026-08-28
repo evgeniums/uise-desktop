@@ -55,12 +55,22 @@ constexpr int DefaultMaxWidth=320;
 // them out at roughly this extent and the bubble ends up sized to match.
 constexpr int PlaceholderTileExtent=100;
 
-// How far a tile may upscale its content beyond the item's own natural (logical) resolution --
+// Defaults for the QSS-settable minTileSize/tileMaxUpscale properties (todo-album-layout-small-
+// tile-packing.md) -- see their own doc comments (chatmessageimages.hpp) and
+// resources/style/chatmessagefiles.qss's qproperty- block for the shipped values.
+//
+// DefaultMinTileSize matches PlaceholderTileExtent above, deliberately: a genuinely small image
+// and an unresolved placeholder should read at the same scale rather than one dwarfing the other.
+constexpr int DefaultMinTileSize=100;
+//
+// DefaultTileMaxUpscale is the paint-time allowance that makes the floor above actually FILL --
 // see ChatMessageImageItem::setMaxUpscale()'s own doc comment. albumLayout()'s natural-size cap
 // already keeps a tile from exceeding its image's own size, so in practice this only has to cover
-// the one case that cap cannot: an image smaller than AlbumLayoutOptions::minTile, whose tile is
-// floored at minTile and would otherwise show the image centred on a padded canvas.
-constexpr qreal TileMaxUpscale=2.0;
+// the one case that cap cannot: an image smaller than AlbumLayoutOptions::minCappedTile, whose
+// tile is floored there and would otherwise show the image centred on a padded canvas. 2.5x
+// covers a source down to ~80px on a DPR-2 display (100*2/80=2.5) reaching the 100px floor;
+// smaller sources still pad rather than being blown up further, which is the correct trade-off.
+constexpr qreal DefaultTileMaxUpscale=2.5;
 
 // Whether the comment section takes part in this body's geometry.
 //
@@ -104,6 +114,13 @@ class ChatMessageImages_p
         bool commentCopyable=false;
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
+
+        // QSS-settable (qproperty-minTileSize/qproperty-tileMaxUpscale, see
+        // chatmessageimages.hpp's Q_PROPERTY declarations) -- todo-album-layout-small-tile-
+        // packing.md. Read into AlbumLayoutOptions::minCappedTile / ChatMessageImageItem::
+        // setMaxUpscale() by rebuildGrid().
+        int minTileSize=DefaultMinTileSize;
+        qreal tileMaxUpscale=DefaultTileMaxUpscale;
 
         // Signature of the last full rebuildGrid() layout pass -- lets a later call skip
         // albumLayout()/setFixedSize() when nothing that affects tile geometry actually changed
@@ -270,6 +287,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         // the layout works in logical units, so a 200px-wide original covers exactly 100 logical
         // px on a 2x display and must not be handed a tile wider than that.
         options.devicePixelRatio=dpr;
+        // todo-album-layout-small-tile-packing.md: QSS-settable floor a small image's tile is
+        // scaled up to (see minTileSize()'s own doc comment) -- separate from AlbumLayoutOptions'
+        // own default minTile, which also bounds ordinary template row heights.
+        options.minCappedTile=pimpl->minTileSize;
 
         if (allPlaceholders)
         {
@@ -396,10 +417,13 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
     for (size_t i=0;i<pimpl->items.size();++i)
     {
         // setMaxUpscale() no-ops when unchanged (see its own doc comment), so unconditionally
-        // restating TileMaxUpscale here for every tile -- new or reused -- is cheap; keeps the
-        // paint-time allowance explicit at the one place tiles are populated, rather than relying
-        // on ChatMessageImageItem's own constructor default to happen to match.
-        pimpl->tiles[i]->setMaxUpscale(TileMaxUpscale);
+        // restating pimpl->tileMaxUpscale here for every tile -- new or reused -- is cheap; keeps
+        // the paint-time allowance explicit at the one place tiles are populated, rather than
+        // relying on ChatMessageImageItem's own constructor default to happen to match. A QSS
+        // change reaching setTileMaxUpscale() after tiles already exist updates them directly
+        // (see its own doc comment), so this is not the only place it is applied -- just the one
+        // that keeps a freshly (re)created tile in sync too.
+        pimpl->tiles[i]->setMaxUpscale(pimpl->tileMaxUpscale);
         pimpl->tiles[i]->setItem(pimpl->items[i],incoming);
     }
 
@@ -563,6 +587,64 @@ void ChatMessageImages::setAnimationMode(ImageLabel::AnimationMode mode)
 ImageLabel::AnimationMode ChatMessageImages::animationMode() const
 {
     return pimpl->animationMode;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setMinTileSize(int size)
+{
+    if (pimpl->minTileSize==size)
+    {
+        return;
+    }
+    pimpl->minTileSize=size;
+
+    // QSS qproperty- values land at POLISH time, which can follow the first setItems() call --
+    // invalidate the layout memo so rebuildGrid() cannot reuse a layout computed with the old
+    // floor (see its layoutUnchanged check), then re-run the negotiation now if there is already
+    // an album to redo.
+    pimpl->lastLayoutForMaxWidth=-1;
+    if (!pimpl->items.empty())
+    {
+        auto forMaxWidth=(chatContent()!=nullptr && chatContent()->maximumBubbleWidth()>0)
+            ? chatContent()->maximumBubbleWidth()
+            : DefaultMaxWidth;
+        rebuildGrid(forMaxWidth);
+        updateGeometry();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageImages::minTileSize() const noexcept
+{
+    return pimpl->minTileSize;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setTileMaxUpscale(qreal maxUpscale)
+{
+    if (qFuzzyCompare(pimpl->tileMaxUpscale,maxUpscale))
+    {
+        return;
+    }
+    pimpl->tileMaxUpscale=maxUpscale;
+
+    // Unlike minTileSize() above, this is a pure paint-time allowance (ChatMessageImageItem::
+    // setMaxUpscale()) -- it does not feed albumLayout() at all, so the existing tiles can just
+    // be told directly, no re-layout needed.
+    for (auto* tile : pimpl->tiles)
+    {
+        tile->setMaxUpscale(maxUpscale);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+qreal ChatMessageImages::tileMaxUpscale() const noexcept
+{
+    return pimpl->tileMaxUpscale;
 }
 
 //--------------------------------------------------------------------------

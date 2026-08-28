@@ -206,11 +206,17 @@ class UISE_DESKTOP_EXPORT ChatFileItem
          * @return True while preview() is a stand-in shown only until the real content resolves
          *  (e.g. a chat message's embedded ~128px thumbnail, before the `chat`/top rung arrives).
          *
-         * Drives one thing only: whether the tile may ENLARGE the preview past its own resolution
-         * to fill the tile. A placeholder is upscaled deliberately -- blurry but recognisable
-         * beats a small stamp in a blank tile -- whereas real content is never upscaled, so a
-         * genuinely small image renders at its own size. The host must clear this when it swaps
-         * in real content, otherwise that content gets upscaled too.
+         * Drives, together with sameAspect() (pixmapscale.hpp) comparing this placeholder's own
+         * decoded size against pixelSize(): whether ChatMessageImageItem::updatePreview() crops
+         * the preview to cover its content box (a framing mismatch -- a legacy/mobile-supplied
+         * SQUARE thumbnail of a non-square original, see that function's own doc comment) or fits
+         * it like real content, upscaled past its own resolution up to maxUpscale() times the
+         * ORIGINAL's size -- blurry but recognisable beats a small stamp in a blank tile, or a
+         * misrepresenting crop, while real content is never upscaled beyond that same bound, so a
+         * genuinely small image still renders close to its own size. Also gates
+         * ChatMessageImageItem::startDrag() (a placeholder is not worth using as a drag pixmap).
+         * The host must clear this when it swaps in real content, otherwise that content is
+         * treated as a placeholder too.
          */
         bool isPreviewPlaceholder() const noexcept
         {

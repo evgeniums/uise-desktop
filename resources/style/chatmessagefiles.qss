@@ -17,6 +17,16 @@ padding:0;
 margin:0;
 }
 
+/* todo-album-layout-small-tile-packing.md: floor a small image's album tile is scaled up to,
+ * aspect preserved, instead of being left genuinely tiny (Telegram-style) -- and the paint-time
+ * upscale allowance that lets a tile actually reach that floor (2.5x covers a source down to
+ * ~80px on a DPR-2 display). See ChatMessageImages::minTileSize()/tileMaxUpscale()'s own doc
+ * comments. Both default to these same values in code; restated here as the QSS-overridable knob. */
+uise--ChatMessageImages {
+qproperty-minTileSize: 100;
+qproperty-tileMaxUpscale: 2.5;
+}
+
 uise--ChatMessageFileItem {
 border-radius:8px;
 padding:4px 0;
