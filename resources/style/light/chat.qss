@@ -2,7 +2,7 @@ uise--AbstractChatMessagesView,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
 {
-background-color: #2A835F; /* chat background */
+background-color: #8BBB92 /*#2A835F*/; /* chat background */
 }
 
 uise--AbstractChatMessageContent,
