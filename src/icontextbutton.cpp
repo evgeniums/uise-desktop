@@ -67,6 +67,15 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
+    // Default state before any setText() call is icon-only -- m_text is already empty and
+    // hidden above. Must be set BEFORE RippleOverlay::install() below: install() polishes the
+    // overlay immediately (see its own doc comment), resolving every qproperty-* the ripple QSS
+    // keys on -- including the [iconOnly="..."] rules in ripple.qss -- against whatever dynamic
+    // properties `this` carries at that exact moment. Setting it after install() would leave the
+    // overlay permanently polished against the property's absence, since Qt only polishes a
+    // widget once and nothing here ever repolishes the overlay child on its own.
+    setProperty("iconOnly",true);
+
     // Covers the whole button, padding included -- not just the icon -- so it reads as a halo
     // around the icon (icon-only buttons) or a horizontal spread across the whole button (once
     // text is visible), see ripple.qss and the iconOnly property in setText() below. Installed
@@ -74,10 +83,6 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
     // Auto-trigger stays on: the whole button is clickable, unlike CalendarDay which must gate
     // the ripple on isSelectable().
     m_ripple=RippleOverlay::install(this);
-
-    // Default state before any setText() call is icon-only -- m_text is already empty and
-    // hidden above.
-    setProperty("iconOnly",true);
 }
 
 //--------------------------------------------------------------------------
@@ -204,6 +209,14 @@ void IconTextButton::setText(const QString& text)
     // (text visible) -- see uise--IconTextButton[iconOnly="..."] uise--RippleOverlay there.
     setProperty("iconOnly",text.isEmpty());
     Style::updateWidgetStyle(this);
+    // A dynamic property set on `this` never cascades a repolish to the overlay CHILD on its
+    // own (see the constructor's comment on install() ordering) -- without this, a button that
+    // starts with text and later has it cleared (or vice versa) would keep whichever ripple
+    // shape matched its FIRST iconOnly value forever.
+    if (m_ripple)
+    {
+        Style::updateWidgetStyle(m_ripple);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -314,6 +327,14 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
     // uise--RippleOverlay there.
     setProperty("verticalLayout",m_iconPosition==IconPosition::AboveText || m_iconPosition==IconPosition::BelowText);
     Style::updateWidgetStyle(this);
+    // m_ripple is still null on the constructor's own call to setIconPosition() (it runs before
+    // RippleOverlay::install() -- see the constructor) -- nothing to repolish yet there, the
+    // overlay picks this property up when install() polishes it for the first time. Only a
+    // later, runtime call to setIconPosition() needs this -- see setText()'s identical comment.
+    if (m_ripple)
+    {
+        Style::updateWidgetStyle(m_ripple);
+    }
 }
 
 //--------------------------------------------------------------------------

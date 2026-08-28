@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 
@@ -435,6 +436,14 @@ void DropdownMenu::fillContent()
             btn->setProperty("firstItem",true);
         }
         firstRow=false;
+
+        // btn's own polish pass (see the comment above) covers btn itself and its #text child,
+        // but not its RippleOverlay: that child was already polished inside IconTextButton's
+        // constructor, by RippleOverlay::install(), BEFORE section/firstItem were set above --
+        // same ordering gap as iconOnly/avatarOnly (see icontextbutton.cpp's constructor
+        // comment). Without this, ripple.qss's [section="true"]/[firstItem="true"]
+        // rippleInsetTop rules never take effect and the row's ripple bleeds into its top margin.
+        Style::updateWidgetStyle(btn->rippleOverlay());
 
         auto id=item.id;
         if (item.isCheckable)

@@ -53,6 +53,7 @@ class RippleOverlay_p
         bool holdOnPress=RippleOverlay::DefaultHoldOnPress;
         RippleOverlay::Origin origin=RippleOverlay::DefaultOrigin;
         RippleOverlay::Clip clip=RippleOverlay::DefaultClip;
+        RippleOverlay::Shape shape=RippleOverlay::DefaultShape;
         int cornerRadius=RippleOverlay::DefaultCornerRadius;
         int insetLeft=RippleOverlay::DefaultInset;
         int insetTop=RippleOverlay::DefaultInset;
@@ -439,6 +440,46 @@ QString RippleOverlay::rippleClipName() const
 
 //--------------------------------------------------------------------------
 
+void RippleOverlay::setRippleShape(Shape shape) noexcept
+{
+    pimpl->shape=shape;
+}
+
+//--------------------------------------------------------------------------
+
+RippleOverlay::Shape RippleOverlay::rippleShape() const noexcept
+{
+    return pimpl->shape;
+}
+
+//--------------------------------------------------------------------------
+
+void RippleOverlay::setRippleShapeName(const QString& name)
+{
+    if (name.compare(QStringLiteral("roundedrect"),Qt::CaseInsensitive)==0)
+    {
+        setRippleShape(Shape::RoundedRect);
+    }
+    else
+    {
+        setRippleShape(Shape::Ellipse);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QString RippleOverlay::rippleShapeName() const
+{
+    switch (pimpl->shape)
+    {
+        case Shape::RoundedRect: return QStringLiteral("roundedrect");
+        case Shape::Ellipse: break;
+    }
+    return QStringLiteral("ellipse");
+}
+
+//--------------------------------------------------------------------------
+
 void RippleOverlay::setRippleCornerRadius(int radius) noexcept
 {
     pimpl->cornerRadius=radius;
@@ -724,29 +765,66 @@ void RippleOverlay::paintEvent(QPaintEvent* /*event*/)
 
     QPointF origin=(pimpl->origin==Origin::Center) ? r.center() : pimpl->originPoint;
 
-    // Radius needed to just cover the farthest corner from the origin, so a ripple that grows
-    // to full size always ends up covering the whole overlay regardless of where it started.
-    qreal maxRadius=0.0;
-    const QPointF corners[4]={r.topLeft(),r.topRight(),r.bottomLeft(),r.bottomRight()};
-    for (const auto& corner : corners)
-    {
-        maxRadius=qMax(maxRadius,QLineF(origin,corner).length());
-    }
-
-    // Independent per-axis scale on the SAME base radius (rather than, say, independently
-    // measuring the horizontal/vertical reach to the nearest edge) -- so equal X/Y scales
-    // always draw a true circle, and an unequal pair (see IconTextButton's ripple.qss rule for
-    // a host with visible text) draws a flattened ellipse without changing where "fully grown"
-    // is reached on whichever axis is scaled down.
-    auto radiusX=maxRadius*pimpl->radiusScaleX*pimpl->growValue;
-    auto radiusY=maxRadius*pimpl->radiusScaleY*pimpl->growValue;
-
     auto color=pimpl->color;
     color.setAlphaF(qBound(0.0,color.alphaF()*pimpl->opacity*pimpl->fadeValue,1.0));
-
     p.setPen(Qt::NoPen);
     p.setBrush(color);
-    p.drawEllipse(origin,radiusX,radiusY);
+
+    switch (pimpl->shape)
+    {
+        case (Shape::RoundedRect):
+        {
+            // Half-extent needed to just reach the farthest LEFT/RIGHT and TOP/BOTTOM EDGE
+            // from the origin (not corner, unlike Ellipse below) -- so a centred origin at
+            // scale 1.0 grows to exactly the overlay's own width/height, reading as a smooth
+            // rounded rect filling the host, rather than Ellipse's corner-based radius either
+            // overshooting past the short edges or undershooting the long ones on a wide host
+            // (see NavigationBarItem's ripple.qss rule).
+            qreal halfW=qMax(origin.x()-r.left(),r.right()-origin.x());
+            qreal halfH=qMax(origin.y()-r.top(),r.bottom()-origin.y());
+            halfW*=pimpl->radiusScaleX*pimpl->growValue;
+            halfH*=pimpl->radiusScaleY*pimpl->growValue;
+
+            QRectF blobRect(origin.x()-halfW,origin.y()-halfH,halfW*2.0,halfH*2.0);
+
+            // Clamp to the blob's own current half-extents (not just its final, full-grown
+            // size) so the very first, smallest frames stay smoothly rounded instead of
+            // momentarily drawing as a sharp-cornered rect that only rounds off once it grows
+            // past its own corner radius.
+            qreal radius=qMin(static_cast<qreal>(pimpl->cornerRadius),qMin(halfW,halfH));
+
+            QPainterPath blobPath;
+            blobPath.addRoundedRect(blobRect,radius,radius);
+            p.drawPath(blobPath);
+        }
+        break;
+
+        case (Shape::Ellipse):
+        default:
+        {
+            // Radius needed to just cover the farthest CORNER from the origin, so a ripple
+            // that grows to full size always ends up covering the whole overlay regardless of
+            // where it started.
+            qreal maxRadius=0.0;
+            const QPointF corners[4]={r.topLeft(),r.topRight(),r.bottomLeft(),r.bottomRight()};
+            for (const auto& corner : corners)
+            {
+                maxRadius=qMax(maxRadius,QLineF(origin,corner).length());
+            }
+
+            // Independent per-axis scale on the SAME base radius (rather than, say,
+            // independently measuring the horizontal/vertical reach to the nearest edge) -- so
+            // equal X/Y scales always draw a true circle, and an unequal pair (see
+            // IconTextButton's ripple.qss rule for a host with visible text) draws a flattened
+            // ellipse without changing where "fully grown" is reached on whichever axis is
+            // scaled down.
+            auto radiusX=maxRadius*pimpl->radiusScaleX*pimpl->growValue;
+            auto radiusY=maxRadius*pimpl->radiusScaleY*pimpl->growValue;
+
+            p.drawEllipse(origin,radiusX,radiusY);
+        }
+        break;
+    }
 }
 
 //--------------------------------------------------------------------------

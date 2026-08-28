@@ -24,6 +24,19 @@
  *                                   pill otherwise, whereas an inscribed ellipse tapers to a
  *                                   point at the extremes on anything not pixel-perfect
  *                                   square.
+ * qproperty-rippleShape            – "ellipse" (default) | "roundedrect" -- the geometric form
+ *                                   of the growing/fading blob itself, independent of
+ *                                   rippleClip (which only crops that blob to the host's own
+ *                                   region). "ellipse" scales a per-axis radius measured to the
+ *                                   overlay's farthest CORNER from the origin -- right for a
+ *                                   compact, roughly-square host. "roundedrect" instead scales
+ *                                   a half-width/half-height measured to the overlay's nearest
+ *                                   pair of EDGES, and draws a rounded rect (corner radius
+ *                                   rippleCornerRadius, clamped to the blob's own current
+ *                                   half-extents) -- right for a wide, non-square host (e.g.
+ *                                   NavigationBarItem's full row below), where the corner-based
+ *                                   ellipse radius either overshoots past the short edges
+ *                                   (reading as a flattened band) or undershoots the long ones.
  * qproperty-rippleCornerRadius    – used when rippleClip is "rounded" (ignored by "capsule",
  *                                   which always computes its own); keep in step with the
  *                                   host's own border-radius, Qt does not expose a way to read

@@ -98,7 +98,7 @@ class HTree_p
 
         int expandLastDepthOnOpen=0;
 
-        bool navbarSIngleVisibleMode=false;
+        bool navbarSingleVisibleMode=false;
 };
 
 //--------------------------------------------------------------------------
@@ -766,14 +766,14 @@ bool HTree::isNodeHeaderVisible() const noexcept
 
 void HTree::setNavbarSingleVisibleMode(bool enable)
 {
-    pimpl->navbarSIngleVisibleMode=enable;
+    pimpl->navbarSingleVisibleMode=enable;
 }
 
 //--------------------------------------------------------------------------
 
 bool HTree::isNavbarSingleVisibleMode() const noexcept
 {
-    return pimpl->navbarSIngleVisibleMode;
+    return pimpl->navbarSingleVisibleMode;
 }
 
 //--------------------------------------------------------------------------

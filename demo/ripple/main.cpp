@@ -102,6 +102,11 @@ int main(int argc, char *argv[])
                                   "}"
                                   "uise--IconTextButton[iconOnly=\"true\"][hovered=\"true\"] {"
                                   "background-color: transparent;"
+                                  "}"
+                                  "uise--IconTextButton#wideRoundedRectDemo uise--RippleOverlay {"
+                                  "qproperty-rippleShape: \"roundedrect\";"
+                                  "qproperty-rippleRadiusScaleX: 1.0;"
+                                  "qproperty-rippleRadiusScaleY: 1.0;"
                                   "}";
 
     const QString darkChrome  = commonChrome +
@@ -155,6 +160,16 @@ int main(int argc, char *argv[])
         buttons.push_back(button);
     }
     bcl->addWidget(iconOnlyRow);
+
+    // Wide-row button with rippleShape:"roundedrect" -- demonstrates the shape NavigationBarItem
+    // uses (see navigationbar.qss) for a host too wide/short for Ellipse's corner-based radius
+    // to read as anything but a flattened band. objectName-scoped so only this one button gets
+    // it, everything else keeps the default Ellipse.
+    auto wideButton = new IconTextButton(QStringLiteral("Wide row (roundedrect)"), buttonsColumn);
+    wideButton->setObjectName("wideRoundedRectDemo");
+    wideButton->setMinimumWidth(220);
+    bcl->addWidget(wideButton);
+    buttons.push_back(wideButton);
 
     pfl->addWidget(buttonsColumn, 0, Qt::AlignCenter);
 

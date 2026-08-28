@@ -65,16 +65,20 @@ AvatarButton::AvatarButton(QWidget* parent)
 
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
+    // Default state before any setAvatarOnly() call is text-visible -- m_avatar is already
+    // hidden above and m_text is unhidden. Must be set BEFORE RippleOverlay::install() below --
+    // same ordering requirement as IconTextButton's iconOnly (see its constructor's comment):
+    // install() polishes the overlay immediately, resolving ripple.qss's [avatarOnly="..."]
+    // rules against whatever this property is at that instant, and nothing later repolishes the
+    // overlay child on its own.
+    setProperty("avatarOnly",false);
+
     // Covers the whole button, padding included -- same reasoning as IconTextButton's ripple
     // (see icontextbutton.cpp): a halo around the avatar in avatar-only mode, a horizontal
     // spread across the whole button once text is visible, see ripple.qss and the avatarOnly
     // property in setAvatarOnly() below. Installed last so it ends up on top of the avatar/
     // text/tailIcon children above.
     m_ripple=RippleOverlay::install(this);
-
-    // Default state before any setAvatarOnly() call is text-visible -- m_avatar is already
-    // hidden above and m_text is unhidden.
-    setProperty("avatarOnly",false);
 }
 
 //--------------------------------------------------------------------------
@@ -98,6 +102,14 @@ void AvatarButton::setAvatarOnly(bool enable)
     // (text visible) -- see uise--AvatarButton[avatarOnly="..."] uise--RippleOverlay there.
     setProperty("avatarOnly",enable);
     Style::updateWidgetStyle(this);
+    // A dynamic property set on `this` never cascades a repolish to the overlay CHILD on its
+    // own (see the constructor's comment on install() ordering) -- without this, the two-arg
+    // AvatarButton(icon, parent) constructor's setAvatarOnly() call (which runs AFTER install())
+    // would never actually switch the ripple to the avatar-only capsule.
+    if (m_ripple)
+    {
+        Style::updateWidgetStyle(m_ripple);
+    }
 }
 
 //--------------------------------------------------------------------------

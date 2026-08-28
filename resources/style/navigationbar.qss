@@ -5,12 +5,38 @@ uise--NavigationBarItem {padding:4px; margin:4px; border:none;}
 /* margin:4px above grows every nav item's rect() 4px on every side (Qt's box model, unlike
  * CSS, makes margin part of the widget's own size) -- rippleInset* on every side compensate,
  * keeping this in step with the margin above. NavigationBarItem is an IconTextButton subclass,
- * so the ripple installs directly on it (see icontextbutton.cpp). */
-uise--NavigationBarItem uise--RippleOverlay {
+ * so the ripple installs directly on it (see icontextbutton.cpp).
+ *
+ * A nav item is a wide row (icon + text), not a compact toolbar button -- the base
+ * uise--IconTextButton rule in ripple.qss is tuned for that compact case and its ellipse (a
+ * corner-based radius flattened to radiusScaleY:0.35) reads here as a rectangle with sharp,
+ * pointed ellipse tips at the left/right ends instead of a clean rounded rect. rippleShape:
+ * "roundedrect" instead draws the ripple itself as a rounded rect grown from an edge-based
+ * half-extent (see ripple.hpp's Shape::RoundedRect doc) -- equal X/Y scale at 1.0 grows evenly
+ * to every edge (padding included) with no flat/pointed transition at any frame. rippleClip
+ * stays "rounded" at the same 4px radius so the corners round off, but at full grow it no
+ * longer needs to crop anything -- the blob's own shape already matches.
+ *
+ * Selector is prefixed with uise--NavigationBar (the item's actual parent, see
+ * NavigationBar::addItem()) rather than just "uise--NavigationBarItem uise--RippleOverlay":
+ * NavigationBarItem IS-A IconTextButton, so a 2-type-name selector here ties EXACTLY in Qt's
+ * QSS specificity with the base "uise--IconTextButton uise--RippleOverlay" rule in ripple.qss
+ * (both score 2 -- one point per type name, see qcssparser.cpp's Selector::specificity()), and
+ * a tie is broken only by which stylesheet file happens to be concatenated later -- arbitrary
+ * QSet hash order in Style::reloadStyleSheet(), not something this rule can rely on winning.
+ * The observed symptom of losing that coin flip is exactly the base rule's radiusScaleY:0.35
+ * still applying -- a rounded rect squashed to a third of the item's height. Naming the parent
+ * makes this a 3-type-name selector (specificity 3), which beats the base rule outright. */
+uise--NavigationBar uise--NavigationBarItem uise--RippleOverlay {
 qproperty-rippleInsetLeft: 4;
 qproperty-rippleInsetTop: 4;
 qproperty-rippleInsetRight: 4;
 qproperty-rippleInsetBottom: 4;
+qproperty-rippleShape: "roundedrect";
+qproperty-rippleClip: "rounded";
+qproperty-rippleCornerRadius: 4;
+qproperty-rippleRadiusScaleX: 1.0;
+qproperty-rippleRadiusScaleY: 1.0;
 }
 
 uise--NavigationBarItem #text {font-size:12px; text-decoration:underline;}

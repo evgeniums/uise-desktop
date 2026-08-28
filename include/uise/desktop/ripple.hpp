@@ -75,6 +75,8 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
     Q_PROPERTY(QString rippleOrigin          READ rippleOriginName      WRITE setRippleOriginName)
     //! QSS: qproperty-rippleClip: "rect" | "rounded" | "ellipse" | "capsule";
     Q_PROPERTY(QString rippleClip            READ rippleClipName        WRITE setRippleClipName)
+    //! QSS: qproperty-rippleShape: "ellipse" | "roundedrect";
+    Q_PROPERTY(QString rippleShape           READ rippleShapeName       WRITE setRippleShapeName)
     Q_PROPERTY(int     rippleCornerRadius    READ rippleCornerRadius    WRITE setRippleCornerRadius)
     Q_PROPERTY(int     rippleInsetLeft       READ rippleInsetLeft       WRITE setRippleInsetLeft)
     Q_PROPERTY(int     rippleInsetTop        READ rippleInsetTop        WRITE setRippleInsetTop)
@@ -109,6 +111,37 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
             Capsule
         };
 
+        /**
+         * @brief Geometric form the growing/fading ripple itself is drawn as, independent of
+         * rippleClip() (which only crops that shape to the host's own region).
+         */
+        enum class Shape
+        {
+            /**
+             * The blob is an ellipse -- a true circle when rippleRadiusScaleX==
+             * rippleRadiusScaleY (the default). Its radius is the distance from the origin to
+             * the FARTHEST CORNER of the overlay, scaled per axis, so a full-grown circle
+             * always reaches past every edge regardless of clip. This is the default and suits
+             * a compact, roughly-square host (an icon-only button, an avatar) -- see rippleClip
+             * ==Capsule for how that combination reads as a clean circle/pill.
+             */
+            Ellipse,
+            /**
+             * The blob is itself a rounded rectangle that scales up from the origin, corner
+             * radius rippleCornerRadius() (clamped to the blob's own current half-extents so it
+             * starts smoothly rounded even in the first, smallest frames). Its half-width/
+             * half-height are the distance from the origin to the farthest LEFT/RIGHT and TOP/
+             * BOTTOM EDGE (not corner) of the overlay, scaled per axis, so a centred origin at
+             * scale 1.0 grows to exactly the overlay's own bounds. Suits a WIDE, non-square host
+             * (e.g. NavigationBarItem's full row) where Ellipse's corner-based radius would
+             * either overshoot past the short edges (reading as a flattened band, see ripple.qss's
+             * default IconTextButton rippleRadiusScaleY:0.35) or undershoot the long ones --
+             * RoundedRect instead reads as a smooth rounded rect at every frame, growing evenly
+             * to both pairs of edges at once.
+             */
+            RoundedRect
+        };
+
         constexpr static const bool DefaultRippleEnabled=true;
         constexpr static const bool DefaultAutoTrigger=true;
         constexpr static const bool DefaultHoldOnPress=true;
@@ -122,6 +155,7 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
         constexpr static const int DefaultInset=0;
         constexpr static const Origin DefaultOrigin=Origin::Cursor;
         constexpr static const Clip DefaultClip=Clip::Rect;
+        constexpr static const Shape DefaultShape=Shape::Ellipse;
 
         explicit RippleOverlay(QWidget* host);
 
@@ -139,6 +173,19 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
          * Call this after the host has created its own children (see IconTextButton's
          * constructor) so the overlay ends up last in the child list and therefore paints on
          * top; raise() is also called on every host QEvent::ChildAdded/Show to keep it there.
+         *
+         * This also polishes the OVERLAY immediately (ensurePolished(), so its own QSS
+         * properties resolve even though it stays hidden/unshown until the first ripple).
+         * Every dynamic property a ripple.qss rule keys on (e.g. [iconOnly="..."],
+         * [avatarOnly="..."]) must therefore already be set on the host BEFORE calling
+         * install() -- setting it afterwards leaves the overlay permanently polished against
+         * its absence, since Qt polishes a widget only once and a later
+         * Style::updateWidgetStyle(host) call never cascades a repolish to this child overlay
+         * on its own. Any later change to such a property must be followed by
+         * Style::updateWidgetStyle(host->rippleOverlay()) (or the equivalent accessor) to pick
+         * it up -- see IconTextButton::setText()/setIconPosition(), AvatarButton::
+         * setAvatarOnly(), and DropdownMenu's per-row section/firstItem properties for the
+         * pattern.
          */
         static RippleOverlay* install(QWidget* host);
 
@@ -218,6 +265,12 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
         //! QSS-friendly string form: "rect" | "rounded" | "ellipse" | "capsule".
         void setRippleClipName(const QString& name);
         QString rippleClipName() const;
+
+        void setRippleShape(Shape shape) noexcept;
+        Shape rippleShape() const noexcept;
+        //! QSS-friendly string form: "ellipse" | "roundedrect".
+        void setRippleShapeName(const QString& name);
+        QString rippleShapeName() const;
 
         /** @brief Corner radius used when rippleClip()==Clip::Rounded. Keep in step with the
          *  host's own QSS border-radius -- Qt does not expose a way to read that back in C++. */
