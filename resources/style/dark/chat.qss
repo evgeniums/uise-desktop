@@ -74,6 +74,10 @@ uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
 background-color:transparent;
 }
 
+uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox:hover {
+border:none;
+}
+
 uise--AbstractChatMessage uise--ChatMessageSelector uise--CheckBox #indicatorOff {
 background-color: #CCC;
 border: 2px solid #222;
