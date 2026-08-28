@@ -1,3 +1,5 @@
-uise--JumpEdge #sample {background-color:#DDDDDD;}
+uise--JumpEdge #sample {
+background-color: rgba(255, 255, 255, 0.7);
+}
 
 uise--JumpEdge QLabel {background-color: #4895ef;color: #FFFFFF;}
