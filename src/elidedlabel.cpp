@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QLabel>
 #include <QResizeEvent>
+#include <QShowEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/label.hpp>
@@ -63,7 +64,23 @@ void ElidedLabel::setText(const QString& text)
     m_hiddenLabel->setText(text);
     m_label->setText(text);
 
-    updateText(width());
+    // Eliding against width() before the first real layout measures Qt's default pre-layout
+    // width, not the actual column -- that painted a truncated first frame (e.g. a chat message
+    // header built off-screen showing "Forw... sea1..." instead of "Forwarded from ...") which
+    // only corrected itself a turn later, once updateGeometry()'s queued LayoutRequest resized
+    // us. Hold the full text until a real width has landed; QWidget::show_helper() delivers
+    // pending resize events before the first paint, so the correct elide still lands before
+    // anything is actually shown on screen (showEvent() below is the fallback for the rare case
+    // where the laid-out width never differs from the widget's construction-time width, so no
+    // resizeEvent() ever arrives).
+    if (m_laidOut)
+    {
+        updateText(width());
+    }
+    else
+    {
+        m_elidePending=true;
+    }
 
     emit textUpdated();
 }
@@ -122,8 +139,27 @@ int ElidedLabel::widthHint() const
 
 void ElidedLabel::resizeEvent(QResizeEvent *event)
 {
+    m_laidOut=true;
+    m_elidePending=false;
     updateText(event->size().width());
     QFrame::resizeEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ElidedLabel::showEvent(QShowEvent *event)
+{
+    // Fallback for setText()'s deferred elide -- covers the rare case where the laid-out width
+    // happens to equal the construction-time width, so resizeEvent() above never fires and
+    // m_laidOut would otherwise stay false forever, leaving full unelided text on screen
+    // indefinitely.
+    if (!m_laidOut || m_elidePending)
+    {
+        m_laidOut=true;
+        m_elidePending=false;
+        updateText(width());
+    }
+    QFrame::showEvent(event);
 }
 
 //--------------------------------------------------------------------------

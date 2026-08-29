@@ -85,6 +85,7 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent *event) override;
+        void showEvent(QShowEvent *event) override;
 
     private:
 
@@ -97,6 +98,16 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 
         bool m_ignoreSizeHint;
         int m_maxLines;
+
+        // Guard the FIRST elide against Qt's default pre-layout width (see setText()'s own
+        // comment) -- a label built off-screen (e.g. a chat message widget, negotiated before
+        // it is ever shown) would otherwise elide against width()==100 and paint a truncated
+        // first frame that only self-corrects a turn later, once a queued LayoutRequest resizes
+        // it. m_laidOut latches true forever once a real width has been applied (by resizeEvent()
+        // or, as a fallback, showEvent()); m_elidePending tracks whether setText() was called
+        // while still waiting for that first real width.
+        bool m_laidOut=false;
+        bool m_elidePending=false;
 };
 
 UISE_DESKTOP_NAMESPACE_END
