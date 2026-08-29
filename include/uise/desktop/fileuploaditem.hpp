@@ -42,11 +42,12 @@ You may select, at your option, one of the above-listed licenses.
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /**
- * @brief One entry of a file upload list: either a filesystem path or an in-memory image.
+ * @brief One entry of a file upload list: a filesystem path, an in-memory image, or an
+ *  in-memory byte payload of any other kind.
  *
  * A plain, cheaply-copyable value type (QString/QImage/QByteArray are all implicitly shared) --
  * no pimpl. Copies keep the same id() and refer to the same logical item; only fromFile()/
- * fromImage()/fromEncodedImage() and the default constructor mint a fresh id.
+ * fromImage()/fromEncodedImage()/fromData() and the default constructor mint a fresh id.
  *
  * The in-memory master is QImage rather than QPixmap: QPixmap is GUI-thread-only (the reason
  * PixmapProducer exists), while QImage keeps preview scaling/encoding free to move off-thread.
@@ -68,7 +69,8 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         enum class Type : uint8_t
         {
             File,       //!< Backed by a filesystem path.
-            ImageData   //!< Backed by an in-memory QImage.
+            ImageData,  //!< Backed by an in-memory QImage.
+            Data        //!< Backed by an in-memory, already-encoded byte payload of any kind.
         };
 
         FileUploadItem()
@@ -89,6 +91,23 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          */
         static FileUploadItem fromEncodedImage(QByteArray bytes, QString fileName={}, QByteArray format={});
 
+        /**
+         * @brief Construct from an arbitrary, already-encoded byte payload (e.g. a generated
+         *  invitation file, or any other Share/Forward payload with no filesystem path).
+         * @param data Payload bytes, kept verbatim as encodedData() until setImage() is called
+         *  (which would only happen if the payload turns out to be an image the user edits).
+         * @param fileName Display/attachment name. Unlike an image item, there is no auto-
+         *  generated fallback -- callers must always supply one.
+         * @param mimeType Applied verbatim via setExplicitMimeType() when non-empty. Left empty,
+         *  mimeType()/isImage() derive the type from fileName()'s extension only -- never from a
+         *  content sniff, since there is no file on disk to sniff.
+         *
+         * The bytes are held in memory for the whole lifetime of the item, including through
+         * ChatPage::sendFiles()'s upload buffer -- this factory is for small payloads (e.g. an
+         * invitation file), not for anything that would benefit from chunked/resumable upload.
+         */
+        static FileUploadItem fromData(QByteArray data, QString fileName, QString mimeType={});
+
         Type type() const noexcept
         {
             return m_type;
@@ -97,8 +116,8 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         /**
          * @brief Check if this item's CONTENT is an image, regardless of how it will be
          *  presented (see presentAsImage() for that).
-         * @return Always true for Type::ImageData; for Type::File, sniffed from mimeType().
-         *  Unaffected by maxImageAspectRatio() -- an extreme-aspect-ratio image is still an
+         * @return Always true for Type::ImageData; for Type::File and Type::Data, sniffed from
+         *  mimeType(). Unaffected by maxImageAspectRatio() -- an extreme-aspect-ratio image is still an
          *  image: still editable, still decodes a real thumbnail/pixelSize(), it just isn't
          *  presented as an inline image tile (see presentAsImage()).
          */
@@ -148,7 +167,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
 
         /**
          * @brief Get the filesystem path.
-         * @return Operation result, empty for Type::ImageData.
+         * @return Operation result, empty for Type::ImageData and Type::Data.
          */
         QString filePath() const
         {
@@ -157,9 +176,10 @@ class UISE_DESKTOP_EXPORT FileUploadItem
 
         /**
          * @brief Get the file name (basename with extension).
-         * @return The name set via fromFile()/fromImage()/setFileName(), or, for Type::File
-         *  with no override, the basename of filePath(). May be empty for Type::ImageData
-         *  until ensureFileName() is called.
+         * @return The name set via fromFile()/fromImage()/fromData()/setFileName(), or, for
+         *  Type::File with no override, the basename of filePath(). May be empty for
+         *  Type::ImageData until ensureFileName() is called; always set for Type::Data, since
+         *  fromData() requires a name.
          */
         QString fileName() const;
 
@@ -179,6 +199,9 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          *  imageFormat(); for Type::File, QMimeDatabase's guess for filePath() -- extension
          *  match falling back to content sniffing, which is unreliable for a file under an
          *  application-private extension it has never seen before (see setExplicitMimeType()).
+         *  For Type::Data, QMimeDatabase's guess for fileName()'s extension only -- there is no
+         *  file on disk to content-sniff, so an unrecognized extension falls back to
+         *  "application/octet-stream" rather than guessing from content.
          */
         QString mimeType() const;
 
@@ -210,7 +233,9 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         /**
          * @brief Get the decoded image.
          * @return For Type::ImageData, the in-memory master. For Type::File, decoded from disk
-         *  on demand (a null QImage if filePath() is not an image or cannot be read).
+         *  on demand (a null QImage if filePath() is not an image or cannot be read). For
+         *  Type::Data, decoded from the held bytes on demand (a null QImage if they are not an
+         *  image) -- same lazy-decode shape as Type::File, just from memory instead of disk.
          *
          * This is the read side of the external-editor round trip.
          */
@@ -221,9 +246,10 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          * @param image New image content.
          *
          * This is the write side of the external-editor round trip. Switches type() to
-         * ImageData (a File item that gets edited becomes in-memory content) and invalidates
-         * the cached encodedData()/size(); fileName() and filePath() are left untouched, so a
-         * File item that started as "photo.jpg" and gets edited keeps showing "photo.jpg".
+         * ImageData (a File or Data item that gets edited becomes in-memory content) and
+         * invalidates the cached encodedData()/size(); fileName() and filePath() are left
+         * untouched, so an item that started as "photo.jpg" and gets edited keeps showing
+         * "photo.jpg".
          */
         void setImage(QImage image);
 
@@ -242,20 +268,23 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          * @return For Type::File, the raw file bytes, read from disk on demand. For
          *  Type::ImageData, the bytes passed to fromEncodedImage() verbatim, or -- once
          *  setImage() has invalidated that cache -- image() encoded to imageFormat(), computed
-         *  once and cached.
+         *  once and cached. For Type::Data, the bytes passed to fromData() verbatim.
          */
         QByteArray encodedData() const;
 
         /**
          * @brief Get the content size in bytes.
-         * @return For Type::File, the file's size on disk. For Type::ImageData, encodedData().size().
+         * @return For Type::File, the file's size on disk. For Type::ImageData and Type::Data,
+         *  encodedData().size().
          */
         qint64 size() const;
 
         /**
          * @brief Get the image's pixel dimensions.
          * @return For Type::File, read from the file header without decoding the whole image
-         *  (cheap). For Type::ImageData, image().size(). An invalid QSize if not an image.
+         *  (cheap). For Type::ImageData, image().size(). For Type::Data, read from the held
+         *  bytes' header the same cheap way as Type::File, cached. An invalid QSize if not an
+         *  image.
          */
         QSize pixelSize() const;
 

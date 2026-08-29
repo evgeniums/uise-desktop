@@ -371,7 +371,10 @@ void FileUploadListItem::rebuildMenu()
     {
         items.push_back(MenuItem(static_cast<int>(MenuAction::EditImage),tr("Edit image"),menuIcon(QStringLiteral("editImage"),this)));
     }
-    if (it.type()==FileUploadItem::Type::File)
+    // A Type::Data item is presented as a named document row just like Type::File -- offer
+    // rename there too. Type::ImageData is the only kind with no persistent on-disk/caller name
+    // to rename away from.
+    if (it.type()==FileUploadItem::Type::File || it.type()==FileUploadItem::Type::Data)
     {
         items.push_back(MenuItem(static_cast<int>(MenuAction::RenameFile),tr("Rename file"),menuIcon(QStringLiteral("rename"),this)));
     }

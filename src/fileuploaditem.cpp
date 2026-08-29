@@ -46,6 +46,33 @@ QString& autoFileNamePrefix()
     return prefix;
 }
 
+//! Shared by image()'s Type::File and Type::Data branches: QSvgRenderer would decode an
+//! icon-style SVG with only a viewBox (e.g. a tabler.io icon, viewBox="0 0 24 24") at that tiny
+//! viewBox size, see the caller's own comment for why that is wrong for this app's preview
+//! sizes. Returns a null QImage if the renderer is invalid or reports no usable size, so the
+//! caller can fall back to its own default decode.
+QImage renderSvgPreview(QSvgRenderer& renderer)
+{
+    if (!renderer.isValid())
+    {
+        return QImage();
+    }
+    auto native=renderer.defaultSize();
+    if (native.isEmpty())
+    {
+        return QImage();
+    }
+
+    constexpr int longSide=512;
+    auto target=native.scaled(longSide,longSide,Qt::KeepAspectRatio);
+    QImage img(target,QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::transparent);
+    QPainter painter(&img);
+    painter.setRenderHint(QPainter::Antialiasing);
+    renderer.render(&painter);
+    return img;
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -99,6 +126,21 @@ FileUploadItem FileUploadItem::fromEncodedImage(QByteArray bytes, QString fileNa
     item.m_image=reader.read();
     item.m_format=format.isEmpty() ? QByteArray("PNG") : std::move(format);
     item.m_fileName=std::move(fileName);
+    return item;
+}
+
+//--------------------------------------------------------------------------
+
+FileUploadItem FileUploadItem::fromData(QByteArray data, QString fileName, QString mimeType)
+{
+    FileUploadItem item;
+    item.m_type=Type::Data;
+    item.m_encoded=std::move(data);
+    item.m_fileName=std::move(fileName);
+    if (!mimeType.isEmpty())
+    {
+        item.m_explicitMimeType=std::move(mimeType);
+    }
     return item;
 }
 
@@ -173,6 +215,13 @@ QString FileUploadItem::mimeType() const
     }
 
     QMimeDatabase db;
+    if (m_type==Type::Data)
+    {
+        // No file on disk to content-sniff -- go by the name's extension only, same as a
+        // browser/OS would for a payload it never downloaded. An unrecognized extension lands
+        // on "application/octet-stream" via QMimeType's own "unknown" fallback.
+        return db.mimeTypeForFile(fileName(),QMimeDatabase::MatchExtension).name();
+    }
     return db.mimeTypeForFile(m_filePath).name();
 }
 
@@ -185,40 +234,45 @@ QImage FileUploadItem::image() const
         return m_image;
     }
 
+    // QImage(m_filePath)/QImage::fromData(m_encoded) would decode an SVG via Qt's SVG plugin at
+    // the file's own declared size -- for an icon-style SVG with only a viewBox and no explicit
+    // width/height (e.g. a tabler.io icon, viewBox="0 0 24 24"), Qt correctly falls back to that
+    // viewBox size, but that is a tiny raster (24x24). FileUploadListItem::updatePreview() then
+    // scales THAT raster: the row/document chip's scaledAndCropped() deliberately upscales to
+    // fill its fixed 40x40 box and looks fine, but the full image preview's scaledToFit()
+    // deliberately never upscales past the source's own resolution (the right call for a
+    // genuinely low-res photo) -- so a 24x24 source inside an up-to-220x260 box ends up
+    // rendered at a barely-visible ~24x24, not "poorly sized" so much as nearly invisible.
+    // Render the vector content ourselves at an adequately large target resolution instead, see
+    // renderSvgPreview(). Harmless for an SVG that already declares a large size --
+    // QSvgRenderer::defaultSize() reports that, and scaling it to fit within longSide only ever
+    // shrinks it, exactly like the previous decode did.
     if (mimeType()==QStringLiteral("image/svg+xml"))
     {
-        // QImage(m_filePath) would decode via Qt's SVG plugin at the file's own declared
-        // size -- for an icon-style SVG with only a viewBox and no explicit width/height
-        // (e.g. a tabler.io icon, viewBox="0 0 24 24"), Qt correctly falls back to that
-        // viewBox size, but that is a tiny raster (24x24). FileUploadListItem::updatePreview()
-        // then scales THAT raster: the row/document chip's scaledAndCropped() deliberately
-        // upscales to fill its fixed 40x40 box and looks fine, but the full image preview's
-        // scaledToFit() deliberately never upscales past the source's own resolution (the
-        // right call for a genuinely low-res photo) -- so a 24x24 source inside an up-to-
-        // 220x260 box ends up rendered at a barely-visible ~24x24, not "poorly sized" so much
-        // as nearly invisible. Render the vector content ourselves at an adequately large
-        // target resolution instead, so every consumer downscales from a sharp source rather
-        // than upscaling (or failing to scale) a tiny one. Harmless for an SVG that already
-        // declares a large size -- QSvgRenderer::defaultSize() reports that, and scaling it to
-        // fit within longSide only ever shrinks it, exactly like the previous decode did.
-        QSvgRenderer renderer(m_filePath);
-        if (renderer.isValid())
+        if (m_type==Type::Data)
         {
-            auto native=renderer.defaultSize();
-            if (!native.isEmpty())
+            QSvgRenderer renderer(m_encoded);
+            auto img=renderSvgPreview(renderer);
+            if (!img.isNull())
             {
-                constexpr int longSide=512;
-                auto target=native.scaled(longSide,longSide,Qt::KeepAspectRatio);
-                QImage img(target,QImage::Format_ARGB32_Premultiplied);
-                img.fill(Qt::transparent);
-                QPainter painter(&img);
-                painter.setRenderHint(QPainter::Antialiasing);
-                renderer.render(&painter);
+                return img;
+            }
+        }
+        else
+        {
+            QSvgRenderer renderer(m_filePath);
+            auto img=renderSvgPreview(renderer);
+            if (!img.isNull())
+            {
                 return img;
             }
         }
     }
 
+    if (m_type==Type::Data)
+    {
+        return QImage::fromData(m_encoded);
+    }
     return QImage(m_filePath);
 }
 
@@ -231,9 +285,9 @@ void FileUploadItem::setImage(QImage image)
     m_encoded.clear();
     m_pixelSize=QSize();
     m_size=-1;
-    // m_fileName and m_filePath are left untouched: an edited File item keeps its display
+    // m_fileName and m_filePath are left untouched: an edited File/Data item keeps its display
     // name, and filePath() stays as provenance even though image()/encodedData() no longer
-    // read from it once type() is ImageData
+    // read from it (or from the held bytes) once type() is ImageData
 }
 
 //--------------------------------------------------------------------------
@@ -248,6 +302,13 @@ QByteArray FileUploadItem::encodedData() const
             return f.readAll();
         }
         return QByteArray();
+    }
+
+    if (m_type==Type::Data)
+    {
+        // Held verbatim since fromData() -- never re-encoded, unlike Type::ImageData below,
+        // which may need to lazily encode m_image the first time it is asked for its bytes.
+        return m_encoded;
     }
 
     if (m_encoded.isEmpty() && !m_image.isNull())
@@ -267,6 +328,8 @@ qint64 FileUploadItem::size() const
     {
         return QFileInfo(m_filePath).size();
     }
+    // Type::ImageData and Type::Data both size off encodedData(): the former lazily encodes
+    // m_image the first time this is called, the latter returns its held bytes' length as-is.
     if (m_size<0)
     {
         m_size=encodedData().size();
@@ -287,6 +350,21 @@ QSize FileUploadItem::pixelSize() const
         }
         return m_pixelSize;
     }
+    if (m_type==Type::Data)
+    {
+        // Same cheap header-only read as Type::File above, just from the held bytes instead of
+        // disk. Invalid QSize for non-image bytes -- QImageReader::size() already returns that
+        // when it can't recognize a format, so no extra guard is needed here.
+        if (!m_pixelSize.isValid())
+        {
+            QBuffer buffer;
+            buffer.setData(m_encoded);
+            buffer.open(QIODevice::ReadOnly);
+            QImageReader reader(&buffer);
+            m_pixelSize=reader.size();
+        }
+        return m_pixelSize;
+    }
     return m_image.size();
 }
 
@@ -297,6 +375,16 @@ bool FileUploadItem::ensureFileName(int index)
     if (!m_fileName.isEmpty())
     {
         return false;
+    }
+    // Defensive only for Type::Data -- fromData() requires a name, so m_fileName is never
+    // empty for a Data item in practice. If it ever is, derive a suffix from the resolved mime
+    // type rather than the image-specific m_format/"png" default below.
+    if (m_type==Type::Data)
+    {
+        QMimeDatabase db;
+        auto suf=db.mimeTypeForName(mimeType()).preferredSuffix();
+        m_fileName=autoFileName(index,suf.isEmpty() ? QStringLiteral("bin") : suf);
+        return true;
     }
     auto suf=m_format.isEmpty() ? QStringLiteral("png") : QString::fromLatin1(m_format).toLower();
     m_fileName=autoFileName(index,suf);

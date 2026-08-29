@@ -88,10 +88,17 @@ QString logOptions(const FileUploadItems& items, const FileUploadOptions& opts)
     {
         const auto& it=items[i];
         auto sz=it.pixelSize();
+        QString typeText;
+        switch (it.type())
+        {
+            case FileUploadItem::Type::File: typeText=QStringLiteral("file"); break;
+            case FileUploadItem::Type::ImageData: typeText=QStringLiteral("image data"); break;
+            case FileUploadItem::Type::Data: typeText=QStringLiteral("data"); break;
+        }
         text+=QString("  [%1] %2 (%3, %4, isImage=%5, presentAsImage=%6, pixelSize=%7x%8, maxAspectRatio=%9)\n")
                 .arg(static_cast<int>(i))
                 .arg(it.fileName())
-                .arg(it.type()==FileUploadItem::Type::File ? QStringLiteral("file") : QStringLiteral("image data"))
+                .arg(typeText)
                 .arg(it.size())
                 .arg(it.isImage() ? "true" : "false")
                 .arg(it.presentAsImage() ? "true" : "false")
@@ -460,6 +467,25 @@ int main(int argc, char *argv[])
         [standaloneWidget]()
         {
             standaloneWidget->addItems({FileUploadItem::fromImage(makeDisproportionalImage())});
+        }
+    );
+
+    // Exercises FileUploadItem::Type::Data / fromData() -- a non-image byte payload with no
+    // filesystem path, e.g. ShareToChat's generated invitation file (see
+    // todo-upload-raw-data-as-files.md). Expect a plain View::Row document, a "Rename file"
+    // menu entry, and isImage=false/presentAsImage=false in the log.
+    auto addRawData=new QPushButton(QStringLiteral("Add raw data"));
+    applyButtonStyle(addRawData);
+    demoButtons.push_back(addRawData);
+    cl->addWidget(addRawData);
+    QObject::connect(
+        addRawData,
+        &QPushButton::clicked,
+        standaloneWidget,
+        [standaloneWidget]()
+        {
+            QByteArray data("Sample raw byte payload, not an image, not on disk.");
+            standaloneWidget->addItems({FileUploadItem::fromData(data,QStringLiteral("sample.bin"),QStringLiteral("application/octet-stream"))});
         }
     );
 
