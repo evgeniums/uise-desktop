@@ -49,6 +49,14 @@ class ChatImageViewer_p
 
         std::map<PixmapKey,ChatMeta> meta;
 
+        //! Preview key (ImagePreviewStrip::Preview::key, see previewKeyFor()) -> image key. Rebuilt
+        //! from scratch by updateControls() on every call, in lockstep with the Preview vector
+        //! handed to controls->setPreviews() -- so it is always exactly as fresh/stale as what the
+        //! strip is currently showing. emplace() (first wins) is used when populating this, matching
+        //! ImagePreviewStrip::indexOf()'s own first-match semantics, in case two previews ever
+        //! collide on the same key.
+        std::map<PixmapKey,PixmapKey> previewToImage;
+
         ChatImageViewer::StripScope stripScope=ChatImageViewer::StripScope::Album;
         size_t stripRadius=ChatImageViewer::DefaultStripRadius;
         bool counterVisible=true;
@@ -149,13 +157,18 @@ Widget* ChatImageViewer::doCreateActualWidget(QWidget* parent)
         this,
         &ChatImageViewer::onAnimationStateChanged
     );
+    // previewClicked(int) is deliberately NOT connected -- ChatImageViewerControls::setPreviews()
+    // early-returns while the strip is suppressed, so an index into our own previews vector can
+    // desync from the strip's actual item list. previewClickedKey() instead carries the strip's own
+    // stored key, which selectImageForPreviewKey() resolves through previewToImage -- see its own
+    // doc and the class doc above for why the two key spaces need a bridge at all.
     connect(
         pimpl->controls,
         &ChatImageViewerControls::previewClickedKey,
         this,
         [this](const PixmapKey& key)
         {
-            selectImage(key);
+            selectImageForPreviewKey(key);
         }
     );
     connect(
@@ -496,6 +509,11 @@ void ChatImageViewer::updateControls()
         return;
     }
 
+    // Rebuilt wholesale below, in lockstep with the Preview vector handed to setPreviews() further
+    // down (including the no-metadata early return right below, which shows an empty strip) -- see
+    // the class doc and selectImageForPreviewKey()'s own doc for why this bridge exists at all.
+    pimpl->previewToImage.clear();
+
     auto idx=currentImageIndex();
 
     if (pimpl->counterVisible)
@@ -534,7 +552,9 @@ void ChatImageViewer::updateControls()
             {
                 currentPos=static_cast<int>(previews.size());
             }
-            previews.push_back(makePreview(i));
+            auto pv=makePreview(i);
+            pimpl->previewToImage.emplace(pv.key,imageKey(i));
+            previews.push_back(std::move(pv));
         }
     }
     else
@@ -576,7 +596,9 @@ void ChatImageViewer::updateControls()
             {
                 currentPos=static_cast<int>(previews.size());
             }
-            previews.push_back(makePreview(i));
+            auto pv=makePreview(i);
+            pimpl->previewToImage.emplace(pv.key,imageKey(i));
+            previews.push_back(std::move(pv));
         }
     }
 
@@ -592,6 +614,40 @@ void ChatImageViewer::updateControls()
     // immediately rather than waiting for the queued QEvent::LayoutRequest that
     // ImageViewerWidget's own eventFilter() reacts to on the next event loop iteration.
     refreshOverlayGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatImageViewer::selectImageForPreviewKey(const PixmapKey& previewKey)
+{
+    auto it=pimpl->previewToImage.find(previewKey);
+    if (it==pimpl->previewToImage.end())
+    {
+        return;
+    }
+
+    // Copy out before doing anything else -- selectImage() below re-enters updateCurrent() ->
+    // windowChanged() -> updateControls(), which clears and rebuilds previewToImage, so holding the
+    // iterator (or a reference into the map) across that call would dangle.
+    auto imgKey=it->second;
+    if (imgKey==currentImageKey())
+    {
+        return;
+    }
+
+    auto count=imageCount();
+    for (size_t i=0; i<count; ++i)
+    {
+        if (imageKey(i)==imgKey)
+        {
+            selectImage(i);
+            return;
+        }
+    }
+    // Not found -- the image was evicted/removed since previewToImage was last rebuilt. Silently
+    // do nothing rather than falling back to image 0 the way AbstractImageViewer::
+    // selectImage(const PixmapKey&) would (that fallback exists for DirectoryImagesViewer and must
+    // not leak into a stale strip click here -- see this method's own doc).
 }
 
 //--------------------------------------------------------------------------

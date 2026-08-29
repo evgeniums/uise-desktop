@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QObject>
 #include <QPoint>
+#include <QSizeF>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -79,6 +80,9 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
 
         //! Pixel-delta trackpad scroll distance treated as equivalent to one wheel notch.
         constexpr static const qreal DefaultPixelsPerNotch=50.0;
+
+        //! Disabled (0) by default -- see setMinDisplayPixels().
+        constexpr static const qreal DefaultMinDisplayPixels=0.0;
 
         //! Installs itself as an event filter on view->viewport(). view must outlive this object.
         explicit GraphicsViewZoom(QGraphicsView* view, QObject* parent=nullptr);
@@ -161,6 +165,19 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         void setMaxZoomFactor(qreal value) noexcept;
         qreal maxZoomFactor() const noexcept;
 
+        //! Smallest size, in logical (device-independent) VIEW pixels, either displayed dimension of
+        //! fitItem() may shrink to when zooming out -- lets clampScale() go below the
+        //! minZoomFactor()-relative "fit" floor, down to (but never past) this pixel size. Measured
+        //! against fitItem()'s natural (zoom-free) on-screen size, so it survives rotation/flip
+        //! (only width/height swap on a 90-degree turn -- the smaller of the two is unaffected).
+        //! Never RAISES the floor above baselineScale() -- fit always stays reachable, and an image
+        //! that already displays smaller than this at fit cannot be zoomed out at all. Disabled (0,
+        //! the default) leaves clampScale()'s lower bound exactly at minZoomFactor()*baselineScale(),
+        //! as before this was added -- ImageViewer opts in (see ImageViewerWidget::
+        //! DefaultMinDisplayPixels); SimpleImageEditor does not.
+        void setMinDisplayPixels(qreal value) noexcept;
+        qreal minDisplayPixels() const noexcept;
+
         void setPixelsPerNotch(qreal value) noexcept;
         qreal pixelsPerNotch() const noexcept;
 
@@ -211,6 +228,12 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         void beginPan(const QPoint& pos);
         void endPan();
 
+        //! fitItem()'s bounding rect mapped through the CURRENT transform and divided back out by
+        //! currentScale() -- the scale-independent "natural", zoom-free on-screen size baselineScale()
+        //! and the minDisplayPixels() floor both measure against. false (out left untouched) if
+        //! m_view/m_fitItem/the viewport is null or the mapped rect is empty.
+        bool naturalViewSize(QSizeF& out) const;
+
         QGraphicsView* m_view;
         QGraphicsItem* m_fitItem=nullptr;
         bool m_fitOnlyIfLarger=true;
@@ -220,6 +243,7 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         qreal m_minZoomFactor=DefaultMinZoomFactor;
         qreal m_maxZoomFactor=DefaultMaxZoomFactor;
         qreal m_pixelsPerNotch=DefaultPixelsPerNotch;
+        qreal m_minDisplayPixels=DefaultMinDisplayPixels;
 
         bool m_panEnabled=true;
         Qt::MouseButtons m_panButtons=Qt::LeftButton;

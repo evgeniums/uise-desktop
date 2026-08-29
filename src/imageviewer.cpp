@@ -186,6 +186,9 @@ ImageViewerWidget::ImageViewerWidget(ImageViewer* ctrl, QWidget* parent)
     // mouse move.
     pimpl->zoom->setCursorManaged(false);
     pimpl->zoom->setPanButtons(Qt::LeftButton|Qt::MiddleButton);
+    // Let zoom-out continue past "fit" down to a small pixel floor instead of stopping there --
+    // see GraphicsViewZoom::setMinDisplayPixels()'s own doc.
+    pimpl->zoom->setMinDisplayPixels(ImageViewerWidget::DefaultMinDisplayPixels);
 
     pimpl->controlsFrame=new QFrame(this);
     pimpl->controlsFrame->setObjectName("controlsFrame");
@@ -661,6 +664,20 @@ int ImageViewerWidget::edgeNavigationZoneWidth() const
 void ImageViewerWidget::setEdgeNavigationZoneWidth(int value)
 {
     pimpl->edgeNavigationZoneWidth=value;
+}
+
+//--------------------------------------------------------------------------
+
+qreal ImageViewerWidget::minDisplayPixels() const
+{
+    return pimpl->zoom->minDisplayPixels();
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewerWidget::setMinDisplayPixels(qreal value)
+{
+    pimpl->zoom->setMinDisplayPixels(value);
 }
 
 //--------------------------------------------------------------------------
@@ -1389,6 +1406,12 @@ void ImageViewer::applyCurrentPixmap()
     if (m_widget->pimpl->imageItem==nullptr)
     {
         m_widget->pimpl->imageItem=m_widget->pimpl->scene->addPixmap(px);
+        // addPixmap() defaults to Qt::FastTransformation (nearest-neighbour); QGraphicsPixmapItem::
+        // paint() sets/clears QPainter::SmoothPixmapTransform straight from this flag, so the
+        // view's own render hints cannot override it. Below "fit" this item can now be scaled down
+        // to minDisplayPixels() (see the constructor's setMinDisplayPixels() call), where nearest-
+        // neighbour looks noticeably worse than at/above fit.
+        m_widget->pimpl->imageItem->setTransformationMode(Qt::SmoothTransformation);
     }
     else
     {

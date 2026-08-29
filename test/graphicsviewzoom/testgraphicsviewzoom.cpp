@@ -124,6 +124,117 @@ BOOST_AUTO_TEST_CASE(TestClamping)
     ViewContainer::runTestCase(steps);
 }
 
+BOOST_AUTO_TEST_CASE(TestMinDisplayPixels)
+{
+    // Test container is 800x600 (TestWidgetContainer's default) -- large enough that a
+    // 2000x1600 item's fit scale is comfortably below 1.0, giving zoomOut() real room to descend
+    // to the pixel floor before hitting DefaultMinZoomFactor.
+    auto init=[](ViewContainerPtr container){
+        auto view=new QGraphicsView();
+        auto scene=new QGraphicsScene(view);
+        view->setScene(scene);
+        scene->addRect(0,0,2000,1600);
+        ViewContainer::beginTestCase(container,view,"Test GraphicsViewZoom minDisplayPixels floor");
+    };
+
+    auto checkFloor=[](ViewContainerPtr container){
+        auto view=container->testWidget;
+        auto items=view->scene()->items();
+        UISE_TEST_REQUIRE(!items.isEmpty());
+
+        GraphicsViewZoom zoom(view);
+        zoom.setFitItem(items.first());
+        zoom.setMinDisplayPixels(200);
+        zoom.fitToItem();
+
+        for (int i=0;i<40;i++)
+        {
+            zoom.zoomOut();
+        }
+
+        // 2000x1600 mapped at fit, then shrunk further to floorScale=200/1600 -- comfortably below
+        // baselineScale() (fit), so isUserZoomed() must be true even though isZoomed() (which only
+        // ever looks ABOVE 1.0) stays false.
+        auto expected=200.0/1600.0;
+        UISE_TEST_CHECK(qAbs(zoom.currentScale()-expected)<0.01);
+        UISE_TEST_CHECK(zoom.zoomFactor()<1.0);
+        UISE_TEST_CHECK(zoom.isUserZoomed());
+        UISE_TEST_CHECK(!zoom.isZoomed());
+    };
+
+    std::vector<std::function<void (ViewContainerPtr container)>> steps={init,checkFloor};
+    ViewContainer::runTestCase(steps);
+}
+
+BOOST_AUTO_TEST_CASE(TestMinDisplayPixelsDisabledByDefault)
+{
+    auto init=[](ViewContainerPtr container){
+        auto view=new QGraphicsView();
+        auto scene=new QGraphicsScene(view);
+        view->setScene(scene);
+        scene->addRect(0,0,2000,1600);
+        ViewContainer::beginTestCase(container,view,"Test GraphicsViewZoom minDisplayPixels opt-in");
+    };
+
+    auto checkDisabled=[](ViewContainerPtr container){
+        auto view=container->testWidget;
+        auto items=view->scene()->items();
+        UISE_TEST_REQUIRE(!items.isEmpty());
+
+        // minDisplayPixels() defaults to 0 (disabled) -- zoomOut() must still bottom out at fit,
+        // exactly as TestClamping already verifies, proving the floor above is really opt-in.
+        GraphicsViewZoom zoom(view);
+        zoom.setFitItem(items.first());
+        zoom.fitToItem();
+
+        for (int i=0;i<40;i++)
+        {
+            zoom.zoomOut();
+        }
+
+        UISE_TEST_CHECK(qAbs(zoom.zoomFactor()-1.0)<0.01);
+        UISE_TEST_CHECK(!zoom.isUserZoomed());
+    };
+
+    std::vector<std::function<void (ViewContainerPtr container)>> steps={init,checkDisabled};
+    ViewContainer::runTestCase(steps);
+}
+
+BOOST_AUTO_TEST_CASE(TestMinDisplayPixelsCappedAtFit)
+{
+    // A 100x80 item is already smaller than minDisplayPixels(100) at fit (fit scale is likely >1
+    // capped to 1.0 by fitOnlyIfLarger, giving a natural on-screen size of exactly 100x80) -- the
+    // floor must never force a zoom IN to reach 100px, so zoomOut() should be unable to go below fit.
+    auto init=[](ViewContainerPtr container){
+        auto view=new QGraphicsView();
+        auto scene=new QGraphicsScene(view);
+        view->setScene(scene);
+        scene->addRect(0,0,100,80);
+        ViewContainer::beginTestCase(container,view,"Test GraphicsViewZoom minDisplayPixels fit cap");
+    };
+
+    auto checkCap=[](ViewContainerPtr container){
+        auto view=container->testWidget;
+        auto items=view->scene()->items();
+        UISE_TEST_REQUIRE(!items.isEmpty());
+
+        GraphicsViewZoom zoom(view);
+        zoom.setFitItem(items.first());
+        zoom.setMinDisplayPixels(100);
+        zoom.fitToItem();
+
+        for (int i=0;i<40;i++)
+        {
+            zoom.zoomOut();
+        }
+
+        UISE_TEST_CHECK(qAbs(zoom.zoomFactor()-1.0)<0.01);
+    };
+
+    std::vector<std::function<void (ViewContainerPtr container)>> steps={init,checkCap};
+    ViewContainer::runTestCase(steps);
+}
+
 BOOST_AUTO_TEST_CASE(TestAnchoring)
 {
     auto init=[](ViewContainerPtr container){

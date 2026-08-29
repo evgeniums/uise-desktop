@@ -57,6 +57,11 @@ class ChatImageViewer_p;
  * the default, mirroring a Telegram album), or a plain, ungrouped neighbourhood of the current
  * image (StripScope::Continuous) -- see setStripScope(). Either way, prev/next always pages across
  * the whole loaded chat, not just the strip's own content.
+ *
+ * The strip's own Preview::key (see previewKeyFor()) lives in a DIFFERENT key space than the image
+ * key clicking it must select -- ChatImageViewer_p::previewToImage is the bridge, rebuilt on every
+ * updateControls() and consulted by selectImageForPreviewKey(), which is what actually answers a
+ * click on a thumbnail.
  */
 class UISE_DESKTOP_EXPORT ChatImageViewer : public ImageViewer
 {
@@ -229,6 +234,13 @@ class UISE_DESKTOP_EXPORT ChatImageViewer : public ImageViewer
     private:
 
         ImagePreviewStrip::Preview makePreview(size_t index) const;
+
+        //! Resolves previewKey through ChatImageViewer_p::previewToImage (the strip's Preview::key
+        //! space is NOT the image key space -- see previewKeyFor()) and selects that image. Silently
+        //! does nothing if the key is not (or no longer) mapped, rather than falling back to image
+        //! 0 the way AbstractImageViewer::selectImage(const PixmapKey&) does -- that fallback exists
+        //! for DirectoryImagesViewer and must not leak into a stale/evicted strip click here.
+        void selectImageForPreviewKey(const PixmapKey& previewKey);
 
         std::unique_ptr<ChatImageViewer_p> pimpl;
 };

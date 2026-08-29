@@ -134,6 +134,34 @@ qreal GraphicsViewZoom::currentScale() const
 
 //--------------------------------------------------------------------------
 
+bool GraphicsViewZoom::naturalViewSize(QSizeF& out) const
+{
+    if (m_view==nullptr || m_fitItem==nullptr || m_view->viewport()==nullptr)
+    {
+        return false;
+    }
+
+    auto s=currentScale();
+
+    // Mapping the item's own (rotation/flip-inclusive, but never zoom-inclusive) scene bounding
+    // rect through the CURRENT transform and dividing back out by the current scale s yields a
+    // result independent of s by construction -- this is what lets both baselineScale() and the
+    // minDisplayPixels() floor serve ImageViewer (rotation lives in the view transform, item itself
+    // unrotated) and SimpleImageEditor (rotation lives in the item group's own transform, view
+    // transform carries only zoom) alike: sceneBoundingRect() already reflects whichever of the two
+    // applies, and mapRect() naturally swaps width/height for a 90-degree rotation either way.
+    auto mapped=m_view->transform().mapRect(m_fitItem->sceneBoundingRect());
+    if (mapped.isEmpty() || qFuzzyIsNull(s))
+    {
+        return false;
+    }
+
+    out=QSizeF(mapped.width()/s,mapped.height()/s);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 qreal GraphicsViewZoom::baselineScale() const
 {
     if (m_view==nullptr || m_fitItem==nullptr || m_view->viewport()==nullptr)
@@ -141,29 +169,24 @@ qreal GraphicsViewZoom::baselineScale() const
         return 1.0;
     }
 
-    auto s=currentScale();
     auto viewportRect=m_view->viewport()->rect();
     if (viewportRect.isEmpty())
     {
         return 1.0;
     }
 
-    // Mapping the item's own (rotation/flip-inclusive, but never zoom-inclusive) scene bounding
-    // rect through the CURRENT transform and comparing against the viewport, then dividing back
-    // out by the current scale s, yields a result independent of s by construction -- this is what
-    // lets baselineScale() serve both ImageViewer (rotation lives in the view transform, item
-    // itself unrotated) and SimpleImageEditor (rotation lives in the item group's own transform,
-    // view transform carries only zoom): sceneBoundingRect() already reflects whichever of the two
-    // applies, and mapRect() naturally swaps width/height for a 90-degree rotation either way.
-    auto mapped=m_view->transform().mapRect(m_fitItem->sceneBoundingRect());
-    if (mapped.isEmpty())
+    QSizeF natural;
+    if (!naturalViewSize(natural))
     {
-        return s;
+        // naturalViewSize() only fails here because the mapped bounding rect is empty (m_view/
+        // m_fitItem/viewport null was already ruled out above) -- same fallback the pre-extraction
+        // code used for that case.
+        return currentScale();
     }
 
-    auto fit=s*std::min(
-        static_cast<qreal>(viewportRect.width())/mapped.width(),
-        static_cast<qreal>(viewportRect.height())/mapped.height()
+    auto fit=std::min(
+        static_cast<qreal>(viewportRect.width())/natural.width(),
+        static_cast<qreal>(viewportRect.height())/natural.height()
     );
     if (m_fitOnlyIfLarger)
     {
@@ -267,6 +290,26 @@ qreal GraphicsViewZoom::clampScale(qreal scale) const
 {
     auto base=baselineScale();
     auto minS=base*m_minZoomFactor;
+
+    if (m_minDisplayPixels>0.0)
+    {
+        QSizeF natural;
+        if (naturalViewSize(natural))
+        {
+            auto naturalMin=std::min(natural.width(),natural.height());
+            if (naturalMin>0.0)
+            {
+                // Lowers minS, never raises it -- a degenerate naturalViewSize() (handled above by
+                // simply not entering this branch) or a naturalMin of 0 leaves today's
+                // minZoomFactor()-relative floor untouched. Capped at base: the pixel floor may only
+                // ever pull the reachable minimum below fit, never push it above fit -- an image
+                // that already displays smaller than minDisplayPixels() at fit must stay at fit,
+                // never be forced to zoom IN to reach the floor.
+                minS=std::min(minS,std::min(m_minDisplayPixels/naturalMin,base));
+            }
+        }
+    }
+
     auto maxS=base*m_maxZoomFactor;
     if (minS>maxS)
     {
@@ -290,6 +333,7 @@ void GraphicsViewZoom::zoomTo(qreal absoluteScale, const QPoint& anchorViewportP
         return;
     }
 
+    auto base=baselineScale();
     auto clamped=clampScale(absoluteScale);
     auto factor=clamped/current;
     if (qFuzzyCompare(factor,1.0))
@@ -317,9 +361,13 @@ void GraphicsViewZoom::zoomTo(qreal absoluteScale, const QPoint& anchorViewportP
     }
     m_view->setTransformationAnchor(oldAnchor);
 
-    // Reflects intent, not just position: a zoom-out step that lands back on the baseline clamp
-    // clears the flag again, same as fitToItem()/resetZoom() would.
-    m_userZoomed=isZoomed();
+    // Reflects intent, not just position: a deliberate zoom OUT below the baseline (reachable once
+    // minDisplayPixels() is set) counts as user-zoomed too, same as a zoom in -- isZoomed() alone
+    // would miss it, which is exactly the regression that would let ImageViewer::fitImage() snap a
+    // deliberate zoom-out back to fit on the next viewport resize or async pixmap upgrade. Compared
+    // against the baseline already computed above (not re-derived from the transform after scale())
+    // to avoid a float round-trip that could flake right at the clamp.
+    m_userZoomed=!qFuzzyIsNull(base) && qAbs(clamped-base)>base*ZoomEpsilon;
 
     emit zoomChanged(zoomFactor());
 }
@@ -422,6 +470,18 @@ void GraphicsViewZoom::setPixelsPerNotch(qreal value) noexcept
 qreal GraphicsViewZoom::pixelsPerNotch() const noexcept
 {
     return m_pixelsPerNotch;
+}
+
+//--------------------------------------------------------------------------
+
+void GraphicsViewZoom::setMinDisplayPixels(qreal value) noexcept
+{
+    m_minDisplayPixels=value;
+}
+
+qreal GraphicsViewZoom::minDisplayPixels() const noexcept
+{
+    return m_minDisplayPixels;
 }
 
 //--------------------------------------------------------------------------

@@ -74,11 +74,13 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         //! (see AbstractImageViewer::setBottomWidget()).
         void currentImageAnimationStateChanged();
 
-        //! Relayed from the internal GraphicsViewZoom helper -- 1.0 means "at fit", above 1.0
-        //! means zoomed in. A host (e.g. ChatImageViewerControls) can use this to grey out its
-        //! zoom-in/zoom-out buttons at the configured limits. GraphicsViewZoom itself is not
-        //! reachable from a subclass: ImageViewerWidget::pimpl is `friend class ImageViewer` only
-        //! and friendship is not inherited (see the class doc on refreshOverlayGeometry()).
+        //! Relayed from the internal GraphicsViewZoom helper -- 1.0 means "at fit", above 1.0 means
+        //! zoomed in. Now also reachable BELOW 1.0: minDisplayPixels() lets zoom-out continue past
+        //! fit, down to (but never below) that pixel floor. A host (e.g. ChatImageViewerControls)
+        //! can use this to grey out its zoom-in/zoom-out buttons at the configured limits.
+        //! GraphicsViewZoom itself is not reachable from a subclass: ImageViewerWidget::pimpl is
+        //! `friend class ImageViewer` only and friendship is not inherited (see the class doc on
+        //! refreshOverlayGeometry()).
         void zoomChanged(qreal zoomFactor);
 
     public slots:
@@ -207,6 +209,11 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         constexpr static const qreal DefaultControlsMaxOpacity=1.0;
         constexpr static const int DefaultEdgeNavigationZoneWidth=96;
 
+        //! Smallest size, in logical view pixels, either dimension of the current image may shrink
+        //! to when zooming out past "fit" -- see GraphicsViewZoom::setMinDisplayPixels(), which this
+        //! is applied to in the constructor.
+        constexpr static const qreal DefaultMinDisplayPixels=100.0;
+
         ImageViewerWidget(ImageViewer* ctrl, QWidget* parent=nullptr);
 
         ~ImageViewerWidget();
@@ -240,6 +247,12 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         //! same as the buttons themselves. See ImageViewerWidget::isInPrevNavigationZone().
         int edgeNavigationZoneWidth() const;
         void setEdgeNavigationZoneWidth(int value);
+
+        //! Forwarded to the internal GraphicsViewZoom helper's setMinDisplayPixels()/
+        //! minDisplayPixels() -- see there for the exact semantics. Defaults to
+        //! DefaultMinDisplayPixels, set in the constructor.
+        qreal minDisplayPixels() const;
+        void setMinDisplayPixels(qreal value);
 
     public slots:
 
