@@ -181,6 +181,19 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         bool isImagesPanelAllowed() const noexcept;
 
         /**
+         * @brief Set the drag-source tag (see dragSourceMimeFormat()) this overlay refuses.
+         * @param tag Typically the host's own chat id. Empty (the default) means no restriction.
+         *
+         * A payload stamped with this exact tag -- i.e. one dragged out of this same host in the
+         * first place, see startFileUrlDrag()'s sourceTag argument -- is refused as if
+         * acceptsMimeData() had returned false: no overlay, no drop, host falls back to the OS's
+         * own no-drop cursor. Every other drag, including one dragged out of a different host,
+         * is unaffected.
+         */
+        void setBlockedDragSourceTag(const QString& tag);
+        const QString& blockedDragSourceTag() const noexcept;
+
+        /**
          * @brief Which pair of panels the two-panel (has-images) layout offers.
          *
          * ImagesMode::DocumentsAndNormal (the default) is the Telegram-style pairing: "Send as
@@ -341,6 +354,7 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void setHoveredPanel(Panel panel);
         Panel panelAt(const QPoint& pos) const;
         void handleDrop(const QMimeData* mimeData, const QPoint& pos);
+        bool isBlockedSource(const QMimeData* mimeData) const;
         void restartLeaveWatchdog();
         void stopLeaveWatchdog();
         void checkPointerLeft();

@@ -69,7 +69,7 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
         void setTextVerticalAlignment(Qt::Alignment alignment) override;
         Qt::Alignment textVerticalAlignment() const override;
 
-        void startItemDrag(const QUuid& id, const QList<QUrl>& urls) override;
+        void startItemDrag(const QUuid& id, const QList<QUrl>& urls, const QString& sourceTag) override;
 
         void clearContentSelection() override;
 

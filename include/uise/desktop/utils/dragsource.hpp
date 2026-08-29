@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPixmap>
 #include <QList>
 #include <QUrl>
+#include <QString>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -94,11 +95,15 @@ class UISE_DESKTOP_EXPORT DragGesture
  *  starts the OS-level drag.
  * @param preview Pixmap shown under the cursor while dragging; may be null, in which case Qt's
  *  own default drag cursor is used.
+ * @param sourceTag Opaque identity of the widget/context this drag originates from, stamped onto
+ *  the mime data as dragSourceMimeFormat() when non-empty. A drop target can compare it back via
+ *  mimeDataDragSourceTag() to refuse a payload it itself produced (e.g. a chat page refusing a
+ *  file dragged out of one of its own messages). Empty by default -- no restriction.
  * @return false, without starting a drag, when urls is empty or the left mouse button is no
  *  longer down (QApplication::mouseButtons()) -- i.e. the user already released while urls was
  *  still being resolved asynchronously. true once QDrag::exec() has returned.
  */
-UISE_DESKTOP_EXPORT bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& preview={});
+UISE_DESKTOP_EXPORT bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& preview={}, const QString& sourceTag={});
 
 UISE_DESKTOP_NAMESPACE_END
 

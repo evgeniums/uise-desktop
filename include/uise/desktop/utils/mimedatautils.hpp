@@ -118,6 +118,28 @@ UISE_DESKTOP_EXPORT const QString& imageFileNameMimeFormat();
  */
 UISE_DESKTOP_EXPORT QString mimeDataImageFileNameHint(const QMimeData* mimeData);
 
+/**
+ * @brief Get the private MIME format used to tag an outgoing drag (see startFileUrlDrag()) with
+ *  an opaque identity of the widget/context it was dragged out of.
+ * @return "application/x-uise-drag-source" -- ignored by every other application, and never
+ *  interpreted by this library: the tag's meaning is entirely up to the caller that set it (e.g.
+ *  a chat's own id), and to the drop target that later compares it back via
+ *  mimeDataDragSourceTag() to refuse a payload it itself produced.
+ *
+ * Not set on a copy->paste round trip -- that goes through imageFileNameMimeFormat() instead --
+ * so a drop target using this to refuse same-origin drags never mistakes a paste for one.
+ */
+UISE_DESKTOP_EXPORT const QString& dragSourceMimeFormat();
+
+/**
+ * @brief Get the drag-source tag mimeData was stamped with, if any.
+ * @param mimeData Payload to inspect; nullptr yields an empty result.
+ * @return The tag set via startFileUrlDrag()'s sourceTag argument, or an empty string when
+ *  mimeData carries no such format (including every drag/drop payload from outside this
+ *  application, and every paste).
+ */
+UISE_DESKTOP_EXPORT QString mimeDataDragSourceTag(const QMimeData* mimeData);
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_MIMEDATAUTILS_HPP

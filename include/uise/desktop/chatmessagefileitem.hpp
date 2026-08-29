@@ -151,8 +151,10 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          * @brief Start an outgoing QDrag carrying urls, using this row's own icon/preview as
          *  the drag pixmap. Called by the owner (ChatMessageFiles) once it has resolved the
          *  urls for dragStartRequested() -- this row never resolves its own content.
+         * @param sourceTag Opaque identity of the chat this drag originates from -- see
+         *  startFileUrlDrag(). Empty means no source restriction.
          */
-        void startDrag(const QList<QUrl>& urls);
+        void startDrag(const QList<QUrl>& urls, const QString& sourceTag);
 
     signals:
 

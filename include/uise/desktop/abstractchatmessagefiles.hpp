@@ -110,11 +110,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          * @param id Id of the item to drag (see ChatFileItem::id()).
          * @param urls Local file URLs already resolved by the host -- this call does not
          *  resolve/export/decrypt anything itself, see dragStartRequested().
+         * @param sourceTag Opaque identity of the chat this drag originates from, forwarded to
+         *  startFileUrlDrag() -- empty means no source restriction.
          *
          * Called by the host once it has resolved urls for that item's dragStartRequested().
          * A no-op if no item with this id is present.
          */
-        virtual void startItemDrag(const QUuid& id, const QList<QUrl>& urls) =0;
+        virtual void startItemDrag(const QUuid& id, const QList<QUrl>& urls, const QString& sourceTag) =0;
 
     protected:
 

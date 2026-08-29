@@ -656,7 +656,7 @@ qreal ChatMessageImages::tileMaxUpscale() const noexcept
 
 //--------------------------------------------------------------------------
 
-void ChatMessageImages::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
+void ChatMessageImages::startItemDrag(const QUuid& id, const QList<QUrl>& urls, const QString& sourceTag)
 {
     // Same linear scan as updateItem() -- tiles are only recreated when the item count changes
     // (rebuildGrid()), so pimpl->tiles[i] is the right tile for pimpl->items[i] at any given time.
@@ -666,7 +666,7 @@ void ChatMessageImages::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
         {
             if (i<pimpl->tiles.size())
             {
-                pimpl->tiles[i]->startDrag(urls);
+                pimpl->tiles[i]->startDrag(urls,sourceTag);
             }
             return;
         }

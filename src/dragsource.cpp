@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QWidget>
 
 #include <uise/desktop/utils/dragsource.hpp>
+#include <uise/desktop/utils/mimedatautils.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -91,7 +92,7 @@ void DragGesture::reset() noexcept
 
 //--------------------------------------------------------------------------
 
-bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& preview)
+bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& preview, const QString& sourceTag)
 {
     if (urls.isEmpty())
     {
@@ -109,6 +110,10 @@ bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& p
     auto* drag=new QDrag(source);
     auto* mimeData=new QMimeData();
     mimeData->setUrls(urls);
+    if (!sourceTag.isEmpty())
+    {
+        mimeData->setData(dragSourceMimeFormat(),sourceTag.toUtf8());
+    }
     drag->setMimeData(mimeData);
     if (!preview.isNull())
     {

@@ -320,7 +320,7 @@ Qt::Alignment ChatMessageFiles::textVerticalAlignment() const
 
 //--------------------------------------------------------------------------
 
-void ChatMessageFiles::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
+void ChatMessageFiles::startItemDrag(const QUuid& id, const QList<QUrl>& urls, const QString& sourceTag)
 {
     // Same linear scan as updateItem() -- items and rows are only kept in step by
     // rebuildList(), see its own comment.
@@ -330,7 +330,7 @@ void ChatMessageFiles::startItemDrag(const QUuid& id, const QList<QUrl>& urls)
         {
             if (i<pimpl->rows.size())
             {
-                pimpl->rows[i]->startDrag(urls);
+                pimpl->rows[i]->startDrag(urls,sourceTag);
             }
             return;
         }

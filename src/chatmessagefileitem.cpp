@@ -517,9 +517,9 @@ bool ChatMessageFileItem::isDragEnabled() const noexcept
 
 //--------------------------------------------------------------------------
 
-void ChatMessageFileItem::startDrag(const QList<QUrl>& urls)
+void ChatMessageFileItem::startDrag(const QList<QUrl>& urls, const QString& sourceTag)
 {
-    startFileUrlDrag(this,urls,grab().scaled(160,160,Qt::KeepAspectRatio,Qt::SmoothTransformation));
+    startFileUrlDrag(this,urls,grab().scaled(160,160,Qt::KeepAspectRatio,Qt::SmoothTransformation),sourceTag);
 }
 
 //--------------------------------------------------------------------------

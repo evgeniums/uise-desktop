@@ -67,6 +67,7 @@ class FileDropOverlay_p
         int leaveWatchdogIntervalMs=FileDropOverlay::DefaultLeaveWatchdogIntervalMs;
         Qt::Orientation panelOrientation=FileDropOverlay::DefaultPanelOrientation;
         FileDropOverlay::ImagesMode imagesMode=FileDropOverlay::DefaultImagesMode;
+        QString blockedDragSourceTag;
 
         QFrame* documentsPanel=nullptr;
         RoundedImage* documentsIcon=nullptr;
@@ -308,6 +309,28 @@ void FileDropOverlay::setImagesPanelAllowed(bool enable)
 bool FileDropOverlay::isImagesPanelAllowed() const noexcept
 {
     return pimpl->imagesPanelAllowed;
+}
+
+//--------------------------------------------------------------------------
+
+void FileDropOverlay::setBlockedDragSourceTag(const QString& tag)
+{
+    pimpl->blockedDragSourceTag=tag;
+}
+
+//--------------------------------------------------------------------------
+
+const QString& FileDropOverlay::blockedDragSourceTag() const noexcept
+{
+    return pimpl->blockedDragSourceTag;
+}
+
+//--------------------------------------------------------------------------
+
+bool FileDropOverlay::isBlockedSource(const QMimeData* mimeData) const
+{
+    return !pimpl->blockedDragSourceTag.isEmpty()
+        && mimeDataDragSourceTag(mimeData)==pimpl->blockedDragSourceTag;
 }
 
 //--------------------------------------------------------------------------
@@ -610,6 +633,15 @@ bool FileDropOverlay::acceptsMimeData(const QMimeData* mimeData)
 
 void FileDropOverlay::showForMimeData(const QMimeData* mimeData)
 {
+    if (isBlockedSource(mimeData))
+    {
+        // Belt-and-braces: the two normal gates (eventFilter's DragEnter case and this widget's
+        // own dragEnterEvent()) already refuse before this is ever reached in the autoShow path,
+        // but a consumer driving the overlay manually (setAutoShow(false)) calls this directly,
+        // so the block must hold here too.
+        return;
+    }
+
     pimpl->hasImages=pimpl->imagesPanelAllowed && mimeDataHasImages(mimeData);
     setHoveredPanel(Panel::None);
     updatePanels();
@@ -880,7 +912,7 @@ bool FileDropOverlay::eventFilter(QObject* watched, QEvent* event)
             if (pimpl->autoShow)
             {
                 auto* dragEvent=static_cast<QDragEnterEvent*>(event);
-                if (acceptsMimeData(dragEvent->mimeData()))
+                if (acceptsMimeData(dragEvent->mimeData()) && !isBlockedSource(dragEvent->mimeData()))
                 {
                     dragEvent->acceptProposedAction();
                     showForMimeData(dragEvent->mimeData());
@@ -942,7 +974,7 @@ bool FileDropOverlay::eventFilter(QObject* watched, QEvent* event)
 
 void FileDropOverlay::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (acceptsMimeData(event->mimeData()))
+    if (acceptsMimeData(event->mimeData()) && !isBlockedSource(event->mimeData()))
     {
         event->acceptProposedAction();
         if (!pimpl->active)

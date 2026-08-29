@@ -271,4 +271,24 @@ QString mimeDataImageFileNameHint(const QMimeData* mimeData)
 
 //--------------------------------------------------------------------------
 
+const QString& dragSourceMimeFormat()
+{
+    static const QString format=QStringLiteral("application/x-uise-drag-source");
+    return format;
+}
+
+//--------------------------------------------------------------------------
+
+QString mimeDataDragSourceTag(const QMimeData* mimeData)
+{
+    if (mimeData==nullptr || !mimeData->hasFormat(dragSourceMimeFormat()))
+    {
+        return QString();
+    }
+
+    return QString::fromUtf8(mimeData->data(dragSourceMimeFormat()));
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

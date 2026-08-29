@@ -416,7 +416,7 @@ bool ChatMessageImageItem::isDragEnabled() const noexcept
 
 //--------------------------------------------------------------------------
 
-void ChatMessageImageItem::startDrag(const QList<QUrl>& urls)
+void ChatMessageImageItem::startDrag(const QList<QUrl>& urls, const QString& sourceTag)
 {
     // A placeholder is a stand-in for content that hasn't resolved yet -- not worth using as a
     // drag pixmap; Qt's own default drag cursor is a better signal than a blurry placeholder.
@@ -425,7 +425,7 @@ void ChatMessageImageItem::startDrag(const QList<QUrl>& urls)
     {
         preview=scaledToFit(QPixmap::fromImage(pimpl->item.preview()),QSize(160,160));
     }
-    startFileUrlDrag(this,urls,preview);
+    startFileUrlDrag(this,urls,preview,sourceTag);
 }
 
 //--------------------------------------------------------------------------
