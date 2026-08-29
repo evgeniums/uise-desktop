@@ -49,7 +49,7 @@ const int TileSize=120;
 
 QString sizeStyle(int size)
 {
-    return QString("QLabel{min-width:%1px;max-width:%1px;min-height:%1px;max-height:%1px;}").arg(size);
+    return QString("uise--ImageLabel{min-width:%1px;max-width:%1px;min-height:%1px;max-height:%1px;}").arg(size);
 }
 
 const char* AnimatedAsset=":/uise/desktop/demo/imagelabel/assets/animated.gif";

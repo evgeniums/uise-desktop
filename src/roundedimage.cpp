@@ -42,7 +42,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 //--------------------------------------------------------------------------
 
 RoundedImage::RoundedImage(QWidget *parent, Qt::WindowFlags f)
-    : QLabel(parent,f),
+    : QFrame(parent,f),
       m_pixmapConsumer(nullptr),
       m_prevPixmapConsumer(nullptr),
       m_autoSize(true),
@@ -100,6 +100,14 @@ void RoundedImage::setImageSize(
     m_size=size * pixelRatio;
     setFixedSize(size);
     createPixmapConsumer();
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::setPixmap(const QPixmap& pixmap)
+{
+    m_pixmap=pixmap;
+    update();
 }
 
 //--------------------------------------------------------------------------
@@ -393,7 +401,7 @@ void RoundedImage::leaveEvent(QEvent* event)
 
 void RoundedImage::changeEvent(QEvent* event)
 {
-    QLabel::changeEvent(event);
+    QFrame::changeEvent(event);
 
     // When the effective style changes (e.g. a QSS repolish applied min/max-width
     // after this widget was inserted into the tree), the size derived from

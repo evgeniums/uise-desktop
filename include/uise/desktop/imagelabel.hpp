@@ -56,7 +56,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
  * animationMode() (which can force a still image, gate playback on hover, or hand playback to
  * explicit play()/pause()/stop() calls).
  *
- * Static content still goes through the base RoundedImage rendering (QLabel::pixmap(), the
+ * Static content still goes through the base RoundedImage rendering (RoundedImage::pixmap(), the
  * inherited setSvgIcon() fallback, or an inherited PixmapSource via setImageSource()) -- this
  * class only adds a second, self-contained path for animated content and never touches
  * PixmapSource/PixmapProducer.
@@ -118,7 +118,7 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
          */
         bool setImageData(const QByteArray& data, const QByteArray& format={});
 
-        //! Drop all loaded content (movie, buffer, cached frames and the underlying QLabel pixmap).
+        //! Drop all loaded content (movie, buffer, cached frames and the underlying RoundedImage pixmap).
         void clearImage();
 
         //! File name passed to setImageFile(), empty when content came from setImageData() or none is loaded.
@@ -254,12 +254,12 @@ class UISE_DESKTOP_EXPORT ImageLabel : public RoundedImage
          * @brief Set an opacity multiplier applied when painting ANIMATED content, default 1.0.
          *
          * Meaningful only while isAnimated() -- static content is painted via the inherited
-         * RoundedImage/QLabel pixmap path (see paintEvent()), which callers instead control by
+         * RoundedImage pixmap path (see paintEvent()), which callers instead control by
          * baking opacity into the pixmap they pass to setPixmap() (RoundedImage has no comparable
          * per-instance opacity property, by design -- see roundedimage.hpp). This exists because
          * that baked-pixmap approach cannot work for animated content: ImageLabel's animated paint
-         * path never chains through QLabel::pixmap(), so there is no pixmap to bake it into (see
-         * ImagePreviewStrip::applyItemOpacity(), the motivating caller).
+         * path never chains through RoundedImage::pixmap(), so there is no pixmap to bake it into
+         * (see ImagePreviewStrip::applyItemOpacity(), the motivating caller).
          */
         void setContentOpacity(qreal opacity) noexcept
         {

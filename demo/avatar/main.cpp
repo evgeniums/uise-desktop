@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
             auto size=sizes.at(j);
 
             auto img=new AvatarWidget(avatarsFrame);
-            QString style=QString("QLabel{min-width:%1;max-width:%1;min-height:%1;max-height:%1;}").arg(size.height());
+            QString style=QString("uise--AvatarWidget{min-width:%1;max-width:%1;min-height:%1;max-height:%1;}").arg(size.height());
             img->setStyleSheet(style);
             if (i!=3 && i!=4)
             {

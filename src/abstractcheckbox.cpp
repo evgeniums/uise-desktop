@@ -624,8 +624,8 @@ void AbstractCheckBox::paintEvent(QPaintEvent* /*event*/)
     // auto-sets WA_StyledBackground for QFrame/QDialog/QMainWindow/... -- QAbstractButton is
     // NOT in that list, so without this handler a QSS background-color/border on
     // uise--CheckBox itself would never be drawn. The indicator parts need no equivalent:
-    // they are QFrames (RoundedImage included, it derives from QLabel which derives from
-    // QFrame), which Qt's stylesheet engine already draws via CE_ShapedFrame.
+    // they are QFrames (RoundedImage included, which derives from QFrame), which Qt's
+    // stylesheet engine already draws via CE_ShapedFrame.
     //
     // State_On/State_Off/State_Sunken are set by hand because QStyleOption::initFrom() only
     // fills the generic bits (enabled/focus/mouse-over) -- adding them here is what makes
