@@ -62,8 +62,16 @@ enum class ChatFileTransferState : uint8_t
     Complete,    //!< This item's own transfer just finished while sibling items in the same
                  //!< message have not -- once every item is done, the caller hides the load
                  //!< control entirely rather than leaving it in this state.
-    Cancelled    //!< Transfer cancelled by the user -- deliberately distinct from Failed: this
+    Cancelled,   //!< Transfer cancelled by the user -- deliberately distinct from Failed: this
                  //!< was on purpose, not an error, so no retry affordance is offered for it.
+    Unresolved   //!< Local storage state not queried yet -- unlike NotLoaded, this is NOT a claim
+                 //!< that the content is missing, just that nothing has answered either way. No
+                 //!< load control is shown (same as Ready): showing a download affordance before
+                 //!< knowing one is needed is a wrong-glyph flicker for the common case of an
+                 //!< already-downloaded file. Appended at the end so Ready stays 0 and every
+                 //!< existing value keeps its number. Kept last (not terminal, see
+                 //!< isTerminalChatFileState()) until the caller resolves it to Ready/NotLoaded/
+                 //!< Failed.
 };
 
 /**

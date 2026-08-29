@@ -109,13 +109,14 @@ AbstractLoadControl::State chatFileLoadControlState(ChatFileTransferState state,
         break;
 
         case (ChatFileTransferState::Ready):
+        case (ChatFileTransferState::Unresolved):
         {
         }
         break;
     }
 
-    // Ready has no load control at all -- the caller must hide it rather than map it to a
-    // state; None is returned only as a harmless default for that case.
+    // Ready/Unresolved have no load control at all -- the caller must hide it rather than map
+    // it to a state; None is returned only as a harmless default for those cases.
     return AbstractLoadControl::State::None;
 }
 
@@ -135,6 +136,7 @@ bool isChatFileCancellable(ChatFileTransferState state) noexcept
         case (ChatFileTransferState::NotLoaded):
         case (ChatFileTransferState::Complete):
         case (ChatFileTransferState::Cancelled):
+        case (ChatFileTransferState::Unresolved):
             return false;
     }
 
@@ -145,7 +147,9 @@ bool isChatFileCancellable(ChatFileTransferState state) noexcept
 
 bool isChatFileLoadControlClickable(ChatFileTransferState state) noexcept
 {
-    return state!=ChatFileTransferState::Failed && state!=ChatFileTransferState::Cancelled;
+    return state!=ChatFileTransferState::Failed
+        && state!=ChatFileTransferState::Cancelled
+        && state!=ChatFileTransferState::Unresolved;
 }
 
 //--------------------------------------------------------------------------

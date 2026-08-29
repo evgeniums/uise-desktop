@@ -538,7 +538,13 @@ void ChatMessageFileItem::rebuildMenu()
 void ChatMessageFileItem::updateIconSlot()
 {
     const auto& it=pimpl->item;
-    const auto ready=(it.state()==ChatFileTransferState::Ready);
+    // Unresolved is treated the same as Ready here -- neither has a load control to show, they
+    // differ only in what state a later refresh() may resolve to. Showing a download affordance
+    // before the caller even knows one is needed is exactly the wrong-glyph flicker this state
+    // exists to avoid; while unresolved this row renders its plain identity (type icon / image
+    // preview) like any already-available item.
+    const auto ready=(it.state()==ChatFileTransferState::Ready
+                       || it.state()==ChatFileTransferState::Unresolved);
 
     pimpl->fileIcon->setVisible(false);
     pimpl->imagePreview->setVisible(false);

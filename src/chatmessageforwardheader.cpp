@@ -196,20 +196,31 @@ int ChatMessageForwardHeader::bubbleWidthHint(int forMaxWidth)
         return 0;
     }
 
+    // isVisibleTo(this), NOT isVisible() -- a message widget is built detached (makeMessage()
+    // only ensurePolished()es it, never shows it) and negotiated via this very call before it is
+    // ever inserted into the visible tree. QWidget::isVisible() is false whenever ANY ancestor is
+    // hidden, so at that point every label here reports false regardless of setVisible(), and
+    // this header contributed only its margins -- the bubble was sized from the body alone, then
+    // visibly grew once a later negotiation (post-insertion resize) saw the labels as visible.
+    // isVisibleTo(this) reports what visibility would be if this widget itself were shown,
+    // independent of ancestor state, so it agrees with setVisible() from the very first call.
     int textWidth=0;
-    if (pimpl->prefixLabel->isVisible())
+    if (pimpl->prefixLabel->isVisibleTo(this))
     {
         textWidth+=pimpl->prefixLabel->widthHint();
     }
-    if (pimpl->authorLabel->isVisible())
+    if (pimpl->authorLabel->isVisibleTo(this))
     {
         textWidth+=pimpl->authorLabel->widthHint();
     }
-    if (pimpl->suffixLabel->isVisible())
+    if (pimpl->suffixLabel->isVisibleTo(this))
     {
         textWidth+=pimpl->suffixLabel->widthHint();
     }
 
+    // Note: no layout spacing term is added between the three labels above -- correct only
+    // because Layout::horizontal() zeroes margins/spacing (Layout::create()); any spacing added
+    // to this row later would silently under-measure the header.
     auto avail=forMaxWidth-horizontalTotalMargin(this);
     auto natural=qMin(textWidth,pimpl->maxWidthHint);
     natural=qMin(natural,avail);
