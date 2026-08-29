@@ -95,6 +95,7 @@ qproperty-hideDelayMs: 1200;
 qproperty-fadeInDurationMs: 150;
 qproperty-fadeOutDurationMs: 300;
 qproperty-topOffset: 0;
+qproperty-occlusionMargin: 4;
 background-color: transparent;
 border: none;
 }

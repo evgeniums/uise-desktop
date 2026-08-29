@@ -62,6 +62,14 @@ class ChatDateSubtitle_p
 
         State state=State::Hidden;
 
+        //! Whether the current scroll session wants the pill on screen, independent of whether
+        //! it is currently suppressed by occlusion (see `occluded` below).
+        bool scrollActive=false;
+
+        //! Whether an inline date separator is currently overlapping the pill (see
+        //! ChatDateSubtitle::setOccluded()).
+        bool occluded=false;
+
         QDateTime dateTime;
         qreal opacity=0.0;
 
@@ -71,6 +79,7 @@ class ChatDateSubtitle_p
         int fadeOutDurationMs=ChatDateSubtitle::DefaultFadeOutDurationMs;
         int topOffset=ChatDateSubtitle::DefaultTopOffset;
         qreal maxOpacity=ChatDateSubtitle::DefaultMaxOpacity;
+        int occlusionMargin=ChatDateSubtitle::DefaultOcclusionMargin;
 
         QPointer<QWidget> filterInstalledOn;
 };
@@ -280,20 +289,49 @@ void ChatDateSubtitle::setSubtitleOpacity(qreal value)
 
 //--------------------------------------------------------------------------
 
+int ChatDateSubtitle::occlusionMargin() const
+{
+    return pimpl->occlusionMargin;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatDateSubtitle::setOcclusionMargin(int value)
+{
+    pimpl->occlusionMargin=value;
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatDateSubtitle::isOccluded() const
+{
+    return pimpl->occluded;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatDateSubtitle::notifyScrolled()
 {
-    if (pimpl->state==ChatDateSubtitle_p::State::Hidden)
+    if (!pimpl->scrollActive)
     {
-        pimpl->showTimer->shot(
-            static_cast<size_t>(showDelayMs()),
-            [this](){fadeIn();},
-            false
-        );
-    }
-    else if (pimpl->state==ChatDateSubtitle_p::State::FadingOut)
-    {
-        pimpl->showTimer->cancel();
-        fadeIn();
+        if (pimpl->state==ChatDateSubtitle_p::State::FadingOut)
+        {
+            pimpl->showTimer->cancel();
+            pimpl->scrollActive=true;
+            fadeIn();
+        }
+        else
+        {
+            pimpl->showTimer->shot(
+                static_cast<size_t>(showDelayMs()),
+                [this]()
+                {
+                    pimpl->scrollActive=true;
+                    fadeIn();
+                },
+                false
+            );
+        }
     }
 
     hideDelayed();
@@ -305,7 +343,11 @@ void ChatDateSubtitle::hideDelayed()
 {
     pimpl->hideTimer->shot(
         static_cast<size_t>(hideDelayMs()),
-        [this](){fadeOut();},
+        [this]()
+        {
+            pimpl->scrollActive=false;
+            fadeOut();
+        },
         true
     );
 }
@@ -319,14 +361,62 @@ void ChatDateSubtitle::hideNow()
     pimpl->animation->stop();
 
     pimpl->state=ChatDateSubtitle_p::State::Hidden;
+    pimpl->scrollActive=false;
+    pimpl->occluded=false;
     setSubtitleOpacity(0.0);
     setVisible(false);
 }
 
 //--------------------------------------------------------------------------
 
+void ChatDateSubtitle::setOccluded(bool enable)
+{
+    if (pimpl->occluded==enable)
+    {
+        return;
+    }
+    pimpl->occluded=enable;
+
+    if (enable)
+    {
+        // Note: showTimer is deliberately left alone here -- it may be the initial-appearance
+        // timer from notifyScrolled(), whose handler also flips scrollActive to true; cancelling
+        // it would lose that bookkeeping. fadeIn() already no-ops while occluded, so a pending
+        // timer firing during occlusion has no visible effect.
+        pimpl->animation->stop();
+        pimpl->state=ChatDateSubtitle_p::State::Hidden;
+        setSubtitleOpacity(0.0);
+        setVisible(false);
+    }
+    else if (pimpl->scrollActive)
+    {
+        // Same show delay/fade used for a session's very first reveal, rather than popping the
+        // pill back in the instant the inline separator clears it -- avoids the two pills
+        // visually "swapping" on the same frame. Re-checks scrollActive at fire time: the scroll
+        // session may have ended (hideTimer already fired) while this was pending.
+        pimpl->showTimer->shot(
+            static_cast<size_t>(showDelayMs()),
+            [this]()
+            {
+                if (pimpl->scrollActive)
+                {
+                    fadeIn();
+                }
+            },
+            false
+        );
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatDateSubtitle::fadeIn()
 {
+    if (pimpl->occluded)
+    {
+        return;
+    }
+
     pimpl->state=ChatDateSubtitle_p::State::FadingIn;
 
     setVisible(true);
@@ -344,6 +434,12 @@ void ChatDateSubtitle::fadeIn()
 
 void ChatDateSubtitle::fadeOut()
 {
+    if (pimpl->state==ChatDateSubtitle_p::State::Hidden ||
+        pimpl->state==ChatDateSubtitle_p::State::FadingOut)
+    {
+        return;
+    }
+
     pimpl->state=ChatDateSubtitle_p::State::FadingOut;
 
     pimpl->animation->stop();

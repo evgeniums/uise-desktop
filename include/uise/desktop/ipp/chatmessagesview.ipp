@@ -361,6 +361,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             if (m_dateSubtitleEnabled)
             {
                 updateDateSubtitleText();
+                updateDateSubtitleOcclusion();
             }
 
             emit viewportUpdated();
@@ -1322,6 +1323,7 @@ void ChatMessagesView<BaseMessageT,Traits>::onUserScrolled()
     }
 
     updateDateSubtitleText();
+    updateDateSubtitleOcclusion();
     m_dateSubtitle->notifyScrolled();
 }
 
@@ -1339,6 +1341,78 @@ void ChatMessagesView<BaseMessageT,Traits>::updateDateSubtitleText()
     auto dt=item->item()->msg()->dateTime();
     bool withYear=dt.date().year()!=QDate::currentDate().year();
     m_dateSubtitle->setDateTime(dt,withYear);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateDateSubtitleOcclusion()
+{
+    if (!m_dateSubtitleEnabled)
+    {
+        return;
+    }
+
+    // The subtitle's own rect, inflated by its configured slack. Kept current even while the
+    // pill itself is hidden -- updateDateSubtitleText() above already repositioned it for the
+    // current topmost message before this runs.
+    auto* subtitlePill=m_dateSubtitle->section()!=nullptr
+                            ? m_dateSubtitle->section()->clickableWidget()
+                            : nullptr;
+    if (subtitlePill==nullptr)
+    {
+        return;
+    }
+
+    auto margin=m_dateSubtitle->occlusionMargin();
+    auto subtitleTopLeft=subtitlePill->mapToGlobal(QPoint{0,0});
+    QRect subtitleRect{subtitleTopLeft,subtitlePill->size()};
+    subtitleRect.adjust(0,-margin,0,margin);
+
+    bool occluded=false;
+    auto* viewportFrame=m_listView->viewportFrame();
+
+    m_listView->eachItem(
+        [&occluded,&subtitleRect,viewportFrame](const auto* item) -> bool
+        {
+            auto* sep=item->item()->ui()->topSeparator();
+            if (sep==nullptr)
+            {
+                return true;
+            }
+
+            auto* dateSection=sep->section(AbstractChatSeparatorSection::TypeDate);
+            if (dateSection==nullptr || !dateSection->isVisibleTo(viewportFrame))
+            {
+                return true;
+            }
+
+            auto* pill=dateSection->clickableWidget();
+            if (pill==nullptr)
+            {
+                pill=dateSection;
+            }
+
+            auto pillTopLeft=pill->mapToGlobal(QPoint{0,0});
+            QRect pillRect{pillTopLeft,pill->size()};
+
+            if (pillRect.top()>subtitleRect.bottom())
+            {
+                // Items are visited top to bottom -- nothing further down can overlap either.
+                return false;
+            }
+
+            if (pillRect.intersects(subtitleRect))
+            {
+                occluded=true;
+                return false;
+            }
+
+            return true;
+        }
+    );
+
+    m_dateSubtitle->setOccluded(occluded);
 }
 
 //--------------------------------------------------------------------------

@@ -409,6 +409,7 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void onUserScrolled();
         void updateDateSubtitleText();
+        void updateDateSubtitleOcclusion();
 };
 
 UISE_DESKTOP_NAMESPACE_END

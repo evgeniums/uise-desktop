@@ -55,6 +55,13 @@ class ChatDateSubtitle_p;
  * @note The reused section widget is never attached to a chat message (setChatMessage() is never
  * called on it), so a custom AbstractChatSeparatorSection implementation registered in the widget
  * factory must not dereference chatMessage().
+ *
+ * In addition to the scroll-driven fade, the subtitle can be temporarily hidden via
+ * setOccluded(true) -- used by the embedding view to hide the floating pill for as long as it
+ * would otherwise visually overlap an inline date separator's own pill scrolling past underneath
+ * it. Occlusion is independent of (and does not reset) the current scroll session: setOccluded()
+ * shows/hides the widget instantly (no fade animation), and once un-occluded the pill reappears
+ * immediately if the scroll session that would have kept it visible is still active.
  */
 class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
 {
@@ -67,6 +74,7 @@ class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
     Q_PROPERTY(int topOffset READ topOffset WRITE setTopOffset)
     Q_PROPERTY(qreal maxOpacity READ maxOpacity WRITE setMaxOpacity)
     Q_PROPERTY(qreal subtitleOpacity READ subtitleOpacity WRITE setSubtitleOpacity)
+    Q_PROPERTY(int occlusionMargin READ occlusionMargin WRITE setOcclusionMargin)
 
     public:
 
@@ -76,6 +84,7 @@ class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
         constexpr static const int DefaultFadeOutDurationMs=300;
         constexpr static const int DefaultTopOffset=0;
         constexpr static const qreal DefaultMaxOpacity=1.0;
+        constexpr static const int DefaultOcclusionMargin=4;
 
         explicit ChatDateSubtitle(QWidget* parent=nullptr);
 
@@ -132,6 +141,15 @@ class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
         qreal subtitleOpacity() const;
         void setSubtitleOpacity(qreal value);
 
+        //! @brief Extra vertical slack (px) an embedder adds around the pill's own rect when
+        //! testing it for overlap with an inline date separator, so the two pills never end up
+        //! rendered edge-to-edge right before/after occlusion.
+        int occlusionMargin() const;
+        void setOcclusionMargin(int value);
+
+        //! @brief Whether the pill is currently suppressed by setOccluded(true).
+        bool isOccluded() const;
+
     public slots:
 
         /**
@@ -150,6 +168,17 @@ class UISE_DESKTOP_EXPORT ChatDateSubtitle : public WidgetQFrame
          * @brief Cancel any pending timers/animation and hide immediately.
          */
         void hideNow();
+
+        /**
+         * @brief Hide/show the pill instantly (no fade) because an inline date separator is/is
+         * not currently overlapping it.
+         *
+         * While occluded, a pending show-timer fade-in is suppressed and does not reveal the
+         * pill. Unlike hideNow(), this does not cancel the show/hide timers or end the current
+         * scroll session -- un-occluding while that session is still active restores the pill
+         * immediately.
+         */
+        void setOccluded(bool enable);
 
     signals:
 
