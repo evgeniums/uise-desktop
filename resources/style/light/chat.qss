@@ -2,7 +2,7 @@ uise--AbstractChatMessagesView,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
 {
-background-color: #8BBB92 /*#2A835F*/; /* chat background */
+background-color: #8BBB92; /* chat background */
 }
 
 uise--AbstractChatMessageContent,
@@ -65,7 +65,7 @@ color: #1e6091;
 
 uise--ChatSeparatorSection uise--AvatarButton,
 uise--ChatSeparatorSection[separator_type="unread"]{
-background-color: rgba(255, 255, 255, 0.7)/*#98E8DE*/ /*C7D3C0*//*EEF1E6*/;
+background-color: rgba(255, 255, 255, 0.35);
 }
 
 uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
