@@ -154,6 +154,10 @@ UISE_TEST_NAMESPACE_END
     { UISE_TEST_TS \
     BOOST_CHECK_GE(Val1,Val2); }
 
+#define UISE_TEST_CHECK_LE(Val1,Val2) \
+{ UISE_TEST_TS \
+        BOOST_CHECK_LE(Val1,Val2); }
+
 #define UISE_TEST_CHECK_GT(Val1,Val2) \
     { UISE_TEST_TS \
     BOOST_CHECK_GE(Val1,Val2); }
