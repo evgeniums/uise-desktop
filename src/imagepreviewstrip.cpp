@@ -694,7 +694,7 @@ void ImagePreviewStrip::applyItemOpacity(size_t index)
     if (entry.widget->isAnimated())
     {
         // Animated content paints its own decoded frames (see ImageLabel::paintEvent()), a path
-        // that never chains through RoundedImage's QLabel::pixmap()-based paint -- so opacity has
+        // that never chains through RoundedImage's pixmap()-based paint -- so opacity has
         // to be applied via ImageLabel::setContentOpacity() instead of being baked into a pixmap
         // handed to setPixmap(), as the static branch below does.
         entry.widget->setContentOpacity(qMax(0.0,entry.opacity));

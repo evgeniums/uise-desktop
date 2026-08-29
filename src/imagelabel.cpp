@@ -170,7 +170,7 @@ void ImageLabel::resetContent()
     m_paintFrame=QPixmap{};
     m_frameDirty=false;
 
-    QLabel::setPixmap(QPixmap{});
+    RoundedImage::setPixmap(QPixmap{});
 }
 
 //--------------------------------------------------------------------------
@@ -236,7 +236,7 @@ void ImageLabel::rebuildStills()
     if (!m_animator->isAnimated())
     {
         m_paintFrame=m_stillFrame;
-        QLabel::setPixmap(m_stillFrame);
+        RoundedImage::setPixmap(m_stillFrame);
     }
 }
 
