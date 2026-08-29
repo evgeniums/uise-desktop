@@ -78,13 +78,17 @@ int EditablePanelGrid::addRow(const QString& label, std::vector<Item> items, con
         commentWidget=new Label(comment);
         commentWidget->setObjectName("panelComment");
         commentWidget->setWordWrap(true);
+        // Span the comment across every column the row's own widgets occupy (not
+        // items.size(), which undercounts as soon as an item's own columnSpan>1,
+        // e.g. a label-less checkbox spanning both columns -- that left the comment
+        // confined to a single column and wrapping far too early).
         if (label.isEmpty())
         {
-            m_layout->addWidget(commentWidget,count,0,1,items.size());
+            m_layout->addWidget(commentWidget,count,0,1,column);
         }
         else
         {
-            m_layout->addWidget(commentWidget,count,1,1,items.size());
+            m_layout->addWidget(commentWidget,count,1,1,column-1);
         }
         ++count;
     }
