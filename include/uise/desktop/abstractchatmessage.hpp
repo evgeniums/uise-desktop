@@ -327,6 +327,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageComment : public ChatMessageContent
         //! See AbstractChatMessageBody::setCopyable().
         virtual void setCopyable(bool enable) {std::ignore=enable;}
 
+        //! See AbstractChatMessageBody::setOwnContextMenuEnabled().
+        virtual void setOwnContextMenuEnabled(bool enable) {std::ignore=enable;}
+
         //! See AbstractChatMessageBody::selectText().
         virtual void selectText(const QString& /*text*/) {}
 
@@ -373,6 +376,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          *  ChatMessageImages forward to their optional comment, if any.
          */
         virtual void setCopyable(bool enable) {std::ignore=enable;}
+
+        /**
+         * @brief Suppress this body's own built-in Copy/Select All context menu.
+         * @param enable On by default -- a host showing this body's own message-level context
+         *  menu instead (e.g. a static preview bubble embedded in a dialog, which offers its own
+         *  reduced "Copy selected text"/"Clear selection" menu) turns this off so the two menus
+         *  don't compete over the same right-click. Independent of setCopyable(): with this off,
+         *  the body stays focusable/selectable (Ctrl+C still works), it just never pops its own
+         *  menu. No-op for a body with no text at all (ChatMessageCall); ChatMessageFiles/
+         *  ChatMessageImages forward to their optional comment, if any -- same forwarding pattern
+         *  as setCopyable() above.
+         */
+        virtual void setOwnContextMenuEnabled(bool enable) {std::ignore=enable;}
 
         /**
          * @brief Select the first occurrence of `text` within this body's own content, if any.
@@ -491,6 +507,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             m_comment=comment;
             rebuildSections();
             updateWidgets();
+            wireSelectionExclusivity();
         }
 
         /**
@@ -541,6 +558,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             m_comment=comment;
             rebuildSections();
             updateWidgets();
+            wireSelectionExclusivity();
             // See setReply()'s identical re-application and setSelected()'s doc comment for why.
             if (m_comment!=nullptr)
             {
@@ -682,14 +700,77 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! second run reachable, so this clears first.
         void rebuildSections();
 
+        //! Body and comment are two independent text widgets (see AbstractChatMessageComment's
+        //! own class doc comment on why comment is a sibling of body, not a subclass) -- without
+        //! this, both could hold a live selection at once and a quote would silently come out as
+        //! "body text\ncomment text" (see ChatMessage::selectedText()'s join). Connects each
+        //! section's selectionChanged so that acquiring a NEW selection in one clears the other,
+        //! matching how ChatMessagesView::clearOtherContentsSelection() already treats selection
+        //! as one-at-a-time across whole messages. Re-run (and so re-wired against the current
+        //! m_body/m_comment) by setWidgets() and setComment() -- setReply() never touches either,
+        //! so it has no need to call this.
+        void wireSelectionExclusivity()
+        {
+            if (m_body==nullptr || m_comment==nullptr)
+            {
+                return;
+            }
+            // setComment() can re-run this later against an UNCHANGED body (only the comment
+            // section itself was replaced/reattached) -- guard against piling up a fresh pair of
+            // connections on that same body every time, which would fire the (harmlessly
+            // idempotent, but pointless) clear callback multiple times per selection change.
+            if (m_body==m_wiredSelectionBody && m_comment==m_wiredSelectionComment)
+            {
+                return;
+            }
+            m_wiredSelectionBody=m_body;
+            m_wiredSelectionComment=m_comment;
+            connect(m_body,&AbstractChatMessageBody::selectionChanged,this,
+                [this]()
+                {
+                    if (m_clearingSelection || m_body==nullptr || m_comment==nullptr)
+                    {
+                        return;
+                    }
+                    if (!m_body->selectedText().isEmpty())
+                    {
+                        m_clearingSelection=true;
+                        m_comment->clearContentSelection();
+                        m_clearingSelection=false;
+                    }
+                }
+            );
+            connect(m_comment,&AbstractChatMessageComment::selectionChanged,this,
+                [this]()
+                {
+                    if (m_clearingSelection || m_body==nullptr || m_comment==nullptr)
+                    {
+                        return;
+                    }
+                    if (!m_comment->selectedText().isEmpty())
+                    {
+                        m_clearingSelection=true;
+                        m_body->clearContentSelection();
+                        m_clearingSelection=false;
+                    }
+                }
+            );
+        }
+
         QPointer<AbstractChatMessageHeader> m_header=nullptr;
         QPointer<AbstractChatMessageReply> m_reply=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
         QPointer<AbstractChatMessageComment> m_comment=nullptr;
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
 
+        //! The (body, comment) pair wireSelectionExclusivity() last connected -- see its own doc
+        //! comment.
+        QPointer<AbstractChatMessageBody> m_wiredSelectionBody=nullptr;
+        QPointer<AbstractChatMessageComment> m_wiredSelectionComment=nullptr;
+
         bool m_selected=false;
         bool m_sent=false;
+        bool m_clearingSelection=false;
 
         std::vector<ChatMessageContentSection*> m_sections;
         int m_maximumBubbleWidth=0;

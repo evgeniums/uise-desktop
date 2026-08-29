@@ -204,6 +204,17 @@ void ReplyDialog::setMessage(AbstractChatMessage* message)
             // AbstractChatMessageBody::setCopyable()'s own doc comment.
             body->setCopyable(true);
         }
+
+        // Same wiring, for a forwarded message's own comment section (a sibling of body, see
+        // AbstractChatMessageComment's own class doc comment) -- without this a selection made
+        // ONLY in the comment never flips Save to "Quote selected", even though selectedText()
+        // (AbstractChatMessage::selectedText()) already aggregates it.
+        if (message->content()!=nullptr && message->content()->comment()!=nullptr)
+        {
+            auto* comment=message->content()->comment();
+            connect(comment,&AbstractChatMessageComment::selectionChanged,this,&ReplyDialog::updateSaveButton);
+            comment->setCopyable(true);
+        }
     }
 
     updateCommentVisibility();
@@ -331,10 +342,16 @@ void ReplyDialog::updateCommentVisibility()
         return;
     }
 
-    bool hasText=!pimpl->message.isNull()
-        && pimpl->message->content()!=nullptr
-        && pimpl->message->content()->body()!=nullptr
-        && pimpl->message->content()->body()->hasSelectableText();
+    // Either section can be the one that actually carries selectable text -- a forwarded
+    // image/file with no caption has none in its body at all, only in its own forward comment
+    // (see AbstractChatMessageComment's own class doc comment).
+    bool hasText=false;
+    if (!pimpl->message.isNull() && pimpl->message->content()!=nullptr)
+    {
+        auto* content=pimpl->message->content();
+        hasText=(content->body()!=nullptr && content->body()->hasSelectableText())
+            || (content->comment()!=nullptr && content->comment()->hasSelectableText());
+    }
 
     pimpl->commentVisible=hasText;
     pimpl->comment->setVisible(hasText);

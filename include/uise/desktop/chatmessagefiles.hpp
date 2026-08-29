@@ -79,6 +79,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         void setCopyable(bool enable) override;
 
+        void setOwnContextMenuEnabled(bool enable) override;
+
         void selectText(const QString& text) override;
 
         QString linkAt(const QPoint& pos) const override;

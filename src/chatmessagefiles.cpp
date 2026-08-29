@@ -367,6 +367,13 @@ void ChatMessageFiles::setCopyable(bool enable)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageFiles::setOwnContextMenuEnabled(bool enable)
+{
+    pimpl->comment->setOwnContextMenuEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFiles::selectText(const QString& text)
 {
     pimpl->comment->selectText(text);

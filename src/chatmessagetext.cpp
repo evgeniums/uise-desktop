@@ -327,9 +327,30 @@ void ChatMessageTextBrowser::setCopyable(bool enable)
     // regardless of focus policy, which is why the live chat page's "Quote selected" flow was
     // never affected by this.
     setFocusPolicy(enable ? Qt::StrongFocus : Qt::NoFocus);
+    updateContextMenuPolicy();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setOwnContextMenuEnabled(bool enable)
+{
+    if (m_ownContextMenu==enable)
+    {
+        return;
+    }
+    m_ownContextMenu=enable;
+    updateContextMenuPolicy();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateContextMenuPolicy()
+{
     // CustomContextMenu routes right-clicks to showCopyMenu() instead of Qt's own
-    // createStandardContextMenu() -- see setCopyable()'s own doc comment for why.
-    setContextMenuPolicy(enable ? Qt::CustomContextMenu : Qt::NoContextMenu);
+    // createStandardContextMenu() -- see setCopyable()'s own doc comment for why. Suppressed
+    // entirely (NoContextMenu, letting a right-click bubble up to a host's own message-level
+    // menu) when m_ownContextMenu is off -- see setOwnContextMenuEnabled()'s own doc comment.
+    setContextMenuPolicy((m_copyable && m_ownContextMenu) ? Qt::CustomContextMenu : Qt::NoContextMenu);
 }
 
 //--------------------------------------------------------------------------
@@ -489,7 +510,11 @@ void ChatMessageText::updateMaximumBubbleWidth()
 
 QString ChatMessageText::selectedText() const
 {
+    // QTextCursor::selectedText() uses U+2029 (ParagraphSeparator) for a line break, not '\n' --
+    // left as-is, a multi-line selection would reach the clipboard/composer as one run of text
+    // with an invisible separator instead of a real line break.
     auto text=pimpl->text->textCursor().selectedText();
+    text.replace(QChar(QChar::ParagraphSeparator),QChar('\n'));
     return text;
 }
 
@@ -505,6 +530,13 @@ bool ChatMessageText::hasSelectableText() const
 void ChatMessageText::setCopyable(bool enable)
 {
     pimpl->text->setCopyable(enable);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::setOwnContextMenuEnabled(bool enable)
+{
+    pimpl->text->setOwnContextMenuEnabled(enable);
 }
 
 //--------------------------------------------------------------------------

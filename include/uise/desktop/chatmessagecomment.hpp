@@ -63,6 +63,7 @@ class UISE_DESKTOP_EXPORT ChatMessageComment : public AbstractChatMessageComment
         QString selectedText() const override;
         bool hasSelectableText() const override;
         void setCopyable(bool enable) override;
+        void setOwnContextMenuEnabled(bool enable) override;
         void selectText(const QString& text) override;
         QString linkAt(const QPoint& pos) const override;
 

@@ -79,6 +79,21 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_copyable;
         }
 
+        /**
+         * @brief Suppress this widget's own built-in Copy/Select All context menu.
+         * @param enable On by default -- a host showing this widget's own message-level context
+         *  menu instead (e.g. a static preview bubble embedded in a dialog) turns this off so the
+         *  two menus don't compete over the same right-click. Independent of setCopyable(): with
+         *  this off, the widget stays focusable/selectable (Ctrl+C still works), it just never
+         *  pops its own menu -- see updateContextMenuPolicy().
+         */
+        void setOwnContextMenuEnabled(bool enable);
+
+        bool isOwnContextMenuEnabled() const noexcept
+        {
+            return m_ownContextMenu;
+        }
+
         //! Like QTextBrowser::setHtml(), but also remembers `html` so linkColor/linkUnderline can
         //! REAPPLY it after rebuilding the document's stylesheet (setDefaultStyleSheet() only
         //! affects content set afterwards -- see applyLinkStyle()). ChatMessageText::loadText()'s
@@ -128,6 +143,10 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         void applyLinkStyle();
 
+        //! Recomputes contextMenuPolicy() from m_copyable/m_ownContextMenu -- the two setters
+        //! share this instead of each duplicating the combination.
+        void updateContextMenuPolicy();
+
         //! Underlines/un-underlines the hovered anchor at `pos` (task-urls-and characters-in-
         //! messages.md follow-up: hover feedback on hyperlinks). Cursor shape (arrow vs. pointing
         //! hand) is NOT handled here -- QTextEdit's own base mouseMoveEvent() already does that
@@ -148,6 +167,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         AbstractChatMessageText* m_messageTextWidget=nullptr;
         bool m_copyable=false;
+        bool m_ownContextMenu=true;
         QColor m_linkColor;
         bool m_linkUnderline=false;
         QString m_lastHtml;
@@ -185,6 +205,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
         bool hasSelectableText() const override;
 
         void setCopyable(bool enable) override;
+
+        void setOwnContextMenuEnabled(bool enable) override;
 
         void selectText(const QString& text) override;
 

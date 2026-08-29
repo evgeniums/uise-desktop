@@ -234,6 +234,15 @@ void ForwardDialog::setMessage(AbstractChatMessage* message)
             // AbstractChatMessageBody::setCopyable()'s own doc comment.
             body->setCopyable(true);
         }
+
+        // Same wiring, for a forwarded message's own comment section -- see
+        // ReplyDialog::setMessage()'s identical block for the rationale.
+        if (message->content()!=nullptr && message->content()->comment()!=nullptr)
+        {
+            auto* comment=message->content()->comment();
+            connect(comment,&AbstractChatMessageComment::selectionChanged,this,&ForwardDialog::updateSaveButton);
+            comment->setCopyable(true);
+        }
     }
 
     updateMode();
@@ -410,10 +419,15 @@ void ForwardDialog::updateCommentVisibility()
         return;
     }
 
-    bool hasText=!pimpl->message.isNull()
-        && pimpl->message->content()!=nullptr
-        && pimpl->message->content()->body()!=nullptr
-        && pimpl->message->content()->body()->hasSelectableText();
+    // Either section can be the one that actually carries selectable text -- see
+    // ReplyDialog::updateCommentVisibility()'s identical rationale.
+    bool hasText=false;
+    if (!pimpl->message.isNull() && pimpl->message->content()!=nullptr)
+    {
+        auto* content=pimpl->message->content();
+        hasText=(content->body()!=nullptr && content->body()->hasSelectableText())
+            || (content->comment()!=nullptr && content->comment()->hasSelectableText());
+    }
 
     pimpl->commentVisible=hasText;
     pimpl->comment->setVisible(hasText);

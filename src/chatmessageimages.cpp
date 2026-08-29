@@ -109,6 +109,10 @@ class ChatMessageImages_p
         // it is.
         bool commentCopyable=false;
 
+        // Same lazy-creation caching as commentCopyable above -- setOwnContextMenuEnabled() may
+        // likewise be called before the comment widget exists.
+        bool commentOwnContextMenu=true;
+
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
         // QSS-settable (qproperty-minTileSize/qproperty-tileMaxUpscale, see
@@ -512,6 +516,10 @@ ChatMessageText* ChatMessageImages::ensureComment()
         {
             pimpl->comment->setCopyable(true);
         }
+        if (!pimpl->commentOwnContextMenu)
+        {
+            pimpl->comment->setOwnContextMenuEnabled(false);
+        }
         // Relayed here so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react
         // to selection changes on this body's comment via AbstractChatMessageBody alone -- same
         // idiom ChatMessageFiles uses in its own (eagerly created) comment's ctor.
@@ -707,6 +715,17 @@ void ChatMessageImages::setCopyable(bool enable)
     if (pimpl->comment!=nullptr)
     {
         pimpl->comment->setCopyable(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setOwnContextMenuEnabled(bool enable)
+{
+    pimpl->commentOwnContextMenu=enable;
+    if (pimpl->comment!=nullptr)
+    {
+        pimpl->comment->setOwnContextMenuEnabled(enable);
     }
 }
 

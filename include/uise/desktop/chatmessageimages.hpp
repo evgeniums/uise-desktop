@@ -99,6 +99,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         void setCopyable(bool enable) override;
 
+        void setOwnContextMenuEnabled(bool enable) override;
+
         void selectText(const QString& text) override;
 
         QString linkAt(const QPoint& pos) const override;
