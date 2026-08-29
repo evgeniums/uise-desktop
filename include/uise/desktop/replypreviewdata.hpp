@@ -200,6 +200,27 @@ class UISE_DESKTOP_EXPORT ReplyPreviewData
         }
 
         /**
+         * @brief Check whether senderTitle() is only a height-reservation placeholder, not real
+         *  content yet.
+         * @return True when the host has not yet resolved a real sender title for this reply
+         *  (todo-reply-block-bubble-width-flicker.md) -- senderTitle() is still non-empty (kept
+         *  non-empty so AbstractReplyPreview::isTitleShown() reserves the title row's height from
+         *  the very first frame), but AbstractReplyPreview::contentWidthHint() must not let it
+         *  drive width negotiation, since it carries no real width information yet. Cleared
+         *  implicitly once the host applies the real, resolved data (setTitlePending() is never
+         *  called there, so it defaults back to false).
+         */
+        bool isTitlePending() const noexcept
+        {
+            return m_titlePending;
+        }
+
+        void setTitlePending(bool enable) noexcept
+        {
+            m_titlePending=enable;
+        }
+
+        /**
          * @brief Check whether there is nothing at all to show.
          * @return True if every field is at its default -- a host can use this to decide
          *  whether to show/hide a reply bar or bubble section entirely, rather than calling
@@ -221,6 +242,7 @@ class UISE_DESKTOP_EXPORT ReplyPreviewData
         QImage m_thumbnail;
         bool m_deleted=false;
         bool m_quote=false;
+        bool m_titlePending=false;
 };
 
 /**

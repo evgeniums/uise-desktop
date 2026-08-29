@@ -266,7 +266,17 @@ int ReplyPreview::contentWidthHint(int forMaxWidth) const
         return 0;
     }
 
-    auto titleRowWidth=pimpl->title->widthHint();
+    // todo-reply-block-bubble-width-flicker.md: while the title is still just a height
+    // reservation placeholder (isTitlePending()), it carries no real width information -- letting
+    // pimpl->title->widthHint() feed `natural` here is exactly what made the bubble step wider a
+    // moment later once the real title replaced it. Count only the quote-icon slot (if shown) for
+    // the title row in that case; a real, resolved title (the common case since msg_reply started
+    // carrying a sender-side denormalized title) is unaffected.
+    int titleRowWidth=0;
+    if (!pimpl->data.isTitlePending())
+    {
+        titleRowWidth=pimpl->title->widthHint();
+    }
     if (isQuoteIconShown())
     {
         titleRowWidth+=QuoteIconSize.width()+QuoteIconSpacing;
