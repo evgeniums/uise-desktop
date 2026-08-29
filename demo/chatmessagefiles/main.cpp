@@ -660,8 +660,8 @@ int main(int argc, char *argv[])
     //    through as loadControlClicked() -- compare with imgBody7's Paused tile right above.
     //  * makeImageEntry() only attaches a preview() for Ready items, so this tile has no image
     //    content at all and renders as the empty rounded-outline placeholder
-    //    (chatmessagefiles.qss's [placeholder="true"] rule), sized from PlaceholderTileExtent
-    //    rather than from a real pixel size. ---
+    //    (chatmessagefiles.qss's [placeholder="true"] rule), sized from ChatMessageImages'
+    //    minTileSize (qproperty-minTileSize) rather than from a real pixel size. ---
 
     auto* imgBody8=new ChatMessageImages();
     ChatFileItems imgItems8{

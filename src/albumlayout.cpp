@@ -259,8 +259,12 @@ std::vector<QRect> albumLayout(
             auto aLeft=a[static_cast<size_t>(others[0])];
             auto aRight=a[static_cast<size_t>(others[1])];
             auto h1=qMax(options.minTile,qRound((w-s)/(aLeft+aRight)));
-            auto wLeft=qRound(aLeft*h1);
-            auto wRight=(w-s)-wLeft; // last tile absorbs rounding so the row sums exactly to w
+            auto wLeft=qMax(1,qRound(aLeft*h1));
+            // last tile absorbs rounding so the row sums exactly to w; floored at 1 so an
+            // extreme-aspect image (h1 pinned at minTile far below what aLeft would otherwise
+            // demand) can never drive this to zero/negative width -- same guard the n==4 wide
+            // template's own last-tile branch already has, missing here until this fix
+            auto wRight=qMax(1,(w-s)-wLeft);
             rects[static_cast<size_t>(others[0])]=QRect(0,h0+s,wLeft,h1);
             rects[static_cast<size_t>(others[1])]=QRect(wLeft+s,h0+s,wRight,h1);
 
@@ -491,98 +495,143 @@ std::vector<QRect> albumLayout(
         }
     }
 
-    // Natural-size cap: no tile may exceed the image's own size in logical units. A tile bigger
-    // than its image would otherwise be filled by upscaling the content (blurry) or by padding it
-    // (the reported "small image gets a big tile with paddings around it"), and it made a 100px
-    // thumbnail claim exactly as much room as a 2048px photo whenever they happened to share an
-    // aspect ratio. Applied PER TILE, never as a whole-album shrink: an oversized tile must not
-    // drag its neighbours' tiles down with it.
+    // Floor every tile is guaranteed to reach on BOTH of its axes (see below and
+    // AlbumLayoutOptions::minCappedTile). Clamped to the width budget: a floor larger than the
+    // album's whole width could never be honoured by any tile, and pretending otherwise only
+    // pushes tiles off the edge of a bubble sized from totalSize.
+    const auto cappedFloor=qMin((options.minCappedTile>0) ? options.minCappedTile : options.minTile,w);
+
+    // Re-flow every row left to right after a per-tile rescale, so no gap is left where a tile
+    // shrank and no overlap where one grew, and so the album's own width collapses to what its
+    // tiles actually occupy (the caller sizes the bubble from totalSize, letting it hug a small
+    // album). Tiles keep their template order within a row; rows keep their template order.
+    // Row-mates are top-aligned -- after a per-tile rescale they legitimately differ in height,
+    // which is the whole point: their sizes now reflect the images' real sizes rather than a
+    // shared row height.
+    //
+    // A row that grew past the width budget WRAPS onto a further line rather than overflowing:
+    // unlike maxHeight, the width budget is hard -- ChatMessageImages::bubbleWidthHint() clamps
+    // the bubble to it (std::min), so a tile sticking out past maxWidth would simply be cut off.
+    auto reflowRows=[&rects,&rowIndex,n,w,s](const std::vector<qreal>& scale)
+    {
+        auto rowCount=(*std::max_element(rowIndex.begin(),rowIndex.end()))+1;
+        std::vector<int> order(static_cast<size_t>(n));
+        for (int i=0;i<n;++i)
+        {
+            order[static_cast<size_t>(i)]=i;
+        }
+        std::stable_sort(order.begin(),order.end(),
+            [&rects](int lhs, int rhs)
+            {
+                return rects[static_cast<size_t>(lhs)].x()<rects[static_cast<size_t>(rhs)].x();
+            }
+        );
+
+        int y=0;
+        for (int row=0;row<rowCount;++row)
+        {
+            int x=0;
+            int lineHeight=0;
+            for (auto idx : order)
+            {
+                if (rowIndex[static_cast<size_t>(idx)]!=row)
+                {
+                    continue;
+                }
+                const auto& r=rects[static_cast<size_t>(idx)];
+                auto f=scale[static_cast<size_t>(idx)];
+                auto tw=qMax(1,qRound(r.width()*f));
+                auto th=qMax(1,qRound(r.height()*f));
+                if (x>0 && x+tw>w)
+                {
+                    y+=lineHeight+s;
+                    x=0;
+                    lineHeight=0;
+                }
+                rects[static_cast<size_t>(idx)]=QRect(x,y,tw,th);
+                x+=tw+s;
+                lineHeight=qMax(lineHeight,th);
+            }
+            if (lineHeight>0)
+            {
+                y+=lineHeight+s;
+            }
+        }
+    };
+
+    // Per-tile sizing pass, bounded from ABOVE by the image's own resolution and from BELOW by
+    // cappedFloor.
+    //
+    // Upper bound (the natural-size cap): a tile bigger than its image would otherwise be filled
+    // by upscaling the content (blurry) or by padding it (the reported "small image gets a big
+    // tile with paddings around it"), and it made a 100px thumbnail claim exactly as much room as
+    // a 2048px photo whenever they happened to share an aspect ratio.
+    //
+    // Lower bound (the floor, todo-album-layout-small-tile-packing.md): scaling a rect uniformly
+    // by qMax(floor/w,floor/h) puts its SHORT side exactly on the floor and leaves the long side
+    // above it, whatever the rect's aspect ratio -- so the floor is always reachable by a pure
+    // aspect-preserving scale and NEVER needs a crop (real chat image content is fitted inside its
+    // tile and never cropped, see ChatMessageImageItem::updatePreview()).
+    //
+    // The floor is NOT clamped to <=1.0 and is NOT gated on the natural-size cap having fired. It
+    // used to be both, which made this pass shrink-only: a full-resolution photo that a dense
+    // justified row packed into a 52x65 slot never had the floor evaluated at all (its own
+    // resolution exceeded the slot, so the cap returned early), and a tile the floor should have
+    // grown could at best be shrunk less. Both axes of every tile must clear the floor, however
+    // small the template packed it.
+    //
+    // Applied PER TILE, never as a whole-album shrink: an oversized tile must not drag its
+    // neighbours' tiles down with it.
     if (options.devicePixelRatio>0)
     {
-        // todo-album-layout-small-tile-packing.md: the floor a capped tile is never shrunk below
-        // is minCappedTile when set, not the (much smaller, 60px) minTile used for template row
-        // heights elsewhere in this function -- see AlbumLayoutOptions::minCappedTile's own
-        // comment for why these are deliberately two different knobs.
-        const auto cappedFloor=(options.minCappedTile>0) ? options.minCappedTile : options.minTile;
-
         std::vector<qreal> scale(static_cast<size_t>(n),1.0);
-        bool anyCapped=false;
+        bool anyAdjusted=false;
 
         for (int i=0;i<n;++i)
         {
             const auto& sz=pixelSizes[static_cast<size_t>(i)];
             const auto& r=rects[static_cast<size_t>(i)];
-            if (sz.width()<=0 || sz.height()<=0 || r.width()<=0 || r.height()<=0)
-            {
-                continue; // unknown resolution (a placeholder) -- nothing to cap against
-            }
-
-            auto natW=sz.width()/options.devicePixelRatio;
-            auto natH=sz.height()/options.devicePixelRatio;
-            auto f=qMin(1.0,qMin(natW/r.width(),natH/r.height()));
-            if (f>=1.0)
+            if (r.width()<=0 || r.height()<=0)
             {
                 continue;
             }
 
-            // keep the tile usable: never shrink either axis below cappedFloor. Raising the single
-            // scale factor (rather than clamping each axis) preserves the shape the template
-            // chose for this tile.
-            auto floorF=qMin(1.0,qMax(static_cast<qreal>(cappedFloor)/r.width(),
-                                      static_cast<qreal>(cappedFloor)/r.height()));
-            f=qMax(f,floorF);
-            if (f<1.0)
+            // 1.0 (unbounded) for an unknown resolution: a placeholder has no natural size to cap
+            // against, but it still has to honour the floor below -- growing a rect to the floor
+            // needs no knowledge of the source, and a placeholder tile is exactly the one that
+            // shows a load control and so must not be tiny.
+            qreal naturalCap=1.0;
+            if (sz.width()>0 && sz.height()>0)
+            {
+                naturalCap=qMin(1.0,qMin((sz.width()/options.devicePixelRatio)/r.width(),
+                                         (sz.height()/options.devicePixelRatio)/r.height()));
+            }
+
+            auto floorRequirement=qMax(static_cast<qreal>(cappedFloor)/r.width(),
+                                       static_cast<qreal>(cappedFloor)/r.height());
+
+            // the floor wins over natural-size accuracy whenever the two disagree -- a blurry
+            // usable tile beats an accurate unusable one
+            auto f=qMax(naturalCap,floorRequirement);
+            if (f>1.0)
+            {
+                // ...but never past the width budget, which is hard (see reflowRows() above). A
+                // tile whose aspect ratio makes cappedFloor*aspect exceed maxWidth is the one case
+                // the floor cannot be honoured without cropping or distorting, so it is not
+                // honoured there.
+                f=qMax(1.0,qMin(f,static_cast<qreal>(w)/r.width()));
+            }
+
+            if (!qFuzzyCompare(f,1.0))
             {
                 scale[static_cast<size_t>(i)]=f;
-                anyCapped=true;
+                anyAdjusted=true;
             }
         }
 
-        if (anyCapped)
+        if (anyAdjusted)
         {
-            // Re-flow every row left to right so no gap is left where a tile shrank, and so the
-            // album's own width collapses to what its tiles actually occupy (the caller sizes the
-            // bubble from totalSize, letting it hug a small album). Tiles keep their template
-            // order within a row; rows keep their template order. Row-mates are top-aligned --
-            // after capping they legitimately differ in height, which is the whole point: their
-            // sizes now reflect the images' real sizes rather than a shared row height.
-            auto rowCount=(*std::max_element(rowIndex.begin(),rowIndex.end()))+1;
-            std::vector<int> order(static_cast<size_t>(n));
-            for (int i=0;i<n;++i)
-            {
-                order[static_cast<size_t>(i)]=i;
-            }
-            std::stable_sort(order.begin(),order.end(),
-                [&rects](int lhs, int rhs)
-                {
-                    return rects[static_cast<size_t>(lhs)].x()<rects[static_cast<size_t>(rhs)].x();
-                }
-            );
-
-            int y=0;
-            for (int row=0;row<rowCount;++row)
-            {
-                int x=0;
-                int rowHeight=0;
-                for (auto idx : order)
-                {
-                    if (rowIndex[static_cast<size_t>(idx)]!=row)
-                    {
-                        continue;
-                    }
-                    const auto& r=rects[static_cast<size_t>(idx)];
-                    auto f=scale[static_cast<size_t>(idx)];
-                    auto tw=qMax(1,qRound(r.width()*f));
-                    auto th=qMax(1,qRound(r.height()*f));
-                    rects[static_cast<size_t>(idx)]=QRect(x,y,tw,th);
-                    x+=tw+s;
-                    rowHeight=qMax(rowHeight,th);
-                }
-                if (rowHeight>0)
-                {
-                    y+=rowHeight+s;
-                }
-            }
+            reflowRows(scale);
         }
     }
 
@@ -616,6 +665,55 @@ std::vector<QRect> albumLayout(
         {
             totalW=qMax(totalW,r.x()+r.width());
             totalH=qMax(totalH,r.y()+r.height());
+        }
+    }
+
+    // The uniform scale-down above is floor-blind -- it scales every rect by one factor, including
+    // tiles the pass above put exactly on cappedFloor, which is how a correctly floored 100px
+    // thumbnail used to come back out at 46px. Restore the floor for anything it pushed below, as
+    // a grow-only pass through the same re-flow.
+    //
+    // Deliberately a SECOND pass rather than a clamp on the rescale factor itself: clamping the
+    // factor would let one at-floor tile veto the whole shrink, leaving albums up to 2.2x taller
+    // than the budget (measured on a real 8-image message). Shrinking everything first and then
+    // growing only what fell through the floor lets the big tiles absorb the height and keeps the
+    // album at its budget, while still guaranteeing the floor.
+    //
+    // The album can still end up somewhat taller than maxHeight (by whatever height the floor
+    // forces back). That is the intended priority: maxHeight is a soft target -- nothing
+    // downstream clips to it, ChatMessageImages::sizeHint()/minimumSizeHint() just report
+    // whatever comes back here, and bubble-width negotiation only negotiates width -- whereas a
+    // sub-floor tile is the defect the floor exists to prevent.
+    if (options.devicePixelRatio>0)
+    {
+        std::vector<qreal> regrow(static_cast<size_t>(n),1.0);
+        bool anyBelowFloor=false;
+
+        for (int i=0;i<n;++i)
+        {
+            const auto& r=rects[static_cast<size_t>(i)];
+            if (r.width()<=0 || r.height()<=0
+                || (r.width()>=cappedFloor && r.height()>=cappedFloor))
+            {
+                continue;
+            }
+            auto f=qMax(static_cast<qreal>(cappedFloor)/r.width(),
+                        static_cast<qreal>(cappedFloor)/r.height());
+            regrow[static_cast<size_t>(i)]=qMax(1.0,qMin(f,static_cast<qreal>(w)/r.width()));
+            anyBelowFloor=true;
+        }
+
+        if (anyBelowFloor)
+        {
+            reflowRows(regrow);
+
+            totalW=0;
+            totalH=0;
+            for (const auto& r : rects)
+            {
+                totalW=qMax(totalW,r.x()+r.width());
+                totalH=qMax(totalH,r.y()+r.height());
+            }
         }
     }
 

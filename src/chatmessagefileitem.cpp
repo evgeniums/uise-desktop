@@ -669,7 +669,11 @@ LoadControlMenu* ChatMessageFileItem::ensureLoadControl() const
         pimpl->loadControl->setObjectName("loadControl");
         // iconSlot is a fixed-size frame (see IconSlotSize) -- unlike ChatMessageImageItem's
         // overlays, this geometry is a one-time constant, not something a resizeEvent() needs
-        // to keep re-applying.
+        // to keep re-applying. Checked against todo-load-control-overflows-small-image-tiles.md:
+        // that bug is about an ALBUM tile (ChatMessageImageItem, sized by albumLayout()) shrinking
+        // below its LoadControl's fixed size -- this slot is fixed-size by construction
+        // (setFixedSize(IconSlotSize) above) and never participates in album layout at all, so
+        // the control filling it exactly can never overflow here.
         pimpl->loadControl->setGeometry(QRect(QPoint(0,0),IconSlotSize));
         connect(pimpl->loadControl,&LoadControlMenu::clicked,self,&ChatMessageFileItem::loadControlClicked);
         connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,self,&ChatMessageFileItem::pauseRequested);

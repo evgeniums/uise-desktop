@@ -112,10 +112,12 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         QSize minimumSizeHint() const override;
 
         /**
-         * @brief Floor (logical px) a small image's tile is scaled up to, aspect preserved,
+         * @brief Hard floor (logical px) on BOTH dimensions of every tile, aspect preserved,
          *  instead of being left genuinely tiny -- see AlbumLayoutOptions::minCappedTile's own
          *  doc comment for the mechanism (albumlayout.hpp) and TileMaxUpscale/tileMaxUpscale()
-         *  for the paint-time counterpart that actually fills the floored tile.
+         *  for the paint-time counterpart that actually fills the floored tile. Applies to any
+         *  densely-packed tile a template happened to size small, not just a small-resolution
+         *  image -- see albumLayout()'s own doc comment for why the two used to be conflated.
          *  Settable from QSS via qproperty-minTileSize (see chatmessagefiles.qss).
          */
         void setMinTileSize(int size);

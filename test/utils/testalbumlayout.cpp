@@ -41,7 +41,10 @@ namespace {
 //! bounding box equals totalSize. Does NOT assert a minTile floor -- some templates (e.g. the
 //! maxHeight rescue, or stackByAspect() under a very tight budget) may legitimately go below it,
 //! see their own doc comments; callers that want minTile enforced check it themselves against a
-//! budget generous enough for it to hold.
+//! budget generous enough for it to hold. The minCappedTile floor, unlike minTile, IS a hard
+//! guarantee (modulo the width-budget exception documented on AlbumLayoutOptions::minCappedTile)
+//! -- see TestDenselyPackedTileFloor and TestFloorSurvivesMaxHeightScaleDown below for where it is
+//! actually asserted.
 void checkValidGeometry(const std::vector<QRect>& rects, const QSize& totalSize)
 {
     UISE_TEST_CHECK(!rects.empty());
@@ -331,11 +334,13 @@ BOOST_AUTO_TEST_CASE(TestJustifiedRows)
     AlbumLayoutOptions options;
     // This case is about the justified packing arithmetic -- rows summing to exactly maxWidth --
     // so both of the passes that legitimately break that invariant are kept out of the way:
-    //  * the natural-size cap (it shrinks individual tiles by design), switched off here;
+    //  * the natural-size cap AND the minCappedTile floor (both shrink/grow individual tiles by
+    //    design) -- devicePixelRatio=0 switches off both, not just the cap;
     //  * the maxHeight rescue (it scales the whole album, including row widths), avoided by
     //    giving this album a height budget it cannot exceed.
-    // Both have their own coverage -- TestNaturalSizeCap/TestAllThumbnails and
-    // TestMaxHeightScaleDown respectively.
+    // All three have their own coverage -- TestNaturalSizeCap/TestAllThumbnails,
+    // TestDenselyPackedTileFloor/TestFloorSurvivesMaxHeightScaleDown, and TestMaxHeightScaleDown
+    // respectively.
     options.devicePixelRatio=0;
     options.maxHeight=4000;
     QSize totalSize;
@@ -518,6 +523,104 @@ BOOST_AUTO_TEST_CASE(TestMinCappedTileFloor)
     UISE_TEST_CHECK_GE(solo[0].width(),rects[1].width());
 }
 
+BOOST_AUTO_TEST_CASE(TestDenselyPackedTileFloor)
+{
+    // Regression for the shrink-only floor: the floor check used to be skipped entirely for any
+    // tile whose image had MORE resolution than its slot -- i.e. for exactly the full-resolution
+    // photos a dense multi-row justified layout squeezes smallest. In this real 8-image message
+    // at a narrow budget, one of the 2048px photos was handed a 52x65 tile and kept it, because
+    // its own resolution comfortably exceeded 52x65 so the cap returned early and the floor was
+    // never evaluated. Nothing about that tile was "naturally small"; it was a packing artifact.
+    //
+    // Every tile must clear the floor on BOTH axes, at every budget -- by scaling, never by
+    // cropping (see ChatMessageImageItem::updatePreview()'s never-crop rule).
+    const std::vector<QSize> mix{
+        QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
+        QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
+    };
+
+    for (int budget : {200,250,300,400,500,600,700,800})
+    {
+        AlbumLayoutOptions options;
+        options.maxWidth=budget;
+        options.devicePixelRatio=2.0;
+
+        QSize totalSize;
+        auto rects=albumLayout(mix,options,&totalSize);
+        UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
+        checkValidGeometry(rects,totalSize);
+
+        for (const auto& r : rects)
+        {
+            // minCappedTile unset -> the floor is minTile
+            UISE_TEST_CHECK_GE(r.width(),options.minTile);
+            UISE_TEST_CHECK_GE(r.height(),options.minTile);
+        }
+
+        // the width budget stays hard even when the floor grows tiles into it -- a row that no
+        // longer fits wraps rather than overflowing, because ChatMessageImages::bubbleWidthHint()
+        // clamps the bubble to this budget and an overflowing tile would just be cut off
+        UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
+    }
+
+    // and with the configurable floor ChatMessageImages actually ships (100, see
+    // chatmessagefiles.qss's qproperty-minTileSize) -- still on both axes, still within the width
+    // budget, at the widest bubble budget this mix was checked against
+    AlbumLayoutOptions shipped;
+    shipped.maxWidth=800;
+    shipped.devicePixelRatio=2.0;
+    shipped.minCappedTile=100;
+
+    QSize shippedTotal;
+    auto shippedRects=albumLayout(mix,shipped,&shippedTotal);
+    UISE_TEST_REQUIRE_EQUAL(shippedRects.size(),mix.size());
+    checkValidGeometry(shippedRects,shippedTotal);
+    for (const auto& r : shippedRects)
+    {
+        UISE_TEST_CHECK_GE(r.width(),shipped.minCappedTile);
+        UISE_TEST_CHECK_GE(r.height(),shipped.minCappedTile);
+    }
+    UISE_TEST_CHECK(shippedTotal.width()<=shipped.maxWidth);
+}
+
+BOOST_AUTO_TEST_CASE(TestFloorSurvivesMaxHeightScaleDown)
+{
+    // The maxHeight rescue scales every rect by one factor, floored tiles included -- it used to
+    // undo the floor completely, dropping correctly-floored 100px tiles back to 46-58px whenever
+    // the album happened to exceed the height budget. The floor now outranks maxHeight: the
+    // rescale still runs (so the big tiles absorb the shrink instead of the album ballooning),
+    // and anything it pushed under the floor is grown back afterwards.
+    const std::vector<QSize> mix{
+        QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
+        QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
+    };
+
+    AlbumLayoutOptions options;
+    options.maxWidth=400;
+    options.devicePixelRatio=2.0;
+    options.minCappedTile=100;
+
+    QSize totalSize;
+    auto rects=albumLayout(mix,options,&totalSize);
+    UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
+    checkValidGeometry(rects,totalSize);
+
+    // this album genuinely exceeds the height budget -- i.e. the rescue really did run
+    UISE_TEST_CHECK_GT(totalSize.height(),options.maxHeight);
+
+    for (const auto& r : rects)
+    {
+        UISE_TEST_CHECK_GE(r.width(),options.minCappedTile);
+        UISE_TEST_CHECK_GE(r.height(),options.minCappedTile);
+    }
+    UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
+
+    // ...and the album is still kept near its height budget rather than being left at whatever
+    // height the un-rescaled layout had: shrinking first and re-growing only the floored tiles is
+    // what keeps this bounded (skipping the rescale outright produced 730px here).
+    UISE_TEST_CHECK(totalSize.height()<2*options.maxHeight);
+}
+
 BOOST_AUTO_TEST_CASE(TestNormalPhotosNotCapped)
 {
     // Guard for the regression this cap could cause: ordinary camera-sized photos are far larger
@@ -574,6 +677,12 @@ BOOST_AUTO_TEST_CASE(TestRealWorldMixAcrossBudgets)
     // bubble width it just produced -- see that function's own comment. Deliberately not asserted
     // here as an invariant: making the layout a fixed point would be an improvement, not a
     // regression, and this test should not stand in its way.
+    //
+    // todo-album-layout-small-tile-packing.md: the album can now legitimately end up TALLER than
+    // options.maxHeight -- the minCappedTile floor (default here, i.e. 0 -> falls back to minTile)
+    // overrides the maxHeight scale-down when the two disagree, rather than the old behaviour of
+    // silently shrinking a floored tile back under the floor. See TestFloorSurvivesMaxHeightScaleDown
+    // for the case where this is asserted directly at the shipped minCappedTile=100.
     const std::vector<QSize> mix{
         QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
         QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
@@ -590,16 +699,26 @@ BOOST_AUTO_TEST_CASE(TestRealWorldMixAcrossBudgets)
         UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
         checkValidGeometry(rects,totalSize);
 
+        // width stays a hard ceiling regardless of the floor (see reflowRows()'s wrap in the .cpp)
         UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
-        UISE_TEST_CHECK(totalSize.height()<=options.maxHeight);
+        // height is not: the floor can legitimately hold the album above budget, measured up to a
+        // few tens of px here -- bounded generously rather than pinned to a measured constant so
+        // this doesn't become a change-detector test
+        UISE_TEST_CHECK_LE(totalSize.height(),options.maxHeight+4*options.spacing+options.minTile);
 
         // every tile capped to its own image's logical size, floored at minTile (minCappedTile
         // is left at its default here, i.e. 0 -> falls back to minTile -- see
-        // TestMinCappedTileFloor for the configurable floor itself)
+        // TestMinCappedTileFloor for the configurable floor itself). A tile the FLOOR grew is
+        // allowed past its source's own logical size -- that is what the floor is for -- so the
+        // natural-size assertion below only applies to a tile the floor did not have to touch.
         for (size_t i=0;i<rects.size();++i)
         {
-            auto natW=qMax(options.minTile,qRound(mix[i].width()/options.devicePixelRatio));
-            UISE_TEST_CHECK(rects[i].width()<=natW+1);
+            if (qMin(rects[i].width(),rects[i].height())>options.minTile)
+            {
+                auto natW=qMax(options.minTile,qRound(mix[i].width()/options.devicePixelRatio));
+                UISE_TEST_CHECK(rects[i].width()<=natW+1);
+            }
+            UISE_TEST_CHECK_GE(qMin(rects[i].width(),rects[i].height()),options.minTile);
         }
     }
 }

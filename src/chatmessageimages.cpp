@@ -44,23 +44,19 @@ namespace {
 // AbstractChatMessageContent.
 constexpr int DefaultMaxWidth=320;
 
-// Edge length a placeholder tile (an item whose real pixel size is not known -- never resolved,
-// or a failed/synthesized entry that has no image behind it at all) is laid out at.
-//
-// Without this, such an item reaches albumLayout() as QSize(1,1), i.e. aspect 1.0, and the
-// single-image template's "fill the width budget" rule turns it into a maxWidth x maxWidth
-// square -- a bubble-width blank tile, which is visibly wrong for something that has no image
-// to show. The clamps below feed albumLayout() a width/height budget sized for placeholders
-// instead of for real photo content, so every template (not just the single-image one) lays
-// them out at roughly this extent and the bubble ends up sized to match.
-constexpr int PlaceholderTileExtent=100;
-
 // Defaults for the QSS-settable minTileSize/tileMaxUpscale properties (todo-album-layout-small-
 // tile-packing.md) -- see their own doc comments (chatmessageimages.hpp) and
 // resources/style/chatmessagefiles.qss's qproperty- block for the shipped values.
 //
-// DefaultMinTileSize matches PlaceholderTileExtent above, deliberately: a genuinely small image
-// and an unresolved placeholder should read at the same scale rather than one dwarfing the other.
+// DefaultMinTileSize doubles as the extent a PLACEHOLDER tile (an item whose real pixel size is
+// not known -- never resolved, or a failed/synthesized entry with no image behind it at all) is
+// laid out at: rebuildGrid()'s allPlaceholders branch derives its width/height budget from
+// pimpl->minTileSize rather than from a constant of its own, so a QSS override moves both
+// together and a genuinely small image and an unresolved placeholder always read at the same
+// scale. That budget matters because such an item reaches albumLayout() as QSize(1,1), i.e.
+// aspect 1.0, and the single-image template's "fill the width budget" rule would otherwise turn
+// it into a maxWidth x maxWidth square -- a bubble-width blank tile, visibly wrong for something
+// with no image to show.
 constexpr int DefaultMinTileSize=100;
 //
 // DefaultTileMaxUpscale is the paint-time allowance that makes the floor above actually FILL --
@@ -294,16 +290,27 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
 
         if (allPlaceholders)
         {
-            // See PlaceholderTileExtent. Two tiles wide is the budget every template then works
+            // See DefaultMinTileSize's own comment for what a placeholder tile is and why it
+            // needs a budget of its own. Two tiles wide is the budget every template then works
             // within: the single-image one clamps to a square of exactly the extent (its own
             // maxHeight branch), the two-image one splits the width into two such squares, and
             // three-or-more fall out of their own templates (or the justified-rows fallback) at
             // comparable sizes, with albumLayout()'s uniform scale-down catching anything taller
             // than the height budget.
-            options.maxWidth=qMin(options.maxWidth,PlaceholderTileExtent*2+options.spacing);
+            //
+            // Derived from pimpl->minTileSize with 5% slack rather than pinned to a hardcoded
+            // two-tiles-wide budget: at the shipped 100px floor a hardcoded 202 clamp is EXACTLY
+            // two floored tiles wide, so any rounding from a non-square placeholder rect (e.g. a
+            // 67x66 growing to 102x100 once albumLayout()'s minCappedTile floor -- fed
+            // options.minCappedTile=pimpl->minTileSize above -- runs) tips a row over and wraps
+            // it to one tile per line, a shape regression even though every tile still clears the
+            // floor. The 5% headroom absorbs that rounding; a QSS override of minTileSize is
+            // reflected here too, since both read the same property.
+            auto placeholderExtent=qRound(pimpl->minTileSize*1.05);
+            options.maxWidth=qMin(options.maxWidth,placeholderExtent*2+options.spacing);
             options.maxHeight=(pimpl->items.size()==1)
-                ? PlaceholderTileExtent
-                : qMin(options.maxHeight,PlaceholderTileExtent*2+options.spacing);
+                ? placeholderExtent
+                : qMin(options.maxHeight,placeholderExtent*2+options.spacing);
         }
         // No single-image special case here any more: "never blow a SMALL image up to the full
         // bubble budget" is now albumLayout()'s own per-tile natural-size cap (fed by
