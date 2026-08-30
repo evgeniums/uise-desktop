@@ -319,6 +319,11 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void mousePressEvent(QMouseEvent* event) override;
 
+        //! Settles this row's own geometry the first time it is actually shown -- see this
+        //! method's own doc comment (chatmessage.cpp) for why a message built/resized while its
+        //! page was hidden can otherwise paint one frame too tall.
+        void showEvent(QShowEvent* event) override;
+
         void construct() override;
 
     private:

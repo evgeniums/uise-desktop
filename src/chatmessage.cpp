@@ -845,6 +845,13 @@ class ChatMessage_p
         //! Built lazily by ChatMessage::ensureSelector(), so null until multi-select mode is
         //! first entered on this message. Every read must be guarded.
         AbstractChatMessageSelector* selector=nullptr;
+
+        //! Guards ChatMessage::showEvent()'s one-time geometry repair -- see that method's own
+        //! doc comment. The flyweight list destroys and rebuilds scrolled-away messages rather
+        //! than pooling them, so "this widget's first show" is exactly the per-message point that
+        //! needs repairing; re-showing an already-settled widget (e.g. switching back to a page
+        //! that never changed while hidden) must stay a no-op.
+        bool firstShowSettled=false;
 };
 
 //--------------------------------------------------------------------------
@@ -1125,6 +1132,45 @@ void ChatMessage::mousePressEvent(QMouseEvent* event)
         }
     }
     AbstractChatMessage::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::showEvent(QShowEvent* event)
+{
+    AbstractChatMessage::showEvent(event);
+
+    if (pimpl->firstShowSettled)
+    {
+        return;
+    }
+    pimpl->firstShowSettled=true;
+
+    // A message built or resized while its page was hidden (e.g. it just arrived in a chat that
+    // isn't the current page of a QStackedWidget) can carry a stale ROW HEIGHT into its first
+    // real show, even though every widget inside it ends up perfectly sized. Qt's own
+    // QLayout::widgetEvent() refuses to activate a hidden widget's layout on a posted
+    // QEvent::LayoutRequest ("if (parent()->isVisible()) activate();"), so the whole
+    // invalidate-then-activate chain that would normally keep #mainMessageFrame's height in sync
+    // with its content sits dormant for as long as the page stays hidden.
+    //
+    // ChatMessageContentWrapper::showEvent() (this row's own bubble wrapper, shown just before
+    // this -- Qt delivers QEvent::Show to children before their parent) already repairs the
+    // CONTENT bubble's own size against its now-correct sizeHint(). That in turn leaves
+    // #mainMessageFrame's (pimpl->main) freshly-computed sizeHint() correct too -- but nothing
+    // yet calls activate() on mainLayout or on this row's own top-level layout to actually RESIZE
+    // those widgets to match, so #mainMessageFrame (and hence this whole row, and the tail drawn
+    // by ChatMessageAvatar stretching to #mainMessageFrame's height) stays pinned at its old,
+    // taller on-screen size for one more frame -- exactly the "bubble detaches from its tail,
+    // then snaps into place" glitch. invalidate() before activate() is required: QLayout::
+    // activate() returns immediately once already activated. Bottom-up, since QLayout::activate()
+    // ends by calling its OWN parent widget's updateGeometry() -- activating mainLayout clears
+    // #mainMessageFrame's cached QWidgetItemV2 hint inside pimpl->layout, and activating
+    // pimpl->layout in turn clears this row's own cached hint in the enclosing LinkedListView.
+    pimpl->mainLayout->invalidate();
+    pimpl->mainLayout->activate();
+    pimpl->layout->invalidate();
+    pimpl->layout->activate();
 }
 
 //--------------------------------------------------------------------------
