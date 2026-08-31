@@ -91,13 +91,18 @@ enum class ChatFileMenuAction : int
     Pause=7,
     Resume=8,
     Cancel=9,
-    Download=10       //!< incoming, NotLoaded only -- start a fresh download from the menu,
+    Download=10,      //!< incoming, NotLoaded only -- start a fresh download from the menu,
                       //!< the same action clicking the load control triggers in that state.
                       //!< A distinct action from Resume (an existing paused/failed transfer)
                       //!< even though both end up calling the same underlying "start" path on
                       //!< the host side -- NotLoaded has no transfer to resume, so labelling
                       //!< it "Resume"/"Retry" would misdescribe it the same way those two
                       //!< already avoid misdescribing each other (see buildChatFileMenuItems()).
+    CopyImage=11      //!< image tiles only (imageItem==true) -- puts the item's own image bytes
+                      //!< on the clipboard, same host-side pattern as an image VIEWER's own
+                      //!< Copy action (ChatImageViewerControls::MenuAction::Copy). Never offered
+                      //!< for a plain file row, nor for an image sent as a document -- see
+                      //!< buildChatFileMenuItems()'s own imageItem gate.
 };
 
 /**

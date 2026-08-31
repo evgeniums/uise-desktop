@@ -85,6 +85,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         QString linkAt(const QPoint& pos) const override;
 
+        QUuid fileItemAt(const QPoint& pos) const override;
+
         int bubbleWidthHint(int forMaxWidth) override;
 
         void updateMaximumBubbleWidth() override;

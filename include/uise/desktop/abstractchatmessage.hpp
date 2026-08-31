@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QColor>
 #include <QUrl>
 #include <QPoint>
+#include <QUuid>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -420,6 +421,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          * selectText() above.
          */
         virtual QString linkAt(const QPoint& /*pos*/) const {return QString{};}
+
+        /**
+         * @brief Id of the per-item child (a file row / an image tile) rendered at widget-local
+         *  position `pos`, or a null QUuid if none is there.
+         *
+         * Same rationale as linkAt() just above: lets a host build its OWN per-item submenu into
+         * its message-level context menu (whitemdesktop's ChatMessage::showMessageContextMenu())
+         * without knowing this is a ChatMessageFiles/ChatMessageImages under the hood. No-op by
+         * default; ChatMessageFiles/ChatMessageImages override it against their own rows/tiles.
+         */
+        virtual QUuid fileItemAt(const QPoint& /*pos*/) const {return QUuid{};}
 
     signals:
 

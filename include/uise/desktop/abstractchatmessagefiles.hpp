@@ -169,6 +169,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          *  resumeRequested(), which addresses an existing paused/failed transfer.
          */
         void downloadRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted for ChatFileMenuAction::CopyImage -- put the item's own image bytes on
+         *  the clipboard. Declared here (not only on AbstractChatMessageImages) so the app's
+         *  connectFilesBodySignals<BodyT>() template, shared verbatim by both this and
+         *  AbstractChatMessageImages, keeps connecting an identical signal set on either body --
+         *  buildChatFileMenuItems()'s own imageItem gate still makes sure only an image tile
+         *  actually offers the menu row that reaches this signal.
+         */
+        void copyImageRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

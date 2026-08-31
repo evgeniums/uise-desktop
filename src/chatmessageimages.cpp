@@ -402,6 +402,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                         case (ChatFileMenuAction::Download):
                             emit downloadRequested(id);
                             break;
+
+                        case (ChatFileMenuAction::CopyImage):
+                            emit copyImageRequested(id);
+                            break;
                     }
                 }
             );
@@ -584,6 +588,20 @@ void ChatMessageImages::closeMenus()
     {
         tile->closeMenu();
     }
+}
+
+//--------------------------------------------------------------------------
+
+QUuid ChatMessageImages::fileItemAt(const QPoint& pos) const
+{
+    for (auto* tile : pimpl->tiles)
+    {
+        if (!tile->isHidden() && tile->rect().contains(tile->mapFrom(this,pos)))
+        {
+            return tile->item().id();
+        }
+    }
+    return QUuid{};
 }
 
 //--------------------------------------------------------------------------

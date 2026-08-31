@@ -156,11 +156,6 @@ bool isChatFileLoadControlClickable(ChatFileTransferState state) noexcept
 
 std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context)
 {
-    // imageItem is currently unused -- reserved for a future per-kind divergence, see the
-    // header doc. Named rather than dropped so the call sites at both ChatMessageFileItem and
-    // ChatMessageImageItem stay symmetric if/when one is needed.
-    Q_UNUSED(imageItem)
-
     std::vector<ChatFileMenuAction> actions;
     if (!item.menuActions().empty())
     {
@@ -198,6 +193,14 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
             continue;
         }
         if (action==ChatFileMenuAction::Download && item.state()!=ChatFileTransferState::NotLoaded)
+        {
+            continue;
+        }
+        // Belt-and-braces alongside chatFileMenuActions()'s own e.isImage gate (the app-side
+        // policy that actually decides which items carry this action at all) -- a widget-level
+        // host must never be able to offer "Copy image" on a plain file row just because its
+        // caller passed a stale/mismatched action list.
+        if (action==ChatFileMenuAction::CopyImage && !imageItem)
         {
             continue;
         }
@@ -284,6 +287,11 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                 // outgoing item, so there is no "outgoing" wording to write.
                 text=QCoreApplication::translate("ChatFileItem","Download");
                 alias=QStringLiteral("download");
+                break;
+
+            case (ChatFileMenuAction::CopyImage):
+                text=QCoreApplication::translate("ChatFileItem","Copy image");
+                alias=QStringLiteral("copyImage");
                 break;
         }
 

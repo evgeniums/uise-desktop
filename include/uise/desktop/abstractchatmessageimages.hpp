@@ -139,6 +139,13 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
          *  resumeRequested(), which addresses an existing paused/failed transfer.
          */
         void downloadRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted for ChatFileMenuAction::CopyImage -- put the item's own image bytes on
+         *  the clipboard. See AbstractChatMessageFiles::copyImageRequested()'s own doc comment
+         *  for why this is declared on both abstract bases.
+         */
+        void copyImageRequested(const QUuid& id);
 };
 
 UISE_DESKTOP_NAMESPACE_END

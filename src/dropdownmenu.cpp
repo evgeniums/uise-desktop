@@ -886,6 +886,10 @@ DropdownMenu* DropdownMenu::ensureSubmenu(int id)
     sub->setCloseOnCheckableActivation(pimpl->closeOnCheckableActivation);
     sub->setSubmenuHoverDelayMs(pimpl->hoverDelayMs);
     sub->setSubmenuCloseDelayMs(pimpl->closeDelayMs);
+    // A parent that pops instantly (e.g. a right-click context menu, which sets this to 0 so it
+    // never visibly grows) must not have its own submenu grow-animate under it -- inherit the
+    // parent's own duration rather than DropdownFrame's default.
+    sub->setAnimationDurationMs(animationDurationMs());
 
     connect(sub,&DropdownMenu::itemTriggered,this,&DropdownMenu::itemTriggered);
     connect(

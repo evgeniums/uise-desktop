@@ -7,7 +7,7 @@ background-color: #8BBB92; /* chat background */
 
 uise--AbstractChatMessageContent,
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
-background-color: /*#F7F4E1*/ #F4EFE6 /*#DFF1F1*/; /* received message */
+background-color: /*#F7F4E1*/ /*#F4EFE6*/ /*#FAF6F0*/ #FDFCF8 /*#DFF1F1*/; /* received message */
 }
 
 uise--AbstractChatMessageContent[selected="true"],

@@ -204,6 +204,12 @@ void ChatMessageFiles::rebuildList()
                     case (ChatFileMenuAction::Download):
                         emit downloadRequested(id);
                         break;
+
+                    case (ChatFileMenuAction::CopyImage):
+                        // Unreachable for a file row -- buildChatFileMenuItems()'s own
+                        // imageItem gate never offers this action here. Present only so this
+                        // switch stays exhaustive, same as ChatMessageImages' own relay below.
+                        break;
                 }
             }
         );
@@ -290,6 +296,20 @@ void ChatMessageFiles::closeMenus()
     {
         row->closeMenu();
     }
+}
+
+//--------------------------------------------------------------------------
+
+QUuid ChatMessageFiles::fileItemAt(const QPoint& pos) const
+{
+    for (auto* row : pimpl->rows)
+    {
+        if (!row->isHidden() && row->rect().contains(row->mapFrom(this,pos)))
+        {
+            return row->item().id();
+        }
+    }
+    return QUuid{};
 }
 
 //--------------------------------------------------------------------------
