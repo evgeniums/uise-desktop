@@ -95,6 +95,27 @@ class UISE_DESKTOP_EXPORT MenuItem
             return item;
         }
 
+        /**
+         * @brief Construct an item that opens a nested submenu instead of activating.
+         *
+         * A submenu item is never checkable: its trailing chevron occupies the same slot the
+         * checkmark uses (see IconTextButton::setTrailingSvgIcon()), and clicking it opens its
+         * submenu rather than emitting DropdownMenu::itemTriggered(). Ids must be unique across
+         * the WHOLE menu tree, not just within one level -- DropdownMenu's per-id mutators
+         * (setItemChecked(), setItemEnabled(), etc.) search it recursively.
+         */
+        static MenuItem submenu(int id, QString text, std::vector<MenuItem> children, std::shared_ptr<SvgIcon> icon={})
+        {
+            MenuItem item(id,std::move(text),std::move(icon));
+            item.children=std::move(children);
+            return item;
+        }
+
+        bool hasSubmenu() const noexcept
+        {
+            return !children.empty();
+        }
+
         int id=-1;
         QString text;
         std::shared_ptr<SvgIcon> icon;
@@ -109,7 +130,8 @@ class UISE_DESKTOP_EXPORT MenuItem
          * @brief Exclusive (radio-like) group this item belongs to, or -1 for none.
          *
          * Checking an item with group>=0 unchecks every other currently-checked item that
-         * shares the same group value, within this menu.
+         * shares the same group value, within this menu level -- a submenu's items are their
+         * own separate group namespace from their parent's.
          */
         int group=-1;
 
@@ -122,6 +144,13 @@ class UISE_DESKTOP_EXPORT MenuItem
          * @brief Free-form payload the owner can use to stash extra context per item.
          */
         QVariant data;
+
+        /**
+         * @brief Child items shown in a nested submenu, or empty for an ordinary item.
+         *
+         * Prefer the submenu() factory over setting this directly.
+         */
+        std::vector<MenuItem> children;
 };
 
 class DropdownMenu_p;
@@ -138,7 +167,13 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(int submenuHoverDelayMs READ submenuHoverDelayMs WRITE setSubmenuHoverDelayMs)
+    Q_PROPERTY(int submenuCloseDelayMs READ submenuCloseDelayMs WRITE setSubmenuCloseDelayMs)
+
     public:
+
+        constexpr static const int DefaultSubmenuHoverDelayMs=200;
+        constexpr static const int DefaultSubmenuCloseDelayMs=250;
 
         DropdownMenu(QWidget* parent=nullptr);
 
@@ -155,6 +190,13 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
         void clear();
         const std::vector<MenuItem>& items() const;
 
+        /**
+         * @brief Set/get whether a checkable item is checked.
+         *
+         * Searches the WHOLE item tree, not just this level, and forwards to the corresponding
+         * live submenu (see submenuFor()) if one has been created -- ids must be unique across
+         * the whole tree.
+         */
         void setItemChecked(int id, bool checked);
         bool isItemChecked(int id) const;
 
@@ -169,7 +211,7 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
          * at the last opening), this simply shows/hides that row widget. An item that starts
          * invisible and is made visible while the menu is already open only gains a row on the
          * NEXT opening -- inserting a brand-new row into an already-measured, open menu is not
-         * supported.
+         * supported. Searches the whole item tree; see setItemChecked().
          */
         void setItemVisible(int id, bool visible);
 
@@ -178,14 +220,17 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
 
         /**
          * @brief Get the live row widget for an item.
-         * @return Operation result, valid only while the menu is open (and the item was
-         *  visible at the last opening); nullptr otherwise.
+         * @return Operation result, valid only while the item's OWN menu level is open (and the
+         *  item was visible at the last opening); nullptr otherwise. Searches the whole item
+         *  tree; see setItemChecked().
          */
         IconTextButton* itemButton(int id) const;
 
         /**
          * @brief Close the menu when a checkable item is toggled, same as a clickable item.
          * @param enable Default false: checkable items stay open so multiple can be toggled.
+         *
+         * Propagated to every submenu created from this point on (see ensureSubmenu()).
          */
         void setCloseOnCheckableActivation(bool enable) noexcept;
 
@@ -202,19 +247,58 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
          */
         void attachTo(QWidget* trigger);
 
+        /**
+         * @brief Delay before hovering a submenu row opens its submenu.
+         */
+        void setSubmenuHoverDelayMs(int ms) noexcept;
+        int submenuHoverDelayMs() const noexcept;
+
+        /**
+         * @brief Grace delay before hovering an ordinary row closes a currently-open submenu.
+         *
+         * Kept nonzero so a pointer travelling diagonally from the row that opened a submenu
+         * into that submenu, which very often clips the row below on the way, does not close
+         * the submenu it is heading towards.
+         */
+        void setSubmenuCloseDelayMs(int ms) noexcept;
+        int submenuCloseDelayMs() const noexcept;
+
+        /**
+         * @brief Get the live child menu for a submenu item.
+         * @return Operation result, or nullptr if that item has no submenu or has never been
+         *  opened -- child menus are created lazily on first hover/click (see ensureSubmenu()).
+         */
+        DropdownMenu* submenuFor(int id) const;
+
     signals:
 
         void itemTriggered(int id);
         void itemToggled(int id, bool checked);
 
+        /**
+         * @brief A submenu is about to be filled and shown.
+         * @param id Id of the submenu item being opened.
+         *
+         * Last chance to edit that item's children (via items()/setItems() reaching into the
+         * descriptor tree) before the submenu measures itself.
+         */
+        void submenuAboutToShow(int id);
+
     protected:
 
         void fillContent() override;
         void clearContent() override;
+        void enterEvent(QEnterEvent* event) override;
 
     private:
 
         void onItemToggled(int id, bool checked);
+        void onRowHovered(int id, bool hovered);
+        void onSubmenuRowClicked(int id);
+        void openSubmenu(int id);
+        void closeSubmenu(bool immediate=false);
+        void onSubmenuClosed(int id);
+        DropdownMenu* ensureSubmenu(int id);
 
     private slots:
 

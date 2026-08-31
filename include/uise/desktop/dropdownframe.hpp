@@ -79,6 +79,8 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
     Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
     Q_PROPERTY(int offsetX READ offsetX WRITE setOffsetX)
     Q_PROPERTY(int offsetY READ offsetY WRITE setOffsetY)
+    Q_PROPERTY(int sideOffsetX READ sideOffsetX WRITE setSideOffsetX)
+    Q_PROPERTY(int sideOffsetY READ sideOffsetY WRITE setSideOffsetY)
 
     public:
 
@@ -102,6 +104,8 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         constexpr static const int DefaultAnimationDurationMs=150;
         constexpr static const int DefaultOffsetX=0;
         constexpr static const int DefaultOffsetY=4;
+        constexpr static const int DefaultSideOffsetX=0;
+        constexpr static const int DefaultSideOffsetY=0;
         constexpr static const QEasingCurve::Type DefaultEasingCurve=QEasingCurve::OutCubic;
 
         /**
@@ -213,7 +217,87 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         void setOffsetY(int val) noexcept;
         int offsetY() const noexcept;
 
+        /**
+         * @brief Set horizontal offset used by popupBeside()/popupBesideRect().
+         * @param val Offset in pixels added between the anchor's right edge and this frame's
+         *  left edge (or, when flipped to the left, subtracted symmetrically on the other side).
+         */
+        void setSideOffsetX(int val) noexcept;
+        int sideOffsetX() const noexcept;
+
+        /**
+         * @brief Set vertical offset used by popupBeside()/popupBesideRect().
+         * @param val Offset in pixels added to the anchor's top edge. Typically negative, to
+         *  cancel this frame's own QSS padding/border so the first row of content lines up with
+         *  the anchor (see dropdownmenu.qss's qproperty-sideOffsetY).
+         */
+        void setSideOffsetY(int val) noexcept;
+        int sideOffsetY() const noexcept;
+
+        /**
+         * @brief Get the full (unclipped, natural) global rect measured for the current opening.
+         *
+         * Unlike geometry(), which is animated (clipped towards/from a corner while opening or
+         * closing), this is the settled target rect -- what a side-anchored submenu needs when
+         * composing its own anchor rect from this frame's outer edges while this frame may
+         * itself still be mid-animation.
+         */
+        const QRect& fullRect() const noexcept;
+
+        /**
+         * @brief Chain this frame to another frame so together they behave as one popup.
+         * @param parent Frame this one opens out of (e.g. the DropdownMenu a submenu belongs
+         *  to), or nullptr to unchain.
+         *
+         * A chained frame:
+         *  - inherits its parent's tracked host window (see trackHost()) instead of deriving one
+         *    from its own anchor widget -- its anchor typically lives INSIDE the parent frame,
+         *    whose own open/close animation calls setGeometry() on itself, which would otherwise
+         *    be misread as the host moving/resizing and self-dismiss this frame immediately;
+         *  - disables the parent's Escape shortcut for as long as this frame is open, since two
+         *    simultaneously enabled Qt::ApplicationShortcut Escape shortcuts fire ambiguously;
+         *  - is treated as "inside" by the parent's own outside-click test (see chainContains());
+         *  - is closed automatically whenever the parent closes, and closing any frame in the
+         *    chain closes every frame chained below it.
+         *
+         * Only one child may be open per parent at a time; opening a second child on the same
+         * parent closes the first.
+         */
+        void setChainParent(DropdownFrame* parent);
+
+        DropdownFrame* chainParent() const noexcept;
+
+        /**
+         * @brief Get the currently open frame chained to this one, if any.
+         */
+        DropdownFrame* chainChild() const noexcept;
+
+        /**
+         * @brief Walk up the chain to the outermost frame.
+         */
+        DropdownFrame* chainRoot() noexcept;
+
     public slots:
+
+        /**
+         * @brief Open the frame anchored to the right (or, if flipped, to the left) of the given
+         *  global rect, top-aligned with it.
+         * @param anchorGlobalRect Global rect to anchor beside, e.g. a submenu row's screen rect
+         *  widened to its owning menu's outer edges.
+         *
+         * Anchored with its left edge at the rect's right edge by default, like a native menu's
+         * submenu; flips to the rect's left edge only if the frame would not fit within the
+         * rect's screen otherwise. Vertically top-aligned with the rect by default, flipping to
+         * bottom-aligned with the rect only if there is not enough room below but more room
+         * above (see isVerticalFlipEnabled()).
+         */
+        void popupBesideRect(const QRect& anchorGlobalRect);
+
+        /**
+         * @brief Convenience overload of popupBesideRect() using the anchor widget's own global
+         *  rect.
+         */
+        void popupBeside(QWidget* anchor);
 
         /**
          * @brief Open the frame anchored below (or, if flipped, above) the given widget.
@@ -322,6 +406,16 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
          */
         void notifyActivated(QWidget* source=nullptr);
 
+        /**
+         * @brief Check if a global position lands inside this frame or any frame currently
+         *  chained under it (see setChainParent()).
+         *
+         * Used by eventFilter()'s outside-click test instead of a plain rect containment check,
+         * so a click landing inside an open submenu is not mistaken for a click outside this
+         * (its parent) frame.
+         */
+        bool chainContains(const QPoint& globalPos) const;
+
         void resizeEvent(QResizeEvent* event) override;
         void hideEvent(QHideEvent* event) override;
 
@@ -347,6 +441,9 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         QSize measureContentSize(QMargins& outMargins);
         void measure(QWidget* anchor);
         void measureAt(const QPoint& globalPos);
+        void measureBeside(const QRect& anchorGlobalRect);
+        QWidget* resolveHost(QWidget* anchor) const;
+        void detachFromChainParent();
         void animateFrame(bool forward, bool immediate);
         void finishAnimation(bool forward);
         void applyFrame(qreal t);

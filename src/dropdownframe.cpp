@@ -62,6 +62,11 @@ class DropdownFrame_p
         // longer a child of this window the way it would be if it were embedded
         QPointer<QWidget> hostWindow;
 
+        // see DropdownFrame::setChainParent() -- links a submenu (or any nested popup) to the
+        // frame it opens out of, so the pair behaves as one popup for dismissal purposes
+        QPointer<DropdownFrame> chainParent;
+        QPointer<DropdownFrame> chainChild;
+
         QVariantAnimation* anim=nullptr;
         qreal t=0.0;
         bool animForward=false;
@@ -100,6 +105,8 @@ class DropdownFrame_p
         int easingCurveType=static_cast<int>(DropdownFrame::DefaultEasingCurve);
         int offsetX=DropdownFrame::DefaultOffsetX;
         int offsetY=DropdownFrame::DefaultOffsetY;
+        int sideOffsetX=DropdownFrame::DefaultSideOffsetX;
+        int sideOffsetY=DropdownFrame::DefaultSideOffsetY;
 
         void repositionContent(QWidget* self)
         {
@@ -115,7 +122,7 @@ class DropdownFrame_p
             content->move(x,m.top());
         }
 
-        static QRect globalRect(QWidget* w)
+        static QRect globalRect(const QWidget* w)
         {
             if (w==nullptr)
             {
@@ -212,6 +219,14 @@ DropdownFrame::DropdownFrame(QWidget* parent)
 DropdownFrame::~DropdownFrame()
 {
     qApp->removeEventFilter(this);
+
+    // never leave a parent frame with its Escape shortcut stuck disabled because the chained
+    // child that was supposed to re-enable it on close got destroyed instead
+    detachFromChainParent();
+    if (!pimpl->chainChild.isNull())
+    {
+        pimpl->chainChild->pimpl->chainParent=nullptr;
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -397,10 +412,154 @@ int DropdownFrame::offsetY() const noexcept
 
 //--------------------------------------------------------------------------
 
+void DropdownFrame::setSideOffsetX(int val) noexcept
+{
+    pimpl->sideOffsetX=val;
+}
+
+int DropdownFrame::sideOffsetX() const noexcept
+{
+    return pimpl->sideOffsetX;
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::setSideOffsetY(int val) noexcept
+{
+    pimpl->sideOffsetY=val;
+}
+
+int DropdownFrame::sideOffsetY() const noexcept
+{
+    return pimpl->sideOffsetY;
+}
+
+//--------------------------------------------------------------------------
+
+const QRect& DropdownFrame::fullRect() const noexcept
+{
+    return pimpl->fullRect;
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::setChainParent(DropdownFrame* parent)
+{
+    if (pimpl->chainParent.data()==parent)
+    {
+        return;
+    }
+
+    // detach from whatever this frame was previously chained to first, so its Escape shortcut
+    // is correctly re-enabled and its chainChild pointer is correctly cleared
+    detachFromChainParent();
+
+    pimpl->chainParent=parent;
+}
+
+//--------------------------------------------------------------------------
+
+DropdownFrame* DropdownFrame::chainParent() const noexcept
+{
+    return pimpl->chainParent.data();
+}
+
+//--------------------------------------------------------------------------
+
+DropdownFrame* DropdownFrame::chainChild() const noexcept
+{
+    return pimpl->chainChild.data();
+}
+
+//--------------------------------------------------------------------------
+
+DropdownFrame* DropdownFrame::chainRoot() noexcept
+{
+    auto* root=this;
+    while (root->pimpl->chainParent!=nullptr)
+    {
+        root=root->pimpl->chainParent.data();
+    }
+    return root;
+}
+
+//--------------------------------------------------------------------------
+
+bool DropdownFrame::chainContains(const QPoint& globalPos) const
+{
+    if (isVisible() && DropdownFrame_p::globalRect(this).contains(globalPos))
+    {
+        return true;
+    }
+    if (!pimpl->chainChild.isNull())
+    {
+        return pimpl->chainChild->chainContains(globalPos);
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* DropdownFrame::resolveHost(QWidget* anchor) const
+{
+    // a chained frame's own anchor typically lives INSIDE its parent frame, which is itself a
+    // top-level window whose open/close animation repeatedly calls setGeometry() on itself --
+    // tracking that as the host would misread the parent's own animation as the host moving/
+    // resizing and self-dismiss this frame immediately. Inherit the parent's already-resolved
+    // host instead.
+    if (!pimpl->chainParent.isNull())
+    {
+        return pimpl->chainParent->pimpl->hostWindow.data();
+    }
+    if (anchor!=nullptr)
+    {
+        return anchor->window();
+    }
+    // same fallback popupAt() has always used for the anchor-less case
+    return !pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->window() : qobject_cast<QWidget*>(QApplication::activeWindow());
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::detachFromChainParent()
+{
+    auto* parent=pimpl->chainParent.data();
+    pimpl->chainParent=nullptr;
+    if (parent==nullptr)
+    {
+        return;
+    }
+
+    if (parent->pimpl->chainChild.data()!=this)
+    {
+        // setChainParent() was called (e.g. DropdownMenu::ensureSubmenu() sets it right away,
+        // on creation) but this frame was never actually opened as the parent's active child --
+        // chainChild is only ever set from beginOpen(). Nothing to undo on the parent's side;
+        // in particular, the parent's Escape shortcut was never disabled on this frame's
+        // account, so re-enabling it here would be wrong if some OTHER chained frame is
+        // currently the parent's actual open child.
+        return;
+    }
+    parent->pimpl->chainChild=nullptr;
+
+    // only re-enable the parent's Escape shortcut if the parent itself actually armed it --
+    // otherwise this would incorrectly turn it on for a parent that is closed, or that never
+    // wanted self-dismissal in the first place (isSelfDismissEnabled()==false)
+    if (parent->pimpl->selfDismissEnabled && parent->isVisible())
+    {
+        parent->pimpl->escShortcut->setEnabled(true);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void DropdownFrame::notifyActivated(QWidget* source)
 {
     Q_UNUSED(source)
-    closeDropdown();
+    // an item activated anywhere in a chain (e.g. a leaf row inside a nested submenu) tears
+    // down the whole chain, not just the frame it was clicked in -- a no-op walk for an
+    // unchained frame, where chainRoot() is just `this`
+    chainRoot()->closeDropdown();
 }
 
 //--------------------------------------------------------------------------
@@ -415,6 +574,14 @@ void DropdownFrame::resizeEvent(QResizeEvent* event)
 
 void DropdownFrame::hideEvent(QHideEvent* event)
 {
+    // backstop for any path that hides this frame without going through closeDropdown() (e.g.
+    // a direct hide() call from outside) -- a still-open chained child would otherwise be left
+    // floating with its parent gone
+    if (!pimpl->chainChild.isNull())
+    {
+        pimpl->chainChild->closeDropdown(true);
+    }
+
     emit aboutToHide();
     QFrame::hideEvent(event);
 }
@@ -607,6 +774,85 @@ void DropdownFrame::measure(QWidget* anchor)
 
 //--------------------------------------------------------------------------
 
+void DropdownFrame::measureBeside(const QRect& anchorGlobalRect)
+{
+    QMargins m;
+    auto natural=measureContentSize(m);
+    QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
+    // sideOffsetX/Y are QSS qproperty-driven -- read only AFTER measureContentSize(), whose
+    // Style::repolishRecursive(this) call is what applies them on this frame's very first
+    // opening (same ordering requirement offsetX/Y have in measure() above)
+
+    // bounded by the anchor rect's own screen, not the host window: the frame is a top-level
+    // window free to extend past the host window's own edges, like a native submenu
+    auto* screen=QGuiApplication::screenAt(anchorGlobalRect.center());
+    if (screen==nullptr)
+    {
+        screen=!pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->screen() : QGuiApplication::primaryScreen();
+    }
+    auto avail=screen!=nullptr ? screen->availableGeometry() : anchorGlobalRect;
+
+    // horizontal anchor: to the right of the anchor rect by default, flipped to its left only
+    // if the frame would overflow the screen's right edge AND there is genuinely more room on
+    // the left than on the right (mirrors measure()'s below-left -> below-right policy)
+    int x=anchorGlobalRect.right()+1+pimpl->sideOffsetX;
+    bool flippedLeft=false;
+    if (x+full.width()>avail.right())
+    {
+        auto roomRight=avail.right()-x;
+        auto leftEdge=anchorGlobalRect.left()-pimpl->sideOffsetX;
+        auto roomLeft=leftEdge-avail.left();
+        if (roomLeft>roomRight)
+        {
+            x=leftEdge-full.width();
+            flippedLeft=true;
+        }
+    }
+    x=qMax(avail.left(),qMin(x,avail.right()+1-full.width()));
+
+    // vertical anchor: top-aligned with the anchor rect by default (like a native submenu,
+    // level with the row that opened it); when it would not fit below that top edge, bottom-
+    // align with the anchor rect's bottom edge instead, so the frame runs upward from the row
+    int y=anchorGlobalRect.top()+pimpl->sideOffsetY;
+    bool bottomAnchored=false;
+    auto availableBelow=qMax(1,avail.bottom()-y);
+
+    if (full.height()>availableBelow && pimpl->verticalFlipEnabled)
+    {
+        auto bottomGlobalY=anchorGlobalRect.bottom()+1-pimpl->sideOffsetY;
+        auto availableAbove=qMax(1,bottomGlobalY-avail.top());
+        if (availableAbove>availableBelow)
+        {
+            bottomAnchored=true;
+            full.setHeight(qMin(full.height(),availableAbove));
+            y=bottomGlobalY-full.height();
+        }
+        else
+        {
+            full.setHeight(qMin(full.height(),availableBelow));
+        }
+    }
+    else
+    {
+        full.setHeight(qMin(full.height(),availableBelow));
+    }
+
+    // NOTE the inversion relative to measure(): applyFrame() pins the RIGHT edge and grows
+    // leftwards for a *RightCorner. A submenu sitting to the RIGHT of its anchor must pin its
+    // LEFT edge and grow rightwards, so it is *LeftCorner -- the opposite of measure()'s
+    // "rightAnchored means right-edge-aligned" convention. Do not rename flippedLeft to
+    // rightAnchored, it would silently invert this.
+    auto anchor_=bottomAnchored
+        ? (flippedLeft ? Qt::BottomRightCorner : Qt::BottomLeftCorner)
+        : (flippedLeft ? Qt::TopRightCorner : Qt::TopLeftCorner);
+
+    pimpl->fullRect=QRect(x,y,full.width(),full.height());
+    setAnchorCorner(anchor_);
+    setFullSize(full);
+}
+
+//--------------------------------------------------------------------------
+
 void DropdownFrame::measureAt(const QPoint& globalPos)
 {
     QMargins m;
@@ -748,12 +994,28 @@ void DropdownFrame::beginOpen(QWidget* host)
     pimpl->suppressNextOwnPressClose=true;
     QTimer::singleShot(0,this,[this](){ pimpl->suppressNextOwnPressClose=false; });
 
+    if (!pimpl->chainParent.isNull())
+    {
+        // only one child may be open per parent at a time -- e.g. hovering a different submenu
+        // row must close whichever submenu is currently open before this one takes its place
+        auto* sibling=pimpl->chainParent->pimpl->chainChild.data();
+        if (sibling!=nullptr && sibling!=this)
+        {
+            sibling->closeDropdown(true);
+        }
+        pimpl->chainParent->pimpl->chainChild=this;
+
+        // two simultaneously enabled Qt::ApplicationShortcut Escape shortcuts fire
+        // ambiguously -- only the innermost open frame in a chain should react to Escape
+        pimpl->chainParent->pimpl->escShortcut->setEnabled(false);
+    }
+
     if (pimpl->selfDismissEnabled)
     {
         pimpl->escShortcut->setEnabled(true);
         qApp->installEventFilter(this);
     }
-    if (pimpl->restoreFocus)
+    if (pimpl->restoreFocus && host!=nullptr)
     {
         pimpl->focusBefore=host->focusWidget();
     }
@@ -771,7 +1033,7 @@ void DropdownFrame::popupBelow(QWidget* anchor)
         return;
     }
 
-    auto* host=anchor->window();
+    auto* host=resolveHost(anchor);
     trackHost(host);
 
     // If the frame is still visible here, this open is reversing a close animation that a
@@ -794,7 +1056,7 @@ void DropdownFrame::popupBelow(QWidget* anchor)
 
 void DropdownFrame::popupAt(const QPoint& globalPos)
 {
-    auto* host=!pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->window() : qobject_cast<QWidget*>(QApplication::activeWindow());
+    auto* host=resolveHost(nullptr);
     if (host==nullptr)
     {
         return;
@@ -808,6 +1070,39 @@ void DropdownFrame::popupAt(const QPoint& globalPos)
     }
 
     beginOpen(host);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::popupBesideRect(const QRect& anchorGlobalRect)
+{
+    auto* host=resolveHost(nullptr);
+    if (host==nullptr)
+    {
+        return;
+    }
+    trackHost(host);
+
+    // see popupBelow()'s comment on the analogous isVisible() check -- reversing an in-flight
+    // close animation must not re-fill/re-measure a still-visible frame
+    if (!isVisible())
+    {
+        fillContent();
+        measureBeside(anchorGlobalRect);
+    }
+
+    beginOpen(host);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::popupBeside(QWidget* anchor)
+{
+    if (anchor==nullptr)
+    {
+        return;
+    }
+    popupBesideRect(DropdownFrame_p::globalRect(anchor));
 }
 
 //--------------------------------------------------------------------------
@@ -828,6 +1123,19 @@ void DropdownFrame::toggleBelow(QWidget* anchor)
 
 void DropdownFrame::closeDropdown(bool immediate)
 {
+    // Cascade and detach unconditionally, before the early-out below: notifyActivated() closes
+    // from chainRoot(), so an outer frame's closeDropdown() must still tear down an inner frame
+    // even if this outer frame's own visibility already looks "closed" here. This must also run
+    // BEFORE this frame disables its own escShortcut just below: cascading first closes
+    // chainChild, whose own closeDropdown() detaches IT from this frame (as its parent) and
+    // re-enables this frame's escShortcut (see detachFromChainParent()) -- doing that after this
+    // frame had already disabled its own shortcut would leave it wrongly re-enabled.
+    if (!pimpl->chainChild.isNull())
+    {
+        pimpl->chainChild->closeDropdown(immediate);
+    }
+    detachFromChainParent();
+
     if (!isVisible() && qFuzzyIsNull(pimpl->t))
     {
         return;
@@ -871,9 +1179,10 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
             auto* me=static_cast<QMouseEvent*>(event);
             auto g=me->globalPosition().toPoint();
 
-            if (isVisible() && DropdownFrame_p::globalRect(this).contains(g))
+            if (chainContains(g))
             {
-                // inside the frame: let it through, the content itself handles it (and may
+                // inside this frame or one of its open chained descendants (see
+                // setChainParent()): let it through, the content itself handles it (and may
                 // call notifyActivated())
                 break;
             }

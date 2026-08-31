@@ -6,6 +6,13 @@ qproperty-offsetX: 0;
 qproperty-offsetY: 4;
 qproperty-animationDurationMs: 150;
 qproperty-easingCurveType: 6;
+/* a submenu opens flush against this frame's right edge; sideOffsetY cancels this frame's
+   own padding (8px) and border (1px) above so the first submenu row lines up exactly with
+   the row that opened it -- keep in sync if that padding/border ever changes */
+qproperty-sideOffsetX: 0;
+qproperty-sideOffsetY: -9;
+qproperty-submenuHoverDelayMs: 200;
+qproperty-submenuCloseDelayMs: 250;
 }
 
 uise--DropdownMenu #menuContent {
@@ -69,4 +76,10 @@ qproperty-rippleInsetTop: 0;
 /* ordinary rows that follow a section, until the next separator or section */
 uise--DropdownMenu uise--IconTextButton[subsection="true"] {
 padding-left:24px;
+}
+
+/* breathing room between a submenu row's text and its trailing chevron (see MenuItem::
+   submenu()) */
+uise--DropdownMenu uise--IconTextButton[submenu="true"] #trailingIcon {
+margin-left:12px;
 }

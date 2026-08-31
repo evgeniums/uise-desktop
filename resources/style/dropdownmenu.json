@@ -4,6 +4,7 @@
             "name" : "DropdownMenu",
             "aliases" : {
                 "check" : "${uise-svg-icons-1}/check",
+                "submenu" : "${uise-svg-icons-1}/chevron-right",
                 "rename" : "${uise-svg-icons-1}/pencil",
                 "delete" : "${uise-svg-icons-1}/trash",
                 "highQuality" : "${uise-svg-icons-1}/badge-hd",

@@ -11,6 +11,15 @@ uise--DropdownMenu uise--IconTextButton[hovered="true"] {
 background-color: rgba(0,0,0,8);
 }
 
+/* the row that owns an open submenu keeps the same highlight after the pointer has moved off
+   it and into the submenu -- driven by the submenuOpen dynamic property (see DropdownMenu::
+   openSubmenu()/closeSubmenu()), NOT by IconTextButton::setParentHovered(), which would leave
+   that row permanently deaf to its own hovered() signal -- the very signal the submenu open/
+   close state machine runs on */
+uise--DropdownMenu uise--IconTextButton[submenuOpen="true"] {
+background-color: rgba(0,0,0,8);
+}
+
 /* same muted gray as the app's placeholder-text-color (global.qss) -- reused rather than a
    new hue, see uise--DropdownMenu #text's icon-mode counterpart in dropdownmenu.json */
 uise--DropdownMenu uise--IconTextButton #text:disabled {
