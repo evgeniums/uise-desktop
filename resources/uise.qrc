@@ -187,5 +187,6 @@
         <file>style/dark/check.svg</file>
         <file>style/light/check.svg</file>
         <file>style/radio-dot.svg</file>
+        <file>style/light/chat_background.png</file>
     </qresource>
 </RCC>

@@ -367,6 +367,16 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             emit viewportUpdated();
         }
     );
+
+    connect(
+        this,
+        &AbstractChatMessagesView::effectiveAlignSentChanged,
+        this,
+        [this]()
+        {
+            applyAlignSentToMessages();
+        }
+    );    
 }
 
 //--------------------------------------------------------------------------
@@ -1064,6 +1074,12 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
         }
     );
 
+    // Own (sent) message alignment, as currently resolved by this view (app setting + Auto-mode
+    // width check, see AbstractChatMessagesView::effectiveAlignSent()). A no-op for a Received
+    // message (isRight() never depends on alignSent there) and cheap to call unconditionally;
+    // must happen before ensurePolished() below since it can reorder the bubble/avatar layout.
+    message->ui()->setAlignSent(effectiveAlignSent());
+
     // set selection mode
     if (isSelectionMode())
     {
@@ -1087,7 +1103,11 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
     {
         m_messageBubbleOuterWidth=message->ui()->bubbleOuterWidth();
         m_messageMinWidth=message->ui()->minimumWidth();
-        m_messageMaxWidth=message->ui()->maximumWidth();
+        // maxMessageWidth() (qproperty-maxMessageWidth, see chat.qss) takes precedence when set --
+        // this view's own width is no longer capped (chat.qss dropped that), so without an
+        // explicit bubble cap here a message would grow to fill an arbitrarily wide window.
+        // Falls back to sampling the first message's own QSS maximumWidth(), same as before.
+        m_messageMaxWidth=maxMessageWidth()>0 ? maxMessageWidth() : message->ui()->maximumWidth();
     }
 
     // done
@@ -1138,6 +1158,12 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
+
+    // Auto mode: this view's own width just changed, so re-check whether own messages should
+    // flip side. A flip emits effectiveAlignSentChanged(), which applyAlignSentToMessages() is
+    // connected to (ctor) -- runs synchronously here, before adjustMessagesSizes() below.
+    updateEffectiveAlignSent();
+
     adjustMessagesSizes();
 
     // fix resizing artefacts when window is miximized/normalized
@@ -1308,6 +1334,21 @@ bool ChatMessagesView<BaseMessageT,Traits>::rEachMessage(MessageHandler handler)
         [handler](const auto* item)
         {
             return handler(item->item());
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::applyAlignSentToMessages()
+{
+    auto align=effectiveAlignSent();
+    eachMessage(
+        [align](Message* msg)
+        {
+            msg->ui()->setAlignSent(align);
+            return true;
         }
     );
 }

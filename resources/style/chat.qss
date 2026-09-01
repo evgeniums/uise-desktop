@@ -27,30 +27,34 @@ min-height: 6px;
 max-height: 6px;
 }
 
-uise--AbstractChatMessageContent[sent="true"] {
+/* Tail/corner-radius geometry keys on [right=...] (which side the bubble sits/points to), NOT
+ * [sent=...] (colour only, see light/chat.qss and dark/chat.qss) -- own messages can be aligned
+ * to the left (AbstractChatMessagesView::AlignSentMode), and a left-aligned sent bubble still
+ * needs a left-pointing tail. */
+uise--AbstractChatMessageContent[right="true"] {
 border-top-right-radius: 6px;
 border-bottom-right-radius: 6px;
 }
 
-uise--AbstractChatMessageContent[sent="true"][first="true"] {
+uise--AbstractChatMessageContent[right="true"][first="true"] {
 border-top-right-radius: 16px;
 }
 
-uise--AbstractChatMessageContent[sent="true"][last="true"] {
+uise--AbstractChatMessageContent[right="true"][last="true"] {
 border-bottom-right-radius: 0;
 }
 
 
-uise--AbstractChatMessageContent[sent="false"] {
+uise--AbstractChatMessageContent[right="false"] {
 border-top-left-radius: 6px;
 border-bottom-left-radius: 6px;
 }
 
-uise--AbstractChatMessageContent[sent="false"][first="true"] {
+uise--AbstractChatMessageContent[right="false"][first="true"] {
 border-top-left-radius: 16px;
 }
 
-uise--AbstractChatMessageContent[sent="false"][last="true"] {
+uise--AbstractChatMessageContent[right="false"][last="true"] {
 border-bottom-left-radius: 0;
 }
 
@@ -60,12 +64,12 @@ uise--AbstractChatMessage #avatarFrame{
 min-width: 16px;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask{
+uise--AbstractChatMessage uise--ChatMessageAvatar[right="true"][last="true"] #mask{
 border-radius:0;
 border-bottom-left-radius: 16px;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask{
+uise--AbstractChatMessage uise--ChatMessageAvatar[right="false"][last="true"] #mask{
 border-radius:0;
 border-bottom-right-radius: 16px;
 }
@@ -100,8 +104,14 @@ background-color: transparent;
 border: none;
 }
 
-uise--AbstractChatMessagesView #uiseFlyweightListViewV{
-max-width: 1000px;
+/* The list itself is uncapped -- the bubble width cap moved onto qproperty-maxMessageWidth so a
+ * wide window is actually used (AbstractChatMessagesView::setMaxMessageWidth()).
+ * qproperty-alignSentLeftWidth is the Auto-mode threshold (AlignSentMode::Auto): past this view
+ * width, own messages move to the left so they line up with received ones (0 = never). See
+ * whitemdesktop's Appearance node ("Position of my messages"). */
+uise--AbstractChatMessagesView {
+qproperty-maxMessageWidth: 1000;
+qproperty-alignSentLeftWidth: 1000;
 }
 
 uise--AbstractChatMessageSelector {

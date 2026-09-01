@@ -145,6 +145,11 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         void setSelected(bool enable) override;
         void setSent(bool enable) override;
 
+        //! Bubble corner-radius geometry (tail side) -- independent of setSent()'s colour, so a
+        //! Sent message aligned to the left still gets a left-pointing tail. See chat.qss
+        //! [right=...] rules.
+        void setRight(bool enable) override;
+
     protected:
 
         void updateChatMessage() override;
@@ -312,6 +317,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         void updateContentVisible() override;
 
         void updateContent() override;
+
+        void updateAlignment() override;
 
         void updateAvatarVisible() override;
 

@@ -151,13 +151,93 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
 {
     Q_OBJECT
 
+    //! Auto-mode threshold (px): once this view is wider than this, own (sent) messages move to
+    //! the left so they line up with received ones, instead of drifting toward the far edge of a
+    //! wide window -- see setAlignSentMode()/updateEffectiveAlignSent(). 0 means Auto never
+    //! flips (equivalent to Right). Settable from QSS via qproperty-alignSentLeftWidth.
+    Q_PROPERTY(int alignSentLeftWidth READ alignSentLeftWidth WRITE setAlignSentLeftWidth)
+
+    //! Cap on an individual message bubble's own width. Independent of this view's width (no
+    //! longer capped itself, see chat.qss) -- without this a bubble/image album would grow to
+    //! fill an arbitrarily wide window. 0 keeps the historical fallback: ChatMessagesView samples
+    //! the first built message's own QSS maximumWidth() instead. Settable from QSS via
+    //! qproperty-maxMessageWidth.
+    Q_PROPERTY(int maxMessageWidth READ maxMessageWidth WRITE setMaxMessageWidth)
+
     public:
 
         constexpr static const int MouseMoveDetectDelta=10;
 
-        using QFrame::QFrame;
+        explicit AbstractChatMessagesView(QWidget* parent=nullptr) : QFrame(parent)
+        {
+            setAttribute(Qt::WA_StyledBackground, true);
+        }
 
         QString unreadSeparatorTitle() const { return tr("Unread messages"); }
+
+        //! Position of own (sent) messages -- app-settings-driven, see whitemdesktop's
+        //! Appearance node ("Position of my messages"). Auto resolves to Left/Right depending on
+        //! this view's own width vs. alignSentLeftWidth(); Left/Right are unconditional.
+        enum class AlignSentMode : int
+        {
+            Auto,
+            Right,
+            Left
+        };
+
+        //! No-op if unchanged. Otherwise re-evaluates effectiveAlignSent() immediately (safe to
+        //! call from ordinary app code -- unlike the QSS-driven properties below, this is never
+        //! invoked from inside QStyle::polish()).
+        void setAlignSentMode(AlignSentMode mode)
+        {
+            if (m_alignSentMode==mode)
+            {
+                return;
+            }
+            m_alignSentMode=mode;
+            updateEffectiveAlignSent();
+        }
+
+        AlignSentMode alignSentMode() const noexcept
+        {
+            return m_alignSentMode;
+        }
+
+        //! The side sent messages currently resolve to, given alignSentMode() and (in Auto mode)
+        //! this view's own width vs. alignSentLeftWidth(). ChatMessagesView::makeMessage() reads
+        //! this for every newly built message; effectiveAlignSentChanged() drives re-applying it
+        //! to messages already on screen.
+        AbstractChatMessage::AlignSent effectiveAlignSent() const noexcept
+        {
+            return m_effectiveAlignSent;
+        }
+
+        int alignSentLeftWidth() const noexcept
+        {
+            return m_alignSentLeftWidth;
+        }
+
+        //! Q_PROPERTY writer -- called by Qt's style engine during polish, so this only stores
+        //! the value. The next resizeEvent() (always imminent -- see FlyweightListView_p::
+        //! setupUi()'s own QTimer::singleShot(0,...)) calls updateEffectiveAlignSent(), which
+        //! picks it up; there is nothing to relayout synchronously here.
+        void setAlignSentLeftWidth(int value) noexcept
+        {
+            m_alignSentLeftWidth=value;
+        }
+
+        int maxMessageWidth() const noexcept
+        {
+            return m_maxMessageWidth;
+        }
+
+        //! Q_PROPERTY writer -- same polish-time contract as setAlignSentLeftWidth(). Purely
+        //! passive: ChatMessagesView::messageContentWidth() reads it on demand, nothing to
+        //! recompute eagerly.
+        void setMaxMessageWidth(int value) noexcept
+        {
+            m_maxMessageWidth=value;
+        }
 
     signals:
 
@@ -177,6 +257,54 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
          * picker anchored at globalAnchorPos and jump the history to the chosen date.
          */
         void dateSectionClicked(const QDate& date, const QPoint& globalAnchorPos);
+
+        //! effectiveAlignSent() flipped -- either setAlignSentMode() changed it, or (in Auto
+        //! mode) a resizeEvent()'s updateEffectiveAlignSent() call resolved it differently.
+        //! ChatMessagesView connects this to a sweep over every already-loaded message.
+        void effectiveAlignSentChanged();
+
+    protected:
+
+        //! Re-evaluates effectiveAlignSent() from the current alignSentMode()/width()/
+        //! alignSentLeftWidth(). Returns true (having already emitted effectiveAlignSentChanged())
+        //! only if the resolved side actually changed -- ChatMessagesView::resizeEvent() calls
+        //! this on every resize and only re-sweeps messages when it returns true.
+        bool updateEffectiveAlignSent()
+        {
+            auto resolved=AbstractChatMessage::AlignSent::Right;
+            switch (m_alignSentMode)
+            {
+                case(AlignSentMode::Left):
+                    resolved=AbstractChatMessage::AlignSent::Left;
+                    break;
+
+                case(AlignSentMode::Right):
+                    resolved=AbstractChatMessage::AlignSent::Right;
+                    break;
+
+                case(AlignSentMode::Auto):
+                default:
+                    resolved=(m_alignSentLeftWidth>0 && width()>m_alignSentLeftWidth)
+                                 ? AbstractChatMessage::AlignSent::Left
+                                 : AbstractChatMessage::AlignSent::Right;
+                    break;
+            }
+
+            if (resolved==m_effectiveAlignSent)
+            {
+                return false;
+            }
+            m_effectiveAlignSent=resolved;
+            emit effectiveAlignSentChanged();
+            return true;
+        }
+
+    private:
+
+        AlignSentMode m_alignSentMode=AlignSentMode::Auto;
+        AbstractChatMessage::AlignSent m_effectiveAlignSent=AbstractChatMessage::AlignSent::Right;
+        int m_alignSentLeftWidth=0;
+        int m_maxMessageWidth=0;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -406,6 +534,12 @@ class ChatMessagesView : public AbstractChatMessagesView
         int messageContentWidth() const;
         int defaultMessageContentWidth() const;
         void adjustMesssageSize(Message* msg);
+
+        //! Pushes effectiveAlignSent() onto every message already loaded. Connected (ctor) to
+        //! effectiveAlignSentChanged(), which fires from either a setAlignSentMode() call or an
+        //! Auto-mode resizeEvent() crossing alignSentLeftWidth() -- see
+        //! AbstractChatMessagesView::updateEffectiveAlignSent().
+        void applyAlignSentToMessages();
 
         void onUserScrolled();
         void updateDateSubtitleText();

@@ -635,6 +635,16 @@ void ChatMessageContent::setSent(bool enable)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageContent::setRight(bool enable)
+{
+    // Repolish: chat.qss keys the bubble's tail corner radii on [right=...] (split off from
+    // [sent=...], which now drives colour only -- see updateAlignment()/setAlignSent()), so a
+    // side flip must actually re-match the stylesheet.
+    Style::setStyleProperty(this,"right",enable);
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageContent::updateChatMessage()
 {
     connect(
@@ -650,10 +660,7 @@ void ChatMessageContent::updateChatMessage()
         &ChatMessageContent::updateFirstInBatch
     );
 
-    // No repolish here: no QSS rule anywhere keys on a "right" property set on
-    // uise--AbstractChatMessageContent, so a repolish would only cost a full stylesheet
-    // re-match for nothing.
-    setProperty("right",chatMessage()->isRight());
+    setRight(chatMessage()->isRight());
 }
 
 //--------------------------------------------------------------------------
@@ -1078,35 +1085,52 @@ void ChatMessage::updateContent()
 
         content()->setSent(direction()==Direction::Sent);
 
-        pimpl->contentFrame->setRight(isRight());
-        pimpl->avatarFrame->setRight(isRight());
-        pimpl->avatarFrame->setSent(isRight());
-
-        // Only re-slot the selector if it exists; ensureSelector() places it correctly on its own
-        // when it is built later.
-        if (isSelectorOnLeft() && pimpl->selector!=nullptr)
-        {
-            pimpl->mainLayout->addWidget(pimpl->selector);
-        }
-
         pimpl->contentFrame->setContent(content());
-        if (!isRight())
-        {
-            pimpl->mainLayout->addWidget(pimpl->avatarFrame);
-            pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
-            pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
-        }
-        else
-        {
-            pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
-            pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
-            pimpl->mainLayout->addWidget(pimpl->avatarFrame);
-        }
 
-        if (!isSelectorOnLeft() && pimpl->selector!=nullptr)
-        {
-            pimpl->mainLayout->addWidget(pimpl->selector);
-        }
+        updateAlignment();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAlignment()
+{
+    if (content()==nullptr)
+    {
+        return;
+    }
+
+    // Geometry only (tail radii, avatar mask, left/right ordering) -- colour is setSent()'s job
+    // and is not touched here, so calling this repeatedly (setAlignSent() on a live setting
+    // change or an AbstractChatMessagesView Auto-mode resize) never disturbs it.
+    content()->setRight(isRight());
+    pimpl->contentFrame->setRight(isRight());
+    pimpl->avatarFrame->setRight(isRight());
+    pimpl->avatarFrame->setSent(direction()==Direction::Sent);
+
+    // Only re-slot the selector if it exists; ensureSelector() places it correctly on its own
+    // when it is built later.
+    if (isSelectorOnLeft() && pimpl->selector!=nullptr)
+    {
+        pimpl->mainLayout->addWidget(pimpl->selector);
+    }
+
+    if (!isRight())
+    {
+        pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+        pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
+        pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
+    }
+    else
+    {
+        pimpl->mainLayout->addWidget(pimpl->avatarFramePlaceholder);
+        pimpl->mainLayout->addWidget(pimpl->contentFrame,1);
+        pimpl->mainLayout->addWidget(pimpl->avatarFrame);
+    }
+
+    if (!isSelectorOnLeft() && pimpl->selector!=nullptr)
+    {
+        pimpl->mainLayout->addWidget(pimpl->selector);
     }
 }
 

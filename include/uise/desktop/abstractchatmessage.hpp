@@ -651,6 +651,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! QSS state instead of [selected="..."].
         virtual void setSent(bool enable) =0;
 
+        //! Bubble tail/corner-radius geometry side -- independent of setSent()'s colour, so a
+        //! sent message aligned to the left still gets a left-pointing tail (see chat.qss
+        //! [right=...] rules). Default no-op: unlike setSent()/setSelected(), no section other
+        //! than the bubble itself keys QSS on this, so there is nothing to fan out.
+        virtual void setRight(bool /*enable*/) {}
+
         void updateBubbleWidth(int forMaxWidthIn);
 
         //! Re-runs updateBubbleWidth() against the SAME forMaxWidthIn it was last called with --
@@ -834,11 +840,25 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {
             m_direction=direction;
             m_alignSent=alignSent;
+            updateRight();
+        }
 
-            m_right=false;
-            if (m_direction==Direction::Sent && m_alignSent==AlignSent::Right)
+        //! Change only the alignment of sent messages, e.g. in response to a live app setting or
+        //! an AbstractChatMessagesView Auto-mode flip -- direction() (sent/received) is untouched.
+        //! No-op (and no relayout) if the effective side does not actually change, e.g. calling
+        //! this on a Received message never affects isRight().
+        void setAlignSent(AlignSent alignSent)
+        {
+            if (m_alignSent==alignSent)
             {
-                m_right=true;
+                return;
+            }
+            m_alignSent=alignSent;
+            auto wasRight=m_right;
+            updateRight();
+            if (wasRight!=m_right)
+            {
+                updateAlignment();
             }
         }
 
@@ -1183,6 +1203,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {
         }
 
+        //! Side-dependent half of updateContent() -- left/right ordering of avatar and bubble,
+        //! and the bubble/avatar "right" style property. Split out so setAlignSent() (which may
+        //! fire repeatedly, e.g. on every resize in AbstractChatMessagesView Auto mode) can
+        //! re-run only this, not the whole of updateContent() (which re-runs setContent() and
+        //! would stack duplicate ChatMessageContentWrapper connections -- see chatmessage.cpp).
+        virtual void updateAlignment()
+        {}
+
         virtual void updateAvatarVisible()
         {}
 
@@ -1203,6 +1231,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void ensureHighlightAnimation();
         void setHighlightFactor(qreal value);
+
+        //! Recomputes m_right from the current m_direction/m_alignSent -- shared by
+        //! setDirection() and setAlignSent(), neither of which relayouts on its own (see
+        //! updateAlignment()).
+        void updateRight() noexcept
+        {
+            m_right = (m_direction==Direction::Sent && m_alignSent==AlignSent::Right);
+        }
 
         AbstractChatSeparator* m_topSeparator=nullptr;
         AbstractChatMessageContent* m_content=nullptr;
