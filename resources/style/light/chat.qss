@@ -1,11 +1,22 @@
-/* Chat viewport background. Nothing else keys on this colour any more -- the bubble tail used
- * to be carved out of an opaque #mask child painted in this exact colour, so this literal had to
- * stay in lockstep with it. ChatMessageAvatar now paints the tail's own shape directly (see
- * chat.qss), so this rule is free to become a texture, gradient or per-chat background image
- * without the tail needing to know about it. */
+/* Chat viewport background. Nothing else keys on this colour/image any more -- the bubble tail
+ * used to be carved out of an opaque #mask child painted in this exact colour, so this rule had
+ * to stay in lockstep with it. ChatMessageAvatar now paints the tail's own shape directly (see
+ * chat.qss), so this rule is free to be a texture, gradient or per-chat background image without
+ * the tail needing to know about it -- background-color is the fallback while the image loads
+ * and shows through its transparent pixels, if any. No background-position: it defaults to the
+ * widget's own top-left, which is what makes the tile line up seamlessly across the whole
+ * viewport instead of each widget centring its own copy of the tile. */
 uise--AbstractChatMessagesView
 {
 background-color: #8BBB92; /* chat background */
+background-image: url(":/uise/desktop/style/light/chat_background.png");
+/* "repeat-xy", NOT CSS's "repeat" -- Qt QSS only knows repeat-x/repeat-y/repeat-xy/no-repeat.
+ * An unrecognised value parses to Repeat_Unknown, which makes QRenderRule fall through to
+ * drawPixmap() instead of drawTiledPixmap(), i.e. the image is drawn exactly ONCE at the
+ * widget's top-left at its native size (512pt here) and the rest of the view stays flat
+ * background-color. Omitting the property entirely would also tile (Repeat_XY is the default);
+ * it is spelled out here so the intent is explicit. */
+background-repeat: repeat-xy;
 }
 
 uise--AbstractChatMessageContent {

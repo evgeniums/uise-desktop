@@ -88,7 +88,7 @@ min-width: 16px;
 uise--AbstractChatMessage uise--ChatMessageAvatar {
 qproperty-tailShape: 1;
 qproperty-tailWidth: 10;
-qproperty-tailHeight: 10;
+qproperty-tailHeight: 20;
 }
 
 uise--AbstractChatSeparatorSection {

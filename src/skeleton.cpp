@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QResizeEvent>
 #include <QPaintEvent>
 #include <QLineEdit>
+#include <QStyleOption>
+#include <QStyle>
 
 #include <uise/desktop/skeleton.hpp>
 
@@ -368,6 +370,16 @@ void Skeleton::paintEvent(QPaintEvent* /*event*/)
     {
         painter.fillRect(rect(), bgColor);
     }
+
+    // Then let the stylesheet paint its own background over that flat fill. Only `background-
+    // color` reaches the palette read above -- a `background-image`/gradient has no palette
+    // equivalent, so without this a QSS background image on uise--Skeleton would be silently
+    // dropped (and, where Qt paints the styled background before paintEvent, actively covered by
+    // the fillRect above). Additive on purpose: with no matching QSS rule this draws nothing and
+    // the palette fill remains, so the opaque-overlay guarantee above is unchanged.
+    QStyleOption bgOpt;
+    bgOpt.initFrom(this);
+    style()->drawPrimitive(QStyle::PE_Widget,&bgOpt,&painter,this);
 
     const int radius = pimpl->cornerRadius;
 
