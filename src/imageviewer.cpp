@@ -1690,6 +1690,21 @@ void ImageViewer::onWindowChanged()
 
 void ImageViewer::updateBusySpinner()
 {
+    if (imageCount()==0)
+    {
+        // Defensive guard -- an empty window has nothing to load and never will (its
+        // currentKey is null, so no fetch can ever resolve one), so a spinner is never the
+        // right state here regardless of who emptied it. The one caller who empties the
+        // window this way (ChatImageViewerController::onChatMessageEvent()) already closes
+        // the viewer itself; this only stops any other/future emptying path from stranding
+        // the blocking spinner below.
+        m_widget->pimpl->busySpinner->setVisible(false);
+        m_widget->pimpl->busySpinner->stop();
+        m_widget->pimpl->loadingOverlayFrame->setVisible(false);
+        m_widget->pimpl->loadingOverlay->stop();
+        return;
+    }
+
     auto px=currentImage();
     if (px.isNull() && !m_animator->isAnimated())
     {
