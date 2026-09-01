@@ -1,6 +1,6 @@
-uise--AbstractChatMessagesView,
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
+/* Chat viewport background -- decoupled from the bubble tail now, see light/chat.qss's matching
+ * comment for why. */
+uise--AbstractChatMessagesView
 {
 background-color: #28282a; /* chat background */
 }
@@ -36,20 +36,23 @@ qproperty-highlightColor: #FFFFFF;
 qproperty-highlightOpacity: 0.07;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
-background-color: #2d323b;
+/* Tail colours, paired one-for-one with the bubble colours above -- see light/chat.qss's
+ * matching comment for why these are qproperty-tailColor and deliberately not keyed on
+ * [last="true"]. */
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"] {
+qproperty-tailColor: #2d323b;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]{
-background-color: #4A70A9; /* selected message */
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"] {
+qproperty-tailColor: #4A70A9; /* selected message */
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] {
-background-color: #355872;
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"] {
+qproperty-tailColor: #355872;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]{
-background-color: #4A70A9; /* selected message */
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"] {
+qproperty-tailColor: #4A70A9; /* selected message */
 }
 
 uise--ChatMessageBottom QLabel {

@@ -33,6 +33,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVariantAnimation>
 #include <QEasingCurve>
 #include <QPainter>
+#include <QPainterPath>
+#include <QTransform>
+#include <QRectF>
 #include <QStyleOption>
 #include <QStyle>
 
@@ -1512,24 +1515,31 @@ void ChatMessageBottom::setSent(bool enable)
 ChatMessageAvatar::ChatMessageAvatar(QWidget* parent)
     : QFrame(parent)
 {
-    auto l=Layout::horizontal(this);
-    m_mask=new QFrame(this);
-    m_mask->setObjectName("mask");
-    m_mask->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    l->addWidget(m_mask);
+    // One layout, not two: the deleted #mask child used to fill this widget's rect exactly
+    // (Layout::horizontal/vertical zero margins and spacing, mask was Expanding), so parenting
+    // the avatar straight to `this` leaves its rect unchanged. paintEvent() below draws the tail
+    // shape directly instead of relying on #mask's opaque background to fake it.
+    auto l=Layout::vertical(this);
+    m_avatar=new AvatarWidget(this);
+    l->addWidget(m_avatar);
 
-    m_layout=Layout::vertical(m_mask);
-    m_avatar=new AvatarWidget(m_mask);
-    m_layout->addWidget(m_avatar);
-
-    setStyleProperty("last",true);
+    setLastInBatch(true);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageAvatar::setRight(bool enable)
 {
-    setStyleProperty("right",enable);
+    // No QSS rule keys on uise--ChatMessageAvatar[right=...] any more -- which side the tail
+    // points to is now decided in tailPath() from m_right, so a full repolish is unnecessary
+    // here. The dynamic property is still set (deliberately not repolished, same idiom as
+    // ChatMessageBottom::setSelected()/setSent() above) so it stays visible to any future QSS.
+    if (m_right!=enable)
+    {
+        m_right=enable;
+        setProperty("right",enable);
+        update();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1550,21 +1560,155 @@ void ChatMessageAvatar::setSent(bool enable)
 
 void ChatMessageAvatar::setLastInBatch(bool enable)
 {
-    setStyleProperty("last",enable);
+    // See setRight() above -- no QSS rule keys on uise--ChatMessageAvatar[last=...] any more,
+    // the tail is simply not painted at all when m_last is false (see paintEvent()).
+    if (m_last!=enable)
+    {
+        m_last=enable;
+        setProperty("last",enable);
+        update();
+    }
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageAvatar::setStyleProperty(const char* name, bool enable)
 {
-    // Both `this` and #mask are repolish targets: chat.qss has rules keyed on
-    // uise--ChatMessageAvatar[sent=...][last=...] directly (styling `this`) as well as on
-    // uise--ChatMessageAvatar[...] #mask (styling the child) -- unlike setSelected()/setSent()
-    // above, neither repolish here is redundant. setStyleProperty() guards each independently;
-    // since both are always set to the same value in lockstep, that is equivalent to a combined
-    // guard.
-    Style::setStyleProperty(this,name,enable);
-    Style::setStyleProperty(m_mask,name,enable);
+    // Only `this` is a repolish target now that #mask is gone -- the tail's colour comes from
+    // qproperty-tailColor rules keyed on uise--ChatMessageAvatar[sent=...][selected=...]
+    // directly (light/chat.qss, dark/chat.qss). Unlike the old style-engine background fill, a
+    // repolish that only changes a qproperty-* value does not by itself schedule a repaint, so
+    // ask for one explicitly -- but only once Style::setStyleProperty() confirms it actually
+    // repolished, to stay a no-op when the value didn't change.
+    if (Style::setStyleProperty(this,name,enable))
+    {
+        update();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::paintEvent(QPaintEvent* event)
+{
+    Q_UNUSED(event)
+
+    // Re-invoke the stylesheet's own frame painting explicitly -- required once a widget
+    // overrides paintEvent(), same idiom as AbstractChatMessage::paintEvent() above. Without
+    // this, any current/future QSS background/border rule on uise--ChatMessageAvatar would
+    // silently stop rendering.
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter painter(this);
+    style()->drawPrimitive(QStyle::PE_Widget,&opt,&painter,this);
+
+    if (!m_last || !m_tailColor.isValid())
+    {
+        return;
+    }
+
+    auto path=tailPath();
+    if (path.isEmpty())
+    {
+        return;
+    }
+
+    painter.setRenderHint(QPainter::Antialiasing,true);
+    painter.fillPath(path,m_tailColor);
+}
+
+//--------------------------------------------------------------------------
+
+QPainterPath ChatMessageAvatar::tailPath() const
+{
+    // Both shapes below are built for a LEFT column (bubble to the right, i.e. beyond this
+    // widget's right edge, x>=w) and mirrored horizontally at the end for the right column --
+    // reflecting a closed fill path is orientation-agnostic, so one mirror step covers both
+    // shapes instead of hand-writing a second set of coordinates for each.
+    const qreal w=width();
+    const qreal h=height();
+
+    QPainterPath path;
+
+    if (m_tailShape==TailShapeRounded)
+    {
+        // The original shape this class used to fake with an opaque #mask child painted in the
+        // chat-background colour: a concave quarter disc of radius r sitting in the corner of
+        // the column, its rounded edge cut out of the corner square exactly the way
+        // uise--ChatMessageAvatar[...] #mask's border-radius used to. r is tailHeight (matching
+        // uise--AbstractChatMessageContent's own border-radius, so it continues the bubble's
+        // corner) clamped to the widget's own rect; tailWidth has no meaning for this shape.
+        const qreal r=qMin(static_cast<qreal>(m_tailHeight),qMin(w,h));
+        if (r<=0.0)
+        {
+            return path;
+        }
+
+        path.moveTo(w-r,h);
+        path.arcTo(QRectF(w-2*r,h-2*r,2*r,2*r),270.0,90.0);
+        path.lineTo(w,h);
+        path.closeSubpath();
+    }
+    else
+    {
+        // Teardrop hook, hooking off the bubble's own square corner:
+        //
+        //   P0 = (w, h-th)   attachment point, on the bubble's own left edge
+        //   C  = (w, h)      the bubble's squared bottom-left corner (chat.qss keeps that
+        //                    corner unrounded on the last message in a batch)
+        //   T  = (w-tw, h)   the tip
+        //
+        // P0->C is a straight edge along the bubble. C->T (the underside) is a concave cubic
+        // scooped up towards the baseline, leaving a notch of chat background under the tail --
+        // that scoop is what reads as a hook rather than a blob. T->P0 (the outer edge) is a
+        // convex cubic that bulges back out near the tail's full width before arriving at P0, so
+        // the tail flows tangentially into the bubble's edge instead of meeting it at a corner.
+        //
+        // All four control points are expressed as ratios of tailWidth/tailHeight, not absolute
+        // coordinates, so the shape keeps its proportions -- and, in particular, gets uniformly
+        // thinner or thicker -- as tailWidth is retuned from QSS; tailWidth is this shape's
+        // thickness control (qproperty-tailWidth in chat.qss).
+        constexpr static const qreal UnderScoopX1=0.30, UnderScoopY1=0.06;
+        constexpr static const qreal UnderScoopX2=0.62, UnderScoopY2=0.16;
+        constexpr static const qreal OuterX1=0.95,      OuterY1=0.45;
+        constexpr static const qreal OuterX2=0.30,      OuterY2=0.92;
+
+        // The path's straight edge (P0-C) is pushed 1px past the widget's own boundary and
+        // relies on the widget's device-pixel-aligned clip to cut it back -- at a fractional
+        // device pixel ratio this guarantees the boundary column gets full paint coverage,
+        // rather than the partial-coverage antialiasing seam a path landing exactly on the
+        // boundary would leave against the bubble's opaque background starting at that same
+        // coordinate.
+        constexpr static const qreal EdgeOvershoot=1.0;
+
+        const qreal tw=qMin(static_cast<qreal>(m_tailWidth),w);
+        const qreal th=qMin(static_cast<qreal>(m_tailHeight),h);
+        if (tw<=0.0 || th<=0.0)
+        {
+            return path;
+        }
+
+        path.moveTo(w+EdgeOvershoot,h-th);
+        path.lineTo(w+EdgeOvershoot,h);
+        path.cubicTo(w-tw*UnderScoopX1, h-th*UnderScoopY1,
+                     w-tw*UnderScoopX2, h-th*UnderScoopY2,
+                     w-tw,              h);
+        path.cubicTo(w-tw*OuterX1, h-th*OuterY1,
+                     w-tw*OuterX2, h-th*OuterY2,
+                     w,            h-th);
+        path.closeSubpath();
+    }
+
+    if (m_right)
+    {
+        // Avatar column on the RIGHT of the bubble: mirror about the column's vertical
+        // centerline so the tail attaches to the bubble's right edge (local x=0) instead.
+        QTransform t;
+        t.translate(w,0);
+        t.scale(-1,1);
+        path=t.map(path);
+    }
+
+    return path;
 }
 
 //--------------------------------------------------------------------------

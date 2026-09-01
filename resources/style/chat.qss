@@ -64,14 +64,31 @@ uise--AbstractChatMessage #avatarFrame{
 min-width: 16px;
 }
 
-uise--AbstractChatMessage uise--ChatMessageAvatar[right="true"][last="true"] #mask{
-border-radius:0;
-border-bottom-left-radius: 16px;
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[right="false"][last="true"] #mask{
-border-radius:0;
-border-bottom-right-radius: 16px;
+/* Tail shape. Painted by ChatMessageAvatar::paintEvent() (src/chatmessage.cpp), replacing the
+ * pair of "[right=...][last=true] #mask { border-bottom-*-radius: 16px }" rules that used to
+ * carve the tail out of an opaque child painted in the chat-background colour -- that only ever
+ * worked because uise--AbstractChatMessagesView's own background was kept in lockstep as a flat
+ * colour (see light/chat.qss, dark/chat.qss); any texture, gradient or per-chat background image
+ * on the view would show a mismatched slice through that opaque column.
+ *
+ * tailShape picks the silhouette:
+ *   0 (ChatMessageAvatar::TailShapeHook, default)     -- a teardrop hook, thickness set by
+ *                                                         tailWidth (tailHeight also scales it).
+ *   1 (ChatMessageAvatar::TailShapeRounded)           -- the plain quarter-disc crescent this
+ *                                                         class used to fake with #mask; radius
+ *                                                         is tailHeight, tailWidth is unused.
+ * To get the original rounded tail back project-wide, override just this:
+ *   qproperty-tailShape: 1;
+ *
+ * tailHeight matches uise--AbstractChatMessageContent's border-radius above in both shapes, so
+ * the tail continues the bubble's own corner; it (and, for the hook shape, tailWidth) must stay
+ * <= the column's min-width (16px, above) or the tip is clipped. Which side the tail points to is
+ * decided in C++ from ChatMessageAvatar::setRight(), and its colour comes from
+ * qproperty-tailColor in light/chat.qss and dark/chat.qss. */
+uise--AbstractChatMessage uise--ChatMessageAvatar {
+qproperty-tailShape: 1;
+qproperty-tailWidth: 10;
+qproperty-tailHeight: 10;
 }
 
 uise--AbstractChatSeparatorSection {

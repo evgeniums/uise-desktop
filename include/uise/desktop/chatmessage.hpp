@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 
 class QBoxLayout;
+class QPainterPath;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -238,11 +239,36 @@ class UISE_DESKTOP_EXPORT ChatMessageContentWrapper : public QFrame
 
 //--------------------------------------------------------------------------
 
+//! Paints the chat bubble's "tail" itself (either a QPainterPath teardrop hook, or the original
+//! quarter-disc crescent, selectable via tailShape) rather than faking it with an opaque #mask
+//! child painted in the chat background's colour -- that trick only worked as long as
+//! uise--AbstractChatMessagesView's own background stayed a single flat colour kept in lockstep
+//! with #mask's (see light/chat.qss, dark/chat.qss); any texture, gradient or per-chat
+//! background image on the view would show a mismatched slice through that opaque column instead
+//! of tiling through it. tailColor/tailShape/tailWidth/tailHeight are qproperty-* knobs, same
+//! convention as qproperty-highlightColor on AbstractChatMessage -- tailWidth in particular is
+//! the TailShapeHook shape's thickness control (it has no effect on TailShapeRounded, whose
+//! radius is tailHeight).
 class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
 {
     Q_OBJECT
 
+    Q_PROPERTY(QColor tailColor READ tailColor WRITE setTailColor)
+    Q_PROPERTY(int tailShape READ tailShape WRITE setTailShape)
+    Q_PROPERTY(int tailWidth READ tailWidth WRITE setTailWidth)
+    Q_PROPERTY(int tailHeight READ tailHeight WRITE setTailHeight)
+
     public:
+
+        //! Teardrop hook with a concave underside, hooking off the bubble's square corner.
+        constexpr static const int TailShapeHook=0;
+        //! The original crescent this class used to fake with an opaque #mask child: a plain
+        //! concave quarter disc of radius tailHeight (tailWidth has no effect on this shape).
+        constexpr static const int TailShapeRounded=1;
+
+        constexpr static const int DefaultTailShape=TailShapeHook;
+        constexpr static const int DefaultTailWidth=10;
+        constexpr static const int DefaultTailHeight=16;
 
         explicit ChatMessageAvatar(QWidget* parent=nullptr);
 
@@ -256,13 +282,79 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
             return m_avatar;
         }
 
+        QColor tailColor() const noexcept
+        {
+            return m_tailColor;
+        }
+
+        void setTailColor(const QColor& color)
+        {
+            if (m_tailColor!=color)
+            {
+                m_tailColor=color;
+                update();
+            }
+        }
+
+        int tailShape() const noexcept
+        {
+            return m_tailShape;
+        }
+
+        void setTailShape(int value)
+        {
+            if (m_tailShape!=value)
+            {
+                m_tailShape=value;
+                update();
+            }
+        }
+
+        int tailWidth() const noexcept
+        {
+            return m_tailWidth;
+        }
+
+        void setTailWidth(int value)
+        {
+            if (m_tailWidth!=value)
+            {
+                m_tailWidth=value;
+                update();
+            }
+        }
+
+        int tailHeight() const noexcept
+        {
+            return m_tailHeight;
+        }
+
+        void setTailHeight(int value)
+        {
+            if (m_tailHeight!=value)
+            {
+                m_tailHeight=value;
+                update();
+            }
+        }
+
+    protected:
+
+        void paintEvent(QPaintEvent* event) override;
+
     private:
 
         void setStyleProperty(const char* name, bool enable);
+        QPainterPath tailPath() const;
 
-        QBoxLayout* m_layout;
-        QFrame* m_mask;
         AvatarWidget* m_avatar;
+
+        QColor m_tailColor;
+        int m_tailShape=DefaultTailShape;
+        int m_tailWidth=DefaultTailWidth;
+        int m_tailHeight=DefaultTailHeight;
+        bool m_right=false;
+        bool m_last=true;
 };
 
 //--------------------------------------------------------------------------

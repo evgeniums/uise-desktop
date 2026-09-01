@@ -1,30 +1,51 @@
-uise--AbstractChatMessagesView,
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"] #mask,
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] #mask
+/* Chat viewport background. Nothing else keys on this colour any more -- the bubble tail used
+ * to be carved out of an opaque #mask child painted in this exact colour, so this literal had to
+ * stay in lockstep with it. ChatMessageAvatar now paints the tail's own shape directly (see
+ * chat.qss), so this rule is free to become a texture, gradient or per-chat background image
+ * without the tail needing to know about it. */
+uise--AbstractChatMessagesView
 {
 background-color: #8BBB92; /* chat background */
 }
 
-uise--AbstractChatMessageContent,
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"][last="true"] {
+uise--AbstractChatMessageContent {
 background-color: /*#F7F4E1*/ /*#F4EFE6*/ /*#FAF6F0*/ #FDFCF8 /*#DFF1F1*/; /* received message */
 }
 
-uise--AbstractChatMessageContent[selected="true"],
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"][last="true"]
-{
+uise--AbstractChatMessageContent[selected="true"] {
 background-color: #AEE2FF; /* selected received message */
 }
 
-uise--AbstractChatMessageContent[sent="true"],
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"][last="true"]{
+uise--AbstractChatMessageContent[sent="true"] {
 background-color: #E2ECD5/*#E6ECEF*/; /* sent message */
 }
 
-uise--AbstractChatMessageContent[selected="true"][sent="true"],
-uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"][last="true"]
-{
+uise--AbstractChatMessageContent[selected="true"][sent="true"] {
 background-color: #AEE2FF; /* selected sent message */
+}
+
+/* Tail colours, paired one-for-one with the bubble colours above -- the tail is the bubble's own
+ * corner continued outwards, so these must never drift apart. qproperty-tailColor rather than
+ * background-color because ChatMessageAvatar paints the tail itself (see chat.qss's
+ * qproperty-tailWidth/qproperty-tailHeight). Deliberately NOT keyed on [last="true"]: Qt does
+ * not restore a qproperty-* whose rule stops matching, so keying on last would leave a stale
+ * colour on a row recycled from last to non-last -- keying on sent/selected alone covers all 4
+ * reachable combinations unconditionally, and ChatMessageAvatar::paintEvent() is what actually
+ * suppresses the tail when the row isn't last. */
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"] {
+qproperty-tailColor: #FDFCF8; /* received message */
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"] {
+qproperty-tailColor: #AEE2FF; /* selected received message */
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"] {
+qproperty-tailColor: #E2ECD5; /* sent message */
+}
+
+uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"] {
+qproperty-tailColor: #AEE2FF; /* selected sent message */
 }
 
 uise--ChatMessageText uise--ChatMessageTextBrowser {
