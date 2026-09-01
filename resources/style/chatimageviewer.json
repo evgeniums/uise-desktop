@@ -9,7 +9,13 @@
                 "zoom-out" : "${uise-svg-icons-1}/zoom-out",
                 "play" : "${uise-svg-icons-1}/player-play",
                 "pause" : "${uise-svg-icons-1}/player-pause",
-                "menu" : "${uise-svg-icons-1}/dots-vertical",
+                "menu" : "${uise-svg-icons-1}/dots-vertical"
+            }
+        },
+        {
+            "name" : "ChatImageViewerMenu",
+            "aliases" : {
+                "saveAs" : "${uise-svg-icons-1}/cloud-download",
                 "goToMessage" : "${uise-svg-icons-1}/message-circle",
                 "copy" : "${uise-svg-icons-1}/copy",
                 "forward" : "${uise-svg-icons-1}/arrow-forward-up",

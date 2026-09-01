@@ -17,6 +17,31 @@
                     "off" : { "currentColor" : "#FFFFFF" }
                 }
             }
+        },
+        {
+            "name" : "ChatImageViewerMenu",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#444444" },
+                    "on" :  { "currentColor" : "#000000" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" },
+                    "on" : { "currentColor" : "#000000" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#888888" },
+                    "on" :  { "currentColor" : "#888888" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#0A66C2" },
+                    "on" :  { "currentColor" : "#0A66C2" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#0A66C2" },
+                    "on" :  { "currentColor" : "#0A66C2" }
+                }
+            }
         }
     ]
 }

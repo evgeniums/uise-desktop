@@ -154,6 +154,13 @@ class UISE_DESKTOP_EXPORT ChatImageViewerControls : public Frame
         //! the built-in ones. Equivalent to menu()->addSeparator().
         void addMenuSeparator();
 
+        //! Icon for a custom row added via addMenuItem(), resolved in the themed
+        //! "ChatImageViewerMenu" context -- menu rows live in a normal light/dark DropdownMenu
+        //! popup, not on the viewer's fixed dark overlay bar (whose own icons come from the
+        //! deliberately theme-independent white "ChatImageViewer" context, unsuitable for a
+        //! themed popup). Exposed so callers do not need their own duplicate lookup helper.
+        static std::shared_ptr<SvgIcon> menuItemIcon(const QString& alias, QWidget* context);
+
         PushButton* saveAsButton() const;
         PushButton* rotateButton() const;
         PushButton* zoomInButton() const;

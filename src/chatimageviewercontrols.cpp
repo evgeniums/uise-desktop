@@ -40,9 +40,20 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
 
+//! Icon for the fixed dark overlay bar (toolbar buttons, the menu button itself) -- deliberately
+//! theme-independent white, see resources/style/chatimageviewer.qss's own comment on why the
+//! overlay never follows light/dark.qss.
 std::shared_ptr<SvgIcon> ctrlIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("ChatImageViewer::%1").arg(alias),context);
+}
+
+//! Icon for a row inside the drop-down menu -- unlike the overlay bar above, the menu is a normal
+//! themed DropdownFrame popup (white in light theme, dark in dark theme), so its icons must follow
+//! the theme too instead of reusing ctrlIcon()'s fixed white.
+std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
+{
+    return Style::instance().svgIconLocator().icon(QString("ChatImageViewerMenu::%1").arg(alias),context);
 }
 
 } // anonymous namespace
@@ -200,12 +211,12 @@ ChatImageViewerControls::ChatImageViewerControls(QWidget* parent)
     pimpl->menu=new DropdownMenu();
     pimpl->menu->setItems(
         {
-            MenuItem(static_cast<int>(MenuAction::GoToMessage),tr("Go to message"),ctrlIcon("goToMessage",this)),
-            MenuItem(static_cast<int>(MenuAction::Copy),tr("Copy"),ctrlIcon("copy",this)),
-            MenuItem(static_cast<int>(MenuAction::Forward),tr("Forward"),ctrlIcon("forward",this)),
-            MenuItem(static_cast<int>(MenuAction::DeleteMessage),tr("Delete message"),ctrlIcon("delete",this)),
+            MenuItem(static_cast<int>(MenuAction::GoToMessage),tr("Go to message"),menuIcon("goToMessage",this)),
+            MenuItem(static_cast<int>(MenuAction::Copy),tr("Copy"),menuIcon("copy",this)),
+            MenuItem(static_cast<int>(MenuAction::Forward),tr("Forward"),menuIcon("forward",this)),
+            MenuItem(static_cast<int>(MenuAction::DeleteMessage),tr("Delete message"),menuIcon("delete",this)),
             MenuItem::separator(),
-            MenuItem(static_cast<int>(MenuAction::SaveAs),tr("Save as"),ctrlIcon("saveAs",this))
+            MenuItem(static_cast<int>(MenuAction::SaveAs),tr("Save as"),menuIcon("saveAs",this))
         }
     );
     pimpl->menu->attachTo(pimpl->menuButton);
@@ -363,6 +374,13 @@ void ChatImageViewerControls::addMenuItem(MenuItem item)
 void ChatImageViewerControls::addMenuSeparator()
 {
     pimpl->menu->addSeparator();
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> ChatImageViewerControls::menuItemIcon(const QString& alias, QWidget* context)
+{
+    return menuIcon(alias,context);
 }
 
 //--------------------------------------------------------------------------
