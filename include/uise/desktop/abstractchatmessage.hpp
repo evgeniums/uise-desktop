@@ -845,8 +845,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         //! Change only the alignment of sent messages, e.g. in response to a live app setting or
         //! an AbstractChatMessagesView Auto-mode flip -- direction() (sent/received) is untouched.
-        //! No-op (and no relayout) if the effective side does not actually change, e.g. calling
-        //! this on a Received message never affects isRight().
+        //! No-op if unchanged. Always re-runs updateAlignment() (not just when isRight() itself
+        //! flips): a Received message's isRight() never changes regardless of alignSent (see
+        //! updateRight()), but ChatMessage::updateAlignment() also reads alignSent() directly
+        //! (forcing the avatar visible once sent and received messages share the same side), so
+        //! it must still be recomputed for a Received message.
         void setAlignSent(AlignSent alignSent)
         {
             if (m_alignSent==alignSent)
@@ -854,12 +857,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
                 return;
             }
             m_alignSent=alignSent;
-            auto wasRight=m_right;
             updateRight();
-            if (wasRight!=m_right)
-            {
-                updateAlignment();
-            }
+            updateAlignment();
         }
 
         AbstractChatSeparator* topSeparator() const noexcept
@@ -895,6 +894,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         virtual void setAvatarSource(std::shared_ptr<AvatarSource> /*avatarSource*/) {}
         virtual std::shared_ptr<AvatarSource> avatarSource() const {return std::shared_ptr<AvatarSource>{};}
+
+        //! Sender name behind the avatar's initials fallback, drawn when the path resolves to no
+        //! uploaded photo -- without it every avatar renders the generic "no name" placeholder
+        //! instead (see AvatarWidget::setAvatarName()). Set it alongside setAvatarPath().
+        virtual void setAvatarName(std::string /*name*/) {}
 
         bool isAvatarVisible() const noexcept
         {
@@ -1176,6 +1180,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         void clicked();
         void selectionModeRequested();
+
+        //! The sender's avatar itself was clicked (not the message row) -- a host typically opens
+        //! that sender's character node. Only reachable while the avatar is visible, see
+        //! setAvatarVisible()/ChatMessage::updateAvatarForced().
+        void avatarClicked();
 
         void selectorPositionChanged(bool);
 

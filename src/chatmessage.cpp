@@ -901,6 +901,18 @@ void ChatMessage::construct()
     pimpl->avatarFrame->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
     pimpl->avatarFrame->avatar()->setVisible(false);
 
+    // Clickable affordance -- AvatarWidget emits clicked() only while clickable, and (unlike
+    // ChatSeparatorSection::setClickable()) does not set the cursor itself. Wired unconditionally:
+    // while the avatar is hidden it cannot be clicked or hovered anyway.
+    pimpl->avatarFrame->avatar()->setClickable(true);
+    pimpl->avatarFrame->avatar()->setCursor(Qt::PointingHandCursor);
+    connect(
+        pimpl->avatarFrame->avatar(),
+        &AvatarWidget::clicked,
+        this,
+        &AbstractChatMessage::avatarClicked
+    );
+
     pimpl->avatarFramePlaceholder=new QFrame(pimpl->main);
     pimpl->avatarFramePlaceholder->setObjectName("avatarFrame");
     pimpl->avatarFramePlaceholder->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
@@ -1055,11 +1067,67 @@ void ChatMessage::updateLastInBatch()
     pimpl->avatarFrame->setLastInBatch(isLastInBatch());
     pimpl->bottomSpace->setVisible(isLastInBatch());
 
+    // Only the last message of a batch carries the avatar (it is the one with the tail), and a
+    // message stops being last as soon as the same sender's next one arrives -- so this has to be
+    // re-derived here too, not just when the alignment changes.
+    updateAvatarForced();
+
     // No repolish of `this` here: chat.qss puts qproperty-selectorPositionLeft on
     // uise--AbstractChatMessage, and a repolish would re-apply that default over any
     // programmatic setSelectorOnLeft() -- and no QSS rule keys on [last=...] on this widget
     // itself anyway (only on the content bubble and the avatar, both updated separately above).
     setProperty("last",isLastInBatch());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateAvatarForced()
+{
+    // alignSent() is checked regardless of THIS message's own direction(): ChatMessagesView::
+    // makeMessage()/applyAlignSentToMessages() set it uniformly on every message, Sent or
+    // Received, so it reads as "the view currently puts own messages on the left too".
+    bool leftAligned=(alignSent()==AlignSent::Left);
+
+    setAvatarVisible(leftAligned && isLastInBatch());
+
+    // Width tracks leftAligned ALONE, not the visibility above -- every bubble in a batch must
+    // keep the same left inset, including the ones whose avatar is suppressed.
+    auto avatarSize=leftAligned ? ForcedAvatarSize : ChatMessageAvatar::DefaultAvatarSize;
+    auto columnWidth=leftAligned ? (ForcedAvatarSize+2*ForcedAvatarMargin)
+                                 : ChatMessageAvatar::DefaultAvatarSize;
+    pimpl->avatarFrame->setAvatarSize(avatarSize);
+    pimpl->avatarFrame->setFixedWidth(columnWidth);
+    pimpl->avatarFramePlaceholder->setFixedWidth(columnWidth);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::changeEvent(QEvent* event)
+{
+    AbstractChatMessage::changeEvent(event);
+
+    // avatarSize is a genuine Q_PROPERTY (chat.qss's qproperty-avatarSize:16) so a full app
+    // stylesheet reload (e.g. auto-following an OS colour-theme change, Style::instance().
+    // applyStyleSheet(true)) re-polishes avatarFrame and silently resets it to that QSS default,
+    // shrinking the actual avatar IMAGE back to 16x16 even though the column around it (a plain
+    // setFixedWidth(), not QSS-backed) stays at whatever width updateAvatarForced() last gave it.
+    // Unlike updateLastInBatch()'s own qproperty-selectorPositionLeft concern (worked around by
+    // never repolishing `this`), that repolish happens on avatarFrame directly and cannot be
+    // opted out of. Only re-deriving the forced size afterwards fixes it back up -- otherwise
+    // every already-built message's avatar stays stuck at the QSS default (looks "very small")
+    // until the chat is closed and reopened, which rebuilds ChatMessageAvatar from scratch
+    // instead.
+    //
+    // Deferred via singleShot(0): a mass repolish walks the WHOLE widget tree, and whether this
+    // row's own StyleChange fires before or after avatarFrame's own qproperty writers have run is
+    // an unspecified ordering internal to Qt's style-sheet engine -- posting this for the next
+    // event-loop turn guarantees every repolish this pass triggers (avatarFrame's included) has
+    // already landed before updateAvatarForced() re-asserts the forced value over it. `this` as
+    // the context object is the usual Qt guard against the row being destroyed before it fires.
+    if (event->type()==QEvent::StyleChange)
+    {
+        QTimer::singleShot(0,this,[this](){updateAvatarForced();});
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1110,6 +1178,8 @@ void ChatMessage::updateAlignment()
     pimpl->contentFrame->setRight(isRight());
     pimpl->avatarFrame->setRight(isRight());
     pimpl->avatarFrame->setSent(direction()==Direction::Sent);
+
+    updateAvatarForced();
 
     // Only re-slot the selector if it exists; ensureSelector() places it correctly on its own
     // when it is built later.
@@ -1290,6 +1360,13 @@ void ChatMessage::setAvatarSource(std::shared_ptr<AvatarSource> avatarSource)
 std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
 {
     return pimpl->avatarFrame->avatar()->avatarSource();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::setAvatarName(std::string name)
+{
+    pimpl->avatarFrame->avatar()->setAvatarName(std::move(name));
 }
 
 //--------------------------------------------------------------------------
@@ -1521,9 +1598,28 @@ ChatMessageAvatar::ChatMessageAvatar(QWidget* parent)
     // shape directly instead of relying on #mask's opaque background to fake it.
     auto l=Layout::vertical(this);
     m_avatar=new AvatarWidget(this);
-    l->addWidget(m_avatar);
+    // Bottom-anchored (stretch above it, tail-clearing inset below it via updateAvatarOffset()):
+    // the avatar belongs beside the LAST message of a batch, next to that bubble's tail, not at
+    // the top of a tall multi-line row. Centred horizontally so the column's own margins (see
+    // ChatMessage::updateAvatarForced(), which makes this column wider than the avatar) fall
+    // evenly on both sides.
+    l->addStretch(1);
+    l->addWidget(m_avatar,0,Qt::AlignHCenter);
 
     setLastInBatch(true);
+    setAvatarSize(DefaultAvatarSize);
+    setFixedWidth(DefaultAvatarSize);
+    setAvatarBottomOffset(DefaultAvatarBottomOffset);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::updateAvatarOffset()
+{
+    if (layout()!=nullptr)
+    {
+        layout()->setContentsMargins(0,0,0,m_avatarBottomOffset);
+    }
 }
 
 //--------------------------------------------------------------------------

@@ -1344,13 +1344,30 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::applyAlignSentToMessages()
 {
     auto align=effectiveAlignSent();
+    Message* anyMessage=nullptr;
     eachMessage(
-        [align](Message* msg)
+        [align,&anyMessage](Message* msg)
         {
             msg->ui()->setAlignSent(align);
+            anyMessage=msg;
             return true;
         }
     );
+    if (anyMessage!=nullptr)
+    {
+        // A message's own bubbleOuterWidth() (its avatar column's contribution) can change with
+        // alignment -- see ChatMessage::updateAlignment()'s avatar-forcing, which widens the
+        // avatar column once own and received messages share the same side. makeMessage() only
+        // ever samples m_messageBubbleOuterWidth once, from the very first message ever built, so
+        // that cached value can now be stale; refresh it from any already-updated message (they
+        // all share the same alignment, so any one will do) before resizing bubbles against it.
+        // Covers a plain setAlignSentMode() call too (e.g. the Appearance setting), not just a
+        // resize -- resizeEvent()'s own adjustMessagesSizes() call right after this fires
+        // (effectiveAlignSentChanged() is a direct, same-thread connection) is otherwise the only
+        // path that would pick this up, and it never runs on a setting change alone.
+        m_messageBubbleOuterWidth=anyMessage->ui()->bubbleOuterWidth();
+        adjustMessagesSizes();
+    }
 }
 
 //--------------------------------------------------------------------------

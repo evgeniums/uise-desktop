@@ -59,7 +59,10 @@ border-bottom-left-radius: 0;
 }
 
 
-uise--AbstractChatMessage uise--ChatMessageAvatar,
+/* uise--ChatMessageAvatar's own default width now comes from qproperty-avatarSize below (also
+ * the side of the square avatar image itself, when ChatMessage::updateAlignment() forces it
+ * visible) -- #avatarFrame is the plain QFrame placeholder swapped in on the OTHER side (see
+ * ChatMessage::updateAlignment()), which has no such qproperty and needs its own rule to match. */
 uise--AbstractChatMessage #avatarFrame{
 min-width: 16px;
 }
@@ -82,13 +85,25 @@ min-width: 16px;
  *
  * tailHeight matches uise--AbstractChatMessageContent's border-radius above in both shapes, so
  * the tail continues the bubble's own corner; it (and, for the hook shape, tailWidth) must stay
- * <= the column's min-width (16px, above) or the tip is clipped. Which side the tail points to is
- * decided in C++ from ChatMessageAvatar::setRight(), and its colour comes from
- * qproperty-tailColor in light/chat.qss and dark/chat.qss. */
+ * <= avatarSize (below) or the tip is clipped. Which side the tail points to is decided in C++
+ * from ChatMessageAvatar::setRight(), and its colour comes from qproperty-tailColor in
+ * light/chat.qss and dark/chat.qss.
+ *
+ * avatarSize is the (square) avatar image's own side -- NOT this column's width, which
+ * ChatMessage::updateAvatarForced() sets separately (the avatar plus ForcedAvatarMargin on each
+ * side). Both are widened together once that method forces the avatar image on, i.e. sent and
+ * received messages are sharing the same (left) side and so are otherwise indistinguishable by
+ * position alone; the avatar itself is shown only on the LAST message of a batch.
+ *
+ * avatarBottomOffset is the distance from the message's BOTTOM edge to the avatar's -- i.e. how
+ * far above the tail the avatar sits. Raise it to lift the avatar, lower it to drop it towards
+ * the tail; keep it >= tailHeight or the avatar starts overlapping the tail. */
 uise--AbstractChatMessage uise--ChatMessageAvatar {
 qproperty-tailShape: 1;
 qproperty-tailWidth: 10;
 qproperty-tailHeight: 20;
+qproperty-avatarSize: 16;
+qproperty-avatarBottomOffset: 6;
 }
 
 uise--AbstractChatSeparatorSection {

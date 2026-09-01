@@ -257,6 +257,13 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
     Q_PROPERTY(int tailShape READ tailShape WRITE setTailShape)
     Q_PROPERTY(int tailWidth READ tailWidth WRITE setTailWidth)
     Q_PROPERTY(int tailHeight READ tailHeight WRITE setTailHeight)
+    //! Side of the (square) avatar image itself -- NOT this column's width, which
+    //! ChatMessage::updateAvatarForced() sets separately (avatar plus its horizontal margins).
+    //! Kept as a genuine qproperty so QSS can supply the baseline the way tailWidth/tailHeight do.
+    Q_PROPERTY(int avatarSize READ avatarSize WRITE setAvatarSize)
+    //! Distance in px from the message's bottom edge to the avatar's bottom edge -- i.e. how far
+    //! ABOVE the tail the avatar sits. Keep it >= tailHeight or the avatar overlaps the tail.
+    Q_PROPERTY(int avatarBottomOffset READ avatarBottomOffset WRITE setAvatarBottomOffset)
 
     public:
 
@@ -269,6 +276,11 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         constexpr static const int DefaultTailShape=TailShapeHook;
         constexpr static const int DefaultTailWidth=10;
         constexpr static const int DefaultTailHeight=16;
+        constexpr static const int DefaultAvatarSize=16;
+        //! Clears the default tail band (DefaultTailHeight, the bottom of this column -- see
+        //! tailPath()) plus a small gap, so the avatar sits a little ABOVE the tail rather than
+        //! overlapping it. chat.qss overrides this to match the tailHeight it actually sets.
+        constexpr static const int DefaultAvatarBottomOffset=DefaultTailHeight+4;
 
         explicit ChatMessageAvatar(QWidget* parent=nullptr);
 
@@ -338,6 +350,40 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
             }
         }
 
+        int avatarSize() const noexcept
+        {
+            return m_avatarSize;
+        }
+
+        //! Sizes the (square) avatar image only -- this column's own width is the caller's
+        //! business (ChatMessage::updateAvatarForced() sets it to the avatar plus its margins).
+        void setAvatarSize(int value)
+        {
+            if (m_avatarSize!=value)
+            {
+                m_avatarSize=value;
+                m_avatar->setFixedSize(value,value);
+                updateGeometry();
+            }
+        }
+
+        int avatarBottomOffset() const noexcept
+        {
+            return m_avatarBottomOffset;
+        }
+
+        //! See the avatarBottomOffset property: distance from the message's bottom edge to the
+        //! avatar's, applied as this frame's own bottom inset.
+        void setAvatarBottomOffset(int value)
+        {
+            if (m_avatarBottomOffset!=value)
+            {
+                m_avatarBottomOffset=value;
+                updateAvatarOffset();
+                updateGeometry();
+            }
+        }
+
     protected:
 
         void paintEvent(QPaintEvent* event) override;
@@ -347,12 +393,20 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         void setStyleProperty(const char* name, bool enable);
         QPainterPath tailPath() const;
 
+        //! Applies avatarBottomOffset() as this frame's bottom inset.
+        void updateAvatarOffset();
+
         AvatarWidget* m_avatar;
 
         QColor m_tailColor;
         int m_tailShape=DefaultTailShape;
         int m_tailWidth=DefaultTailWidth;
         int m_tailHeight=DefaultTailHeight;
+        //! 0/-1, not the Default* values: the ctor calls setAvatarSize()/setAvatarBottomOffset()
+        //! explicitly to actually apply them (both setters no-op when the value is unchanged), so
+        //! the stored defaults must start out different from what the ctor passes.
+        int m_avatarSize=0;
+        int m_avatarBottomOffset=-1;
         bool m_right=false;
         bool m_last=true;
 };
@@ -366,6 +420,15 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
     Q_OBJECT
 
     public:
+
+        //! Avatar image side (see ChatMessageAvatar::avatarSize()) once the avatar is forced
+        //! visible -- updateAvatarForced() forces it whenever alignSent()==Left (sent and received
+        //! messages share the same side, so position alone no longer distinguishes them) on the
+        //! last message of a batch.
+        constexpr static const int ForcedAvatarSize=32;
+        //! Horizontal breathing room on EACH side of a forced-visible avatar: the column is this
+        //! much wider than ForcedAvatarSize on both sides, and the avatar is centred in it.
+        constexpr static const int ForcedAvatarMargin=6;
 
         explicit ChatMessage(QWidget* parent=nullptr);
 
@@ -386,6 +449,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void setAvatarSource(std::shared_ptr<AvatarSource> avatarSource) override;
         std::shared_ptr<AvatarSource> avatarSource() const override;
+
+        void setAvatarName(std::string name) override;
 
         QString selectedText() const override;
 
@@ -423,6 +488,11 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! page was hidden can otherwise paint one frame too tall.
         void showEvent(QShowEvent* event) override;
 
+        //! Re-derives the avatar's forced size/visibility after a QSS repolish -- see this
+        //! method's own doc comment (chatmessage.cpp) for why chat.qss's qproperty-avatarSize
+        //! default would otherwise silently win back over updateAvatarForced()'s own value.
+        void changeEvent(QEvent* event) override;
+
         void construct() override;
 
     private:
@@ -436,6 +506,14 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! single most expensive part of constructing a message bubble -- more than its entire
         //! content body -- at ~5% of total process CPU.
         void ensureSelector();
+
+        //! Re-derives whether the sender's avatar is shown and how wide its column is.
+        //! Visible only when alignSent()==Left (own and received messages share a side, so
+        //! position alone no longer distinguishes them) AND isLastInBatch() (one avatar per
+        //! batch, beside the bubble that carries the tail). The COLUMN's width tracks only the
+        //! former, so bubbles stay aligned across a whole batch. Called from both
+        //! updateAlignment() and updateLastInBatch(), the two inputs it reads.
+        void updateAvatarForced();
 
         std::unique_ptr<ChatMessage_p> pimpl;
 };
