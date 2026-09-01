@@ -3,6 +3,8 @@
 uise--AbstractChatMessagesView
 {
 background-color: #28282a; /* chat background */
+background-image: url(":/uise/desktop/style/dark/chat_background.png");
+background-repeat: repeat-xy;
 }
 
 uise--AbstractChatMessageContent {
