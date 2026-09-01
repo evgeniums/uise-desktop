@@ -523,8 +523,21 @@ QWidget* DropdownFrame::resolveHost(QWidget* anchor) const
 
 void DropdownFrame::detachFromChainParent()
 {
+    // Deliberately does NOT clear pimpl->chainParent: that link is the STABLE, reusable
+    // relationship a submenu is given once at creation (DropdownMenu::ensureSubmenu() calls
+    // setChainParent() only the first time a given submenu id is opened, never again on later
+    // reopens of the same cached instance) -- only the PARENT's chainChild bookkeeping below is
+    // ephemeral, set fresh by every beginOpen() and meant to be undone on every close. Clearing
+    // chainParent here too used to sever a cached submenu from its parent after its very first
+    // close: beginOpen()'s own `if (!pimpl->chainParent.isNull())` guard would then silently skip
+    // re-registering it as the parent's chainChild on every later reopen, leaving the parent's
+    // chainContains() unable to recurse into a submenu that was, in fact, still open -- a click
+    // genuinely inside the submenu's own rows would misclassify as an outside click and close the
+    // whole chain before the row's own handler ever ran. setChainParent() (below) reassigns
+    // pimpl->chainParent right after calling this anyway when actually switching parents, and the
+    // destructor clears a live child's chainParent explicitly -- neither depends on this doing it
+    // too.
     auto* parent=pimpl->chainParent.data();
-    pimpl->chainParent=nullptr;
     if (parent==nullptr)
     {
         return;
