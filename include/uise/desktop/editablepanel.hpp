@@ -78,7 +78,7 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
 
         enum class BottomButtonsMode : int
         {
-            Ivisible,
+            Invisible,
             EditingVisible,
             AlwaysVisible
         };

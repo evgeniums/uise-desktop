@@ -36,6 +36,14 @@ uise--EditablePanel uise--PushButton QPushButton:hover
 {color: #000000;border: 1px solid #000000;}
 
 uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
+color: #218DAE;
+}
+
+uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton:hover {
+color: #0099b8;
+}
+
+uise--EditablePanel #topButtonsFrame uise--PushButton QPushButton {
 border:none;
 }
 

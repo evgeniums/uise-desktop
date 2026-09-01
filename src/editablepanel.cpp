@@ -106,6 +106,10 @@ EditablePanel::EditablePanel(
     pimpl->topButtonCancel->setObjectName("topButtonCancel");
     pimpl->topButtonsLayout->addWidget(pimpl->topButtonCancel,0,Qt::AlignRight);
 
+    pimpl->topButtonEdit->qPushButton()->setCursor(Qt::PointingHandCursor);
+    pimpl->topButtonApply->qPushButton()->setCursor(Qt::PointingHandCursor);
+    pimpl->topButtonCancel->qPushButton()->setCursor(Qt::PointingHandCursor);
+
     pimpl->titleFrame=new QFrame(this);
     pimpl->titleFrame->setObjectName("titleFrame");
     pimpl->titleLayout=Layout::horizontal(pimpl->titleFrame);
