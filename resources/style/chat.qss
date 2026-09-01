@@ -212,10 +212,10 @@ margin-right:5px;
 
 uise--ChatMessageBottom uise--WithRoundedImage,
 uise--ChatMessageBottom uise--RoundedImage {
-min-width: 16px;
-max-width: 16px;
-min-height: 16px;
-max-height: 16px;
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
 }
 
 uise--MessageSelectionPanelUi #drawer {
