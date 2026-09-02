@@ -1081,7 +1081,11 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
             //! ChatMessagesView::updateMessage() (which DOES have a caller now --
             //! ChatMessages::upsertMessage()) only ever runs for changes that leave
             //! chat_msg::sort_oid untouched, because ChatMessages::inPlaceUpdateFields()
-            //! refuses any sort-key change outright. If a future path ever does change an
+            //! refuses any sort-key change outright. This now has a real exercising case --
+            //! a resend (whitemclient/chat/resendmessage.cpp's commitResend()) re-stamps
+            //! sort_oid -- but it still lands on the dedup remove+reinsert branch above, not
+            //! this modify()-in-place one, exactly because of that inPlaceUpdateFields() refusal.
+            //! If a future path ever does change an
             //! item's sort value while it is live in this index, this modify() call is exactly
             //! where it must be paired with the mutation, or the ordered index silently
             //! corrupts (boost's contract: keys must not change without notifying the index).
@@ -1164,10 +1168,13 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
     //! ChatMessages::upsertMessage()). What keeps it unreachable is that
     //! ChatMessages::inPlaceUpdateFields() deliberately does NOT exclude chat_msg::sort_oid
     //! from its comparison, so any sort-key change fails the in-place test and falls back to a
-    //! full rebuild rather than reaching updateMessage()'s reorder branch. Keep that property
-    //! in mind before loosening that check. Fixing this properly needs either re-fetching the
-    //! item on demand when scrolled back to that edge, or keeping it hidden-but-tracked
-    //! instead of dropped; still out of scope.
+    //! full rebuild rather than reaching updateMessage()'s reorder branch. A resend
+    //! (whitemclient/chat/resendmessage.cpp's commitResend()) is exactly such a sort-key change
+    //! and is the first real path in the app that moves a message's position -- it stays on the
+    //! rebuild side of that fork too, so this reorderItem() landmine is still not exercised by
+    //! it. Keep that property in mind before loosening that check. Fixing this properly needs
+    //! either re-fetching the item on demand when scrolled back to that edge, or keeping it
+    //! hidden-but-tracked instead of dropped; still out of scope.
     if (adjustMinMax)
     {
         if (m_orderComparer(item.sortValue(),m_minSortValue))
