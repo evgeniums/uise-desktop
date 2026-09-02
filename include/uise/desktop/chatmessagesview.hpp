@@ -38,6 +38,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/abstractchatmessage.hpp>
 #include <uise/desktop/chatdatesubtitle.hpp>
+#include <uise/desktop/chatfloatingavatar.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -451,6 +452,30 @@ class ChatMessagesView : public AbstractChatMessagesView
             return m_dateSubtitleEnabled;
         }
 
+        ChatFloatingAvatar* floatingAvatar() const
+        {
+            return m_floatingAvatar;
+        }
+
+        void setFloatingAvatarEnabled(bool enable)
+        {
+            m_floatingAvatarEnabled=enable;
+            if (!enable)
+            {
+                m_floatingAvatar->hideNow();
+                setObscuredAvatarMessage(nullptr);
+            }
+            else
+            {
+                scheduleFloatingAvatarUpdate();
+            }
+        }
+
+        bool isFloatingAvatarEnabled() const noexcept
+        {
+            return m_floatingAvatarEnabled;
+        }
+
     protected:
 
         void mouseMoveEvent(QMouseEvent *event) override;
@@ -464,6 +489,13 @@ class ChatMessagesView : public AbstractChatMessagesView
         void resizeEvent(QResizeEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
 
+        //! Re-derives the floating avatar after this view was hidden and shown again (e.g. a chat
+        //! page switched away from and back). updateFloatingAvatar() bails out while the window
+        //! is unmapped -- its mapToGlobal() reads would be meaningless -- so any list change that
+        //! happened meanwhile left both the floating copy's position and whichever row is
+        //! setAvatarObscured() stale, and nothing else is guaranteed to fire once shown again.
+        void showEvent(QShowEvent* event) override;
+
     private:
 
         QBoxLayout* m_layout=nullptr;
@@ -472,6 +504,21 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         ChatDateSubtitle* m_dateSubtitle=nullptr;
         bool m_dateSubtitleEnabled=true;
+
+        ChatFloatingAvatar* m_floatingAvatar=nullptr;
+        bool m_floatingAvatarEnabled=true;
+        SingleShotTimer* m_floatingAvatarTimer=nullptr;
+
+        //! Set for ChatFloatingAvatar::modeChangeBlockMs() after the avatars-on/avatars-off
+        //! switch -- see blockFloatingAvatar().
+        bool m_floatingAvatarBlocked=false;
+        SingleShotTimer* m_floatingAvatarBlockTimer=nullptr;
+
+        //! The message whose own anchored avatar is currently force-hidden because the floating
+        //! copy is sitting over it (AbstractChatMessage::setAvatarObscured()). QPointer because
+        //! the flyweight list destroys scrolled-away rows: a dropped row reads back null and the
+        //! next updateFloatingAvatar() pass simply re-derives from scratch.
+        QPointer<AbstractChatMessage> m_obscuredAvatarMsg;
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
@@ -544,6 +591,26 @@ class ChatMessagesView : public AbstractChatMessagesView
         void onUserScrolled();
         void updateDateSubtitleText();
         void updateDateSubtitleOcclusion();
+
+        //! Coalesce a floating-avatar recompute onto the next event-loop turn. Every trigger goes
+        //! through this: a single scroll gesture can produce a userScrolledCb, a
+        //! viewportChangedCb and a QEvent::Move on the list's inner widget, all describing the
+        //! same frame -- see updateFloatingAvatar()'s own doc comment for why viewportChangedCb
+        //! alone is not enough to drive this.
+        void scheduleFloatingAvatarUpdate();
+        void updateFloatingAvatar();
+
+        //! Park the floating copy and hand every row its own avatar back, then suppress the
+        //! whole mechanism for ChatFloatingAvatar::modeChangeBlockMs(). Called when
+        //! effectiveAlignSent() flips, i.e. the chat switched between showing and hiding
+        //! per-message avatars: that relayouts every row, so both the position the copy would be
+        //! placed at and the row it would be covering are in flux until it settles.
+        void blockFloatingAvatar();
+
+        //! Force-hide `msg`'s own anchored avatar because the floating copy now covers it,
+        //! releasing whichever message was previously held that way. Pass nullptr to release
+        //! without obscuring anything. See AbstractChatMessage::setAvatarObscured().
+        void setObscuredAvatarMessage(AbstractChatMessage* msg);
 };
 
 UISE_DESKTOP_NAMESPACE_END

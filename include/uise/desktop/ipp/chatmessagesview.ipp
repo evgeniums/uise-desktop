@@ -222,6 +222,37 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
         }
     );
 
+    m_floatingAvatarTimer=new SingleShotTimer(this);
+    m_floatingAvatarBlockTimer=new SingleShotTimer(this);
+
+    m_floatingAvatar=new ChatFloatingAvatar(m_listView->viewportFrame());
+
+    connect(
+        m_floatingAvatar,
+        &ChatFloatingAvatar::clicked,
+        this,
+        [this]()
+        {
+            // Requirement: clicking the floating copy must be indistinguishable from clicking the
+            // anchored avatar it stands in for, so it has to arrive on the represented message's
+            // own signal -- an embedder's existing per-message connection then applies unchanged,
+            // sourceWidget included. Emitting another object's signal is the established idiom in
+            // this tree (see e.g. editablelabel.hpp's valueWidget->valueEdited()).
+            auto* msg=m_floatingAvatar->message();
+            if (msg!=nullptr)
+            {
+                emit msg->avatarClicked();
+            }
+        }
+    );
+
+    // viewportChangedCb (wired below) only fires when the first/last VIEWPORT ITEM changes
+    // (FlyweightListView_p::informViewportUpdated()) -- a tall batch scrolling by without either
+    // edge item changing produces none, yet the floating avatar's clamp and hide test are
+    // per-pixel quantities. Every scroll of any origin, including the programmatic scrollTo()
+    // paths that bypass userScrolledCb, moves this inner list widget, so watch it directly too.
+    m_listView->itemsParentWidget()->installEventFilter(this);
+
     m_listView->setUserScrolledCb(
         [this]()
         {
@@ -364,6 +395,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
                 updateDateSubtitleOcclusion();
             }
 
+            scheduleFloatingAvatarUpdate();
+
             emit viewportUpdated();
         }
     );
@@ -375,8 +408,13 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
         [this]()
         {
             applyAlignSentToMessages();
+
+            // Must run AFTER applyAlignSentToMessages(): that is what re-derives every row's
+            // avatar visibility and column width for the new alignment, both of which the
+            // floating copy is positioned and matched against.
+            blockFloatingAvatar();
         }
-    );    
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -385,6 +423,7 @@ template <typename BaseMessageT,typename Traits>
 ChatMessagesView<BaseMessageT,Traits>::~ChatMessagesView()
 {
     qApp->removeEventFilter(this);
+    m_listView->itemsParentWidget()->removeEventFilter(this);
     m_listView->resetCallbacks();
 }
 
@@ -559,6 +598,10 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         // set prevLastInBatch
         prevLastInBatch=lastInBatch;
     }
+
+    // Batch boundaries (first/last-in-batch) and avatar visibility may all have just shifted --
+    // covers load/insert/remove/reorder/update, every one of which funnels through here.
+    scheduleFloatingAvatarUpdate();
 }
 
 //--------------------------------------------------------------------------
@@ -772,6 +815,8 @@ void ChatMessagesView<BaseMessageT,Traits>::clear()
 {
     m_listView->clear();
     m_dateSubtitle->hideNow();
+    m_floatingAvatar->hideNow();
+    setObscuredAvatarMessage(nullptr);
 }
 
 //--------------------------------------------------------------------------
@@ -1029,10 +1074,25 @@ void ChatMessagesView<BaseMessageT,Traits>::resetMouseSelectionState()
 template <typename BaseMessageT,typename Traits>
 bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent* event)
 {
+    // See scheduleFloatingAvatarUpdate()'s own doc comment: this is the catch-all trigger that
+    // covers scrolls originating outside userScrolledCb/viewportChangedCb (programmatic
+    // scrollTo() calls, content-height changes that move rows without changing which item sits
+    // at either viewport edge).
+    //
+    // m_listView!=nullptr guard is load-bearing, not defensive: qApp->installEventFilter(this)
+    // above runs before m_listView is constructed, and building the very first SingleShotTimer
+    // child of `this` (m_resizeTimer, right below) already sends an event through the
+    // application-wide filter chain back into this same eventFilter() -- i.e. this branch can
+    // run while the constructor is still between those two lines, with m_listView still null.
+    if (m_listView!=nullptr && watched==m_listView->itemsParentWidget() &&
+        (event->type()==QEvent::Move || event->type()==QEvent::Resize))
+    {
+        scheduleFloatingAvatarUpdate();
+    }
     // window(), not a cached pointer -- this widget can be reparented into a different
     // top-level window over its lifetime (e.g. a chat page moved between MainWindows), so it
     // must be re-resolved on every event rather than captured once.
-    if (event->type()==QEvent::WindowDeactivate && watched==window())
+    else if (event->type()==QEvent::WindowDeactivate && watched==window())
     {
         resetMouseSelectionState();
         m_dragTrustSuspect=true;
@@ -1165,6 +1225,10 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
     updateEffectiveAlignSent();
 
     adjustMessagesSizes();
+
+    // The viewport's own height just changed, so the floating avatar's natural bottom-anchored Y
+    // (and possibly the clamp against it) did too.
+    scheduleFloatingAvatarUpdate();
 
     // fix resizing artefacts when window is miximized/normalized
     int adjustResizeDelta=30;
@@ -1375,6 +1439,11 @@ void ChatMessagesView<BaseMessageT,Traits>::applyAlignSentToMessages()
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::onUserScrolled()
 {
+    // Not gated on m_dateSubtitleEnabled -- the floating avatar has its own independent enable
+    // flag (m_floatingAvatarEnabled, checked inside scheduleFloatingAvatarUpdate()/
+    // updateFloatingAvatar()).
+    scheduleFloatingAvatarUpdate();
+
     if (!m_dateSubtitleEnabled)
     {
         return;
@@ -1471,6 +1540,302 @@ void ChatMessagesView<BaseMessageT,Traits>::updateDateSubtitleOcclusion()
     );
 
     m_dateSubtitle->setOccluded(occluded);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::showEvent(QShowEvent* event)
+{
+    QFrame::showEvent(event);
+    scheduleFloatingAvatarUpdate();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::scheduleFloatingAvatarUpdate()
+{
+    // m_floatingAvatarTimer==nullptr guard is load-bearing: this can be reached (via the
+    // application-wide event filter installed in the ctor, or via a synchronous
+    // setUserScrolledCb()/setViewportChangedCb() callback the flyweight list view's own setup
+    // calls trigger) while the constructor is still between creating m_listView and creating
+    // m_floatingAvatarTimer/m_floatingAvatar a few lines later.
+    if (!m_floatingAvatarEnabled || m_floatingAvatarBlocked || m_floatingAvatarTimer==nullptr)
+    {
+        return;
+    }
+
+    // 0 ms, restart=false: coalesces a burst of triggers describing the same scroll frame
+    // (userScrolledCb, viewportChangedCb, the itemsParentWidget() Move/Resize event filter) into
+    // one recompute on the next event-loop turn -- same pattern FlyweightListView_p::
+    // informViewportUpdated() uses for its own viewportChangedCb. Deferring also means this runs
+    // after beginUpdate()/endUpdate() has settled geometry when triggered from
+    // adjustMessageList().
+    m_floatingAvatarTimer->shot(0,[this](){updateFloatingAvatar();});
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
+{
+    // Blocked check repeated here, not just in scheduleFloatingAvatarUpdate(): an update queued
+    // just before the block started would otherwise still fire inside it.
+    if (!m_floatingAvatarEnabled || m_floatingAvatarBlocked)
+    {
+        return;
+    }
+
+    // mapToGlobal() below is meaningless before the window is actually mapped -- e.g.
+    // adjustMessageList() can schedule an update while the chat page is still hidden.
+    if (!isVisible() || window()==nullptr || !window()->isVisible())
+    {
+        return;
+    }
+
+    // Requirement: the only gate is whether avatars are shown at all under the current
+    // avatar-visibility mode -- the view-level mirror of the `leftAligned` half of
+    // ChatMessage::updateAvatarForced(), deliberately WITHOUT its isLastInBatch() half: this
+    // floats for the bottom-most visible message wherever it sits in its batch.
+    if (effectiveAlignSent()!=AbstractChatMessage::AlignSent::Left)
+    {
+        m_floatingAvatar->setWanted(false);
+        setObscuredAvatarMessage(nullptr);
+        return;
+    }
+
+    auto* bottomItem=m_listView->lastViewportItem();
+    if (bottomItem==nullptr)
+    {
+        m_floatingAvatar->setWanted(false);
+        setObscuredAvatarMessage(nullptr);
+        return;
+    }
+    auto* bottomMsg=bottomItem->widget();
+    if (bottomMsg==nullptr || bottomMsg->avatarColumnWidget()==nullptr)
+    {
+        m_floatingAvatar->setWanted(false);
+        setObscuredAvatarMessage(nullptr);
+        return;
+    }
+
+    // Walk the loaded window (bounded, early-exiting) both ways starting from bottomMsg to find
+    // its batch's head (isFirstInBatch()), its own tail (isLastInBatch()), and -- one more step
+    // past the head -- the PREVIOUS batch's own tail. eachItem()/rEachItem() iterate the whole
+    // flyweight-loaded window in sort order, not just the visible rows, so both walks skip
+    // everything before bottomMsg is reached.
+    AbstractChatMessage* headMsg=nullptr;
+    AbstractChatMessage* tailMsg=nullptr;
+    //! The message immediately before headMsg in the loaded window -- since batches are
+    //! contiguous, that is exactly the PREVIOUS batch's own last message (the one carrying ITS
+    //! anchored avatar). Needed for the occlusion test below: when bottomMsg is itself its
+    //! batch's first message, that previous batch's avatar is the row directly above and can
+    //! already be on screen even though bottomMsg's OWN batch tail is not.
+    AbstractChatMessage* prevBatchTailMsg=nullptr;
+
+    bool reached=false;
+    bool foundHead=false;
+    m_listView->rEachItem(
+        [&](const auto* item) -> bool
+        {
+            auto* m=item->widget();
+            if (m==nullptr)
+            {
+                return true;
+            }
+            if (!reached)
+            {
+                if (m!=bottomMsg)
+                {
+                    return true;
+                }
+                reached=true;
+            }
+            if (foundHead)
+            {
+                prevBatchTailMsg=m;
+                return false;
+            }
+            headMsg=m;
+            if (m->isFirstInBatch())
+            {
+                foundHead=true;
+            }
+            return true;
+        }
+    );
+
+    reached=false;
+    m_listView->eachItem(
+        [&](const auto* item) -> bool
+        {
+            auto* m=item->widget();
+            if (m==nullptr)
+            {
+                return true;
+            }
+            if (!reached)
+            {
+                if (m!=bottomMsg)
+                {
+                    return true;
+                }
+                reached=true;
+            }
+            tailMsg=m;
+            return !m->isLastInBatch();
+        }
+    );
+    // headMsg not reaching the true batch head (it runs off the top of the loaded window) is
+    // harmless: it ends up as the topmost loaded row, whose bubble top is far above the
+    // viewport, so the qMax() clamp in ChatFloatingAvatar::updatePosition() picks the natural
+    // bottom position anyway -- and prevBatchTailMsg simply stays null (nothing above it is
+    // loaded to occlude against). tailMsg==nullptr cannot actually happen -- adjustMessageList()
+    // always forces isLastInBatch(true) on the last loaded row -- but is guarded below regardless.
+
+    auto* viewportFrame=m_listView->viewportFrame();
+
+    // A row that actually carries a visible anchored avatar, reported as two rects in viewport
+    // coordinates: the avatar image's own, and the whole row's. Both stay valid while the row is
+    // setAvatarObscured(), because obscuring works on opacity and leaves the widget in its
+    // layout -- see ChatMessageAvatar::setAvatarObscured().
+    struct AvatarRects
+    {
+        QRect avatar;
+        QRect row;
+    };
+    auto avatarRects=[&viewportFrame](AbstractChatMessage* msg) -> std::optional<AvatarRects>
+    {
+        if (msg==nullptr)
+        {
+            return std::nullopt;
+        }
+        auto* anchored=msg->avatarWidget();
+        if (anchored==nullptr || !anchored->isVisibleTo(viewportFrame))
+        {
+            return std::nullopt;
+        }
+        return AvatarRects{
+            QRect{viewportFrame->mapFromGlobal(anchored->mapToGlobal(QPoint{0,0})),
+                  anchored->size()},
+            QRect{viewportFrame->mapFromGlobal(msg->mapToGlobal(QPoint{0,0})),msg->size()}
+        };
+    };
+
+    // Horizontal placement: centre of the bottom-most message's avatar COLUMN (laid out on every
+    // row regardless of whether that row's own avatar image is shown), not its avatar image
+    // (position-less on a row whose avatar is suppressed by isAvatarVisible()).
+    auto* column=bottomMsg->avatarColumnWidget();
+    QRect columnRect{viewportFrame->mapFromGlobal(column->mapToGlobal(QPoint{0,0})),column->size()};
+
+    // Vertical clamp: the batch head's bubble top, so the floating avatar never rises above it
+    // (ChatFloatingAvatar::updatePosition() pushes DOWN to this, never up).
+    int clampTopY=0;
+    if (headMsg!=nullptr && headMsg->content()!=nullptr)
+    {
+        auto* bubble=headMsg->content();
+        clampTopY=viewportFrame->mapFromGlobal(bubble->mapToGlobal(QPoint{0,0})).y();
+    }
+
+    // ...and the opposite bound: never sink below the batch tail's own anchored avatar, so the
+    // two land exactly on top of each other once that row is far enough in.
+    auto tailRects=avatarRects(tailMsg);
+    std::optional<int> anchoredTopY;
+    if (tailRects.has_value())
+    {
+        anchoredTopY=tailRects->avatar.top();
+    }
+
+    m_floatingAvatar->setMessage(bottomMsg);
+    m_floatingAvatar->setTargetCenterX(columnRect.center().x());
+    m_floatingAvatar->setClampTopY(clampTopY);
+    m_floatingAvatar->setAnchoredTopY(anchoredTopY);
+    m_floatingAvatar->setWanted(true);
+
+    // Now that it is positioned, hide whichever row's own avatar it is standing in for, and
+    // release the one it has moved off -- both instantly, so the swap between the two is not
+    // visible. The candidates are the only rows that can carry a visible avatar anywhere near
+    // it: its own batch's tail, and (at a batch boundary, where bottomMsg is itself its batch's
+    // first message) the previous batch's tail one row above.
+    //
+    // Tested against the whole ROW, not against that row's avatar rect: the copy stops at its
+    // resting place while the row keeps sliding, so once the row's own avatar has slid below the
+    // copy the two rects no longer meet even though the copy is still standing in for exactly
+    // that row. Releasing there put both on screen at once, the real one peeking out just below
+    // the floating one, until the row finally left the viewport.
+    QRect floatingRect=m_floatingAvatar->geometry().adjusted(0,-m_floatingAvatar->occlusionMargin(),
+                                                             0,m_floatingAvatar->occlusionMargin());
+    AbstractChatMessage* messageToObscure=nullptr;
+    if (tailRects.has_value() && tailRects->row.intersects(floatingRect))
+    {
+        messageToObscure=tailMsg;
+    }
+    else
+    {
+        auto prevRects=avatarRects(prevBatchTailMsg);
+        if (prevRects.has_value() && prevRects->row.intersects(floatingRect))
+        {
+            messageToObscure=prevBatchTailMsg;
+        }
+    }
+    setObscuredAvatarMessage(messageToObscure);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::blockFloatingAvatar()
+{
+    // Same construction-order caveat as scheduleFloatingAvatarUpdate(): effectiveAlignSentChanged()
+    // can fire from the first resizeEvent(), which may land before these are built.
+    if (m_floatingAvatarBlockTimer==nullptr || m_floatingAvatar==nullptr)
+    {
+        return;
+    }
+
+    // Back to the resting state on both sides at once: the copy off screen, every row showing
+    // its own avatar again.
+    m_floatingAvatar->hideNow();
+    setObscuredAvatarMessage(nullptr);
+
+    // Anything already queued for this frame was derived from the PREVIOUS alignment.
+    m_floatingAvatarTimer->cancel();
+
+    m_floatingAvatarBlocked=true;
+    m_floatingAvatarBlockTimer->shot(
+        static_cast<size_t>(m_floatingAvatar->modeChangeBlockMs()),
+        [this]()
+        {
+            m_floatingAvatarBlocked=false;
+            scheduleFloatingAvatarUpdate();
+        },
+        // restart=true: a second flip inside the window (a drag-resize crossing
+        // alignSentLeftWidth back and forth) restarts the full settle delay rather than letting
+        // the first one's deadline expire mid-relayout.
+        true
+    );
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setObscuredAvatarMessage(AbstractChatMessage* msg)
+{
+    if (m_obscuredAvatarMsg==msg)
+    {
+        return;
+    }
+
+    if (m_obscuredAvatarMsg!=nullptr)
+    {
+        m_obscuredAvatarMsg->setAvatarObscured(false);
+    }
+    m_obscuredAvatarMsg=msg;
+    if (m_obscuredAvatarMsg!=nullptr)
+    {
+        m_obscuredAvatarMsg->setAvatarObscured(true);
+    }
 }
 
 //--------------------------------------------------------------------------

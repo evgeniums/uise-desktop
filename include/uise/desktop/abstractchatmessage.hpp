@@ -900,6 +900,43 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         //! instead (see AvatarWidget::setAvatarName()). Set it alongside setAvatarPath().
         virtual void setAvatarName(std::string /*name*/) {}
 
+        //! The sender-avatar IMAGE widget itself (not the column it sits in). Used by
+        //! ChatFloatingAvatar to copy path/source/name/size onto its own floating copy, and by
+        //! ChatMessagesView::updateFloatingAvatar() to test this batch's anchored avatar's own
+        //! on-screen rect -- only while it is still in its NATURAL (non-obscured) state, since
+        //! setAvatarObscured(true) hides it and its geometry is not meaningful to query
+        //! afterwards (see that method's own doc comment). isAvatarVisible() alone is not enough
+        //! for that on-screen test -- it is setVisible(false) on every row except the batch's
+        //! last, so isVisibleTo() against the viewport is what actually distinguishes "this row's
+        //! avatar is on screen" from "row loaded but its avatar suppressed" (by either cause).
+        //! Its size() stays correct even while hidden (a fixed size resizes eagerly), but its
+        //! POSITION does not participate in row layout while hidden -- use avatarColumnWidget()
+        //! for horizontal placement, never this. Null on a message type that renders no avatar.
+        virtual AvatarWidget* avatarWidget() const {return nullptr;}
+
+        //! The avatar COLUMN widget -- the fixed-width strip reserved beside the bubble, laid out
+        //! on EVERY row of a batch regardless of whether that row's own avatar image is shown
+        //! (its width tracks only the current avatar-visibility mode, not isLastInBatch()). The
+        //! only reliable source of the avatar's horizontal position on a row whose own avatar
+        //! image is suppressed. Null on a message type that renders no avatar.
+        virtual QWidget* avatarColumnWidget() const {return nullptr;}
+
+        //! Hide this row's own anchored avatar image (true), or show it again (false), INSTANTLY
+        //! in both directions -- no animation either way. Used by
+        //! ChatMessagesView::updateFloatingAvatar() so that at most one avatar is ever rendered
+        //! at a given screen position: rather than fading ChatFloatingAvatar in/out as it nears
+        //! this row's own anchored one (which flickered right at the handoff), the anchored one
+        //! is switched off while the floating copy is over it and back on once it has moved off,
+        //! with the floating copy itself just tracking smoothly throughout. The two sit in
+        //! exactly the same place, so animating either side of the swap would be visible as a
+        //! blink -- hence no animation.
+        //!
+        //! Implementations must leave the widget in its layout (ChatMessage does this with
+        //! opacity, not setVisible()): updateFloatingAvatar() keeps reading the avatar's rect
+        //! while it is obscured, both to park the floating copy and to test whether it is still
+        //! covering it. No-op on a message type that renders no avatar.
+        virtual void setAvatarObscured(bool /*obscured*/) {}
+
         bool isAvatarVisible() const noexcept
         {
             return m_avatarVisible;
@@ -1182,8 +1219,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         void selectionModeRequested();
 
         //! The sender's avatar itself was clicked (not the message row) -- a host typically opens
-        //! that sender's character node. Only reachable while the avatar is visible, see
-        //! setAvatarVisible()/ChatMessage::updateAvatarForced().
+        //! that sender's character node. Reachable either while the anchored avatar is visible
+        //! (see setAvatarVisible()/ChatMessage::updateAvatarForced()) or via a floating copy of it
+        //! (ChatFloatingAvatar, forwarded by ChatMessagesView::updateFloatingAvatar()) while the
+        //! anchored one has scrolled out of the viewport.
         void avatarClicked();
 
         void selectorPositionChanged(bool);

@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 
 class QBoxLayout;
 class QPainterPath;
+class QGraphicsOpacityEffect;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -289,6 +290,28 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         void setSelected(bool enable);
         void setLastInBatch(bool enable);
 
+        /**
+         * @brief Hide/show the avatar image because a ChatFloatingAvatar is (or is no longer)
+         * covering it -- see AbstractChatMessage::setAvatarObscured().
+         *
+         * Instant in both directions, no animation: the floating copy sits in exactly this
+         * avatar's place, so the swap must not be visible at all.
+         *
+         * Implemented as opacity, NOT setVisible(): the widget must stay in its layout either
+         * way, because ChatMessagesView::updateFloatingAvatar() keeps reading this avatar's
+         * on-screen rect -- both to park the floating copy (it never floats BELOW the spot this
+         * avatar occupies) and to test whether it is covering it -- and a hidden widget is
+         * dropped from its layout and stops reporting a meaningful geometry. Testing a rect we
+         * ourselves collapsed would read "not covered", release it, and re-cover it a frame
+         * later, which is exactly the flicker this whole mechanism exists to remove.
+         */
+        void setAvatarObscured(bool obscured);
+
+        bool isAvatarObscured() const noexcept
+        {
+            return m_avatarObscured;
+        }
+
         AvatarWidget* avatar() const
         {
             return m_avatar;
@@ -396,7 +419,15 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         //! Applies avatarBottomOffset() as this frame's bottom inset.
         void updateAvatarOffset();
 
+        //! Builds the opacity effect setAvatarObscured() drives, on first use only -- the
+        //! overwhelming majority of rows are never obscured, and a QGraphicsOpacityEffect forces
+        //! its widget onto an offscreen-composited paint path for the rest of its life.
+        void ensureOpacityEffect();
+
         AvatarWidget* m_avatar;
+
+        QGraphicsOpacityEffect* m_opacityEffect=nullptr;
+        bool m_avatarObscured=false;
 
         QColor m_tailColor;
         int m_tailShape=DefaultTailShape;
@@ -451,6 +482,10 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         std::shared_ptr<AvatarSource> avatarSource() const override;
 
         void setAvatarName(std::string name) override;
+
+        AvatarWidget* avatarWidget() const override;
+        QWidget* avatarColumnWidget() const override;
+        void setAvatarObscured(bool obscured) override;
 
         QString selectedText() const override;
 

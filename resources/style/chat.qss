@@ -136,6 +136,54 @@ background-color: transparent;
 border: none;
 }
 
+/*
+ * ChatFloatingAvatar - sender avatar pinned near the bottom of the chat messages viewport,
+ * standing in for the batch's own anchored avatar (on its LAST message, beside the tail) while
+ * that one is scrolled out of sight. Shown whenever avatars are on at all, i.e. own and received
+ * messages share the left side (ChatMessage::updateAvatarForced()'s leftAligned half).
+ *
+ * It does NOT fade back out when the anchored avatar returns to the viewport: the handoff runs the
+ * other way, with ChatMessagesView::updateFloatingAvatar() instantly hiding the covered row's own
+ * avatar (AbstractChatMessage::setAvatarObscured()) so exactly one avatar renders at that spot,
+ * and this one just keeps tracking smoothly. Fading it out at the handoff instead is what used to
+ * flicker at a batch boundary.
+ *
+ * There is deliberately NO qproperty-avatarSize here, unlike uise--ChatMessageAvatar above: the
+ * floating copy re-reads its size from the message it represents on every update pass instead, so
+ * it can never be silently shrunk back to a stylesheet default by an app-wide restyle the way the
+ * anchored avatar can (see ChatMessage::changeEvent()'s own doc comment on that trap).
+ *
+ * bottomOffset is the gap from the viewport's bottom edge to the avatar's, in its natural resting
+ * position. It is pulled UP from there onto the batch tail's own anchored avatar once that has
+ * scrolled far enough in (so the two coincide exactly and the swap is invisible), and pushed DOWN
+ * past it, clipped by the viewport, once the batch's first bubble scrolls below it.
+ * occlusionMargin is vertical slack added around this copy's own rect when testing which row's
+ * anchored avatar it is covering, so that choice does not chatter right at the boundary.
+ * showDelayMs/hideDelayMs/fadeIn/fadeOutDurationMs are all 0, i.e. this copy appears and
+ * disappears instantly: it does so in the very same pass that hides (or restores) the avatar of
+ * the row it stands in for, and in the same place, so any delay or fade there is visible as a
+ * blink with neither avatar on screen -- which is exactly what a 150ms fade-in did on chat
+ * reload. They stay as knobs only so a host can opt back in. Unlike the date pill this avatar is
+ * also not tied to a scroll session -- it stays up for as long as its conditions hold.
+ *
+ * modeChangeBlockMs is the one deliberate delay: when the chat switches between showing and
+ * hiding per-message avatars ("Position of my messages", or an Auto-mode resize crossing
+ * alignSentLeftWidth above) every row relayouts, so this copy is parked and the rows carry their
+ * own avatars for that long before it is placed again. */
+uise--ChatFloatingAvatar {
+qproperty-showDelayMs: 0;
+qproperty-hideDelayMs: 0;
+qproperty-fadeInDurationMs: 0;
+qproperty-fadeOutDurationMs: 0;
+qproperty-bottomOffset: 8;
+qproperty-occlusionMargin: 4;
+qproperty-modeChangeBlockMs: 400;
+background-color: transparent;
+border: none;
+padding: 0px;
+margin: 0px;
+}
+
 /* The list itself is uncapped -- the bubble width cap moved onto qproperty-maxMessageWidth so a
  * wide window is actually used (AbstractChatMessagesView::setMaxMessageWidth()).
  * qproperty-alignSentLeftWidth is the Auto-mode threshold (AlignSentMode::Auto): past this view

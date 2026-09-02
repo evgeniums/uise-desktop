@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLocale>
 #include <QResizeEvent>
 #include <QVariantAnimation>
+#include <QGraphicsOpacityEffect>
 #include <QEasingCurve>
 #include <QPainter>
 #include <QPainterPath>
@@ -1205,6 +1206,20 @@ void ChatMessage::updateAlignment()
     {
         pimpl->mainLayout->addWidget(pimpl->selector);
     }
+
+    // Apply the re-ordering above in THIS frame, not on the next posted LayoutRequest.
+    // updateAvatarForced() a few lines up shows/hides the avatar through setVisible(), which
+    // takes effect immediately, while the addWidget() calls only move the bubble once the layout
+    // is re-run -- so on a live flip to left alignment the avatar appeared next to a bubble still
+    // drawn on the RIGHT, for the frame or two until that pass came round.
+    //
+    // Only while already on screen: during a bulk load every row runs this before ever being
+    // shown, and forcing a layout pass per row there would be pure waste (the list lays them all
+    // out once at the end anyway).
+    if (isVisible())
+    {
+        pimpl->mainLayout->activate();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1274,6 +1289,8 @@ void ChatMessage::showEvent(QShowEvent* event)
 
 void ChatMessage::updateAvatarVisible()
 {
+    // Deliberately independent of setAvatarObscured(), which works on opacity and leaves the
+    // widget in the layout -- see ChatMessageAvatar::setAvatarObscured()'s own doc comment.
     pimpl->avatarFrame->avatar()->setVisible(isAvatarVisible());
 }
 
@@ -1367,6 +1384,27 @@ std::shared_ptr<AvatarSource> ChatMessage::avatarSource() const
 void ChatMessage::setAvatarName(std::string name)
 {
     pimpl->avatarFrame->avatar()->setAvatarName(std::move(name));
+}
+
+//--------------------------------------------------------------------------
+
+AvatarWidget* ChatMessage::avatarWidget() const
+{
+    return pimpl->avatarFrame->avatar();
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* ChatMessage::avatarColumnWidget() const
+{
+    return pimpl->avatarFrame;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::setAvatarObscured(bool obscured)
+{
+    pimpl->avatarFrame->setAvatarObscured(obscured);
 }
 
 //--------------------------------------------------------------------------
@@ -1620,6 +1658,37 @@ void ChatMessageAvatar::updateAvatarOffset()
     {
         layout()->setContentsMargins(0,0,0,m_avatarBottomOffset);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::ensureOpacityEffect()
+{
+    if (m_opacityEffect==nullptr)
+    {
+        m_opacityEffect=new QGraphicsOpacityEffect(m_avatar);
+        m_avatar->setGraphicsEffect(m_opacityEffect);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageAvatar::setAvatarObscured(bool obscured)
+{
+    if (m_avatarObscured==obscured)
+    {
+        return;
+    }
+    m_avatarObscured=obscured;
+
+    if (!obscured && m_opacityEffect==nullptr)
+    {
+        // Never obscured, nothing to restore -- do not build the effect just to set it to 1.
+        return;
+    }
+
+    ensureOpacityEffect();
+    m_opacityEffect->setOpacity(obscured ? 0.0 : 1.0);
 }
 
 //--------------------------------------------------------------------------

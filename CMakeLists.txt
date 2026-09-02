@@ -226,6 +226,7 @@ SET (HEADERS
     include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
     include/uise/desktop/chatdatesubtitle.hpp
+    include/uise/desktop/chatfloatingavatar.hpp
     include/uise/desktop/chatmessagesview.hpp
 
     include/uise/desktop/chatfileitem.hpp
@@ -420,6 +421,7 @@ SET (SOURCES
     src/chatmessagecall.cpp
     src/chatmessage.cpp
     src/chatdatesubtitle.cpp
+    src/chatfloatingavatar.cpp
 
     src/albumlayout.cpp
     src/chatfileitem.cpp
