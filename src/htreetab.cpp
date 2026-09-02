@@ -1220,10 +1220,6 @@ void HTreeTab_p::doRecordHistory(HTreeTab::HistoryMode historyMode)
         return;
     }
 
-    // A new navigation from a point in history discards whatever was ahead of it, same as a
-    // browser: the redo branch is gone once you navigate somewhere new.
-    history.resize(static_cast<size_t>(historyPos+1));
-
     if (historyMode==HTreeTab::HistoryMode::Redirect
         && historyPos>=0
         && isPathAncestor(history.at(static_cast<size_t>(historyPos)),p))
@@ -1232,11 +1228,26 @@ void HTreeTab_p::doRecordHistory(HTreeTab::HistoryMode historyMode)
         // into it -- it is a transient waypoint, so replace its entry instead of stacking on
         // top of it. Back then leaves the subtree altogether, as if the child had been the
         // navigation target all along.
+        history.resize(static_cast<size_t>(historyPos+1));
         history[static_cast<size_t>(historyPos)]=std::move(p);
         emit self->historyChanged();
         return;
     }
 
+    if (historyPos>0 && history.at(static_cast<size_t>(historyPos-1))==p)
+    {
+        // Opening the very node Back points at IS the Back navigation -- just walk the cursor
+        // back, exactly as goBack() would, instead of appending a duplicate. Without this,
+        // bouncing between two chats records A,B,A,B,... forever and Back only ever undoes one
+        // hop of the bounce rather than leaving the pair.
+        --historyPos;
+        emit self->historyChanged();
+        return;
+    }
+
+    // A new navigation from a point in history discards whatever was ahead of it, same as a
+    // browser: the redo branch is gone once you navigate somewhere new.
+    history.resize(static_cast<size_t>(historyPos+1));
     history.push_back(std::move(p));
     if (history.size()>HTreeTab::MaxHistoryDepth)
     {

@@ -161,7 +161,9 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
          * openPath() descends into a subtree are never recorded -- only the final, settled path
          * of a completed navigation is. A no-op while goBack()/goForward() is itself replaying a
          * history entry, while the tab has no open node, or when the last node has
-         * HTreeNode::isHistoryEnabled()==false. Consecutive identical entries are not duplicated.
+         * HTreeNode::isHistoryEnabled()==false. Consecutive identical entries are not duplicated,
+         * and opening the entry Back points at walks the cursor back instead of appending -- so
+         * bouncing between two nodes toggles within the existing chain rather than growing it.
          *
          * Pass HistoryMode::Redirect when the landing was an automatic redirect out of the node
          * that is currently the newest entry -- see HistoryMode.
