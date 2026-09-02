@@ -1621,21 +1621,13 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     }
 
     // Walk the loaded window (bounded, early-exiting) both ways starting from bottomMsg to find
-    // its batch's head (isFirstInBatch()), its own tail (isLastInBatch()), and -- one more step
-    // past the head -- the PREVIOUS batch's own tail. eachItem()/rEachItem() iterate the whole
-    // flyweight-loaded window in sort order, not just the visible rows, so both walks skip
-    // everything before bottomMsg is reached.
+    // its batch's head (isFirstInBatch()) and its own tail (isLastInBatch()). eachItem()/
+    // rEachItem() iterate the whole flyweight-loaded window in sort order, not just the visible
+    // rows, so both walks skip everything before bottomMsg is reached.
     AbstractChatMessage* headMsg=nullptr;
     AbstractChatMessage* tailMsg=nullptr;
-    //! The message immediately before headMsg in the loaded window -- since batches are
-    //! contiguous, that is exactly the PREVIOUS batch's own last message (the one carrying ITS
-    //! anchored avatar). Needed for the occlusion test below: when bottomMsg is itself its
-    //! batch's first message, that previous batch's avatar is the row directly above and can
-    //! already be on screen even though bottomMsg's OWN batch tail is not.
-    AbstractChatMessage* prevBatchTailMsg=nullptr;
 
     bool reached=false;
-    bool foundHead=false;
     m_listView->rEachItem(
         [&](const auto* item) -> bool
         {
@@ -1652,17 +1644,8 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
                 }
                 reached=true;
             }
-            if (foundHead)
-            {
-                prevBatchTailMsg=m;
-                return false;
-            }
             headMsg=m;
-            if (m->isFirstInBatch())
-            {
-                foundHead=true;
-            }
-            return true;
+            return !m->isFirstInBatch();
         }
     );
 
@@ -1690,8 +1673,7 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     // headMsg not reaching the true batch head (it runs off the top of the loaded window) is
     // harmless: it ends up as the topmost loaded row, whose bubble top is far above the
     // viewport, so the qMax() clamp in ChatFloatingAvatar::updatePosition() picks the natural
-    // bottom position anyway -- and prevBatchTailMsg simply stays null (nothing above it is
-    // loaded to occlude against). tailMsg==nullptr cannot actually happen -- adjustMessageList()
+    // bottom position anyway. tailMsg==nullptr cannot actually happen -- adjustMessageList()
     // always forces isLastInBatch(true) on the last loaded row -- but is guarded below regardless.
 
     auto* viewportFrame=m_listView->viewportFrame();
@@ -1748,16 +1730,20 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     }
 
     m_floatingAvatar->setMessage(bottomMsg);
-    m_floatingAvatar->setTargetCenterX(columnRect.center().x());
+    m_floatingAvatar->setTargetColumn(columnRect.left(),columnRect.width());
     m_floatingAvatar->setClampTopY(clampTopY);
     m_floatingAvatar->setAnchoredTopY(anchoredTopY);
     m_floatingAvatar->setWanted(true);
 
-    // Now that it is positioned, hide whichever row's own avatar it is standing in for, and
-    // release the one it has moved off -- both instantly, so the swap between the two is not
-    // visible. The candidates are the only rows that can carry a visible avatar anywhere near
-    // it: its own batch's tail, and (at a batch boundary, where bottomMsg is itself its batch's
-    // first message) the previous batch's tail one row above.
+    // Now that it is positioned, hide the avatar of the row it is standing in for, and release it
+    // again once it has moved off -- both instantly, so the swap between the two is not visible.
+    //
+    // ONLY that row is ever a candidate. An earlier cut also offered the previous batch's tail
+    // here, as a guard against drawing over an avatar already on screen at a batch boundary, but
+    // that avatar belongs to a different batch -- in a personal chat, to the other party -- so
+    // hiding it leaves that batch with no avatar at all while this copy shows someone else's.
+    // It is also unreachable by construction: clampTopY below keeps this copy at or under the
+    // batch head's bubble top, and the previous batch's row ends above that.
     //
     // Tested against the whole ROW, not against that row's avatar rect: the copy stops at its
     // resting place while the row keeps sliding, so once the row's own avatar has slid below the
@@ -1770,14 +1756,6 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     if (tailRects.has_value() && tailRects->row.intersects(floatingRect))
     {
         messageToObscure=tailMsg;
-    }
-    else
-    {
-        auto prevRects=avatarRects(prevBatchTailMsg);
-        if (prevRects.has_value() && prevRects->row.intersects(floatingRect))
-        {
-            messageToObscure=prevBatchTailMsg;
-        }
     }
     setObscuredAvatarMessage(messageToObscure);
 }

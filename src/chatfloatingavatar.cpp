@@ -68,7 +68,8 @@ class ChatFloatingAvatar_p
 
         QPointer<AbstractChatMessage> message;
 
-        int targetCenterX=0;
+        int targetColumnLeft=0;
+        int targetColumnWidth=0;
         int clampTopY=0;
         std::optional<int> anchoredTopY;
 
@@ -218,11 +219,12 @@ AbstractChatMessage* ChatFloatingAvatar::message() const
 
 //--------------------------------------------------------------------------
 
-void ChatFloatingAvatar::setTargetCenterX(int x)
+void ChatFloatingAvatar::setTargetColumn(int left, int width)
 {
-    if (pimpl->targetCenterX!=x)
+    if (pimpl->targetColumnLeft!=left || pimpl->targetColumnWidth!=width)
     {
-        pimpl->targetCenterX=x;
+        pimpl->targetColumnLeft=left;
+        pimpl->targetColumnWidth=width;
         updatePosition();
     }
 }
@@ -521,21 +523,33 @@ void ChatFloatingAvatar::updatePosition()
 
     resize(sizeHint());
 
-    auto x=pimpl->targetCenterX-width()/2;
+    if (layout()!=nullptr)
+    {
+        // So the image's offset inside this wrapper, read below, is current rather than one
+        // layout pass stale. Everything here is computed for the IMAGE -- that is what has to
+        // line up with the rows' own avatars -- and only converted back to this wrapper's
+        // top-left at the end, so any inset the wrapper picks up cannot shift the result.
+        layout()->activate();
+    }
+    auto image=pimpl->avatar->geometry();
+
+    // Centred in the target column exactly the way a row centres its own avatar
+    // (QBoxLayout + Qt::AlignHCenter), so the two share the same left margin to the pixel.
+    auto imageX=pimpl->targetColumnLeft+(pimpl->targetColumnWidth-image.width())/2;
 
     // Natural resting place: just above the viewport's bottom edge. Then pulled UP to the row's
     // own anchored avatar once that has scrolled high enough (so the two coincide exactly rather
     // than this copy sinking past it), and finally pushed DOWN again if that would take it above
     // the batch's first bubble. The order matters: the batch-head clamp wins, so a batch only
     // partly scrolled in never has its avatar floating above where the batch itself starts.
-    auto y=parent->height()-bottomOffset()-height();
+    auto imageY=parent->height()-bottomOffset()-image.height();
     if (pimpl->anchoredTopY.has_value())
     {
-        y=qMin(y,*pimpl->anchoredTopY);
+        imageY=qMin(imageY,*pimpl->anchoredTopY);
     }
-    y=qMax(y,pimpl->clampTopY);
+    imageY=qMax(imageY,pimpl->clampTopY);
 
-    move(x,y);
+    move(imageX-image.left(),imageY-image.top());
 }
 
 //--------------------------------------------------------------------------

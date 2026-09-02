@@ -120,8 +120,12 @@ class UISE_DESKTOP_EXPORT ChatFloatingAvatar : public WidgetQFrame
         //! reads back null rather than dangling.
         AbstractChatMessage* message() const;
 
-        //! Horizontal anchor: this widget is centred on this x, in its parent's coordinates.
-        void setTargetCenterX(int x);
+        //! Horizontal anchor: the avatar COLUMN of the row this copy stands in for, in the
+        //! parent's coordinates. The image is centred in it exactly the way a row centres its own
+        //! avatar (Qt::AlignHCenter, i.e. left+(width-imageWidth)/2), so the two line up to the
+        //! pixel. Passing a centre point instead does NOT -- QRect::center() rounds as
+        //! left+(width-1)/2, which lands a pixel off on an even-width column.
+        void setTargetColumn(int left, int width);
 
         //! Lower bound clamp on this widget's top edge, in parent coordinates -- see this class's
         //! own doc comment and ChatMessagesView::updateFloatingAvatar()'s geometry algorithm.
