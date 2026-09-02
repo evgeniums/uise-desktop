@@ -66,7 +66,32 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         HTreeTab& operator=(const HTreeTab&)=delete;
         HTreeTab& operator=(HTreeTab&&)=delete;
 
-        bool openPath(HTreePath path);
+        /**
+         * @brief How a successful openPath() affects the tab's navigation history.
+         */
+        enum class HistoryMode : int
+        {
+            /**
+             * @brief Record the landing as a new history entry (default) -- an ordinary
+             * navigation the user asked for.
+             */
+            Record,
+
+            /**
+             * @brief The navigation is an automatic redirect performed by the node being left,
+             * not a step the user took: a node that opens one of its own children as soon as it
+             * is filled (e.g. ShareMeController::reload(), AboutController::reload()).
+             *
+             * The entry the redirect started from is replaced by the landing instead of the
+             * landing being stacked on top of it, so the transient intermediate node does not
+             * show up in the history and Back skips straight past it. Falls back to Record if
+             * the current entry is not an ancestor of the landing (i.e. the history cursor moved
+             * elsewhere while the redirect was pending).
+             */
+            Redirect
+        };
+
+        bool openPath(HTreePath path, HistoryMode historyMode=HistoryMode::Record);
 
         /**
          * @brief Reconstruct \p node in place for \p path instead of destroying it and
@@ -125,6 +150,48 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
 
         std::vector<HTreeNode*> nodes() const;
 
+        constexpr static const size_t MaxHistoryDepth=50;
+
+        /**
+         * @brief Record the tab's current full path (see path()) as a navigation history entry.
+         *
+         * Called by openPath() itself on success, and by HTreeBranch::openNextNode() for
+         * landings reached via a branch's own next-node slots (e.g. a list item clicked
+         * directly), which never go through openPath(). Intermediate prefixes built while
+         * openPath() descends into a subtree are never recorded -- only the final, settled path
+         * of a completed navigation is. A no-op while goBack()/goForward() is itself replaying a
+         * history entry, while the tab has no open node, or when the last node has
+         * HTreeNode::isHistoryEnabled()==false. Consecutive identical entries are not duplicated.
+         *
+         * Pass HistoryMode::Redirect when the landing was an automatic redirect out of the node
+         * that is currently the newest entry -- see HistoryMode.
+         */
+        void recordHistory(HistoryMode historyMode=HistoryMode::Record);
+
+        //! Whether goBack() would currently do anything.
+        bool canGoBack() const noexcept;
+        //! Whether goForward() would currently do anything.
+        bool canGoForward() const noexcept;
+
+        /**
+         * @brief Navigate to the previous history entry, or -- if the tab's current path is not
+         * the history cursor's entry (e.g. after closing a node with its own close button) --
+         * back to the cursor entry itself first, without moving the cursor.
+         * @return true if navigation happened.
+         */
+        bool goBack();
+
+        /**
+         * @brief Navigate to the next history entry recorded after the current cursor.
+         * @return true if navigation happened.
+         */
+        bool goForward();
+
+        std::vector<HTreePath> history() const;
+        //! Index of the current entry in history(), or -1 if history is empty.
+        int historyPosition() const noexcept;
+        void clearHistory();
+
     public slots:
 
         void activate();
@@ -138,6 +205,10 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         void nodeUpdated(const UISE_DESKTOP_NAMESPACE::HTreePath&);
 
         void nodesReconfigured();
+
+        //! Emitted whenever history()/historyPosition()/canGoBack()/canGoForward() may have
+        //! changed -- after recordHistory(), goBack(), goForward(), or clearHistory().
+        void historyChanged();
 
     private slots:
 

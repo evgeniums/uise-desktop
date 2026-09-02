@@ -265,6 +265,7 @@ class HTreeNode_p
 
         bool unique=false;
         bool contentReloadable=false;
+        bool historyEnabled=true;
 
         int prevMinWidth=0;
         int prevMaxWidth=0;
@@ -1001,6 +1002,20 @@ void HTreeNode::setUnique(bool enable)
 bool HTreeNode::isUnique() const
 {
     return pimpl->unique;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setHistoryEnabled(bool enable)
+{
+    pimpl->historyEnabled=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isHistoryEnabled() const noexcept
+{
+    return pimpl->historyEnabled;
 }
 
 //--------------------------------------------------------------------------

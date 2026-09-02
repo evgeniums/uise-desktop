@@ -162,18 +162,26 @@ void HTreeBranch::openNextNode(const HTreePathElement& pathElement, const UISE_D
 {
     if (!residentPath.isNull())
     {
+        // Lands via HTree::openPath()/HTreeTab::openPath(), which records history itself.
         treeTab()->tree()->openPath(residentPath);
         return;
     }
 
-    loadNextNode(pathElement);
+    auto* next=loadNextNode(pathElement);
+    if (next==nullptr)
+    {
+        // failure, or a unique node that was already open elsewhere and just got activate()d
+        return;
+    }
     if (exclusive)
     {
-        if (nextNode())
-        {
-            nextNode()->expandExclusive();
-        }
+        next->expandExclusive();
     }
+
+    // loadNextNode() never goes through HTreeTab::openPath() -- e.g. a list item clicked
+    // directly -- so record the landing here. Unlike openPath()'s own recursive descent, this
+    // call always lands on the tab's new, settled last node, never an intermediate prefix.
+    treeTab()->recordHistory();
 }
 
 //--------------------------------------------------------------------------

@@ -209,6 +209,16 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         bool isUnique() const;
 
         /**
+         * @brief Enable/disable recording this node's path into its tab's navigation history
+         * (see HTreeTab::recordHistory()/goBack()/goForward()) when it becomes the last node of
+         * an openPath()/openNextNode() navigation. Default is enabled. Used for nodes that are a
+         * transient overlay rather than a page of their own -- e.g. the app-lock node -- where
+         * a history entry would let Back navigate back into it.
+         */
+        void setHistoryEnabled(bool enable);
+        bool isHistoryEnabled() const noexcept;
+
+        /**
          * @brief Enable/disable in-place reconstruction of this node when it is the last node
          * of a tab's path and the tab is asked to open a path whose last element differs from
          * this node's, but whose type matches (see canReconstructFromPath()).
@@ -384,6 +394,10 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         friend class HTreeBranch;
         friend class HTreeTab;
+        // HTreeTab::openPath()'s body lives in HTreeTab_p::doOpenPath() (see htreetab.cpp) so
+        // that the public HTreeTab::openPath() can wrap it with history recording -- needs the
+        // same protected access as HTreeTab itself.
+        friend class HTreeTab_p;
 };
 
 UISE_DESKTOP_NAMESPACE_END

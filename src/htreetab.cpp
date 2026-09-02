@@ -64,6 +64,25 @@ QString htreeTabDebugTs()
     return QDateTime::currentDateTime().toString("hh:mm:ss.zzz");
 }
 
+//! Whether \p prefix names a strict ancestor of \p path (element-wise, so type+id only).
+bool isPathAncestor(const HTreePath& prefix, const HTreePath& path)
+{
+    const auto& prefixElements=prefix.elements();
+    const auto& pathElements=path.elements();
+    if (prefixElements.empty() || prefixElements.size()>=pathElements.size())
+    {
+        return false;
+    }
+    for (size_t i=0;i<prefixElements.size();i++)
+    {
+        if (!(prefixElements.at(i)==pathElements.at(i)))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 }
 
 //--------------------------------------------------------------------------
@@ -84,6 +103,10 @@ class HTreeTab_p
         std::vector<HTreeNode*> nodes;
         SingleShotTimer* scrollTimer;
         SingleShotTimer* reconfigureTimer;
+
+        std::vector<HTreePath> history;
+        int historyPos=-1;
+        bool historyNavigating=false;
 
         bool closeWarnDisable=false;
         QFrame* closeWarnFrame;
@@ -117,6 +140,12 @@ class HTreeTab_p
         void scrollToNode(HTreeNode* node);
         void scrollToEnd();
         bool reconstructLastNode(int index, HTreePath path);
+        bool doOpenPath(HTreePath path);
+        void doRecordHistory(HTreeTab::HistoryMode historyMode);
+        bool navigateHistory(int index, int direction);
+        void expandLandingColumns();
+        HTreeNode* collapsedParentHost() const;
+        void syncHistoryCursorTo(const HTreePath& path);
 };
 
 //--------------------------------------------------------------------------
@@ -716,7 +745,19 @@ HTreeNode* HTreeTab::node(const HTreePath& path, bool exact) const
 
 //--------------------------------------------------------------------------
 
-bool HTreeTab::openPath(HTreePath path)
+bool HTreeTab::openPath(HTreePath path, HistoryMode historyMode)
+{
+    auto ok=pimpl->doOpenPath(std::move(path));
+    if (ok)
+    {
+        recordHistory(historyMode);
+    }
+    return ok;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab_p::doOpenPath(HTreePath path)
 {
 #if 0
     auto w=new QFrame();
@@ -743,11 +784,11 @@ bool HTreeTab::openPath(HTreePath path)
 #endif
 
     int truncIndex=0;
-    auto truncCount=std::min(path.elements().size(),pimpl->nodes.size());
+    auto truncCount=std::min(path.elements().size(),nodes.size());
     for (size_t i=0;i<truncCount;i++)
     {
         const auto& el=path.elements().at(i);
-        const auto* node=pimpl->nodes.at(i);
+        const auto* node=nodes.at(i);
         if (el.uniqueId()==node->id().toStdString())
         {
             truncIndex=i+1;
@@ -759,22 +800,22 @@ bool HTreeTab::openPath(HTreePath path)
     }
 
     if (truncIndex==static_cast<int>(path.elements().size())-1
-        && pimpl->nodes.size()>=path.elements().size())
+        && nodes.size()>=path.elements().size())
     {
-        auto* cand=pimpl->nodes.at(static_cast<size_t>(truncIndex));
+        auto* cand=nodes.at(static_cast<size_t>(truncIndex));
         if (cand->canReconstructFromPath(path.elements().back()))
         {
-            return pimpl->reconstructLastNode(truncIndex,std::move(path));
+            return reconstructLastNode(truncIndex,std::move(path));
         }
     }
 
     if (truncIndex>0)
     {
-        truncate(truncIndex);
+        self->truncate(truncIndex);
     }
     else
     {
-        truncate(0);
+        self->truncate(0);
     }
 
     HTreeNode* nod=nullptr;
@@ -782,9 +823,9 @@ bool HTreeTab::openPath(HTreePath path)
     {
         auto lastInPath=i==path.elements().size()-1;
         const auto& el=path.elements().at(i);
-        auto lastNode=node();
+        auto lastNode=self->node();
         if (lastNode!=nullptr)
-        {            
+        {
             auto branch=qobject_cast<HTreeBranch*>(lastNode);
             UiseAssert(branch!=nullptr,"All nodes in the path except for the last must be branch nodes");
             auto prevNode=branch->nextNode();
@@ -800,7 +841,7 @@ bool HTreeTab::openPath(HTreePath path)
 
             if (lastInPath)
             {
-                pimpl->scrollTimer->shot(50,
+                scrollTimer->shot(50,
                     [this,node=QPointer<HTreeNode>{nod}]
                     {
                         if (node)
@@ -809,7 +850,7 @@ bool HTreeTab::openPath(HTreePath path)
                             {
                                 qDebug().noquote() << htreeTabDebugTs() << "DEFERRED(50ms) openPath scrollToNode";
                             }
-                            pimpl->scrollToNode(node);
+                            scrollToNode(node);
                         }
                     },
                     true
@@ -820,7 +861,7 @@ bool HTreeTab::openPath(HTreePath path)
         {
             UiseAssert(i==0,"Previous last node must exist for all path elements except for the first");
 
-            auto nodeResult=pimpl->tree->nodeLocator()->findOrCreateNode(el,nullptr,this);
+            auto nodeResult=tree->nodeLocator()->findOrCreateNode(el,nullptr,self);
             if (nodeResult.first==nullptr)
             {
                 return false;
@@ -836,11 +877,11 @@ bool HTreeTab::openPath(HTreePath path)
             {
                 return false;
             }
-            if (lastInPath || !tree()->isExlusivelyExpandableNode())
+            if (lastInPath || !tree->isExlusivelyExpandableNode())
             {
                 nod->fillContent();
             }
-            appendNode(nod);
+            self->appendNode(nod);
         }
     }
 
@@ -852,15 +893,15 @@ bool HTreeTab::openPath(HTreePath path)
         {
             qDebug().noquote() << htreeTabDebugTs() << "openPath final sync scrollToNode";
         }
-        pimpl->scrollToNode(nod);
+        scrollToNode(nod);
     }
-    else if (truncIndex==static_cast<int>(path.elements().size()) && !pimpl->nodes.empty())
+    else if (truncIndex==static_cast<int>(path.elements().size()) && !nodes.empty())
     {
         // The requested path is already fully open (the element loop above never ran), so
         // give the currently open last node a chance to redo its action via
         // reopen()/doReopen() -- e.g. re-clicking the Quit item's own navbar breadcrumb.
         // No-op by default for ordinary nodes.
-        pimpl->nodes.back()->reopen();
+        nodes.back()->reopen();
     }
     return true;
 }
@@ -1141,6 +1182,325 @@ void HTreeTab::nodeCloseHovered(HTreeNode* /*node*/, bool /*enable*/)
 std::vector<HTreeNode*> HTreeTab::nodes() const
 {
     return pimpl->nodes;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::recordHistory(HistoryMode historyMode)
+{
+    pimpl->doRecordHistory(historyMode);
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::doRecordHistory(HTreeTab::HistoryMode historyMode)
+{
+    if (historyNavigating)
+    {
+        // goBack()/goForward() are themselves replaying a history entry via openPath() -- must
+        // not re-push what is already there
+        return;
+    }
+    if (nodes.empty())
+    {
+        return;
+    }
+    if (!nodes.back()->isHistoryEnabled())
+    {
+        return;
+    }
+    auto p=self->path();
+    if (p.isNull())
+    {
+        return;
+    }
+    if (historyPos>=0 && history.at(static_cast<size_t>(historyPos))==p)
+    {
+        // same node as the current cursor entry (e.g. a reopen()) -- do not duplicate
+        return;
+    }
+
+    // A new navigation from a point in history discards whatever was ahead of it, same as a
+    // browser: the redo branch is gone once you navigate somewhere new.
+    history.resize(static_cast<size_t>(historyPos+1));
+
+    if (historyMode==HTreeTab::HistoryMode::Redirect
+        && historyPos>=0
+        && isPathAncestor(history.at(static_cast<size_t>(historyPos)),p))
+    {
+        // The node we were just on opened this child by itself rather than the user stepping
+        // into it -- it is a transient waypoint, so replace its entry instead of stacking on
+        // top of it. Back then leaves the subtree altogether, as if the child had been the
+        // navigation target all along.
+        history[static_cast<size_t>(historyPos)]=std::move(p);
+        emit self->historyChanged();
+        return;
+    }
+
+    history.push_back(std::move(p));
+    if (history.size()>HTreeTab::MaxHistoryDepth)
+    {
+        history.erase(history.begin());
+    }
+    historyPos=static_cast<int>(history.size())-1;
+
+    emit self->historyChanged();
+}
+
+//--------------------------------------------------------------------------
+
+HTreeNode* HTreeTab_p::collapsedParentHost() const
+{
+    // A node reached by an "open exclusively" navigation collapses its ancestors rather than
+    // closing them (HTreeNode::expandExclusive()), and collapsing never changes the tab's
+    // path() -- so a node hidden that way is invisible to the path history and revealing it has
+    // to be a step of its own, which Back takes before moving through the history.
+    //
+    // The catch is telling "hidden away" apart from the ordinary viewport: expandableLastDepth
+    // OnNodeOpen() columns staying expanded while everything before them is collapsed is simply
+    // how every node is opened (see appendNode()), so with a chat page open Root and Character
+    // are always collapsed and a naive "is any ancestor collapsed?" test would make Back reveal
+    // forever and never reach the history. Only a stack that shows FEWER than that many columns
+    // has actually had something collapsed away -- e.g. CharacterController's Chats item, whose
+    // expandExclusive() takes the default depth 0 and so collapses the character column too.
+    if (tree==nullptr)
+    {
+        return nullptr;
+    }
+    auto depth=tree->expandableLastDepthOnNodeOpen();
+    if (depth<=0)
+    {
+        // the tree never collapses anything on open, so nothing can have been hidden this way
+        return nullptr;
+    }
+
+    int count=static_cast<int>(nodes.size());
+    int visible=0;
+    for (int i=count-1;i>=0;i--)
+    {
+        if (nodes[i]==nullptr || !nodes[i]->isExpanded())
+        {
+            break;
+        }
+        ++visible;
+    }
+    if (visible==0 || visible>=depth)
+    {
+        return nullptr;
+    }
+
+    // the shallowest expanded node -- the leftmost column the user can actually see
+    auto* host=nodes[static_cast<size_t>(count-visible)];
+    if (host!=nullptr && host->isToParentVisible() && host->parentNode()!=nullptr)
+    {
+        return host;
+    }
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::syncHistoryCursorTo(const HTreePath& path)
+{
+    // Revealing a hidden column can also close a deeper node (HTreeNode::expandParentNode()
+    // closes whatever sits expandableLastDepthOnNodeOpen() steps ahead of the parent), which
+    // moves the tab to a shallower path without going through the history. Left alone, the
+    // cursor would still point at the now-closed deeper entry and the next Back -- reading that
+    // as an off-history detour -- would navigate forward into it again. Walk the cursor back to
+    // the entry that matches where we actually ended up.
+    for (int i=historyPos;i>=0;i--)
+    {
+        if (history.at(static_cast<size_t>(i))==path)
+        {
+            historyPos=i;
+            return;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab_p::expandLandingColumns()
+{
+    // Landing on a shallower path goes through truncate(), which -- unlike closeNode() -- never
+    // re-expands anything. A node that some descendant collapsed on its way in (see
+    // HTreeNode::expandExclusive(), used by appendNode() and by "open exclusively" navigation
+    // handlers) would therefore be navigated to but stay collapsed, leaving the user staring at
+    // a collapsed strip instead of the page they asked for. Re-expand the trailing columns
+    // exactly the way HTreeTab::closeNode() does when a node is closed by hand.
+    if (nodes.empty() || tree==nullptr)
+    {
+        return;
+    }
+    auto depth=tree->expandableLastDepthOnNodeOpen();
+    if (depth<=0)
+    {
+        return;
+    }
+    int count=static_cast<int>(nodes.size());
+    int first=count-depth;
+    if (first<0)
+    {
+        first=0;
+    }
+    for (int i=first;i<count;i++)
+    {
+        nodes[i]->setExpanded(true);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab_p::navigateHistory(int index, int direction)
+{
+    while (index>=0 && index<static_cast<int>(history.size()))
+    {
+        auto target=history.at(static_cast<size_t>(index));
+
+        historyNavigating=true;
+        self->openPath(target);
+        historyNavigating=false;
+
+        if (self->path()==target)
+        {
+            historyPos=index;
+            expandLandingColumns();
+            if (!nodes.empty())
+            {
+                scrollToNode(nodes.back());
+            }
+            emit self->historyChanged();
+            return true;
+        }
+
+        // The entry is no longer reachable via openPath() (e.g. a chat page hosted on a node
+        // whose own path openPath() cannot rebuild, see ChatPage::noteRecentChat()) -- drop it
+        // and keep looking in the same direction instead of getting stuck on it.
+        history.erase(history.begin()+index);
+        if (historyPos>index)
+        {
+            --historyPos;
+        }
+        if (historyPos>=static_cast<int>(history.size()))
+        {
+            // the erased entry was the last one at/after the cursor -- nothing left to point at
+            historyPos=static_cast<int>(history.size())-1;
+        }
+        if (direction<0)
+        {
+            --index;
+        }
+    }
+
+    emit self->historyChanged();
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::canGoBack() const noexcept
+{
+    if (pimpl->collapsedParentHost()!=nullptr)
+    {
+        // a column is hidden above the visible stack and Back reveals it first
+        return true;
+    }
+    if (pimpl->historyPos<0)
+    {
+        return false;
+    }
+    if (!(path()==pimpl->history.at(static_cast<size_t>(pimpl->historyPos))))
+    {
+        // current path is a detour off the recorded cursor entry (e.g. a node was closed with
+        // its own close button) -- one Back returns to the cursor entry itself
+        return true;
+    }
+    return pimpl->historyPos>0;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::canGoForward() const noexcept
+{
+    if (pimpl->historyPos<0 || pimpl->historyPos+1>=static_cast<int>(pimpl->history.size()))
+    {
+        return false;
+    }
+    // deliberately disabled while off-history (see canGoBack()) so Back and Forward never mean
+    // the same thing in that state -- a Back press restores the cursor entry first
+    return path()==pimpl->history.at(static_cast<size_t>(pimpl->historyPos));
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::goBack()
+{
+    if (auto* host=pimpl->collapsedParentHost(); host!=nullptr)
+    {
+        // Reveal the column hidden above the visible stack before touching the history cursor --
+        // this is the step the old navbar Back took unconditionally (HTreeNode::
+        // activateToParent()), and the only way to get back to a node that was collapsed away by
+        // an "open exclusively" navigation, since collapsing never changed the tab's path.
+        // activateToParent() honours a node's own toParentAction()/toParentPath() override, so a
+        // node that redefines "up" (e.g. CharacterNode, ShareMeNode) still navigates its own way,
+        // recording that as an ordinary history entry.
+        auto before=path();
+        host->activateToParent();
+        auto after=path();
+        if (!(after==before))
+        {
+            pimpl->syncHistoryCursorTo(after);
+        }
+        emit historyChanged();
+        return true;
+    }
+    if (pimpl->historyPos<0)
+    {
+        return false;
+    }
+    if (!(path()==pimpl->history.at(static_cast<size_t>(pimpl->historyPos))))
+    {
+        return pimpl->navigateHistory(pimpl->historyPos,-1);
+    }
+    if (pimpl->historyPos==0)
+    {
+        return false;
+    }
+    return pimpl->navigateHistory(pimpl->historyPos-1,-1);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeTab::goForward()
+{
+    if (!canGoForward())
+    {
+        return false;
+    }
+    return pimpl->navigateHistory(pimpl->historyPos+1,1);
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<HTreePath> HTreeTab::history() const
+{
+    return pimpl->history;
+}
+
+//--------------------------------------------------------------------------
+
+int HTreeTab::historyPosition() const noexcept
+{
+    return pimpl->historyPos;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTab::clearHistory()
+{
+    pimpl->history.clear();
+    pimpl->historyPos=-1;
+    emit historyChanged();
 }
 
 //--------------------------------------------------------------------------
