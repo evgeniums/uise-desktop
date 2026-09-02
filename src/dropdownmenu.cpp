@@ -154,7 +154,26 @@ DropdownMenu::DropdownMenu(QWidget* parent)
 //--------------------------------------------------------------------------
 
 DropdownMenu::~DropdownMenu()
-{}
+{
+    // A cached submenu (see ensureSubmenu()) is a QObject CHILD of this menu, so it outlives this
+    // destructor -- QWidget::~QWidget() deletes it later, after this pimpl (DropdownMenu_p) is
+    // already gone. It is still connected back to THIS menu's itemTriggered/itemToggled/
+    // hidden/closeRequested, and while this frame is being torn down as a still-visible top-level
+    // window, Qt's own close()/hide() can synchronously dispatch platform activation events that
+    // reach the submenu's still-installed qApp event filter and drive it to close -- which would
+    // emit into onSubmenuClosed() and read this already-freed pimpl. Disconnect and unchain every
+    // cached submenu here, at the most-derived level, while pimpl is still alive, rather than
+    // relying on every caller to closeDropdown(true) first.
+    for (auto& kv : pimpl->submenus)
+    {
+        if (kv.second.isNull())
+        {
+            continue;
+        }
+        kv.second->disconnect(this);
+        kv.second->setChainParent(nullptr);
+    }
+}
 
 //--------------------------------------------------------------------------
 

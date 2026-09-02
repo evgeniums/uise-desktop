@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QShortcut>
 #include <QVariantAnimation>
 #include <QPointer>
+#include <QList>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QScreen>
@@ -66,6 +67,16 @@ class DropdownFrame_p
         // frame it opens out of, so the pair behaves as one popup for dismissal purposes
         QPointer<DropdownFrame> chainParent;
         QPointer<DropdownFrame> chainChild;
+
+        // every frame that currently names this one as its chainParent -- NOT just the one that
+        // happens to be open (chainChild above). A chainParent link is stable for a cached
+        // submenu's whole lifetime (see DropdownFrame::detachFromChainParent()), while this
+        // frame's pimpl is destroyed BEFORE ~QWidget deletes its QObject children -- a cached
+        // submenu destroyed there would otherwise reach back into this freed pimpl through a
+        // QPointer that ~QObject has not cleared yet (QPointer only clears on ~QObject, which
+        // runs after QWidget::~QWidget()'s deleteChildren()). ~DropdownFrame severs every link
+        // listed here first, while pimpl is still alive, so that invariant never breaks.
+        QList<QPointer<DropdownFrame>> chainDependents;
 
         QVariantAnimation* anim=nullptr;
         qreal t=0.0;
@@ -223,10 +234,35 @@ DropdownFrame::~DropdownFrame()
     // never leave a parent frame with its Escape shortcut stuck disabled because the chained
     // child that was supposed to re-enable it on close got destroyed instead
     detachFromChainParent();
-    if (!pimpl->chainChild.isNull())
+
+    // unregister from our own chainParent's dependents list, mirroring detachFromChainParent()
+    // above but for the stable chainParent link rather than the ephemeral chainChild one
+    if (!pimpl->chainParent.isNull())
     {
-        pimpl->chainChild->pimpl->chainParent=nullptr;
+        pimpl->chainParent->pimpl->chainDependents.removeAll(this);
     }
+
+    // sever every frame chained to this one -- not just chainChild (the one currently open) --
+    // while pimpl is still alive. This MUST happen before the base QWidget destructor runs:
+    // QWidget::~QWidget() deletes this frame's QObject children (cached submenus among them,
+    // see DropdownFrame_p::chainDependents), and each one's own destructor calls
+    // detachFromChainParent(), which would otherwise dereference this frame's already-freed
+    // pimpl through a chainParent QPointer that is not yet cleared (QPointer only clears on
+    // ~QObject, which runs after deleteChildren()).
+    //
+    // Snapshot the list and clear the member BEFORE iterating: a dependent's chainParent=nullptr
+    // assignment below never re-enters this code, but doing it this way keeps the loop safe even
+    // if that ever changes, and it costs nothing.
+    const auto dependents=pimpl->chainDependents;
+    pimpl->chainDependents.clear();
+    for (const auto& dep : dependents)
+    {
+        if (!dep.isNull())
+        {
+            dep->pimpl->chainParent=nullptr;
+        }
+    }
+    pimpl->chainChild=nullptr;
 }
 
 //--------------------------------------------------------------------------
@@ -454,7 +490,18 @@ void DropdownFrame::setChainParent(DropdownFrame* parent)
     // is correctly re-enabled and its chainChild pointer is correctly cleared
     detachFromChainParent();
 
+    // keep the old parent's chainDependents (see DropdownFrame_p) in sync with chainParent below
+    if (!pimpl->chainParent.isNull())
+    {
+        pimpl->chainParent->pimpl->chainDependents.removeAll(this);
+    }
+
     pimpl->chainParent=parent;
+
+    if (parent!=nullptr)
+    {
+        parent->pimpl->chainDependents.append(this);
+    }
 }
 
 //--------------------------------------------------------------------------
