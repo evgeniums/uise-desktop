@@ -37,7 +37,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/frame.hpp>
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class Spinner;
 class DateTimePicker_p;
@@ -45,7 +49,7 @@ class DateTimePicker_p;
 /**
  * @brief Field of a DateTimePicker that can be shown as a wheel.
  */
-enum class DateTimeField : int
+enum class DateTimeField
 {
     None=0x00,
     Year=0x01,
@@ -94,7 +98,7 @@ class UISE_DESKTOP_EXPORT DateTimePicker : public Frame
         /**
          * @brief Format used to render the month wheel's text.
          */
-        enum class MonthFormat : int
+        enum class MonthFormat
         {
             LongName,
             ShortName,
@@ -357,7 +361,7 @@ class UISE_DESKTOP_EXPORT TimePicker : public DateTimePicker
         explicit TimePicker(QWidget* parent=nullptr);
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(UISE_DESKTOP_NAMESPACE::DateTimeFields)
 

@@ -39,7 +39,11 @@ You may select, at your option, one of the above-listed licenses.
 class QLabel;
 class QMouseEvent;
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class Calendar_p;
 class RippleOverlay;
@@ -47,7 +51,7 @@ class RippleOverlay;
 /**
  * @brief Interaction mode of a Calendar.
  */
-enum class CalendarMode : int
+enum class CalendarMode
 {
     Activation,         //!< a click just activates a date, nothing is kept selected
     SingleSelection,    //!< exactly one date stays selected
@@ -68,7 +72,7 @@ enum class CalendarMode : int
 /**
  * @brief First column of a Calendar's days grid / weekday row.
  */
-enum class CalendarWeekStart : int
+enum class CalendarWeekStart
 {
     Locale,   //!< QLocale::firstDayOfWeek() of the widget's current locale (default)
     Monday,
@@ -91,8 +95,8 @@ class UISE_DESKTOP_EXPORT CalendarDay : public Frame
 
     public:
 
-        enum class Marked : int { None, Point, Endpoint };
-        enum class BandEdge : int { None, Left, Right, Both };
+        enum class Marked { None, Point, Endpoint };
+        enum class BandEdge { None, Left, Right, Both };
 
         explicit CalendarDay(QWidget* parent=nullptr);
 
@@ -413,6 +417,6 @@ class UISE_DESKTOP_EXPORT Calendar : public Frame
         std::unique_ptr<Calendar_p> pimpl;
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_CALENDAR_HPP

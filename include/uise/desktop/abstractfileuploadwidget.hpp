@@ -35,7 +35,11 @@ You may select, at your option, one of the above-listed licenses.
 
 class QMimeData;
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class AbstractMessageEditor;
 class IconTextButton;
@@ -44,7 +48,7 @@ class IconTextButton;
  * @brief Ids of the entries in the header drop-down menu, kept in sync with the three
  *  checkboxes of the same meaning (see AbstractFileUploadWidget).
  */
-enum class FileUploadMenuAction : int
+enum class FileUploadMenuAction
 {
     HighQuality=1,
     SendAsDocuments=2,
@@ -272,6 +276,6 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         QString m_caption;
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_ABSTRACTFILEUPLOADWIDGET_HPP

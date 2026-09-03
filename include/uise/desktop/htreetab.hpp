@@ -35,7 +35,11 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreepath.hpp>
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class NavigationBar;
 
@@ -69,7 +73,7 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         /**
          * @brief How a successful openPath() affects the tab's navigation history.
          */
-        enum class HistoryMode : int
+        enum class HistoryMode
         {
             /**
              * @brief Record the landing as a new history entry (default) -- an ordinary
@@ -228,6 +232,6 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
         std::unique_ptr<HTreeTab_p> pimpl;
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_HTREE_TAB_HPP

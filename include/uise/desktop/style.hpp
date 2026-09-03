@@ -120,7 +120,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         /**
          * @brief Modes of style sheet theme.
          */
-        enum class StyleSheetMode : int
+        enum class StyleSheetMode
         {
             Auto, //!< Detect theme automatically depending on default application style.
             Light, //!< Light theme.

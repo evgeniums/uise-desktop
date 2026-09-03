@@ -56,7 +56,7 @@ namespace detail
  *  AM/PM wheel, which is not part of the public field mask (it always accompanies Hour when
  *  the locale is 12-hour).
  */
-enum class Token : int
+enum class Token
 {
     Year,
     Month,

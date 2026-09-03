@@ -37,7 +37,11 @@ class QKeyEvent;
 class QShowEvent;
 class QHideEvent;
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class CalendarDialog_p;
 
@@ -46,7 +50,7 @@ class CalendarDialog_p;
  *  prev/next/clear/day-cell controls (always present, unaffected by this setting either way)
  *  and the dialog's title-bar close button / Escape (also always available either way).
  */
-enum class CalendarDialogCloseMode : int
+enum class CalendarDialogCloseMode
 {
     //! A single Apply-styled button (a checkmark, like CalendarDropdown's own Apply button,
     //! not AbstractDialog's generic buttons) is shown below the calendar, regardless of
@@ -201,6 +205,6 @@ class UISE_DESKTOP_EXPORT CalendarDialog : public Dialog<AbstractCalendarDialog>
 #pragma warning(pop)
 #endif
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_CALENDAR_DIALOG_HPP

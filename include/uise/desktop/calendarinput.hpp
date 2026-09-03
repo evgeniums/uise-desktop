@@ -36,14 +36,18 @@ You may select, at your option, one of the above-listed licenses.
 
 class QFrame;
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class PushButton;
 
 /**
  * @brief How a CalendarDropdown/CalendarInput reflects calendar picks.
  */
-enum class CalendarUpdateMode : int
+enum class CalendarUpdateMode
 {
     /** Every pick lands immediately -- no Apply/Cancel row, CalendarInput's text updates live.
      *  Activation/SingleSelection/RangeSelection are each terminal at some single click (the
@@ -239,6 +243,6 @@ class UISE_DESKTOP_EXPORT CalendarInput : public LineEdit
         QDate m_lastActivated;   //!< Activation mode keeps no state of its own -- this does
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_CALENDARINPUT_HPP

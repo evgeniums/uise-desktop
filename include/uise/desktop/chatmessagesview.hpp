@@ -40,7 +40,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/chatdatesubtitle.hpp>
 #include <uise/desktop/chatfloatingavatar.hpp>
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 template <typename BaseMessageT, typename Traits>
 class ChatMessagesViewItem : public BaseMessageT
@@ -179,7 +183,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         //! Position of own (sent) messages -- app-settings-driven, see whitemdesktop's
         //! Appearance node ("Position of my messages"). Auto resolves to Left/Right depending on
         //! this view's own width vs. alignSentLeftWidth(); Left/Right are unconditional.
-        enum class AlignSentMode : int
+        enum class AlignSentMode
         {
             Auto,
             Right,
@@ -613,6 +617,6 @@ class ChatMessagesView : public AbstractChatMessagesView
         void setObscuredAvatarMessage(AbstractChatMessage* msg);
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_CHATMESSAGESVIEW_HPP

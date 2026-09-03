@@ -2,9 +2,263 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru" sourcelanguage="en">
 <context>
-    <name>AbstractChatMessageCall</name>
+    <name>ChatFileItem</name>
     <message>
-        <location filename="../src/abstractchatmessagecall.cpp" line="+51"/>
+        <location filename="../src/chatfileitem.cpp" line="+218"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Open in system app</source>
+        <translation>Открыть в системном приложении</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Save as</source>
+        <translation>Сохранить как</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Forward</source>
+        <translation>Переслать</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Show in folder</source>
+        <translation>Показать в папке</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Copy filename</source>
+        <translation>Копировать имя файла</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Pause downloading</source>
+        <translation>Приостановить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pause sending</source>
+        <translation>Приостановить отправку</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Retry downloading</source>
+        <translation>Повторить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Retry sending</source>
+        <translation>Повторить отправку</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Resume downloading</source>
+        <translation>Возобновить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Resume sending</source>
+        <translation>Возобновить отправку</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Cancel downloading</source>
+        <translation>Отменить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Cancel sending</source>
+        <translation>Отменить отправку</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Download</source>
+        <translation>Загрузить</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Copy image</source>
+        <translation>Копировать изображение</translation>
+    </message>
+</context>
+<context>
+    <name>EditableLabelBool</name>
+    <message>
+        <location filename="../include/uise/desktop/editablelabel.hpp" line="+922"/>
+        <source>On</source>
+        <translation>Вкл</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Off</source>
+        <translation>Выкл</translation>
+    </message>
+</context>
+<context>
+    <name>LoadControlMenu</name>
+    <message>
+        <location filename="../src/loadcontrolmenu.cpp" line="+174"/>
+        <source>Pause downloading</source>
+        <translation>Приостановить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pause sending</source>
+        <translation>Приостановить отправку</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Cancel downloading</source>
+        <translation>Отменить загрузку</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Cancel sending</source>
+        <translation>Отменить отправку</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>this image</source>
+        <translation>это изображение</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>this file</source>
+        <translation>этот файл</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <location filename="../include/uise/desktop/ipp/chatmessagesview.ipp" line="+121"/>
+        <source>Today</source>
+        <comment>ChatMessagesView</comment>
+        <translation>Сегодня</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Yesterday</source>
+        <comment>ChatMessagesView</comment>
+        <translation>Вчера</translation>
+    </message>
+    <message>
+        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+89"/>
+        <source>Open</source>
+        <comment>HTreeListItem</comment>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Open in new tab</source>
+        <comment>HTreeListItem</comment>
+        <translation>Открыть в новой вкладке</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Open in new window</source>
+        <comment>HTreeListItem</comment>
+        <translation>Открыть в новом окне</translation>
+    </message>
+    <message>
+        <location filename="../src/htreenode.cpp" line="+314"/>
+        <source>Expand</source>
+        <comment>HTreeNode</comment>
+        <translation>Развернуть</translation>
+    </message>
+    <message>
+        <location filename="../src/statusdialog.cpp" line="+72"/>
+        <source>Error</source>
+        <comment>Status</comment>
+        <translation>Ошибка</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Warning</source>
+        <comment>Status</comment>
+        <translation>Предупреждение</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Information</source>
+        <comment>Status</comment>
+        <translation>Информация</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Question</source>
+        <comment>Status</comment>
+        <translation>Вопрос</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Attention</source>
+        <comment>Status</comment>
+        <translation>Внимание</translation>
+    </message>
+    <message>
+        <location filename="../src/svgiconcontext.cpp" line="+77"/>
+        <source>json theme must be a JSON object</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>%1 at path %2</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>must be JSON array</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>must be JSON object</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>must be string</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+168"/>
+        <location line="+125"/>
+        <source>invalid icon mode</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-117"/>
+        <source>invalid value for icon mode</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+70"/>
+        <source>must be not empty</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+84"/>
+        <location line="+11"/>
+        <source>invalid number</source>
+        <comment>SvgIconTheme</comment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageCall</name>
+    <message>
+        <location filename="../src/abstractchatmessagecall.cpp" line="+55"/>
         <source>Missed incoming call</source>
         <translation>Пропущенный входящий звонок</translation>
     </message>
@@ -72,23 +326,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>AbstractChatMessagesView</name>
+    <name>uise::AbstractChatMessagesView</name>
     <message>
-        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+177"/>
+        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+181"/>
         <source>Unread messages</source>
         <translation>Непрочитанные сообщения</translation>
     </message>
 </context>
 <context>
-    <name>AbstractDialog</name>
+    <name>uise::AbstractDialog</name>
     <message>
-        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+96"/>
-        <source>Close</source>
-        <comment>dialog</comment>
-        <translation>Закрыть</translation>
-    </message>
-    <message>
-        <location filename="../src/abstractdialog.cpp" line="+62"/>
+        <location filename="../src/abstractdialog.cpp" line="+66"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
@@ -172,11 +420,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Unknown</source>
         <translation>Неизвестно</translation>
     </message>
+    <message>
+        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
+        <source>Close</source>
+        <comment>dialog</comment>
+        <translation>Закрыть</translation>
+    </message>
 </context>
 <context>
-    <name>AbstractForwardDialog</name>
+    <name>uise::AbstractForwardDialog</name>
     <message>
-        <location filename="../src/abstractforwarddialog.cpp" line="+51"/>
+        <location filename="../src/abstractforwarddialog.cpp" line="+55"/>
         <source>Change recipient</source>
         <translation>Изменить получателя</translation>
     </message>
@@ -192,9 +446,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>AbstractNewPasswordWizard</name>
+    <name>uise::AbstractNewPasswordWizard</name>
     <message>
-        <location filename="../src/newpasswordwizard.cpp" line="+41"/>
+        <location filename="../src/newpasswordwizard.cpp" line="+45"/>
         <source>Entered passwords do not match</source>
         <translation>Введённые пароли не совпадают</translation>
     </message>
@@ -205,9 +459,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>AbstractReplyDialog</name>
+    <name>uise::AbstractReplyDialog</name>
     <message>
-        <location filename="../src/abstractreplydialog.cpp" line="+51"/>
+        <location filename="../src/abstractreplydialog.cpp" line="+55"/>
         <source>Show in chat</source>
         <translation>Показать в чате</translation>
     </message>
@@ -218,9 +472,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>AudioDeviceSetting</name>
+    <name>uise::AudioDeviceSetting</name>
     <message>
-        <location filename="../src/audiodevicesetting.cpp" line="+125"/>
+        <location filename="../src/audiodevicesetting.cpp" line="+129"/>
         <location line="+10"/>
         <source>Test</source>
         <translation>Проверить</translation>
@@ -237,17 +491,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>Calendar</name>
-    <message>
-        <source>Selected 1 day</source>
-        <translation type="vanished">Выбран 1 день</translation>
-    </message>
-    <message>
-        <source>Selected %1 days</source>
-        <translation type="vanished">Выбрано %1 дней</translation>
-    </message>
+    <name>uise::Calendar</name>
     <message numerus="yes">
-        <location filename="../src/calendar.cpp" line="+754"/>
+        <location filename="../src/calendar.cpp" line="+758"/>
         <source>Selected %n day(s)</source>
         <translation>
             <numerusform>Выбран %n день</numerusform>
@@ -268,17 +514,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>CalendarDialog</name>
+    <name>uise::CalendarDialog</name>
     <message>
-        <location filename="../src/calendardialog.cpp" line="+116"/>
+        <location filename="../src/calendardialog.cpp" line="+120"/>
         <source>Select date</source>
         <translation>Выберите дату</translation>
     </message>
 </context>
 <context>
-    <name>CalendarInput</name>
+    <name>uise::CalendarInput</name>
     <message>
-        <location filename="../src/calendarinput.cpp" line="+434"/>
+        <location filename="../src/calendarinput.cpp" line="+438"/>
         <source>Select date</source>
         <translation>Выберите дату</translation>
     </message>
@@ -289,92 +535,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>ChatFileItem</name>
+    <name>uise::ChatImageViewerControls</name>
     <message>
-        <location filename="../src/chatfileitem.cpp" line="+214"/>
-        <source>Open</source>
-        <translation>Открыть</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>Open in system app</source>
-        <translation>Открыть в системном приложении</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Save as</source>
-        <translation>Сохранить как</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Forward</source>
-        <translation>Переслать</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Show in folder</source>
-        <translation>Показать в папке</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Copy filename</source>
-        <translation>Копировать имя файла</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Pause downloading</source>
-        <translation>Приостановить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Pause sending</source>
-        <translation>Приостановить отправку</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>Retry downloading</source>
-        <translation>Повторить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Retry sending</source>
-        <translation>Повторить отправку</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Resume downloading</source>
-        <translation>Возобновить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Resume sending</source>
-        <translation>Возобновить отправку</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Cancel downloading</source>
-        <translation>Отменить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Cancel sending</source>
-        <translation>Отменить отправку</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Download</source>
-        <translation>Загрузить</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Copy image</source>
-        <translation>Копировать изображение</translation>
-    </message>
-</context>
-<context>
-    <name>ChatImageViewerControls</name>
-    <message>
-        <location filename="../src/chatimageviewercontrols.cpp" line="+164"/>
+        <location filename="../src/chatimageviewercontrols.cpp" line="+168"/>
         <location line="+55"/>
         <source>Save as</source>
         <translation>Сохранить как</translation>
@@ -426,9 +589,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>ChatMessage</name>
+    <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1313"/>
+        <location filename="../src/chatmessage.cpp" line="+1317"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
@@ -444,17 +607,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>ChatMessageForwardHeader</name>
+    <name>uise::ChatMessageForwardHeader</name>
     <message>
-        <location filename="../src/chatmessageforwardheader.cpp" line="+75"/>
+        <location filename="../src/chatmessageforwardheader.cpp" line="+79"/>
         <source>Forwarded from %1</source>
         <translation>Переслано от %1</translation>
     </message>
 </context>
 <context>
-    <name>ChatMessageTextBrowser</name>
+    <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+362"/>
+        <location filename="../src/chatmessagetext.cpp" line="+366"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -465,9 +628,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>DirectoryImagesViewer</name>
+    <name>uise::DirectoryImagesViewer</name>
     <message>
-        <location filename="../src/directoryimagesviewer.cpp" line="+88"/>
+        <location filename="../src/directoryimagesviewer.cpp" line="+92"/>
         <source>Browse...</source>
         <translation>Обзор…</translation>
     </message>
@@ -483,9 +646,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>EditBar</name>
+    <name>uise::EditBar</name>
     <message>
-        <location filename="../src/editbar.cpp" line="+72"/>
+        <location filename="../src/editbar.cpp" line="+76"/>
         <source>Go to message</source>
         <translation>Перейти к сообщению</translation>
     </message>
@@ -501,9 +664,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>EditableLabel</name>
+    <name>uise::EditableLabel</name>
     <message>
-        <location filename="../src/editablelabel.cpp" line="+85"/>
+        <location filename="../src/editablelabel.cpp" line="+89"/>
         <location line="+98"/>
         <source>Edit</source>
         <translation>Изменить</translation>
@@ -525,22 +688,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>EditableLabelBool</name>
+    <name>uise::EditablePanel</name>
     <message>
-        <location filename="../include/uise/desktop/editablelabel.hpp" line="+918"/>
-        <source>On</source>
-        <translation>Вкл</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Off</source>
-        <translation>Выкл</translation>
-    </message>
-</context>
-<context>
-    <name>EditablePanel</name>
-    <message>
-        <location filename="../src/editablepanel.cpp" line="+99"/>
+        <location filename="../src/editablepanel.cpp" line="+103"/>
         <source>Edit</source>
         <translation>Изменить</translation>
     </message>
@@ -558,9 +708,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>FileDropOverlay</name>
+    <name>uise::FileDropOverlay</name>
     <message>
-        <location filename="../src/filedropoverlay.cpp" line="+152"/>
+        <location filename="../src/filedropoverlay.cpp" line="+156"/>
         <source>Drop files here to send as documents</source>
         <translation>Перетащите файлы сюда, чтобы отправить как документы</translation>
     </message>
@@ -598,9 +748,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>FileUploadListItem</name>
+    <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+372"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+376"/>
         <source>Edit image</source>
         <translation>Изменить изображение</translation>
     </message>
@@ -616,9 +766,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>FileUploadWidget</name>
+    <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+265"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+269"/>
         <source>Full quality</source>
         <translation>Полное качество</translation>
     </message>
@@ -696,9 +846,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>ForwardBar</name>
+    <name>uise::ForwardBar</name>
     <message>
-        <location filename="../src/forwardbar.cpp" line="+68"/>
+        <location filename="../src/forwardbar.cpp" line="+72"/>
         <source>Configure forward</source>
         <translation>Настроить пересылку</translation>
     </message>
@@ -723,9 +873,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>ForwardDialog</name>
+    <name>uise::ForwardDialog</name>
     <message>
-        <location filename="../src/forwarddialog.cpp" line="+104"/>
+        <location filename="../src/forwarddialog.cpp" line="+108"/>
         <source>You can select a part of the text to quote only that part.</source>
         <translation>Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
@@ -761,17 +911,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>FrameWithModalStatus</name>
+    <name>uise::FrameWithModalStatus</name>
     <message>
-        <location filename="../src/framewithmodalstatus.cpp" line="+191"/>
+        <location filename="../src/framewithmodalstatus.cpp" line="+195"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
 </context>
 <context>
-    <name>HTreeNodeTitleBar</name>
+    <name>uise::HTreeNodeTitleBar</name>
     <message>
-        <location filename="../src/htreenode.cpp" line="+101"/>
+        <location filename="../src/htreenode.cpp" line="-209"/>
         <source>Close this section with all subsequent sections</source>
         <translation>Закрыть этот раздел со всеми последующими</translation>
     </message>
@@ -792,9 +942,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>HTreeTab</name>
+    <name>uise::HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+636"/>
+        <location filename="../src/htreetab.cpp" line="+640"/>
         <source>Collapse</source>
         <translation>Свернуть</translation>
     </message>
@@ -805,24 +955,24 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>HTreeTabBarItem</name>
+    <name>uise::HTreeTabBarItem</name>
     <message>
-        <location filename="../src/htreetabbar.cpp" line="+109"/>
+        <location filename="../src/htreetabbar.cpp" line="+113"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
 </context>
 <context>
-    <name>ImageViewerWidget_p</name>
+    <name>uise::ImageViewerWidget</name>
     <message>
-        <location filename="../src/imageviewer.cpp" line="+206"/>
+        <location filename="../src/imageviewer.cpp" line="+210"/>
         <source>Rotate</source>
         <translation>Повернуть</translation>
     </message>
     <message>
         <location line="+10"/>
         <source>Rotate clockwise</source>
-        <translation>Повернуть по часовой стрелке</translation>
+        <translation>Повернуть по часовой</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -847,46 +997,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+13"/>
         <source>Play/pause</source>
-        <translation>Воспроизвести/пауза</translation>
+        <translation>Пуск/пауза</translation>
     </message>
 </context>
 <context>
-    <name>LoadControlMenu</name>
+    <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/loadcontrolmenu.cpp" line="+170"/>
-        <source>Pause downloading</source>
-        <translation>Приостановить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Pause sending</source>
-        <translation>Приостановить отправку</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Cancel downloading</source>
-        <translation>Отменить загрузку</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Cancel sending</source>
-        <translation>Отменить отправку</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>this image</source>
-        <translation>это изображение</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>this file</source>
-        <translation>этот файл</translation>
-    </message>
-</context>
-<context>
-    <name>MessageEditor</name>
-    <message>
-        <location filename="../src/messageeditor.cpp" line="+574"/>
+        <location filename="../src/messageeditor.cpp" line="+578"/>
         <source>Cut</source>
         <translation>Вырезать</translation>
     </message>
@@ -912,9 +1029,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>MessageSelectionPanelUi</name>
+    <name>uise::MessageSelectionPanelUi</name>
     <message>
-        <location filename="../src/messageselectionpanel.cpp" line="+57"/>
+        <location filename="../src/messageselectionpanel.cpp" line="+61"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -935,9 +1052,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>NavigationBarItem</name>
+    <name>uise::NavigationBarItem</name>
     <message>
-        <location filename="../src/navigationbar.cpp" line="+174"/>
+        <location filename="../src/navigationbar.cpp" line="+178"/>
         <source>Open in new tab</source>
         <comment>NavigationBarItem</comment>
         <translation>Открыть в новой вкладке</translation>
@@ -950,9 +1067,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>NewPasswordDialog</name>
+    <name>uise::NewPasswordDialog</name>
     <message>
-        <location filename="../src/newpassworddialog.cpp" line="+74"/>
+        <location filename="../src/newpassworddialog.cpp" line="+78"/>
         <source>Current password</source>
         <translation>Текущий пароль</translation>
     </message>
@@ -968,9 +1085,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>NewPasswordPanel</name>
+    <name>uise::NewPasswordPanel</name>
     <message>
-        <location filename="../src/newpasswordpanel.cpp" line="+154"/>
+        <location filename="../src/newpasswordpanel.cpp" line="+158"/>
         <source>Generate</source>
         <translation>Создать</translation>
     </message>
@@ -1007,7 +1124,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>NewPasswordWizard</name>
+    <name>uise::NewPasswordWizard</name>
     <message>
         <location filename="../src/newpasswordwizard.cpp" line="+50"/>
         <source>Create a password</source>
@@ -1048,9 +1165,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>PasswordDialog</name>
+    <name>uise::PasswordDialog</name>
     <message>
-        <location filename="../src/passworddialog.cpp" line="+110"/>
+        <location filename="../src/passworddialog.cpp" line="+114"/>
         <source>Enter password</source>
         <translation>Введите пароль</translation>
     </message>
@@ -1061,9 +1178,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>PasswordInput</name>
+    <name>uise::PasswordInput</name>
     <message>
-        <location filename="../src/passwordinput.cpp" line="+87"/>
+        <location filename="../src/passwordinput.cpp" line="+91"/>
         <source>Show symbols</source>
         <translation>Показать символы</translation>
     </message>
@@ -1074,142 +1191,17 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>PasswordPanel</name>
+    <name>uise::PasswordPanel</name>
     <message>
-        <location filename="../src/passwordpanel.cpp" line="+98"/>
+        <location filename="../src/passwordpanel.cpp" line="+102"/>
         <source>Enter password</source>
         <translation>Введите пароль</translation>
     </message>
 </context>
 <context>
-    <name>QObject</name>
+    <name>uise::QrCodeScanner</name>
     <message>
-        <location filename="../include/uise/desktop/ipp/chatmessagesview.ipp" line="+117"/>
-        <source>Today</source>
-        <comment>ChatMessagesView</comment>
-        <translation>Сегодня</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Yesterday</source>
-        <comment>ChatMessagesView</comment>
-        <translation>Вчера</translation>
-    </message>
-    <message>
-        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+85"/>
-        <source>Open</source>
-        <comment>HTreeListItem</comment>
-        <translation>Открыть</translation>
-    </message>
-    <message>
-        <location line="+17"/>
-        <source>Open in new tab</source>
-        <comment>HTreeListItem</comment>
-        <translation>Открыть в новой вкладке</translation>
-    </message>
-    <message>
-        <location line="+18"/>
-        <source>Open in new window</source>
-        <comment>HTreeListItem</comment>
-        <translation>Открыть в новом окне</translation>
-    </message>
-    <message>
-        <location filename="../src/htreenode.cpp" line="+191"/>
-        <source>Expand</source>
-        <comment>HTreeNode</comment>
-        <translation>Развернуть</translation>
-    </message>
-    <message>
-        <location filename="../src/statusdialog.cpp" line="+68"/>
-        <source>Error</source>
-        <comment>Status</comment>
-        <translation>Ошибка</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Warning</source>
-        <comment>Status</comment>
-        <translation>Предупреждение</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Information</source>
-        <comment>Status</comment>
-        <translation>Информация</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Question</source>
-        <comment>Status</comment>
-        <translation>Вопрос</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Attention</source>
-        <comment>Status</comment>
-        <translation>Внимание</translation>
-    </message>
-    <message>
-        <location filename="../src/svgiconcontext.cpp" line="+73"/>
-        <source>json theme must be a JSON object</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>%1 at path %2</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>must be JSON array</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>must be JSON object</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>must be string</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+168"/>
-        <location line="+125"/>
-        <source>invalid icon mode</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="-117"/>
-        <source>invalid value for icon mode</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+70"/>
-        <source>must be not empty</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+84"/>
-        <location line="+11"/>
-        <source>invalid number</source>
-        <comment>SvgIconTheme</comment>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>QrCodeScanner</name>
-    <message>
-        <location filename="../src/qrcodescanner.cpp" line="+139"/>
+        <location filename="../src/qrcodescanner.cpp" line="+143"/>
         <source>Start</source>
         <translation>Запустить</translation>
     </message>
@@ -1232,9 +1224,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>ReplyBar</name>
+    <name>uise::ReplyBar</name>
     <message>
-        <location filename="../src/replybar.cpp" line="+62"/>
+        <location filename="../src/replybar.cpp" line="+66"/>
         <source>Configure reply</source>
         <translation>Настроить ответ</translation>
     </message>
@@ -1245,9 +1237,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>ReplyDialog</name>
+    <name>uise::ReplyDialog</name>
     <message>
-        <location filename="../src/replydialog.cpp" line="+96"/>
+        <location filename="../src/replydialog.cpp" line="+100"/>
         <source>You can select a part of the text to quote only that part.</source>
         <translation>Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
@@ -1269,9 +1261,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>ReplyPreview</name>
+    <name>uise::ReplyPreview</name>
     <message>
-        <location filename="../src/replypreview.cpp" line="+101"/>
+        <location filename="../src/replypreview.cpp" line="+105"/>
         <source>Reply to %1, %2</source>
         <translation>Ответ %1, %2</translation>
     </message>
@@ -1282,15 +1274,119 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>SearchLineEdit</name>
+    <name>uise::SearchLineEdit</name>
     <message>
-        <location filename="../src/searchlineedit.cpp" line="+82"/>
+        <location filename="../src/searchlineedit.cpp" line="+86"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
 </context>
 <context>
-    <name>StatusDialog</name>
+    <name>uise::SimpleImageEditorWidget</name>
+    <message>
+        <location filename="../src/simpleimageeditor.cpp" line="+166"/>
+        <source>Rotate</source>
+        <translation>Повернуть</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Rotate clockwise</source>
+        <translation>Повернуть по часовой</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Flip horizontally</source>
+        <translation>Отразить по горизонтали</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Flip vertically</source>
+        <translation>Отразить по вертикали</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Zoom in</source>
+        <translation>Увеличить</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Zoom out</source>
+        <translation>Уменьшить</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Cropping</source>
+        <translation>Обрезка</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Cropping off</source>
+        <translation>Без обрезки</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Square cropping</source>
+        <translation>Квадратная обрезка</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Rectangular cropping</source>
+        <translation>Прямоугольная обрезка</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Freehand draw</source>
+        <translation>Свободное рисование</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Accept freehand drawing</source>
+        <translation>Применить рисунок</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Cancel freehand drawing</source>
+        <translation>Отменить рисунок</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Undo</source>
+        <translation>Отменить</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Redo</source>
+        <translation>Повторить</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Pen color</source>
+        <translation>Цвет пера</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pen width</source>
+        <translation>Толщина пера</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <location line="+23"/>
+        <source>Select image file</source>
+        <translation>Выберите изображение</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Browse...</source>
+        <translation>Обзор...</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)</source>
+        <translation>Изображения (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;Все файлы (*.*)</translation>
+    </message>
+</context>
+<context>
+    <name>uise::StatusDialog</name>
     <message>
         <location filename="../src/statusdialog.cpp" line="+142"/>
         <source>Error</source>
@@ -1323,9 +1419,9 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
 </context>
 <context>
-    <name>ValidatedInput</name>
+    <name>uise::ValidatedInput</name>
     <message>
-        <location filename="../src/validatedinput.cpp" line="+53"/>
+        <location filename="../src/validatedinput.cpp" line="+57"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>

@@ -44,7 +44,7 @@ class ChatFloatingAvatar_p
 {
     public:
 
-        enum class State : int
+        enum class State
         {
             Hidden,
             FadingIn,

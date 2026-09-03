@@ -70,7 +70,7 @@ struct ComparerWithOrder
     Order order;
 };
 
-enum class FlyweightListViewAlignment : int
+enum class FlyweightListViewAlignment
 {
     Center,
     Begin,

@@ -31,7 +31,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractloadingwidget.hpp>
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 class CircleBusy;
 
@@ -64,6 +68,6 @@ class UISE_DESKTOP_EXPORT CircleBusyFrame : public AbstractOperationLoadingWidge
         QPointer<CircleBusy> m_circleBusy;
 };
 
-UISE_DESKTOP_NAMESPACE_END
+}
 
 #endif // UISE_DESKTOP_CIRCLE_BUSY_FRAME_HPP

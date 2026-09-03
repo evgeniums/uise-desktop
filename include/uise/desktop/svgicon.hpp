@@ -38,7 +38,7 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-enum class IconMode : int
+enum class IconMode
 {
     Normal=QIcon::Normal,
     Disabled=QIcon::Disabled,

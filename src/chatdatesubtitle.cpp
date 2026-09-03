@@ -44,7 +44,7 @@ class ChatDateSubtitle_p
 {
     public:
 
-        enum class State : int
+        enum class State
         {
             Hidden,
             FadingIn,
@@ -165,7 +165,7 @@ void ChatDateSubtitle::setDateTime(const QDateTime& dt, bool withYear)
     auto str=dateAsMonthAndDay(dt);
     if (withYear)
     {
-        str=QString{"%1, %2"}.arg(str,dt.date().year());
+        str=dateWithoutWeekday(dt);
     }
     pimpl->section->setText(str);
 
