@@ -375,11 +375,12 @@ void NewPasswordPanel::reset()
 
 void NewPasswordPanel::setError(const QString& message)
 {
-    pimpl->error->setText(message + " diag");
     if (message.isEmpty())
     {
         pimpl->error->setText(" ");
+        return;
     }
+    pimpl->error->setText(message);
 }
 
 //--------------------------------------------------------------------------
