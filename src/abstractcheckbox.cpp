@@ -23,6 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QButtonGroup>
 #include <QFrame>
 #include <QLabel>
 #include <QMouseEvent>
@@ -675,6 +676,18 @@ void AbstractCheckBox::mousePressEvent(QMouseEvent* event)
     // unrelated press (mouse or keyboard) to read.
     if (event->button()==Qt::LeftButton)
     {
+        // Mirrors the "the checked button of an exclusive group cannot be unchecked" guard
+        // QAbstractButtonPrivate::click() applies -- but click() only skips nextCheckState()
+        // there, well after setDown()/pressed() have already fired, so a RadioBox still plays
+        // a full ripple for a click that changes nothing. Swallowing the press up front here
+        // is what makes a repeat click on an already-checked exclusive button (RadioBox, or
+        // any AbstractCheckBox in an exclusive QButtonGroup / with autoExclusive() set) a true
+        // no-op: no ripple, no down-state flash, no pressed()/released()/clicked().
+        if (isChecked() && (group() ? group()->exclusive() : autoExclusive()))
+        {
+            event->accept();
+            return;
+        }
         // pimpl->indicator is a direct child of `this`, so its geometry() is already
         // expressed in this widget's own coordinates -- the same space event->pos() is in.
         pimpl->suppressNextRipple=!pimpl->indicator->geometry().contains(event->pos());

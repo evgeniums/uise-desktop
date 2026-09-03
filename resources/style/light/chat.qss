@@ -97,7 +97,7 @@ color: #1e6091;
 
 uise--ChatSeparatorSection uise--AvatarButton,
 uise--ChatSeparatorSection[separator_type="unread"]{
-background-color: rgba(255, 255, 255, 0.35);
+background-color: rgba(255, 255, 255, 0.45);
 }
 
 uise--ChatSeparatorSection[separator_type="unread"] uise--AvatarButton {
