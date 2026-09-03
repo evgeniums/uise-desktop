@@ -23,6 +23,7 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QLocale>
 #include <QMouseEvent>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -99,7 +100,11 @@ ReplyPreview::ReplyPreview(QWidget* parent)
 {
     pimpl->titleFormat=tr("Reply to %1, %2");
     pimpl->deletedText=tr("Deleted message");
-    pimpl->dateTimeFormat=QStringLiteral("dd.MM.yyyy hh:mm");
+    // Derived from the locale's own short date/time patterns (see datetimeinput.cpp's identical
+    // idiom) rather than a hardcoded European-style "dd.MM.yyyy hh:mm" -- callers that want a
+    // fixed format can still override via setDateTimeFormat().
+    pimpl->dateTimeFormat=locale().dateFormat(QLocale::ShortFormat)+QStringLiteral(" ")+
+                          locale().timeFormat(QLocale::ShortFormat);
 
     pimpl->layout=Layout::horizontal(this);
 

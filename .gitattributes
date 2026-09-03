@@ -1,1 +1,6 @@
 *.dat -text
+
+# Qt Linguist source catalogs are XML, not TypeScript -- without this GitHub
+# misclassifies the repo's language badge because of the .ts extension. Force
+# LF so Windows editors don't turn every translation pass into a whitespace diff.
+translations/*.ts text eol=lf linguist-language=XML

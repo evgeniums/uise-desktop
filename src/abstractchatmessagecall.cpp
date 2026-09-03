@@ -97,6 +97,8 @@ QString AbstractChatMessageCall::formatDuration() const
 
     if (remaining<60)
     {
+        //: Abbreviation appended directly after a number of seconds in a call duration
+        //: (e.g. "42s"), no separator. Keep as short as the source in every language.
         return QString::number(remaining)+tr("s");
     }
 
@@ -121,9 +123,14 @@ QString AbstractChatMessageCall::formatDuration() const
         result+=QString::number(value)+suffix;
     };
 
+    //: Abbreviation appended directly after a number of days in a call duration (e.g. "2d 3h"),
+    //: no separator. Keep as short as the source in every language.
     appendPart(days,tr("d"));
+    //: Same idiom as "d" above, but for hours (e.g. "3h 5m").
     appendPart(hours,tr("h"));
+    //: Same idiom as "d" above, but for minutes -- NOT months (e.g. "5m 12s").
     appendPart(minutes,tr("m"));
+    //: Same idiom as "d" above, but for seconds (e.g. "12s").
     appendPart(seconds,tr("s"));
 
     return result;

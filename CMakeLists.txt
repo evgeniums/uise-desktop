@@ -15,9 +15,10 @@ ELSE()
     SET (Qt6CoreTools_DIR ${QT_HOME}/lib/cmake/Qt6CoreTools)
     SET (Qt6GuiTools_DIR ${QT_HOME}/lib/cmake/Qt6GuiTools)
     SET (Qt6WidgetsTools_DIR ${QT_HOME}/lib/cmake/Qt6WidgetsTools)
+    SET (Qt6LinguistTools_DIR ${QT_HOME}/lib/cmake/Qt6LinguistTools)
 ENDIF()
 
-FIND_PACKAGE(Qt6 COMPONENTS Core Widgets Svg REQUIRED)
+FIND_PACKAGE(Qt6 COMPONENTS Core Widgets Svg LinguistTools REQUIRED)
 
 ADD_SUBDIRECTORY(thirdparty)
 
@@ -464,10 +465,92 @@ IF (UISE_DESKTOP_MULTIMEDIA)
 
 ENDIF()
 
+LIST (APPEND HEADERS
+    include/uise/desktop/i18n.hpp
+)
+
+LIST (APPEND SOURCES
+    src/i18n.cpp
+)
+
 QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/file-icon-vectors.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/tabler-icons.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/reshot.qrc)
+
+# ---------------------------------------------------------------------------
+# i18n: compile translations/uise_<lang>.ts -> <build>/translations/uise_<lang>.qm
+# and embed them at :/uise/desktop/translations/.
+#
+# lrelease runs at BUILD time, not configure time: the generated qrc lists each
+# .qm by absolute build-dir path, and qt6_add_resources's configure-time qrc
+# parser folds every <file> path into the rcc custom command's DEPENDS, so this
+# wires lrelease -> rcc -> link automatically. Editing a .ts and rebuilding
+# picks it up with no cmake re-run.
+#
+# No language list here (unlike whitemdesktop/translations/languages.txt) --
+# uise-desktop is a standalone public repo and simply builds whatever
+# translations/uise_*.ts files exist, so it stays decoupled from any label's
+# language policy.
+# ---------------------------------------------------------------------------
+SET(_uise_ts_dir "${CMAKE_CURRENT_SOURCE_DIR}/translations")
+FILE(GLOB _uise_ts_files CONFIGURE_DEPENDS "${_uise_ts_dir}/uise_*.ts")
+LIST(SORT _uise_ts_files)
+
+SET(_uise_qm_dir "${CMAKE_CURRENT_BINARY_DIR}/translations")
+FILE(MAKE_DIRECTORY "${_uise_qm_dir}")
+
+# Drafts must never ship: -nounfinished drops every message not marked finished
+# in Linguist, so an empty/partial translation falls through to the English
+# source string instead of rendering as an empty label.
+SET(_uise_lrelease_opts -silent -nounfinished)
+IF(UISE_DESKTOP_I18N_INCLUDE_UNFINISHED)
+    SET(_uise_lrelease_opts -silent)
+ENDIF()
+
+IF(_uise_ts_files)
+    SET(_uise_qm_files "")
+    SET(_uise_langs "")
+    SET(_uise_tr_body "<RCC>\n  <qresource prefix=\"/uise/desktop/translations\">\n")
+    FOREACH(_uise_ts IN LISTS _uise_ts_files)
+        GET_FILENAME_COMPONENT(_uise_ts_base "${_uise_ts}" NAME_WE)     # uise_ru
+        STRING(REGEX REPLACE "^uise_" "" _uise_lang "${_uise_ts_base}") # ru
+        SET(_uise_qm "${_uise_qm_dir}/${_uise_ts_base}.qm")
+        ADD_CUSTOM_COMMAND(
+            OUTPUT  "${_uise_qm}"
+            COMMAND Qt6::lrelease ${_uise_lrelease_opts} "${_uise_ts}" -qm "${_uise_qm}"
+            DEPENDS "${_uise_ts}" Qt6::lrelease
+            COMMENT "lrelease ${_uise_ts_base}.qm"
+            VERBATIM)
+        LIST(APPEND _uise_qm_files "${_uise_qm}")
+        LIST(APPEND _uise_langs "${_uise_lang}")
+        STRING(APPEND _uise_tr_body "    <file alias=\"${_uise_ts_base}.qm\">${_uise_qm}</file>\n")
+    ENDFOREACH()
+
+    # Always-present manifest keeps the qrc non-empty (rcc warns on an empty
+    # <qresource>) and lets availableTranslations() report which catalogs this
+    # build actually carries.
+    STRING(REPLACE ";" "\",\"" _uise_langs_json "${_uise_langs}")
+    FILE(WRITE "${_uise_qm_dir}/manifest.json" "{\"languages\":[\"${_uise_langs_json}\"]}\n")
+    STRING(APPEND _uise_tr_body "    <file alias=\"manifest.json\">${_uise_qm_dir}/manifest.json</file>\n")
+    STRING(APPEND _uise_tr_body "  </qresource>\n</RCC>\n")
+
+    # Write via a .in + CONFIGURE_FILE(COPYONLY): configure_file only rewrites
+    # when the content differs, so a no-op cmake re-run does not touch the qrc
+    # mtime and does not trigger a spurious rcc + recompile.
+    SET(_uise_tr_qrc "${CMAKE_CURRENT_BINARY_DIR}/uise_translations.qrc")
+    FILE(WRITE "${_uise_tr_qrc}.in" "${_uise_tr_body}")
+    CONFIGURE_FILE("${_uise_tr_qrc}.in" "${_uise_tr_qrc}" COPYONLY)
+
+    QT6_ADD_RESOURCES(SOURCES "${_uise_tr_qrc}")
+
+    # Visible in IDEs, and a manual hook (`cmake --build . --target uisedesktop-translations`).
+    ADD_CUSTOM_TARGET(uisedesktop-translations
+        DEPENDS ${_uise_qm_files}
+        SOURCES ${_uise_ts_files})
+ELSE()
+    MESSAGE(STATUS "uise-desktop: no translations/uise_*.ts found -- shipping English only")
+ENDIF()
 
 IF (NOT UISE_DESKTOP_STATIC)
     IF (NOT "$ENV{UISE_DESKTOP_STATIC}" STREQUAL "")
@@ -484,6 +567,10 @@ ELSE (UISE_DESKTOP_STATIC)
     ADD_LIBRARY(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
     TARGET_COMPILE_DEFINITIONS(${PROJECT_NAME} PRIVATE -DUISE_DESKTOP_BUILD)
 ENDIF(UISE_DESKTOP_STATIC)
+
+IF(TARGET uisedesktop-translations)
+    ADD_DEPENDENCIES(${PROJECT_NAME} uisedesktop-translations)
+ENDIF()
 
 OPTION(BOOST_STATIC "Use static Boost libraries" OFF)
 IF (BOOST_STATIC)

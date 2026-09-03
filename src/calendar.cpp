@@ -749,9 +749,9 @@ void CalendarDatesDropdown::rebuildRows()
     clearContent();
 
     const auto dates=m_owner->selectedDates();
-    m_titleLabel->setText(dates.size()==1
-                           ? Calendar::tr("Selected 1 day")
-                           : Calendar::tr("Selected %1 days").arg(dates.size()));
+    // %n plural, not a hand-rolled 1-vs-N split -- languages with more than two numerus forms
+    // (e.g. Russian's one/few/many) can't be expressed as a binary choice.
+    m_titleLabel->setText(Calendar::tr("Selected %n day(s)", "", dates.size()));
 
     for (auto&& date: dates)
     {
