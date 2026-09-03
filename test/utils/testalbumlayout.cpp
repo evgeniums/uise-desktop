@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 #include <boost/test/unit_test.hpp>
@@ -739,6 +740,131 @@ BOOST_AUTO_TEST_CASE(TestMaxHeightScaleDown)
     UISE_TEST_CHECK(rects[0].y()==0);
     UISE_TEST_CHECK_GT(rects[1].y(),rects[0].y());
     checkValidGeometry(rects,totalSize);
+}
+
+BOOST_AUTO_TEST_CASE(TestClaimedWidthRepack)
+{
+    // Five genuinely small originals: the templates size them to fill the width budget, then the
+    // per-tile natural-size cap shrinks every tile to its own size without revisiting which row
+    // it landed in -- leaving a row count computed for tiles several times larger than the ones
+    // drawn. claimedWidth lets the album spend space a caption has already taken, re-packing
+    // those stale rows without touching any tile's size.
+    const std::vector<QSize> thumbs{
+        QSize(120,90),QSize(140,100),QSize(110,80),QSize(130,96),QSize(120,88)
+    };
+
+    AlbumLayoutOptions base;
+    base.maxWidth=590;
+    base.devicePixelRatio=2.0;
+    base.minCappedTile=100;
+
+    QSize plainTotal;
+    auto plain=albumLayout(thumbs,base,&plainTotal);
+    UISE_TEST_REQUIRE_EQUAL(plain.size(),thumbs.size());
+    checkValidGeometry(plain,plainTotal);
+
+    auto rowCount=[](const std::vector<QRect>& rects)
+    {
+        std::set<int> ys;
+        for (const auto& r : rects)
+        {
+            ys.insert(r.y());
+        }
+        return static_cast<int>(ys.size());
+    };
+
+    // with no claim the album keeps its compact block -- the whole point of gating the re-pack on
+    // already-claimed space rather than on maxWidth, so a caption-less album never grows its own
+    // bubble just because the budget allowed it. Explicit comparisons rather than the CHECK_GT/LT
+    // macros: there is no CHECK_LT, and CHECK_GT is wired to BOOST_CHECK_GE in the harness, so
+    // neither would actually assert the strict inequality these cases are about.
+    UISE_TEST_CHECK(plainTotal.width()<base.maxWidth);
+    UISE_TEST_CHECK(rowCount(plain)>1);
+
+    auto claimed=base;
+    claimed.claimedWidth=base.maxWidth;
+
+    QSize repackedTotal;
+    auto repacked=albumLayout(thumbs,claimed,&repackedTotal);
+    UISE_TEST_REQUIRE_EQUAL(repacked.size(),thumbs.size());
+    checkValidGeometry(repacked,repackedTotal);
+
+    // every tile keeps the size the cap and the floor gave it -- only its row changed
+    UISE_TEST_CHECK(rectSizeMultiset(plain)==rectSizeMultiset(repacked));
+
+    // fewer rows, never more, and never taller
+    UISE_TEST_CHECK(rowCount(repacked)<rowCount(plain));
+    UISE_TEST_CHECK_LE(repackedTotal.height(),plainTotal.height());
+
+    // the re-pack spends the claimed width, and stays inside it
+    UISE_TEST_CHECK(repackedTotal.width()>plainTotal.width());
+    UISE_TEST_CHECK_LE(repackedTotal.width(),claimed.claimedWidth);
+
+    // ...but spreads evenly rather than filling the first line and orphaning the tail: with the
+    // rows balanced no line may hold more than one tile more than any other
+    std::map<int,int> perRow;
+    for (const auto& r : repacked)
+    {
+        ++perRow[r.y()];
+    }
+    int fullest=0;
+    int emptiest=static_cast<int>(thumbs.size());
+    for (const auto& row : perRow)
+    {
+        fullest=qMax(fullest,row.second);
+        emptiest=qMin(emptiest,row.second);
+    }
+    UISE_TEST_CHECK_LE(fullest-emptiest,1);
+
+    // the floor still holds after the re-pack
+    for (const auto& r : repacked)
+    {
+        UISE_TEST_CHECK_GE(r.width(),claimed.minCappedTile);
+        UISE_TEST_CHECK_GE(r.height(),claimed.minCappedTile);
+    }
+
+    // a claim NARROWER than the album already is changes nothing -- there is no free space to
+    // spread into, and the album must not be squeezed to honour it (maxWidth is the only hard
+    // ceiling)
+    auto narrow=base;
+    narrow.claimedWidth=plainTotal.width()/2;
+
+    QSize narrowTotal;
+    auto narrowRects=albumLayout(thumbs,narrow,&narrowTotal);
+    UISE_TEST_CHECK(narrowRects==plain);
+    UISE_TEST_CHECK_EQUAL(narrowTotal.width(),plainTotal.width());
+}
+
+BOOST_AUTO_TEST_CASE(TestClaimedWidthLeavesFullWidthAlbumsAlone)
+{
+    // Normal-sized photos already fill the width budget, so there is nothing for the re-pack to
+    // reclaim -- a caption must not be able to rearrange a hero template just by being long.
+    const std::vector<QSize> photos{
+        QSize(2000,600),QSize(700,1000),QSize(1000,1050),QSize(1600,900)
+    };
+
+    AlbumLayoutOptions base;
+    base.maxWidth=590;
+    base.devicePixelRatio=2.0;
+    base.minCappedTile=100;
+
+    QSize plainTotal;
+    auto plain=albumLayout(photos,base,&plainTotal);
+
+    // the premise: these are large enough that the natural-size cap never fires, so the 2x2
+    // template's rows still span the whole budget and there is no slack to reclaim. Asserted
+    // rather than assumed -- if a template change ever left this album narrow, the identity
+    // check below would start failing for a reason that has nothing to do with claimedWidth.
+    UISE_TEST_REQUIRE_EQUAL(plainTotal.width(),base.maxWidth);
+
+    auto claimed=base;
+    claimed.claimedWidth=base.maxWidth;
+
+    QSize claimedTotal;
+    auto claimedRects=albumLayout(photos,claimed,&claimedTotal);
+
+    UISE_TEST_CHECK(claimedRects==plain);
+    UISE_TEST_CHECK(claimedTotal==plainTotal);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

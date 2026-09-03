@@ -737,6 +737,38 @@ int main(int argc, char *argv[])
     imgBody10c->setComment(QStringLiteral("The same 100x100 sent alone -- its tile should match the one in the pair above."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody10c));
 
+    // --- 12d/12e. small image(s) alongside a long description -- the album must not be left
+    // packed against the bubble's edge while the description fills the rest of the width. Tiles
+    // keep the natural sizes albumLayout() gave them (no upscaling toward the caption width);
+    // only the block's horizontal position changes, centered under the text. 12d is the
+    // single-tile case (the block itself is the row, so centering it is centering the image);
+    // 12e reuses the sub-100px thumbnail set from case 11 to check the row RE-PACK
+    // (AlbumLayoutOptions::claimedWidth): the caption has already claimed a wide bubble, so the
+    // thumbnails must spread into it -- and evenly, rather than filling the first line and
+    // orphaning the last. Compare against case 11 above, the same five thumbnails: whichever way
+    // the two are packed, no tile may change SIZE between them. ---
+
+    auto* imgBody12d=new ChatMessageImages();
+    imgBody12d->setItems({
+        makeImageEntry(QSize(100,100),QColor("#80CBC4"),QColor("#00695C"),QStringLiteral("100"),ChatFileTransferState::Ready)
+    });
+    imgBody12d->setComment(QStringLiteral(
+        "A single small 100x100 thumbnail, but with a much longer description attached to it -- "
+        "long enough to wrap across several lines and widen the bubble well past the thumbnail's "
+        "own natural size. The thumbnail must not be left stuck to the left edge of that wider "
+        "bubble with empty space to its right; it should be centered under the text instead."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,imgBody12d));
+
+    auto* imgBody12e=new ChatMessageImages();
+    imgBody12e->setItems(thumbItems);
+    imgBody12e->setComment(QStringLiteral(
+        "The same five sub-100px thumbnails as the all-thumbnail case above, again paired with a "
+        "long description. Because this caption has already claimed a wide bubble, the album is "
+        "free to spread into it: the thumbnails should re-pack into fewer, evenly filled rows "
+        "instead of keeping the row count their pre-cap sizes implied, with no tile changing "
+        "size, and the block as a whole centered under the text."));
+    rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody12e));
+
     // --- 13a/13b. the same three images (one wide, one tall, one near-square), sent in two
     // different orders -- the todo's core complaint ("the same three images in a different
     // order produce different layouts"). Both bubbles should look identical: the wide image is

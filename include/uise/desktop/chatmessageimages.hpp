@@ -45,7 +45,10 @@ class ChatMessageImages_p;
  * manual geometry in layoutChildren(), called from resizeEvent() and from the QEvent::
  * LayoutRequest handler in event() (the latter is how a child's updateGeometry() reaches a
  * layout-less parent -- see layoutChildren()'s own doc comment). The comment is created lazily,
- * on the first non-empty setComment() -- most albums carry no comment at all.
+ * on the first non-empty setComment() -- most albums carry no comment at all. The tile block is
+ * horizontally centered against the comment's own width (see layoutChildren()) whenever a long
+ * comment widens this body past the album's natural size -- e.g. a small image or two beside a
+ * long description no longer sit hard against the left edge with empty space to their right.
  *
  * The grid geometry is recomputed against fresh QRects on every bubbleWidthHint()/
  * updateMaximumBubbleWidth() call, not cached -- the same "just redo it" approach
@@ -152,7 +155,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         void rebuildGrid(int forMaxWidth);
 
         //! Single placement path for every child (tiles + comment), replacing the QLayout this
-        //! class used to have -- see the class doc comment.
+        //! class used to have -- see the class doc comment. Also centers the tile block
+        //! horizontally when the comment is wider than the album.
         void layoutChildren();
 
         //! Create the comment widget on first use -- see the class doc comment.

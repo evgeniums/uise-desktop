@@ -113,6 +113,14 @@ class ChatMessageImages_p
         // likewise be called before the comment widget exists.
         bool commentOwnContextMenu=true;
 
+        // Width the comment asked for on the last negotiation, fed to the album's row re-packing
+        // as AlbumLayoutOptions::claimedWidth (see rebuildGrid()). Written by bubbleWidthHint(),
+        // which measures the comment BEFORE laying the album out for exactly this reason, and
+        // reset by setComment()/clearComment() so a changed caption can never leave the album
+        // packing against a width the text no longer needs. 0 means "no caption", which turns
+        // the re-pack off entirely.
+        int commentWidthHint=0;
+
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
         // QSS-settable (qproperty-minTileSize/qproperty-tileMaxUpscale, see
@@ -129,6 +137,7 @@ class ChatMessageImages_p
         // transfer-progress tick, see ChatMessage::refreshAllItems() in whitemdesktop) still
         // reaches the tiles even when the layout itself is reused.
         int lastLayoutForMaxWidth=-1;
+        int lastLayoutClaimedWidth=-1;
         qreal lastLayoutDpr=-1.0;
         std::vector<QSize> lastLayoutPixelSizes;
         std::vector<QRect> lastLayoutRects;
@@ -242,6 +251,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
     // nor any item's pixelSize() changed since then. The per-tile setItem() refresh below still
     // always runs, so content updates are never skipped, only the layout recomputation.
     bool layoutUnchanged=forMaxWidth==pimpl->lastLayoutForMaxWidth
+        && pimpl->commentWidthHint==pimpl->lastLayoutClaimedWidth
         && dpr==pimpl->lastLayoutDpr
         && pimpl->lastLayoutPixelSizes.size()==pimpl->items.size()
         && pimpl->lastLayoutRects.size()==pimpl->items.size();
@@ -291,6 +301,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         // scaled up to (see minTileSize()'s own doc comment) -- separate from AlbumLayoutOptions'
         // own default minTile, which also bounds ordinary template row heights.
         options.minCappedTile=pimpl->minTileSize;
+        // Lets the album spend width the caption has already claimed, by re-packing rows whose
+        // membership was decided from the tiles' pre-cap sizes -- see AlbumLayoutOptions::
+        // claimedWidth. 0 without a caption, which turns that pass off.
+        options.claimedWidth=pimpl->commentWidthHint;
 
         if (allPlaceholders)
         {
@@ -328,6 +342,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         pimpl->gridSize=totalSize;
 
         pimpl->lastLayoutForMaxWidth=forMaxWidth;
+        pimpl->lastLayoutClaimedWidth=pimpl->commentWidthHint;
         pimpl->lastLayoutDpr=dpr;
         pimpl->lastLayoutPixelSizes=std::move(sizes);
         pimpl->lastLayoutRects=rects;
@@ -457,11 +472,25 @@ void ChatMessageImages::layoutChildren()
     // QLayout would normally intercept that event itself and re-run activate().
     auto cr=contentsRect();
 
+    // The album block is centered in whatever width this body ends up with, rather than packed
+    // against its left edge. That width is max(album, comment) -- see sizeHint() -- so the slack
+    // this centers within is exactly the amount by which a long description out-widened a small
+    // album. Tiles keep the natural sizes albumLayout() gave them (its per-tile natural-size cap
+    // stays authoritative; a small image is never blown up to fill the caption width), and the
+    // lines inside a multi-row album keep the left-packed x offsets albumLayout() produced --
+    // only the block as a whole moves.
+    //
+    // Inert without a comment: nothing else contributes to sizeHint()'s width, so a caption-less
+    // album has no slack. In particular the extra width ChatMessageBottom::bubbleWidthHint() asks
+    // for to seat the time/status row beside a narrow body lands on the BUBBLE, not on this
+    // widget, and so must not (and does not) shift the tiles.
+    auto albumX=cr.x()+qMax(0,(cr.width()-pimpl->gridSize.width())/2);
+
     if (pimpl->lastLayoutRects.size()==pimpl->tiles.size())
     {
         for (size_t i=0;i<pimpl->tiles.size();++i)
         {
-            pimpl->tiles[i]->setGeometry(pimpl->lastLayoutRects[i].translated(cr.topLeft()));
+            pimpl->tiles[i]->setGeometry(pimpl->lastLayoutRects[i].translated(albumX,cr.y()));
         }
     }
 
@@ -544,6 +573,13 @@ void ChatMessageImages::setComment(const QString& text, TextFormat format)
 {
     pimpl->commentText=text;
     pimpl->commentFormat=format;
+
+    // Dropped rather than re-measured here: the caption the album's row packing was allowed to
+    // spread into is gone, and the replacement has not been measured yet (that happens on the
+    // next bubbleWidthHint()). Leaving the old value would let the album keep packing against a
+    // width the new text may not need -- and since this also feeds rebuildGrid()'s layout memo,
+    // clearing it guarantees that next pass really re-lays the album out.
+    pimpl->commentWidthHint=0;
 
     if (text.isEmpty())
     {
@@ -773,16 +809,24 @@ QString ChatMessageImages::linkAt(const QPoint& pos) const
 
 int ChatMessageImages::bubbleWidthHint(int forMaxWidth)
 {
-    rebuildGrid(forMaxWidth);
-
-    int width=pimpl->gridSize.width()+horizontalTotalMargin(this);
+    // The comment is measured BEFORE the album is laid out, not after it as this used to do: its
+    // width is the "already claimed" space the album's row re-packing is allowed to spend (see
+    // AlbumLayoutOptions::claimedWidth), so a long caption is what lets several thumbnails share
+    // a row instead of being stuck with the row count their pre-cap sizes implied. The order is
+    // safe -- the comment's own hint depends only on its text and forMaxWidth, never on the
+    // album, so there is no circularity to resolve here.
+    int commentWidth=0;
     if (!pimpl->commentText.isEmpty())
     {
         auto comment=ensureComment();
         comment->setChatContent(chatContent());
-        width=std::max(width,comment->bubbleWidthHint(forMaxWidth));
+        commentWidth=comment->bubbleWidthHint(forMaxWidth);
     }
+    pimpl->commentWidthHint=commentWidth;
 
+    rebuildGrid(forMaxWidth);
+
+    auto width=std::max(pimpl->gridSize.width()+horizontalTotalMargin(this),commentWidth);
     return std::min(width,forMaxWidth);
 }
 

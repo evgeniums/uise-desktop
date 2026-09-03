@@ -81,6 +81,34 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
     int minCappedTile=0;
     int spacing=2;      //!< Gap between adjacent tiles.
 
+    //! Width, in the same logical units as maxWidth, that OTHER content in the same bubble has
+    //! already claimed -- in practice a caption longer than the album is wide (see
+    //! ChatMessageImages::bubbleWidthHint(), which measures its comment before laying the album
+    //! out and passes the result here). 0, the default, disables the re-pack this feeds entirely,
+    //! leaving the returned geometry bit-identical to what the templates and the per-tile passes
+    //! produced on their own.
+    //!
+    //! Why it exists: which row a tile lands in is decided by the templates / justified-rows
+    //! packing from the tiles' PRE-cap sizes -- sizes picked to fill maxWidth. The per-tile
+    //! natural-size cap (see albumLayout()'s pass 2) then shrinks small images to their real
+    //! on-screen size but never revisits that decision, so an album of thumbnails keeps a row
+    //! count computed for tiles several times larger than the ones actually drawn. Five 133px
+    //! tiles stay in 2+2+1 rows totalling 274px even when the bubble is 590px wide and three of
+    //! them would comfortably share a line.
+    //!
+    //! That waste is invisible while the album alone decides the bubble's width -- the bubble
+    //! just hugs the narrow block -- so re-packing is deliberately NOT done on the strength of
+    //! maxWidth alone: doing it there would make a caption-less thumbnail album claim a much
+    //! wider bubble for itself (5 tiles at 274px becoming one 544px line) purely because the
+    //! budget allowed it. Only space some other section has ALREADY committed to is free to
+    //! spend, which is what this reports and the only case the re-pack acts on.
+    //!
+    //! The re-pack keeps every tile's size and the images' order, and never increases the row
+    //! count or the album's height (see albumLayout()'s pass 4); it only merges rows that the
+    //! stale pre-cap sizing split, then balances the survivors so the last row is not left
+    //! nearly empty.
+    int claimedWidth=0;
+
     //! Converts pixelSizes (device pixels) into the logical units the returned rects are in, so
     //! the natural-size cap (see albumLayout()) can tell how large each image actually is on
     //! screen. Leave at 1.0 if pixelSizes are already logical. Set to 0 to disable the cap AND
@@ -142,6 +170,17 @@ struct UISE_DESKTOP_EXPORT AlbumLayoutOptions
  *     let one at-floor tile veto the whole shrink, ballooning the album far past maxHeight;
  *     shrinking everything first and then re-growing only what fell through the floor lets the
  *     OTHER (non-floored) tiles absorb the height instead, keeping the album close to its budget.
+ *  4. Finally, if options.claimedWidth says another section of the bubble has already claimed
+ *     more width than the album ended up using, the rows are re-packed into it -- see
+ *     claimedWidth's own comment for why this is gated on already-claimed space rather than on
+ *     the width budget. Tile SIZES and image order are untouched; only which row each tile sits
+ *     in changes. Rows are first merged greedily (first-fit, which minimises the row count for a
+ *     fixed order), then the narrowest width achieving that same row count is found by bisection
+ *     and used for the actual packing, so the tiles spread evenly (five tiles in a 590px bubble
+ *     become 3+2, not 4+1). Because greedy first-fit is row-count-optimal, this pass can never
+ *     produce MORE rows than pass 3 left, and since each line's height is a maximum over its own
+ *     members, merging lines can never make the album taller -- so it cannot undo pass 3's
+ *     maxHeight work or push a tile back under the floor.
  *
  *  The natural-size cap (pass 2's upper bound) is what keeps a 100px thumbnail from being handed
  *  the same tile as a 2048px photo just because they share an aspect ratio -- their tiles now

@@ -717,6 +717,96 @@ std::vector<QRect> albumLayout(
         }
     }
 
+    // Pass 4 -- re-pack the rows into width another section of the bubble has already claimed.
+    //
+    // Which row a tile sits in was decided from its PRE-cap size, chosen to fill w; the cap then
+    // shrank small images to their real on-screen size without ever revisiting that decision, so
+    // a thumbnail album keeps a row count computed for tiles several times larger than the ones
+    // actually drawn. See AlbumLayoutOptions::claimedWidth for why this is gated on space another
+    // section already committed rather than on the width budget: re-packing on w alone would make
+    // a caption-less album claim a wider bubble for itself, which is a different (and unwanted)
+    // change. With claimedWidth at its 0 default nothing below runs.
+    //
+    // Only which row each tile lands in changes here -- every tile keeps the size passes 1-3 gave
+    // it, and the images keep their order, so the natural-size cap and the floor both still hold.
+    const auto packW=qMin(options.claimedWidth,w);
+    if (options.claimedWidth>0 && n>1 && totalW<packW)
+    {
+        // Rows produced by greedy first-fit at a given line width, tiles taken in image order.
+        // First-fit minimises the row count for a fixed order, and is monotone in the limit
+        // (a wider line never needs more rows) -- both relied on below.
+        auto rowsAt=[&rects,n,s](int limit)
+        {
+            int rows=1;
+            int x=0;
+            for (int i=0;i<n;++i)
+            {
+                auto tw=rects[static_cast<size_t>(i)].width();
+                if (x>0 && x+tw>limit)
+                {
+                    ++rows;
+                    x=0;
+                }
+                x+=tw+s;
+            }
+            return rows;
+        };
+
+        // Packing at packW gives the fewest rows these tiles can occupy. Packing AT that width
+        // though would leave the tail row nearly empty (five equal tiles in a 590px bubble go
+        // 4+1), so the actual line width used is the narrowest one that still achieves the same
+        // row count -- found by bisection, and yielding an even 3+2 instead. The lower bound is
+        // the widest single tile, since no line can be narrower than the tile it must hold.
+        const auto minRows=rowsAt(packW);
+
+        int lo=0;
+        for (const auto& r : rects)
+        {
+            lo=qMax(lo,r.width());
+        }
+        int hi=packW;
+        while (lo<hi)
+        {
+            auto mid=lo+(hi-lo)/2;
+            if (rowsAt(mid)<=minRows)
+            {
+                hi=mid;
+            }
+            else
+            {
+                lo=mid+1;
+            }
+        }
+
+        const auto lineWidth=lo;
+
+        int x=0;
+        int y=0;
+        int lineHeight=0;
+        for (int i=0;i<n;++i)
+        {
+            auto tw=rects[static_cast<size_t>(i)].width();
+            auto th=rects[static_cast<size_t>(i)].height();
+            if (x>0 && x+tw>lineWidth)
+            {
+                y+=lineHeight+s;
+                x=0;
+                lineHeight=0;
+            }
+            rects[static_cast<size_t>(i)]=QRect(x,y,tw,th);
+            x+=tw+s;
+            lineHeight=qMax(lineHeight,th);
+        }
+
+        totalW=0;
+        totalH=0;
+        for (const auto& r : rects)
+        {
+            totalW=qMax(totalW,r.x()+r.width());
+            totalH=qMax(totalH,r.y()+r.height());
+        }
+    }
+
     // Resolution enters this function ONLY through the per-tile natural-size cap above, never
     // through the templates: which template runs, and the proportions inside it, still come from
     // aspect ratios alone (confirmed requirement -- geometry must never depend on which
