@@ -36,6 +36,7 @@ color: #444444;
 }
 
 /* bottom buttons, same treatment as abstractdialog.qss's #dialogButtonsFrame */
+/*
 uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
 color: #555555;
 border: 1px solid #999999;
@@ -48,6 +49,40 @@ border: 1px solid #444444;
 }
 
 uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:disabled {
+color: #999999;
+border: 1px solid #BBBBBB;
+}
+*/
+
+uise--FrameWithModalStatus uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton,
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
+background-color: #218DAE; color: #EEEEEE; border: 1px solid #218DAE;
+padding: 6px 12px; min-width: 100px;
+}
+
+uise--FrameWithModalStatus uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:hover,
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:hover {
+color: #FFFFFF; background-color: #0099b8; border: 1px solid #0099b8;
+}
+
+uise--FrameWithModalStatus uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:disabled,
+uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:disabled {
+background-color: #DDDDDD; color: #999999; border: 1px solid #DDDDDD;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton#cancelButton QPushButton {
+color: #555555;
+border: 1px solid #999999;
+background-color: transparent;
+padding: 6px 12px;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton#cancelButton QPushButton:hover {
+color: #444444;
+border: 1px solid #444444;
+}
+
+uise--FileUploadWidget #buttonsFrame uise--PushButton#cancelButton QPushButton:disabled {
 color: #999999;
 border: 1px solid #BBBBBB;
 }
