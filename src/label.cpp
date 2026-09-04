@@ -23,9 +23,19 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QMenu>
+#include <QAction>
+#include <QContextMenuEvent>
+#include <QGuiApplication>
+#include <QClipboard>
+
 #include <uise/desktop/label.hpp>
 
-UISE_DESKTOP_NAMESPACE_BEGIN
+// Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
+// namespace, so it records tr() calls in this file under an unqualified context that does not
+// match what moc (a real preprocessor) resolves at runtime -- translations for every string here
+// would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+namespace uise {
 
 //--------------------------------------------------------------------------
 
@@ -51,4 +61,33 @@ void Label::init()
 
 //--------------------------------------------------------------------------
 
-UISE_DESKTOP_NAMESPACE_END
+void Label::contextMenuEvent(QContextMenuEvent* event)
+{
+    if (!(textInteractionFlags() & (Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard)))
+    {
+        event->ignore();
+        return;
+    }
+
+    // Built explicitly instead of relying on QLabel's own standard menu so that "Copy Link
+    // Location" -- which Qt adds whenever the label's rich text contains a hyperlink, even an
+    // in-app anchor with no meaningful external location to copy -- never shows up. Same pattern
+    // as ChatMessageTextBrowser::showCopyMenu().
+    QMenu menu(this);
+
+    auto copyAction = menu.addAction(tr("Copy"));
+    copyAction->setEnabled(!selectedText().isEmpty());
+    connect(copyAction, &QAction::triggered, this,
+        [this]() { QGuiApplication::clipboard()->setText(selectedText()); });
+
+    auto selectAllAction = menu.addAction(tr("Select All"));
+    connect(selectAllAction, &QAction::triggered, this,
+        [this]() { setSelection(0, text().length()); });
+
+    menu.exec(event->globalPos());
+    event->accept();
+}
+
+//--------------------------------------------------------------------------
+
+}

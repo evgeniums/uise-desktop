@@ -1001,6 +1001,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>uise::Label</name>
+    <message>
+        <location filename="../src/label.cpp" line="+78"/>
+        <source>Copy</source>
+        <translation>Копировать</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select All</source>
+        <translation>Выделить всё</translation>
+    </message>
+</context>
+<context>
     <name>uise::MessageEditor</name>
     <message>
         <location filename="../src/messageeditor.cpp" line="+578"/>

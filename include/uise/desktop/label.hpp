@@ -30,6 +30,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 
+class QContextMenuEvent;
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -44,6 +46,10 @@ class UISE_DESKTOP_EXPORT Label : public QLabel
 
         explicit Label(QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
         explicit Label(const QString &text, QWidget *parent=nullptr, Qt::WindowFlags f=Qt::WindowFlags());
+
+    protected:
+
+        void contextMenuEvent(QContextMenuEvent* event) override;
 
     private:
 
