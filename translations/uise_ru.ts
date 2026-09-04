@@ -398,7 +398,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+5"/>
         <source>Start</source>
-        <translation>Начать</translation>
+        <translation>Старт</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -1216,12 +1216,12 @@ These tips can help you create longer passwords that are easier to remember. Try
     <message>
         <location filename="../src/qrcodescanner.cpp" line="+143"/>
         <source>Start</source>
-        <translation>Запустить</translation>
+        <translation>Старт</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Stop</source>
-        <translation>Остановить</translation>
+        <translation>Стоп</translation>
     </message>
     <message>
         <location line="+75"/>
