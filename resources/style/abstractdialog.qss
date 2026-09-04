@@ -45,8 +45,8 @@ uise--AbstractDialog #titleFrame uise--PushButton QPushButton {icon-size:14px;pa
 uise--AbstractDialog #titleFrame #placeHolder {min-width:14px;max-width:14px;}
 
 uise--AbstractDialog #dialogButtonsFrame {padding: 0 4px 4px 4px}
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:4px;}
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 2px 12px;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton {margin:8px;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{border-radius: 4px; padding: 4px 12px;}
 
 /* margin:4px above only grows the wrapper's own rect() -- PushButton pins its inner QPushButton
  * to sizeHint and centers it (see pushbutton.cpp), so this margin never reaches the ripple host
