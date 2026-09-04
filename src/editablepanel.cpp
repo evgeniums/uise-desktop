@@ -77,7 +77,7 @@ class EditablePanel_p
 
         QFrame* statusFrame=nullptr;
         QBoxLayout* statusLayout=nullptr;
-        QLabel* statusText;
+        Label* statusText;
 
         LoadingFrame* loadingFrame=nullptr;
 };
@@ -134,7 +134,6 @@ EditablePanel::EditablePanel(
     pimpl->statusText=new Label(pimpl->statusFrame);
     pimpl->statusText->setObjectName("statusText");
     pimpl->statusText->setWordWrap(true);
-    pimpl->statusText->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->statusText->setAlignment(Qt::AlignCenter);
     pimpl->statusLayout->addWidget(pimpl->statusText);
 

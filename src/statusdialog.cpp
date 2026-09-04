@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/checkbox.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/statusdialog.hpp>
 
 #include <uise/desktop/ipp/dialog.ipp>
@@ -113,7 +114,7 @@ class StatusDialog_p
 {
     public:
 
-        QLabel* text;
+        Label* text;
         CheckBox* checkBox;
         QFrame* checkBoxRow;
 };
@@ -128,8 +129,9 @@ StatusDialog::StatusDialog(QWidget* parent)
     auto* container = new QFrame(this);
     auto* cl = Layout::vertical(container);
 
-    pimpl->text=new QLabel(container);
-    pimpl->text->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    pimpl->text=new Label(container);
+    // Label::init() forces Qt::PlainText -- override it back to RichText since status messages
+    // can contain markup (e.g. characternode.cpp's remove-identity confirmation uses <br><br>).
     pimpl->text->setTextFormat(Qt::RichText);
     pimpl->text->setWordWrap(true);
     pimpl->text->setObjectName("text");

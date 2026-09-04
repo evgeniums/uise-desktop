@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/lineedit.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/passwordinput.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -43,7 +44,7 @@ class PasswordInput_p
 {
     public:
 
-        QLabel* title;
+        Label* title;
         LineEdit* editor;
         PushButton* clearButton;
         PushButton* unmaskButton;
@@ -58,14 +59,8 @@ PasswordInput::PasswordInput(QWidget* parent)
       pimpl(std::make_unique<PasswordInput_p>())
 {
     auto mainL=Layout::vertical(this);
-    pimpl->title=new QLabel(this);
+    pimpl->title=new Label(this);
     pimpl->title->setObjectName("title");
-    pimpl->title->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    // Qt auto-promotes a QLabel to StrongFocus whenever its interaction flags include
-    // TextSelectableByKeyboard (which TextBrowserInteraction does) -- without this, the title
-    // becomes an invisible tab stop sitting right before the editor below, breaking the natural
-    // Tab order between password fields.
-    pimpl->title->setFocusPolicy(Qt::NoFocus);
     pimpl->title->setWordWrap(true);
     mainL->addWidget(pimpl->title);
 

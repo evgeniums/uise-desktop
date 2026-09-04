@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/passwordinput.hpp>
 #include <uise/desktop/passwordpanel.hpp>
 
@@ -47,7 +48,7 @@ class PasswordPanel_p
 {
     public:
 
-        QLabel* error;
+        Label* error;
         PasswordInput* password;
 };
 
@@ -69,9 +70,8 @@ void PasswordPanel::construct()
     pimpl->password=new PasswordInput(this);
     l->addWidget(pimpl->password);
 
-    pimpl->error=new QLabel(this);
+    pimpl->error=new Label(this);
     l->addWidget(pimpl->error);
-    pimpl->error->setTextInteractionFlags(Qt::TextBrowserInteraction);
     pimpl->error->setWordWrap(true);
     pimpl->error->setObjectName("error");
 

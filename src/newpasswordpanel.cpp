@@ -171,11 +171,6 @@ void NewPasswordPanel::construct()
 
     pimpl->error=new Label(this);
     l->addWidget(pimpl->error);
-    pimpl->error->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    // Same reasoning as PasswordInput's #title (see passwordinput.cpp): TextBrowserInteraction
-    // auto-promotes the label to StrongFocus, which would trap Tab on this label after the
-    // repeat-password field instead of moving on to the dialog's buttons.
-    pimpl->error->setFocusPolicy(Qt::NoFocus);
     pimpl->error->setWordWrap(true);
     pimpl->error->setObjectName("error");
 
