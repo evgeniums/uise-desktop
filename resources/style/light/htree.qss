@@ -75,7 +75,7 @@ background-color: #BBBBBB;
 }
 
 #hTreeTabBar::tab:selected {
-background-color: #1e6091;
+background-color: #218DAE;
 border-top-left-radius: 4px;
 border-top-right-radius: 4px;
 }

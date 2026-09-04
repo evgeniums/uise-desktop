@@ -28,8 +28,10 @@ color: #999999;
 uise--EditablePanel uise--PushButton QPushButton
 {color: #555555;background-color: transparent;border: 1px solid #888888;}
 
-/* Bottom Apply/Cancel row: filled accent for Apply, borderless accent text for Cancel --
- * same primary/secondary split as MessageSelectionPanelUi's drawer buttons (see chat.qss).
+/* Bottom Apply/Cancel row: filled accent for Apply, grey-outlined text for Cancel -- same
+ * primary/cancel-category split as the dialog buttons in abstractdialog.qss (kept in sync
+ * with that file: hover on the filled Apply darkens/brightens its background too, not just
+ * text; Cancel matches the dialog's own Cancel/Close-category treatment exactly).
  *
  * Vertical padding bumped from the structural 4px to 8px (light theme only, horizontal
  * padding unchanged at 12px) -- these buttons now carry a solid fill/accent text, and read
@@ -38,19 +40,19 @@ uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPus
 {background-color: #218DAE; color: #EEEEEE; border: none; padding: 8px 12px;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPushButton:hover
-{color: #FFFFFF;}
+{color: #FFFFFF; background-color: #0099b8;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPushButton:disabled
 {background-color: #DDDDDD; color: #999999; border: none;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton
-{background-color: transparent; color: #218DAE; border: none; padding: 8px 12px;}
+{color: #555555; border: 1px solid #999999; background-color: transparent; padding: 8px 12px;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton:hover
-{color: #0099b8;}
+{color: #444444; border: 1px solid #444444;}
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton:disabled
-{background-color: transparent; color: #999999; border: none;}
+{background-color: transparent; color: #999999; border: 1px solid #999999;}
 
 uise--EditablePanel uise--PushButton QPushButton:hover
 {color: #000000;border: 1px solid #000000;}

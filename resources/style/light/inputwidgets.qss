@@ -6,15 +6,22 @@ uise--ValidatedInput QLineEdit[state="invalid"]{
 color: #ff6677;
 }
 
+/* Apply: filled accent (affirmative action), same primary treatment used for bottom
+ * dialog/panel buttons elsewhere (see abstractdialog.qss) -- hover darkens/brightens the
+ * background too, not just the text, kept in sync with that file.
+ *
+ * The :disabled rule carries more weight here than usual: ValidatedInput starts its Apply
+ * button disabled and only enables it once the input validates as Acceptable (see
+ * validatedinput.cpp), so this is the state the button is in most of the time. */
 uise--ValidatedInput uise--PushButton QPushButton
-{color: #444444;border: 1px solid #888888; background-color: transparent;}
+{background-color: #218DAE; color: #EEEEEE; border: none;}
 
 uise--ValidatedInput uise--PushButton QPushButton:disabled,
 uise--ValidatedInput uise--PushButton QPushButton:disabled:hover
-{color: #999;border: none;}
+{background-color: #DDDDDD; color: #999999; border: none;}
 
 uise--ValidatedInput uise--PushButton QPushButton:hover
-{color: #000000;border: 1px solid #000000;}
+{color: #FFFFFF; background-color: #0099b8;}
 
 uise--ValidatedInput QLabel#error {
 color: #ff6677;

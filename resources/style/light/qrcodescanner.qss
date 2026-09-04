@@ -1,8 +1,27 @@
+/* Start/Stop: filled accent (affirmative actions), same primary treatment used for bottom
+ * dialog/panel buttons elsewhere (see abstractdialog.qss) -- hover darkens/brightens the
+ * background too, not just the text, kept in sync with that file.
+ *
+ * The :disabled rule matters more than usual here: the two buttons are mutually exclusive
+ * (see qrcodescanner.cpp's cameraStarted/cameraStopped handling), so one of them is always
+ * disabled -- same situation as the Video settings node's own Start/Stop pair.
+ *
+ * Vertical padding bumped from the structural 2px to 6px (light theme only, horizontal
+ * padding unchanged at 12px) -- the same 6px 12px the dialog bottom buttons use
+ * (abstractdialog.qss), and close to the Browse button's 4px 16px (subjectinfo.qss). */
 uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton
-{color: #444444;border: 1px solid #888888; background-color: transparent;}
+{background-color: #218DAE; color: #EEEEEE; border: none; padding: 6px 12px;}
 
+/* border:none is NOT redundant with the rule above. framewithmodalstatus.qss has
+ * "uise--FrameWithModalStatus #buttonsFrame uise--PushButton QPushButton:hover
+ * {border: 1px solid #444444;}" for the modal-status frame's own button row -- and since
+ * QrCodeScanner's button row happens to use the same #buttonsFrame object name, and
+ * AddContact/AddAccount wrap their content in a FrameWithModalStatus, that rule also matches
+ * these buttons. Being :hover-qualified it outranks the non-hover border:none above, so
+ * without restating border:none here a dark border appears on hover over the solid fill. */
 uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:hover
-{color: #000000;border: 1px solid #000000;}
+{color: #FFFFFF; background-color: #0099b8; border: none;}
 
-uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:disabled
-{color: #999999;border: 1px solid #BBBBBB;}
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:disabled,
+uise--QrCodeScanner #buttonsFrame uise--PushButton QPushButton:disabled:hover
+{background-color: #DDDDDD; color: #999999; border: none;}
