@@ -3,5 +3,36 @@ uise--AbstractDialog #dialogFrame QLabel {color: #444444;}
 uise--AbstractDialog #titleFrame {background-color: #888888;}
 uise--AbstractDialog #titleFrame QLabel {color:#FFFFFF;}
 
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{color: #555555;border: 1px solid #999999; background-color: transparent;}
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:hover{color: #444444;border: 1px solid #444444;}
+/* Bottom button row: filled accent by default (affirmative actions), with the dismissive
+ * buttons (Close/Cancel/No/Back/Skip/Ignore) overridden below to borderless accent text --
+ * same primary/secondary split as MessageSelectionPanelUi's drawer buttons (see chat.qss).
+ *
+ * Vertical padding bumped from the structural 4px to 8px (light theme only, horizontal
+ * padding unchanged at 12px) -- these buttons now carry a solid fill/accent text, and read
+ * better with more room than the old plain outlined look needed. min-width added (matching
+ * the reference panel's own min-width:100px in chat.qss) so short labels like OK/Yes don't
+ * look squeezed at the taller padding. */
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{background-color: #218DAE; color: #EEEEEE; border: none; padding: 6px 12px; min-width: 100px;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:hover{color: #FFFFFF;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:disabled{background-color: #DDDDDD; color: #999999; border: none;}
+
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#close QPushButton,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#cancel QPushButton,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#no QPushButton,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#back QPushButton,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#skip QPushButton,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#ignore QPushButton{background-color: transparent; color: #218DAE; border: none;}
+
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#close QPushButton:hover,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#cancel QPushButton:hover,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#no QPushButton:hover,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#back QPushButton:hover,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#skip QPushButton:hover,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#ignore QPushButton:hover{color: #0099b8;}
+
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#close QPushButton:disabled,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#cancel QPushButton:disabled,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#no QPushButton:disabled,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#back QPushButton:disabled,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#skip QPushButton:disabled,
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#ignore QPushButton:disabled{background-color: transparent; color: #999999; border: none;}

@@ -169,7 +169,7 @@
         <translation>Развернуть</translation>
     </message>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+72"/>
+        <location filename="../src/statusdialog.cpp" line="+73"/>
         <source>Error</source>
         <comment>Status</comment>
         <translation>Ошибка</translation>
@@ -696,13 +696,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+3"/>
-        <location line="+39"/>
+        <location line="+38"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>
     <message>
-        <location line="-36"/>
-        <location line="+39"/>
+        <location line="-35"/>
+        <location line="+38"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -1115,7 +1115,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
-        <location line="+76"/>
+        <location line="+71"/>
         <source>Copied to clipboard</source>
         <translation>Скопировано в буфер обмена</translation>
     </message>
@@ -1193,7 +1193,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::PasswordInput</name>
     <message>
-        <location filename="../src/passwordinput.cpp" line="+91"/>
+        <location filename="../src/passwordinput.cpp" line="+86"/>
         <source>Show symbols</source>
         <translation>Показать символы</translation>
     </message>
@@ -1401,7 +1401,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::StatusDialog</name>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+142"/>
+        <location filename="../src/statusdialog.cpp" line="+143"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>

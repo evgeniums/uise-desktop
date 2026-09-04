@@ -28,9 +28,29 @@ color: #999999;
 uise--EditablePanel uise--PushButton QPushButton
 {color: #555555;background-color: transparent;border: 1px solid #888888;}
 
-uise--EditablePanel #bottomButtonsFrame QPushButton:disabled,
-uise--EditablePanel #bottomButtonsFrame QPushButton:hover:disabled
-{color: #999999;border: 1px solid #BBBBBB;}
+/* Bottom Apply/Cancel row: filled accent for Apply, borderless accent text for Cancel --
+ * same primary/secondary split as MessageSelectionPanelUi's drawer buttons (see chat.qss).
+ *
+ * Vertical padding bumped from the structural 4px to 8px (light theme only, horizontal
+ * padding unchanged at 12px) -- these buttons now carry a solid fill/accent text, and read
+ * better with more room than the old plain outlined look needed. */
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPushButton
+{background-color: #218DAE; color: #EEEEEE; border: none; padding: 8px 12px;}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPushButton:hover
+{color: #FFFFFF;}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsApply QPushButton:disabled
+{background-color: #DDDDDD; color: #999999; border: none;}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton
+{background-color: transparent; color: #218DAE; border: none; padding: 8px 12px;}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton:hover
+{color: #0099b8;}
+
+uise--EditablePanel #bottomButtonsFrame uise--PushButton#bottomButtonsCancel QPushButton:disabled
+{background-color: transparent; color: #999999; border: none;}
 
 uise--EditablePanel uise--PushButton QPushButton:hover
 {color: #000000;border: 1px solid #000000;}
