@@ -189,5 +189,6 @@
         <file>style/radio-dot.svg</file>
         <file>style/light/chat_background.png</file>
         <file>style/dark/chat_background.png</file>
+        <file>style/light/noisy-texture-100x100-o6-d10-c-8BAABB-t0.png</file>
     </qresource>
 </RCC>

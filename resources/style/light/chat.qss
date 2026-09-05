@@ -8,8 +8,8 @@
  * viewport instead of each widget centring its own copy of the tile. */
 uise--AbstractChatMessagesView
 {
-background-color: #8BBB92; /* chat background */
-background-image: url(":/uise/desktop/style/light/chat_background.png");
+background-color: /*#8BBB92*/ /*#78A4CB*/ #8BAABB; /* chat background */
+background-image: url(":/uise/desktop/style/light/noisy-texture-100x100-o6-d10-c-8BAABB-t0.png");
 /* "repeat-xy", NOT CSS's "repeat" -- Qt QSS only knows repeat-x/repeat-y/repeat-xy/no-repeat.
  * An unrecognised value parses to Repeat_Unknown, which makes QRenderRule fall through to
  * drawPixmap() instead of drawTiledPixmap(), i.e. the image is drawn exactly ONCE at the
@@ -20,7 +20,7 @@ background-repeat: repeat-xy;
 }
 
 uise--AbstractChatMessageContent {
-background-color: /*#F7F4E1*/ /*#F4EFE6*/ /*#FAF6F0*/ #FDFCF8 /*#DFF1F1*/; /* received message */
+background-color: /*#F7F4E1*/ /*#F4EFE6*/ /*#FAF6F0*/ /*#DFF1F1*/ /*#FFFFFF*/ #F9FAFB; /* received message */
 }
 
 uise--AbstractChatMessageContent[selected="true"] {
@@ -28,8 +28,12 @@ background-color: #AEE2FF; /* selected received message */
 }
 
 uise--AbstractChatMessageContent[sent="true"] {
-background-color: #E2ECD5/*#E6ECEF*/; /* sent message */
+background-color: /*#E2ECD5*/ /*#E2E8EC*/ /*#E5F2FD*/ #DEEFFB; /* sent message */
 }
+uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"] {
+qproperty-tailColor: #DEEFFB; /* sent message */
+}
+
 
 uise--AbstractChatMessageContent[selected="true"][sent="true"] {
 background-color: #AEE2FF; /* selected sent message */
@@ -44,15 +48,11 @@ background-color: #AEE2FF; /* selected sent message */
  * reachable combinations unconditionally, and ChatMessageAvatar::paintEvent() is what actually
  * suppresses the tail when the row isn't last. */
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"] {
-qproperty-tailColor: #FDFCF8; /* received message */
+qproperty-tailColor: #FFFFFF /*#FDFCF8*/; /* received message */
 }
 
 uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"] {
 qproperty-tailColor: #AEE2FF; /* selected received message */
-}
-
-uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"] {
-qproperty-tailColor: #E2ECD5; /* sent message */
 }
 
 uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="true"] {
