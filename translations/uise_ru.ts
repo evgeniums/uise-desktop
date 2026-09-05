@@ -1044,7 +1044,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageSelectionPanelUi</name>
     <message>
-        <location filename="../src/messageselectionpanel.cpp" line="+61"/>
+        <location filename="../src/messageselectionpanel.cpp" line="+60"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -1405,7 +1405,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::StatusDialog</name>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+143"/>
+        <location filename="../src/statusdialog.cpp" line="+148"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>
