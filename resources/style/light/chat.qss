@@ -134,10 +134,14 @@ background-color: #DDDDDD; /* node top frame */
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 background-color: #218DAE; /* selection push button */
+border: 1px solid #218DAE;
 }
 
+/* #cancel overrides the fill back to transparent (borderless text button) -- border must be
+ * restated here too, otherwise the more general rule above's new border leaks onto it. */
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
 background-color: transparent;
+border: none;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
@@ -146,12 +150,15 @@ color: #EEEEEE;
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton:hover {
 color: #FFFFFF;
+border: 1px solid #218DAE;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
 color: #218DAE;
+border: none;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton:hover {
 color: #0099b8;
+border: none;
 }

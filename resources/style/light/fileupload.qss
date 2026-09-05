@@ -36,23 +36,6 @@ color: #444444;
 }
 
 /* bottom buttons, same treatment as abstractdialog.qss's #dialogButtonsFrame */
-/*
-uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {
-color: #555555;
-border: 1px solid #999999;
-background-color: transparent;
-}
-
-uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:hover {
-color: #444444;
-border: 1px solid #444444;
-}
-
-uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton:disabled {
-color: #999999;
-border: 1px solid #BBBBBB;
-}
-*/
 
 uise--FrameWithModalStatus uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton,
 uise--FileUploadWidget #buttonsFrame uise--PushButton QPushButton {

@@ -3,7 +3,7 @@
         {
             "name" : "EditBar",
             "aliases" : {
-                "edit" : "${uise-svg-icons-1}/edit",
+                "edit" : "${uise-svg-icons-1}/pencil",
                 "cancel" : "${uise-svg-icons-1}/x"
             }
         }

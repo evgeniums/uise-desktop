@@ -1144,7 +1144,6 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Создайте пароль</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>### Choose a strong password
 Your password should be hard to guess. It should not contain personal information like your birth date or phone number.  
 Long passwords are stronger, so make your password at least 12 characters long.  
@@ -1155,7 +1154,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 * A series of words that are meaningful to you
 * An abbreviation: Make a password from the first letter of each word in a sentence
 </source>
-        <translation>### Выберите надёжный пароль
+        <translation type="vanished">### Выберите надёжный пароль
 Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона.  
 Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.  
 Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать: 
@@ -1167,7 +1166,12 @@ These tips can help you create longer passwords that are easier to remember. Try
 </translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+11"/>
+        <source>&lt;h3&gt;Choose a strong password&lt;/h3&gt;&lt;p&gt;Your password should be hard to guess. It should not contain personal information like your birth date or phone number. Long passwords are stronger, so make your password at least 12 characters long.&lt;/p&gt;&lt;p&gt;These tips can help you create longer passwords that are easier to remember. Try to use:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;A lyric from a song or poem&lt;/li&gt;&lt;li&gt;A meaningful quote from a movie or speech&lt;/li&gt;&lt;li&gt;A passage from a book&lt;/li&gt;&lt;li&gt;A series of words that are meaningful to you&lt;/li&gt;&lt;li&gt;An abbreviation: Make a password from the first letter of each word in a sentence&lt;/li&gt;&lt;/ul&gt;</source>
+        <translation>&lt;h3&gt;Выберите надёжный пароль&lt;/h3&gt;&lt;p&gt;Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона. Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.&lt;/p&gt;&lt;p&gt;Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Строку из песни или стихотворения&lt;/li&gt;&lt;li&gt;Значимую цитату из фильма или речи&lt;/li&gt;&lt;li&gt;Отрывок из книги&lt;/li&gt;&lt;li&gt;Последовательность слов, значимых для вас&lt;/li&gt;&lt;li&gt;Аббревиатуру: составьте пароль из первых букв каждого слова в предложении&lt;/li&gt;&lt;/ul&gt;</translation>
+    </message>
+    <message>
+        <location line="+18"/>
         <source>Enter new password</source>
         <translation>Введите новый пароль</translation>
     </message>

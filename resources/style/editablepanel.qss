@@ -48,9 +48,6 @@ uise--EditablePanel #panelTitle {
 font-size:16px;
 }
 
-uise--EditablePanel uise--PushButton QPushButton
-{border-radius: 6px; padding: 4px 12px;}
-
 /* border-radius above is 6px, not the 4px ripple.qss assumes for uise--PushButton -- override
  * rippleCornerRadius to match so the rounded ripple clip lines up with the button's own corners. */
 uise--EditablePanel uise--PushButton uise--RippleOverlay {
@@ -58,7 +55,16 @@ qproperty-rippleCornerRadius: 6;
 }
 
 uise--EditablePanel #bottomButtonsFrame uise--PushButton {
-margin: 8px 4px;
+margin: 8px 10px;
+}
+
+uise--EditablePanel uise--PushButton QPushButton
+{border-radius: 4px; padding: 6px 12px; min-width: 100px;}
+
+uise--EditablePanel uise--EditableLabel uise--PushButton QPushButton {
+min-width: 8px;
+padding: 0px;
+border-radius:0;
 }
 
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {

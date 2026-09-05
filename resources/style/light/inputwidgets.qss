@@ -14,14 +14,14 @@ color: #ff6677;
  * button disabled and only enables it once the input validates as Acceptable (see
  * validatedinput.cpp), so this is the state the button is in most of the time. */
 uise--ValidatedInput uise--PushButton QPushButton
-{background-color: #218DAE; color: #EEEEEE; border: none;}
+{background-color: #218DAE; color: #EEEEEE; border: 1px solid #218DAE;}
 
 uise--ValidatedInput uise--PushButton QPushButton:disabled,
 uise--ValidatedInput uise--PushButton QPushButton:disabled:hover
-{background-color: #DDDDDD; color: #999999; border: none;}
+{background-color: #DDDDDD; color: #999999; border: 1px solid #DDDDDD;}
 
 uise--ValidatedInput uise--PushButton QPushButton:hover
-{color: #FFFFFF; background-color: #0099b8;}
+{color: #FFFFFF; background-color: #0099b8; border: 1px solid #0099b8;}
 
 uise--ValidatedInput QLabel#error {
 color: #ff6677;

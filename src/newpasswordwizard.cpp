@@ -97,16 +97,27 @@ void NewPasswordWizard::construct()
 
     pimpl->page0=new QTextBrowser();
     pimpl->wizard->addPage(pimpl->page0,Style::instance().svgIconLocator().icon("NewPasswordWizard::intro"));
-    pimpl->page0->setMarkdown(tr(
-        "### Choose a strong password\n"
-        "Your password should be hard to guess. It should not contain personal information like your birth date or phone number.  \n"
-        "Long passwords are stronger, so make your password at least 12 characters long.  \n"
-        "These tips can help you create longer passwords that are easier to remember. Try to use: \n "
-        "* A lyric from a song or poem\n"
-        "* A meaningful quote from a movie or speech\n"
-        "* A passage from a book\n"
-        "* A series of words that are meaningful to you\n"
-        "* An abbreviation: Make a password from the first letter of each word in a sentence\n"
+
+    // 1. Apply CSS directly to the QTextBrowser widget (avoids it getting wiped)
+    QString customCss = "p,li { font-size: 15px; line-height: 1.3; }";
+    pimpl->page0->document()->setDefaultStyleSheet(customCss);
+
+    // 2. Set HTML instead of Markdown so setDefaultStyleSheet() above actually applies
+    // (Qt's Markdown importer builds the document directly and ignores stylesheets)
+    pimpl->page0->setHtml(tr(
+        "<h3>Choose a strong password</h3>"
+
+        "<p>Your password should be hard to guess. It should not contain personal information like your birth date or phone number. "
+        "Long passwords are stronger, so make your password at least 12 characters long.</p>"
+
+        "<p>These tips can help you create longer passwords that are easier to remember. Try to use:</p>"
+        "<ul>"
+        "<li>A lyric from a song or poem</li>"
+        "<li>A meaningful quote from a movie or speech</li>"
+        "<li>A passage from a book</li>"
+        "<li>A series of words that are meaningful to you</li>"
+        "<li>An abbreviation: Make a password from the first letter of each word in a sentence</li>"
+        "</ul>"
         )
     );
 

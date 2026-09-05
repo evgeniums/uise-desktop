@@ -12,9 +12,9 @@ uise--AbstractDialog #titleFrame QLabel {color:#FFFFFF;}
  * better with more room than the old plain outlined look needed. min-width added (matching
  * the reference panel's own min-width:100px in chat.qss) so short labels like OK/Yes don't
  * look squeezed at the taller padding. */
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{background-color: #218DAE; color: #EEEEEE; border: none; padding: 6px 12px; min-width: 100px;}
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:hover{color: #FFFFFF; background-color: #0099b8;}
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:disabled{background-color: #DDDDDD; color: #999999; border: none;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton{background-color: #218DAE; color: #EEEEEE; border: 1px solid #218DAE; padding: 6px 12px; min-width: 100px;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:hover{background-color: #0099b8; color: #FFFFFF; border: 1px solid #0099b8;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton:disabled{background-color: #DDDDDD; color: #999999; border: 1px solid #DDDDDD;}
 
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#close QPushButton,
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#cancel QPushButton,
@@ -38,3 +38,5 @@ uise--AbstractDialog #dialogButtonsFrame uise--PushButton#no QPushButton:disable
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#back QPushButton:disabled,
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#skip QPushButton:disabled,
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#ignore QPushButton:disabled{background-color: transparent; color: #999999; border: 1px solid #999999;}
+
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton {min-width:80px;padding: 3px 12px;}

@@ -293,7 +293,7 @@ margin: 0 6px;
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 padding: 6px 10px;
-border-radius: 6px;
+border-radius: 4px;
 min-width:100px;
 }
 
