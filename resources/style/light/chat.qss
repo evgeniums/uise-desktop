@@ -134,6 +134,13 @@ background-color: #DDDDDD; /* node top frame */
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
 background-color: #218DAE; /* selection push button */
+color: #EEEEEE;
+border: 1px solid #218DAE;
+}
+
+uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton:hover {
+background-color: #0099b8;
+color: #FFFFFF;
 border: 1px solid #218DAE;
 }
 
@@ -142,15 +149,6 @@ border: 1px solid #218DAE;
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {
 background-color: transparent;
 border: none;
-}
-
-uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton {
-color: #EEEEEE;
-}
-
-uise--MessageSelectionPanelUi #drawer uise--PushButton QPushButton:hover {
-color: #FFFFFF;
-border: 1px solid #218DAE;
 }
 
 uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton {

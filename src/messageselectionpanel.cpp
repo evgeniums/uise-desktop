@@ -51,8 +51,7 @@ MessageSelectionPanelUi::MessageSelectionPanelUi(QWidget* parent) : FrameWithDra
 
     auto addButton=[this,dl](const QString& name)
     {
-        auto button=new PushButton(name,this);
-        button->setCursor(Qt::PointingHandCursor);
+        auto button=new PushButton(name,this);        
         button->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
         dl->addWidget(button,0,Qt::AlignVCenter);
         return button;
@@ -70,6 +69,7 @@ MessageSelectionPanelUi::MessageSelectionPanelUi(QWidget* parent) : FrameWithDra
 
     m_cancelButton=addButton(tr("Cancel"));
     m_cancelButton->setObjectName("cancel");
+    m_cancelButton->setCursor(Qt::PointingHandCursor);
 
     setDrawerEdge(Qt::TopEdge);
     setDrawerWidget(m_drawer);
