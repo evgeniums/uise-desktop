@@ -240,6 +240,25 @@ void FrameWithModalStatus::construct()
             closePopup();
         }
         );
+
+    // The popup widget here is a container holding the status dialog alongside the loading
+    // widgets, not the dialog itself, so ModalPopup cannot see the dialog to honour its
+    // closable flag on its own -- mirror the flag into this frame's own dismissal switches
+    // instead. Only while showing a status: in busy-waiting mode the status dialog is hidden
+    // and dismissal is governed by cancellableBusyWaiting (see popupBusyWaiting()).
+    connect(
+        pimpl->statusDialog,
+        &AbstractDialog::closableChanged,
+        this,
+        [this](bool closable)
+        {
+            if (!pimpl->busyWaitingMode)
+            {
+                setShortcutEnabled(closable);
+                setOutsideClickEnabled(closable);
+            }
+        }
+        );
 }
 
 //--------------------------------------------------------------------------
@@ -313,6 +332,9 @@ void FrameWithModalStatus::popupBusyWaiting(bool forLoading)
 
     pimpl->busyWaitingMode=true;
     setShortcutEnabled(pimpl->cancellableBusyWaiting);
+    // the status dialog is hidden in this mode, so its closable flag no longer applies -- undo
+    // whatever a preceding non-closable status left behind (see showStatus())
+    setOutsideClickEnabled(true);
     active->start();
 
     if (!wasShowing)
@@ -351,7 +373,8 @@ void FrameWithModalStatus::showStatus()
 
     pimpl->cancelButton->setVisible(false);
     pimpl->busyWaitingMode=false;
-    setShortcutEnabled(true);
+    setShortcutEnabled(pimpl->statusDialog->isClosable());
+    setOutsideClickEnabled(pimpl->statusDialog->isClosable());
     popup();
 }
 

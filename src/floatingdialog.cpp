@@ -269,7 +269,7 @@ FloatingDialogFrame::FloatingDialogFrame(QWidget* parent)
         this,
         [this]()
         {
-            close(pimpl->contentAutoDestroy);
+            closeByUser();
         }
     );
 
@@ -644,6 +644,18 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos, Qt::Corner anchorCorn
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::closeByUser()
+{
+    auto* dialog=qobject_cast<AbstractDialog*>(pimpl->content.data());
+    if (dialog!=nullptr && !dialog->isClosable())
+    {
+        return;
+    }
+    close(pimpl->contentAutoDestroy);
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::close(bool autoDestroy)
 {
     // With a fade the close becomes asynchronous, so closed() -- and therefore any
@@ -731,7 +743,7 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
     {
         // deliberately not consumed -- the press still activates whatever it landed on, same
         // contract as DropdownFrame's own outside-click dismissal
-        close(pimpl->contentAutoDestroy);
+        closeByUser();
     }
 
     if (obj==pimpl->dragHandle.data())

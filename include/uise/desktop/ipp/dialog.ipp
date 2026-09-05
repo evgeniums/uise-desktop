@@ -351,7 +351,7 @@ void Dialog<BaseT>::setTitle(const QString& title)
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
-void Dialog<BaseT>::setClosable(bool enable)
+void Dialog<BaseT>::doSetClosable(bool enable)
 {
     pimpl->titleClose->setVisible(enable);
 }

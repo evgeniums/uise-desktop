@@ -240,6 +240,11 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
 
     private:
 
+        //! close(), unless the content is an AbstractDialog that was marked non-closable:
+        //! Escape and the outside click are dismissals performed on the user's behalf, and such
+        //! a dialog accepts none of them (see AbstractDialog::setClosable()).
+        void closeByUser();
+
         void finishClose();
 
         void clampToScreen(QPoint& pos) const;

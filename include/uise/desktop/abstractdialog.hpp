@@ -174,9 +174,22 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
             return true;
         }
 
-        virtual void setClosable(bool enable)
+        /**
+         * @brief Set dialog closable.
+         * @param enable If false then the dialog can be dismissed only by its own buttons.
+         *
+         * A non-closable dialog hides its title close button and refuses every dismissal its
+         * host would otherwise perform on the user's behalf -- the Escape shortcut and the
+         * click on the backdrop outside the dialog (see ModalPopup, FloatingDialogFrame).
+         * The host reads isClosable() at dismissal time and tracks closableChanged(), so this
+         * may be called before or after the dialog is shown.
+         */
+        void setClosable(bool enable);
+
+        //! @see setClosable()
+        bool isClosable() const noexcept
         {
-            std::ignore=enable;
+            return m_closable;
         }
 
         /**
@@ -223,6 +236,8 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
 
         void closeRequested();
 
+        void closableChanged(bool enable);
+
     public slots:
 
         void activateButton(int id);
@@ -232,6 +247,13 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         void closeDialog();
 
     protected:
+
+        //! Reflect the closable state in this implementation's own chrome, e.g. hide the title
+        //! close button. Called by setClosable() only when the state actually changes.
+        virtual void doSetClosable(bool enable)
+        {
+            std::ignore=enable;
+        }
 
         virtual void doActivateButton(int id)=0;
         virtual void doSetButtonEnabled(int id, bool enable)=0;
@@ -270,6 +292,7 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
 
     private:
 
+        bool m_closable=true;
         std::optional<ButtonsStyle> m_forceButtonsStyle;
         std::optional<Qt::Orientation> m_buttonsOrientation;
         std::optional<Qt::Alignment> m_buttonsAlignment;

@@ -84,6 +84,11 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
 
     private:
 
+        //! close(), unless the popup widget is an AbstractDialog that was marked non-closable:
+        //! Escape and the outside click are dismissals performed on the user's behalf, and such
+        //! a dialog accepts none of them.
+        void closeByUser();
+
         void updateWidgetGeometry();
 
         /**

@@ -86,7 +86,7 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
         this,
         [this]()
         {
-            close(pimpl->autoDestroy);
+            closeByUser();
         }
     );
     // Same reasoning DropdownFrame's own Escape shortcut already documents (dropdownframe.cpp):
@@ -106,7 +106,7 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
         this,
         [this]()
         {
-            close(pimpl->autoDestroy);
+            closeByUser();
         }
     );
     setVisible(false);
@@ -116,6 +116,23 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
 
 ModalPopup::~ModalPopup()
 {}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::closeByUser()
+{
+    // A dialog the caller marked non-closable is dismissed by its own buttons only, so the
+    // host must not act on Escape or on a click outside it. The flag is read here rather than
+    // mirrored into shortcutEnabled/outsideClickEnabled so that it stays independent of what
+    // the host itself configured, and so that a setClosable() call arriving after the popup is
+    // already on screen takes effect immediately.
+    auto* dialog=qobject_cast<AbstractDialog*>(pimpl->widget);
+    if (dialog!=nullptr && !dialog->isClosable())
+    {
+        return;
+    }
+    close(pimpl->autoDestroy);
+}
 
 //--------------------------------------------------------------------------
 
@@ -236,7 +253,7 @@ void ModalPopup::mousePressEvent(QMouseEvent* event)
     if (pimpl->outsideClickEnabled
         && (pimpl->widget==nullptr || !pimpl->widget->geometry().contains(event->pos())))
     {
-        close(pimpl->autoDestroy);
+        closeByUser();
         return;
     }
     QFrame::mousePressEvent(event);

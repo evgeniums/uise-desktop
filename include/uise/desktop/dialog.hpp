@@ -82,9 +82,9 @@ class Dialog : public BaseT
          */
         void setTitleControl(QWidget* widget);
 
-        void setClosable(bool enable) override;
-
     protected:
+
+        void doSetClosable(bool enable) override;
 
         void doActivateButton(int id) override;
         void doSetButtonEnabled(int id, bool enable) override;

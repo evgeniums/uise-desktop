@@ -183,6 +183,19 @@ void AbstractDialog::closeDialog()
 
 //--------------------------------------------------------------------------
 
+void AbstractDialog::setClosable(bool enable)
+{
+    if (m_closable==enable)
+    {
+        return;
+    }
+    m_closable=enable;
+    doSetClosable(enable);
+    emit closableChanged(enable);
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractDialog::setButtonsStyle(ButtonsStyle style)
 {
     m_forceButtonsStyle=std::move(style);

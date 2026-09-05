@@ -171,6 +171,8 @@ class UISE_DESKTOP_EXPORT AbstractStatusDialog : public AbstractDialog,
 
         virtual QLabel* textWidget() const=0;
 
+        /** Both overloads reset the dialog to closable, so a status shown with
+         *  setClosable(false) never leaves the next one undismissable. */
         virtual void setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon={})=0;
 
         virtual void setStatus(const QString& message, Type type, const QString& title={})=0;

@@ -195,6 +195,11 @@ void StatusDialog::clearOptionCheckBox()
 
 void StatusDialog::setStatus(const QString& message, const QString& title, std::shared_ptr<SvgIcon> icon)
 {
+    // One dialog instance is reused for every status its frame shows (see
+    // FrameWithModalStatus), so a caller that made one status non-closable must not leave the
+    // next one stuck that way -- same reasoning as the clearOptionCheckBox() call in the
+    // Type overload.
+    setClosable(true);
     pimpl->text->setText(message);
     setSvgIcon(std::move(icon));
     setTitle(title);
