@@ -171,6 +171,10 @@ void NewPasswordPanel::construct()
 
     pimpl->error=new Label(this);
     l->addWidget(pimpl->error);
+    // Label::init() forces Qt::PlainText -- override it back to RichText, same as StatusDialog:
+    // setError() renders classified error text that may carry markup (desktopErrorRich() appends
+    // follow-up guidance after <br><br>). No caller feeds this label user-supplied data.
+    pimpl->error->setTextFormat(Qt::RichText);
     pimpl->error->setWordWrap(true);
     pimpl->error->setObjectName("error");
 

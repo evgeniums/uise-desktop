@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QPointer>
+#include <QString>
 #include <QLabel>
 #include <QFrame>
 #include <QSignalMapper>
@@ -200,7 +201,13 @@ void StatusDialog::setStatus(const QString& message, const QString& title, std::
     // next one stuck that way -- same reasoning as the clearOptionCheckBox() call in the
     // Type overload.
     setClosable(true);
-    pimpl->text->setText(message);
+    // The label is Qt::RichText (see the ctor), where a raw "\n" is HTML whitespace and collapses
+    // to a single space -- so a caller's intended line breaks silently disappear. Promote them to
+    // <br> instead of asking every caller to write markup: it is a no-op for messages that already
+    // use <br>, and it keeps plain "\n"-separated text rendering the way its author wrote it.
+    auto text=message;
+    text.replace(QLatin1Char('\n'),QLatin1String("<br>"));
+    pimpl->text->setText(text);
     setSvgIcon(std::move(icon));
     setTitle(title);
 }

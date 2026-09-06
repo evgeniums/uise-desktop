@@ -133,6 +133,10 @@ EditablePanel::EditablePanel(
     pimpl->layout->addWidget(pimpl->statusFrame);
     pimpl->statusText=new Label(pimpl->statusFrame);
     pimpl->statusText->setObjectName("statusText");
+    // Label::init() forces Qt::PlainText -- override it back to RichText, same as StatusDialog:
+    // showError() renders classified error text that may carry markup (desktopErrorRich() appends
+    // follow-up guidance after <br><br>). No caller feeds this label user-supplied data.
+    pimpl->statusText->setTextFormat(Qt::RichText);
     pimpl->statusText->setWordWrap(true);
     pimpl->statusText->setAlignment(Qt::AlignCenter);
     pimpl->statusLayout->addWidget(pimpl->statusText);
