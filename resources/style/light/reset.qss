@@ -23,6 +23,28 @@ color: #000000;
 border: 1px solid #CCCCCC;
 }
 
+/* Native QMenu rows -- uise::Label's Copy/Select All menu, and the QMenu-based menus in
+   EditableLabel, ChatMessageText, HTreeListItem, HTreeNode and NavigationBarItem.
+   The QMenu rule above is pushed into the item palette as HighlightedText/Highlight as
+   well as ButtonText/Button (QStyleSheetStyle::drawControl, CE_MenuItem), so Highlight
+   becomes the menu's own #FFFFFF and HighlightedText its own #000000 -- QMacStyle then
+   paints the hovered row white-on-white and the hover state is invisible.
+   Declaring the item colours explicitly restores it as the app's usual grey-to-black
+   text step (uise--PushButton QPushButton / uise--IconTextButton #text, global.qss).
+
+   Colour only, deliberately: adding a box (padding/border) here would flip Qt to its
+   stylesheet drawing branch, which discards the native macOS menu metrics and forces
+   HighlightedText back to ButtonText; and a background-color would be dropped silently,
+   since the native branch never calls subRule.drawRule(). Dark reset.qss gets no
+   counterpart -- its menus already read correctly. */
+QMenu::item {
+color: #444444;
+}
+
+QMenu::item:selected {
+color: #000000;
+}
+
 QMenu::item:disabled {
 color: #999;
 }
