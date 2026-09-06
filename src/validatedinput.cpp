@@ -60,6 +60,8 @@ ValidatedInput::ValidatedInput(QWidget* parent)
 
     m_error=new Label(this);
     m_error->setObjectName("error");
+    m_error->setWordWrap(true);
+    m_error->setTextFormat(Qt::RichText);
     l->addWidget(m_error);
 
     connect(
