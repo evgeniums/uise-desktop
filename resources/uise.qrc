@@ -190,5 +190,7 @@
         <file>style/light/chat_background.png</file>
         <file>style/dark/chat_background.png</file>
         <file>style/light/noisy-texture-100x100-o6-d10-c-8BAABB-t0.png</file>
+        <file>style/light/noisy-texture-100x100-o5-d13-c-85b4cc-t0.png</file>
+        <file>style/light/noisy-texture-100x100-o3-d13-c-A5C6D7-t1.png</file>
     </qresource>
 </RCC>

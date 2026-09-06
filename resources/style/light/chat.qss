@@ -8,14 +8,8 @@
  * viewport instead of each widget centring its own copy of the tile. */
 uise--AbstractChatMessagesView
 {
-background-color: /*#8BBB92*/ /*#78A4CB*/ #8BAABB; /* chat background */
-background-image: url(":/uise/desktop/style/light/noisy-texture-100x100-o6-d10-c-8BAABB-t0.png");
-/* "repeat-xy", NOT CSS's "repeat" -- Qt QSS only knows repeat-x/repeat-y/repeat-xy/no-repeat.
- * An unrecognised value parses to Repeat_Unknown, which makes QRenderRule fall through to
- * drawPixmap() instead of drawTiledPixmap(), i.e. the image is drawn exactly ONCE at the
- * widget's top-left at its native size (512pt here) and the rest of the view stays flat
- * background-color. Omitting the property entirely would also tile (Repeat_XY is the default);
- * it is spelled out here so the intent is explicit. */
+background-color: /*#8BBB92*/ /*#78A4CB*/ /*#8BAABB*/ /*#85b4cc*/ #A5C6D7; /* chat background */
+background-image: url(":/uise/desktop/style/light/noisy-texture-100x100-o3-d13-c-A5C6D7-t1.png");
 background-repeat: repeat-xy;
 }
 
