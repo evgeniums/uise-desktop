@@ -382,7 +382,8 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
                     options=QFileDialog::DontUseNativeDialog;
                 }
 
-                auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)");
+                // *.tiff deliberately not offered -- see directoryimagesviewer.cpp's identical filter comment.
+                auto filter=tr("Images (*.png *.jpg *.jpeg *.xpm *.bmp);;All files (*.*)");
                 auto filename=QFileDialog::getOpenFileName(this,tr("Select image file"),pimpl->ctrl->folder(),filter,nullptr,options);
                 if (guard)
                 {

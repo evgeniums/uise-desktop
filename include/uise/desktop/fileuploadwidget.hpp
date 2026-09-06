@@ -77,6 +77,14 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         //! check at all can still setMaxImageAspectRatio(0) explicitly.
         constexpr static const uint32_t DefaultMaxImageAspectRatio=10;
 
+        //! Out-of-the-box mime types isImage() excludes, see
+        //! AbstractFileUploadWidget::setNonImageMimeTypes(). HEIC/HEIF: not decoded by
+        //! whitemclient's IImageProcessor. TIFF: Qt decode/re-encode of a TIFF source has been
+        //! observed to hang. Not a QSet<QString> (not a literal type, so not constexpr-able) --
+        //! a plain static function instead, same shape as a defaulted factory. A caller that
+        //! genuinely wants no exclusions can still setNonImageMimeTypes({}) explicitly.
+        static QSet<QString> DefaultNonImageMimeTypes();
+
         explicit FileUploadWidget(QWidget* parent=nullptr);
 
         ~FileUploadWidget();
@@ -108,6 +116,9 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
 
         void setMaxImageAspectRatio(uint32_t ratio) override;
         uint32_t maxImageAspectRatio() const noexcept override;
+
+        void setNonImageMimeTypes(QSet<QString> mimeTypes) override;
+        const QSet<QString>& nonImageMimeTypes() const noexcept override;
 
         FileUploadOptions options() const override;
 

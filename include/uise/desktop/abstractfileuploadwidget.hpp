@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QStringList>
 #include <QImage>
+#include <QSet>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/frame.hpp>
@@ -147,6 +148,22 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
          * @brief Get the current extreme-aspect-ratio limit, see setMaxImageAspectRatio().
          */
         virtual uint32_t maxImageAspectRatio() const noexcept=0;
+
+        /**
+         * @brief Set the mime types stamped onto every item added from now on (addFiles(),
+         *  paste, drop, setItems() -- same single choke point as setMaxImageAspectRatio()), and
+         *  onto every item already in items(), that FileUploadItem::isImage() always excludes.
+         * @param mimeTypes Forwarded verbatim to FileUploadItem::setNonImageMimeTypes() -- empty
+         *  disables the exclusion entirely. FileUploadWidget starts with its own
+         *  DefaultNonImageMimeTypes rather than empty; call this to override it (e.g. a
+         *  messenger's chat upload dialog supplying its own configured list).
+         */
+        virtual void setNonImageMimeTypes(QSet<QString> mimeTypes)=0;
+
+        /**
+         * @brief Get the current excluded mime types, see setNonImageMimeTypes().
+         */
+        virtual const QSet<QString>& nonImageMimeTypes() const noexcept=0;
 
         /**
          * @brief Use the platform-native file picker in requestAddFiles().

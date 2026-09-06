@@ -45,6 +45,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDropEvent>
 #include <QShowEvent>
 #include <QGuiApplication>
+#include <QSet>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -162,6 +163,7 @@ class FileUploadWidget_p
         bool groupItems=true;
         bool rememberChoice=false;
         uint32_t maxImageAspectRatio=FileUploadWidget::DefaultMaxImageAspectRatio;
+        QSet<QString> nonImageMimeTypes=FileUploadWidget::DefaultNonImageMimeTypes();
 
         QFrame* headerFrame=nullptr;
         QLabel* captionLabel=nullptr;
@@ -454,6 +456,7 @@ void FileUploadWidget::addRowFor(const FileUploadItem& source)
 {
     auto it=source;
     it.setMaxImageAspectRatio(pimpl->maxImageAspectRatio);
+    it.setNonImageMimeTypes(pimpl->nonImageMimeTypes);
     pimpl->items.push_back(it);
 
     auto* row=new FileUploadListItem(pimpl->listContent);
@@ -1126,6 +1129,49 @@ void FileUploadWidget::setMaxImageAspectRatio(uint32_t ratio)
     for (size_t i=0;i<pimpl->items.size();++i)
     {
         pimpl->items[i].setMaxImageAspectRatio(ratio);
+        auto* row=pimpl->listItems[i];
+        row->setItem(pimpl->items[i]);
+        applyViewToRow(row,static_cast<int>(i));
+    }
+
+    updateCaption();
+    updateMenuVisibility();
+    updateListAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+QSet<QString> FileUploadWidget::DefaultNonImageMimeTypes()
+{
+    return {
+        QStringLiteral("image/heic"),
+        QStringLiteral("image/heif"),
+        QStringLiteral("image/heic-sequence"),
+        QStringLiteral("image/heif-sequence"),
+        QStringLiteral("image/tiff"),
+        QStringLiteral("image/x-tiff")
+    };
+}
+
+//--------------------------------------------------------------------------
+
+const QSet<QString>& FileUploadWidget::nonImageMimeTypes() const noexcept
+{
+    return pimpl->nonImageMimeTypes;
+}
+
+void FileUploadWidget::setNonImageMimeTypes(QSet<QString> mimeTypes)
+{
+    if (pimpl->nonImageMimeTypes==mimeTypes)
+    {
+        return;
+    }
+    pimpl->nonImageMimeTypes=std::move(mimeTypes);
+
+    // Same mutate-then-resync pattern as setMaxImageAspectRatio() above.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        pimpl->items[i].setNonImageMimeTypes(pimpl->nonImageMimeTypes);
         auto* row=pimpl->listItems[i];
         row->setItem(pimpl->items[i]);
         applyViewToRow(row,static_cast<int>(i));

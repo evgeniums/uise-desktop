@@ -148,7 +148,42 @@ FileUploadItem FileUploadItem::fromData(QByteArray data, QString fileName, QStri
 
 bool FileUploadItem::isImage() const
 {
-    return (m_type==Type::ImageData) || mimeType().startsWith(QStringLiteral("image/"));
+    if (m_type==Type::ImageData)
+    {
+        return true;
+    }
+
+    auto mime=mimeType();
+    if (m_nonImageMimeTypes.contains(mime))
+    {
+        // Checked before the "image/" prefix test and before any decode attempt -- see
+        // setNonImageMimeTypes()'s doc comment. Skips the pixelSize() probe below entirely for
+        // an excluded format, so e.g. a TIFF (whose Qt decode has been observed to hang) is
+        // never even handed to QImageReader.
+        return false;
+    }
+    if (!mime.startsWith(QStringLiteral("image/")))
+    {
+        return false;
+    }
+    if (mime==QStringLiteral("image/svg+xml"))
+    {
+        // Vector content has no pixelSize() of its own -- image() renders it via QSvgRenderer
+        // (renderSvgPreview() below), not QImageReader, so the decodability check below doesn't
+        // apply to it.
+        return true;
+    }
+
+    // Require the content to actually decode, not just carry an image/ mime label -- a
+    // mislabeled payload (an app-private extension whose content happened to sniff as an
+    // image/* format via mimeType()'s QMimeDatabase content-sniffing fallback -- e.g. an
+    // invitation file) or a genuinely unsupported format not already excluded above (a corrupt/
+    // truncated source) must not be treated as an image: with no real pixels to show, it would
+    // sit in an Image-view row with only a generic file-type placeholder and an inert "Edit
+    // image" action. pixelSize() is the same cheap, already-cached header-only read
+    // presentAsImage() uses to detect "dimensions unknown" -- mirror its exact validity check.
+    auto sz=pixelSize();
+    return sz.isValid() && sz.width()>0 && sz.height()>0;
 }
 
 //--------------------------------------------------------------------------

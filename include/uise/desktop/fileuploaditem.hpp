@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QImage>
 #include <QPixmap>
 #include <QSize>
+#include <QSet>
 #include <QUuid>
 #include <QMetaType>
 
@@ -116,12 +117,48 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         /**
          * @brief Check if this item's CONTENT is an image, regardless of how it will be
          *  presented (see presentAsImage() for that).
-         * @return Always true for Type::ImageData; for Type::File and Type::Data, sniffed from
-         *  mimeType(). Unaffected by maxImageAspectRatio() -- an extreme-aspect-ratio image is still an
+         * @return Always true for Type::ImageData. For Type::File and Type::Data: false if
+         *  mimeType() is listed in nonImageMimeTypes() (checked first, before any decode
+         *  attempt -- see setNonImageMimeTypes()); otherwise false unless mimeType() starts with
+         *  "image/" AND the content actually decodes -- pixelSize() returns a valid size, or the
+         *  mime is "image/svg+xml" (vector content has no pixelSize() of its own, see image()'s
+         *  QSvgRenderer path). A file whose extension/content happened to sniff as an image/
+         *  mime but that nothing can actually decode (a mislabeled/unsupported payload) is NOT
+         *  an image -- this avoids stranding it with an empty preview and an inert "Edit image"
+         *  action. Unaffected by maxImageAspectRatio() -- an extreme-aspect-ratio image is still an
          *  image: still editable, still decodes a real thumbnail/pixelSize(), it just isn't
          *  presented as an inline image tile (see presentAsImage()).
          */
         bool isImage() const;
+
+        /**
+         * @brief Get the mime types isImage() always excludes regardless of mimeType(), see
+         *  setNonImageMimeTypes().
+         */
+        const QSet<QString>& nonImageMimeTypes() const noexcept
+        {
+            return m_nonImageMimeTypes;
+        }
+
+        /**
+         * @brief Force isImage() to false for the given mime types even though mimeType()
+         *  starts with "image/" and the content may well decode.
+         * @param mimeTypes Lower-case mime type strings (e.g. "image/heic", "image/tiff").
+         *
+         * For formats this application's own decoders can't usefully handle (HEIC/TIFF today --
+         * unsupported by whitemclient's IImageProcessor, and TIFF decode/encode via Qt has been
+         * observed to hang) -- excluding them here means the item routes straight to a document
+         * row and never reaches an image decode attempt at all, rather than relying on that
+         * decode attempt to fail cleanly. Checked before the decodability probe in isImage(), so
+         * it also skips that probe's cost. Empty by default -- a bare FileUploadItem constructed
+         * directly invents no policy, exactly like maxImageAspectRatio(); FileUploadWidget stamps
+         * its own DefaultNonImageMimeTypes onto every item it creates instead, see
+         * AbstractFileUploadWidget::setNonImageMimeTypes().
+         */
+        void setNonImageMimeTypes(QSet<QString> mimeTypes)
+        {
+            m_nonImageMimeTypes=std::move(mimeTypes);
+        }
 
         /**
          * @brief Check whether this item should be PRESENTED as an inline image tile
@@ -214,8 +251,10 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          * fabricated payload (not a file the user picked/dropped/pasted) -- QMimeDatabase's
          * guess can be wrong: an unregistered extension falls back to sniffing the file's raw
          * bytes, which can coincidentally match an unrelated format's magic bytes. Call this
-         * when the caller already knows the true type, so mimeType()/isImage()/presentAsImage()
-         * stop guessing and use it directly.
+         * when the caller already knows the true type, so mimeType() stops guessing and returns
+         * it directly. isImage()/presentAsImage() still apply their own nonImageMimeTypes()/
+         * decodability checks on top of this value (see isImage()'s doc comment) -- an explicit
+         * "image/..." override for content that genuinely can't be decoded is still not an image.
          */
         void setExplicitMimeType(QString mime)
         {
@@ -343,6 +382,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         mutable QSize m_pixelSize;
         mutable qint64 m_size=-1;
         uint32_t m_maxImageAspectRatio=0;
+        QSet<QString> m_nonImageMimeTypes;
 };
 
 using FileUploadItems=std::vector<FileUploadItem>;

@@ -124,7 +124,11 @@ void DirectoryImagesViewer::browseFile()
     {
         options=QFileDialog::DontUseNativeDialog;
     }
-    QString filter{tr("Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)")};
+    // *.tiff deliberately not offered -- nothing in this build's Qt image-format plugins or
+    // whitemclient's IImageProcessor can decode a TIFF, so listing it here would let a user
+    // pick a file that then fails (or, for the send-time thumbnail encode path, has been
+    // observed to hang) rather than being filtered out up front.
+    QString filter{tr("Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)")};
     auto fileName=QFileDialog::getOpenFileName(this,tr("Select image file"),QString::fromStdString(path().string()),filter,nullptr,options);
     if (!guard || fileName.isEmpty())
     {
