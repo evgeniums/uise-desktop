@@ -54,6 +54,11 @@ class CountBadge_p;
  * badge painting -- see `uise--CountBadge > QLabel#badge` in the bundled style sheets. A "mute"
  * dynamic property on that carrier lets QSS switch to a muted colour, toggled via setMuted().
  *
+ * A QSS `margin` set directly on CountBadge itself (as opposed to `padding` on the carrier
+ * above) is folded into sizeHint(), and the badge shape is painted inset from it -- unlike a
+ * QBoxLayout, a manual/custom layout that positions children purely from sizeHint() (e.g.
+ * ElidedContainer) has no other way to learn that space was requested around the badge.
+ *
  * Usage:
  * @code
  *   auto badge = new CountBadge(parent);

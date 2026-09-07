@@ -9,10 +9,11 @@
 
 uise--CountBadge > QLabel#badge {
     font-weight: bold;
-    padding-left: 6px;
-    padding-right: 6px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-    min-width: 10px;
-    min-height: 18px;
+    font-size: 10px;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    min-width: 6px;
+    min-height: 15px;
 }

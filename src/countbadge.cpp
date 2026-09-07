@@ -152,7 +152,15 @@ QSize CountBadge::sizeHint() const
     auto fw=metrics.horizontalAdvance(text);
     auto w=std::max({h,fw+m.left()+m.right(),pimpl->badge->minimumWidth()});
 
-    return QSize(w,h);
+    // A QSS "margin" on the CountBadge itself (as opposed to "padding" on the hidden #badge
+    // carrier, handled above) lands in THIS frame's own contentsMargins() -- Qt folds margin and
+    // padding into the same accessor, and since CountBadge never sets any padding on itself
+    // (only on the carrier), this is purely margin. It must be added to the reported size, not
+    // just used for painting: a container that positions children from sizeHint() alone (e.g.
+    // ElidedContainer's manual layout, unlike a QBoxLayout) has no other way to learn that extra
+    // space around the badge was requested.
+    auto outer=contentsMargins();
+    return QSize(w+outer.left()+outer.right(),h+outer.top()+outer.bottom());
 }
 
 QSize CountBadge::minimumSizeHint() const
@@ -173,10 +181,13 @@ void CountBadge::paintEvent(QPaintEvent* /*event*/)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing|QPainter::TextAntialiasing);
 
+    // Inset by the outer margin (see sizeHint()) before drawing anything, so the badge shape
+    // itself sits clear of the reserved margin strip rather than spanning the full widget rect.
+    auto r=rect().marginsRemoved(contentsMargins());
+
     // Background: a rounded rect whose corner radius is half the height draws an exact circle
     // when width==height, and a constant-height, round-ended capsule once the width grows past
     // that -- the circle-then-pill shape, with no separate code path for either case.
-    auto r=rect();
     auto radius=r.height()/2.0;
     painter.setPen(Qt::NoPen);
     painter.setBrush(pimpl->badge->palette().color(QPalette::Base));
