@@ -1,0 +1,16 @@
+/*
+ * CountBadge -- light theme colours.
+ *
+ * Same accent used by the chat list / character unread-count badges and by JumpEdge's own
+ * inline badge (see flyweightlistview.qss), kept in one place here instead of four.
+ */
+
+uise--CountBadge > QLabel#badge {
+    background-color: #4895ef;
+    color: #FFFFFF;
+}
+
+uise--CountBadge > QLabel#badge[mute="true"] {
+    background-color: #999999;
+    color: #FFFFFF;
+}

@@ -1,0 +1,18 @@
+/*
+ * CountBadge -- circle-to-pill counter badge (e.g. unread message count).
+ * Neutral geometry (theme-agnostic). Colours live in light/countbadge.qss and dark/countbadge.qss.
+ *
+ * The badge's own size is derived in code from this QLabel's font and contentsMargins (padding),
+ * never from the text it happens to hold -- so padding here controls the badge's fixed height and
+ * its minimum circle diameter, not per-text spacing.
+ */
+
+uise--CountBadge > QLabel#badge {
+    font-weight: bold;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    min-width: 10px;
+    min-height: 18px;
+}

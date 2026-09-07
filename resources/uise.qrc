@@ -13,6 +13,9 @@
         <file>style/typingindicator.qss</file>
         <file>style/dark/typingindicator.qss</file>
         <file>style/light/typingindicator.qss</file>
+        <file>style/countbadge.qss</file>
+        <file>style/dark/countbadge.qss</file>
+        <file>style/light/countbadge.qss</file>
         <file>style/ripple.qss</file>
         <file>style/dark/ripple.qss</file>
         <file>style/light/ripple.qss</file>

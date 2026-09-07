@@ -1,0 +1,19 @@
+/*
+ * CountBadge -- dark theme colours.
+ *
+ * Same accent used by the chat list / character unread-count badges and by JumpEdge's own
+ * inline badge (see flyweightlistview.qss), kept in one place here instead of four.
+ */
+
+uise--CountBadge > QLabel#badge {
+    background-color: #4895ef;
+    color: #FFFFFF;
+}
+
+uise--CountBadge > QLabel#badge[mute="true"] {
+    background-color: #ccc5b9;
+    /* #ccc5b9 is a light tan even in dark theme -- unlike the existing chatlist.qss/subjectitem.qss
+     * dark rules for the same colour, set an explicit dark foreground here rather than inheriting
+     * the app's (light) default text colour, which would be low-contrast against it. */
+    color: #333333;
+}
