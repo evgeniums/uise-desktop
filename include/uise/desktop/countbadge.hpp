@@ -59,6 +59,12 @@ class CountBadge_p;
  * QBoxLayout, a manual/custom layout that positions children purely from sizeHint() (e.g.
  * ElidedContainer) has no other way to learn that space was requested around the badge.
  *
+ * The badge shape is always painted at its own font-derived natural size, centered within
+ * whatever rect the widget actually ends up with -- not stretched to fill it. Some containers
+ * (ElidedContainer's manual layout again: it forces every child's height to a shared row height
+ * via resize(), ignoring both sizeHint() and the Fixed size policy) hand CountBadge a rect
+ * taller than it asked for; without this the circle/pill would stretch into an oval.
+ *
  * Usage:
  * @code
  *   auto badge = new CountBadge(parent);
@@ -105,6 +111,7 @@ class UISE_DESKTOP_EXPORT CountBadge : public QFrame
     private:
 
         void updateGeometryAndRepaint();
+        QSize naturalSize() const;
 
         std::unique_ptr<CountBadge_p> pimpl;
 };

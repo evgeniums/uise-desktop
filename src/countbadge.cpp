@@ -124,7 +124,7 @@ void CountBadge::updateGeometryAndRepaint()
 
 //--------------------------------------------------------------------------
 
-QSize CountBadge::sizeHint() const
+QSize CountBadge::naturalSize() const
 {
     auto text=pimpl->badge->text();
     if (text.isEmpty())
@@ -152,15 +152,26 @@ QSize CountBadge::sizeHint() const
     auto fw=metrics.horizontalAdvance(text);
     auto w=std::max({h,fw+m.left()+m.right(),pimpl->badge->minimumWidth()});
 
+    return QSize(w,h);
+}
+
+QSize CountBadge::sizeHint() const
+{
+    auto natural=naturalSize();
+    if (natural.isEmpty())
+    {
+        return QSize(0,0);
+    }
+
     // A QSS "margin" on the CountBadge itself (as opposed to "padding" on the hidden #badge
-    // carrier, handled above) lands in THIS frame's own contentsMargins() -- Qt folds margin and
-    // padding into the same accessor, and since CountBadge never sets any padding on itself
-    // (only on the carrier), this is purely margin. It must be added to the reported size, not
-    // just used for painting: a container that positions children from sizeHint() alone (e.g.
+    // carrier, handled in naturalSize()) lands in THIS frame's own contentsMargins() -- Qt folds
+    // margin and padding into the same accessor, and since CountBadge never sets any padding on
+    // itself (only on the carrier), this is purely margin. It must be added to the reported size,
+    // not just used for painting: a container that positions children from sizeHint() alone (e.g.
     // ElidedContainer's manual layout, unlike a QBoxLayout) has no other way to learn that extra
     // space around the badge was requested.
     auto outer=contentsMargins();
-    return QSize(w+outer.left()+outer.right(),h+outer.top()+outer.bottom());
+    return QSize(natural.width()+outer.left()+outer.right(),natural.height()+outer.top()+outer.bottom());
 }
 
 QSize CountBadge::minimumSizeHint() const
@@ -181,9 +192,16 @@ void CountBadge::paintEvent(QPaintEvent* /*event*/)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing|QPainter::TextAntialiasing);
 
-    // Inset by the outer margin (see sizeHint()) before drawing anything, so the badge shape
-    // itself sits clear of the reserved margin strip rather than spanning the full widget rect.
-    auto r=rect().marginsRemoved(contentsMargins());
+    // Draw at the badge's own font-derived natural size (see naturalSize()), centered within
+    // whatever rect this widget actually has, rather than filling that rect outright. Some
+    // containers do not respect sizeHint()/the Fixed size policy -- ElidedContainer forces every
+    // child's height to a shared row height via resize() regardless of what it asked for -- and
+    // stretching the drawn shape to fill such a rect would turn the circle/pill into an oval.
+    // Well-behaved containers hand back exactly naturalSize() (inset by the outer margin, same
+    // as sizeHint()), so this is a no-op there: avail == r already.
+    auto avail=rect().marginsRemoved(contentsMargins());
+    QRect r(QPoint(0,0),naturalSize());
+    r.moveCenter(avail.center());
 
     // Background: a rounded rect whose corner radius is half the height draws an exact circle
     // when width==height, and a constant-height, round-ended capsule once the width grows past
