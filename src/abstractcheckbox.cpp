@@ -121,7 +121,12 @@ class AbstractCheckBox_p
 
         RippleOverlay* ripple=nullptr;
 
+        //! Installed on `on` only while checkAnim is actually running a cross-fade, and torn
+        //! down again the instant it finishes -- see applySteadyCheckedState() and the class
+        //! doc comment for why an effect must never be left sitting on the widget at rest.
         QGraphicsOpacityEffect* onEffect=nullptr;
+        //! Long-lived (created once in the constructor); only its target object comes and
+        //! goes with onEffect.
         QPropertyAnimation* checkAnim=nullptr;
 };
 
@@ -175,6 +180,12 @@ AbstractCheckBox::AbstractCheckBox(QWidget* parent)
     pimpl->on=new QFrame(pimpl->indicator);
     pimpl->on->setObjectName("indicatorOn");
     indicatorLayout->addWidget(pimpl->on,0,0,Qt::AlignCenter);
+    // #indicatorOn is hidden outright at rest (see applySteadyCheckedState()) rather than kept
+    // visible at opacity 0 -- retainSizeWhenHidden() is what keeps it claiming its QGridLayout
+    // cell either way, so the indicator's overall size never depends on checked state.
+    auto onSizePolicy=pimpl->on->sizePolicy();
+    onSizePolicy.setRetainSizeWhenHidden(true);
+    pimpl->on->setSizePolicy(onSizePolicy);
 
     auto onLayout=Layout::horizontal(pimpl->on);
     onLayout->setAlignment(Qt::AlignCenter);
@@ -208,11 +219,12 @@ AbstractCheckBox::AbstractCheckBox(QWidget* parent)
         w->setAttribute(Qt::WA_TransparentForMouseEvents,true);
     }
 
-    pimpl->onEffect=new QGraphicsOpacityEffect(pimpl->on);
-    pimpl->onEffect->setOpacity(0.0);
-    pimpl->on->setGraphicsEffect(pimpl->onEffect);
-
-    pimpl->checkAnim=new QPropertyAnimation(pimpl->onEffect,"opacity",this);
+    // No effect and no target object yet -- both are installed lazily in updateCheckedState()
+    // for the duration of one cross-fade and removed again by applySteadyCheckedState() as
+    // soon as it finishes. See the class doc comment for why the effect must not linger.
+    pimpl->checkAnim=new QPropertyAnimation(this);
+    pimpl->checkAnim->setPropertyName("opacity");
+    connect(pimpl->checkAnim,&QPropertyAnimation::finished,this,&AbstractCheckBox::applySteadyCheckedState);
 
     applyTextPosition();
     applyIndicatorMode();
@@ -805,15 +817,50 @@ void AbstractCheckBox::updateCheckedState(bool animate)
     // state, not fade into it), and none when the stylesheet has switched it off.
     if (!animate || !pimpl->animationEnabled || pimpl->durationMs<=0 || !isVisible())
     {
-        pimpl->onEffect->setOpacity(target);
+        applySteadyCheckedState();
         return;
     }
 
-    pimpl->checkAnim->setStartValue(pimpl->onEffect->opacity());
+    // Recover a start value for the fade INTO target. If a previous cross-fade is still live
+    // (re-toggled before it finished, so onEffect was never torn down) resume smoothly from
+    // wherever it currently sits; otherwise #indicatorOn is in one of the two steady states
+    // applySteadyCheckedState() leaves it in -- plainly hidden (unchecked) or plainly shown
+    // with no effect (checked) -- and the opposite of target is the pre-toggle value.
+    const auto start=(pimpl->onEffect!=nullptr) ? pimpl->onEffect->opacity() : (1.0-target);
+    if (pimpl->onEffect==nullptr)
+    {
+        pimpl->onEffect=new QGraphicsOpacityEffect(pimpl->on);
+        pimpl->on->setGraphicsEffect(pimpl->onEffect);
+    }
+    pimpl->onEffect->setOpacity(start);
+    pimpl->on->setVisible(true);
+
+    pimpl->checkAnim->setTargetObject(pimpl->onEffect);
+    pimpl->checkAnim->setStartValue(start);
     pimpl->checkAnim->setEndValue(target);
     pimpl->checkAnim->setDuration(pimpl->durationMs);
     pimpl->checkAnim->setEasingCurve(pimpl->easingType);
     pimpl->checkAnim->start();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractCheckBox::applySteadyCheckedState()
+{
+    // Reached both as updateCheckedState()'s non-animated path and as checkAnim's finished()
+    // handler -- either way #indicatorOn must end up with NO QGraphicsOpacityEffect installed
+    // at rest, see the class doc comment for why a lingering effect is what produces the
+    // "eclipse" artifact while FlyweightListView scrolls.
+    pimpl->checkAnim->stop();
+    pimpl->checkAnim->setTargetObject(nullptr);
+
+    if (pimpl->onEffect!=nullptr)
+    {
+        pimpl->on->setGraphicsEffect(nullptr); // deletes onEffect, per QWidget::setGraphicsEffect()
+        pimpl->onEffect=nullptr;
+    }
+
+    pimpl->on->setVisible(isChecked());
 }
 
 //--------------------------------------------------------------------------

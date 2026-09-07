@@ -57,12 +57,24 @@ class AbstractCheckBox_p;
  *
  * The indicator is a transparent container (#indicator) holding two full-overlapping,
  * independently styled layers -- #indicatorOff and #indicatorOn -- placed in the same
- * QGridLayout cell with Qt::AlignCenter. Switching checked state cross-fades #indicatorOn's
- * QGraphicsOpacityEffect from 0 to 1, which is the only way to animate an appearance that is
- * defined by a stylesheet: a QSS state change is instantaneous by construction, so the two
- * states have to exist as two real, simultaneously styled widgets. #indicatorOn carries the
- * mark: either a RoundedImage rendering an SvgIcon (#markIcon, "svg" mode, the default -- see
- * checkbox.json) or a plain QSS-styled QFrame (#mark, "qss" mode).
+ * QGridLayout cell with Qt::AlignCenter. Switching checked state cross-fades #indicatorOn in
+ * with a QGraphicsOpacityEffect from 0 to 1, which is the only way to animate an appearance
+ * that is defined by a stylesheet: a QSS state change is instantaneous by construction, so the
+ * two states have to exist as two real, simultaneously styled widgets. #indicatorOn carries
+ * the mark: either a RoundedImage rendering an SvgIcon (#markIcon, "svg" mode, the default --
+ * see checkbox.json) or a plain QSS-styled QFrame (#mark, "qss" mode).
+ *
+ * The QGraphicsOpacityEffect is installed on #indicatorOn ONLY while the cross-fade is
+ * actually running, and torn down again the instant it finishes (applySteadyCheckedState()) --
+ * it is never left sitting on the widget at rest. An effect-composited widget is repainted by
+ * QGraphicsEffect::draw() at a device offset baked in when the effect last rendered, rather
+ * than by the normal recursive drawWidget() pass; when an ancestor is later relocated by
+ * QWidget::move() -- exactly how FlyweightListView scrolls its item container, with no
+ * QScrollArea/viewport in between -- that offset goes stale and the widget renders at its old
+ * absolute position until the effect repaints for an unrelated reason. Keeping the effect
+ * installed only transiently means every steady-state frame (which is every frame the user
+ * sees while scrolling) has #indicatorOn either plainly hidden or plainly shown with no effect
+ * at all, so it always repositions correctly with the rest of the row.
  *
  * #indicator is deliberately larger than the layers it centres (see checkbox.qss): the
  * surplus is the halo band the RippleOverlay grows into. The ripple is driven from
@@ -247,6 +259,7 @@ class UISE_DESKTOP_EXPORT AbstractCheckBox : public QAbstractButton
         void applyPartState();
         void applyCursor();
         void updateCheckedState(bool animate);
+        void applySteadyCheckedState();
         void syncCheckedState();
         void endRipple();
         void applyTextPosition();
