@@ -622,6 +622,13 @@ QPixmap SimpleImageEditor::editedImage()
     }
 
     auto px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    // A size-constructed QPixmap is uninitialised and opaque; QGraphicsScene::render() never
+    // clears its target (no scene background brush is set), so without this fill every
+    // transparent pixel of the source image keeps the opaque backing store -- a transparent PNG
+    // comes out with a solid background. fill() with a non-opaque colour is also what promotes
+    // the pixmap to an alpha-capable format, so toImage()/PNG encode downstream keep the alpha
+    // channel.
+    px.fill(Qt::transparent);
     QPainter painter;
     painter.begin(&px);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
