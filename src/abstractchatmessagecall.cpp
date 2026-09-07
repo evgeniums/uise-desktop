@@ -47,45 +47,65 @@ QString AbstractChatMessageCall::formatText() const
         return QString{};
     }
 
-    switch (m_status)
+    return formatCallText(m_status,chatMessage()->isIncoming(),m_duration);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractChatMessageCall::formatDuration() const
+{
+    return formatCallDuration(m_duration);
+}
+
+//--------------------------------------------------------------------------
+
+// Free-function twins of the bodies above (see the doc comment on the declarations in
+// abstractchatmessagecall.hpp): same tr() calls, same AbstractChatMessageCall context, so
+// existing translations keep resolving, but usable without a widget instance.
+
+QString formatCallText(AbstractChatMessageCall::Status status, bool incoming, uint32_t durationSeconds)
+{
+    using Status=AbstractChatMessageCall::Status;
+
+    switch (status)
     {
     case Status::Missed:
-        if (chatMessage()->isIncoming())
+        if (incoming)
         {
-            return tr("Missed incoming call");
+            return AbstractChatMessageCall::tr("Missed incoming call");
         }
         else
         {
-            return tr("Unanswered outgoing call");
+            return AbstractChatMessageCall::tr("Unanswered outgoing call");
         }
     case Status::Complete:
-        if (chatMessage()->isIncoming())
+        if (incoming)
         {
-            return tr("Incoming call %1").arg(formatDuration());
+            return AbstractChatMessageCall::tr("Incoming call %1").arg(formatCallDuration(durationSeconds));
         }
         else
         {
-            return tr("Outgoing call %1").arg(formatDuration());
+            return AbstractChatMessageCall::tr("Outgoing call %1").arg(formatCallDuration(durationSeconds));
         }
         break;
     case Status::Declined:
-        if (chatMessage()->isIncoming())
+        if (incoming)
         {
-            return tr("Declined incoming call");
+            return AbstractChatMessageCall::tr("Declined incoming call");
         }
         else
         {
-            return tr("Declined outgoing call");
+            return AbstractChatMessageCall::tr("Declined outgoing call");
         }
         break;
     case Status::Failed:
-        if (chatMessage()->isIncoming())
+        if (incoming)
         {
-            return tr("Failed incoming call");
+            return AbstractChatMessageCall::tr("Failed incoming call");
         }
         else
         {
-            return tr("Failed outgoing call");
+            return AbstractChatMessageCall::tr("Failed outgoing call");
         }
         break;
     }
@@ -95,15 +115,15 @@ QString AbstractChatMessageCall::formatText() const
 
 //--------------------------------------------------------------------------
 
-QString AbstractChatMessageCall::formatDuration() const
+QString formatCallDuration(uint32_t durationSeconds)
 {
-    uint32_t remaining=m_duration;
+    uint32_t remaining=durationSeconds;
 
     if (remaining<60)
     {
         //: Abbreviation appended directly after a number of seconds in a call duration
         //: (e.g. "42s"), no separator. Keep as short as the source in every language.
-        return QString::number(remaining)+tr("s");
+        return QString::number(remaining)+AbstractChatMessageCall::tr("s");
     }
 
     const uint32_t days=remaining/86400;
@@ -129,13 +149,13 @@ QString AbstractChatMessageCall::formatDuration() const
 
     //: Abbreviation appended directly after a number of days in a call duration (e.g. "2d 3h"),
     //: no separator. Keep as short as the source in every language.
-    appendPart(days,tr("d"));
+    appendPart(days,AbstractChatMessageCall::tr("d"));
     //: Same idiom as "d" above, but for hours (e.g. "3h 5m").
-    appendPart(hours,tr("h"));
+    appendPart(hours,AbstractChatMessageCall::tr("h"));
     //: Same idiom as "d" above, but for minutes -- NOT months (e.g. "5m 12s").
-    appendPart(minutes,tr("m"));
+    appendPart(minutes,AbstractChatMessageCall::tr("m"));
     //: Same idiom as "d" above, but for seconds (e.g. "12s").
-    appendPart(seconds,tr("s"));
+    appendPart(seconds,AbstractChatMessageCall::tr("s"));
 
     return result;
 }

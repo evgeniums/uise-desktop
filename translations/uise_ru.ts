@@ -169,7 +169,7 @@
         <translation>Развернуть</translation>
     </message>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+73"/>
+        <location filename="../src/statusdialog.cpp" line="+74"/>
         <source>Error</source>
         <comment>Status</comment>
         <translation>Ошибка</translation>
@@ -258,7 +258,7 @@
 <context>
     <name>uise::AbstractChatMessageCall</name>
     <message>
-        <location filename="../src/abstractchatmessagecall.cpp" line="+55"/>
+        <location filename="../src/abstractchatmessagecall.cpp" line="+75"/>
         <source>Missed incoming call</source>
         <translation>Пропущенный входящий звонок</translation>
     </message>
@@ -635,9 +635,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Обзор…</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+39"/>
+        <source>Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)</source>
-        <translation>Файлы изображений (*.png *.jpg *.jpeg *.bmp *.tiff);;Все файлы (*.*)</translation>
+        <translation type="vanished">Файлы изображений (*.png *.jpg *.jpeg *.bmp *.tiff);;Все файлы (*.*)</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -696,13 +700,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+3"/>
-        <location line="+38"/>
+        <location line="+42"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>
     <message>
-        <location line="-35"/>
-        <location line="+38"/>
+        <location line="-39"/>
+        <location line="+42"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -768,7 +772,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+269"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
         <source>Full quality</source>
         <translation>Полное качество</translation>
     </message>
@@ -815,7 +819,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отправить</translation>
     </message>
     <message>
-        <location line="+300"/>
+        <location line="+301"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
@@ -840,7 +844,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Выбрано файлов: %1</translation>
     </message>
     <message>
-        <location line="+659"/>
+        <location line="+702"/>
         <source>Add files</source>
         <translation>Добавить файлы</translation>
     </message>
@@ -1115,7 +1119,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
-        <location line="+71"/>
+        <location line="+75"/>
         <source>Copied to clipboard</source>
         <translation>Скопировано в буфер обмена</translation>
     </message>
@@ -1210,7 +1214,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::PasswordPanel</name>
     <message>
-        <location filename="../src/passwordpanel.cpp" line="+102"/>
+        <location filename="../src/passwordpanel.cpp" line="+106"/>
         <source>Enter password</source>
         <translation>Введите пароль</translation>
     </message>
@@ -1387,25 +1391,29 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+23"/>
-        <location line="+23"/>
+        <location line="+24"/>
         <source>Select image file</source>
         <translation>Выберите изображение</translation>
     </message>
     <message>
-        <location line="-19"/>
+        <location line="-20"/>
         <source>Browse...</source>
         <translation>Обзор...</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+19"/>
+        <source>Images (*.png *.jpg *.jpeg *.xpm *.bmp);;All files (*.*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)</source>
-        <translation>Изображения (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;Все файлы (*.*)</translation>
+        <translation type="vanished">Изображения (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;Все файлы (*.*)</translation>
     </message>
 </context>
 <context>
     <name>uise::StatusDialog</name>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+148"/>
+        <location filename="../src/statusdialog.cpp" line="+154"/>
         <source>Error</source>
         <translation>Ошибка</translation>
     </message>

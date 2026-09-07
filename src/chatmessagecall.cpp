@@ -98,6 +98,14 @@ void ChatMessageCall::updateChatMessage()
 
 void ChatMessageCall::updateIcon()
 {
+    // chatMessage() can be null here if a caller drives status/duration before setWidgets() has
+    // attached the chat message -- same precondition formatText() already guards. Bail rather
+    // than dereference; the caller is expected to (re)call updateIcon() once the message is set.
+    if (chatMessage()==nullptr)
+    {
+        return;
+    }
+
     QString icon;
     if (status()==Status::Complete)
     {

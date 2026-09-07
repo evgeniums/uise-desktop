@@ -169,7 +169,7 @@
         <translation>Expand</translation>
     </message>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+73"/>
+        <location filename="../src/statusdialog.cpp" line="+74"/>
         <source>Error</source>
         <comment>Status</comment>
         <translation>Error</translation>
@@ -258,7 +258,7 @@
 <context>
     <name>uise::AbstractChatMessageCall</name>
     <message>
-        <location filename="../src/abstractchatmessagecall.cpp" line="+55"/>
+        <location filename="../src/abstractchatmessagecall.cpp" line="+75"/>
         <source>Missed incoming call</source>
         <translation>Missed incoming call</translation>
     </message>
@@ -634,9 +634,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Browse...</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+39"/>
+        <source>Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)</source>
-        <translation>Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)</translation>
+        <translation type="vanished">Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*.*)</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -695,13 +699,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+3"/>
-        <location line="+38"/>
+        <location line="+42"/>
         <source>Apply</source>
         <translation>Apply</translation>
     </message>
     <message>
-        <location line="-35"/>
-        <location line="+38"/>
+        <location line="-39"/>
+        <location line="+42"/>
         <source>Cancel</source>
         <translation>Cancel</translation>
     </message>
@@ -767,7 +771,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+269"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
         <source>Full quality</source>
         <translation>Full quality</translation>
     </message>
@@ -814,7 +818,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Send</translation>
     </message>
     <message>
-        <location line="+300"/>
+        <location line="+301"/>
         <source>Send files</source>
         <translation>Send files</translation>
     </message>
@@ -839,7 +843,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>%1 files selected</translation>
     </message>
     <message>
-        <location line="+659"/>
+        <location line="+702"/>
         <source>Add files</source>
         <translation>Add files</translation>
     </message>
@@ -1112,7 +1116,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="+71"/>
+        <location line="+75"/>
         <source>Copied to clipboard</source>
         <translation>Copied to clipboard</translation>
     </message>
@@ -1207,7 +1211,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::PasswordPanel</name>
     <message>
-        <location filename="../src/passwordpanel.cpp" line="+102"/>
+        <location filename="../src/passwordpanel.cpp" line="+106"/>
         <source>Enter password</source>
         <translation>Enter password</translation>
     </message>
@@ -1384,25 +1388,29 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+23"/>
-        <location line="+23"/>
+        <location line="+24"/>
         <source>Select image file</source>
         <translation>Select image file</translation>
     </message>
     <message>
-        <location line="-19"/>
+        <location line="-20"/>
         <source>Browse...</source>
         <translation>Browse...</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+19"/>
+        <source>Images (*.png *.jpg *.jpeg *.xpm *.bmp);;All files (*.*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)</source>
-        <translation>Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)</translation>
+        <translation type="vanished">Images (*.png *.jpg *.jpeg *.xpm *.tiff *.bmp);;All files (*.*)</translation>
     </message>
 </context>
 <context>
     <name>uise::StatusDialog</name>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+148"/>
+        <location filename="../src/statusdialog.cpp" line="+154"/>
         <source>Error</source>
         <translation>Error</translation>
     </message>

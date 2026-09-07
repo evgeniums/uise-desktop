@@ -79,6 +79,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageCall : public AbstractChatMessageBo
         QString formatText() const;
         QString formatDuration() const;
 
+        //! Sets the label text verbatim, bypassing formatText() and therefore bypassing
+        //! localization entirely -- prefer setStatus()/setDuration(), which render through
+        //! formatText()/formatCallText() and pick up the translated wording. Only appropriate
+        //! for a caller that has already localized the text itself.
         virtual void presetText(const QString& text) =0;
         virtual void presetIcon(const QString& icon) =0;
 
@@ -92,6 +96,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageCall : public AbstractChatMessageBo
         uint32_t m_duration=0;
         Status m_status=Status::Missed;
 };
+
+//! Call-message wording, factored out of AbstractChatMessageCall::formatText()/formatDuration() so
+//! a client that only has the status/duration/direction (no widget) can render the identical,
+//! identically-localized sentence -- e.g. whitemdesktop's chat-list row and notification popup,
+//! which build a plain QString via msgPreviewText() rather than instantiating a chat message body.
+//! The tr() strings stay attached to the AbstractChatMessageCall context (Q_OBJECT above), so
+//! existing translations (see translations/uise_ru.ts) keep resolving unchanged.
+UISE_DESKTOP_EXPORT QString formatCallText(AbstractChatMessageCall::Status status,bool incoming,uint32_t durationSeconds);
+UISE_DESKTOP_EXPORT QString formatCallDuration(uint32_t durationSeconds);
 
 }
 
