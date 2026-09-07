@@ -165,7 +165,7 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
          * Enforced live: typing past the limit truncates the comment back down to it.
          */
         void setMaxCommentLength(int length);
-        int maxCommentLength() const noexcept;
+        int maxCommentLength() const noexcept override;
 
     public slots:
 

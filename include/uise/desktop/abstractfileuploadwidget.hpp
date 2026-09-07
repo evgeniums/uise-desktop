@@ -200,6 +200,15 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         virtual AbstractMessageEditor* messageEditor() const=0;
 
         /**
+         * @brief Get the current maximum comment length, in characters, or <=0 for no limit --
+         *  see FileUploadWidget::setMaxCommentLength(). A caller populating messageEditor() from
+         *  outside (e.g. a chat composer handing its own typed text off to the comment) needs
+         *  this to know a text would be silently truncated (enforced live on any text change,
+         *  including a programmatic loadText()) rather than staged as-is.
+         */
+        virtual int maxCommentLength() const noexcept=0;
+
+        /**
          * @brief Get the header's drop-down menu button (visible only while items() has at
          *  least one image, per the task spec).
          */
