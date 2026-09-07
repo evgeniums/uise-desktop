@@ -279,7 +279,12 @@ class LinkedListView_p
                 {
                     if (after)
                     {
-                        if (newItem->prev() == nullptr)
+                        // Also require newItem to actually BE head, not merely have a null
+                        // prev() -- an item that was orphaned from the chain by a bug elsewhere
+                        // (unlinked but never had its own property cleared) also reads
+                        // prev()==nullptr, and treating that as "already correctly first" would
+                        // leave it unlinked forever instead of re-attaching it below.
+                        if (newItem->prev() == nullptr && head.lock() == newItem)
                         {
 #if 0
                             qDebug() << "LinkedListView_p::insertWidget stays first";
@@ -400,7 +405,15 @@ class LinkedListView_p
             {
                 pos=after?(existingItem->pos()+1):existingItem->pos();
             }
-            bool firstItemIsHead=pos==0;
+            // Structural test, not existingItem->pos()==0: pos() is a cached counter that the
+            // takeItem() loop just below can drift (its decPos() walk only fires for items after
+            // the item it unlinks -- if a widget being re-inserted in THIS batch previously sat
+            // before existingItem in the chain, existingItem->pos() read above is stale by the
+            // time it matters). Whether the first new item becomes the new head depends only on
+            // whether existingItem literally IS the current head and we're inserting before it
+            // (or there is no existingItem at all, i.e. an empty list) -- never on a position
+            // counter that bookkeeping elsewhere might have let drift.
+            bool firstItemIsHead=(!existingItem) || (!after && existingItem==head.lock());
 
             // construct item list from input widgets
             std::shared_ptr<LinkedListViewItem> firstItem;
@@ -492,12 +505,19 @@ class LinkedListView_p
                 }
             }
 
-            // update positions of items after last inserted item
-            pos=lastItem->pos();
-            for (auto item=lastItem->next(); item;)
+            // Renumber the WHOLE chain from head, rather than continuing the running `pos`
+            // counter captured above (which the takeItem() loop's own decPos() walk can already
+            // have made stale for existingItem/other already-linked items -- see the comment on
+            // firstItemIsHead above for why the same drift matters there too). This is what
+            // widgetSeqPos() -- and therefore visibleCount()/checkItemCount()'s hidden-item
+            // counts -- rely on to stay exact; an O(n) walk here is cheap next to relayout()'s
+            // own O(n) pass a few lines below.
             {
-                item->setPos(++pos);
-                item=item->next();
+                size_t p=0;
+                for (auto renumberItem=head.lock(); renumberItem; renumberItem=renumberItem->next())
+                {
+                    renumberItem->setPos(p++);
+                }
             }
 
 #ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT

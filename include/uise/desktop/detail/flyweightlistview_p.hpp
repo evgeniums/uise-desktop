@@ -407,6 +407,14 @@ class FlyweightListView_p : public OrientationInvariant
 
         typename ItemT::SortValueType m_maxSortValue;
         typename ItemT::SortValueType m_minSortValue;
+        // Whether m_maxSortValue/m_minSortValue have actually been set by the owner (via
+        // setMaxSortValue()/setMinSortValue()) rather than still holding ItemT::defaultSortValue().
+        // Used to tell "no more data past this edge" from "we don't know yet" wherever these
+        // markers are compared against an item -- see insertItem()/reorderItem()'s adjustMinMax
+        // block and checkItemCount()'s canFetchBefore/canFetchAfter. Item-vs-item order still
+        // goes entirely through m_orderComparer/OrderComparer, unaffected by these flags.
+        bool m_maxSortValueSet;
+        bool m_minSortValueSet;
 
         Qt::ScrollBarPolicy m_vbarPolicy;
         Qt::ScrollBarPolicy m_hbarPolicy;

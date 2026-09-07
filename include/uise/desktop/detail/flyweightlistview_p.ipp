@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 
 #include <QApplication>
 #include <QResizeEvent>
@@ -90,6 +91,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_cleared(false),
         m_maxSortValue(ItemT::defaultSortValue()),
         m_minSortValue(ItemT::defaultSortValue()),
+        m_maxSortValueSet(false),
+        m_minSortValueSet(false),
         m_vbarPolicy(Qt::ScrollBarAsNeeded),
         m_hbarPolicy(Qt::ScrollBarAsNeeded),
         m_scrollWheelHorizontal(true),
@@ -1038,7 +1041,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkInvariants(const 
     if (llWidgets.size()!=orderCount)
     {
         std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: linked-list length " << llWidgets.size()
-                   << " != sort-order length " << orderCount << std::endl;
+                   << " != sort-order length " << orderCount
+                   << " -- an item is orphaned from head (unreachable via next()) or the linked "
+                      "list holds a widget the sort-order index does not know about"
+                   << std::endl;
         return;
     }
 
@@ -1050,6 +1056,35 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkInvariants(const 
             std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: order/linked-list order mismatch at "
                           "pos " << i << std::endl;
             break;
+        }
+    }
+
+    // 4) two widgets actually linked into m_llist must never overlap on the main axis -- this is
+    // the geometry-level symptom of check 3's structural orphaning (an item unlinked from head
+    // keeps its old, now-stale geometry while relayout() repacks the reachable chain over it) and
+    // would also catch a future defect that leaves the chain structurally intact but mispositions
+    // a widget. Skipped for hidden/empty items -- relayout() itself skips them and never touches
+    // their geometry (see LinkedListView_p::isEmptyItem()).
+    {
+        int prevEdge=std::numeric_limits<int>::min();
+        bool havePrev=false;
+        for (auto w : llWidgets)
+        {
+            if (w==nullptr || (w->isHidden() && !w->sizePolicy().retainSizeWhenHidden()))
+            {
+                continue;
+            }
+            auto begin=oprop(w->geometry(),OProp::pos);
+            auto end=oprop(w->geometry(),OProp::edge);
+            if (havePrev && begin<=prevEdge)
+            {
+                std::cerr << "CHAT-FWLV-DEBUG[" << op << "]: widget=" << static_cast<const void*>(w)
+                           << " main-axis range starts at " << begin
+                           << " which overlaps the previous widget's edge at " << prevEdge
+                           << std::endl;
+            }
+            prevEdge=end;
+            havePrev=true;
         }
     }
 }
@@ -1071,24 +1106,22 @@ QWidget* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItemToContai
         }
         else
         {
-            //! @todo Latent hazard, not fixed in this pass: FlyweightListItem::sortValue()
-            //! reads the sort key *live* from the wrapped, mutable message object rather than
-            //! a value copied in at insertion time. This no-op modify() is here so boost knows
-            //! the ordered_non_unique index's key *might* have changed and should be
-            //! re-checked/re-positioned -- which is only correct because no live update path
-            //! mutates a still-inserted item's sort value. The two that could are both
-            //! accounted for: the dedup branch above goes through removeItem()+reinsert, and
-            //! ChatMessagesView::updateMessage() (which DOES have a caller now --
-            //! ChatMessages::upsertMessage()) only ever runs for changes that leave
-            //! chat_msg::sort_oid untouched, because ChatMessages::inPlaceUpdateFields()
-            //! refuses any sort-key change outright. This now has a real exercising case --
-            //! a resend (whitemclient/chat/resendmessage.cpp's commitResend()) re-stamps
-            //! sort_oid -- but it still lands on the dedup remove+reinsert branch above, not
-            //! this modify()-in-place one, exactly because of that inPlaceUpdateFields() refusal.
-            //! If a future path ever does change an
-            //! item's sort value while it is live in this index, this modify() call is exactly
-            //! where it must be paired with the mutation, or the ordered index silently
-            //! corrupts (boost's contract: keys must not change without notifying the index).
+            // FlyweightListItem::sortValue() reads the sort key *live* from the wrapped, mutable
+            // object rather than a value copied in at insertion time -- this no-op modify() is
+            // here so boost knows the ordered_non_unique index's key *might* have changed and
+            // should be re-checked/re-positioned. This IS a live path that mutates a
+            // still-inserted item's sort value: reorderItem() is called for exactly this reason
+            // (the chat list swaps its row's live sort key -- see ChatListItem::fill() -- then
+            // asks the view to reorder that same still-inserted item), so this modify() call is
+            // load-bearing, not defensive. The other item-mutation path stays excluded as before:
+            // ChatMessages::inPlaceUpdateFields() deliberately refuses any change to
+            // chat_msg::sort_oid, so a message resend (commitResend() in
+            // whitemclient/chat/resendmessage.cpp, which DOES re-stamp sort_oid) always lands on
+            // the dedup remove+reinsert branch above instead of here. Any future path that
+            // changes an item's sort value while it is live in this index must pair the mutation
+            // with a call that reaches this modify() (insertItem()/reorderItem()), or the ordered
+            // index silently corrupts (boost's contract: keys must not change without notifying
+            // the index).
             idx.modify(result.first,[](auto&){});
         }
     }
@@ -1140,13 +1173,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT
 {
     if (adjustMinMax)
     {
-        if (m_orderComparer(item.sortValue(),m_minSortValue))
+        if (!m_minSortValueSet || m_orderComparer(item.sortValue(),m_minSortValue))
         {
             m_minSortValue=item.sortValue();
+            m_minSortValueSet=true;
         }
-        if (m_orderComparer(m_maxSortValue,item.sortValue()))
+        if (!m_maxSortValueSet || m_orderComparer(m_maxSortValue,item.sortValue()))
         {
             m_maxSortValue=item.sortValue();
+            m_maxSortValueSet=true;
         }
     }
 
@@ -1157,69 +1192,70 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const ItemT& item, bool adjustMinMax)
 {
-    //! @todo Landmine for the "message updated while scrolled away from the stick edge"
-    //! symptom in todo-chat-messages-missing-after-insert.md: below, an item whose sort value
-    //! moves it past the edge the view is NOT currently sticking to is not reordered but
-    //! *deleted* (removeItem()), silently, with no way for the caller to know it vanished from
-    //! the view.
-    //!
-    //! Still unreachable from whitemdesktop, but NOT for the reason this comment used to give
-    //! (that ChatMessagesView::updateMessage() had no caller of its own -- it does now, see
-    //! ChatMessages::upsertMessage()). What keeps it unreachable is that
-    //! ChatMessages::inPlaceUpdateFields() deliberately does NOT exclude chat_msg::sort_oid
-    //! from its comparison, so any sort-key change fails the in-place test and falls back to a
-    //! full rebuild rather than reaching updateMessage()'s reorder branch. A resend
-    //! (whitemclient/chat/resendmessage.cpp's commitResend()) is exactly such a sort-key change
-    //! and is the first real path in the app that moves a message's position -- it stays on the
-    //! rebuild side of that fork too, so this reorderItem() landmine is still not exercised by
-    //! it. Keep that property in mind before loosening that check. Fixing this properly needs
-    //! either re-fetching the item on demand when scrolled back to that edge, or keeping it
-    //! hidden-but-tracked instead of dropped; still out of scope.
+    // This is the path an item's sort value is mutated *live*, in place, while still a member of
+    // this view's boost::multi_index container -- the chat list (ChatListItem::fill() swaps
+    // m_chat, which doubles as the row's sort key, then ChatList::onChatReorderRequested() calls
+    // this) is the confirmed real caller. It used to be believed unreachable; it is not, and that
+    // belief is why the two defects below went unnoticed:
+    //
+    //  1) firstItem()/lastItem() used to be read BEFORE the item's new position was applied to
+    //     the ordered index (insertItemToContainer()'s idx.modify() call), so the edge tests
+    //     compared item.sortValue() -- always read *live*, see FlyweightListItem::sortValue() --
+    //     against whatever structurally sat at begin()/rbegin() at that moment. That is only a
+    //     genuinely different node when some OTHER item occupies the edge; when item ITSELF was
+    //     already the structural edge (still true at that point, since it hadn't been
+    //     repositioned yet), the "comparison" quietly became item.sortValue() against itself,
+    //     always false, and the branch never fired -- accidental, not a deliberate exemption.
+    //  2) both edge branches unconditionally removeItem() the row whenever the view wasn't
+    //     sticking to that edge -- silently deleting it, with no callback and no refetch. Because
+    //     of (1), this only ever fired when the item was NEWLY arriving at an edge from somewhere
+    //     else -- exactly the "chat jumps to the top of a HOME-sticking chat list while the view
+    //     isn't scrolled to the very top" case -- which is a real, common reorder, not an
+    //     out-of-window case that should be silently dropped.
+    //
+    // Fix: capture edge identity (not value) both BEFORE and AFTER repositioning the item in the
+    // container. "Was/now is exactly firstItem()/lastItem()" is well-defined regardless of the
+    // live-value staleness that made comparing sortValue()s unreliable above, and reproduces (1)'s
+    // accidental-but-correct "already at this edge, stays there" case deliberately instead of by
+    // accident, while replacing (2)'s "arriving at an edge" test with the same identity check so
+    // it only fires for an item that is genuinely, newly the extreme -- never for one merely
+    // moving around inside the already-loaded window.
     if (adjustMinMax)
     {
-        if (m_orderComparer(item.sortValue(),m_minSortValue))
+        if (!m_minSortValueSet || m_orderComparer(item.sortValue(),m_minSortValue))
         {
             m_minSortValue=item.sortValue();
+            m_minSortValueSet=true;
         }
-        if (m_orderComparer(m_maxSortValue,item.sortValue()))
+        if (!m_maxSortValueSet || m_orderComparer(m_maxSortValue,item.sortValue()))
         {
             m_maxSortValue=item.sortValue();
+            m_maxSortValueSet=true;
         }
     }
 
-    auto first=firstItem();
-    auto last=lastItem();
+    const bool wasFirst=(firstItem()==&item);
+    const bool wasLast=(lastItem()==&item);
 
-    if (last!=nullptr && m_orderComparer(last->sortValue(),item.sortValue()))
+    auto afterWidget=insertItemToContainer(item,true);
+
+    const bool isLast=(lastItem()==&item);
+    if (isLast && !wasLast && !(m_stick==Direction::END && isAtEnd()))
     {
-        if (m_stick==Direction::END && isAtEnd())
-        {
-            m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
-        }
-        else
-        {
-            removeItem(item.id());
-        }
-
+        removeItem(item.id());
         return;
     }
 
-    if (first!=nullptr && m_orderComparer(item.sortValue(),first->sortValue()))
+    const bool isFirst=(firstItem()==&item);
+    if (isFirst && !wasFirst && !(m_stick==Direction::HOME && isAtBegin()))
     {
-        if (m_stick==Direction::HOME && isAtBegin())
-        {
-            insertItemToContainer(item);
-            m_llist->insertWidgetAfter(item.widget(),nullptr);
-        }
-        else
-        {
-            removeItem(item.id());
-        }
-
+        removeItem(item.id());
         return;
     }
 
-    m_llist->insertWidgetAfter(item.widget(),insertItemToContainer(item));
+    m_llist->insertWidgetAfter(item.widget(),afterWidget);
+
+    checkInvariants("reorderItem");
 }
 
 //--------------------------------------------------------------------------
@@ -1400,6 +1436,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
     m_firstWidgetPos=0;
     m_prefetchItemWindow=m_prefetchItemWindowHint;
     m_currentBatchCount=0;
+    m_maxSortValueSet=false;
+    m_minSortValueSet=false;
 
     m_cleared=true;
     m_jumpEdge->setVisible(false);
@@ -1866,7 +1904,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         }
         hiddenBefore=static_cast<size_t>(diff);
     }
-    bool canFetchBefore=first && m_orderComparer(m_minSortValue,first->sortValue());
+    bool canFetchBefore=first && (!m_minSortValueSet || m_orderComparer(m_minSortValue,first->sortValue()));
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
     std::cout << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" minPrefetch "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
@@ -1932,7 +1970,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
              << " itemCount="<<itemsCount();
 #endif
 
-    bool canFetchAfter=last && m_orderComparer(last->sortValue(),m_maxSortValue);
+    bool canFetchAfter=last && (!m_maxSortValueSet || m_orderComparer(last->sortValue(),m_maxSortValue));
     if ((m_currentBatchCount>0 || hiddenAfter<minPrefetch)  && canFetchAfter)
     {
         if (m_requestItemsCb)
@@ -2002,8 +2040,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenAfter=to-from;
     }
 
-    bool canFetchBefore=first && m_orderComparer(m_minSortValue,first->sortValue());
-    bool canFetchAfter=last && m_orderComparer(last->sortValue(),m_maxSortValue);
+    bool canFetchBefore=first && (!m_minSortValueSet || m_orderComparer(m_minSortValue,first->sortValue()));
+    bool canFetchAfter=last && (!m_maxSortValueSet || m_orderComparer(last->sortValue(),m_maxSortValue));
     if (!canFetchBefore && !canFetchAfter)
     {
         m_currentBatchCount=0;
@@ -2443,7 +2481,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
         {
             scrollToEdge(Direction::END);
         }
-        else if (last!=nullptr && !m_orderComparer(last->sortValue(),m_maxSortValue))
+        else if (last!=nullptr && m_maxSortValueSet && !m_orderComparer(last->sortValue(),m_maxSortValue))
         {
             scrollToEdge(Direction::END);
         }
@@ -2459,7 +2497,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
         {
             scrollToEdge(Direction::HOME);
         }
-        else if (first!=nullptr && !m_orderComparer(m_minSortValue,first->sortValue()))
+        else if (first!=nullptr && m_minSortValueSet && !m_orderComparer(m_minSortValue,first->sortValue()))
         {
             scrollToEdge(Direction::HOME);
         }

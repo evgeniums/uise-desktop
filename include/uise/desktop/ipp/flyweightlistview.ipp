@@ -536,6 +536,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setMaxSortValue(const typename ItemT::SortValueType &value) noexcept
 {
     pimpl->m_maxSortValue=value;
+    pimpl->m_maxSortValueSet=true;
 }
 
 //--------------------------------------------------------------------------
@@ -550,6 +551,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setMinSortValue(const typename ItemT::SortValueType &value) noexcept
 {
     pimpl->m_minSortValue=value;
+    pimpl->m_minSortValueSet=true;
 }
 
 //--------------------------------------------------------------------------
