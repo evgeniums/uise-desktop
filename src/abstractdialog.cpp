@@ -178,6 +178,7 @@ void AbstractDialog::setButtonText(int id, const QString& text)
 
 void AbstractDialog::closeDialog()
 {
+    emit aboutToClose();
     emit closeRequested();
 }
 

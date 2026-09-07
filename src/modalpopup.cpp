@@ -382,7 +382,19 @@ void ModalPopup::updateWidgetGeometry()
 void ModalPopup::setShortcutEnabled(bool enable)
 {
     pimpl->shortcutEnabled=enable;
-    pimpl->shortcut->setEnabled(pimpl->shortcutEnabled);
+    // Only a popup that is actually ON SCREEN may hold a LIVE Escape shortcut -- see this class's
+    // own ctor comment: 2+ simultaneously enabled Qt::WindowShortcut Escape shortcuts in one
+    // window make Escape ambiguous, and Qt then hands a press to just one of them instead of
+    // firing activated() on the intended one. The ctor closes that gap for a popup that has never
+    // been opened, but arming the shortcut unconditionally here re-opened it immediately for
+    // every dialog whose OWN constructor re-enables the shortcut to undo ModalDialog<>'s
+    // disabled-by-default (ModalFileUploadDialog, ModalReplyDialog, ModalForwardDialog all do) --
+    // a ChatPage constructs all three of those hosts eagerly, so it carried three armed Escape
+    // shortcuts for popups that were not showing and might never be shown, on top of its own
+    // window-level one. Costs nothing to defer: popup() applies shortcutEnabled on every open and
+    // close() clears it again, while an already-visible popup still takes the change immediately,
+    // which is what FrameWithModalStatus's live closable/cancellable updates rely on.
+    pimpl->shortcut->setEnabled(pimpl->shortcutEnabled && isVisible());
 }
 
 //--------------------------------------------------------------------------

@@ -234,6 +234,17 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
 
         void buttonClicked(int id);
 
+        /**
+         * @brief Emitted immediately before closeRequested(), from closeDialog() itself.
+         *
+         * For a host that must read the dialog's own content before an implementation's
+         * closeRequested handler resets it (e.g. FileUploadDialog::construct() connects
+         * closeRequested to reset(), which clears every field) -- covers every close path
+         * (Cancel, Escape, outside click, a host-driven closeDialog() call) alike, since they all
+         * funnel through closeDialog().
+         */
+        void aboutToClose();
+
         void closeRequested();
 
         void closableChanged(bool enable);
