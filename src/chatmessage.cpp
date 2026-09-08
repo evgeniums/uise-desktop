@@ -750,7 +750,13 @@ void ChatMessageContent::positionBottom()
         x=minX;
     }
 
-    int y=qBound(cr.y(),t->y()+line.bottom()+1-sz.height(),cr.bottom()+1-sz.height());
+    // Natural position bottom-aligns the row's own bottom edge with the last line's bottom edge
+    // -- inlineBottomYOffset() nudges it DOWN from there (a small positive default: purely
+    // bottom-aligned reads as sitting slightly too high, ahead of/above the text's own
+    // descenders), clamped so it can never push past the bubble's own bottom edge.
+    int y=qBound(cr.y(),
+                 t->y()+line.bottom()+1-sz.height()+b->inlineBottomYOffset(),
+                 cr.bottom()+1-sz.height());
 
     b->setGeometry(x,y,sz.width(),sz.height());
 }

@@ -479,6 +479,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
     Q_PROPERTY(int narrowBodyWidth READ narrowBodyWidth WRITE setNarrowBodyWidth)
     Q_PROPERTY(int rowMinWidth READ rowMinWidth WRITE setRowMinWidth)
     Q_PROPERTY(int inlineBottomGap READ inlineBottomGap WRITE setInlineBottomGap)
+    Q_PROPERTY(int inlineBottomYOffset READ inlineBottomYOffset WRITE setInlineBottomYOffset)
 
     public:
 
@@ -494,6 +495,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         //! inline. Kept independent of the narrow-body widening's own gap so the two stay
         //! separately tunable. Settable from QSS via qproperty-inlineBottomGap.
         constexpr static const int DefaultInlineBottomGap=10;
+        //! Vertical nudge applied on top of the inline row's natural bottom-aligned position
+        //! (which otherwise sits with its own bottom edge exactly flush with the last text
+        //! line's bottom edge -- see ChatMessageContent::positionBottom()). Positive moves the
+        //! row DOWN, closer to the bubble's own bottom edge (clamped there either way). Settable
+        //! from QSS via qproperty-inlineBottomYOffset.
+        constexpr static const int DefaultInlineBottomYOffset=3;
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
@@ -535,6 +542,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
             return m_inlineBottomGap;
         }
 
+        void setInlineBottomYOffset(int offset) noexcept
+        {
+            m_inlineBottomYOffset=offset;
+        }
+
+        int inlineBottomYOffset() const noexcept
+        {
+            return m_inlineBottomYOffset;
+        }
+
         //! Natural size of the row itself: the plain QFrame base, bypassing this class'
         //! (concrete subclass') own sizeHint() override -- which in "row" mode reports the WHOLE
         //! bubble width to right-align the row within it -- and any QSS widget minimum, which
@@ -552,6 +569,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         int m_narrowBodyWidth=DefaultNarrowBodyWidth;
         int m_rowMinWidth=DefaultRowMinWidth;
         int m_inlineBottomGap=DefaultInlineBottomGap;
+        int m_inlineBottomYOffset=DefaultInlineBottomYOffset;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild

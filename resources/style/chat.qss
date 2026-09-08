@@ -207,11 +207,15 @@ max-width: 40px;
  * the ROW-mode width (ChatMessageBottom::bubbleWidthHint()'s own fallback branch); it has no
  * effect on the row's natural (inline) size. inlineBottomGap is the horizontal gap between the
  * last line's own right edge and the row when inline -- independent of narrowBodyWidth's gap
- * (BottomGap in chatmessage.cpp), which only applies to the full-width-row widening case. */
+ * (BottomGap in chatmessage.cpp), which only applies to the full-width-row widening case.
+ * inlineBottomYOffset nudges the inline row DOWN from its natural bottom-aligned-with-the-last-
+ * line position (see ChatMessageContent::positionBottom()) -- purely bottom-aligned reads as
+ * sitting slightly too high above the text's own descenders. */
 uise--AbstractChatMessageBottom {
 qproperty-rowMinWidth: 90;
 qproperty-narrowBodyWidth: 200;
 qproperty-inlineBottomGap: 10;
+qproperty-inlineBottomYOffset: 3;
 }
 
 /* Hard cap on rendered text width -- a bubble that fills a wide window produces unreadably long
