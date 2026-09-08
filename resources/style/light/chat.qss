@@ -28,7 +28,6 @@ uise--AbstractChatMessage uise--ChatMessageAvatar[sent="true"] {
 qproperty-tailColor: #DEEFFB; /* sent message */
 }
 
-
 uise--AbstractChatMessageContent[selected="true"][sent="true"] {
 background-color: #AEE2FF; /* selected sent message */
 }
