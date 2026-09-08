@@ -207,6 +207,26 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
             return m_alignSentMode;
         }
 
+        //! Minutes of silence between two same-sender messages before adjustMessageList() starts a
+        //! new batch for the later one, in addition to the existing sender-change/separator splits.
+        //! 0 (the default) disables time-based splitting entirely -- app code (or a stored user
+        //! setting) opts in. No-op if unchanged; otherwise emits batchGapMinutesChanged(), which
+        //! ChatMessagesView connects to a re-sweep of already-loaded messages.
+        void setBatchGapMinutes(int minutes)
+        {
+            if (m_batchGapMinutes==minutes)
+            {
+                return;
+            }
+            m_batchGapMinutes=minutes;
+            emit batchGapMinutesChanged();
+        }
+
+        int batchGapMinutes() const noexcept
+        {
+            return m_batchGapMinutes;
+        }
+
         //! The side sent messages currently resolve to, given alignSentMode() and (in Auto mode)
         //! this view's own width vs. alignSentLeftWidth(). ChatMessagesView::makeMessage() reads
         //! this for every newly built message; effectiveAlignSentChanged() drives re-applying it
@@ -267,7 +287,24 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         //! ChatMessagesView connects this to a sweep over every already-loaded message.
         void effectiveAlignSentChanged();
 
+        //! batchGapMinutes() changed. ChatMessagesView connects this to a re-sweep (readjustList())
+        //! of every already-loaded message, so a live settings change re-flows batches immediately.
+        void batchGapMinutesChanged();
+
     protected:
+
+        //! True when `later` is far enough after `earlier` to start a new batch, given the current
+        //! batchGapMinutes(). Always false when time splitting is off (batchGapMinutes()<=0) or
+        //! either timestamp is invalid -- used by ChatMessagesView::adjustMessageList() alongside
+        //! the existing sameSender() check.
+        bool batchGapExceeded(const QDateTime& earlier, const QDateTime& later) const
+        {
+            if (m_batchGapMinutes<=0 || !earlier.isValid() || !later.isValid())
+            {
+                return false;
+            }
+            return earlier.secsTo(later) > static_cast<qint64>(m_batchGapMinutes)*60;
+        }
 
         //! Re-evaluates effectiveAlignSent() from the current alignSentMode()/width()/
         //! alignSentLeftWidth(). Returns true (having already emitted effectiveAlignSentChanged())
@@ -309,6 +346,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         AbstractChatMessage::AlignSent m_effectiveAlignSent=AbstractChatMessage::AlignSent::Right;
         int m_alignSentLeftWidth=0;
         int m_maxMessageWidth=0;
+        int m_batchGapMinutes=0;
 };
 
 template <typename BaseMessageT, typename Traits>

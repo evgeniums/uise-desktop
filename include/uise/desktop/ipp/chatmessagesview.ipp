@@ -400,6 +400,19 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             blockFloatingAvatar();
         }
     );
+
+    // A live settings change (e.g. the app's "start a new group after N minutes" preference) must
+    // re-flow batch boundaries for messages already on screen -- readjustList() re-derives them via
+    // the same adjustMessageList() pass every load/insert/update already goes through.
+    connect(
+        this,
+        &AbstractChatMessagesView::batchGapMinutesChanged,
+        this,
+        [this]()
+        {
+            readjustList();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -572,11 +585,12 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         // set first in batch
         msg->ui()->setFirstInBatch(prevLastInBatch);
 
-        // check if the next message is by same author or last in list
+        // check if the next message is by same author, close enough in time, or last in list
         auto lastInBatch = i==messages.size()-1;
         if (!lastInBatch)
         {
-            lastInBatch=!msg->msg()->sameSender(messages[i+1]->msg());
+            auto* next=messages[i+1]->msg();
+            lastInBatch=!msg->msg()->sameSender(next) || batchGapExceeded(dt,next->dateTime());
         }
         msg->ui()->setLastInBatch(lastInBatch);
 
