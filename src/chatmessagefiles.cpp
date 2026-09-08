@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <limits>
 
 #include <QBoxLayout>
 
@@ -473,6 +474,27 @@ QRect ChatMessageFiles::lastTextLineRect() const
     // updateMaximumBubbleWidth() already treat pimpl->comment as this widget's own trailing row.
     auto cm=contentsMargins();
     return rect.translated(cm.left(),cm.top()+pimpl->contentsFrame->sizeHint().height());
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageFiles::ownWidthCeiling() const
+{
+    // The observed body width (bubbleWidthHint()'s own `width`) can reach whichever cap governs
+    // the LARGER of its two contributors -- the file rows (this section's own maxBubbleWidth,
+    // applied via row->limitWidth()) or the caption (its own, possibly different, maxBubbleWidth)
+    // -- so the ceiling here is the max of the two, not just this section's own cap alone.
+    auto ownCeiling=clampToMaxBubbleWidth(std::numeric_limits<int>::max());
+    if (!pimpl->comment->isHidden())
+    {
+        auto commentCeiling=pimpl->comment->ownWidthCeiling();
+        if (ownCeiling>=std::numeric_limits<int>::max() || commentCeiling>=std::numeric_limits<int>::max())
+        {
+            return std::numeric_limits<int>::max();
+        }
+        ownCeiling=std::max(ownCeiling,commentCeiling);
+    }
+    return ownCeiling;
 }
 
 //--------------------------------------------------------------------------

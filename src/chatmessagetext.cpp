@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <limits>
+
 #include <QCoreApplication>
 #include <QTimer>
 #include <QWheelEvent>
@@ -594,6 +596,17 @@ QRect ChatMessageText::lastTextLineRect() const
     // correct if that ever changes, matching how bubbleWidthHint()/updateMaximumBubbleWidth()
     // treat the browser as filling this frame's own contents rect.
     return rect.translated(contentsMargins().left(),contentsMargins().top());
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageText::ownWidthCeiling() const
+{
+    // clampToMaxBubbleWidth() against the largest possible value is exactly maxBubbleWidth()
+    // itself when the cap is enabled (>0), or a pass-through (no cap) when it's disabled -- same
+    // helper bubbleWidthHint()/updateMaximumBubbleWidth() already use, so this can never
+    // disagree with what they actually enforced.
+    return clampToMaxBubbleWidth(std::numeric_limits<int>::max());
 }
 
 //--------------------------------------------------------------------------

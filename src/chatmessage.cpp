@@ -278,7 +278,7 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
 {
     m_bottomInline=false;
     m_inlineLineRect=QRect{};
-    m_inlineBottomSize=QSize{};
+    m_bottomNaturalSize=QSize{};
     m_inlineBubbleWidth=0;
 
     auto* b=bottom();
@@ -288,6 +288,10 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
         return;
     }
 
+    // Recorded for BOTH modes -- the row is manually placed either way, so this is the size it
+    // is actually given (see ChatMessageContent::positionBottom()).
+    m_bottomNaturalSize=b->naturalSize();
+
     auto line=t->lastTextLineRect();
     if (!line.isValid())
     {
@@ -296,24 +300,34 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
         // nothing to overlay the row onto, so it falls back to its own full-width row below.
         return;
     }
+    // Recorded even when the row ends up NOT going inline: setMaximumBubbleWidth() needs it to
+    // measure the trailing section's own dead space below this line, which ROW mode then pulls
+    // the row's own Y and reserved height from (see setMaximumBubbleWidth()).
+    m_inlineLineRect=line;
 
-    auto sz=b->naturalSize();
+    auto sz=m_bottomNaturalSize;
     if (sz.width()<=0)
     {
         return;
     }
 
+    // Never widen past whatever ceiling ALREADY governs this section's own content on its own
+    // terms (e.g. a text body's own, typically much smaller, qproperty-maxBubbleWidth) -- only
+    // forMaxWidth (the negotiation's own, typically much larger, budget) would let a short
+    // single-line message get pushed wider than that SAME text would ever be allowed to grow if
+    // it needed to wrap instead. ownWidthCeiling() defaults to "no cap" for a section (e.g. an
+    // image album) that has none of its own.
+    auto ceiling=std::min(forMaxWidth,t->ownWidthCeiling());
+
     auto need=line.right()+1+b->inlineBottomGap()+sz.width();
-    if (need>forMaxWidth)
+    if (need>ceiling)
     {
-        // Doesn't fit even at the negotiation's own maximum -- fall back to a row below, exactly
-        // as a too-wide body already falls back to being clamped to forMaxWidth.
+        // Doesn't fit even at the applicable maximum -- fall back to a row below, exactly as a
+        // too-wide body already falls back to being clamped to forMaxWidth.
         return;
     }
 
     m_bottomInline=true;
-    m_inlineLineRect=line;
-    m_inlineBottomSize=sz;
     m_inlineBubbleWidth=need;
 }
 
@@ -343,14 +357,15 @@ void AbstractChatMessageContent::rebuildSections()
 
 //--------------------------------------------------------------------------
 
-void AbstractChatMessageContent::renegotiateBubbleWidth()
+bool AbstractChatMessageContent::renegotiateBubbleWidth()
 {
     if (!m_everNegotiated)
     {
         // No real forMaxWidthIn to repeat yet -- see this function's own doc comment.
-        return;
+        return false;
     }
     updateBubbleWidth(m_lastForMaxWidth);
+    return true;
 }
 
 //--------------------------------------------------------------------------
@@ -363,23 +378,68 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
         section->updateMaximumBubbleWidth();
     }
 
-    m_inlineExtraHeight=0;
-    if (m_bottomInline)
+    // MUST run before the anchors below are measured: it is what takes bottom() out of m_layout
+    // (updateWidgets() puts it back on every rebuild), and sectionsBottom is read from the
+    // layout's own sizeHint -- with the row still in it, that would be inflated by the row's own
+    // height on the first pass after any rebuild, placing the row too low until something forced
+    // a second pass. It reads only isBottomInline(), so it has no dependency on the anchors.
+    updateBottomPlacement();
+
+    // The trailing section's height is FINAL now (its own updateMaximumBubbleWidth() just ran,
+    // above -- for ChatMessageText that re-wraps the document at the width PINNED during
+    // bubbleWidthHint(), reproducing an identical layout, so m_inlineLineRect is still
+    // accurate).
+    //
+    // bottom() is NOT a layout item in either mode -- it is placed manually by positionBottom()
+    // -- so the layout's own height covers everything EXCEPT the row, and both the row's Y and
+    // whatever extra height it needs beyond that are computed here, from the same two anchors:
+    // `lineBottom` (where the trailing text actually ends) and `sectionsBottom` (where the
+    // layout's own content ends, i.e. including that section's dead space below its last line:
+    // QTextDocument's bottom documentMargin plus descender space).
+    auto* t=trailingSection();
+    m_bottomExtraHeight=0;
+    m_bottomY=0;
+    if (m_bottom!=nullptr && t!=nullptr && !m_bottomNaturalSize.isEmpty())
     {
-        // The trailing section's height is FINAL now (its own updateMaximumBubbleWidth() just
-        // ran, above -- for ChatMessageText that re-wraps the document at the width PINNED
-        // during bubbleWidthHint(), reproducing an identical layout, so m_inlineLineRect is
-        // still accurate). slack is however much room that section's own document already
-        // leaves below its last line (QTextDocument's own bottom margin) -- reusing it instead
-        // of reserving on top of it is what keeps a fitting row from reintroducing a blank band.
-        auto* t=trailingSection();
-        auto slack=(t!=nullptr)
+        // Both anchors are derived from SIZE HINTS, never from t->y()/t->height(): this runs
+        // before the layout below has been re-activated, so the sections' actual geometry can
+        // still be a pass behind, while their hints are always current.
+        auto sectionsBottom=AbstractChatMessageChild::sizeHint().height()-contentsMargins().bottom();
+        auto slack=m_inlineLineRect.isValid()
             ? std::max(0,t->sizeHint().height()-(m_inlineLineRect.bottom()+1))
             : 0;
-        m_inlineExtraHeight=std::max(0,m_inlineBottomSize.height()-m_inlineLineRect.height()-slack);
+        auto lineBottom=sectionsBottom-slack;
+
+        if (m_bottomInline)
+        {
+            // INLINE: sits ON the last line, its own bottom edge aligned with that line's,
+            // nudged by inlineBottomYOffset -- it consumes the dead space rather than adding to
+            // it, which is what keeps a fitting row from reintroducing a blank band.
+            m_bottomY=lineBottom-m_bottomNaturalSize.height()+m_bottom->inlineBottomYOffset();
+        }
+        else
+        {
+            // ROW: on its own line BELOW the text -- measured from where the text actually ends
+            // (lineBottom), not from the section's box, so the dead space is absorbed instead of
+            // stacked on top of rowTopGap. That asymmetry (a big gap above the row, almost none
+            // below) is exactly what this replaced.
+            m_bottomY=lineBottom+m_bottom->rowTopGap();
+        }
+
+        // The bubble ends a fixed rowBottomPadding() below the row, in BOTH modes -- that one
+        // property is the whole "space under the bottom row" knob (plus whatever bottom padding
+        // uise--AbstractChatMessageContent itself carries, frequently 0).
+        auto bottomEnd=m_bottomY+m_bottomNaturalSize.height()+m_bottom->rowBottomPadding();
+
+        // Deliberately allowed to go NEGATIVE, unlike a plain shortfall: inline, the row sits
+        // inside the trailing section's own dead space, so without trimming, the space left
+        // under it is whatever that section's document margin happens to be (~8px) rather than
+        // rowBottomPadding() -- the gap would differ between the two modes and be unadjustable
+        // inline. Floored at -slack so the trim can only ever eat that EMPTY margin, never the
+        // last line of text itself.
+        m_bottomExtraHeight=std::max(bottomEnd-sectionsBottom,-slack);
     }
 
-    updateBottomPlacement();
     updateGeometry();
     resize(sizeHint());
 
@@ -404,7 +464,7 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
 QSize AbstractChatMessageContent::sizeHint() const
 {
     return QSize{m_maximumBubbleWidth+horizontalTotalMargin(this),
-                 AbstractChatMessageChild::sizeHint().height()+m_inlineExtraHeight};
+                 AbstractChatMessageChild::sizeHint().height()+m_bottomExtraHeight};
 }
 
 /***************************ChatSeparatorSection*****************************/
@@ -686,47 +746,42 @@ void ChatMessageContent::updateBottomPlacement()
         return;
     }
 
-    bool wantInline=isBottomInline();
-    if (wantInline==m_bottomInLayout)
+    // bottom() is never a layout item: it is manually placed by positionBottom() in BOTH modes.
+    // Row mode used to keep it in m_layout, but then the trailing section's own dead space below
+    // its last line (QTextDocument's bottom documentMargin plus descender space) stacked on top
+    // of the row as pure padding, so the gap above it was far bigger than the one below -- and
+    // the obvious fix, a negative top contents margin to pull it back up, does not work: Qt
+    // clamps contentsRect to the widget's own rect, so the widget shrank while its contents were
+    // squeezed and clipped instead of moving. Placing it explicitly (see
+    // setMaximumBubbleWidth(), which computes bottomY(), and positionBottom(), which applies it)
+    // controls both gaps directly, with no Qt margin quirks in the way.
+    if (m_bottomInLayout)
     {
-        // Mode actually changing.
-        if (wantInline)
-        {
-            // removeWidget() invalidates m_layout itself (no repolish, no reparent -- b stays a
-            // child of `this` either way, just outside the layout from here on).
-            m_layout->removeWidget(b);
-        }
-        else
-        {
-            // Re-insert right before the trailing addStretch(1), i.e. exactly the slot
-            // updateWidgets() would have put it in.
-            m_layout->insertWidget(m_layout->count()-1,b,0,Qt::AlignLeft);
-        }
-        m_bottomInLayout=!wantInline;
-        // removeWidget() does not hide the widget, and insertWidget() alone would leave a
-        // widget that was hidden while inline (never the case today, but keep this robust)
-        // hidden until a queued show -- explicit show() matches updateWidgets()'s own idiom.
+        // removeWidget() invalidates m_layout itself (no repolish, no reparent -- b stays a
+        // child of `this` either way, just outside the layout from here on). It also does not
+        // hide the widget, but show() matches updateWidgets()'s own idiom and keeps this robust.
+        m_layout->removeWidget(b);
+        m_bottomInLayout=false;
         b->show();
     }
 
-    if (wantInline)
-    {
-        // bottom() is constructed BEFORE body() in whitemdesktop's doInit(), so in raw z-order
-        // the body would paint over it once it is no longer separated by the layout's own
-        // vertical stacking. Idempotent -- safe every time isBottomInline() stays true too.
-        b->raise();
-    }
+    // bottom() is constructed BEFORE body() in whitemdesktop's doInit(), so in raw z-order the
+    // body would paint over it now that the layout's vertical stacking no longer separates them.
+    // Idempotent, so it costs nothing to reassert every pass.
+    b->raise();
+
+    // Left at zero in both modes: the row's spacing is expressed as bottomY()/rowTopGap()/
+    // rowBottomPadding() around a naturally-sized widget, never as margins inside it. (This is
+    // also why no QSS rule may set `padding` on uise--ChatMessageBottom -- QSS padding lands on
+    // this same widget's contentsMargins, and would then be double-counted against
+    // naturalSize().)
+    b->setContentsMargins(0,0,0,0);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::positionBottom()
 {
-    if (!isBottomInline())
-    {
-        return;
-    }
-
     auto* b=bottom();
     auto* t=trailingSection();
     if (b==nullptr || t==nullptr)
@@ -734,29 +789,36 @@ void ChatMessageContent::positionBottom()
         return;
     }
 
-    auto cr=contentsRect();
-    auto sz=inlineBottomSize();
-    auto line=inlineLineRect();
-
-    // Right-aligned against the bubble, like today's full-width row -- reproduces the common
-    // "long paragraph, short last line" look, where the row visually lines up with the bubble's
-    // own right edge rather than hugging the end of the text.
-    int x=cr.right()+1-sz.width();
-    int minX=t->x()+line.right()+1+b->inlineBottomGap();
-    if (x<minX)
+    auto sz=bottomNaturalSize();
+    if (sz.isEmpty())
     {
-        // Safety net -- evaluateInlineBottom() already guarantees cr's width can fit both, so
-        // this should never actually fire.
-        x=minX;
+        return;
     }
 
-    // Natural position bottom-aligns the row's own bottom edge with the last line's bottom edge
-    // -- inlineBottomYOffset() nudges it DOWN from there (a small positive default: purely
-    // bottom-aligned reads as sitting slightly too high, ahead of/above the text's own
-    // descenders), clamped so it can never push past the bubble's own bottom edge.
-    int y=qBound(cr.y(),
-                 t->y()+line.bottom()+1-sz.height()+b->inlineBottomYOffset(),
-                 cr.bottom()+1-sz.height());
+    auto cr=contentsRect();
+
+    // Right-aligned against the bubble in BOTH modes -- in row mode that reproduces exactly what
+    // the old full-width row looked like (its own internal leading stretch pushed the time to
+    // the bubble's right edge), and in inline mode it gives the common "long paragraph, short
+    // last line" case the same right-edge alignment rather than hugging the end of the text.
+    int x=cr.right()+1-sz.width();
+    if (isBottomInline())
+    {
+        auto line=inlineLineRect();
+        int minX=cr.x()+line.right()+1+b->inlineBottomGap();
+        if (x<minX)
+        {
+            // Safety net -- evaluateInlineBottom() already guarantees cr's width fits both, so
+            // this should never actually fire.
+            x=minX;
+        }
+    }
+
+    // bottomY() is measured in the same space as contentsRect()'s own origin (both start at this
+    // widget's top-left plus its contents margins) -- see setMaximumBubbleWidth(), which derives
+    // it from size hints alone so it is valid even before the layout has been re-activated. The
+    // clamp is a floor/ceiling only; the reserved extra height means it should never bind.
+    int y=qBound(cr.y(),bottomY(),cr.bottom()+1-sz.height());
 
     b->setGeometry(x,y,sz.width(),sz.height());
 }
@@ -1700,21 +1762,21 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
 
     pimpl->seen=new IconTextButton(Style::instance().svgIconLocator().icon("ChatMessageBottom::seen"),this);
     pimpl->seen->setObjectName("seen");
-    l->addWidget(pimpl->seen,0,Qt::AlignRight);
+    l->addWidget(pimpl->seen);
     pimpl->seen->setVisible(false);
 
     pimpl->edited=new QLabel(this);
     pimpl->edited->setObjectName("edited");
-    l->addWidget(pimpl->edited,0,Qt::AlignRight);
+    l->addWidget(pimpl->edited);
     pimpl->edited->setVisible(false);
 
     pimpl->time=new QLabel(this);
     pimpl->time->setObjectName("time");
-    l->addWidget(pimpl->time,0,Qt::AlignRight);
+    l->addWidget(pimpl->time);
 
     pimpl->status=new WithRoundedImage(this);
     pimpl->status->setObjectName("status");
-    l->addWidget(pimpl->status,0,Qt::AlignRight);
+    l->addWidget(pimpl->status);
     pimpl->status->setVisible(false);
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Preferred);
@@ -1727,10 +1789,31 @@ ChatMessageBottom::~ChatMessageBottom()
 
 //--------------------------------------------------------------------------
 
+void ChatMessageBottom::refreshPlacement()
+{
+    // Every setter below changes this row's own CONTENT, and so its naturalSize() -- which is
+    // an input to all three of: the inline-vs-row decision (a wider row may no longer fit beside
+    // the last line), the row's Y, and the height the bubble reserves for it. Re-running the
+    // negotiation is what recomputes all three; merely re-positioning would place the row using
+    // the size cached from BEFORE this change, which is exactly what made a message visibly
+    // shift a frame after it first appeared (the time/status/edited markers are filled in after
+    // the bubble's first negotiation pass).
+    //
+    // Cheap in the case that matters most: during a chat load these setters run while the
+    // message is still being built, before any real negotiation pass, where this is a no-op.
+    if (chatContent()!=nullptr)
+    {
+        chatContent()->renegotiateBubbleWidth();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageBottom::setTimeString(const QString& time, const QString& tooltip)
 {
     pimpl->time->setText(time);
     pimpl->time->setToolTip(tooltip);
+    refreshPlacement();
 }
 
 //--------------------------------------------------------------------------
@@ -1740,6 +1823,7 @@ void ChatMessageBottom::setStatusIcon(std::shared_ptr<SvgIcon> icon, const QStri
     pimpl->status->setVisible(static_cast<bool>(icon));
     pimpl->status->image()->setSvgIcon(std::move(icon));
     pimpl->status->setToolTip(tooltip);
+    refreshPlacement();
 }
 
 //--------------------------------------------------------------------------
@@ -1749,15 +1833,7 @@ void ChatMessageBottom::setEdited(const QString& text, const QString& tooltip)
     pimpl->edited->setText(text);
     pimpl->edited->setToolTip(tooltip);
     pimpl->edited->setVisible(!text.isEmpty());
-    // A visibility/text change here can change this row's own natural width -- in inline mode
-    // that is not renegotiated (a full updateBubbleWidth() pass is too costly to run per status
-    // change during a chat load), just re-positioned against the geometry already settled on;
-    // the right-aligned placement plus positionBottom()'s own minX clamp absorbs a modest change
-    // until the host's next real negotiation pass, which any genuine edit already triggers.
-    if (chatContent()!=nullptr && chatContent()->isBottomInline())
-    {
-        chatContent()->positionBottom();
-    }
+    refreshPlacement();
 }
 
 //--------------------------------------------------------------------------
@@ -1767,28 +1843,19 @@ void ChatMessageBottom::setSeen(const QString& text, const QString& tooltip)
     pimpl->seen->setText(text);
     pimpl->seen->setToolTip(tooltip);
     pimpl->seen->setVisible(!text.isEmpty());
-    if (chatContent()!=nullptr && chatContent()->isBottomInline())
-    {
-        chatContent()->positionBottom();
-    }
+    refreshPlacement();
 }
 
 //--------------------------------------------------------------------------
 
 QSize ChatMessageBottom::sizeHint() const
 {
-    if (chatContent()!=nullptr && chatContent()->isBottomInline())
-    {
-        // Its own natural size, not the whole bubble width -- the whole-bubble-width override
-        // below is what right-aligns a full ROW; a manually placed inline row needs its actual
-        // footprint instead.
-        return naturalSize();
-    }
-    if (chatContent()==nullptr)
-    {
-        return AbstractChatMessageBottom::sizeHint();
-    }
-    return QSize{chatContent()->maximumBubbleWidth(),AbstractChatMessageBottom::sizeHint().height()};
+    // Always this row's own footprint. This used to report the WHOLE bubble width in row mode,
+    // which was how a full-width layout item got its content right-aligned (its own leading
+    // addStretch(1) did the rest) -- but the row is no longer a layout item in either mode
+    // (ChatMessageContent::updateBottomPlacement()), and positionBottom() right-aligns the
+    // widget itself now, so claiming the bubble's width would only oversize it.
+    return naturalSize();
 }
 
 //--------------------------------------------------------------------------
@@ -1808,7 +1875,7 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     // body()->bubbleWidthHint() here -- for a body like ChatMessageImages that call is a full
     // rebuildGrid() re-layout, not a cheap query, so this section used to pay for it twice.
     auto bodyHW=chatContent()->bodyWidthHint(forMaxWidth);
-    auto bottomW=AbstractChatMessageBottom::sizeHint().width();
+    auto bottomW=naturalSize().width();
 
     // A threshold below the bottom's own content width would be self-defeating -- the
     // "wide enough" branch would then hand back a bubble the time/status row itself

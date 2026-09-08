@@ -55,7 +55,7 @@ qproperty-tailColor: #AEE2FF; /* selected sent message */
 uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
-selection-background-color: #AFC8E8; /* selected message */
+selection-background-color: #074eb8;
 qproperty-linkColor: #1A6FD4; /* task-urls-and characters-in-messages.md, Stage 1 */
 qproperty-linkUnderline: false;
 }

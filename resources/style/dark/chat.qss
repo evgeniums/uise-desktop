@@ -59,6 +59,7 @@ qproperty-tailColor: #4A70A9; /* selected message */
 
 uise--ChatMessageBottom QLabel {
 color: #888888;
+font-size: 11px;
 }
 
 uise--ChatMessageBottom QLabel[sent="true"]{

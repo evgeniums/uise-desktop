@@ -62,6 +62,7 @@ uise--ChatMessageForwardHeader {
 border: none;
 qproperty-maxWidthHint: 320;
 margin-bottom: 6px;
+margin-left: 4px;
 }
 
 /* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's/dark/reset.qss's

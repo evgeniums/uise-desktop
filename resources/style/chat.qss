@@ -15,7 +15,7 @@ outline: none;
 
 uise--AbstractChatMessageContent {
 border-radius: 16px;
-padding: 8px;
+padding: 4px 4px 0 4px;
 }
 
 uise--AbstractChatMessage {
@@ -210,19 +210,33 @@ max-width: 40px;
  * (BottomGap in chatmessage.cpp), which only applies to the full-width-row widening case.
  * inlineBottomYOffset nudges the inline row DOWN from its natural bottom-aligned-with-the-last-
  * line position (see ChatMessageContent::positionBottom()) -- purely bottom-aligned reads as
- * sitting slightly too high above the text's own descenders. */
+ * sitting slightly too high above the text's own descenders.
+ *
+ * rowBottomPadding is THE knob for the space under the bubble's bottom row, in both modes --
+ * uise--AbstractChatMessageContent's own bottom padding is not (it is 0 above, and inline the row
+ * sits inside the trailing text's own dead space, which the bubble is trimmed to instead). The
+ * gap that reads visually is a couple of px larger, since the row's own ink stops short of its
+ * box edge. rowTopGap is its counterpart above the row, row mode only. */
 uise--AbstractChatMessageBottom {
 qproperty-rowMinWidth: 90;
 qproperty-narrowBodyWidth: 200;
 qproperty-inlineBottomGap: 10;
-qproperty-inlineBottomYOffset: 3;
+qproperty-inlineBottomYOffset: 1;
+qproperty-rowTopGap: 4;
+qproperty-rowBottomPadding: 4;
 }
+
+/* Do NOT add a `padding` rule for uise--ChatMessageBottom here: the row is placed explicitly
+ * (ChatMessageContent::positionBottom()), sized to its own naturalSize(), so QSS padding -- which
+ * lands on that same widget's contentsMargins -- would be counted twice and re-introduce exactly
+ * the squeezed/clipped row this replaced. Tune qproperty-rowTopGap / qproperty-rowBottomPadding
+ * above instead. */
 
 /* Hard cap on rendered text width -- a bubble that fills a wide window produces unreadably long
  * lines. Matches ChatMessageText both as a message body and as the comment inside an image album
  * or file list; 0 disables the cap. The album/file rows themselves are not affected. */
 uise--AbstractChatMessageText {
-qproperty-maxBubbleWidth: 600;
+qproperty-maxBubbleWidth: 500;
 }
 
 /* Jump-to-message highlight timing -- theme-independent, colour lives in light/chat.qss and
@@ -273,9 +287,17 @@ margin:0;
 padding:0;
 }
 
+uise--AbstractChatMessage uise--AbstractChatMessageContent uise--ChatMessageBottom QLabel {
+font-size: 13px;
+}
+
+uise--ChatMessageBottom #time {
+margin-right:1px;
+}
+
 uise--ChatMessageBottom #status {
-margin-left:8px;
-margin-right:0;
+margin-left:0;
+margin-right:2px;
 }
 
 /* The "edited" marker sits immediately before #time in the bottom row's layout, which has no
@@ -284,15 +306,15 @@ margin-right:0;
  * and dark/chat.qss already covers both this label and #time, so the marker matches the time it
  * sits next to by construction. */
 uise--ChatMessageBottom #edited {
-margin-right:5px;
+margin-right:1px;
 }
 
 uise--ChatMessageBottom uise--WithRoundedImage,
 uise--ChatMessageBottom uise--RoundedImage {
-min-width: 18px;
-max-width: 18px;
-min-height: 18px;
-max-height: 18px;
+min-width: 16px;
+max-width: 16px;
+min-height: 16px;
+max-height: 16px;
 }
 
 uise--MessageSelectionPanelUi #drawer {

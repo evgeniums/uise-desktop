@@ -215,6 +215,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         QRect lastTextLineRect() const override;
 
+        int ownWidthCeiling() const override;
+
         QString selectedText() const override;
 
         bool hasSelectableText() const override;

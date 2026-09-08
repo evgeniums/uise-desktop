@@ -222,6 +222,7 @@ SET (HEADERS
 
     include/uise/desktop/label.hpp
 
+    include/uise/desktop/chatenums.hpp
     include/uise/desktop/abstractchatmessage.hpp
     include/uise/desktop/abstractchatmessagecall.hpp
     include/uise/desktop/chatmessagetext.hpp

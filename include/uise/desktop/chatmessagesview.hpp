@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/enums.hpp>
+#include <uise/desktop/chatenums.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/roundedimage.hpp>
@@ -183,12 +184,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         //! Position of own (sent) messages -- app-settings-driven, see whitemdesktop's
         //! Appearance node ("Position of my messages"). Auto resolves to Left/Right depending on
         //! this view's own width vs. alignSentLeftWidth(); Left/Right are unconditional.
-        enum class AlignSentMode
-        {
-            Auto,
-            Right,
-            Left
-        };
+        //! Defined at namespace scope as ChatAlignSentMode (uise/desktop/chatenums.hpp) so that
+        //! code needing only this enum need not include this whole header; aliased here under
+        //! its historical name.
+        using AlignSentMode=ChatAlignSentMode;
 
         //! No-op if unchanged. Otherwise re-evaluates effectiveAlignSent() immediately (safe to
         //! call from ordinary app code -- unlike the QSS-driven properties below, this is never

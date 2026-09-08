@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <limits>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
@@ -189,6 +191,22 @@ QRect ChatMessageComment::lastTextLineRect() const
     // bubbleWidthHint() above adds this section's own horizontalTotalMargin() back onto the
     // embedded text's width hint.
     return rect.translated(contentsMargins().left(),contentsMargins().top());
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageComment::ownWidthCeiling() const
+{
+    auto textCeiling=pimpl->text->ownWidthCeiling();
+    if (textCeiling>=std::numeric_limits<int>::max()-horizontalTotalMargin(this))
+    {
+        // No cap on the embedded text -- avoid overflowing by adding the margin below.
+        return std::numeric_limits<int>::max();
+    }
+    // Matches bubbleWidthHint()'s own treatment: the embedded text's own cap plus THIS section's
+    // own margin (forwardpreview.qss's padding), since lastTextLineRect() above adds that same
+    // margin back onto the embedded text's coordinates.
+    return textCeiling+horizontalTotalMargin(this);
 }
 
 //--------------------------------------------------------------------------

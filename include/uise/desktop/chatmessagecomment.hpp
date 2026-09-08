@@ -74,6 +74,7 @@ class UISE_DESKTOP_EXPORT ChatMessageComment : public AbstractChatMessageComment
         int bubbleWidthHint(int forMaxWidth) override;
         void updateMaximumBubbleWidth() override;
         QRect lastTextLineRect() const override;
+        int ownWidthCeiling() const override;
 
         void setSelected(bool enable) override;
         void setSent(bool enable) override;

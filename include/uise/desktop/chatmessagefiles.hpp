@@ -97,6 +97,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         QRect lastTextLineRect() const override;
 
+        int ownWidthCeiling() const override;
+
     protected:
 
         void updateChatMessage() override;
