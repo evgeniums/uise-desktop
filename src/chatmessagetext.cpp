@@ -30,6 +30,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMenu>
 #include <QTextCursor>
 #include <QTextBlock>
+#include <QTextLayout>
+#include <QAbstractTextDocumentLayout>
+#include <QtMath>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -105,6 +108,71 @@ void ChatMessageTextBrowser::updateSize()
 {
     document()->setTextWidth(document()->idealWidth());
     updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setWrapWidth(int w)
+{
+    setLineWrapColumnOrWidth(w);
+    updateSize();
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageTextBrowser::textWidthHint() const
+{
+    // Rounded UP, not truncated: callers use this as a width the document is guaranteed to fit
+    // into without any further wrapping -- see ChatMessageText::bubbleWidthHint()'s identical
+    // reasoning for its own lastHintWidth.
+    return qCeil(document()->idealWidth());
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageTextBrowser::lastLineRect() const
+{
+    auto* doc=document();
+    if (doc==nullptr || doc->isEmpty())
+    {
+        return {};
+    }
+
+    // Walk back from the last block to the last one that actually rendered a line -- a trailing
+    // empty block (e.g. text ending in a blank line) has a valid QTextBlock but an empty layout.
+    auto block=doc->lastBlock();
+    while (block.isValid() && (!block.isVisible() || block.layout()==nullptr
+                                || block.layout()->lineCount()==0))
+    {
+        block=block.previous();
+    }
+    if (!block.isValid())
+    {
+        return {};
+    }
+
+    // Trailing-space overlay only makes sense for LTR text: the blank space after the last word
+    // sits on the RIGHT for LTR, but on the LEFT for RTL, and naturalTextWidth() below always
+    // measures the line's own extent regardless of direction -- treating that as "room after the
+    // text" would be backwards for RTL and would incorrectly widen every RTL message. RTL inline
+    // placement is a separate task; these messages simply keep the full-width row (see
+    // AbstractChatMessageContent::evaluateInlineBottom()'s handling of an invalid rect here).
+    if (block.textDirection()==Qt::RightToLeft)
+    {
+        return {};
+    }
+
+    auto* lay=block.layout();
+    auto line=lay->lineAt(lay->lineCount()-1);
+    // blockBoundingRect() reads the layout bubbleWidthHint()/updateMaximumBubbleWidth() already
+    // computed -- no second document layout pass here, which matters since this can run once per
+    // message during a chat load (see [[todo-chat-message-paint-and-layout-cost]]). Its origin
+    // already carries the document's own margin (QTextDocument::documentMargin()).
+    auto br=doc->documentLayout()->blockBoundingRect(block);
+    int offX=frameWidth()+contentsMargins().left();
+    int offY=frameWidth()+contentsMargins().top();
+    return QRect{qFloor(br.x()+line.x())+offX, qFloor(br.y()+line.y())+offY,
+                 qCeil(line.naturalTextWidth()), qCeil(line.height())};
 }
 
 //--------------------------------------------------------------------------
@@ -384,7 +452,12 @@ class ChatMessageText_p
         QBoxLayout* layout;
 
         ChatMessageTextBrowser* text;
-        int m_widthHint=0;
+
+        //! The width bubbleWidthHint() last wrapped the document at (0 = none yet, or the
+        //! content has changed since -- see loadText()/clearText()). updateMaximumBubbleWidth()
+        //! pins the final re-wrap to this instead of re-deriving it from the bubble's own final
+        //! width -- see that method's own doc comment for why.
+        int lastHintWidth=0;
 };
 
 //--------------------------------------------------------------------------
@@ -433,6 +506,10 @@ void ChatMessageText::loadText(const QString& text, TextFormat format)
             pimpl->text->setPlainText(text);
             break;
     }
+    // A stale pin from the PREVIOUS content must never survive a content change -- the new
+    // document's true idealWidth() (measured fresh by the next bubbleWidthHint() call) is what
+    // updateMaximumBubbleWidth() must pin to instead.
+    pimpl->lastHintWidth=0;
 }
 
 //--------------------------------------------------------------------------
@@ -441,6 +518,7 @@ void ChatMessageText::clearText()
 {
     pimpl->text->setHtmlContent(QString{});
     pimpl->text->clear();
+    pimpl->lastHintWidth=0;
 }
 
 //--------------------------------------------------------------------------
@@ -461,43 +539,20 @@ void ChatMessageText::updateChatMessage()
 
 //--------------------------------------------------------------------------
 
-void ChatMessageText::adjustWrapWidth(int& value, bool add)
-{
-    auto op=[add](auto a, auto b)
-    {
-        if (add)
-        {
-            return a+b;
-        }
-        else
-        {
-            return a-b;
-        }
-    };
-
-    op(value,pimpl->text->frameWidth()*2);
-    auto applyMargins=[this,&value,op](QMargins cm)
-    {
-        op(value,cm.left());
-        op(value,cm.right());
-    };
-    applyMargins(contentsMargins());
-    applyMargins(pimpl->text->contentsMargins());
-}
-
-//--------------------------------------------------------------------------
-
 int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 {
     auto wrapWidth=clampToMaxBubbleWidth(forMaxWidth);
-    auto t=const_cast<ChatMessageTextBrowser*>(pimpl->text);
-    t->setLineWrapColumnOrWidth(wrapWidth);
-    pimpl->text->updateSize();
-    auto w=static_cast<int>(t->document()->idealWidth());
+    pimpl->text->setWrapWidth(wrapWidth);
+    // qCeil, not a plain truncating cast: lastHintWidth must be >= the document's true
+    // idealWidth() (the natural width of its widest line) for updateMaximumBubbleWidth()'s pin
+    // below to be sound -- rounding DOWN could land under idealWidth and force an extra wrap
+    // when re-applied there, moving the very line lastTextLineRect() measures.
+    auto w=qCeil(pimpl->text->document()->idealWidth());
     if (w>wrapWidth)
     {
         w=wrapWidth;
     }
+    pimpl->lastHintWidth=w;
     return w;
 }
 
@@ -505,9 +560,40 @@ int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 
 void ChatMessageText::updateMaximumBubbleWidth()
 {
-    auto wrapWidth=clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth());
-    pimpl->text->setLineWrapColumnOrWidth(wrapWidth);
-    pimpl->text->updateSize();
+    auto w=clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth());
+
+    // Pin the re-wrap to the width bubbleWidthHint() actually measured this pass' document at,
+    // instead of re-deriving it from the bubble's own final width -- which, in inline mode, can
+    // be WIDER than what was measured (the bubble widened specifically to seat the bottom row
+    // beside this text). Re-wrapping at ANY width >= lastHintWidth reproduces byte-identical
+    // line breaks: by definition of idealWidth(), every line already fit within lastHintWidth,
+    // so a wider (or equal) constraint cannot force any line to wrap differently. This is what
+    // keeps lastTextLineRect() -- measured during bubbleWidthHint(), before this call -- still
+    // accurate afterwards, with no re-measurement needed. Same idiom, same reason, as
+    // ChatMessageImages::updateMaximumBubbleWidth()'s own lastLayoutForMaxWidth pin on the album
+    // body -- see its doc comment for the real-world case where re-laying out at a different
+    // budget genuinely changes the result.
+    if (pimpl->lastHintWidth>0 && pimpl->lastHintWidth<=w)
+    {
+        w=pimpl->lastHintWidth;
+    }
+    pimpl->text->setWrapWidth(w);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageText::lastTextLineRect() const
+{
+    auto rect=pimpl->text->lastLineRect();
+    if (!rect.isValid())
+    {
+        return {};
+    }
+    // ChatMessageText itself carries no QSS padding today (Layout::horizontal(this) zeroes its
+    // contentsMargins, and nothing overrides them) -- translating by them anyway keeps this
+    // correct if that ever changes, matching how bubbleWidthHint()/updateMaximumBubbleWidth()
+    // treat the browser as filling this frame's own contents rect.
+    return rect.translated(contentsMargins().left(),contentsMargins().top());
 }
 
 //--------------------------------------------------------------------------

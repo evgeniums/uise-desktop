@@ -448,6 +448,35 @@ void ChatMessageFiles::updateMaximumBubbleWidth()
 
 //--------------------------------------------------------------------------
 
+QRect ChatMessageFiles::lastTextLineRect() const
+{
+    if (pimpl->comment->isHidden())
+    {
+        // No caption -- the explicit exclusion for a caption-less file message: keep today's
+        // full-width row rather than overlaying onto anything in the file rows themselves. Same
+        // isHidden() check (not isVisible()) as ChatMessageImages' own commentShown() helper --
+        // this can run while the message's ancestors are still off-screen (a flyweight build),
+        // where isVisible() would read false even though the comment WILL show once attached.
+        return {};
+    }
+
+    auto rect=pimpl->comment->lastTextLineRect();
+    if (!rect.isValid())
+    {
+        return {};
+    }
+
+    // pimpl->comment sits in THIS body's own vertical layout, directly below pimpl->contentsFrame
+    // (the file rows) -- translate by that frame's sizeHint() height, not its possibly-stale
+    // geometry() (this can run mid-negotiation, before the layout has necessarily run for real),
+    // plus this widget's own left/top contents margins -- matching how bubbleWidthHint()/
+    // updateMaximumBubbleWidth() already treat pimpl->comment as this widget's own trailing row.
+    auto cm=contentsMargins();
+    return rect.translated(cm.left(),cm.top()+pimpl->contentsFrame->sizeHint().height());
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFiles::updateChatMessage()
 {
     // setChatMessage() no longer reparents the comment away (see AbstractChatMessageChild::

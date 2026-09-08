@@ -118,6 +118,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         void updateMaximumBubbleWidth() override;
 
+        QRect lastTextLineRect() const override;
+
         QSize sizeHint() const override;
 
         QSize minimumSizeHint() const override;

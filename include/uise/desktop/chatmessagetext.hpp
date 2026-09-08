@@ -67,6 +67,15 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         int textWidthHint() const;
 
+        //! Rect of the last rendered line of text, in THIS widget's own coordinates (i.e.
+        //! including its own frameWidth()/contentsMargins(), unlike a plain QTextLine, which is
+        //! in the document's coordinate space). Invalid/null when there is no text at all, or
+        //! when the last block resolves right-to-left -- see the implementation's own doc
+        //! comment for why RTL is excluded. Only meaningful immediately after this browser's
+        //! wrap width was last set (setWrapWidth()/updateSize()) for the CURRENT layout pass --
+        //! it reads the already-computed QTextLine geometry, it does not lay anything out itself.
+        QRect lastLineRect() const;
+
         /**
          * @brief Toggle focusability + a minimal Copy/Select All context menu.
          * @param enable Off by default -- see AbstractChatMessageBody::setCopyable()'s own doc
@@ -204,6 +213,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         void updateMaximumBubbleWidth() override;
 
+        QRect lastTextLineRect() const override;
+
         QString selectedText() const override;
 
         bool hasSelectableText() const override;
@@ -222,7 +233,6 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
     private:
 
-        void adjustWrapWidth(int& value, bool add);
         std::unique_ptr<ChatMessageText_p> pimpl;
 };
 

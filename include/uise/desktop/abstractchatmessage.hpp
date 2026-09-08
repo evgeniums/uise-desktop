@@ -32,6 +32,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QUrl>
 #include <QPoint>
 #include <QUuid>
+#include <QLayout> // relayoutSections() below calls layout()->invalidate() inline -- QWidget
+                   // itself only forward-declares QLayout, so this header needs the full type.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -232,6 +234,20 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
         virtual void updateMaximumBubbleWidth()
         {
             updateGeometry();
+        }
+
+        //! Rect of the last rendered line of text in this section, in the SECTION's own
+        //! coordinates -- the point after which the bubble's bottom row (time/status) may be
+        //! tucked into the trailing blank space instead of getting a full-width row of its own.
+        //! An invalid/null rect means this section has no such trailing line to overlay onto (a
+        //! caption-less file/image body, an empty comment, or RTL text -- see
+        //! ChatMessageTextBrowser::lastLineRect()'s own doc comment for the RTL exclusion) and so
+        //! the bottom must fall back to its own row. Only meaningful immediately after this
+        //! section's own bubbleWidthHint() has laid its content out for the CURRENT negotiation
+        //! pass -- see AbstractChatMessageContent::evaluateInlineBottom().
+        virtual QRect lastTextLineRect() const
+        {
+            return QRect{};
         }
 
         virtual void setSelected(bool /*enable*/) {}
@@ -461,10 +477,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
     Q_OBJECT
 
     Q_PROPERTY(int narrowBodyWidth READ narrowBodyWidth WRITE setNarrowBodyWidth)
+    Q_PROPERTY(int rowMinWidth READ rowMinWidth WRITE setRowMinWidth)
+    Q_PROPERTY(int inlineBottomGap READ inlineBottomGap WRITE setInlineBottomGap)
 
     public:
 
         constexpr static const int DefaultNarrowBodyWidth=200;
+        //! Minimum width of this row when it occupies its own full-width line below the body
+        //! (the "row" mode). Deliberately NOT a plain QSS min-width: that would also floor the
+        //! row's NATURAL size when it is placed manually in "inline" mode (tucked into the
+        //! trailing space of the last text line), where QWidget::setGeometry() clamps to
+        //! minimumSize() regardless of who is doing the placing. Settable from QSS via
+        //! qproperty-rowMinWidth.
+        constexpr static const int DefaultRowMinWidth=90;
+        //! Horizontal breathing room between the last line's right edge and the inline row, when
+        //! inline. Kept independent of the narrow-body widening's own gap so the two stay
+        //! separately tunable. Settable from QSS via qproperty-inlineBottomGap.
+        constexpr static const int DefaultInlineBottomGap=10;
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
@@ -486,9 +515,43 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
             return m_narrowBodyWidth;
         }
 
+        void setRowMinWidth(int width) noexcept
+        {
+            m_rowMinWidth=width;
+        }
+
+        int rowMinWidth() const noexcept
+        {
+            return m_rowMinWidth;
+        }
+
+        void setInlineBottomGap(int gap) noexcept
+        {
+            m_inlineBottomGap=gap;
+        }
+
+        int inlineBottomGap() const noexcept
+        {
+            return m_inlineBottomGap;
+        }
+
+        //! Natural size of the row itself: the plain QFrame base, bypassing this class'
+        //! (concrete subclass') own sizeHint() override -- which in "row" mode reports the WHOLE
+        //! bubble width to right-align the row within it -- and any QSS widget minimum, which
+        //! would otherwise clamp a manually-placed "inline" row via setGeometry(). This is the
+        //! size an inline row is actually laid out at. The concrete ChatMessageBottom's ctor
+        //! leading addStretch(1) contributes 0 to this -- the existing narrow-body widening rule
+        //! already relies on the same fact for its own bottomW.
+        QSize naturalSize() const
+        {
+            return QFrame::sizeHint();
+        }
+
     private:
 
         int m_narrowBodyWidth=DefaultNarrowBodyWidth;
+        int m_rowMinWidth=DefaultRowMinWidth;
+        int m_inlineBottomGap=DefaultInlineBottomGap;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
@@ -638,6 +701,68 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bodyWidthHint;
         }
 
+        //! Same memoization as bodyWidthHint() above, for comment() -- added so the section loop
+        //! in updateBubbleWidth() no longer calls comment()->bubbleWidthHint() a SECOND time (a
+        //! full document relayout for a ChatMessageText-backed comment) on top of the one
+        //! evaluateInlineBottom() already needs.
+        int commentWidthHint(int forMaxWidth)
+        {
+            if (m_comment==nullptr)
+            {
+                return 0;
+            }
+            if (!m_commentWidthHintValid || m_commentWidthHintForMaxWidth!=forMaxWidth)
+            {
+                return m_comment->bubbleWidthHint(forMaxWidth);
+            }
+            return m_commentWidthHint;
+        }
+
+        //! The section the bottom row would be tucked into if there is room: the forward-comment
+        //! slot when present, otherwise the body. (Display order is header/reply/body/comment/
+        //! bottom -- comment sits closer to the bottom, so it is the visually LAST text.) A
+        //! non-null but empty comment still wins this -- it is what is visually last -- and its
+        //! own lastTextLineRect() then coming back invalid correctly forces row mode rather than
+        //! silently falling through to the body underneath it.
+        ChatMessageContentSection* trailingSection() const noexcept
+        {
+            if (m_comment!=nullptr)
+            {
+                return m_comment;
+            }
+            return m_body;
+        }
+
+        //! Whether the last evaluateInlineBottom() (run from updateBubbleWidth(), once per
+        //! negotiation pass) decided the bottom row fits into the trailing space of the last
+        //! text line, instead of needing a row of its own below the body/comment.
+        bool isBottomInline() const noexcept
+        {
+            return m_bottomInline;
+        }
+
+        //! trailingSection()->lastTextLineRect() as it stood during the last evaluateInlineBottom()
+        //! -- i.e. in trailingSection()'s own coordinates. Meaningful only when isBottomInline().
+        QRect inlineLineRect() const noexcept
+        {
+            return m_inlineLineRect;
+        }
+
+        //! bottom()->naturalSize() as it stood during the last evaluateInlineBottom(). Meaningful
+        //! only when isBottomInline().
+        QSize inlineBottomSize() const noexcept
+        {
+            return m_inlineBottomSize;
+        }
+
+        //! The bubble width evaluateInlineBottom() asked for to seat the row inline -- what
+        //! ChatMessageBottom::bubbleWidthHint() returns while isBottomInline(). Meaningful only
+        //! when isBottomInline().
+        int inlineBubbleWidth() const noexcept
+        {
+            return m_inlineBubbleWidth;
+        }
+
         /**
          * @brief Set whether this bubble is currently selected (selection-mode checkbox).
          * @param enable New state.
@@ -681,6 +806,47 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         QSize sizeHint() const override;
 
+        //! Re-apply the inline bottom's manual geometry against this content's CURRENT
+        //! contentsRect() -- a no-op default, and a no-op in the override too when
+        //! !isBottomInline(). Idempotent and cheap enough to call from resizeEvent() as well as
+        //! from setMaximumBubbleWidth()'s tail: resize(sizeHint()) there is itself a no-op when
+        //! the size didn't change, which would otherwise leave a stale inline position on screen.
+        //! Public (unlike updateBottomPlacement() below): ChatMessageBottom itself calls this,
+        //! via chatContent(), after a status/edited/seen change that could shift its own natural
+        //! size -- see e.g. ChatMessageBottom::setEdited().
+        virtual void positionBottom() {}
+
+        //! Refreshes every section's cached layout item (clearing the stale QWidgetItemV2
+        //! per-child size-hint cache Qt keeps once a widget has been shown -- see
+        //! ChatMessageContentWrapper::showEvent()'s own doc comment for the mechanism) and then
+        //! re-applies the inline bottom's position. Walks sections() rather than layout()'s own
+        //! items, unlike the loop this replaces, specifically so an inline bottom -- which is no
+        //! longer IN the layout -- is still covered. Public: ChatMessageContentWrapper (an
+        //! unrelated class that only holds a content() pointer) calls this from its own
+        //! showEvent().
+        void relayoutSections()
+        {
+            for (auto* section : m_sections)
+            {
+                if (section!=nullptr)
+                {
+                    section->updateGeometry();
+                }
+            }
+            if (layout()!=nullptr)
+            {
+                // activate(), not just invalidate(): invalidate() alone only clears cached
+                // sizeHints, it does not reposition anything, so positionBottom() below would
+                // otherwise read trailingSection()'s geometry from BEFORE this call -- exactly
+                // the "child's own internal layout only gets activated on first show" trap this
+                // whole method exists to correct for (see the comment this replaced, still
+                // accurate for why the per-section updateGeometry() calls above are needed).
+                layout()->invalidate();
+                layout()->activate();
+            }
+            positionBottom();
+        }
+
     signals:
 
         void bubbleWidthUpdated();
@@ -688,6 +854,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
     protected:
 
         virtual void updateWidgets() =0;
+
+        //! Flip bottom() in/out of the concrete content's own layout when isBottomInline() has
+        //! actually CHANGED since the last call -- a no-op default for a content type that never
+        //! goes inline. Called from setMaximumBubbleWidth() AFTER every section's
+        //! updateMaximumBubbleWidth() (so the trailing section's final geometry/height is known)
+        //! and BEFORE updateGeometry()/resize(). Must not repolish (Style::updateWidgetStyle())
+        //! or reparent (setParent()) anything -- both are expensive and this can run once per
+        //! message on every chat load; see [[todo-chat-message-paint-and-layout-cost]].
+        virtual void updateBottomPlacement() {}
 
         //! Record the current selected/sent state -- see setSelected()'s doc comment for why an
         //! override must call these. isContentSelected()/isContentSent() below read it back.
@@ -802,6 +977,29 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         int m_bodyWidthHint=0;
         int m_bodyWidthHintForMaxWidth=0;
         bool m_bodyWidthHintValid=false;
+
+        int m_commentWidthHint=0;
+        int m_commentWidthHintForMaxWidth=0;
+        bool m_commentWidthHintValid=false;
+
+        //! Decides whether the bottom row fits inline (into the trailing space of
+        //! trailingSection()'s last text line) or needs its own row below, and if inline,
+        //! records exactly where -- see the algorithm's own doc comment (chatmessage.cpp).
+        //! Called once per updateBubbleWidth() pass, after body/comment are measured (so
+        //! trailingSection()->lastTextLineRect() reflects the current pass) and before the
+        //! section-hint loop (so bottom()'s own bubbleWidthHint() can read the result via
+        //! isBottomInline()/inlineBubbleWidth()).
+        void evaluateInlineBottom(int forMaxWidth);
+
+        bool m_bottomInline=false;
+        QRect m_inlineLineRect;
+        QSize m_inlineBottomSize;
+        int m_inlineBubbleWidth=0;
+        //! Extra bubble height sizeHint() must report on top of the layout's own (bottom is no
+        //! longer counted in it while inline) -- 0 whenever the inline row fits within the
+        //! trailing document's own bottom margin. Computed once, in setMaximumBubbleWidth(),
+        //! after the trailing section's FINAL (post-pin-rewrap) height is known.
+        int m_inlineExtraHeight=0;
 
         void setMaximumBubbleWidth(int width);
 };

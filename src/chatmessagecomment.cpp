@@ -175,6 +175,24 @@ void ChatMessageComment::updateMaximumBubbleWidth()
 
 //--------------------------------------------------------------------------
 
+QRect ChatMessageComment::lastTextLineRect() const
+{
+    auto rect=pimpl->text->lastTextLineRect();
+    if (!rect.isValid())
+    {
+        return {};
+    }
+    // pimpl->text's own lastTextLineRect() is in ITS coordinates (== this section's contents
+    // rect, since the embedded ChatMessageText carries no margins of its own); translate by
+    // THIS section's own left/top margins (the padding forwardpreview.qss sets on
+    // uise--AbstractChatMessageComment) to land in this section's own coordinates, matching how
+    // bubbleWidthHint() above adds this section's own horizontalTotalMargin() back onto the
+    // embedded text's width hint.
+    return rect.translated(contentsMargins().left(),contentsMargins().top());
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageComment::setSelected(bool enable)
 {
     Style::setStyleProperty(this,"selected",enable);

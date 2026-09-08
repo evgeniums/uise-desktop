@@ -95,6 +95,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         void updateMaximumBubbleWidth() override;
 
+        QRect lastTextLineRect() const override;
+
     protected:
 
         void updateChatMessage() override;

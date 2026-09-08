@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 class QBoxLayout;
 class QPainterPath;
 class QGraphicsOpacityEffect;
+class QResizeEvent;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -161,6 +162,21 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         void updateChatMessage() override;
         void updateWidgets() override;
 
+        //! Moves bottom() in/out of m_layout when isBottomInline() actually flipped since the
+        //! last call -- see AbstractChatMessageContent::updateBottomPlacement()'s own doc
+        //! comment for when/why this runs.
+        void updateBottomPlacement() override;
+
+        //! Places bottom() at its manual inline geometry, a no-op unless isBottomInline().
+        void positionBottom() override;
+
+        //! resize(sizeHint()) in setMaximumBubbleWidth() is a no-op when the size didn't change
+        //! (e.g. inline mode with an unchanged trailing line, just a different QSS state) --
+        //! this keeps the inline bottom's position current on every OTHER geometry change too
+        //! (e.g. the wrapper resizing this bubble as part of alignment), same idiom as
+        //! ChatMessageContentWrapper::resizeEvent()'s own move-only re-application.
+        void resizeEvent(QResizeEvent* event) override;
+
     private slots:
 
         void updateFirstInBatch();
@@ -169,6 +185,13 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
     private:
 
         QBoxLayout* m_layout;
+
+        //! Whether bottom() is currently a child item of m_layout (row mode) or has been taken
+        //! out of it and is positioned manually instead (inline mode) -- see
+        //! updateBottomPlacement(). Starts true: updateWidgets() always (re-)adds bottom() to
+        //! the layout on a fresh build, before any negotiation pass has had a chance to decide
+        //! isBottomInline().
+        bool m_bottomInLayout=true;
 };
 
 class UISE_DESKTOP_EXPORT ChatMessageSelector : public AbstractChatMessageSelector

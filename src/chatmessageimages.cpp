@@ -873,6 +873,33 @@ void ChatMessageImages::updateMaximumBubbleWidth()
 
 //--------------------------------------------------------------------------
 
+QRect ChatMessageImages::lastTextLineRect() const
+{
+    if (!commentShown(pimpl->comment))
+    {
+        // No caption -- the explicit exclusion for a caption-less album: keep today's full-width
+        // row rather than overlaying onto the tiles themselves.
+        return {};
+    }
+
+    auto rect=pimpl->comment->lastTextLineRect();
+    if (!rect.isValid())
+    {
+        return {};
+    }
+
+    // Mirrors layoutChildren()'s own placement formula for the caption (cr.x(),
+    // cr.y()+gridSize.height()) rather than reading pimpl->comment->x()/y(): this can run right
+    // after bubbleWidthHint(), before layoutChildren() has necessarily re-run for the CURRENT
+    // pass, so the comment's actual setGeometry() position may still be stale. contentsRect()'s
+    // origin is safe to read regardless -- it comes from contentsMargins() alone, not from this
+    // widget's (possibly not-yet-applied) size.
+    auto cr=contentsRect();
+    return rect.translated(cr.x(),cr.y()+pimpl->gridSize.height());
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImages::updateChatMessage()
 {
     if (pimpl->comment!=nullptr)

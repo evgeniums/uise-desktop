@@ -148,4 +148,21 @@ void ChatMessageCall::presetIcon(const QString& icon)
 
 //--------------------------------------------------------------------------
 
+QRect ChatMessageCall::lastTextLineRect() const
+{
+    // No bubbleWidthHint()/updateMaximumBubbleWidth() override exists for this body -- its width
+    // negotiation already goes through the ChatMessageContentSection base default (sizeHint().
+    // width()), so treating that same sizeHint() as this body's one "line" is consistent with
+    // what the bubble was actually negotiated against, and needs no separate wrap-pin bookkeeping
+    // the way ChatMessageText needs (there is nothing here that ever wraps).
+    auto s=sizeHint();
+    if (s.width()<=0)
+    {
+        return {};
+    }
+    return QRect{0,0,s.width(),s.height()};
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

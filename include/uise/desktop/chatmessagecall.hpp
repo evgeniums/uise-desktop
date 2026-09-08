@@ -56,6 +56,11 @@ class UISE_DESKTOP_EXPORT ChatMessageCall : public AbstractChatMessageCall
         void presetText(const QString& text) override;
         void presetIcon(const QString& icon) override;
 
+        //! The call summary ("Missed call"/"Outgoing call 1:23") is always a single, non-wrapping
+        //! line -- reports its own full extent as that line, so the bubble bottom row can sit
+        //! beside it on the same line rather than getting a row of its own below.
+        QRect lastTextLineRect() const override;
+
     protected:
 
         void updateDuration() override;
