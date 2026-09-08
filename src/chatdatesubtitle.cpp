@@ -162,12 +162,7 @@ void ChatDateSubtitle::setDateTime(const QDateTime& dt, bool withYear)
 {
     pimpl->dateTime=dt;
 
-    auto str=dateAsMonthAndDay(dt);
-    if (withYear)
-    {
-        str=dateWithoutWeekday(dt);
-    }
-    pimpl->section->setText(str);
+    pimpl->section->setText(chatDateLabel(dt,withYear));
 
     adjustSize();
     updatePosition();

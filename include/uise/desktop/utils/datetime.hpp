@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QDateTime>
 #include <QList>
 #include <QLocale>
+#include <QObject>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -378,6 +379,39 @@ inline QString dateWithoutWeekday(const QDateTime& dt, const QLocale& locale=QLo
     });
     return locale.toString(dt,detail::rebuildDateFormatOr(parts,longFormat,
                                                           detail::TrailingQualifier::Keep));
+}
+
+/**
+ * @brief Format a chat date label: "Today", "Yesterday", or the locale's date.
+ *
+ * The single source of the date vocabulary shared by the inline date separators and the floating
+ * date subtitle -- keep both on this helper so the two labels cannot drift apart.
+ *
+ * @param withYear the date falls outside the current year, so it must name the year; it then wins
+ *        over Today/Yesterday (which can never be in another year anyway).
+ */
+inline QString chatDateLabel(const QDateTime& dt, bool withYear=false, const QLocale& locale=QLocale{})
+{
+    if (withYear)
+    {
+        return dateWithoutWeekday(dt,locale);
+    }
+
+    const auto date=dt.date();
+    const auto current=QDate::currentDate();
+    if (date==current)
+    {
+        // Context and disambiguation comment are kept verbatim from the former call site in
+        // chatmessagesview.ipp: source+comment is the catalog key, so the existing translations
+        // survive the move (only the <location> changes).
+        return QObject::tr("Today","ChatMessagesView");
+    }
+    if (date==current.addDays(-1))
+    {
+        return QObject::tr("Yesterday","ChatMessagesView");
+    }
+
+    return dateAsMonthAndDay(dt,locale);
 }
 
 /**
