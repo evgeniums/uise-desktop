@@ -1,0 +1,17 @@
+/*
+    Dark-theme colours layered on top of the base resources/style/messagetext.css -- see
+    task-message-formatting-plan.md, Stage 1.
+*/
+
+pre {
+    background-color: #2A2A2A;
+}
+
+blockquote {
+    border-left: 3px solid #555555;
+    color: #BBBBBB;
+}
+
+td, th {
+    border: 1px solid #444444;
+}

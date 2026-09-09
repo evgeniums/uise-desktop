@@ -1,0 +1,35 @@
+/*
+    Theme-agnostic baseline document CSS for HTML message text rendered in
+    ChatMessageTextBrowser (and any other setDefaultStyleSheet()/setHtmlContent() consumer) -- see
+    task-message-formatting-plan.md, Stage 1.
+
+    Layout-only, no colour here -- see dark/messagetext.css and light/messagetext.css for the
+    theme-specific palette on top of this.
+
+    Anchor (<a>) styling is deliberately absent here -- that stays exclusively owned by
+    ChatMessageTextBrowser::linkColor/linkUnderline (Q_PROPERTY, QSS-settable), appended after
+    this base sheet in ChatMessageTextBrowser::applyDocumentStyle() so it always wins.
+*/
+
+code, pre {
+    font-family: "Menlo","Consolas","monospace";
+}
+
+pre {
+    white-space: pre-wrap;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+blockquote {
+    margin: 4px 0 4px 0;
+    padding-left: 8px;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 2px 6px;
+}

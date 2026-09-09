@@ -99,6 +99,7 @@ void Style::reloadStyleSheet()
     m_loadedQss.clear();
     m_loadedCss.clear();
     m_iconThemes.clear();
+    m_syntaxThemes.clear();
 
     // check dark theme
     auto darkTheme=false;
@@ -219,25 +220,60 @@ void Style::reloadStyleSheet()
                 }
                 else if (finf.suffix()=="json")
                 {
-                    SvgIconTheme iconTheme;
-                    QString errorMessage;
-                    auto ok=iconTheme.loadFromJson(src,&errorMessage);
-                    if (ok)
+                    // Sniffed BEFORE any real parsing so the ~78 existing icon-theme JSONs (which
+                    // carry no "kind" key at all) fall through to the unchanged icon-theme path
+                    // below with zero behaviour change -- only "kind":"syntax" is diverted here.
+                    // Without this sniff, a syntax JSON would be handed straight to
+                    // SvgIconTheme::loadFromJson(), which happily reads "theme" then fails on the
+                    // mandatory "contexts" array and logs a spurious warning every reload.
+                    auto sniffDoc=QJsonDocument::fromJson(data);
+                    bool isSyntaxTheme=sniffDoc.isObject()
+                        && sniffDoc.object().value(QStringLiteral("kind")).toString()==QStringLiteral("syntax");
+
+                    if (isSyntaxTheme)
                     {
-                        auto name=iconTheme.name();
-                        if (name==defaultColorTheme || name==colorTheme || name==AnyColorTheme)
+                        SyntaxTheme syntaxTheme;
+                        QString errorMessage;
+                        auto ok=syntaxTheme.loadFromJson(src,&errorMessage);
+                        if (ok)
                         {
-                            auto& inserted=m_iconThemes.emplace_back(std::move(iconTheme));
-                            inserted.setModesMap(modeMap());
+                            auto name=syntaxTheme.name();
+                            if (name==defaultColorTheme || name==colorTheme || name==AnyColorTheme)
+                            {
+                                m_syntaxThemes.emplace_back(std::move(syntaxTheme));
+                            }
+                            else
+                            {
+                                qWarning() << "Invalid syntax theme \"" << name << "\" in " << fileName;
+                            }
                         }
                         else
                         {
-                            qWarning() << "Invalid SVG icon theme \"" << name << "\" in " << fileName;
+                            qWarning() << "Failed to load syntax theme from " << fileName << ": " << errorMessage;
                         }
                     }
                     else
                     {
-                        qWarning() << "Failed to load SVG icon theme from " << fileName << ": " << errorMessage;
+                        SvgIconTheme iconTheme;
+                        QString errorMessage;
+                        auto ok=iconTheme.loadFromJson(src,&errorMessage);
+                        if (ok)
+                        {
+                            auto name=iconTheme.name();
+                            if (name==defaultColorTheme || name==colorTheme || name==AnyColorTheme)
+                            {
+                                auto& inserted=m_iconThemes.emplace_back(std::move(iconTheme));
+                                inserted.setModesMap(modeMap());
+                            }
+                            else
+                            {
+                                qWarning() << "Invalid SVG icon theme \"" << name << "\" in " << fileName;
+                            }
+                        }
+                        else
+                        {
+                            qWarning() << "Failed to load SVG icon theme from " << fileName << ": " << errorMessage;
+                        }
                     }
                 }
             }
@@ -381,6 +417,7 @@ void Style::reset()
 
     m_colorMap.clear();
     m_iconThemes.clear();
+    m_syntaxThemes.clear();
 
     resetStyleSheetDirs();
     resetSvgIconLocator();

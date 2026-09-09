@@ -213,7 +213,7 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     m_lastHtml=html;
     setHtml(html);
     // setHtml() replaces the document, so any style already set via setDefaultStyleSheet()
-    // before this call is naturally in effect -- nothing else to do here, applyLinkStyle() is
+    // before this call is naturally in effect -- nothing else to do here, applyDocumentStyle() is
     // only needed when the style changes AFTER content is already loaded (see below).
 }
 
@@ -226,7 +226,7 @@ void ChatMessageTextBrowser::setLinkColor(const QColor& color)
         return;
     }
     m_linkColor=color;
-    applyLinkStyle();
+    applyDocumentStyle();
 }
 
 //--------------------------------------------------------------------------
@@ -238,19 +238,44 @@ void ChatMessageTextBrowser::setLinkUnderline(bool enable)
         return;
     }
     m_linkUnderline=enable;
-    applyLinkStyle();
+    applyDocumentStyle();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageTextBrowser::applyLinkStyle()
+void ChatMessageTextBrowser::changeEvent(QEvent* event)
 {
-    QString css=QStringLiteral("a { text-decoration: %1; }").arg(m_linkUnderline ? "underline" : "none");
+    QTextBrowser::changeEvent(event);
+    if (event->type()==QEvent::StyleChange)
+    {
+        // Style::instance().css() can change on a theme switch even when this widget's OWN
+        // linkColor/linkUnderline qproperty values do not (e.g. a switch that only touches
+        // messagetext.css) -- setLinkColor()/setLinkUnderline() early-return in that case (see
+        // their bodies above) and never reapply, so the base document CSS is re-pulled
+        // unconditionally here instead of depending on the qproperty writers alone.
+        applyDocumentStyle();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyDocumentStyle()
+{
+    // Theme's document-level CSS (task-message-formatting-plan.md, Stage 1) -- e.g.
+    // resources/style/messagetext.css -- forms the base; the link colour/underline rule is
+    // appended last so it always wins over anything messagetext.css declares for `a` (it
+    // deliberately declares none, to avoid needing to reason about override order between two
+    // sources of anchor styling).
+    QString css=Style::instance().css();
+
+    QString linkCss=QStringLiteral("a { text-decoration: %1; }").arg(m_linkUnderline ? "underline" : "none");
     if (m_linkColor.isValid())
     {
-        css=QStringLiteral("a { color: %1; text-decoration: %2; }")
+        linkCss=QStringLiteral("a { color: %1; text-decoration: %2; }")
                 .arg(m_linkColor.name(),m_linkUnderline ? "underline" : "none");
     }
+    css+=QStringLiteral("\n")+linkCss;
+
     document()->setDefaultStyleSheet(css);
 
     // setDefaultStyleSheet() only affects content set AFTERWARDS -- reapply the last HTML we

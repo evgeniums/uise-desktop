@@ -109,7 +109,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         //! Like QTextBrowser::setHtml(), but also remembers `html` so linkColor/linkUnderline can
         //! REAPPLY it after rebuilding the document's stylesheet (setDefaultStyleSheet() only
-        //! affects content set afterwards -- see applyLinkStyle()). ChatMessageText::loadText()'s
+        //! affects content set afterwards -- see applyDocumentStyle()). ChatMessageText::loadText()'s
         //! Html branch calls this instead of setHtml() directly; setPlainText()/setMarkdown() are
         //! unaffected -- Stage 1 never produces a link outside the Html path (see chattextrender.h),
         //! so plain/markdown content has nothing to re-style on a later color/theme change.
@@ -148,13 +148,26 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         void mouseMoveEvent(QMouseEvent* event) override;
         void leaveEvent(QEvent* event) override;
 
+        //! Re-applies the document stylesheet on QEvent::StyleChange (e.g. a theme switch via
+        //! Style::instance().applyStyleSheet()), unconditionally -- see applyDocumentStyle()'s own
+        //! doc comment for why this can't be left to the linkColor/linkUnderline qproperty setters
+        //! alone (task-message-formatting-plan.md, Stage 1).
+        void changeEvent(QEvent* event) override;
+
     private slots:
 
         void showCopyMenu(const QPoint& pos);
 
     private:
 
-        void applyLinkStyle();
+        //! Rebuilds the document's default stylesheet from Style::instance().css() (the theme's
+        //! document-level CSS, e.g. resources/style/messagetext.css) plus the link colour/underline
+        //! rule built from m_linkColor/m_linkUnderline, appended last so it always wins over
+        //! anything messagetext.css declares for `a` (messagetext.css deliberately declares none).
+        //! setDefaultStyleSheet() only affects content set AFTERWARDS, so the last-known HTML is
+        //! re-applied below to pick up the new style immediately instead of only on the next
+        //! message that happens to load.
+        void applyDocumentStyle();
 
         //! Recomputes contextMenuPolicy() from m_copyable/m_ownContextMenu -- the two setters
         //! share this instead of each duplicating the combination.

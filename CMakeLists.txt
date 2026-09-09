@@ -141,7 +141,8 @@ SET (HEADERS
 
     include/uise/desktop/svgicon.hpp
     include/uise/desktop/svgiconcontext.hpp
-    include/uise/desktop/svgiconlocator.hpp    
+    include/uise/desktop/svgiconlocator.hpp
+    include/uise/desktop/syntaxtheme.hpp
 
     include/uise/desktop/stylecontext.hpp
 
@@ -336,6 +337,7 @@ SET (SOURCES
     src/svgicon.cpp
     src/svgiconcontext.cpp
     src/svgiconlocator.cpp
+    src/syntaxtheme.cpp
 
     src/pushbutton.cpp
 

@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
+#include <uise/desktop/syntaxtheme.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -452,6 +453,35 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         void resetSvgIconLocator();
 
+        /**
+         * @brief Look up a syntax-highlighting bucket colour across every loaded SyntaxTheme.
+         * @param bucket Bucket name, e.g. "keyword", "type", "literal", "callable", "comment".
+         * @return The colour, or empty if no loaded theme defines this bucket.
+         *
+         * Later-loaded themes override earlier ones for the same bucket -- same cascade semantics
+         * as everything else in Style. There is no bucket for "primary text": leave it unset to
+         * keep the caller's own fallback (unmodified) text colour, see SyntaxTheme's own doc
+         * comment.
+         */
+        std::optional<QColor> syntaxColor(const QString& bucket) const
+        {
+            std::optional<QColor> result;
+            for (const auto& theme : m_syntaxThemes)
+            {
+                auto c=theme.color(bucket);
+                if (c)
+                {
+                    result=c;
+                }
+            }
+            return result;
+        }
+
+        const std::vector<SyntaxTheme>& syntaxThemes() const
+        {
+            return m_syntaxThemes;
+        }
+
         void applyStyleSheet(bool reload=false)
         {
             reloadStyleSheet();
@@ -554,6 +584,7 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         QString m_colorThemeName;
 
         std::vector<SvgIconTheme> m_iconThemes;
+        std::vector<SyntaxTheme> m_syntaxThemes;
 
         ButtonsStyle m_defaultButtonsStyle;
         std::map<QString,ButtonsStyle> m_buttonsStyle;
