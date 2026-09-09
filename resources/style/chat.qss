@@ -13,6 +13,56 @@ border: none;
 outline: none;
 }
 
+/* task-message-formatting-plan.md, Stage 4: the expand affordance floated over a table that was
+   too wide for the bubble and got pinned to its natural width instead of being compressed. Sized
+   here (structure); colours live in light/chat.qss and dark/chat.qss. It is a child of the
+   browser's viewport, anchored to the viewport's RIGHT edge -- see
+   ChatMessageTextBrowser::updateTableExpandButtons() for why not the table's own right edge. */
+/* Shared look for both wide-table buttons -- the expand affordance floated over the table, and
+   the Copy table button in the expanded viewer -- so the two read as the same control family.
+   Sizes differ (one is a fixed square glyph, the other a text button) and are set separately
+   below; colours live in light/chat.qss and dark/chat.qss. */
+uise--ChatMessageTextBrowser #tableExpandButton,
+#tableViewerFrame #tableViewerCopyButton QPushButton,
+#tableViewerFrame #tableViewerCloseButton QPushButton {
+border-radius: 5px;
+border: 1px solid;
+}
+
+/* The uise--PushButton wrappers must stay borderless -- the inner QPushButton above already
+   paints the frame, and bordering both draws it twice. Same split as abstractdialog.qss's own
+   "#dialogButtonsFrame uise--PushButton {margin} / ... QPushButton {border-radius;padding}",
+   where the wrapper carries only the spacing. The left margin is what separates the two buttons
+   from each other and from the edge of the row. */
+#tableViewerFrame #tableViewerCopyButton,
+#tableViewerFrame #tableViewerCloseButton {
+border: none;
+margin: 0px 0px 0px 8px;
+}
+
+uise--ChatMessageTextBrowser #tableExpandButton {
+min-width: 22px;
+max-width: 22px;
+min-height: 22px;
+max-height: 22px;
+padding: 0px;
+/* The affordance is a text glyph (U+2922), not an SVG icon -- the curated tabler set gets its
+   first additions in Stage 5a and this button deliberately does not block on that -- so its
+   apparent "icon size" is font-size, not iconSize. U+2922 also draws small relative to its em
+   box in most fonts, so this runs well above the widget default (~13px) to read at a glance,
+   and the box is kept only just larger than the glyph so the button reads as tight around it.
+   ChatMessageTextBrowser::updateTableExpandButtons() positions from the size these rules
+   produce, so changing them here is enough -- no C++ change needed. */
+font-size: 18px;
+}
+
+/* uise--PushButton wraps an inner QPushButton (see PushButton::qPushButton()), which is what
+   actually paints -- hence the wrapper/inner split above and here. */
+#tableViewerFrame #tableViewerCopyButton QPushButton,
+#tableViewerFrame #tableViewerCloseButton QPushButton {
+padding: 4px 12px;
+}
+
 uise--AbstractChatMessageContent {
 border-radius: 16px;
 padding: 4px 4px 0 4px;

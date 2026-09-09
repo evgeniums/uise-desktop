@@ -26,8 +26,11 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGETEXT_HPP
 #define UISE_DESKTOP_CHATMESSAGETEXT_HPP
 
+#include <vector>
+
 #include <QTextBrowser>
 #include <QColor>
+#include <QPointer>
 #include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -37,9 +40,13 @@ You may select, at your option, one of the above-listed licenses.
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
+class QMimeData;
+class QTextTable;
+
 namespace uise {
 
 class SyntaxHighlighter;
+class Toast;
 
 class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 {
@@ -58,6 +65,13 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     // polished widget), so a qproperty- value arriving from QSS after content is already showing
     // must still take effect. See setSyntaxHighlightingEnabled()'s own doc comment.
     Q_PROPERTY(bool syntaxHighlighting READ isSyntaxHighlightingEnabled WRITE setSyntaxHighlightingEnabled)
+
+    // task-message-formatting-plan.md, Stage 4. Qt does not clip a table that is too wide for the
+    // bubble -- it COMPRESSES it, wrapping every cell until the table fits, which turns a readable
+    // 6-column table into a tall unreadable sliver (measured: natural 604x84 becomes 372x189 at a
+    // 380px bubble, and 132x969 at 120px, where 132px is Qt's hard floor). This property enables
+    // the treatment that fixes it -- see applyWideTableLayout().
+    Q_PROPERTY(bool wideTableScroll READ isWideTableScrollEnabled WRITE setWideTableScrollEnabled)
 
     public:
 
@@ -170,6 +184,24 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_syntaxHighlightingEnabled;
         }
 
+        /**
+         * @brief Enable/disable the wide-table treatment (task-message-formatting-plan.md,
+         *  Stage 4). On by default.
+         *
+         * When on, a table whose natural width exceeds the wrap width is pinned to that natural
+         * width instead of being compressed to fit, the browser grows an as-needed horizontal
+         * scrollbar to reach the overflow, and a small expand button is floated over the table to
+         * open it in a resizable window. Surrounding paragraphs are unaffected -- they keep
+         * wrapping at the wrap width. Turning this off restores Qt's own compress-to-fit
+         * behaviour immediately, on already-loaded content.
+         */
+        void setWideTableScrollEnabled(bool enable);
+
+        bool isWideTableScrollEnabled() const noexcept
+        {
+            return m_wideTableScroll;
+        }
+
     public slots:
 
         void updateSize();
@@ -193,6 +225,10 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! doc comment for why this can't be left to the linkColor/linkUnderline qproperty setters
         //! alone (task-message-formatting-plan.md, Stage 1).
         void changeEvent(QEvent* event) override;
+
+        //! Repositions the wide-table expand buttons, which are anchored to the viewport's right
+        //! edge and so move whenever the viewport's width does (Stage 4).
+        void resizeEvent(QResizeEvent* event) override;
 
     private slots:
 
@@ -264,6 +300,48 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! class="language-x" attribute happened to be quoted/cased in the source markup.
         bool documentHasCodeLanguage() const;
 
+        /**
+         * @brief Pin every table that is too wide for the wrap width to its own natural width,
+         *  and switch the horizontal scrollbar on when any table was pinned.
+         *
+         * Qt's own behaviour for an oversized table is to COMPRESS it -- shrink columns and wrap
+         * cell text until it fits, down to a hard floor set by the longest unbreakable word in
+         * each column. That keeps the table inside the bubble but makes it unreadably tall (see
+         * the wideTableScroll property's own comment for measured numbers). Pinning the table's
+         * frame format to the width it wants (`QTextTableFormat::setWidth()`, FixedLength) makes
+         * Qt lay it out at full size and overflow the document's right edge instead -- crucially,
+         * WITHOUT affecting any other block: paragraphs around the table keep wrapping at the
+         * wrap width, because only the table's own frame carries the override.
+         *
+         * Natural width is measured by briefly laying the live document out unconstrained
+         * (`setTextWidth(-1)`) and reading each table's `frameBoundingRect()`, then restoring the
+         * real wrap width -- cheaper and more accurate than re-parsing the HTML into a probe
+         * document, and only ever done for a document that actually contains a table.
+         *
+         * Called after every content load and re-load (setHtmlContent(), applyDocumentStyle()'s
+         * replay), because setHtml() rebuilds the document and discards the pinned formats.
+         */
+        void applyWideTableLayout();
+
+        //! Create/position/show one expand button per pinned table, or hide them all when nothing
+        //! is pinned. Buttons are children of viewport() anchored to its RIGHT edge (not the
+        //! table's own right edge, which by definition is scrolled off-screen) at the table's own
+        //! vertical band, so a button stays put while its table scrolls underneath it.
+        void updateTableExpandButtons();
+
+        //! Open the pinned table at `index` in a resizable top-level window (FloatingDialogFrame,
+        //! the only shell in this library that hosts an arbitrary widget) showing just that table
+        //! with both scrollbars.
+        void openTableViewer(int index);
+
+        //! The tables applyWideTableLayout() pinned on the current document, in document order.
+        struct PinnedTable
+        {
+            int firstPosition=0;    //!< QTextFrame::firstPosition(), to re-find the table later
+            qreal naturalWidth=0;
+            QPointer<QWidget> button;
+        };
+
         AbstractChatMessageText* m_messageTextWidget=nullptr;
         bool m_copyable=false;
         bool m_ownContextMenu=true;
@@ -273,6 +351,106 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         QString m_hoveredAnchor;
         SyntaxHighlighter* m_highlighter=nullptr;
         bool m_syntaxHighlightingEnabled=true;
+        bool m_wideTableScroll=true;
+        std::vector<PinnedTable> m_pinnedTables;
+};
+
+/**
+ * @brief Read-only viewer for a single table, shown by
+ *  ChatMessageTextBrowser::openTableViewer() when a wide table's expand affordance is used
+ *  (task-message-formatting-plan.md, Stage 4).
+ *
+ * Exists as its own class purely for clipboard behaviour. Qt's own copy already offers four
+ * flavours for a table selection -- `text/html` (a real `<table>`, which is what Excel, Word,
+ * Google Sheets and LibreOffice actually consume when pasting), `text/markdown` (a correctly
+ * aligned GFM pipe table, so a copied table pastes straight back into another chat message),
+ * and ODF -- so pasting into an external app as a genuine table already works. The one flavour
+ * Qt gets wrong for this content is `text/plain`: it emits ONE CELL PER LINE, where every
+ * spreadsheet's convention is a tab between cells and a newline between rows. This class
+ * replaces just that flavour and leaves the other three untouched.
+ */
+class UISE_DESKTOP_EXPORT ChatMessageTableViewer : public QTextBrowser
+{
+    Q_OBJECT
+
+    public:
+
+        explicit ChatMessageTableViewer(QWidget* parent=nullptr);
+
+        //! Select the whole table and copy it, i.e. what the Copy table button and context-menu
+        //! item do. Goes through the ordinary copy path, so the clipboard ends up with exactly
+        //! the same flavour set as a manual selection would produce. Always emits tableCopied();
+        //! additionally shows a confirmation toast unless that was turned off.
+        void copyTable();
+
+        /**
+         * @brief Show a "Copied" toast after copyTable(). On by default.
+         *
+         * Turn it off when the host wants to present the confirmation itself -- tableCopied() is
+         * emitted either way, so a host can disable this and react to the signal instead.
+         */
+        void setCopyToastEnabled(bool enable) noexcept
+        {
+            m_copyToastEnabled=enable;
+        }
+
+        bool isCopyToastEnabled() const noexcept
+        {
+            return m_copyToastEnabled;
+        }
+
+        /**
+         * @brief Use a host-supplied Toast instead of this viewer's own private one.
+         * @param toast Not owned; pass nullptr to go back to the built-in fallback.
+         *
+         * Same idiom as AbstractNewPasswordPanel::setGlobalToast() -- letting an app route every
+         * confirmation through one shared toast keeps position and styling consistent, instead of
+         * each widget popping its own.
+         */
+        void setToast(Toast* toast) noexcept
+        {
+            m_toast=toast;
+        }
+
+        Toast* toast() const noexcept
+        {
+            return m_toast;
+        }
+
+    signals:
+
+        //! Emitted by copyTable() whenever the table reaches the clipboard, regardless of whether
+        //! a toast was shown -- the hook for a host that presents its own confirmation.
+        void tableCopied();
+
+    protected:
+
+        //! Replaces the `text/plain` flavour with tab-separated rows (cells joined by '\t', rows
+        //! by '\n') built from the cells the selection actually covers, leaving `text/html`,
+        //! `text/markdown` and ODF exactly as Qt produced them.
+        QMimeData* createMimeDataFromSelection() const override;
+
+        //! Copy / Copy table / Select all.
+        void contextMenuEvent(QContextMenuEvent* event) override;
+
+        //! Makes Ctrl+C with NO selection copy the whole table, instead of doing nothing as
+        //! QTextEdit::copy() would (it returns early unless the cursor has a selection).
+        void keyPressEvent(QKeyEvent* event) override;
+
+    private:
+
+        //! The single table this viewer was built around, or nullptr if the content somehow has
+        //! none (defensive -- openTableViewer() only ever loads a table into it).
+        QTextTable* tableOfDocument() const;
+
+        //! The toast to show a copy confirmation on: the host-supplied one if setToast() was
+        //! used, otherwise this viewer's own, created on first use and drawn INSIDE the viewer
+        //! (Toast::setDrawInParent()) rather than as a separate top-level window.
+        Toast* ensureToast();
+
+        bool m_copyToastEnabled=true;
+        Toast* m_toast=nullptr;         //!< host-supplied, not owned
+        Toast* m_ownToast=nullptr;      //!< lazy fallback, child of this widget
 };
 
 class ChatMessageText_p;

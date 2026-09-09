@@ -41,6 +41,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextBlock>
 #include <QTextLayout>
 #include <QTextFormat>
+#include <QTextTable>
+#include <QTextFrame>
+#include <QTextCursor>
+#include <QAbstractTextDocumentLayout>
+#include <QScrollBar>
+#include <QMimeData>
 
 #include <uise/test/uise-testthread.hpp>
 #include <uise/desktop/style.hpp>
@@ -830,6 +836,392 @@ BOOST_AUTO_TEST_CASE(TestSyntaxHighlightingToggleIsReactive)
 
             browser.setSyntaxHighlightingEnabled(true);
             UISE_TEST_CHECK(!codeBlock.layout()->formats().isEmpty());
+        }
+    );
+}
+
+/****************************** Stage 4: wide tables ******************************/
+
+namespace {
+
+//! The markdown the wide-table cases share: a 6-column table that wants far more width than any
+//! chat bubble gives it, wrapped in paragraphs so the "surrounding prose keeps wrapping" property
+//! is actually observable.
+QString wideTableMarkdown()
+{
+    return QStringLiteral(
+        "An intro paragraph long enough that it must wrap at the bubble width no matter how wide "
+        "the table below it turns out to be.\n"
+        "\n"
+        "| Package | Version | Licence | Maintainer | Updated | Description |\n"
+        "|---|---|---|---|---|---|\n"
+        "| libexample-core | 1.24.7 | Apache-2.0 | infrastructure-team | 2026-08-14 | Shared runtime helpers |\n"
+        "| libexample-net | 0.9.3 | MIT | networking-team | 2026-09-01 | Transport and retry policy |\n"
+        "\n"
+        "A trailing paragraph that must also keep wrapping at the bubble width.\n"
+    );
+}
+
+QTextTable* firstTable(QTextDocument* doc)
+{
+    for (auto* frame : doc->rootFrame()->childFrames())
+    {
+        auto* table=qobject_cast<QTextTable*>(frame);
+        if (table!=nullptr)
+        {
+            return table;
+        }
+    }
+    return nullptr;
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTableIsPinnedNotCompressed)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            constexpr int wrapWidth=380;
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(wrapWidth);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(wrapWidth);
+
+            auto* table=firstTable(browser.document());
+            UISE_TEST_REQUIRE(table!=nullptr);
+
+            auto tableWidth=browser.document()->documentLayout()->frameBoundingRect(table).width();
+
+            // Qt's own behaviour would compress this table to <= the wrap width; pinning is what
+            // lets it keep its natural width and overflow instead.
+            UISE_TEST_CHECK(tableWidth>wrapWidth);
+
+            // ... and the overflow must be reachable, i.e. the browser grew a horizontal scrollbar.
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTablePinningLeavesParagraphsWrapped)
+{
+    // The whole point of pinning the TABLE's own frame rather than widening the document: prose
+    // around it must keep wrapping at the bubble width.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            constexpr int wrapWidth=380;
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(wrapWidth);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(wrapWidth);
+
+            auto* doc=browser.document();
+            auto paragraphWidth=doc->documentLayout()->blockBoundingRect(doc->firstBlock()).width();
+            UISE_TEST_CHECK(paragraphWidth<=static_cast<qreal>(wrapWidth));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestNarrowTableIsNotPinned)
+{
+    // A table that already fits keeps Qt's own column balancing -- pinning it would be worse, and
+    // must not drag in a scrollbar the message does not need.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(QStringLiteral(
+                "| a | b |\n|---|---|\n| 1 | 2 |\n")));
+            browser.setWrapWidth(380);
+
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTableUnpinsWhenBubbleGrows)
+{
+    // A table pinned for a narrow bubble must be released again once the bubble is wide enough to
+    // hold it -- otherwise it would stay overflowing (and keep its scrollbar) forever.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(380);
+            UISE_TEST_REQUIRE(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+
+            browser.setWrapWidth(2000);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestSizeHintStaysWithinWrapWidthDespitePinnedTable)
+{
+    // Regression guard for the trap this stage had to fix: pinning inflates
+    // QTextDocument::idealWidth() (measured 380 -> 612 for one 6-column table), and sizeHint()
+    // reported that verbatim -- which would have asked the layout for a bubble as wide as the
+    // table and defeated maxBubbleWidth entirely.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            constexpr int wrapWidth=380;
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(wrapWidth);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(wrapWidth);
+
+            UISE_TEST_CHECK(browser.document()->idealWidth()>static_cast<qreal>(wrapWidth));
+            UISE_TEST_CHECK(browser.sizeHint().width()<=wrapWidth+2*browser.frameWidth());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTableTreatmentCanBeDisabled)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(380);
+            UISE_TEST_REQUIRE(browser.isWideTableScrollEnabled());
+            UISE_TEST_REQUIRE(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+
+            browser.setWideTableScrollEnabled(false);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+
+            // Back to Qt's own compress-to-fit behaviour.
+            browser.setWrapWidth(380);
+            auto* table=firstTable(browser.document());
+            UISE_TEST_REQUIRE(table!=nullptr);
+            auto w=browser.document()->documentLayout()->frameBoundingRect(table).width();
+            UISE_TEST_CHECK(w<=380.0);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPlainTextClearsWideTableState)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(380);
+            UISE_TEST_REQUIRE(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+
+            browser.setPlainTextContent(QStringLiteral("just plain text, no table here"));
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.toPlainText(),
+                                       QStringLiteral("just plain text, no table here"));
+        }
+    );
+}
+
+namespace {
+
+//! Exposes the protected clipboard hook so a test can inspect exactly what Ctrl+C would put on
+//! the clipboard, without depending on a working platform clipboard under `offscreen`.
+class TableViewerProbe : public ChatMessageTableViewer
+{
+    public:
+
+        using ChatMessageTableViewer::createMimeDataFromSelection;
+};
+
+QString viewerTableHtml()
+{
+    return QStringLiteral(
+        "<table>"
+        "<tr><th>Package</th><th>Version</th><th>Licence</th></tr>"
+        "<tr><td>libexample-core</td><td>1.24.7</td><td>Apache-2.0</td></tr>"
+        "<tr><td>libexample-net</td><td>0.9.3</td><td>MIT</td></tr>"
+        "</table>");
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableCopiesPlainTextAsTabSeparated)
+{
+    // Qt's own text/plain for a table selection is one cell PER LINE, which pastes into a
+    // plain-text target as a single column. ChatMessageTableViewer replaces that flavour with
+    // the tab-between-cells / newline-between-rows convention every spreadsheet expects.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(viewerTableHtml());
+            view.selectAll();
+
+            auto* mime=view.createMimeDataFromSelection();
+            UISE_TEST_REQUIRE(mime!=nullptr);
+
+            auto plain=mime->text();
+            UISE_TEST_CHECK(plain.contains(QStringLiteral("Package\tVersion\tLicence")));
+            UISE_TEST_CHECK(plain.contains(QStringLiteral("libexample-core\t1.24.7\tApache-2.0")));
+            UISE_TEST_CHECK(plain.contains(QStringLiteral("libexample-net\t0.9.3\tMIT")));
+
+            delete mime;
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableKeepsRichClipboardFlavours)
+{
+    // The text/plain override must not cost us the flavours that make an external paste land as a
+    // REAL table -- text/html is what Excel/Word/Sheets consume, and text/markdown is what lets a
+    // copied table go straight back into another chat message.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(viewerTableHtml());
+            view.selectAll();
+
+            auto* mime=view.createMimeDataFromSelection();
+            UISE_TEST_REQUIRE(mime!=nullptr);
+
+            UISE_TEST_CHECK(mime->hasHtml());
+            UISE_TEST_CHECK(mime->html().contains(QStringLiteral("<table"),Qt::CaseInsensitive));
+            UISE_TEST_CHECK(mime->html().contains(QStringLiteral("libexample-core")));
+            UISE_TEST_CHECK(mime->formats().contains(QStringLiteral("text/markdown")));
+
+            delete mime;
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableCopyIsLimitedToTheSelection)
+{
+    // A partial selection must copy only what was selected -- copying the whole table regardless
+    // would be a correctness bug, not a convenience.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(viewerTableHtml());
+
+            auto* table=firstTable(view.document());
+            UISE_TEST_REQUIRE(table!=nullptr);
+
+            // Select the last data row only.
+            QTextCursor cursor(view.document());
+            cursor.setPosition(table->cellAt(2,0).firstCursorPosition().position());
+            cursor.setPosition(table->cellAt(2,2).lastCursorPosition().position(),
+                               QTextCursor::KeepAnchor);
+            view.setTextCursor(cursor);
+
+            auto* mime=view.createMimeDataFromSelection();
+            UISE_TEST_REQUIRE(mime!=nullptr);
+
+            auto plain=mime->text();
+            UISE_TEST_CHECK(plain.contains(QStringLiteral("libexample-net\t0.9.3\tMIT")));
+            UISE_TEST_CHECK(!plain.contains(QStringLiteral("libexample-core")));
+            UISE_TEST_CHECK(!plain.contains(QStringLiteral("Package")));
+
+            delete mime;
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableMergedCellAppearsOnce)
+{
+    // cellAt() reports a merged cell at every position it spans; without the origin dedup a
+    // colspan=3 cell would be emitted three times across the row.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(QStringLiteral(
+                "<table>"
+                "<tr><td colspan=\"3\">MERGED</td></tr>"
+                "<tr><td>a</td><td>b</td><td>c</td></tr>"
+                "</table>"));
+            view.selectAll();
+
+            auto* mime=view.createMimeDataFromSelection();
+            UISE_TEST_REQUIRE(mime!=nullptr);
+
+            UISE_TEST_CHECK_EQUAL(mime->text().count(QStringLiteral("MERGED")),1);
+            UISE_TEST_CHECK(mime->text().contains(QStringLiteral("a\tb\tc")));
+
+            delete mime;
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableEmitsCopiedSignalEvenWithToastDisabled)
+{
+    // The signal is the hook for a host presenting its own confirmation, so it must fire whether
+    // or not the built-in toast is in play -- otherwise disabling the toast would silently leave
+    // such a host with no notification at all.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(viewerTableHtml());
+
+            int copiedCount=0;
+            QObject::connect(&view,&ChatMessageTableViewer::tableCopied,
+                             &view,[&copiedCount](){++copiedCount;});
+
+            UISE_TEST_CHECK(view.isCopyToastEnabled());
+            view.copyTable();
+            UISE_TEST_CHECK_EQUAL(copiedCount,1);
+
+            view.setCopyToastEnabled(false);
+            UISE_TEST_CHECK(!view.isCopyToastEnabled());
+            view.copyTable();
+            UISE_TEST_CHECK_EQUAL(copiedCount,2);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandedTableCopyTableNeedsNoPriorSelection)
+{
+    // copyTable() is what the Copy table button and a selection-less Ctrl+C both go through.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            TableViewerProbe view;
+            view.setHtml(viewerTableHtml());
+            UISE_TEST_REQUIRE(!view.textCursor().hasSelection());
+
+            view.copyTable();
+
+            // It selects the whole table on the way, which is what makes the ordinary copy path
+            // produce every flavour.
+            UISE_TEST_CHECK(view.textCursor().hasSelection());
+
+            auto* mime=view.createMimeDataFromSelection();
+            UISE_TEST_REQUIRE(mime!=nullptr);
+            UISE_TEST_CHECK(mime->text().contains(QStringLiteral("Package\tVersion\tLicence")));
+            UISE_TEST_CHECK(mime->text().contains(QStringLiteral("libexample-net\t0.9.3\tMIT")));
+            delete mime;
         }
     );
 }

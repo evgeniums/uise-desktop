@@ -153,3 +153,29 @@ uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton:hover 
 color: #0099b8;
 border: none;
 }
+
+/* task-message-formatting-plan.md, Stage 4: wide-table expand affordance (structure in
+   ../chat.qss). Deliberately low-contrast at rest so it does not compete with the message text
+   it floats over, lifting to full contrast on hover. The expanded viewer's Copy table
+   and Close buttons share the same palette so all three read as one control family. */
+uise--ChatMessageTextBrowser #tableExpandButton,
+#tableViewerFrame #tableViewerCopyButton QPushButton,
+#tableViewerFrame #tableViewerCloseButton QPushButton {
+background-color: rgba(255,255,255,0.85);
+border-color: #CCCCCC;
+color: #666666;
+}
+uise--ChatMessageTextBrowser #tableExpandButton:hover,
+#tableViewerFrame #tableViewerCopyButton QPushButton:hover,
+#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
+background-color: #FFFFFF;
+border-color: #999999;
+color: #222222;
+}
+
+/* FloatingDialogFrame is a translucent top-level window -- content that does not paint its own
+   background shows straight through it (see docs/styling.md section 7). Without this the button
+   row around the Copy table button is transparent. */
+#tableViewerFrame {
+background-color: #FFFFFF;
+}

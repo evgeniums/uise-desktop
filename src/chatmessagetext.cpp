@@ -35,6 +35,15 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextLayout>
 #include <QTextDocument>
 #include <QTextFormat>
+#include <QTextTable>
+#include <QTextFrame>
+#include <QTextDocumentFragment>
+#include <QToolButton>
+#include <QPushButton>
+#include <QScrollBar>
+#include <QMimeData>
+#include <QKeyEvent>
+#include <QContextMenuEvent>
 #include <QAbstractTextDocumentLayout>
 #include <QtMath>
 
@@ -42,6 +51,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/syntaxhighlighter.hpp>
+#include <uise/desktop/floatingdialog.hpp>
+#include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/toast.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -119,7 +131,15 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 
 void ChatMessageTextBrowser::updateSize()
 {
-    document()->setTextWidth(document()->idealWidth());
+    // Shrink-wrap the document to its content -- but NEVER wider than the wrap width. Without
+    // the clamp, a pinned wide table (applyWideTableLayout()) pushes idealWidth() past the wrap
+    // width (measured: 380 -> 612 for one 6-column table), and setting THAT as the text width
+    // would re-lay every surrounding paragraph out at 612 too, unwrapping the prose the pinning
+    // was careful not to touch. Clamping is a no-op for content without a pinned table: Qt
+    // already caps idealWidth() at the text width in that case.
+    auto ideal=document()->idealWidth();
+    auto cap=lineWrapColumnOrWidth();
+    document()->setTextWidth((cap>0 && ideal>cap) ? static_cast<qreal>(cap) : ideal);
     updateGeometry();
 }
 
@@ -128,6 +148,11 @@ void ChatMessageTextBrowser::updateSize()
 void ChatMessageTextBrowser::setWrapWidth(int w)
 {
     setLineWrapColumnOrWidth(w);
+    // Re-evaluate wide tables against the NEW width before shrink-wrapping: this is where the
+    // wrap width first becomes known at all (setHtmlContent() runs before any negotiation pass,
+    // so pinning cannot happen there), and a later pass can widen the bubble enough that a
+    // previously pinned table now fits and should be un-pinned again.
+    applyWideTableLayout();
     updateSize();
 }
 
@@ -197,6 +222,27 @@ QSize ChatMessageTextBrowser::sizeHint() const
         QSizeF docSize = document()->size();
         int height = static_cast<int>(docSize.height() + 2 * frameWidth());
         int width = static_cast<int>(document()->idealWidth() + 2 * frameWidth());
+
+        // Same clamp, and for the same reason, as updateSize(): a pinned wide table inflates
+        // idealWidth() beyond the wrap width, and reporting THAT here would ask the layout for a
+        // bubble as wide as the table -- defeating maxBubbleWidth and the whole point of scrolling
+        // to the overflow instead. ChatMessageText::bubbleWidthHint() already clamps its own
+        // return value; this is the same guarantee for Qt's direct sizeHint() path.
+        auto cap=lineWrapColumnOrWidth();
+        if (cap>0 && width>cap+2*frameWidth())
+        {
+            width=cap+2*frameWidth();
+        }
+
+        // An as-needed horizontal scrollbar is drawn INSIDE this widget, so its height has to be
+        // part of the hint or the last line of the document is clipped behind it -- the same
+        // bookkeeping NavigationBar does for its own as-needed horizontal bar (see
+        // src/navigationbar.cpp's sizeHint()).
+        if (horizontalScrollBar()!=nullptr && horizontalScrollBar()->isVisible())
+        {
+            height+=horizontalScrollBar()->sizeHint().height();
+        }
+
         return QSize{width,height};
     }
 
@@ -233,6 +279,9 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     {
         ensureSyntaxHighlighter(html);
     }
+    // setHtml() rebuilt the document, so any table pinned for the PREVIOUS content is gone along
+    // with it -- re-measure and re-pin for this one (task-message-formatting-plan.md, Stage 4).
+    applyWideTableLayout();
 }
 
 //--------------------------------------------------------------------------
@@ -245,6 +294,9 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // someone else's message. See this method's own header doc comment.
     m_lastHtml.clear();
     setPlainText(text);
+    // Plain text has no tables -- this clears any pin/button left over from previous HTML content
+    // (whose document setPlainText() has just discarded) and puts the scrollbar policy back.
+    applyWideTableLayout();
 }
 
 //--------------------------------------------------------------------------
@@ -359,6 +411,9 @@ void ChatMessageTextBrowser::applyDocumentStyle()
     if (!m_lastHtml.isEmpty())
     {
         setHtml(m_lastHtml);
+        // The replay rebuilt the document, discarding every pinned table format with it -- same
+        // reason setHtmlContent() re-pins after its own setHtml() (Stage 4).
+        applyWideTableLayout();
         // The reload above reset every anchor to the base style, including one that was mid-hover
         // -- re-apply its hover-underline immediately rather than waiting for the next mouse move.
         if (!m_hoveredAnchor.isEmpty())
@@ -413,6 +468,518 @@ void ChatMessageTextBrowser::ensureSyntaxHighlighter(const QString& html)
     // rehighlightPending flag and silently discarded the very reformat this call now replaces
     // (see this method's own header doc comment for the qsyntaxhighlighter.cpp citations).
     m_highlighter->rehighlight();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::resizeEvent(QResizeEvent* event)
+{
+    QTextBrowser::resizeEvent(event);
+    updateTableExpandButtons();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setWideTableScrollEnabled(bool enable)
+{
+    if (m_wideTableScroll==enable)
+    {
+        return;
+    }
+    m_wideTableScroll=enable;
+
+    if (!enable)
+    {
+        // Drop the pins so Qt goes back to compressing tables to fit, and take the buttons and
+        // the scrollbar away with them.
+        for (auto& pinned : m_pinnedTables)
+        {
+            if (!pinned.button.isNull())
+            {
+                pinned.button->deleteLater();
+            }
+        }
+        m_pinnedTables.clear();
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        if (!m_lastHtml.isEmpty())
+        {
+            // Cheapest way to discard every pinned QTextTableFormat: rebuild the document.
+            setHtml(m_lastHtml);
+        }
+        updateGeometry();
+        return;
+    }
+
+    applyWideTableLayout();
+    updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyWideTableLayout()
+{
+    for (auto& pinned : m_pinnedTables)
+    {
+        if (!pinned.button.isNull())
+        {
+            pinned.button->deleteLater();
+        }
+    }
+    m_pinnedTables.clear();
+
+    if (!m_wideTableScroll || document()==nullptr)
+    {
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        return;
+    }
+
+    std::vector<QTextTable*> tables;
+    for (auto* frame : document()->rootFrame()->childFrames())
+    {
+        auto* table=qobject_cast<QTextTable*>(frame);
+        if (table!=nullptr)
+        {
+            tables.push_back(table);
+        }
+    }
+    if (tables.empty())
+    {
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        return;
+    }
+
+    auto wrapWidth=lineWrapColumnOrWidth();
+    if (wrapWidth<=0)
+    {
+        // No wrap width has been negotiated yet (this runs from setHtmlContent(), which can
+        // precede the first ChatMessageText::bubbleWidthHint() call) -- there is nothing to
+        // compare a natural width against yet. setWrapWidth() calls back here once it knows.
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        return;
+    }
+
+    // Drop any override left from a PREVIOUS pass before measuring: a table pinned for a narrow
+    // bubble must be able to un-pin when the bubble grows, and measuring a still-pinned table
+    // would just read its pinned width straight back as if that were its natural one.
+    for (auto* table : tables)
+    {
+        auto format=table->format();
+        if (format.width().type()!=QTextLength::VariableLength)
+        {
+            format.setWidth(QTextLength());
+            table->setFormat(format);
+        }
+    }
+
+    // The width each table WANTS, measured by laying the whole document out unconstrained.
+    // Only the tables' own rects are read back, so the fact that this also unwraps every
+    // paragraph for the duration does not matter -- the real wrap width is restored below,
+    // before anything can be painted at this width.
+    auto restoreWidth=document()->textWidth();
+    document()->setTextWidth(-1);
+    std::vector<qreal> naturalWidths;
+    naturalWidths.reserve(tables.size());
+    for (auto* table : tables)
+    {
+        naturalWidths.push_back(document()->documentLayout()->frameBoundingRect(table).width());
+    }
+    document()->setTextWidth(restoreWidth);
+
+    bool anyPinned=false;
+    for (std::size_t i=0;i<tables.size();++i)
+    {
+        // Only a table that does not already fit is worth pinning -- leaving a fitting table
+        // alone keeps Qt's own column balancing, which is better than a hard pin.
+        if (wrapWidth<=0 || naturalWidths[i]<=static_cast<qreal>(wrapWidth))
+        {
+            continue;
+        }
+
+        auto format=tables[i]->format();
+        format.setWidth(QTextLength(QTextLength::FixedLength,naturalWidths[i]));
+        tables[i]->setFormat(format);
+
+        PinnedTable pinned;
+        pinned.firstPosition=tables[i]->firstPosition();
+        pinned.naturalWidth=naturalWidths[i];
+        m_pinnedTables.push_back(pinned);
+        anyPinned=true;
+    }
+
+    setHorizontalScrollBarPolicy(anyPinned ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    if (anyPinned)
+    {
+        // The pins changed the layout; re-shrink-wrap so the document's own height reflects the
+        // now-unwrapped cells (a pinned table is typically much SHORTER than the compressed one).
+        updateSize();
+        updateTableExpandButtons();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateTableExpandButtons()
+{
+    if (document()==nullptr)
+    {
+        return;
+    }
+
+    for (std::size_t i=0;i<m_pinnedTables.size();++i)
+    {
+        auto& pinned=m_pinnedTables[i];
+
+        // Re-find the table by the position recorded when it was pinned -- the QTextTable* itself
+        // is not safe to keep across a re-layout.
+        auto* frame=document()->frameAt(pinned.firstPosition);
+        auto* table=qobject_cast<QTextTable*>(frame);
+        if (table==nullptr)
+        {
+            if (!pinned.button.isNull())
+            {
+                pinned.button->hide();
+            }
+            continue;
+        }
+
+        if (pinned.button.isNull())
+        {
+            auto* button=new QToolButton(viewport());
+            button->setObjectName(QStringLiteral("tableExpandButton"));
+            button->setCursor(Qt::ArrowCursor);
+            button->setFocusPolicy(Qt::NoFocus);
+            // A glyph rather than an icon: the curated tabler-icon set gets its first additions in
+            // Stage 5a, and this button should not block on that. U+2922 (north-east/south-west
+            // arrow) reads as "expand" and needs no asset.
+            button->setText(QString(QChar(0x2922)));
+            button->setToolTip(tr("Show the full table"));
+            auto index=static_cast<int>(i);
+            connect(button,&QToolButton::clicked,this,[this,index](){openTableViewer(index);});
+            pinned.button=button;
+        }
+
+        auto* button=qobject_cast<QToolButton*>(pinned.button.data());
+        if (button==nullptr)
+        {
+            continue;
+        }
+
+        auto rect=document()->documentLayout()->frameBoundingRect(table);
+
+        // adjustSize() rather than positioning straight from sizeHint(): the button's size is
+        // owned by QSS (min-/max-width in chat.qss), and a font-size large enough to make the
+        // glyph readable can push sizeHint() past that max -- positioning from the unclamped hint
+        // would then shove the button left of where it actually ends up. adjustSize() applies the
+        // constraints, so width()/height() below are the real, final size.
+        button->adjustSize();
+        auto size=button->size();
+
+        // Anchored to the VIEWPORT's right edge, not the table's -- a pinned table's own right
+        // edge is by definition scrolled off-screen, so a button placed there would be invisible
+        // until the user had already scrolled to the far end (i.e. exactly when they no longer
+        // need it). Only the vertical position tracks the table, and this widget never scrolls
+        // vertically (sizeHint() reports the full document height; the chat list scrolls instead),
+        // so no vertical scroll offset is involved.
+        constexpr int margin=4;
+        auto x=viewport()->width()-size.width()-margin;
+        auto y=static_cast<int>(rect.top())+margin;
+        button->move(x,y);
+        button->show();
+        button->raise();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+/******************************ChatMessageTableViewer**************************/
+
+//--------------------------------------------------------------------------
+
+namespace {
+
+//! Text of one table cell, blocks joined by a space -- a cell that wrapped onto several blocks is
+//! still ONE field in a tab-separated row, so its own internal line breaks must not become row
+//! breaks in the output.
+QString tableCellText(const QTextTableCell& cell)
+{
+    QStringList parts;
+    for (auto it=cell.begin();it!=cell.end();++it)
+    {
+        auto text=it.currentBlock().text().trimmed();
+        if (!text.isEmpty())
+        {
+            parts<<text;
+        }
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
+/**
+ * @brief Tab-separated rendering of the cells a selection covers.
+ * @param selectionStart/selectionEnd Document positions; pass -1 for "the whole table".
+ *
+ * Cells are joined by '\t' and rows by '\n' -- the convention every spreadsheet expects, and the
+ * one thing Qt's own text/plain for a table selection does not do (it emits one cell per line).
+ */
+QString tableToTabSeparated(QTextTable* table, int selectionStart, int selectionEnd)
+{
+    QString out;
+    for (int r=0;r<table->rows();++r)
+    {
+        QStringList cells;
+        for (int c=0;c<table->columns();++c)
+        {
+            auto cell=table->cellAt(r,c);
+            if (!cell.isValid())
+            {
+                continue;
+            }
+            // A merged cell is reported at every position it spans -- take it only at its own
+            // origin, the same dedup markdownrenderer.cpp's writeTable() does.
+            if (cell.row()!=r || cell.column()!=c)
+            {
+                continue;
+            }
+            if (selectionStart>=0)
+            {
+                auto cellStart=cell.firstCursorPosition().position();
+                auto cellEnd=cell.lastCursorPosition().position();
+                if (cellEnd<selectionStart || cellStart>selectionEnd)
+                {
+                    continue;
+                }
+            }
+            cells<<tableCellText(cell);
+        }
+        if (!cells.isEmpty())
+        {
+            out+=cells.join(QLatin1Char('\t'));
+            out+=QLatin1Char('\n');
+        }
+    }
+    return out;
+}
+
+}
+
+//--------------------------------------------------------------------------
+
+ChatMessageTableViewer::ChatMessageTableViewer(QWidget* parent) : QTextBrowser(parent)
+{
+    setReadOnly(true);
+    setOpenLinks(false);
+    setLineWrapMode(QTextEdit::NoWrap);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+}
+
+//--------------------------------------------------------------------------
+
+QTextTable* ChatMessageTableViewer::tableOfDocument() const
+{
+    if (document()==nullptr)
+    {
+        return nullptr;
+    }
+    for (auto* frame : document()->rootFrame()->childFrames())
+    {
+        auto* table=qobject_cast<QTextTable*>(frame);
+        if (table!=nullptr)
+        {
+            return table;
+        }
+    }
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+Toast* ChatMessageTableViewer::ensureToast()
+{
+    if (m_toast!=nullptr)
+    {
+        return m_toast;
+    }
+    if (m_ownToast==nullptr)
+    {
+        // Parented to the hosting window rather than to this browser: a Toast child of a
+        // QAbstractScrollArea would be positioned against the widget rather than its viewport,
+        // and the window is the surface the confirmation logically belongs to anyway.
+        auto* host=window();
+        m_ownToast=new Toast(host!=nullptr ? host : static_cast<QWidget*>(this));
+
+        // Drawn as a CHILD widget rather than Toast's default Qt::Tool window. A Tool window
+        // would already be safe -- FloatingDialogFrame's outside-click filter explicitly exempts
+        // Qt::Tool/Popup/ToolTip (see isOutsidePress() in floatingdialog.cpp) -- but a child
+        // cannot cause a window activation change at all, which makes "copying must not close
+        // the expanded view" structural instead of dependent on that exemption staying in place.
+        m_ownToast->setDrawInParent(true);
+    }
+    return m_ownToast;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTableViewer::copyTable()
+{
+    // Going through selectAll()+copy() rather than assembling a QMimeData by hand keeps this on
+    // the ordinary copy path, so the clipboard gets exactly the same flavour set (html, markdown,
+    // ODF, and our own text/plain override) as a manual selection would. The selection is left in
+    // place afterwards, as visible confirmation of what was copied.
+    selectAll();
+    copy();
+
+    // Emitted unconditionally, before the toast: a host that turned the built-in toast off is
+    // relying on this to show its own.
+    emit tableCopied();
+
+    if (m_copyToastEnabled)
+    {
+        auto* toast=ensureToast();
+        if (toast!=nullptr)
+        {
+            toast->show(tr("Copied"));
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QMimeData* ChatMessageTableViewer::createMimeDataFromSelection() const
+{
+    auto* mime=QTextBrowser::createMimeDataFromSelection();
+    if (mime==nullptr)
+    {
+        return mime;
+    }
+
+    auto* table=tableOfDocument();
+    if (table!=nullptr)
+    {
+        auto cursor=textCursor();
+        auto tabbed=cursor.hasSelection()
+                        ? tableToTabSeparated(table,cursor.selectionStart(),cursor.selectionEnd())
+                        : tableToTabSeparated(table,-1,-1);
+        if (!tabbed.isEmpty())
+        {
+            // Replaces ONLY text/plain; text/html, text/markdown and ODF stay as Qt built them.
+            mime->setText(tabbed);
+        }
+    }
+
+    return mime;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTableViewer::contextMenuEvent(QContextMenuEvent* event)
+{
+    QMenu menu(this);
+
+    auto* copyAction=menu.addAction(tr("Copy"));
+    copyAction->setEnabled(textCursor().hasSelection());
+    connect(copyAction,&QAction::triggered,this,[this](){copy();});
+
+    auto* copyTableAction=menu.addAction(tr("Copy table"));
+    connect(copyTableAction,&QAction::triggered,this,[this](){copyTable();});
+
+    menu.addSeparator();
+
+    auto* selectAllAction=menu.addAction(tr("Select all"));
+    connect(selectAllAction,&QAction::triggered,this,[this](){selectAll();});
+
+    menu.exec(event->globalPos());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTableViewer::keyPressEvent(QKeyEvent* event)
+{
+    // QTextEdit::copy() returns early when the cursor has no selection, so a plain Ctrl+C in a
+    // freshly opened viewer would do nothing at all -- which reads as "copying is broken" rather
+    // than "you were supposed to select something first". Copy the whole table instead.
+    if (event->matches(QKeySequence::Copy) && !textCursor().hasSelection())
+    {
+        copyTable();
+        event->accept();
+        return;
+    }
+    QTextBrowser::keyPressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::openTableViewer(int index)
+{
+    if (index<0 || static_cast<std::size_t>(index)>=m_pinnedTables.size() || document()==nullptr)
+    {
+        return;
+    }
+
+    auto* table=qobject_cast<QTextTable*>(document()->frameAt(m_pinnedTables[static_cast<std::size_t>(index)].firstPosition));
+    if (table==nullptr)
+    {
+        return;
+    }
+
+    // Select the whole frame, boundaries included -- Qt's own documented idiom for extracting a
+    // frame (the positions either side of firstPosition()/lastPosition() are the frame markers;
+    // selecting strictly between them would yield the cell contents WITHOUT the table structure).
+    QTextCursor cursor(document());
+    cursor.setPosition(std::max(0,table->firstPosition()-1));
+    cursor.setPosition(std::min(document()->characterCount()-1,table->lastPosition()+1),
+                       QTextCursor::KeepAnchor);
+    auto tableHtml=cursor.selection().toHtml();
+
+    auto* container=new QFrame();
+    container->setObjectName(QStringLiteral("tableViewerFrame"));
+    auto* containerLayout=Layout::vertical(container);
+
+    auto* view=new ChatMessageTableViewer(container);
+    view->setObjectName(QStringLiteral("tableViewer"));
+    // Same document CSS the bubble itself uses, so the expanded table keeps the theme's own
+    // border/padding treatment (resources/style/messagetext.css) instead of Qt's bare defaults.
+    view->document()->setDefaultStyleSheet(Style::instance().css());
+    view->setHtml(tableHtml);
+    containerLayout->addWidget(view,1);
+
+    // Copying already works by selection + Ctrl+C (Qt puts text/html and text/markdown on the
+    // clipboard, which is what external apps paste a real table from) -- this button is purely
+    // about discoverability, since nothing else tells the user that is possible.
+    auto* buttonRow=new QFrame(container);
+    auto* buttonLayout=Layout::horizontal(buttonRow);
+    buttonLayout->addStretch(1);
+    // uise::PushButton rather than a bare QPushButton: it carries the library's own click-ripple
+    // overlay (see its rippleOverlay()), so the button gives the same feedback as every other
+    // button in the app instead of silently doing something invisible.
+    auto* copyButton=new PushButton(tr("Copy table"),buttonRow);
+    copyButton->setObjectName(QStringLiteral("tableViewerCopyButton"));
+    connect(copyButton,&PushButton::clicked,view,[view](){view->copyTable();});
+    buttonLayout->addWidget(copyButton);
+
+    auto* closeButton=new PushButton(tr("Close"),buttonRow);
+    closeButton->setObjectName(QStringLiteral("tableViewerCloseButton"));
+    buttonLayout->addWidget(closeButton);
+
+    containerLayout->addWidget(buttonRow);
+
+    container->resize(qMin(static_cast<int>(m_pinnedTables[static_cast<std::size_t>(index)].naturalWidth)+48,900),400);
+
+    // FloatingDialogFrame is the only shell in this library that hosts an arbitrary widget as a
+    // resizable top-level window -- ChatImageViewerWindow, despite the name, is hard-wired to a
+    // ChatImageViewer and has no setWidget().
+    auto* frame=new FloatingDialogFrame(this);
+    frame->setWidget(container,true);
+    frame->setAutoCloseOnOutsideClick(true);
+
+    connect(closeButton,&PushButton::clicked,frame,[frame](){frame->close();});
+
+    // The frame is parented to this browser, so without this every expand/close cycle would
+    // leave one behind for the lifetime of the message bubble. setWidget(...,true) already
+    // disposes of the content; this disposes of the shell around it.
+    connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
+
+    frame->popup();
 }
 
 //--------------------------------------------------------------------------
