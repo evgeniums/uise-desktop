@@ -39,6 +39,8 @@ You may select, at your option, one of the above-listed licenses.
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
 
+class SyntaxHighlighter;
+
 class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 {
     Q_OBJECT
@@ -49,6 +51,13 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     // AbstractChatMessageText, see chat.qss).
     Q_PROPERTY(QColor linkColor READ linkColor WRITE setLinkColor)
     Q_PROPERTY(bool linkUnderline READ linkUnderline WRITE setLinkUnderline)
+
+    // task-message-formatting-plan.md, Stage 3: reactive, not a load-time gate -- the setter
+    // itself attaches/detaches and repaints immediately, since a bubble can be constructed and
+    // loaded before its first QStyle::polish() (Style::updateWidgetStyle() bails on an un-
+    // polished widget), so a qproperty- value arriving from QSS after content is already showing
+    // must still take effect. See setSyntaxHighlightingEnabled()'s own doc comment.
+    Q_PROPERTY(bool syntaxHighlighting READ isSyntaxHighlightingEnabled WRITE setSyntaxHighlightingEnabled)
 
     public:
 
@@ -112,8 +121,20 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! affects content set afterwards -- see applyDocumentStyle()). ChatMessageText::loadText()'s
         //! Html branch calls this instead of setHtml() directly; setPlainText()/setMarkdown() are
         //! unaffected -- Stage 1 never produces a link outside the Html path (see chattextrender.h),
-        //! so plain/markdown content has nothing to re-style on a later color/theme change.
+        //! so plain/markdown content has nothing to re-style on a later color/theme change. Also
+        //! lazily attaches/re-triggers a code-block syntax highlighter when `html` actually
+        //! contains a highlightable fenced code block -- see ensureSyntaxHighlighter()'s own doc
+        //! comment (task-message-formatting-plan.md, Stage 3).
         void setHtmlContent(const QString& html);
+
+        //! Like QTextBrowser::setPlainText(), but also clears m_lastHtml -- WITHOUT this, a later
+        //! QEvent::StyleChange's applyDocumentStyle() would replay a PREVIOUS message's HTML back
+        //! over this plain-text content (m_lastHtml is otherwise only ever cleared by loading new
+        //! HTML), which in a recycled flyweight bubble can resurrect another message entirely.
+        //! ChatMessageText::loadText()'s Plain branch calls this instead of setPlainText()
+        //! directly for exactly that reason (task-message-formatting-plan.md, Stage 3 -- a pre-
+        //! existing bug this stage's own testing made visible, not something Stage 3 introduced).
+        void setPlainTextContent(const QString& text);
 
         QColor linkColor() const noexcept
         {
@@ -129,6 +150,25 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_linkUnderline;
         }
         void setLinkUnderline(bool enable);
+
+        /**
+         * @brief Enable/disable code-block syntax highlighting (task-message-formatting-plan.md,
+         *  Stage 3). On by default.
+         *
+         * Reactive rather than a load-time gate: turning this off immediately detaches and
+         * destroys the highlighter (QSyntaxHighlighter::setDocument(nullptr) clears every layout
+         * format it applied, inside an edit block that does NOT itself trigger a repaint -- see
+         * the implementation's own comment for why an explicit viewport()->update() follows it);
+         * turning it on immediately (re)attaches and runs one synchronous rehighlight(). Either
+         * way there is no "only affects content loaded from now on" gap for a bubble whose
+         * qproperty- value arrives from QSS after setHtmlContent() already ran.
+         */
+        void setSyntaxHighlightingEnabled(bool enable);
+
+        bool isSyntaxHighlightingEnabled() const noexcept
+        {
+            return m_syntaxHighlightingEnabled;
+        }
 
     public slots:
 
@@ -191,6 +231,39 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! `href` (a chat bubble's text is short, so a full block/fragment walk per call is cheap).
         void setAnchorUnderline(const QString& href, bool enable);
 
+        /**
+         * @brief Lazily attach a SyntaxHighlighter to this document's already-loaded content, if
+         *  (a) syntax highlighting is enabled and (b) the document actually contains a fenced
+         *  code block with a language tag.
+         *
+         * Called from setHtmlContent() AFTER setHtml(html) -- attaching before content is loaded
+         * would mean `document()->isEmpty()` at attach time, which skips Qt's own
+         * `rehighlightPending` gate entirely and makes every future setHtml() reformat
+         * synchronously; attaching to an ALREADY non-empty document instead sets that flag and
+         * queues a deferred first pass, silently discarding the very reformat this call is meant
+         * to trigger (qsyntaxhighlighter.cpp's own setDocument()/_q_reformatBlocks()) -- so this
+         * method follows attachment with an explicit, synchronous SyntaxHighlighter::rehighlight()
+         * call, which is mandatory here, not an optimisation.
+         *
+         * `html` is checked with a cheap case-insensitive `contains("<pre"` pre-filter first,
+         * then (only if that passes) an exact walk of the now-parsed document() for a non-empty
+         * QTextFormat::BlockCodeLanguage -- the same predicate
+         * demo/messageformatting/main.cpp's logCodeLanguages() already uses. The exact check is
+         * what actually decides: it is immune to attribute quoting/case that the pre-filter can't
+         * rule out, and it is also what keeps an untagged fence from attaching a highlighter at
+         * all (decision 4: no tag, no highlighting).
+         *
+         * Idempotent: a no-op once a highlighter is already attached to this document (the
+         * document-identity check in the docs of setHtmlContent()'s own call site covers the case
+         * where QTextEdit::setDocument() ever swaps documents out from under this widget).
+         */
+        void ensureSyntaxHighlighter(const QString& html);
+
+        //! The exact predicate behind ensureSyntaxHighlighter()'s pre-filter -- walks the
+        //! CURRENTLY LOADED document(), not raw html, so it is immune to how BlockCodeLanguage's
+        //! class="language-x" attribute happened to be quoted/cased in the source markup.
+        bool documentHasCodeLanguage() const;
+
         AbstractChatMessageText* m_messageTextWidget=nullptr;
         bool m_copyable=false;
         bool m_ownContextMenu=true;
@@ -198,6 +271,8 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         bool m_linkUnderline=false;
         QString m_lastHtml;
         QString m_hoveredAnchor;
+        SyntaxHighlighter* m_highlighter=nullptr;
+        bool m_syntaxHighlightingEnabled=true;
 };
 
 class ChatMessageText_p;

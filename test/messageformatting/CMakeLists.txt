@@ -6,6 +6,7 @@ SET (HEADERS
 
 SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testmarkdownrenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testsyntaxhighlighter.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

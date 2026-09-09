@@ -33,12 +33,15 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextCursor>
 #include <QTextBlock>
 #include <QTextLayout>
+#include <QTextDocument>
+#include <QTextFormat>
 #include <QAbstractTextDocumentLayout>
 #include <QtMath>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/syntaxhighlighter.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -87,6 +90,13 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
     Style::updateWidgetStyle(this);
 
 #if 0
+    // task-message-formatting-plan.md, Stage 3: do NOT re-enable this. A SyntaxHighlighter's
+    // explicit rehighlight() call (ensureSyntaxHighlighter(), applyDocumentStyle()) wraps its
+    // pass in QTextCursor::beginEditBlock()/endEditBlock(), and QTextDocumentPrivate::finishEdit()
+    // emits contentsChanged() UNCONDITIONALLY at the end of that block -- so with this connected,
+    // every theme switch (and every first highlight of a freshly-loaded code block) would re-
+    // enter updateSize() via this queued singleShot, which was never exercised while this block
+    // stayed disabled and is not something Stage 3 verified.
     connect(this,
         &QTextBrowser::textChanged,
         this,
@@ -213,9 +223,28 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
 {
     m_lastHtml=html;
     setHtml(html);
-    // setHtml() replaces the document, so any style already set via setDefaultStyleSheet()
-    // before this call is naturally in effect -- nothing else to do here, applyDocumentStyle() is
-    // only needed when the style changes AFTER content is already loaded (see below).
+    // setHtml() does NOT replace the underlying QTextDocument object -- QWidgetTextControlPrivate::
+    // setContent() only allocates a new one when this widget has none yet, otherwise it calls
+    // doc->setHtml() on the SAME object (verified against Qt 6.9.0 source; the comment this
+    // replaced claimed the opposite). Any style already set via setDefaultStyleSheet() before
+    // this call is therefore naturally still in effect, AND a SyntaxHighlighter already attached
+    // to document() survives this call unaffected -- nothing else to do for either concern.
+    if (m_syntaxHighlightingEnabled)
+    {
+        ensureSyntaxHighlighter(html);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
+{
+    // WITHOUT clearing m_lastHtml here, the next QEvent::StyleChange's applyDocumentStyle() would
+    // replay a PREVIOUS message's HTML back over this plain-text content (m_lastHtml is otherwise
+    // only ever cleared by loading new HTML) -- in a recycled flyweight bubble, potentially
+    // someone else's message. See this method's own header doc comment.
+    m_lastHtml.clear();
+    setPlainText(text);
 }
 
 //--------------------------------------------------------------------------
@@ -240,6 +269,35 @@ void ChatMessageTextBrowser::setLinkUnderline(bool enable)
     }
     m_linkUnderline=enable;
     applyDocumentStyle();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setSyntaxHighlightingEnabled(bool enable)
+{
+    if (m_syntaxHighlightingEnabled==enable)
+    {
+        return;
+    }
+    m_syntaxHighlightingEnabled=enable;
+
+    if (!enable)
+    {
+        if (m_highlighter!=nullptr)
+        {
+            // setDocument(nullptr) clears every layout format the highlighter applied
+            // (QSyntaxHighlighter::setDocument()'s own blk.layout()->clearFormats() loop), but
+            // does so inside an edit block that leaves QTextDocumentPrivate's docChangeFrom at
+            // -1 -- the layout is never told, so nothing repaints on its own. Force it.
+            m_highlighter->setDocument(nullptr);
+            delete m_highlighter;
+            m_highlighter=nullptr;
+            viewport()->update();
+        }
+        return;
+    }
+
+    ensureSyntaxHighlighter(m_lastHtml);
 }
 
 //--------------------------------------------------------------------------
@@ -279,6 +337,21 @@ void ChatMessageTextBrowser::applyDocumentStyle()
 
     document()->setDefaultStyleSheet(css);
 
+    if (m_syntaxHighlightingEnabled)
+    {
+        // Idempotent in the overwhelmingly common case (a highlighter attached during the
+        // original setHtmlContent()/setSyntaxHighlightingEnabled(true) call already exists here
+        // and this just re-syncs its document() pointer, a no-op absent an external
+        // QTextEdit::setDocument() call) -- see ensureSyntaxHighlighter()'s own doc comment.
+        ensureSyntaxHighlighter(m_lastHtml);
+        if (m_highlighter!=nullptr)
+        {
+            // Re-pulled BEFORE the replay/rehighlight below, so either path repaints with the
+            // NEW palette in one pass rather than the old one followed immediately by a second.
+            m_highlighter->refreshColors();
+        }
+    }
+
     // setDefaultStyleSheet() only affects content set AFTERWARDS -- reapply the last HTML we
     // know about so an already-rendered bubble picks up a theme/color change immediately (e.g.
     // Style::updateWidgetStyle()'s repolish on a light/dark switch) instead of only the next
@@ -293,6 +366,69 @@ void ChatMessageTextBrowser::applyDocumentStyle()
             setAnchorUnderline(m_hoveredAnchor,true);
         }
     }
+    else if (m_highlighter!=nullptr)
+    {
+        // No HTML to replay (e.g. this bubble currently holds plain text) -- nothing else would
+        // repaint the code-block colours, so trigger the pass explicitly rather than leaving them
+        // stale until the next message that happens to load.
+        m_highlighter->rehighlight();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::ensureSyntaxHighlighter(const QString& html)
+{
+    if (m_highlighter!=nullptr)
+    {
+        // Defensive only -- nothing in this codebase calls QTextEdit::setDocument() on a live
+        // ChatMessageTextBrowser today, but SyntaxHighlighter's underlying QPointer<QTextDocument>
+        // would otherwise go silently inert (not crash) if it ever did; see this method's own
+        // header doc comment.
+        if (m_highlighter->document()!=document())
+        {
+            m_highlighter->setDocument(document());
+        }
+        return;
+    }
+
+    // Cheap reject first -- avoids walking the document at all for the overwhelmingly common
+    // case of a message with no code block.
+    if (!html.contains(QStringLiteral("<pre"),Qt::CaseInsensitive))
+    {
+        return;
+    }
+
+    // The exact predicate: only the ALREADY-PARSED document is authoritative on whether
+    // QTextFormat::BlockCodeLanguage actually survived -- immune to how the class="language-x"
+    // attribute happened to be quoted/cased in the source markup, and what actually keeps an
+    // untagged fence from attaching a highlighter at all (decision 4: no tag, no highlighting).
+    if (!documentHasCodeLanguage())
+    {
+        return;
+    }
+
+    m_highlighter=new SyntaxHighlighter(document());
+    // Mandatory, not an optimisation -- attaching to this already-non-empty document set Qt's own
+    // rehighlightPending flag and silently discarded the very reformat this call now replaces
+    // (see this method's own header doc comment for the qsyntaxhighlighter.cpp citations).
+    m_highlighter->rehighlight();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageTextBrowser::documentHasCodeLanguage() const
+{
+    for (auto block=document()->begin();block!=document()->end();block=block.next())
+    {
+        auto fmt=block.blockFormat();
+        if (fmt.hasProperty(QTextFormat::BlockCodeLanguage)
+            && !fmt.stringProperty(QTextFormat::BlockCodeLanguage).isEmpty())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 //--------------------------------------------------------------------------
@@ -553,7 +689,11 @@ void ChatMessageText::loadText(const QString& text, TextFormat format)
             pimpl->text->setHtmlContent(markdownToHtml(text));
             break;
         case TextFormat::Plain:
-            pimpl->text->setPlainText(text);
+            // setPlainTextContent(), not setPlainText() directly -- clears m_lastHtml, without
+            // which a later theme switch would replay a PREVIOUS message's HTML back over this
+            // plain-text content (task-message-formatting-plan.md, Stage 3's own fix; see
+            // ChatMessageTextBrowser::setPlainTextContent()'s doc comment).
+            pimpl->text->setPlainTextContent(text);
             break;
     }
     // A stale pin from the PREVIOUS content must never survive a content change -- the new

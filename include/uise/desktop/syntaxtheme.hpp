@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <map>
 #include <optional>
+#include <cstdint>
 
 #include <QString>
 #include <QColor>
@@ -35,6 +36,33 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+/**
+ * @brief The semantic buckets a code-block syntax highlighter paints text into
+ *  (task-message-formatting-plan.md, Stage 3's brief table).
+ *
+ * Text is deliberately first and carries no JSON bucket of its own -- see syntaxBucketName()'s
+ * own doc comment and SyntaxTheme's, below, for why "primary text" is absent from the JSON
+ * schema rather than merely defaulting to some colour.
+ */
+enum class SyntaxBucket : uint8_t
+{
+    Text,
+    Keyword,
+    Type,
+    Literal,
+    Callable,
+    Comment
+};
+
+/**
+ * @brief Map a SyntaxBucket to the JSON key used in a "kind":"syntax" theme document (see
+ *  resources/style/{light,dark}/syntax.json) and looked up via Style::syntaxColor().
+ * @return The bucket's JSON key, or an empty string for SyntaxBucket::Text -- there is no
+ *  "primary text" bucket by design (SyntaxTheme's own doc comment): a highlighter must treat an
+ *  empty result as "apply no format at all", not as a lookup miss to warn about.
+ */
+UISE_DESKTOP_EXPORT QString syntaxBucketName(SyntaxBucket bucket);
 
 /**
  * @brief Colour palette for code-block syntax highlighting, loaded from a "kind":"syntax" JSON

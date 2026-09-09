@@ -37,6 +37,25 @@ namespace uise {
 
 //--------------------------------------------------------------------------
 
+QString syntaxBucketName(SyntaxBucket bucket)
+{
+    // Not translated -- these are JSON keys read back by SyntaxTheme::loadFromJson(), not
+    // user-facing text, so they stay stable identifiers regardless of locale.
+    switch (bucket)
+    {
+        case (SyntaxBucket::Keyword): return QStringLiteral("keyword");
+        case (SyntaxBucket::Type): return QStringLiteral("type");
+        case (SyntaxBucket::Literal): return QStringLiteral("literal");
+        case (SyntaxBucket::Callable): return QStringLiteral("callable");
+        case (SyntaxBucket::Comment): return QStringLiteral("comment");
+        case (SyntaxBucket::Text): break;
+    }
+    // SyntaxBucket::Text has no JSON bucket by design -- see this function's own doc comment.
+    return QString{};
+}
+
+//--------------------------------------------------------------------------
+
 bool SyntaxTheme::loadFromJson(const QString& json, QString* errorMessage)
 {
     QJsonParseError ec;

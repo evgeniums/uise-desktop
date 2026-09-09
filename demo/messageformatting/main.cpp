@@ -51,6 +51,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/replypreview.hpp>
 #include <uise/desktop/replypreviewdata.hpp>
+#include <uise/desktop/syntaxtheme.hpp>
+#include <uise/desktop/syntaxlanguage.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -62,14 +64,17 @@ namespace {
 // DemoBubbleWidth for why a standalone demo has to pick a fixed value.
 constexpr int DemoBubbleWidth=380;
 
-// The five overridable syntax buckets (see syntaxtheme.hpp -- "primary text" has no bucket at
-// all, by design).
+// The five overridable syntax buckets (see syntaxtheme.hpp -- SyntaxBucket::Text has no JSON
+// bucket at all, by design, so it is deliberately excluded from this swatch list). Pulled
+// straight from the library's own syntaxBucketName() (task-message-formatting-plan.md, Stage 3)
+// rather than hand-written, so this demo doubles as proof the names match
+// resources/style/{light,dark}/syntax.json.
 const QStringList SyntaxBuckets{
-    QStringLiteral("keyword"),
-    QStringLiteral("type"),
-    QStringLiteral("literal"),
-    QStringLiteral("callable"),
-    QStringLiteral("comment")
+    syntaxBucketName(SyntaxBucket::Keyword),
+    syntaxBucketName(SyntaxBucket::Type),
+    syntaxBucketName(SyntaxBucket::Literal),
+    syntaxBucketName(SyntaxBucket::Callable),
+    syntaxBucketName(SyntaxBucket::Comment)
 };
 
 // Picks black or white text for legibility against an arbitrary swatch background -- some
@@ -109,7 +114,10 @@ QString sampleHtml()
 // nested/task lists, a two-level blockquote, a thematic break, an aligned table, an explicit
 // link, a bare URL, a www. URL, an email, a backtick-escaped mention, and -- most importantly --
 // a plain two-line paragraph exercising the chat line-break policy (task-message-formatting-
-// plan.md, Stage 2, "Soft newlines").
+// plan.md, Stage 2, "Soft newlines"). Also -- Stage 3 -- a second fenced block in a DIFFERENT
+// language (Python) plus an untagged fence and one in an unrecognised language, exercising
+// SyntaxHighlighter's three cases side by side: a known language, the generic fallback (strings/
+// numbers/comments only, no keywords), and no highlighting at all.
 QString sampleMarkdown()
 {
     return QStringLiteral(
@@ -152,6 +160,27 @@ QString sampleMarkdown()
         "| d | e | f |\n"
         "\n"
         "Bare link: https://example.com, www.example.org, or contact me@example.com.\n"
+        "\n"
+        "A second fenced block, a different language (Stage 3):\n"
+        "\n"
+        "```python\n"
+        "def greet(name):\n"
+        "    # a comment\n"
+        "    return f\"Hello, {name}\"\n"
+        "```\n"
+        "\n"
+        "An untagged fence -- no syntax highlighting at all (decision 4):\n"
+        "\n"
+        "```\n"
+        "plain fenced text, no colours\n"
+        "```\n"
+        "\n"
+        "An unrecognised language tag -- the generic fallback (strings/numbers/comments only):\n"
+        "\n"
+        "```kotlin\n"
+        "// a comment\n"
+        "fun greet(name: String) = \"Hello, $name\"\n"
+        "```\n"
         "\n"
         "A backtick-escaped mention prints literally: `@alice`.\n"
     );
@@ -205,13 +234,17 @@ void checkSanitization(const QString& html, const std::function<void(const QStri
     }
 }
 
-// Logs every distinct code-block language recoverable from ALREADY-RENDERED html, with no
+// Logs every distinct code-block language tag recoverable from ALREADY-RENDERED html, with no
 // access to the original markdown source at all -- the running proof that Stage 3's syntax
 // highlighter can read QTextFormat::BlockCodeLanguage straight off a live QTextDocument (the
 // <pre class="language-x"> markdownToHtml() emits round-trips through setHtml(), see
 // markdownrenderer.hpp's own doc comment). Re-parses independently rather than reaching into
-// ChatMessageText's own (unexposed) internal document -- exactly what Stage 3's own
-// QSyntaxHighlighter, attached to the bubble's real document, would also do.
+// ChatMessageText's own (unexposed) internal document -- exactly what SyntaxHighlighter, attached
+// to the bubble's real document via ChatMessageTextBrowser::ensureSyntaxHighlighter(), also does.
+// Alongside each raw tag, logs what SyntaxLanguageRegistry::find() actually resolves it to --
+// "cpp" and "python" resolve to themselves, "kotlin" resolves to the generic fallback (not a
+// nullptr, not itself), and an untagged fence contributes no tag at all (decision 4: no
+// highlighting), all visible side by side here.
 void logCodeLanguages(const QString& html, const std::function<void(const QString&)>& logMsg)
 {
     QTextDocument doc;
@@ -229,9 +262,18 @@ void logCodeLanguages(const QString& html, const std::function<void(const QStrin
             }
         }
     }
-    logMsg(languages.isEmpty()
-               ? QStringLiteral("  Code languages recovered from rendered document: (none)")
-               : QStringLiteral("  Code languages recovered from rendered document: ")+languages.join(QStringLiteral(", ")));
+    if (languages.isEmpty())
+    {
+        logMsg(QStringLiteral("  Code languages recovered from rendered document: (none)"));
+        return;
+    }
+    QStringList resolved;
+    for (const auto& tag : languages)
+    {
+        auto* language=SyntaxLanguageRegistry::instance().find(tag);
+        resolved<<QStringLiteral("%1->%2").arg(tag,language ? language->name() : QStringLiteral("(unresolved)"));
+    }
+    logMsg(QStringLiteral("  Code languages recovered from rendered document: ")+resolved.join(QStringLiteral(", ")));
 }
 
 // Builds a real ChatMessage/ChatMessageContent bubble around `body`, so bubble-width negotiation
@@ -404,6 +446,27 @@ int main(int argc, char *argv[])
     auto* hostileButton=new QPushButton(QStringLiteral("Load hostile sample (sanitization smoke test)"));
     rootLayout->addWidget(hostileButton);
 
+    // --- Stage 3: language picker -- insert a fenced sample for ANY registered language (not
+    // just the two baked into sampleMarkdown()) so every one of the 21+ seeded languages, plus
+    // the generic fallback, is reachable and inspectable at demo runtime, not just the two hand-
+    // picked ones in the static sample. ---
+
+    auto* langFrame=new QFrame(central);
+    auto* langLayout=Layout::horizontal(langFrame);
+    rootLayout->addWidget(langFrame);
+
+    langLayout->addWidget(new QLabel(QStringLiteral("Insert a fenced sample for:")));
+
+    auto* langCombo=new QComboBox();
+    for (const auto& name : SyntaxLanguageRegistry::instance().names())
+    {
+        langCombo->addItem(name);
+    }
+    langLayout->addWidget(langCombo,1);
+
+    auto* insertLangButton=new QPushButton(QStringLiteral("Insert"));
+    langLayout->addWidget(insertLangButton);
+
     rootLayout->addWidget(new QLabel(QStringLiteral("Live-rendered bubble:")));
     auto* mdBody=new ChatMessageText();
     auto* mdMessage=makeMessage(central,AbstractChatMessage::Direction::Sent,mdBody);
@@ -479,6 +542,26 @@ int main(int argc, char *argv[])
                           renderMarkdown();
                           logMsg(QStringLiteral("Sanitization checks against the hostile sample:"));
                           checkSanitization(htmlOutput->toPlainText(),logMsg);
+                      });
+
+    QObject::connect(insertLangButton,&QPushButton::clicked,central,
+                      [mdSource,langCombo]()
+                      {
+                          // langCombo's population order (SyntaxLanguageRegistry::names()) is the
+                          // registry's own registration order, which IS index() order (append-
+                          // only) -- so currentIndex() directly names the selected language.
+                          auto* language=SyntaxLanguageRegistry::instance().byIndex(langCombo->currentIndex());
+                          if (language==nullptr)
+                          {
+                              return;
+                          }
+                          // Deliberately no comment token in the sample -- comment syntax differs
+                          // per language ("//" vs "#" vs "--") and getting it wrong would look
+                          // like a highlighter bug rather than a demo shortcut; the bare number
+                          // literal alone is still enough to visibly prove a real language (not
+                          // just plain text) got attached.
+                          auto sample=QStringLiteral("\n```%1\nvalue = 42\n```\n").arg(language->id());
+                          mdSource->insertPlainText(sample);
                       });
 
     renderMarkdown();

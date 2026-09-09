@@ -143,6 +143,9 @@ SET (HEADERS
     include/uise/desktop/svgiconcontext.hpp
     include/uise/desktop/svgiconlocator.hpp
     include/uise/desktop/syntaxtheme.hpp
+    include/uise/desktop/syntaxlanguage.hpp
+    include/uise/desktop/syntaxtokenizer.hpp
+    include/uise/desktop/syntaxhighlighter.hpp
 
     include/uise/desktop/stylecontext.hpp
 
@@ -340,6 +343,10 @@ SET (SOURCES
     src/svgiconcontext.cpp
     src/svgiconlocator.cpp
     src/syntaxtheme.cpp
+    src/syntaxlanguage.cpp
+    src/syntaxlanguagedata.cpp
+    src/syntaxtokenizer.cpp
+    src/syntaxhighlighter.cpp
 
     src/pushbutton.cpp
 
