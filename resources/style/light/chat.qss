@@ -154,23 +154,56 @@ color: #0099b8;
 border: none;
 }
 
-/* task-message-formatting-plan.md, Stage 4: wide-table expand affordance (structure in
-   ../chat.qss). Deliberately low-contrast at rest so it does not compete with the message text
-   it floats over, lifting to full contrast on hover. The expanded viewer's Copy table
-   and Close buttons share the same palette so all three read as one control family. */
-uise--ChatMessageTextBrowser #tableExpandButton,
+/* task-message-formatting-plan.md, Stage 4: the expand affordance floated over a table
+   (structure in ../chat.qss). Deliberately low-contrast at rest so it does not compete with the
+   message text it sits on top of, lifting to full contrast on hover. It keeps this treatment
+   rather than the dialog-button one below -- it is an overlay on content, not a dialog control. */
+/* Icons here are dark (see chat.json's light-mode currentColor), so the backing behind the button
+   must be light for contrast.
+
+   OPAQUE, unlike ChatMessageImageItem's #menuButton which this is otherwise modelled on. That one
+   floats over a photo, where letting the image show through is the point. This one floats over a
+   TABLE: text under the button is unreadable either way, so translucency buys nothing, and all it
+   actually does is let cell borders and glyphs bleed through and make the button itself look
+   noisy. The button's job here is to mask what is behind it cleanly. No :hover rule on purpose:
+   the icon's own hovered colour is the feedback. */
+uise--ChatMessageTextBrowser #tableExpandButton {
+background-color: #FFFFFF;
+}
+
+/* The expanded viewer's own button row follows light/abstractdialog.qss's button palette, with
+   the same primary/secondary split: Copy table is the affirmative action and gets the accent
+   fill, while Full screen and Close take the borderless-accent-text treatment that file gives
+   its dismissive buttons (#close/#cancel/#no/...). Sizing matches that file's own final
+   override (min-width 80px, padding 3px 12px). */
+#tableViewerFrame #tableViewerCopyButton QPushButton {
+background-color: #218DAE;
+color: #EEEEEE;
+border: 1px solid #218DAE;
+}
+#tableViewerFrame #tableViewerCopyButton QPushButton:hover {
+background-color: #0099b8;
+color: #FFFFFF;
+border: 1px solid #0099b8;
+}
+
+#tableViewerFrame #tableViewerFullScreenButton QPushButton,
+#tableViewerFrame #tableViewerCloseButton QPushButton {
+color: #555555;
+border: 1px solid #999999;
+background-color: transparent;
+}
+#tableViewerFrame #tableViewerFullScreenButton QPushButton:hover,
+#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
+color: #444444;
+border: 1px solid #444444;
+}
+
+#tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
 #tableViewerFrame #tableViewerCloseButton QPushButton {
-background-color: rgba(255,255,255,0.85);
-border-color: #CCCCCC;
-color: #666666;
-}
-uise--ChatMessageTextBrowser #tableExpandButton:hover,
-#tableViewerFrame #tableViewerCopyButton QPushButton:hover,
-#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
-background-color: #FFFFFF;
-border-color: #999999;
-color: #222222;
+min-width: 80px;
+padding: 3px 12px;
 }
 
 /* FloatingDialogFrame is a translucent top-level window -- content that does not paint its own

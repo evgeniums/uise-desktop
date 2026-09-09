@@ -13,55 +13,80 @@ border: none;
 outline: none;
 }
 
-/* task-message-formatting-plan.md, Stage 4: the expand affordance floated over a table that was
-   too wide for the bubble and got pinned to its natural width instead of being compressed. Sized
-   here (structure); colours live in light/chat.qss and dark/chat.qss. It is a child of the
-   browser's viewport, anchored to the viewport's RIGHT edge -- see
-   ChatMessageTextBrowser::updateTableExpandButtons() for why not the table's own right edge. */
-/* Shared look for both wide-table buttons -- the expand affordance floated over the table, and
-   the Copy table button in the expanded viewer -- so the two read as the same control family.
-   Sizes differ (one is a fixed square glyph, the other a text button) and are set separately
-   below; colours live in light/chat.qss and dark/chat.qss. */
-uise--ChatMessageTextBrowser #tableExpandButton,
+/* task-message-formatting-plan.md, Stage 4. The expand button floated over EVERY table (see
+   §4a.6 -- not only ones too wide to fit). It is a child of the browser's viewport anchored to
+   the viewport's RIGHT edge -- see ChatMessageTextBrowser::updateTableExpandButtons() for why not
+   the table's own right edge.
+
+   Styled after ChatMessageImageItem's own #menuButton (chatmessagefiles.qss), the closest thing
+   in the library: another icon-only IconTextButton floated over the top-right of arbitrary
+   message content. Same treatment, with one deliberate difference: the backing is OPAQUE rather
+   than translucent, because this floats over a table rather than a photo (see the per-theme rules
+   for the full reasoning). Otherwise identical -- a backing so the theme-coloured icon stays
+   legible over whatever is underneath, no border, and NO hover background: the icon's own hover colour swap (the "hovered" mode in light/chat.json and
+   dark/chat.json) is the hover feedback, and that file's own comment records that layering a
+   rectangular background behind a rounded control looked wrong on hover/click. Backing colour
+   per theme in light/chat.qss and dark/chat.qss. Unlike the expanded viewer's buttons below,
+   this is deliberately NOT a dialog button -- it is an overlay on content, not a control in a
+   button row. */
+uise--ChatMessageTextBrowser #tableExpandButton {
+border-radius: 6px;
+padding: 4px;
+}
+
+/* The expanded viewer's Full screen / Copy table / Close row is styled as an ordinary dialog
+   button row: 4px radius here matching abstractdialog.qss's own
+   "#dialogButtonsFrame uise--PushButton QPushButton {border-radius: 4px; ...}". Padding and
+   min-width are deliberately NOT set here -- light/chat.qss and dark/chat.qss set them per theme,
+   exactly as light/abstractdialog.qss and dark/abstractdialog.qss do for a real dialog's button
+   row (the two themes genuinely use different vertical padding, so a structural value would only
+   be overridden anyway). uise--PushButton wraps an inner QPushButton (see
+   PushButton::qPushButton()), which is what actually paints -- hence the wrapper/inner split used
+   throughout these rules. */
+#tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
 #tableViewerFrame #tableViewerCloseButton QPushButton {
-border-radius: 5px;
-border: 1px solid;
+border-radius: 4px;
+}
+
+/* Insets the whole row from the window edges, so the last button does not sit flush against the
+   right-hand side -- the same job abstractdialog.qss's own
+   "#dialogButtonsFrame {padding: 0 4px 4px 4px}" does for a dialog's button row. Doing it here
+   rather than as a right margin on the Close button keeps the buttons themselves uniform. */
+#tableViewerFrame #tableViewerButtons {
+padding: 0px 8px 8px 8px;
 }
 
 /* The uise--PushButton wrappers must stay borderless -- the inner QPushButton above already
    paints the frame, and bordering both draws it twice. Same split as abstractdialog.qss's own
    "#dialogButtonsFrame uise--PushButton {margin} / ... QPushButton {border-radius;padding}",
-   where the wrapper carries only the spacing. The left margin is what separates the two buttons
-   from each other and from the edge of the row. */
+   where the wrapper carries only the spacing. The left margin is what separates the buttons from
+   each other; the row's own padding above handles the distance to the window edges. */
+#tableViewerFrame #tableViewerFullScreenButton,
 #tableViewerFrame #tableViewerCopyButton,
 #tableViewerFrame #tableViewerCloseButton {
 border: none;
 margin: 0px 0px 0px 8px;
 }
 
-uise--ChatMessageTextBrowser #tableExpandButton {
-min-width: 22px;
-max-width: 22px;
-min-height: 22px;
-max-height: 22px;
+/* IconTextButton's icon has no sensible default size of its own -- it must be set explicitly per
+   container, the same note chatmessagefiles.qss and chatimageviewer.qss carry for their own icon
+   buttons. Targeted by the "#icon" objectName IconTextButton gives the wrapper (see
+   src/icontextbutton.cpp) as well as the image itself: this button is constructed directly rather
+   than through the WidgetFactory, so the uise_type property the "uise--IconTextButton" type
+   selector relies on is not set on it and only the object names are dependable here. */
+uise--ChatMessageTextBrowser #tableExpandButton #icon,
+uise--ChatMessageTextBrowser #tableExpandButton uise--RoundedImage {
+min-width: 14px;
+max-width: 14px;
+min-height: 14px;
+max-height: 14px;
+margin: 0px;
 padding: 0px;
-/* The affordance is a text glyph (U+2922), not an SVG icon -- the curated tabler set gets its
-   first additions in Stage 5a and this button deliberately does not block on that -- so its
-   apparent "icon size" is font-size, not iconSize. U+2922 also draws small relative to its em
-   box in most fonts, so this runs well above the widget default (~13px) to read at a glance,
-   and the box is kept only just larger than the glyph so the button reads as tight around it.
-   ChatMessageTextBrowser::updateTableExpandButtons() positions from the size these rules
-   produce, so changing them here is enough -- no C++ change needed. */
-font-size: 18px;
 }
-
-/* uise--PushButton wraps an inner QPushButton (see PushButton::qPushButton()), which is what
-   actually paints -- hence the wrapper/inner split above and here. */
-#tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton {
-padding: 4px 12px;
-}
+/* No explicit box size on the button itself, same as #menuButton: icon size plus the 4px padding
+   above is what makes it 22px square, and ChatMessageTextBrowser::updateTableExpandButtons()
+   calls adjustSize() so it positions from whatever that comes to. */
 
 uise--AbstractChatMessageContent {
 border-radius: 16px;

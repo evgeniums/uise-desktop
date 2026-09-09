@@ -130,23 +130,37 @@ uise--MessageSelectionPanelUi #drawer uise--PushButton#cancel QPushButton:hover 
 color: #EFECE3;
 }
 
-/* task-message-formatting-plan.md, Stage 4: wide-table expand affordance (structure in
-   ../chat.qss). Deliberately low-contrast at rest so it does not compete with the message text
-   it floats over, lifting to full contrast on hover. The expanded viewer's Copy table
-   and Close buttons share the same palette so all three read as one control family. */
-uise--ChatMessageTextBrowser #tableExpandButton,
+/* task-message-formatting-plan.md, Stage 4: the expand affordance floated over a table
+   (structure in ../chat.qss). Deliberately low-contrast at rest so it does not compete with the
+   message text it sits on top of, lifting to full contrast on hover. It keeps this treatment
+   rather than the dialog-button one below -- it is an overlay on content, not a dialog control. */
+/* Icons here are light (see chat.json's dark-mode currentColor), so the backing must be dark for
+   contrast. OPAQUE for the same reason as the light theme's own rule -- see the comment there:
+   over a table, translucency only lets cell borders and glyphs bleed through the button. Matches
+   messagetext.css's own dark code-block surface, so overlay surfaces in a bubble share a tone.
+   No :hover rule on purpose: the icon's own hovered colour is the feedback. */
+uise--ChatMessageTextBrowser #tableExpandButton {
+background-color: #2A2A2A;
+}
+
+/* The expanded viewer's own button row follows dark/abstractdialog.qss's button palette. Unlike
+   the light theme, that file applies ONE outlined treatment to every button with no
+   primary/secondary split, so Copy table is not singled out here either -- matching the dialogs
+   is the point. Sizing matches that file's own values (min-width 80px, padding 4px 12px). */
+#tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
 #tableViewerFrame #tableViewerCloseButton QPushButton {
-background-color: rgba(42,42,42,0.85);
-border-color: #555555;
-color: #BBBBBB;
+color: #CCCCCC;
+border: 1px solid #999999;
+background-color: transparent;
+min-width: 80px;
+padding: 4px 12px;
 }
-uise--ChatMessageTextBrowser #tableExpandButton:hover,
+#tableViewerFrame #tableViewerFullScreenButton QPushButton:hover,
 #tableViewerFrame #tableViewerCopyButton QPushButton:hover,
 #tableViewerFrame #tableViewerCloseButton QPushButton:hover {
-background-color: #2A2A2A;
-border-color: #888888;
 color: #EEEEEE;
+border: 1px solid #EEEEEE;
 }
 
 /* FloatingDialogFrame is a translucent top-level window -- content that does not paint its own

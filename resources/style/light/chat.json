@@ -2,6 +2,17 @@
     "theme" : "light",
     "contexts" : [
         {
+            "name" : "ChatMessageTextBrowser",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#444444" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        },
+        {
             "name" : "ChatMessageBottom",
             "modes" : {
                 "normal" : {

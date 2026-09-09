@@ -1,6 +1,12 @@
 {
     "contexts" : [
         {
+            "name" : "ChatMessageTextBrowser",
+            "aliases" : {
+                "expandTable" : "${uise-svg-icons-1}/arrows-diagonal"
+            }
+        },
+        {
             "name" : "ChatMessageBottom",
             "aliases" : {
                 "seen" : "${uise-svg-icons-1}/eye"

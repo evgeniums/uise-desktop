@@ -73,6 +73,17 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     // the treatment that fixes it -- see applyWideTableLayout().
     Q_PROPERTY(bool wideTableScroll READ isWideTableScrollEnabled WRITE setWideTableScrollEnabled)
 
+    // Independent of wideTableScroll above: that one governs the pin+scrollbar treatment, which
+    // only a table too wide to fit ever needs, while the expand button is offered on EVERY table
+    // -- a table that fits is still worth opening larger, and it is the only route by which a
+    // short table can be copied as a table at all.
+    Q_PROPERTY(bool tableExpandButton READ isTableExpandButtonEnabled WRITE setTableExpandButtonEnabled)
+
+    // Reveal-on-hover for that button, mirroring ChatMessageImageItem's own
+    // menuButtonVisibleOnHover: an always-visible button over every table (including small ones)
+    // is a lot of standing visual weight in a chat log.
+    Q_PROPERTY(bool tableExpandButtonVisibleOnHover READ isTableExpandButtonVisibleOnHover WRITE setTableExpandButtonVisibleOnHover)
+
     public:
 
         explicit ChatMessageTextBrowser(QWidget *parent = nullptr);
@@ -202,6 +213,39 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_wideTableScroll;
         }
 
+        /**
+         * @brief Show the expand button on every table, not just ones too wide to fit. On by
+         *  default.
+         *
+         * A table that already fits still gets the button: opening it larger is useful in its own
+         * right, and it is the only route by which a short table can reach the clipboard AS a
+         * table (the expanded viewer is where Copy table lives -- see ChatMessageTableViewer).
+         * Turning this off leaves the wide-table pin/scroll treatment untouched.
+         */
+        void setTableExpandButtonEnabled(bool enable);
+
+        bool isTableExpandButtonEnabled() const noexcept
+        {
+            return m_tableExpandButton;
+        }
+
+        /**
+         * @brief Show the expand buttons only while the pointer is over this widget. On by
+         *  default.
+         *
+         * Same idea as ChatMessageImageItem::setMenuButtonVisibleOnHover(), but deliberately
+         * coarser: hovering anywhere in the message reveals the button on EVERY table it
+         * contains, rather than hit-testing which table the pointer is actually over. A message
+         * rarely holds more than one or two tables, and the per-table version would need a
+         * mouse-move handler doing a frame hit-test on every pixel of travel.
+         */
+        void setTableExpandButtonVisibleOnHover(bool enable);
+
+        bool isTableExpandButtonVisibleOnHover() const noexcept
+        {
+            return m_tableExpandButtonOnHover;
+        }
+
     public slots:
 
         void updateSize();
@@ -218,6 +262,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         void wheelEvent(QWheelEvent *event) override;
         void mousePressEvent(QMouseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
+        void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
 
         //! Re-applies the document stylesheet on QEvent::StyleChange (e.g. a theme switch via
@@ -329,16 +374,25 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! vertical band, so a button stays put while its table scrolls underneath it.
         void updateTableExpandButtons();
 
+        //! Show/hide every expand button according to tableExpandButtonVisibleOnHover() and
+        //! whether the pointer is currently over this widget.
+        void updateTableExpandButtonVisibility();
+
         //! Open the pinned table at `index` in a resizable top-level window (FloatingDialogFrame,
         //! the only shell in this library that hosts an arbitrary widget) showing just that table
         //! with both scrollbars.
         void openTableViewer(int index);
 
-        //! The tables applyWideTableLayout() pinned on the current document, in document order.
-        struct PinnedTable
+        //! Every table applyWideTableLayout() found on the current document, in document order --
+        //! NOT only the wide ones. Pinning and the expand button are independent: `pinned` marks
+        //! the subset that was too wide to fit and so got its frame width pinned (and, between
+        //! them, brought the horizontal scrollbar on), while `button` is created for *every*
+        //! table, since a table that fits still benefits from being openable and copyable.
+        struct TrackedTable
         {
             int firstPosition=0;    //!< QTextFrame::firstPosition(), to re-find the table later
             qreal naturalWidth=0;
+            bool pinned=false;
             QPointer<QWidget> button;
         };
 
@@ -352,7 +406,9 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         SyntaxHighlighter* m_highlighter=nullptr;
         bool m_syntaxHighlightingEnabled=true;
         bool m_wideTableScroll=true;
-        std::vector<PinnedTable> m_pinnedTables;
+        bool m_tableExpandButton=true;
+        bool m_tableExpandButtonOnHover=true;
+        std::vector<TrackedTable> m_tables;
 };
 
 /**
@@ -379,8 +435,10 @@ class UISE_DESKTOP_EXPORT ChatMessageTableViewer : public QTextBrowser
 
         //! Select the whole table and copy it, i.e. what the Copy table button and context-menu
         //! item do. Goes through the ordinary copy path, so the clipboard ends up with exactly
-        //! the same flavour set as a manual selection would produce. Always emits tableCopied();
-        //! additionally shows a confirmation toast unless that was turned off.
+        //! the same flavour set as a manual selection would produce, then CLEARS the selection
+        //! again -- selecting was a means to that end, and leaving the table highlighted would
+        //! just look like a stray selection. Always emits tableCopied(); additionally shows a
+        //! confirmation toast unless that was turned off.
         void copyTable();
 
         /**

@@ -55,6 +55,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/syntaxlanguage.hpp>
 #include <uise/desktop/syntaxtokenizer.hpp>
 #include <uise/desktop/syntaxhighlighter.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -929,10 +930,12 @@ BOOST_AUTO_TEST_CASE(TestWideTablePinningLeavesParagraphsWrapped)
     );
 }
 
-BOOST_AUTO_TEST_CASE(TestNarrowTableIsNotPinned)
+BOOST_AUTO_TEST_CASE(TestNarrowTableIsNotPinnedButStillGetsExpandButton)
 {
     // A table that already fits keeps Qt's own column balancing -- pinning it would be worse, and
-    // must not drag in a scrollbar the message does not need.
+    // must not drag in a scrollbar the message does not need. It DOES still get the expand
+    // button though: pinning and the button are independent, because the expanded viewer is the
+    // only route by which a short table can be copied as a table at all.
     TestThread::instance()->execGuiThread(
         [&]()
         {
@@ -945,6 +948,90 @@ BOOST_AUTO_TEST_CASE(TestNarrowTableIsNotPinned)
             browser.setWrapWidth(380);
 
             UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+            UISE_TEST_CHECK(browser.isTableExpandButtonEnabled());
+            UISE_TEST_CHECK_EQUAL(
+                browser.findChildren<IconTextButton*>(QStringLiteral("tableExpandButton")).size(),1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEveryTableGetsItsOwnExpandButton)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            // One narrow table and one far too wide for the bubble: both are expandable, only the
+            // second is pinned (and so only it brings the horizontal scrollbar on).
+            auto src=QStringLiteral("| a | b |\n|---|---|\n| 1 | 2 |\n")
+                     +QStringLiteral("\nbetween\n\n")
+                     +wideTableMarkdown();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(src));
+            browser.setWrapWidth(380);
+
+            UISE_TEST_CHECK_EQUAL(
+                browser.findChildren<IconTextButton*>(QStringLiteral("tableExpandButton")).size(),2);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandButtonIsHiddenUntilHovered)
+{
+    // Reveal-on-hover is on by default, so a table's button exists but starts hidden. Asserted
+    // with isHidden() rather than isVisible(): the browser is never shown in a test, which makes
+    // isVisible() false for its children regardless of what we set.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(380);
+
+            auto buttons=browser.findChildren<IconTextButton*>(QStringLiteral("tableExpandButton"));
+            UISE_TEST_REQUIRE(buttons.size()==1);
+            UISE_TEST_CHECK(browser.isTableExpandButtonVisibleOnHover());
+            UISE_TEST_CHECK(buttons[0]->isHidden());
+
+            // Turning reveal-on-hover off must show it immediately, on the already-built button.
+            browser.setTableExpandButtonVisibleOnHover(false);
+            UISE_TEST_CHECK(!buttons[0]->isHidden());
+
+            browser.setTableExpandButtonVisibleOnHover(true);
+            UISE_TEST_CHECK(buttons[0]->isHidden());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandButtonCanBeDisabledIndependentlyOfScroll)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ChatMessageTextBrowser browser;
+            browser.setWrapWidth(380);
+            browser.setHtmlContent(markdownToHtml(wideTableMarkdown()));
+            browser.setWrapWidth(380);
+            UISE_TEST_REQUIRE(
+                browser.findChildren<IconTextButton*>(QStringLiteral("tableExpandButton")).size()==1);
+
+            // Turning the button off must leave the wide-table pin/scroll treatment alone.
+            browser.setTableExpandButtonEnabled(false);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+
+            browser.setTableExpandButtonEnabled(true);
+            browser.setWrapWidth(380);
+            UISE_TEST_CHECK(
+                browser.findChildren<IconTextButton*>(QStringLiteral("tableExpandButton")).size()==1);
         }
     );
 }
@@ -1213,10 +1300,14 @@ BOOST_AUTO_TEST_CASE(TestExpandedTableCopyTableNeedsNoPriorSelection)
 
             view.copyTable();
 
-            // It selects the whole table on the way, which is what makes the ordinary copy path
-            // produce every flavour.
-            UISE_TEST_CHECK(view.textCursor().hasSelection());
+            // It selects the whole table on the way (that is what makes the ordinary copy path
+            // produce every flavour) but must NOT leave it selected -- a fully highlighted table
+            // after the fact just reads as a stray selection; the toast is the confirmation.
+            UISE_TEST_CHECK(!view.textCursor().hasSelection());
 
+            // With no selection left, createMimeDataFromSelection() takes its whole-table
+            // fallback -- which is exactly what copyTable() just put on the clipboard, so this
+            // still checks the right content.
             auto* mime=view.createMimeDataFromSelection();
             UISE_TEST_REQUIRE(mime!=nullptr);
             UISE_TEST_CHECK(mime->text().contains(QStringLiteral("Package\tVersion\tLicence")));

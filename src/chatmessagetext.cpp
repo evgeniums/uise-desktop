@@ -38,12 +38,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextTable>
 #include <QTextFrame>
 #include <QTextDocumentFragment>
-#include <QToolButton>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QMimeData>
 #include <QKeyEvent>
 #include <QContextMenuEvent>
+#include <QShortcut>
 #include <QAbstractTextDocumentLayout>
 #include <QtMath>
 
@@ -53,6 +53,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/syntaxhighlighter.hpp>
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/toast.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
 
@@ -488,26 +489,13 @@ void ChatMessageTextBrowser::setWideTableScrollEnabled(bool enable)
     }
     m_wideTableScroll=enable;
 
-    if (!enable)
+    if (!enable && !m_lastHtml.isEmpty())
     {
-        // Drop the pins so Qt goes back to compressing tables to fit, and take the buttons and
-        // the scrollbar away with them.
-        for (auto& pinned : m_pinnedTables)
-        {
-            if (!pinned.button.isNull())
-            {
-                pinned.button->deleteLater();
-            }
-        }
-        m_pinnedTables.clear();
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        if (!m_lastHtml.isEmpty())
-        {
-            // Cheapest way to discard every pinned QTextTableFormat: rebuild the document.
-            setHtml(m_lastHtml);
-        }
-        updateGeometry();
-        return;
+        // Cheapest way to discard every pinned QTextTableFormat so Qt goes back to compressing
+        // tables to fit: rebuild the document. applyWideTableLayout() below then re-tracks the
+        // tables WITHOUT pinning any of them -- expand buttons stay, they are governed
+        // separately by tableExpandButton.
+        setHtml(m_lastHtml);
     }
 
     applyWideTableLayout();
@@ -516,18 +504,84 @@ void ChatMessageTextBrowser::setWideTableScrollEnabled(bool enable)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageTextBrowser::applyWideTableLayout()
+void ChatMessageTextBrowser::setTableExpandButtonEnabled(bool enable)
 {
-    for (auto& pinned : m_pinnedTables)
+    if (m_tableExpandButton==enable)
     {
-        if (!pinned.button.isNull())
+        return;
+    }
+    m_tableExpandButton=enable;
+
+    if (!enable)
+    {
+        for (auto& tracked : m_tables)
         {
-            pinned.button->deleteLater();
+            if (!tracked.button.isNull())
+            {
+                tracked.button->deleteLater();
+                tracked.button=nullptr;
+            }
+        }
+        return;
+    }
+
+    updateTableExpandButtons();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setTableExpandButtonVisibleOnHover(bool enable)
+{
+    if (m_tableExpandButtonOnHover==enable)
+    {
+        return;
+    }
+    m_tableExpandButtonOnHover=enable;
+    updateTableExpandButtonVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateTableExpandButtonVisibility()
+{
+    // Deliberately coarse: one answer for every table in the message rather than hit-testing
+    // which table the pointer is over. Note underMouse() stays true while the pointer is on one
+    // of the buttons themselves -- they are children of viewport(), and Qt only sends Leave to
+    // widgets BELOW the common ancestor of the old and new widget
+    // (QApplicationPrivate::dispatchEnterLeave), so a button cannot hide itself out from under
+    // the cursor.
+    bool visible=!m_tableExpandButtonOnHover || underMouse();
+    for (auto& tracked : m_tables)
+    {
+        if (!tracked.button.isNull())
+        {
+            tracked.button->setVisible(visible);
         }
     }
-    m_pinnedTables.clear();
+}
 
-    if (!m_wideTableScroll || document()==nullptr)
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::enterEvent(QEnterEvent* event)
+{
+    QTextBrowser::enterEvent(event);
+    updateTableExpandButtonVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyWideTableLayout()
+{
+    for (auto& tracked : m_tables)
+    {
+        if (!tracked.button.isNull())
+        {
+            tracked.button->deleteLater();
+        }
+    }
+    m_tables.clear();
+
+    if (document()==nullptr)
     {
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         return;
@@ -544,16 +598,6 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     }
     if (tables.empty())
     {
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        return;
-    }
-
-    auto wrapWidth=lineWrapColumnOrWidth();
-    if (wrapWidth<=0)
-    {
-        // No wrap width has been negotiated yet (this runs from setHtmlContent(), which can
-        // precede the first ChatMessageText::bubbleWidthHint() call) -- there is nothing to
-        // compare a natural width against yet. setWrapWidth() calls back here once it knows.
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         return;
     }
@@ -585,25 +629,33 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     }
     document()->setTextWidth(restoreWidth);
 
+    // EVERY table is tracked, not just the wide ones -- the expand button is offered on all of
+    // them (a table that fits is still worth opening larger, and it is the only way a short table
+    // can be copied AS a table). Pinning stays restricted to those that genuinely do not fit.
+    auto wrapWidth=lineWrapColumnOrWidth();
     bool anyPinned=false;
     for (std::size_t i=0;i<tables.size();++i)
     {
-        // Only a table that does not already fit is worth pinning -- leaving a fitting table
-        // alone keeps Qt's own column balancing, which is better than a hard pin.
-        if (wrapWidth<=0 || naturalWidths[i]<=static_cast<qreal>(wrapWidth))
+        TrackedTable tracked;
+        tracked.firstPosition=tables[i]->firstPosition();
+        tracked.naturalWidth=naturalWidths[i];
+
+        // A wrap width of 0 means none has been negotiated yet (applyWideTableLayout() also runs
+        // from setHtmlContent(), which can precede the first bubbleWidthHint()); there is nothing
+        // to compare against, so nothing is pinned this pass -- setWrapWidth() calls back once it
+        // knows. Tracking and the buttons do not depend on it, so they happen either way.
+        // Otherwise: only a table that does not already fit is worth pinning -- leaving a fitting
+        // table alone keeps Qt's own column balancing, which is better than a hard pin.
+        if (m_wideTableScroll && wrapWidth>0 && naturalWidths[i]>static_cast<qreal>(wrapWidth))
         {
-            continue;
+            auto format=tables[i]->format();
+            format.setWidth(QTextLength(QTextLength::FixedLength,naturalWidths[i]));
+            tables[i]->setFormat(format);
+            tracked.pinned=true;
+            anyPinned=true;
         }
 
-        auto format=tables[i]->format();
-        format.setWidth(QTextLength(QTextLength::FixedLength,naturalWidths[i]));
-        tables[i]->setFormat(format);
-
-        PinnedTable pinned;
-        pinned.firstPosition=tables[i]->firstPosition();
-        pinned.naturalWidth=naturalWidths[i];
-        m_pinnedTables.push_back(pinned);
-        anyPinned=true;
+        m_tables.push_back(tracked);
     }
 
     setHorizontalScrollBarPolicy(anyPinned ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
@@ -612,8 +664,8 @@ void ChatMessageTextBrowser::applyWideTableLayout()
         // The pins changed the layout; re-shrink-wrap so the document's own height reflects the
         // now-unwrapped cells (a pinned table is typically much SHORTER than the compressed one).
         updateSize();
-        updateTableExpandButtons();
     }
+    updateTableExpandButtons();
 }
 
 //--------------------------------------------------------------------------
@@ -625,40 +677,48 @@ void ChatMessageTextBrowser::updateTableExpandButtons()
         return;
     }
 
-    for (std::size_t i=0;i<m_pinnedTables.size();++i)
+    if (!m_tableExpandButton)
     {
-        auto& pinned=m_pinnedTables[i];
+        return;
+    }
 
-        // Re-find the table by the position recorded when it was pinned -- the QTextTable* itself
+    for (std::size_t i=0;i<m_tables.size();++i)
+    {
+        auto& tracked=m_tables[i];
+
+        // Re-find the table by the position recorded when it was tracked -- the QTextTable* itself
         // is not safe to keep across a re-layout.
-        auto* frame=document()->frameAt(pinned.firstPosition);
+        auto* frame=document()->frameAt(tracked.firstPosition);
         auto* table=qobject_cast<QTextTable*>(frame);
         if (table==nullptr)
         {
-            if (!pinned.button.isNull())
+            if (!tracked.button.isNull())
             {
-                pinned.button->hide();
+                tracked.button->hide();
             }
             continue;
         }
 
-        if (pinned.button.isNull())
+        if (tracked.button.isNull())
         {
-            auto* button=new QToolButton(viewport());
+            // Icon-only IconTextButton with the curated tabler "arrows-diagonal" glyph, resolved
+            // through the ordinary SVG icon locator so it follows the icon theme (and any label's
+            // icon substitutions) like every other icon in the library. The alias lives in
+            // resources/style/chat.json under this class's own context name.
+            auto* button=new IconTextButton(
+                Style::instance().svgIconLocator().icon(
+                    QStringLiteral("ChatMessageTextBrowser::expandTable"),this),
+                viewport());
             button->setObjectName(QStringLiteral("tableExpandButton"));
             button->setCursor(Qt::ArrowCursor);
             button->setFocusPolicy(Qt::NoFocus);
-            // A glyph rather than an icon: the curated tabler-icon set gets its first additions in
-            // Stage 5a, and this button should not block on that. U+2922 (north-east/south-west
-            // arrow) reads as "expand" and needs no asset.
-            button->setText(QString(QChar(0x2922)));
             button->setToolTip(tr("Show the full table"));
             auto index=static_cast<int>(i);
-            connect(button,&QToolButton::clicked,this,[this,index](){openTableViewer(index);});
-            pinned.button=button;
+            connect(button,&IconTextButton::clicked,this,[this,index](){openTableViewer(index);});
+            tracked.button=button;
         }
 
-        auto* button=qobject_cast<QToolButton*>(pinned.button.data());
+        auto* button=qobject_cast<IconTextButton*>(tracked.button.data());
         if (button==nullptr)
         {
             continue;
@@ -684,9 +744,13 @@ void ChatMessageTextBrowser::updateTableExpandButtons()
         auto x=viewport()->width()-size.width()-margin;
         auto y=static_cast<int>(rect.top())+margin;
         button->move(x,y);
-        button->show();
         button->raise();
     }
+
+    // Newly created buttons must start out matching the current hover state rather than simply
+    // appearing -- otherwise a message that re-lays out while the pointer is elsewhere would
+    // flash its buttons on.
+    updateTableExpandButtonVisibility();
 }
 
 //--------------------------------------------------------------------------
@@ -824,10 +888,16 @@ void ChatMessageTableViewer::copyTable()
 {
     // Going through selectAll()+copy() rather than assembling a QMimeData by hand keeps this on
     // the ordinary copy path, so the clipboard gets exactly the same flavour set (html, markdown,
-    // ODF, and our own text/plain override) as a manual selection would. The selection is left in
-    // place afterwards, as visible confirmation of what was copied.
+    // ODF, and our own text/plain override) as a manual selection would.
     selectAll();
     copy();
+
+    // The select-all is a means to that end, not something the user asked for -- leaving the whole
+    // table highlighted afterwards just looks like a stray selection. The toast is the
+    // confirmation. Cleared AFTER copy(), which has already taken the clipboard data.
+    auto cursor=textCursor();
+    cursor.clearSelection();
+    setTextCursor(cursor);
 
     // Emitted unconditionally, before the toast: a host that turned the built-in toast off is
     // relying on this to show its own.
@@ -911,12 +981,12 @@ void ChatMessageTableViewer::keyPressEvent(QKeyEvent* event)
 
 void ChatMessageTextBrowser::openTableViewer(int index)
 {
-    if (index<0 || static_cast<std::size_t>(index)>=m_pinnedTables.size() || document()==nullptr)
+    if (index<0 || static_cast<std::size_t>(index)>=m_tables.size() || document()==nullptr)
     {
         return;
     }
 
-    auto* table=qobject_cast<QTextTable*>(document()->frameAt(m_pinnedTables[static_cast<std::size_t>(index)].firstPosition));
+    auto* table=qobject_cast<QTextTable*>(document()->frameAt(m_tables[static_cast<std::size_t>(index)].firstPosition));
     if (table==nullptr)
     {
         return;
@@ -947,11 +1017,16 @@ void ChatMessageTextBrowser::openTableViewer(int index)
     // clipboard, which is what external apps paste a real table from) -- this button is purely
     // about discoverability, since nothing else tells the user that is possible.
     auto* buttonRow=new QFrame(container);
+    buttonRow->setObjectName(QStringLiteral("tableViewerButtons"));
     auto* buttonLayout=Layout::horizontal(buttonRow);
     buttonLayout->addStretch(1);
     // uise::PushButton rather than a bare QPushButton: it carries the library's own click-ripple
     // overlay (see its rippleOverlay()), so the button gives the same feedback as every other
     // button in the app instead of silently doing something invisible.
+    auto* fullScreenButton=new PushButton(tr("Full screen"),buttonRow);
+    fullScreenButton->setObjectName(QStringLiteral("tableViewerFullScreenButton"));
+    buttonLayout->addWidget(fullScreenButton);
+
     auto* copyButton=new PushButton(tr("Copy table"),buttonRow);
     copyButton->setObjectName(QStringLiteral("tableViewerCopyButton"));
     connect(copyButton,&PushButton::clicked,view,[view](){view->copyTable();});
@@ -963,7 +1038,7 @@ void ChatMessageTextBrowser::openTableViewer(int index)
 
     containerLayout->addWidget(buttonRow);
 
-    container->resize(qMin(static_cast<int>(m_pinnedTables[static_cast<std::size_t>(index)].naturalWidth)+48,900),400);
+    container->resize(qMin(static_cast<int>(m_tables[static_cast<std::size_t>(index)].naturalWidth)+48,900),400);
 
     // FloatingDialogFrame is the only shell in this library that hosts an arbitrary widget as a
     // resizable top-level window -- ChatImageViewerWindow, despite the name, is hard-wired to a
@@ -971,6 +1046,33 @@ void ChatMessageTextBrowser::openTableViewer(int index)
     auto* frame=new FloatingDialogFrame(this);
     frame->setWidget(container,true);
     frame->setAutoCloseOnOutsideClick(true);
+
+    // Toggle, not a one-way trip -- and the button says which way it will go. A wide table is
+    // exactly the content most likely to want the whole screen, so this is more than a nicety.
+    // The frame lays its content out with a QBoxLayout under SetDefaultConstraint (our content is
+    // a plain QFrame, not an AbstractDialog, so it never takes FloatingDialogFrame's
+    // isResizable()==false / SetFixedSize path), which is what lets the table actually grow into
+    // the extra space rather than sit at its old size in a huge translucent window.
+    auto toggleFullScreen=[frame,fullScreenButton]()
+    {
+        if (frame->isFullScreen())
+        {
+            frame->showNormal();
+            fullScreenButton->setText(tr("Full screen"));
+        }
+        else
+        {
+            frame->showFullScreen();
+            fullScreenButton->setText(tr("Exit full screen"));
+        }
+    };
+    connect(fullScreenButton,&PushButton::clicked,frame,toggleFullScreen);
+
+    // F11 as well, matching ChatImageViewerWindow's own fullscreen shortcut so the two viewers
+    // behave the same way. Escape stays the frame's own close shortcut, as it is everywhere else.
+    auto* fullScreenShortcut=new QShortcut(Qt::Key_F11,frame);
+    fullScreenShortcut->setContext(Qt::WindowShortcut);
+    connect(fullScreenShortcut,&QShortcut::activated,frame,toggleFullScreen);
 
     connect(closeButton,&PushButton::clicked,frame,[frame](){frame->close();});
 
@@ -1112,6 +1214,7 @@ void ChatMessageTextBrowser::leaveEvent(QEvent* event)
 {
     clearHoveredAnchor();
     QTextBrowser::leaveEvent(event);
+    updateTableExpandButtonVisibility();
 }
 
 //--------------------------------------------------------------------------
