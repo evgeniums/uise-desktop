@@ -141,7 +141,8 @@ SET (HEADERS
 
     include/uise/desktop/svgicon.hpp
     include/uise/desktop/svgiconcontext.hpp
-    include/uise/desktop/svgiconlocator.hpp    
+    include/uise/desktop/svgiconlocator.hpp
+    include/uise/desktop/syntaxtheme.hpp
 
     include/uise/desktop/stylecontext.hpp
 
@@ -223,9 +224,11 @@ SET (HEADERS
     include/uise/desktop/label.hpp
 
     include/uise/desktop/chatenums.hpp
+    include/uise/desktop/textformat.hpp
     include/uise/desktop/abstractchatmessage.hpp
     include/uise/desktop/abstractchatmessagecall.hpp
     include/uise/desktop/chatmessagetext.hpp
+    include/uise/desktop/markdownrenderer.hpp
     include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
     include/uise/desktop/chatdatesubtitle.hpp
@@ -336,6 +339,7 @@ SET (SOURCES
     src/svgicon.cpp
     src/svgiconcontext.cpp
     src/svgiconlocator.cpp
+    src/syntaxtheme.cpp
 
     src/pushbutton.cpp
 
@@ -421,6 +425,7 @@ SET (SOURCES
 
     src/label.cpp
     src/abstractchatmessagecall.cpp
+    src/markdownrenderer.cpp
     src/chatmessagetext.cpp
     src/chatmessagecall.cpp
     src/chatmessage.cpp

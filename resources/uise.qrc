@@ -169,6 +169,11 @@
         <file>style/light/chat.json</file>
         <file>style/dark/chat.qss</file>
         <file>style/light/chat.qss</file>
+        <file>style/messagetext.css</file>
+        <file>style/dark/messagetext.css</file>
+        <file>style/light/messagetext.css</file>
+        <file>style/dark/syntax.json</file>
+        <file>style/light/syntax.json</file>
         <file>style/replypreview.json</file>
         <file>style/replypreview.qss</file>
         <file>style/dark/replypreview.json</file>

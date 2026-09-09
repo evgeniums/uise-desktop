@@ -1,0 +1,11 @@
+{
+    "kind" : "syntax",
+    "theme" : "dark",
+    "buckets" : {
+        "keyword" : "#FF79C6",
+        "type" : "#8BE9FD",
+        "literal" : "#F1FA8C",
+        "callable" : "#50FA7B",
+        "comment" : "#6272A4"
+    }
+}

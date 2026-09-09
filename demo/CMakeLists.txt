@@ -46,6 +46,7 @@ ADD_SUBDIRECTORY(qtcontrols)
 ADD_SUBDIRECTORY(replypreview)
 ADD_SUBDIRECTORY(forwardpreview)
 ADD_SUBDIRECTORY(editbar)
+ADD_SUBDIRECTORY(messageformatting)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)

@@ -38,6 +38,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -213,7 +214,7 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     m_lastHtml=html;
     setHtml(html);
     // setHtml() replaces the document, so any style already set via setDefaultStyleSheet()
-    // before this call is naturally in effect -- nothing else to do here, applyLinkStyle() is
+    // before this call is naturally in effect -- nothing else to do here, applyDocumentStyle() is
     // only needed when the style changes AFTER content is already loaded (see below).
 }
 
@@ -226,7 +227,7 @@ void ChatMessageTextBrowser::setLinkColor(const QColor& color)
         return;
     }
     m_linkColor=color;
-    applyLinkStyle();
+    applyDocumentStyle();
 }
 
 //--------------------------------------------------------------------------
@@ -238,19 +239,44 @@ void ChatMessageTextBrowser::setLinkUnderline(bool enable)
         return;
     }
     m_linkUnderline=enable;
-    applyLinkStyle();
+    applyDocumentStyle();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatMessageTextBrowser::applyLinkStyle()
+void ChatMessageTextBrowser::changeEvent(QEvent* event)
 {
-    QString css=QStringLiteral("a { text-decoration: %1; }").arg(m_linkUnderline ? "underline" : "none");
+    QTextBrowser::changeEvent(event);
+    if (event->type()==QEvent::StyleChange)
+    {
+        // Style::instance().css() can change on a theme switch even when this widget's OWN
+        // linkColor/linkUnderline qproperty values do not (e.g. a switch that only touches
+        // messagetext.css) -- setLinkColor()/setLinkUnderline() early-return in that case (see
+        // their bodies above) and never reapply, so the base document CSS is re-pulled
+        // unconditionally here instead of depending on the qproperty writers alone.
+        applyDocumentStyle();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyDocumentStyle()
+{
+    // Theme's document-level CSS (task-message-formatting-plan.md, Stage 1) -- e.g.
+    // resources/style/messagetext.css -- forms the base; the link colour/underline rule is
+    // appended last so it always wins over anything messagetext.css declares for `a` (it
+    // deliberately declares none, to avoid needing to reason about override order between two
+    // sources of anchor styling).
+    QString css=Style::instance().css();
+
+    QString linkCss=QStringLiteral("a { text-decoration: %1; }").arg(m_linkUnderline ? "underline" : "none");
     if (m_linkColor.isValid())
     {
-        css=QStringLiteral("a { color: %1; text-decoration: %2; }")
+        linkCss=QStringLiteral("a { color: %1; text-decoration: %2; }")
                 .arg(m_linkColor.name(),m_linkUnderline ? "underline" : "none");
     }
+    css+=QStringLiteral("\n")+linkCss;
+
     document()->setDefaultStyleSheet(css);
 
     // setDefaultStyleSheet() only affects content set AFTERWARDS -- reapply the last HTML we
@@ -460,6 +486,20 @@ class ChatMessageText_p
         //! pins the final re-wrap to this instead of re-deriving it from the bubble's own final
         //! width -- see that method's own doc comment for why.
         int lastHintWidth=0;
+
+        //! The source text/format last passed to loadText() (task-message-formatting-plan.md,
+        //! Stage 2). Not consumed by anything in THIS stage -- markdownToHtml()'s output is
+        //! theme-independent, so ChatMessageTextBrowser::applyDocumentStyle()'s existing
+        //! m_lastHtml replay already restyles a rendered markdown bubble correctly on its own.
+        //! Not needed by Stage 3 either: markdownToHtml() emits a code block's language as
+        //! `<pre class="language-x">`, and Qt's own HTML parser reads "class=language-x"
+        //! specifically on <pre> back into QTextFormat::BlockCodeLanguage, so that survives a
+        //! setHtml() round-trip and Stage 3's highlighter can read it straight off the live
+        //! rendered document. Cached anyway, since it costs one refcount bump per message, for a
+        //! later stage that genuinely needs the ORIGINAL markdown source rather than the
+        //! rendered document (Stage 5b re-render, Stage 6 mentions).
+        QString sourceText;
+        TextFormat sourceFormat=TextFormat::Markdown;
 };
 
 //--------------------------------------------------------------------------
@@ -496,13 +536,21 @@ ChatMessageText::~ChatMessageText()
 
 void ChatMessageText::loadText(const QString& text, TextFormat format)
 {
+    pimpl->sourceText=text;
+    pimpl->sourceFormat=format;
+
     switch (format)
     {
         case TextFormat::Html:
             pimpl->text->setHtmlContent(text);
             break;
         case TextFormat::Markdown:
-            pimpl->text->setMarkdown(text);
+            // Rendered to sanitized HTML and routed through setHtmlContent() -- NOT
+            // QTextBrowser::setMarkdown() directly -- so this content gets messagetext.css,
+            // linkColor/linkUnderline and theme-switch replay the same way Html content already
+            // does (task-message-formatting-plan.md, Stage 2; see src/newpasswordwizard.cpp's
+            // own comment on why setMarkdown() bypasses setDefaultStyleSheet() entirely).
+            pimpl->text->setHtmlContent(markdownToHtml(text));
             break;
         case TextFormat::Plain:
             pimpl->text->setPlainText(text);
@@ -521,6 +569,8 @@ void ChatMessageText::clearText()
     pimpl->text->setHtmlContent(QString{});
     pimpl->text->clear();
     pimpl->lastHintWidth=0;
+    pimpl->sourceText.clear();
+    pimpl->sourceFormat=TextFormat::Markdown;
 }
 
 //--------------------------------------------------------------------------
