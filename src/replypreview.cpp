@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/roundedimage.hpp>
+#include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/replypreview.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -60,6 +61,12 @@ constexpr int QuoteIconSpacing=4;
 // contentWidthHint() too, so bubble-width negotiation never settles on a width narrower than
 // what this block's own QSS floor enforces visually anyway.
 constexpr int MinContentWidth=260;
+
+// Source cap passed to markdownToPlainText() in refresh() -- see that call site's own comment.
+// Comfortably larger than DefaultReplyTextTrimLength (200) can ever need after trimReplyText()'s
+// own further truncation, since a reply preview's FINAL text is always at most one trim length
+// long regardless of how much markdown source went in.
+constexpr int MarkdownPreviewSourceCap=4*DefaultReplyTextTrimLength;
 
 }
 
@@ -424,7 +431,16 @@ void ReplyPreview::refresh()
     // quoteTrimLength() instead -- see AbstractReplyPreview::setData()'s own doc comment for
     // why these are two distinct limits.
     auto charLimit=d.isQuote() ? quoteTrimLength() : textTrimLength();
-    pimpl->text->setText(deleted ? pimpl->deletedText : trimReplyText(d.text(),charLimit));
+
+    // Flatten markdown to plain text BEFORE trimReplyText() -- pimpl->text is an ElidedLabel,
+    // which is Qt::PlainText only (task-message-formatting-plan.md, Stage 2), so raw markdown
+    // syntax would otherwise show up verbatim (e.g. "**bold**"). Plain/Html text() is passed
+    // through unchanged -- Html was already showing raw tags before this change, unaffected by
+    // it either way.
+    auto previewText=d.format()==TextFormat::Markdown
+                          ? markdownToPlainText(d.text(),MarkdownPreviewSourceCap)
+                          : d.text();
+    pimpl->text->setText(deleted ? pimpl->deletedText : trimReplyText(previewText,charLimit));
 
     // Turning deleted mid-lifetime (a bubble's placeholder resolving to "not found") would
     // otherwise shrink this block by a whole row: buildReplySection() deliberately reserves

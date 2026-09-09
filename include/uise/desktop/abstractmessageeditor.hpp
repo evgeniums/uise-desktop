@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <vector>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/textformat.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 
@@ -41,12 +42,9 @@ class QMimeData;
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
 
-enum class TextFormat
-{
-    Plain,
-    Markdown,
-    Html
-};
+// TextFormat now lives in its own header (task-message-formatting-plan.md, Stage 2) so a plain
+// value type like ReplyPreviewData can see it without pulling in frame.hpp/dropdownmenu.hpp --
+// re-exported here unchanged (same namespace, same name) via the #include above.
 
 /**
  * @brief Ids of the standard rows AbstractMessageEditor's own context menu builds and handles

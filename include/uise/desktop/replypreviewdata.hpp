@@ -32,6 +32,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMetaType>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/textformat.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -149,6 +150,25 @@ class UISE_DESKTOP_EXPORT ReplyPreviewData
         }
 
         /**
+         * @brief Check how text() is encoded (task-message-formatting-plan.md, Stage 2).
+         * @return TextFormat::Plain by default, so a host that never calls setFormat() sees
+         *  exactly today's behaviour -- text() shown verbatim (after trimReplyText()). A host
+         *  passing TextFormat::Markdown gets it flattened via markdownToPlainText() first, in
+         *  ReplyPreview::refresh(); TextFormat::Html is not handled specially at this widget
+         *  layer at all (a host sending HTML here today already gets it printed with raw tags
+         *  showing, unchanged by this addition).
+         */
+        TextFormat format() const noexcept
+        {
+            return m_format;
+        }
+
+        void setFormat(TextFormat format) noexcept
+        {
+            m_format=format;
+        }
+
+        /**
          * @brief Get the decoded thumbnail image, if one has been supplied.
          * @return A possibly-null QImage -- only consulted when kind()==ReplyMessageKind::Image;
          *  a null image there means the icon slot stays hidden (see
@@ -239,6 +259,7 @@ class UISE_DESKTOP_EXPORT ReplyPreviewData
         QDateTime m_dateTime;
         QString m_text;
         ReplyMessageKind m_kind=ReplyMessageKind::Unknown;
+        TextFormat m_format=TextFormat::Plain;
         QImage m_thumbnail;
         bool m_deleted=false;
         bool m_quote=false;

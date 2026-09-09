@@ -11,6 +11,32 @@
     this base sheet in ChatMessageTextBrowser::applyDocumentStyle() so it always wins.
 */
 
+/*
+    task-message-formatting-plan.md, Stage 2: Qt's own HTML-parser defaults give <p> a 12px
+    top+bottom margin, <h1>-<h6> 18/16/14px top + 12px bottom, and top-level <ul>/<ol> 12px top+
+    bottom (qtexthtmlparser.cpp) -- these rules are declared in setDefaultStyleSheet() (this file)
+    and are applied AFTER those built-in defaults, so they win. Without them every markdownToHtml()
+    bubble -- including a single short line, which is always wrapped in its own <p> -- carries a
+    visible 12px gap above and below. markdownToHtml() itself never emits <p> around a document
+    that is nothing but one paragraph (see markdownrenderer.cpp), which covers the single-line
+    case even without this override; these rules are what keep a MULTI-paragraph/heading/list
+    message compact instead of gappy.
+*/
+p {
+    margin-top: 0px;
+    margin-bottom: 6px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+ul, ol {
+    margin-top: 2px;
+    margin-bottom: 4px;
+}
+
 code, pre {
     font-family: "Menlo","Consolas","monospace";
 }
@@ -19,6 +45,8 @@ pre {
     white-space: pre-wrap;
     padding: 6px 8px;
     border-radius: 4px;
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 blockquote {

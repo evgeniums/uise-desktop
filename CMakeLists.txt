@@ -224,9 +224,11 @@ SET (HEADERS
     include/uise/desktop/label.hpp
 
     include/uise/desktop/chatenums.hpp
+    include/uise/desktop/textformat.hpp
     include/uise/desktop/abstractchatmessage.hpp
     include/uise/desktop/abstractchatmessagecall.hpp
     include/uise/desktop/chatmessagetext.hpp
+    include/uise/desktop/markdownrenderer.hpp
     include/uise/desktop/chatmessagecall.hpp
     include/uise/desktop/chatmessage.hpp
     include/uise/desktop/chatdatesubtitle.hpp
@@ -423,6 +425,7 @@ SET (SOURCES
 
     src/label.cpp
     src/abstractchatmessagecall.cpp
+    src/markdownrenderer.cpp
     src/chatmessagetext.cpp
     src/chatmessagecall.cpp
     src/chatmessage.cpp
