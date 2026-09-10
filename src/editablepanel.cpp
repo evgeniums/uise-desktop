@@ -395,6 +395,7 @@ void EditablePanel::edit()
         return;
     }
 
+    doResetStatus();
     setBusyWaiting(false);
     setEditingMode(true);
     emit editRequested();
@@ -465,11 +466,6 @@ void EditablePanel::updateState()
 
     pimpl->bottomButtonApply->setVisible(applyVisible);
     pimpl->bottomButtonCancel->setVisible(cancelVisible);
-
-    if (!editing)
-    {
-        doResetStatus();
-    }
 }
 
 //--------------------------------------------------------------------------
