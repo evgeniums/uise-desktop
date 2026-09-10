@@ -183,5 +183,42 @@
         <file>tabler-icons/outline/logout.svg</file>
         <file>tabler-icons/filled/caret-down.svg</file>
         <file>tabler-icons/outline/clear-all.svg</file>
+
+        <!-- Stage 5a: MessageEditorToolbar formatting/mode icons -->
+        <!-- arrow-forward-up.svg (redo) is already curated above; arrow-back-up.svg is its
+             mirror twin, added here as the matching undo glyph. -->
+        <file>tabler-icons/outline/arrow-back-up.svg</file>
+        <!-- table row/column edits -->
+        <file>tabler-icons/outline/row-insert-top.svg</file>
+        <file>tabler-icons/outline/row-insert-bottom.svg</file>
+        <file>tabler-icons/outline/column-insert-left.svg</file>
+        <file>tabler-icons/outline/column-insert-right.svg</file>
+        <file>tabler-icons/outline/row-remove.svg</file>
+        <file>tabler-icons/outline/column-remove.svg</file>
+        <file>tabler-icons/outline/table-off.svg</file>
+        <file>tabler-icons/outline/indent-increase.svg</file>
+        <file>tabler-icons/outline/indent-decrease.svg</file>
+        <file>tabler-icons/outline/abc.svg</file>
+        <file>tabler-icons/outline/blockquote.svg</file>
+        <file>tabler-icons/outline/separator.svg</file>
+        <file>tabler-icons/outline/bold.svg</file>
+        <file>tabler-icons/outline/clear-formatting.svg</file>
+        <file>tabler-icons/outline/code.svg</file>
+        <file>tabler-icons/outline/code-dots.svg</file>
+        <file>tabler-icons/outline/h-1.svg</file>
+        <file>tabler-icons/outline/h-2.svg</file>
+        <file>tabler-icons/outline/h-3.svg</file>
+        <file>tabler-icons/outline/italic.svg</file>
+        <file>tabler-icons/outline/letter-case.svg</file>
+        <file>tabler-icons/outline/link.svg</file>
+        <file>tabler-icons/outline/link-off.svg</file>
+        <file>tabler-icons/outline/list.svg</file>
+        <file>tabler-icons/outline/list-numbers.svg</file>
+        <file>tabler-icons/outline/markdown.svg</file>
+        <file>tabler-icons/outline/pilcrow.svg</file>
+        <file>tabler-icons/outline/strikethrough.svg</file>
+        <file>tabler-icons/outline/table.svg</file>
+        <file>tabler-icons/outline/typography.svg</file>
+        <file>tabler-icons/outline/underline.svg</file>
     </qresource>
 </RCC>

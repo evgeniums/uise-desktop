@@ -1,0 +1,67 @@
+/* ---- Stage 5a: formatting toolbar + expand toggle on the message editor ----
+ *
+ * Everything here is dormant by default: AbstractMessageEditor::expandButtonVisible defaults
+ * false and the toolbar only exists on screen while isExpanded(), so a host that never opts in
+ * renders exactly as it did before this file existed.
+ *
+ * Deliberately NO "qproperty-maxExpandedHeight" rule: a qproperty- declaration in a shipped
+ * stylesheet is re-applied on every repolish (QStyleSheetStyle::setProperties()) and would
+ * silently overwrite a host's own EnhancedTextEdit::setMaxExpandedHeight() call. The default
+ * lives in C++ as EnhancedTextEdit::DefaultMaxExpandedHeight. A host that wants a different
+ * ceiling writes a plain "max-height" on the QTextEdit, which effectiveMaxHeight() already
+ * honours in preference to the C++ default. */
+
+uise--MessageEditorToolbar {
+padding: 2px 4px;
+}
+
+/* An IconTextButton's icon has no sensible default size of its own -- must be set explicitly per
+   container, same as editbar.qss/chatimageviewer.qss do for their own button rows.
+
+   Targeted at the two side FRAMES rather than at #expandButton by name, so a host's own icon
+   button dropped in with addLeadingWidget()/addTrailingWidget() comes out the same size as the
+   expand button it sits next to instead of needing the host to redeclare all of this. The expand
+   button is itself a member of #leadingWidgets, so it is still covered. */
+uise--MessageEditorToolbar uise--IconTextButton uise--RoundedImage,
+uise--MessageEditor #leadingWidgets uise--IconTextButton uise--RoundedImage,
+uise--MessageEditor #trailingWidgets uise--IconTextButton uise--RoundedImage {
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}
+
+uise--MessageEditorToolbar uise--IconTextButton,
+uise--MessageEditor #leadingWidgets uise--IconTextButton,
+uise--MessageEditor #trailingWidgets uise--IconTextButton {
+padding: 4px;
+margin: 0 1px;
+border-radius: 4px;
+border: 1px solid transparent;
+}
+
+/* light/reset.qss and dark/reset.qss both sort AFTER this file in the cascade (root-dir files
+ * load before theme-dir files, and within a directory QDir::entryInfoList()'s name order is the
+ * cascade order -- src/style.cpp:116-125,144-199 -- and 'r' > 'm'). Both carry a bare
+ * "QFrame:disabled { background-color; border; color }" rule (light/reset.qss:9,
+ * dark/reset.qss). Its specificity (one pseudo-class + one element) beats a two-element plain
+ * descendant selector, so a disabled toolbar button -- which is the whole formatting half of the
+ * bar outside MessageEditingMode::Wysiwyg -- would inherit reset.qss's border and colour unless
+ * this rule carries a pseudo-class of its own. */
+uise--MessageEditorToolbar uise--IconTextButton:disabled {
+border: 1px solid transparent;
+}
+
+uise--MessageEditorToolbar #separator {
+min-width: 1px;
+max-width: 1px;
+margin: 3px 6px;
+}
+
+/* The expand button sits to the LEFT of the text edit, sharing its row and bottom-aligned to it
+   (see MessageEditor's constructor) -- so it needs a gap on its right to separate it from the
+   editor, and a small one below to lift it off the row's bottom edge rather than a top margin,
+   which is what it needed back when it had a row of its own underneath the editor. */
+uise--MessageEditor #expandButton {
+margin: 0 4px 2px 0;
+}

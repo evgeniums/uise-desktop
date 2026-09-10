@@ -366,4 +366,100 @@ BOOST_AUTO_TEST_CASE(TestMarkdownToPlainTextRespectsSourceCap)
     UISE_TEST_CHECK_LE(text.size(),100);
 }
 
+BOOST_AUTO_TEST_CASE(TestMultiLineListSurvivesChatLineBreakPreprocessing)
+{
+    // Regression: preserveChatLineBreaks() used to swallow the newline in front of EVERY
+    // continuation line, so a flat three-item list came out as ONE item whose 2nd and 3rd lines
+    // were the literal text "- beta"/"- gamma" joined by <br/>. A newline in front of a block
+    // opener is load-bearing syntax, not a visual break.
+    auto html=renderMd(QStringLiteral("- alpha\n- beta\n- gamma\n"));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<li>")),3);
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<ul>")),1);
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("- beta")));
+
+    auto ordered=renderMd(QStringLiteral("1. one\n2. two\n3. three\n"));
+    UISE_TEST_CHECK_EQUAL(ordered.count(QStringLiteral("<li>")),3);
+    UISE_TEST_CHECK(!ordered.contains(QStringLiteral("2. two")));
+}
+
+BOOST_AUTO_TEST_CASE(TestBlockOpenersKeepTheirOwnLine)
+{
+    // Same root cause, other constructs: a heading merged into the previous line stopped being a
+    // heading, and text merged onto a heading was swallowed into it.
+    auto heading=renderMd(QStringLiteral("# Title\nbody text\n"));
+    UISE_TEST_CHECK(heading.contains(QStringLiteral("<h1>Title</h1>")));
+    UISE_TEST_CHECK(heading.contains(QStringLiteral("body text")));
+    UISE_TEST_CHECK(!heading.contains(QStringLiteral("Title<br/>")));
+
+    auto afterText=renderMd(QStringLiteral("intro line\n- alpha\n- beta\n"));
+    UISE_TEST_CHECK(afterText.contains(QStringLiteral("<ul>")));
+    UISE_TEST_CHECK_EQUAL(afterText.count(QStringLiteral("<li>")),2);
+}
+
+BOOST_AUTO_TEST_CASE(TestChatLineBreakStillPreservedForOrdinaryText)
+{
+    // The fix must not cost the feature it sits inside: two ordinary lines still become one
+    // paragraph with a visible break, and a list item's own continuation line still keeps its
+    // break INSIDE the item (a list item may legally continue, so merging there is correct).
+    auto plain=renderMd(QStringLiteral("line one\nline two\n"));
+    UISE_TEST_CHECK(plain.contains(QStringLiteral("<br/>")));
+    UISE_TEST_CHECK_EQUAL(plain.count(QStringLiteral("<p>")),1);
+
+    auto continuation=renderMd(QStringLiteral("- alpha\n  continued\n"));
+    UISE_TEST_CHECK_EQUAL(continuation.count(QStringLiteral("<li>")),1);
+    UISE_TEST_CHECK(continuation.contains(QStringLiteral("<br/>")));
+}
+
+BOOST_AUTO_TEST_CASE(TestNestedListLevelsPreserved)
+{
+    auto html=renderMd(QStringLiteral("- alpha\n  - inner\n- beta\n"));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<ul>")),2);
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<li>")),3);
+}
+
+BOOST_AUTO_TEST_CASE(TestThirdListLevelSurvivesDeepIndentation)
+{
+    // Regression, found from a screenshot of the demo: Qt's toMarkdown() writes a THIRD-level
+    // item as "    - text" -- four leading spaces -- and startsBlockConstruct() used to stop
+    // scanning leading spaces at three (the CommonMark rule for a TOP-LEVEL block). Inside a
+    // list a nested item is indented relative to its parent's content column, so level three was
+    // classified as ordinary text and the whole level collapsed into the level-two item as
+    // literal "- text".
+    auto html=renderMd(QStringLiteral("- one\n- two\n  - inner\n  - inner2\n    - deep\n    - deep2\n"));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<ul>")),3);
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<li>")),6);
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("- deep")));
+}
+
+BOOST_AUTO_TEST_CASE(TestFenceDelimiterIsABlockBoundary)
+{
+    // Regression, found while reworking the code-block button. preserveChatLineBreaks() merges a
+    // single newline into a LineSeparator so one typed line stays one visible line -- but a fence
+    // delimiter is syntax, not prose, and merging the newline on either side of it destroys the
+    // code block outright. Qt's own toMarkdown() writes fences with no surrounding blank line, so
+    // this was reachable from any message that put text next to a code block.
+
+    // The newline BEFORE an opening fence: merged, the fence never opens and the whole thing came
+    // out as one paragraph reading "before<br/>``` code".
+    auto opening=renderMd(QStringLiteral("before\n```\ncode\n```\n"));
+    UISE_TEST_CHECK(opening.contains(QStringLiteral("<pre><code>code</code></pre>")));
+    UISE_TEST_CHECK(opening.contains(QStringLiteral("<p>before</p>")));
+
+    // The newline AFTER a closing fence: merged, the fence never terminates and everything after
+    // it was swallowed into the code block.
+    auto closing=renderMd(QStringLiteral("```\ncode\n```\nafter\n"));
+    UISE_TEST_CHECK(closing.contains(QStringLiteral("<pre><code>code</code></pre>")));
+    UISE_TEST_CHECK(closing.contains(QStringLiteral("<p>after</p>")));
+    UISE_TEST_CHECK(!closing.contains(QStringLiteral("``` after")));
+
+    // An info string must not change the answer.
+    auto tagged=renderMd(QStringLiteral("```cpp\ncode\n```\nafter\n"));
+    UISE_TEST_CHECK(tagged.contains(QStringLiteral("<p>after</p>")));
+    UISE_TEST_CHECK(tagged.contains(QStringLiteral("language-cpp")));
+
+    // ...and the content INSIDE a fence is still left exactly alone.
+    auto inside=renderMd(QStringLiteral("```\nline one\nline two\n```\n"));
+    UISE_TEST_CHECK(inside.contains(QStringLiteral("line one\nline two")));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

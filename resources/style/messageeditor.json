@@ -1,0 +1,51 @@
+{
+    "contexts": [
+        {
+            "name": "MessageEditorToolbar",
+            "aliases": {
+                "typography": "${uise-svg-icons-1}/typography",
+                "undo": "${uise-svg-icons-1}/arrow-back-up",
+                "redo": "${uise-svg-icons-1}/arrow-forward-up",
+                "wysiwyg": "${uise-svg-icons-1}/letter-case",
+                "markdown": "${uise-svg-icons-1}/markdown",
+                "plaintext": "${uise-svg-icons-1}/abc",
+                "bold": "${uise-svg-icons-1}/bold",
+                "italic": "${uise-svg-icons-1}/italic",
+                "underline": "${uise-svg-icons-1}/underline",
+                "strikethrough": "${uise-svg-icons-1}/strikethrough",
+                "code": "${uise-svg-icons-1}/code",
+                "codeBlock": "${uise-svg-icons-1}/code-dots",
+                "blockquote": "${uise-svg-icons-1}/blockquote",
+                "list": "${uise-svg-icons-1}/list",
+                "listNumbers": "${uise-svg-icons-1}/list-numbers",
+                "table": "${uise-svg-icons-1}/table",
+                "horizontalRule": "${uise-svg-icons-1}/separator",
+                "heading": "${uise-svg-icons-1}/h-1",
+                "heading1": "${uise-svg-icons-1}/h-1",
+                "heading2": "${uise-svg-icons-1}/h-2",
+                "heading3": "${uise-svg-icons-1}/h-3",
+                "normalText": "${uise-svg-icons-1}/pilcrow",
+                "link": "${uise-svg-icons-1}/link",
+                "removeLink": "${uise-svg-icons-1}/link-off",
+                "mention": "${uise-svg-icons-1}/at",
+                "clearFormatting": "${uise-svg-icons-1}/clear-formatting",
+                "close": "${uise-svg-icons-1}/x",
+                "tableRowAbove": "${uise-svg-icons-1}/row-insert-top",
+                "tableRowBelow": "${uise-svg-icons-1}/row-insert-bottom",
+                "tableColumnLeft": "${uise-svg-icons-1}/column-insert-left",
+                "tableColumnRight": "${uise-svg-icons-1}/column-insert-right",
+                "tableRemoveRow": "${uise-svg-icons-1}/row-remove",
+                "tableRemoveColumn": "${uise-svg-icons-1}/column-remove",
+                "tableRemove": "${uise-svg-icons-1}/table-off",
+                "indentIncrease": "${uise-svg-icons-1}/indent-increase",
+                "indentDecrease": "${uise-svg-icons-1}/indent-decrease"
+            }
+        },
+        {
+            "name": "MessageEditor",
+            "aliases": {
+                "expand": "${uise-svg-icons-1}/typography"
+            }
+        }
+    ]
+}

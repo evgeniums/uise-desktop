@@ -43,6 +43,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextDocument>
 #include <QTextBlock>
 #include <QTextFormat>
+#include <QStringList>
+#include <QDebug>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -53,6 +55,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/replypreviewdata.hpp>
 #include <uise/desktop/syntaxtheme.hpp>
 #include <uise/desktop/syntaxlanguage.hpp>
+#include <uise/desktop/messageeditor.hpp>
+#include <uise/desktop/messageeditortoolbar.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -490,6 +495,16 @@ int main(int argc, char *argv[])
 
     rootLayout->addWidget(new QLabel(QStringLiteral("Reply preview of the same source (markdownToPlainText() strip):")));
     auto* mdReply=new ReplyPreview();
+    // Capped because ReplyPreview cannot currently shrink below its own text: its ElidedLabels
+    // leave m_label at QSizePolicy::MinimumExpanding, which has no ShrinkFlag, so qSmartMinSize()
+    // takes qMax(sizeHint,minimumSizeHint) -- the FULL un-elided width. Fed this demo's whole
+    // sample markdown (trimmed to trimReplyText()'s 200 chars) that measured 1083px, second only
+    // to the caption above in forcing the window wide. A maximum width bounds it, since
+    // qSmartMinSize() applies boundedTo(maxSize) before the explicit minimum. In a real host the
+    // containing bar bounds it the same way; ElidedLabel::setIgnoreSizeHint(true) is the proper
+    // library-side cure, but ReplyPreview is shared with the app's reply/forward/edit bars, so
+    // that belongs in its own change rather than as a side effect of a demo layout fix.
+    mdReply->setMaximumWidth(560);
     rootLayout->addWidget(mdReply);
 
     auto renderMarkdown=[mdSource,softBreakCheck,mdBody,mdMessage,htmlOutput,mdReply,logMsg]()
@@ -575,6 +590,183 @@ int main(int argc, char *argv[])
 
     renderMarkdown();
 
+    // --- Stage 5a: message editor -- modes, formatting toolbar, expand toggle. Opted in
+    // explicitly (setExpandButtonVisible(true)), since both default to off/hidden so an existing
+    // host's composer stays pixel-identical until it opts in. ---
+
+    rootLayout->addSpacing(8);
+    // Word-wrapped: a QLabel does not wrap by default, so a long one-line caption puts its ENTIRE
+    // sentence width under the scroll area's content as a hard minimum (measured: 1087px for the
+    // readout caption below, against a 752px viewport -- that alone forced a horizontal
+    // scrollbar). Wrapping drops that floor to a single word.
+    auto* editorSectionLabel=new QLabel(QStringLiteral(
+        "Message editor (click the expand toggle in the bottom-left corner to reveal the toolbar). "
+        "Tab/Shift+Tab indent: inside a list they change its level, with a selection they quote "
+        "the selected paragraphs, and on a single line they indent it -- send it to the bubble "
+        "above to see each one survive the markdown round trip:"
+    ));
+    editorSectionLabel->setWordWrap(true);
+    rootLayout->addWidget(editorSectionLabel);
+
+    auto* msgEditor=new MessageEditor(central);
+    msgEditor->setExpandButtonVisible(true);
+    // Ceiling is 40% of the window, never below 180px -- resize the demo window and the editor's
+    // growth limit follows it. Both the auto-resize growth and the expanded height stop here.
+    msgEditor->setMaxHeight(180);
+    msgEditor->setMaxHeightPercent(40);
+    msgEditor->setFinishOnEnter(false);
+    msgEditor->setPlaceHolderText(QStringLiteral("Type a message..."));
+    msgEditor->loadText(QStringLiteral("Try **bold**, *italic*, a heading, or a fenced code block."),TextFormat::Markdown);
+    rootLayout->addWidget(msgEditor);
+
+    // Leading/trailing widgets INSIDE the editor, mirroring the attach/send pair a real composer
+    // puts either side of the text (whitemdesktop's ChatPageBottom builds exactly this shape by
+    // hand today). They stay either side of the text area always; type a second line to watch
+    // each side group turn from a row of buttons into a COLUMN of buttons, and clear the editor
+    // to watch them lie back down.
+    // Built exactly like MessageEditor's own expand button -- an icon-only IconTextButton with
+    // no focus policy -- and given NO explicit size: messageeditor.qss sizes every
+    // uise--IconTextButton inside #leadingWidgets/#trailingWidgets the same way it sizes the
+    // expand button, so a host icon button matches its neighbour without redeclaring anything.
+    // Borrows FileUpload's own "add" alias, which already resolves to the paperclip -- the same
+    // glyph the app's "attach" alias uses, and semantically the attach-a-file icon. Demos reuse
+    // another component's alias rather than inventing one (see demo/icontextbutton's
+    // "ImageEditor::brush", demo/elidedcontainer's "EditableLabel::edit"): attaching is a host
+    // concern, so there is no MessageEditor:: alias for it, and a bare "paperclip" would NOT
+    // resolve -- lookup searches <iconDir>/<name>, i.e. ":/icons/paperclip.svg", while the file
+    // lives at ":/icons/tabler-icons/outline/paperclip.svg". The "${uise-svg-icons-1}" prefix
+    // that bridges the two is substituted when the style JSON is parsed, not at lookup time, so
+    // only a name that has been through an alias reaches the right directory.
+    auto* attachButton=new IconTextButton(
+        Style::instance().svgIconLocator().icon(QStringLiteral("FileUpload::add"),msgEditor),
+        msgEditor,
+        IconTextButton::IconPosition::BeforeText
+    );
+    attachButton->setObjectName(QStringLiteral("attachButton"));
+    attachButton->setText(QString());
+    attachButton->setCursor(Qt::PointingHandCursor);
+    attachButton->setFocusPolicy(Qt::NoFocus);
+    attachButton->setToolTip(QStringLiteral("Leading widget (attach)"));
+    msgEditor->addLeadingWidget(attachButton);
+
+    auto* sendButton=new QPushButton(QStringLiteral("Send"));
+    sendButton->setToolTip(QStringLiteral("Trailing widget (send)"));
+    msgEditor->addTrailingWidget(sendButton);
+
+    auto* editorStatusFrame=new QFrame(central);
+    auto* editorStatusLayout=Layout::horizontal(editorStatusFrame);
+    rootLayout->addWidget(editorStatusFrame);
+    auto* editorModeLabel=new QLabel(QStringLiteral("mode: Formatted text"));
+    editorStatusLayout->addWidget(editorModeLabel);
+    auto* editorExpandedLabel=new QLabel(QStringLiteral("expanded: no"));
+    editorStatusLayout->addWidget(editorExpandedLabel);
+    auto* editorStackedLabel=new QLabel(QStringLiteral("side widgets: row"));
+    editorStatusLayout->addWidget(editorStackedLabel);
+    editorStatusLayout->addStretch(1);
+
+    auto* editorReadoutLabel=new QLabel(QStringLiteral(
+        "text(TextFormat::Markdown) -- live (the headline Stage 5a fix: switch to \"Markdown "
+        "source\" mode and type markdown syntax -- it must come back verbatim, not "
+        "backslash-escaped):"
+    ));
+    editorReadoutLabel->setWordWrap(true);
+    rootLayout->addWidget(editorReadoutLabel);
+    auto* editorMarkdownOutput=new QPlainTextEdit();
+    editorMarkdownOutput->setReadOnly(true);
+    editorMarkdownOutput->setFont(monoFont);
+    editorMarkdownOutput->setMinimumHeight(100);
+    rootLayout->addWidget(editorMarkdownOutput);
+
+    auto* sendToBubbleButton=new QPushButton(QStringLiteral("Send this into the bubble above"));
+    rootLayout->addWidget(sendToBubbleButton);
+
+    auto modeName=[](MessageEditingMode mode)
+    {
+        switch (mode)
+        {
+            case (MessageEditingMode::Wysiwyg): return QStringLiteral("Formatted text");
+            case (MessageEditingMode::Markdown): return QStringLiteral("Markdown source");
+            case (MessageEditingMode::Plaintext): return QStringLiteral("Plain text");
+        }
+        return QString();
+    };
+
+    auto* editorDebounce=new QTimer(central);
+    editorDebounce->setSingleShot(true);
+    editorDebounce->setInterval(250);
+    QObject::connect(editorDebounce,&QTimer::timeout,central,
+        [msgEditor,editorMarkdownOutput]()
+        {
+            editorMarkdownOutput->setPlainText(msgEditor->text(TextFormat::Markdown));
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::textChanged,central,
+        [editorDebounce]()
+        {
+            editorDebounce->start();
+        }
+    );
+    editorDebounce->start(0);
+
+    QObject::connect(msgEditor,&AbstractMessageEditor::messageEditingModeChanged,central,
+        [editorModeLabel,modeName,logMsg](MessageEditingMode mode)
+        {
+            editorModeLabel->setText(QStringLiteral("mode: %1").arg(modeName(mode)));
+            logMsg(QStringLiteral("Editor mode changed to: %1").arg(modeName(mode)));
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::expandedChanged,central,
+        [editorExpandedLabel,logMsg](bool expanded)
+        {
+            editorExpandedLabel->setText(QStringLiteral("expanded: %1").arg(expanded ? "yes" : "no"));
+            logMsg(QStringLiteral("Editor expanded changed to: %1").arg(expanded ? "true" : "false"));
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::stackedArrangementChanged,central,
+        [editorStackedLabel,logMsg](bool stacked)
+        {
+            editorStackedLabel->setText(QStringLiteral("side widgets: %1").arg(stacked ? "column" : "row"));
+            logMsg(QStringLiteral("Side widget groups became %1").arg(stacked ? "COLUMNS" : "ROWS"));
+        }
+    );
+
+    // Logs every item MessageEditor's own context menu offers, incl. the Stage 5a Formatting
+    // submenu -- makes the Wysiwyg-only mode gating (task-message-formatting-plan.md, decision
+    // D3) observable: right-click while in Markdown/Plaintext mode and the submenu is absent.
+    msgEditor->setContextMenuHandler(
+        [logMsg](std::vector<MenuItem>& items)
+        {
+            QStringList ids;
+            for (const auto& item : items)
+            {
+                ids << QString::number(item.id);
+            }
+            logMsg(QStringLiteral("Context menu items: %1").arg(ids.join(QStringLiteral(", "))));
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::contextMenuItemTriggered,central,
+        [logMsg](int id)
+        {
+            logMsg(QStringLiteral("Context menu item triggered: %1").arg(id));
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::contextMenuItemToggled,central,
+        [logMsg](int id, bool checked)
+        {
+            logMsg(QStringLiteral("Context menu item toggled: %1 -> %2").arg(id).arg(checked));
+        }
+    );
+
+    QObject::connect(sendToBubbleButton,&QPushButton::clicked,central,
+        [msgEditor,mdSource,renderMarkdown]()
+        {
+            // Closes the loop editor -> Stage 2 renderer -> Stage 3 highlighter -> styled
+            // bubble, all in one click.
+            mdSource->setPlainText(msgEditor->text(TextFormat::Markdown));
+            renderMarkdown();
+        }
+    );
+
     // --- log ---
 
     rootLayout->addSpacing(8);
@@ -586,6 +778,49 @@ int main(int argc, char *argv[])
     w.resize(760,900);
     w.setWindowTitle("Message Formatting Demo");
     w.show();
+
+    // TEMPORARY WIDTH DIAGNOSTIC -- remove once the horizontal-scrollbar cause is identified.
+    // Reports what actually floors this scroll area's content width: with widgetResizable(true)
+    // a horizontal scrollbar appears exactly when central's minimum width exceeds the viewport,
+    // and central's minimum is the widest minimum among the rows below. Deferred so the first
+    // real layout pass has happened before anything is measured.
+    QTimer::singleShot(0,central,
+        [central,mainFrame,rootLayout,logMsg]()
+        {
+            // Written to BOTH the demo's own log pane and qDebug(): the pane is at the very
+            // bottom of a long scrolling window, while qDebug() lands in Qt Creator's
+            // Application Output where it can just be copied out.
+            auto report=[logMsg](const QString& line)
+            {
+                logMsg(line);
+                qDebug().noquote()<<line;
+            };
+
+            report(QStringLiteral("--- WIDTH DIAGNOSTIC (temporary) ---"));
+            report(QStringLiteral("viewport=%1  central.min=%2  central.hint=%3")
+                       .arg(mainFrame->viewport()->width())
+                       .arg(central->minimumSizeHint().width())
+                       .arg(central->sizeHint().width()));
+            for (int i=0;i<rootLayout->count();++i)
+            {
+                auto* item=rootLayout->itemAt(i);
+                auto* widget=item!=nullptr ? item->widget() : nullptr;
+                if (widget==nullptr)
+                {
+                    continue;
+                }
+                report(QStringLiteral("  [%1] %2%3 min=%4 hint=%5")
+                           .arg(i,2)
+                           .arg(QString::fromLatin1(widget->metaObject()->className()))
+                           .arg(widget->objectName().isEmpty()
+                                    ? QString()
+                                    : QStringLiteral("#%1").arg(widget->objectName()))
+                           .arg(widget->minimumSizeHint().width())
+                           .arg(widget->sizeHint().width()));
+            }
+            report(QStringLiteral("--- end width diagnostic ---"));
+        }
+    );
 
     auto ret=app.exec();
     return ret;

@@ -77,6 +77,10 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 
     setLineWrapMode(FixedPixelWidth);
 
+    // Qt's own 40px per indent level leaves even a one-level list a long way from the bubble's
+    // edge, and it has to agree with the composer's -- see DefaultListIndentWidth.
+    document()->setIndentWidth(DefaultListIndentWidth);
+
     // task-urls-and characters-in-messages.md, Stage 1: without this, QTextBrowser's default
     // openLinks=true/openExternalLinks=false makes a click call setSource() on itself, which
     // blanks the bubble instead of doing anything useful. Activation is relayed via
@@ -518,7 +522,10 @@ void ChatMessageTextBrowser::setTableExpandButtonEnabled(bool enable)
         {
             if (!tracked.button.isNull())
             {
-                tracked.button->deleteLater();
+                // Deleted outright, not deleteLater()'d, for the same reason as
+                // applyWideTableLayout()'s own dropUnusedButtons(): a deferred delete leaves the
+                // widget parented and findable until the event loop next spins.
+                delete tracked.button.data();
                 tracked.button=nullptr;
             }
         }
@@ -572,17 +579,37 @@ void ChatMessageTextBrowser::enterEvent(QEnterEvent* event)
 
 void ChatMessageTextBrowser::applyWideTableLayout()
 {
+    // Buttons are REUSED across passes, not torn down and rebuilt. applyWideTableLayout() runs on
+    // every setWrapWidth(), i.e. on every bubble-width negotiation, so recreating them here meant
+    // an icon lookup plus a widget construction per table per negotiation -- and, because
+    // deleteLater() only runs when the event loop next spins, the outgoing buttons briefly
+    // co-existed with their replacements.
+    std::vector<QPointer<QWidget>> recycled;
+    recycled.reserve(m_tables.size());
     for (auto& tracked : m_tables)
     {
-        if (!tracked.button.isNull())
-        {
-            tracked.button->deleteLater();
-        }
+        recycled.push_back(tracked.button);
     }
     m_tables.clear();
 
+    auto dropUnusedButtons=[&recycled](std::size_t keep)
+    {
+        for (std::size_t i=keep;i<recycled.size();++i)
+        {
+            if (!recycled[i].isNull())
+            {
+                // Deleted outright rather than deleteLater()'d: nothing here is running inside one
+                // of these buttons' own signal handlers, and a deferred delete would leave the
+                // widget parented (and findable) until the next event-loop turn.
+                delete recycled[i].data();
+            }
+        }
+        recycled.clear();
+    };
+
     if (document()==nullptr)
     {
+        dropUnusedButtons(0);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         return;
     }
@@ -598,6 +625,7 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     }
     if (tables.empty())
     {
+        dropUnusedButtons(0);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         return;
     }
@@ -655,8 +683,13 @@ void ChatMessageTextBrowser::applyWideTableLayout()
             anyPinned=true;
         }
 
+        if (i<recycled.size())
+        {
+            tracked.button=recycled[i];
+        }
         m_tables.push_back(tracked);
     }
+    dropUnusedButtons(tables.size());
 
     setHorizontalScrollBarPolicy(anyPinned ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
     if (anyPinned)

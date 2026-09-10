@@ -192,6 +192,12 @@
         <file>style/light/editbar.json</file>
         <file>style/dark/editbar.qss</file>
         <file>style/light/editbar.qss</file>
+        <file>style/messageeditor.json</file>
+        <file>style/messageeditor.qss</file>
+        <file>style/dark/messageeditor.json</file>
+        <file>style/light/messageeditor.json</file>
+        <file>style/dark/messageeditor.qss</file>
+        <file>style/light/messageeditor.qss</file>
         <file>style/dark/check.svg</file>
         <file>style/light/check.svg</file>
         <file>style/radio-dot.svg</file>

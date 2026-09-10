@@ -14,7 +14,25 @@
                 "copy" : "${uise-svg-icons-1}/copy",
                 "paste" : "${uise-svg-icons-1}/clipboard",
                 "selectAll" : "${uise-svg-icons-1}/select-all",
-                "clear" : "${uise-svg-icons-1}/trash"
+                "clear" : "${uise-svg-icons-1}/trash",
+
+                "formatting" : "${uise-svg-icons-1}/typography",
+                "bold" : "${uise-svg-icons-1}/bold",
+                "italic" : "${uise-svg-icons-1}/italic",
+                "underline" : "${uise-svg-icons-1}/underline",
+                "strikethrough" : "${uise-svg-icons-1}/strikethrough",
+                "code" : "${uise-svg-icons-1}/code",
+                "codeBlock" : "${uise-svg-icons-1}/code-dots",
+                "blockquote" : "${uise-svg-icons-1}/blockquote",
+                "list" : "${uise-svg-icons-1}/list",
+                "listNumbers" : "${uise-svg-icons-1}/list-numbers",
+                "table" : "${uise-svg-icons-1}/table",
+                "horizontalRule" : "${uise-svg-icons-1}/separator",
+                "heading1" : "${uise-svg-icons-1}/h-1",
+                "heading2" : "${uise-svg-icons-1}/h-2",
+                "heading3" : "${uise-svg-icons-1}/h-3",
+                "normalText" : "${uise-svg-icons-1}/pilcrow",
+                "clearFormatting" : "${uise-svg-icons-1}/clear-formatting"
             }
         }
     ]

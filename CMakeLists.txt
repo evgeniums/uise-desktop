@@ -265,7 +265,9 @@ SET (HEADERS
     include/uise/desktop/abstracteditbar.hpp
     include/uise/desktop/editbar.hpp
 
+    include/uise/desktop/messageeditingmode.hpp
     include/uise/desktop/abstractmessageeditor.hpp
+    include/uise/desktop/messageeditortoolbar.hpp
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
 
@@ -461,6 +463,7 @@ SET (SOURCES
 
     src/editbar.cpp
 
+    src/messageeditortoolbar.cpp
     src/messageeditor.cpp
     src/messageselectionpanel.cpp
     src/verticalscrollbar.cpp

@@ -1,0 +1,30 @@
+/* Text inside a blockquote, kept in step with the `blockquote` colour in
+   light/messagetext.css so a quote reads the same in the composer and in the bubble it becomes.
+   Applied through a QSyntaxHighlighter, so it never reaches the document and never leaks into the
+   sent message -- see EnhancedTextEdit::setBlockquoteColor(). Being re-applied on every repolish
+   is what makes a quote recolour on a theme switch instead of freezing at the colour it was
+   typed in. */
+uise--MessageEditor uise--EnhancedTextEdit {
+qproperty-codeBlockColor: #444444;
+qproperty-blockquoteColor: #666666;
+}
+
+uise--MessageEditorToolbar {
+border-bottom: 1px solid #E4E4E4;
+}
+
+uise--MessageEditorToolbar #separator {
+background-color: #D0D0D0;
+}
+
+uise--MessageEditorToolbar uise--IconTextButton:hover,
+uise--MessageEditor #leadingWidgets uise--IconTextButton:hover,
+uise--MessageEditor #trailingWidgets uise--IconTextButton:hover {
+background-color: #EAEAEA;
+}
+
+uise--MessageEditorToolbar uise--IconTextButton[checked="true"],
+uise--MessageEditor #leadingWidgets uise--IconTextButton[checked="true"],
+uise--MessageEditor #trailingWidgets uise--IconTextButton[checked="true"] {
+background-color: #DCE8F5;
+}

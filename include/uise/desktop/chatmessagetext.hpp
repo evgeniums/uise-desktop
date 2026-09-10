@@ -52,6 +52,16 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 {
     Q_OBJECT
 
+    public:
+
+        //! Pixels one list/indent level is worth in a rendered message. MUST stay equal to
+        //! EnhancedTextEdit::DefaultListIndentWidth -- a message composed in the editor and the
+        //! same message rendered in a bubble have to indent their lists identically, and a
+        //! reader comparing the two notices a mismatch immediately. Duplicated rather than
+        //! shared so neither header has to include the other; TestListIndentWidthMatchesViewer
+        //! fails if the two ever drift apart.
+        constexpr static const qreal DefaultListIndentWidth=20.0;
+
     // task-urls-and characters-in-messages.md, Stage 1: QSS can't reach an inline <a>'s color --
     // it comes from the document's char formats, not the widget's own palette/stylesheet -- so
     // these are exposed as qproperty- settable from QSS instead (same idiom as maxBubbleWidth on

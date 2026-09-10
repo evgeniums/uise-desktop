@@ -49,8 +49,15 @@ pre {
     margin-bottom: 4px;
 }
 
+/* The left margin is load-bearing, not decoration. Qt gives <blockquote> a 40px left margin of
+   its own (QTextHtmlParserNode::initializeProperties), and the four-value `margin` shorthand this
+   rule used to carry -- 4px 0 4px 0 -- silently overrode it to ZERO, so a quoted paragraph in a
+   bubble was distinguishable only by its colour and left border while the very same message in the
+   composer was indented. 20px matches MessageEditor::DefaultBlockquoteIndent and
+   EnhancedTextEdit::DefaultListIndentWidth, so a quote and a list at the same depth line up, in
+   the bubble and the editor alike. Keep the three in step. */
 blockquote {
-    margin: 4px 0 4px 0;
+    margin: 4px 0 4px 20px;
     padding-left: 8px;
 }
 

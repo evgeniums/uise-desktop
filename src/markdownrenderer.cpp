@@ -114,6 +114,192 @@ bool isIndentedCodeLine(const QString& line)
     return line.startsWith(QStringLiteral("    ")) || line.startsWith(QLatin1Char('\t'));
 }
 
+//! Whether a line OPENS a new block-level construct: an ATX heading, a blockquote, a bullet or
+//! ordered list item, a thematic break, or a setext underline.
+//!
+//! preserveChatLineBreaks() must never merge such a line into the previous one. Merging is what
+//! gives a chat message its "one newline = one visible line break" behaviour, but a block opener
+//! only counts as one at the START of a line -- swallow the newline in front of it and markdown
+//! stops seeing a construct at all. That is what turned every multi-line list into a single item
+//! whose 2nd and 3rd lines were literal "- beta" text joined by <br/>, and it did the same to
+//! consecutive headings, blockquotes and thematic breaks.
+bool startsBlockConstruct(const QString& line)
+{
+    // ALL leading whitespace is skipped, deliberately not just the three spaces CommonMark
+    // allows before a TOP-LEVEL block. Inside a list, a nested item is indented relative to its
+    // parent's content column, so Qt's own toMarkdown() writes a third-level item as
+    // "    - text" -- four spaces. Stopping at three classified that as ordinary text, merged the
+    // newline in front of it, and dropped the whole third level into the second level's item as
+    // literal "- text". Being permissive here is safe: a genuinely indented CODE line is
+    // recognised separately by the caller (isIndentedCodeLine() plus a preceding blank), and that
+    // path already forces a real newline.
+    int i=0;
+    while (i<line.size() && (line.at(i)==QLatin1Char(' ') || line.at(i)==QLatin1Char('\t')))
+    {
+        ++i;
+    }
+    if (i>=line.size())
+    {
+        return false;
+    }
+
+    const auto c=line.at(i);
+
+    // A fenced code-block delimiter. Load-bearing: Qt's own toMarkdown() happily writes a fence
+    // directly under the preceding paragraph with no blank line between them, and merging that
+    // newline away stops the fence being a fence at all -- "before / ``` / code / ```" came out
+    // as one paragraph reading "before<br/>``` code", with no code block anywhere (measured).
+    // matchFence() rather than a hand-rolled check, so the 3-character minimum and the
+    // indented-fence rule stay defined in exactly one place.
+    {
+        QChar fenceChar;
+        int fenceLen=0;
+        if (matchFence(line,fenceChar,fenceLen))
+        {
+            return true;
+        }
+    }
+
+    // Blockquote.
+    if (c==QLatin1Char('>'))
+    {
+        return true;
+    }
+
+    // ATX heading: 1-6 '#' followed by a space or end of line.
+    if (c==QLatin1Char('#'))
+    {
+        int hashes=0;
+        while (i+hashes<line.size() && line.at(i+hashes)==QLatin1Char('#'))
+        {
+            ++hashes;
+        }
+        if (hashes>=1 && hashes<=6
+            && (i+hashes>=line.size() || line.at(i+hashes)==QLatin1Char(' ')))
+        {
+            return true;
+        }
+    }
+
+    // Bullet list item: '-', '*' or '+' followed by a space or tab. The marker alone is not
+    // enough -- "-hello" is ordinary text.
+    if (c==QLatin1Char('-') || c==QLatin1Char('*') || c==QLatin1Char('+'))
+    {
+        if (i+1<line.size()
+            && (line.at(i+1)==QLatin1Char(' ') || line.at(i+1)==QLatin1Char('\t')))
+        {
+            return true;
+        }
+    }
+
+    // Ordered list item: digits followed by '.' or ')' and then a space or tab.
+    if (c.isDigit())
+    {
+        int digits=0;
+        while (i+digits<line.size() && line.at(i+digits).isDigit())
+        {
+            ++digits;
+        }
+        auto after=i+digits;
+        if (after<line.size()
+            && (line.at(after)==QLatin1Char('.') || line.at(after)==QLatin1Char(')'))
+            && after+1<line.size()
+            && (line.at(after+1)==QLatin1Char(' ') || line.at(after+1)==QLatin1Char('\t')))
+        {
+            return true;
+        }
+    }
+
+    // Thematic break, and the setext underlines that share their characters: a run of only '-',
+    // '*', '_' or '=' (plus spaces). Kept deliberately loose -- a false positive here costs one
+    // preserved newline, a false negative corrupts the construct.
+    auto trimmed=line.trimmed();
+    if (!trimmed.isEmpty())
+    {
+        const auto first=trimmed.at(0);
+        if (first==QLatin1Char('-') || first==QLatin1Char('*')
+            || first==QLatin1Char('_') || first==QLatin1Char('='))
+        {
+            bool uniform=true;
+            for (const auto& ch : trimmed)
+            {
+                if (ch!=first && ch!=QLatin1Char(' '))
+                {
+                    uniform=false;
+                    break;
+                }
+            }
+            if (uniform)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+//! Whether a line's own block ENDS at its newline, so nothing may be merged onto it.
+//!
+//! Narrower than startsBlockConstruct() on purpose. A list item or a blockquote can legally
+//! continue on the following line (CommonMark lazy continuation), and merging there is exactly
+//! what the chat convention wants -- the continuation stays inside the same item with a visible
+//! <br/>. An ATX heading or a thematic break cannot continue: text merged onto a heading is
+//! swallowed into the heading itself, and text merged onto "---" stops it being a break at all.
+bool endsBlockAtNewline(const QString& line)
+{
+    auto trimmed=line.trimmed();
+    if (trimmed.isEmpty())
+    {
+        return false;
+    }
+
+    // A fence delimiter ends its own line, both halves of the pair. For the CLOSING fence this is
+    // the mirror of the case above: by the time this runs the scanner has already left the fence,
+    // so nothing else stops the following prose being merged onto the "```" -- which leaves the
+    // fence unterminated and swallows the rest of the message into the code block (measured:
+    // "``` / code / ``` / after" rendered as "<pre><code>code\n``` after</code></pre>").
+    {
+        QChar fenceChar;
+        int fenceLen=0;
+        if (matchFence(line,fenceChar,fenceLen))
+        {
+            return true;
+        }
+    }
+
+    if (trimmed.startsWith(QLatin1Char('#')))
+    {
+        int hashes=0;
+        while (hashes<trimmed.size() && trimmed.at(hashes)==QLatin1Char('#'))
+        {
+            ++hashes;
+        }
+        if (hashes>=1 && hashes<=6
+            && (hashes>=trimmed.size() || trimmed.at(hashes)==QLatin1Char(' ')))
+        {
+            return true;
+        }
+    }
+
+    // Thematic break or setext underline: a uniform run of '-', '*', '_' or '='.
+    const auto first=trimmed.at(0);
+    if (first==QLatin1Char('-') || first==QLatin1Char('*')
+        || first==QLatin1Char('_') || first==QLatin1Char('='))
+    {
+        for (const auto& ch : trimmed)
+        {
+            if (ch!=first && ch!=QLatin1Char(' '))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
 //! A GFM table delimiter row -- cells made only of '-', ':', '|' and spaces, with at least one
 //! '-'. Used to recognise a table's HEADER row one line ahead (the delimiter always follows it
 //! immediately), since the header row itself looks like an ordinary line otherwise.
@@ -230,9 +416,15 @@ QString preserveChatLineBreaks(const QString& src)
         bool nextBlank=(i+1>=lines.size()) || lines.at(i+1).trimmed().isEmpty();
         bool skip=inFence || indentedCode || inTable;
 
+        // A newline in front of a block opener is load-bearing syntax, not a visual break: merge
+        // it away and the opener stops being one. Likewise a line that IS a heading or thematic
+        // break ends its own block, so text merged onto it would be swallowed into the heading.
+        bool nextStartsBlock=(i+1<lines.size()) && startsBlockConstruct(lines.at(i+1));
+        bool selfClosingBlock=!blank && endsBlockAtNewline(line);
+
         if (i+1<lines.size())
         {
-            if (!skip && !blank && !nextBlank)
+            if (!skip && !blank && !nextBlank && !nextStartsBlock && !selfClosingBlock)
             {
                 // Merge into ONE logical line as far as md4c is concerned -- no '\n' at this
                 // boundary at all -- with an embedded LineSeparator marking where the visual

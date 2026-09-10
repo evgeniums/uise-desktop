@@ -1,0 +1,55 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "MessageEditorToolbar",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#777777" },
+                    "on" :  { "currentColor" : "#777777" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                }
+            }
+        },
+        {
+            "name" : "MessageEditor",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#777777" },
+                    "on" :  { "currentColor" : "#777777" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                }
+            }
+        }
+    ]
+}
