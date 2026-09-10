@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QAbstractTextDocumentLayout>
 #include <QColor>
 #include <QUrl>
+#include <QScrollBar>
 
 #include <uise/test/uise-testthread.hpp>
 
