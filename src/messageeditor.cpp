@@ -676,6 +676,81 @@ void mergeProseBlocksForExport(QTextDocument* document)
     }
 }
 
+/** @brief Give one space to every table column that is empty in EVERY row, so the exported
+ *  markdown is still a table.
+ *
+ * Qt's markdown writer sizes each column to its widest cell and writes exactly that many
+ * characters -- including, for a column nothing has ever been typed into, ZERO. That is fine for
+ * a content row (an empty cell is legal markdown) but fatal for the delimiter row, where a cell
+ * must hold at least one "-": a 2x3 table with its last column empty is written as
+ *
+ *     |1| ||
+ *     |-|-||
+ *     | |3||
+ *
+ * and the empty third delimiter cell makes the line stop being a delimiter at all, so the whole
+ * construct degrades to a paragraph of literal pipes -- measured, QTextDocument::setMarkdown()
+ * finds 0 tables in it, and that is exactly what the bubble showed. A table with NO text in it
+ * yet is worse still: all three lines come out as "|||". Which is to say the failure needs no
+ * unusual input at all -- insert a table, type in one cell, send.
+ *
+ * A space is the smallest thing that makes the writer allot the column a width, and it costs
+ * nothing on the way back: markdown strips a cell's surrounding whitespace, so the column
+ * re-imports as the empty column it was (measured -- the round trip returns the identical 2x3
+ * shape with the identical cells) and re-exports identically. Repairing the delimiter row in the
+ * generated TEXT instead was the alternative and is worse: in the all-empty table above the
+ * delimiter row is indistinguishable from the content rows, so there is nothing for a text pass
+ * to key on. Here the structure is still in hand.
+ *
+ * A column that has content SOMEWHERE is never touched, and the export of a table with no empty
+ * column is byte-identical with and without this pass.
+ *
+ * Runs on the export clone only -- the live document must not gain characters the user did not
+ * type. Nested tables are walked too, unlike normalizeImportedTables(): this one is about what
+ * the writer emits, and the writer descends into them.
+ */
+void padEmptyTableColumnsForExport(QTextFrame* frame)
+{
+    for (auto it=frame->begin(); !it.atEnd(); ++it)
+    {
+        auto* child=it.currentFrame();
+        if (child==nullptr)
+        {
+            continue;
+        }
+
+        auto* table=qobject_cast<QTextTable*>(child);
+        if (table!=nullptr)
+        {
+            for (int column=0; column<table->columns(); ++column)
+            {
+                bool empty=true;
+                for (int row=0; row<table->rows() && empty; ++row)
+                {
+                    auto cell=table->cellAt(row,column);
+                    for (auto cellIt=cell.begin(); !cellIt.atEnd(); ++cellIt)
+                    {
+                        const auto block=cellIt.currentBlock();
+                        if (block.isValid() && !block.text().isEmpty())
+                        {
+                            empty=false;
+                            break;
+                        }
+                    }
+                }
+
+                if (empty)
+                {
+                    table->cellAt(0,column).firstCursorPosition()
+                        .insertText(QStringLiteral(" "));
+                }
+            }
+        }
+
+        padEmptyTableColumnsForExport(child);
+    }
+}
+
 /** @brief The WYSIWYG markdown export, in one place: blank lines preserved, code fences restored.
  *
  * Works on a CLONE rather than the live document -- fillEmptyBlocksForExport() inserts real
@@ -687,6 +762,7 @@ QString wysiwygMarkdown(const QTextDocument* document)
     std::unique_ptr<QTextDocument> clone(document->clone());
     fillEmptyBlocksForExport(clone.get());
     mergeProseBlocksForExport(clone.get());
+    padEmptyTableColumnsForExport(clone->rootFrame());
     return collapseBlankRuns(restoreCodeFences(clone->toMarkdown()));
 }
 
@@ -699,6 +775,7 @@ QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
     cursor.insertFragment(fragment);
     fillEmptyBlocksForExport(&temp);
     mergeProseBlocksForExport(&temp);
+    padEmptyTableColumnsForExport(temp.rootFrame());
     return collapseBlankRuns(restoreCodeFences(temp.toMarkdown()));
 }
 
@@ -1773,8 +1850,28 @@ void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
     QTextEdit::insertFromMimeData(source);
     const auto insertEnd=textCursor().position();
 
+    // The insert's own edit block is CLOSED before anything below looks at the result, and that
+    // is load-bearing rather than tidiness. Qt rebuilds the frame hierarchy only in
+    // QTextDocumentPrivate::finishEdit(), which returns immediately while an edit block is open --
+    // so a table created during this block is not in document()->rootFrame()'s children yet, and
+    // normalizeImportedTables() below walks straight past it.
+    //
+    // Measured, pasting the same table three ways with the block still open: into an empty
+    // document the walk found 0 tables, into a document holding only text 0, and into one that
+    // already contained a table 2 -- an existing table leaves the hierarchy populated, which is
+    // exactly why this looked like it worked. The reported symptom was precisely that shape:
+    // "insert a table with the toolbar first and the paste is cleaned; paste into a fresh editor
+    // and the cells keep their original fills". After endEditBlock() all three find every table.
+    cursor.endEditBlock();
+
     if (acceptRichText() && insertEnd>insertStart)
     {
+        // Rejoin the paste's own undo action rather than opening a new one: everything below is
+        // repair work on what was just inserted, so one Ctrl+Z must take the paste and its
+        // normalization away together. Verified -- one undo restores the pre-paste document
+        // exactly, and redo brings back the NORMALIZED content, in all three shapes above.
+        cursor.joinPreviousEditBlock();
+
         stripBakedRichTextFormatting(document(),insertStart,insertEnd);
         normalizeImportedTables(document(),insertStart,insertEnd,false);
         // Whole-document, not ranged -- but idempotent on content that already satisfies the
@@ -1790,10 +1887,12 @@ void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
         // fragment, anchors included -- this also drops an underline a pasted link carried, so a
         // pasted link and a typed one are painted by the same linkColor/linkUnderline rule.
         stripImportedAnchorStyle(document(),false);
+        // Inside the rejoined block, so a handler's own edits (normalizeBlockquoteIndent()) join
+        // the paste's single undoable action too.
         emit pastedRichText();
-    }
 
-    cursor.endEditBlock();
+        cursor.endEditBlock();
+    }
 }
 
 //--------------------------------------------------------------------------

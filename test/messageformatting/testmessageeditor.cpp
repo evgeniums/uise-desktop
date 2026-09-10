@@ -814,6 +814,98 @@ BOOST_AUTO_TEST_CASE(TestTableInsertion)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestEmptyTableColumnsStillExportAsATable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            //! Find the one table in a document, or nullptr.
+            auto onlyTable=[](const QTextDocument& document) -> QTextTable*
+            {
+                QTextTable* found=nullptr;
+                for (auto it=document.rootFrame()->begin(); !it.atEnd(); ++it)
+                {
+                    auto* candidate=qobject_cast<QTextTable*>(it.currentFrame());
+                    if (candidate!=nullptr)
+                    {
+                        found=candidate;
+                    }
+                }
+                return found;
+            };
+
+            MessageEditor editor;
+            emit editor.toolbar()->tableRequested(2,3);
+
+            auto* table=editor.textEdit()->textCursor().currentTable();
+            UISE_TEST_REQUIRE(table!=nullptr);
+            table->cellAt(0,0).firstCursorPosition().insertText(QStringLiteral("1"));
+            table->cellAt(1,1).firstCursorPosition().insertText(QStringLiteral("3"));
+
+            // Qt's markdown writer sizes each column to its widest cell and writes exactly that
+            // many characters -- ZERO for a column nothing was typed into. An empty CONTENT cell
+            // is legal markdown, but an empty DELIMITER cell is not: the export came out as
+            // "|1| ||" / "|-|-||" / "| |3||", which no parser reads as a table at all, so the
+            // whole thing rendered in the bubble as a paragraph of literal pipes.
+            //
+            // Parsing the export back is therefore the assertion that matters, not the text: this
+            // found zero tables before the fix.
+            QTextDocument parsed;
+            parsed.setMarkdown(editor.text(TextFormat::Markdown));
+
+            auto* exported=onlyTable(parsed);
+            UISE_TEST_REQUIRE(exported!=nullptr);
+            UISE_TEST_CHECK_EQUAL(exported->rows(),2);
+            UISE_TEST_CHECK_EQUAL(exported->columns(),3);
+
+            auto cellText=[](QTextTable* from, int row, int column)
+            {
+                return from->cellAt(row,column).firstCursorPosition().block().text();
+            };
+
+            // What makes a space the right padding: markdown strips a cell's surrounding
+            // whitespace, so the empty columns come back EMPTY rather than carrying a character
+            // the author never typed, and the next export is identical to this one.
+            UISE_TEST_CHECK_EQUAL_QSTR(cellText(exported,0,0),QStringLiteral("1"));
+            UISE_TEST_CHECK(cellText(exported,0,1).isEmpty());
+            UISE_TEST_CHECK(cellText(exported,0,2).isEmpty());
+            UISE_TEST_CHECK(cellText(exported,1,0).isEmpty());
+            UISE_TEST_CHECK_EQUAL_QSTR(cellText(exported,1,1),QStringLiteral("3"));
+            UISE_TEST_CHECK(cellText(exported,1,2).isEmpty());
+
+            // The padding goes on the export CLONE. The document the user is editing must not
+            // gain characters, and their undo stack must not gain a step.
+            UISE_TEST_CHECK(cellText(table,0,1).isEmpty());
+            UISE_TEST_CHECK(cellText(table,0,2).isEmpty());
+
+            // A table with nothing in it at all is the same bug at its worst -- every one of its
+            // rows is written as "|||", delimiter included -- and it is one keystroke away: insert
+            // a table, switch to Markdown mode.
+            MessageEditor blank;
+            emit blank.toolbar()->tableRequested(2,2);
+
+            QTextDocument parsedBlank;
+            parsedBlank.setMarkdown(blank.text(TextFormat::Markdown));
+
+            auto* exportedBlank=onlyTable(parsedBlank);
+            UISE_TEST_REQUIRE(exportedBlank!=nullptr);
+            UISE_TEST_CHECK_EQUAL(exportedBlank->rows(),2);
+            UISE_TEST_CHECK_EQUAL(exportedBlank->columns(),2);
+
+            // A table with no empty column is untouched: its export is byte-identical with and
+            // without the padding pass.
+            MessageEditor full;
+            emit full.toolbar()->tableRequested(2,2);
+            auto* fullTable=full.textEdit()->textCursor().currentTable();
+            UISE_TEST_REQUIRE(fullTable!=nullptr);
+            fullTable->cellAt(0,0).firstCursorPosition().insertText(QStringLiteral("a"));
+            fullTable->cellAt(1,1).firstCursorPosition().insertText(QStringLiteral("d"));
+            UISE_TEST_CHECK(full.text(TextFormat::Markdown)
+                                .contains(QStringLiteral("|a| |\n|-|-|\n| |d|")));
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestInsertedTableWidthIsConfigurable)
 {
     TestThread::instance()->execGuiThread(
@@ -2734,6 +2826,143 @@ BOOST_AUTO_TEST_CASE(TestPasteFixesInvisibleTable)
             UISE_TEST_REQUIRE(table!=nullptr);
             UISE_TEST_CHECK_EQUAL(table->format().border(),1.0);
             UISE_TEST_CHECK(!table->format().borderCollapse());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteNormalizesATableInAnEmptyDocumentToo)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // Qt rebuilds the frame hierarchy only in QTextDocumentPrivate::finishEdit(), which
+            // does nothing while an edit block is open -- so while insertFromMimeData() held one,
+            // a table created by the paste was not yet among rootFrame()'s children and every
+            // table fix walked straight past it. An ALREADY PRESENT table left the hierarchy
+            // populated and hid the bug completely, which is how it was reported: insert a table
+            // with the toolbar first and a pasted table is cleaned; paste into a fresh editor and
+            // its cells keep their original fills.
+            //
+            // Measured with the block still open -- empty document: 0 tables found; document with
+            // only text: 0; document with a table already in it: 2. So the state of the document
+            // BEFORE the paste is the axis this has to be checked on, and an empty one is the case
+            // that fails.
+            auto pasteTableInto=[](MessageEditor& editor)
+            {
+                auto* mime=new QMimeData();
+                mime->setHtml(QStringLiteral(
+                    "<html><body><table border=\"0\">"
+                    "<tr><td style=\"background-color:#b0b3b2;color:#1f2937\">A</td>"
+                        "<td style=\"background-color:#d4d4d4\">B</td></tr>"
+                    "<tr><td style=\"background-color:#f2f2f2\">C</td>"
+                        "<td style=\"background-color:#ffffff\">D</td></tr>"
+                    "</table></body></html>"
+                ));
+                mime->setText(QStringLiteral("A\tB\nC\tD"));
+                QApplication::clipboard()->setMimeData(mime);
+
+                editor.textEdit()->pasteFromClipboard();
+
+                QTextTable* pasted=nullptr;
+                auto* root=editor.textEdit()->document()->rootFrame();
+                for (auto it=root->begin(); !it.atEnd(); ++it)
+                {
+                    if (auto* candidate=qobject_cast<QTextTable*>(it.currentFrame()))
+                    {
+                        pasted=candidate;
+                    }
+                }
+                return pasted;
+            };
+
+            auto checkNormalized=[](QTextTable* pasted)
+            {
+                UISE_TEST_REQUIRE(pasted!=nullptr);
+                UISE_TEST_CHECK_EQUAL(pasted->format().border(),1.0);
+                UISE_TEST_CHECK(!pasted->format().borderCollapse());
+
+                // The fills are the visible half: kept, they pair a light cell with palette-
+                // coloured text, i.e. white on near-white in a dark theme.
+                for (int row=0; row<pasted->rows(); ++row)
+                {
+                    for (int column=0; column<pasted->columns(); ++column)
+                    {
+                        auto cellFormat=pasted->cellAt(row,column).format();
+                        UISE_TEST_CHECK(!cellFormat.hasProperty(QTextFormat::BackgroundBrush));
+                    }
+                }
+            };
+
+            // The case that regressed: nothing in the document at all.
+            MessageEditor empty;
+            checkNormalized(pasteTableInto(empty));
+
+            // Text but no table -- also failed, so "a table exists" was never the real condition.
+            MessageEditor withText;
+            withText.loadText(QStringLiteral("hello"),TextFormat::Plain);
+            auto textEnd=withText.textEdit()->textCursor();
+            textEnd.movePosition(QTextCursor::End);
+            withText.textEdit()->setTextCursor(textEnd);
+            checkNormalized(pasteTableInto(withText));
+
+            // The case that always worked, kept so a fix cannot trade one for the other.
+            MessageEditor withTable;
+            emit withTable.toolbar()->tableRequested(2,2);
+            auto tableEnd=withTable.textEdit()->textCursor();
+            tableEnd.movePosition(QTextCursor::End);
+            withTable.textEdit()->setTextCursor(tableEnd);
+            checkNormalized(pasteTableInto(withTable));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteIsASingleUndoStep)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // The normalization runs AFTER the insert's edit block closes (it has to -- see
+            // TestPasteNormalizesATableInAnEmptyDocumentToo), so it must rejoin that block's undo
+            // action rather than open one of its own. Otherwise the first Ctrl+Z after a paste
+            // puts the baked colours back instead of taking the paste away.
+            MessageEditor editor;
+            editor.textEdit()->textCursor().insertText(QStringLiteral("typed"));
+            const auto before=editor.text(TextFormat::Plain);
+
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral(
+                "<html><body><table border=\"0\">"
+                "<tr><td style=\"background-color:#b0b3b2\">A</td></tr>"
+                "</table></body></html>"
+            ));
+            mime->setText(QStringLiteral("A"));
+            QApplication::clipboard()->setMimeData(mime);
+
+            auto atEnd=editor.textEdit()->textCursor();
+            atEnd.movePosition(QTextCursor::End);
+            editor.textEdit()->setTextCursor(atEnd);
+            editor.textEdit()->pasteFromClipboard();
+
+            UISE_TEST_CHECK(editor.textEdit()->document()->availableUndoSteps()>0);
+
+            editor.textEdit()->undo();
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain),before);
+
+            // And what redo brings back is the NORMALIZED table, not the raw pasted one.
+            editor.textEdit()->redo();
+
+            QTextTable* table=nullptr;
+            auto* root=editor.textEdit()->document()->rootFrame();
+            for (auto it=root->begin(); !it.atEnd(); ++it)
+            {
+                if (auto* candidate=qobject_cast<QTextTable*>(it.currentFrame()))
+                {
+                    table=candidate;
+                }
+            }
+            UISE_TEST_REQUIRE(table!=nullptr);
+            UISE_TEST_CHECK(
+                !table->cellAt(0,0).format().hasProperty(QTextFormat::BackgroundBrush));
         }
     );
 }
