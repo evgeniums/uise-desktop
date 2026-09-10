@@ -923,22 +923,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! showEvent().
         void relayoutSections()
         {
-            for (auto* section : m_sections)
-            {
-                if (section!=nullptr)
-                {
-                    section->updateGeometry();
-                }
-            }
+            // refreshSectionHints() only drops the cached hints and invalidates m_layout; the
+            // activate() below is still needed on top of it -- invalidate() alone does not
+            // reposition anything, so positionBottom() further down would otherwise read
+            // trailingSection()'s geometry from BEFORE this call -- exactly the "child's own
+            // internal layout only gets activated on first show" trap this whole method exists to
+            // correct for (see the comment this replaced, still accurate for why the per-section
+            // updateGeometry() calls are needed at all).
+            refreshSectionHints();
             if (layout()!=nullptr)
             {
-                // activate(), not just invalidate(): invalidate() alone only clears cached
-                // sizeHints, it does not reposition anything, so positionBottom() below would
-                // otherwise read trailingSection()'s geometry from BEFORE this call -- exactly
-                // the "child's own internal layout only gets activated on first show" trap this
-                // whole method exists to correct for (see the comment this replaced, still
-                // accurate for why the per-section updateGeometry() calls above are needed).
-                layout()->invalidate();
                 layout()->activate();
             }
 
@@ -1097,6 +1091,29 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! section-hint loop (so bottom()'s own bubbleWidthHint() can read the result via
         //! isBottomInline()/inlineBubbleWidth()).
         void evaluateInlineBottom(int forMaxWidth);
+
+        //! Drops every section's own cached QWidgetItemV2 size-hint (the mechanism
+        //! relayoutSections()'s own doc comment describes) and invalidates m_layout so its
+        //! aggregate sizeHint() re-derives from the now-fresh per-child hints on next read.
+        //! Hints only -- does NOT activate() the layout or move/resize anything, so it is safe to
+        //! call from setMaximumBubbleWidth() before bottom()'s own geometry has been decided.
+        //! Shared by relayoutSections() (which activates and repositions afterwards) and
+        //! setMaximumBubbleWidth() (which reads sectionsBottom off the freshly-aggregated hint
+        //! before doing either).
+        void refreshSectionHints()
+        {
+            for (auto* section : m_sections)
+            {
+                if (section!=nullptr)
+                {
+                    section->updateGeometry();
+                }
+            }
+            if (layout()!=nullptr)
+            {
+                layout()->invalidate();
+            }
+        }
 
         bool m_bottomInline=false;
         QRect m_inlineLineRect;

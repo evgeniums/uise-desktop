@@ -764,6 +764,26 @@ int main(int argc, char *argv[])
     htmlBody->loadText(sampleHtml(),TextFormat::Html);
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,htmlBody));
 
+    // --- Bubble-tail sync: a one-line bubble beside a FORCED avatar column. Every message in
+    // this demo already gets ChatMessage::ForcedAvatarSize (32px, plus avatarBottomOffset) --
+    // makeMessage() leaves AlignSent at its own default (Left) and isLastInBatch() defaults to
+    // true -- so the forced avatar column (32+6=38px) is routinely taller than a short one-line
+    // bubble (~34px). ChatMessageAvatar paints the tail at its OWN bottom edge, which used to
+    // leave it hanging below a bubble this short; setAlignSent()/setLastInBatch() are called
+    // explicitly here anyway, so this stays the load-bearing case even if makeMessage()'s own
+    // defaults ever change. ---
+
+    rootLayout->addSpacing(8);
+    rootLayout->addWidget(new QLabel(QStringLiteral("Bubble tail sync (one-line bubble beside a forced avatar):")));
+
+    auto* shortBody=new ChatMessageText();
+    shortBody->loadText(QStringLiteral("hi"),TextFormat::Plain);
+    auto* shortMessage=makeMessage(central,AbstractChatMessage::Direction::Received,shortBody);
+    shortMessage->setAlignSent(AbstractChatMessage::AlignSent::Left);
+    shortMessage->setLastInBatch(true);
+    shortMessage->setAvatarName(std::string("Demo"));
+    rootLayout->addWidget(shortMessage);
+
     // --- Stage 2: markdown source -> live bubble + generated-HTML inspection pane. The bubble
     // is the only thing a real chat message would show; the HTML pane exists purely so
     // sanitization (invisible in the rendered bubble by design) can actually be inspected. ---

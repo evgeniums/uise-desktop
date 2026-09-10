@@ -185,6 +185,17 @@ QRect ChatMessageTextBrowser::lastLineRect() const
         return {};
     }
 
+    // The bottom row is a fixed sibling overlay, positioned once per negotiation pass and never
+    // re-derived as the user scrolls -- tucking it inline onto a line that sits inside a
+    // horizontally scrollable document would let that line slide out from under a timestamp that
+    // never moves. reservesHorizontalScrollBar() is exactly "this document currently has a wide
+    // table pinned", so bail out before even looking for a last line; row mode's own full-width
+    // placement sits below the scrollbar band instead (see sizeHint()'s own reservation of it).
+    if (m_hScrollReserved)
+    {
+        return {};
+    }
+
     // Walk back from the last block to the last one that actually rendered a line -- a trailing
     // empty block (e.g. text ending in a blank line) has a valid QTextBlock but an empty layout.
     auto block=doc->lastBlock();
@@ -226,6 +237,16 @@ QRect ChatMessageTextBrowser::lastLineRect() const
         {
             return {};
         }
+    }
+
+    // A table cell is not a good overlay target either, pinned/scrollable or not: a timestamp
+    // sitting inside a table cell reads as one of the table's own values, not as the message's
+    // status row. m_hScrollReserved above already excludes every PINNED table's document; this
+    // additionally excludes a table that fits within the wrap width (never pinned, so it does not
+    // reserve a scrollbar) but still ends the message.
+    if (qobject_cast<QTextTable*>(doc->frameAt(position))!=nullptr)
+    {
+        return {};
     }
 
     auto* lay=block.layout();
@@ -691,8 +712,14 @@ QSize ChatMessageTextBrowser::sizeHint() const
         // An as-needed horizontal scrollbar is drawn INSIDE this widget, so its height has to be
         // part of the hint or the last line of the document is clipped behind it -- the same
         // bookkeeping NavigationBar does for its own as-needed horizontal bar (see
-        // src/navigationbar.cpp's sizeHint()).
-        if (horizontalScrollBar()!=nullptr && horizontalScrollBar()->isVisible())
+        // src/navigationbar.cpp's sizeHint()). Gated on m_hScrollReserved (set synchronously by
+        // applyWideTableLayout()), NOT horizontalScrollBar()->isVisible(): that flag only catches
+        // up once the scroll area has actually re-laid out its viewport at the new geometry, one
+        // pass behind applyWideTableLayout()'s own pin/un-pin decision -- during a bubble-width
+        // negotiation this hint and lastLineRect() (also gated on m_hScrollReserved) are read
+        // from the SAME pass, so both must agree with what was just decided, not with what the
+        // scroll area has gotten around to rendering yet.
+        if (horizontalScrollBar()!=nullptr && m_hScrollReserved)
         {
             height+=horizontalScrollBar()->sizeHint().height();
         }
@@ -1094,6 +1121,7 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     {
         dropUnusedButtons(0);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setHScrollReserved(false);
         return;
     }
 
@@ -1110,6 +1138,7 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     {
         dropUnusedButtons(0);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setHScrollReserved(false);
         return;
     }
 
@@ -1175,6 +1204,14 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     dropUnusedButtons(tables.size());
 
     setHorizontalScrollBarPolicy(anyPinned ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    // Mirrors updateSize()'s own clamp check (same reasoning: a pinned table's fixed frame width
+    // feeds directly into idealWidth(), pushing it past the wrap width) rather than reading the
+    // scroll area's own horizontalScrollBar()->isVisible() -- that only catches up once the
+    // viewport has actually been laid out at the new geometry, a pass behind the decision being
+    // made right here. See reservesHorizontalScrollBar()'s own doc comment for why sizeHint() and
+    // lastLineRect() both need this to be current for THIS pass, not the previous one.
+    auto cap=lineWrapColumnOrWidth();
+    setHScrollReserved(anyPinned && cap>0 && qCeil(document()->idealWidth())>cap);
     if (anyPinned)
     {
         // The pins changed the layout; re-shrink-wrap so the document's own height reflects the
@@ -1182,6 +1219,18 @@ void ChatMessageTextBrowser::applyWideTableLayout()
         updateSize();
     }
     updateTableExpandButtons();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setHScrollReserved(bool reserve)
+{
+    if (m_hScrollReserved==reserve)
+    {
+        return;
+    }
+    m_hScrollReserved=reserve;
+    updateGeometry();
 }
 
 //--------------------------------------------------------------------------

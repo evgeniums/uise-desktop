@@ -256,11 +256,15 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
         //! Rect of the last rendered line of text, in THIS widget's own coordinates (i.e.
         //! including its own frameWidth()/contentsMargins(), unlike a plain QTextLine, which is
-        //! in the document's coordinate space). Invalid/null when there is no text at all, or
-        //! when the last block resolves right-to-left -- see the implementation's own doc
-        //! comment for why RTL is excluded. Only meaningful immediately after this browser's
-        //! wrap width was last set (setWrapWidth()/updateSize()) for the CURRENT layout pass --
-        //! it reads the already-computed QTextLine geometry, it does not lay anything out itself.
+        //! in the document's coordinate space). Invalid/null when there is no text at all, when
+        //! the last block resolves right-to-left, when the last block sits inside a table -- see
+        //! the implementation's own doc comment for why RTL/tables are excluded -- or when this
+        //! browser reservesHorizontalScrollBar(): the bottom row is a fixed sibling overlay
+        //! positioned once per negotiation pass, so tucking it inline onto a line the user can
+        //! then scroll horizontally would slide the text out from under it. Only meaningful
+        //! immediately after this browser's wrap width was last set (setWrapWidth()/updateSize())
+        //! for the CURRENT layout pass -- it reads the already-computed QTextLine geometry, it
+        //! does not lay anything out itself.
         QRect lastLineRect() const;
 
         /**
@@ -387,6 +391,19 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         bool isWideTableScrollEnabled() const noexcept
         {
             return m_wideTableScroll;
+        }
+
+        //! Whether this browser's own size hint currently reserves a band for the horizontal
+        //! scrollbar, because applyWideTableLayout() pinned at least one table too wide to fit.
+        //! Unlike QAbstractScrollArea::horizontalScrollBar()->isVisible(), this is a pure function
+        //! of the document + wrap width -- it flips the moment applyWideTableLayout() decides to
+        //! pin, not once the scroll area has later caught up and actually shown the bar -- which
+        //! is what keeps sizeHint() and lastLineRect() (both of which read it) consistent with
+        //! each other and with the rest of the SAME negotiation pass. See applyWideTableLayout()'s
+        //! own doc comment for where it is computed.
+        bool reservesHorizontalScrollBar() const noexcept
+        {
+            return m_hScrollReserved;
         }
 
         /**
@@ -562,6 +579,11 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          */
         void applyWideTableLayout();
 
+        //! Assigns m_hScrollReserved, invalidating this widget's cached size hint only when the
+        //! value actually changed -- called from every applyWideTableLayout() return path (both
+        //! early-outs and the pinning path itself) so it always tracks that pass' own decision.
+        void setHScrollReserved(bool reserve);
+
         /**
          * @brief Find every fenced code block on the freshly loaded document, record it, and give
          *  each one room for its painted padding.
@@ -639,6 +661,9 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         SyntaxHighlighter* m_highlighter=nullptr;
         bool m_syntaxHighlightingEnabled=true;
         bool m_wideTableScroll=true;
+        //! See reservesHorizontalScrollBar()'s own doc comment. Set only from
+        //! applyWideTableLayout(), never from the scroll area's own asynchronous visibility.
+        bool m_hScrollReserved=false;
         bool m_tableExpandButton=true;
         bool m_tableExpandButtonOnHover=true;
         std::vector<TrackedTable> m_tables;

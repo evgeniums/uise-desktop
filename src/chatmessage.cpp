@@ -385,6 +385,18 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
     // a second pass. It reads only isBottomInline(), so it has no dependency on the anchors.
     updateBottomPlacement();
 
+    // sectionsBottom below reads AbstractChatMessageChild::sizeHint() -- i.e. m_layout's own
+    // aggregate size hint, which QBoxLayout caches PER CHILD in its own QWidgetItemV2 (the same
+    // cache relayoutSections()'s own doc comment describes) -- while t->sizeHint() a few lines
+    // down calls straight through to the trailing section, bypassing that cache entirely. The
+    // section->updateMaximumBubbleWidth() loop above (e.g. a table pin/un-pin flipping
+    // ChatMessageTextBrowser's reserved scrollbar band) can change a section's true size hint
+    // without the layout's cached copy having caught up yet -- so without this, the two reads
+    // below can disagree by exactly that delta, and the bottom row lands off by it.
+    // refreshSectionHints() makes both reads come from the SAME up-to-date state, without
+    // activating the layout or moving anything yet.
+    refreshSectionHints();
+
     // The trailing section's height is FINAL now (its own updateMaximumBubbleWidth() just ran,
     // above -- for ChatMessageText that re-wraps the document at the width PINNED during
     // bubbleWidthHint(), reproducing an identical layout, so m_inlineLineRect is still
@@ -1002,13 +1014,24 @@ void ChatMessageContentWrapper::applyContentPosition()
         return;
     }
 
+    auto cm=contentsMargins();
+
+    // Bottom-, not top-aligned: this wrapper is stretched to #mainMessageFrame's row height,
+    // which is max(bubble height, the avatar column's height) -- and ChatMessageAvatar paints the
+    // bubble's tail at its OWN bottom edge (ChatMessageAvatar::tailPath()). A forced-visible
+    // avatar (ChatMessage::updateAvatarForced(), the left-aligned-with-avatars case) is routinely
+    // taller than a one-line bubble, so top-aligning the bubble here left the tail hanging below
+    // the bubble's own bottom edge by exactly that difference. Bottom-aligning makes bubble
+    // bottom == row bottom == tail bottom hold unconditionally; any slack from a taller avatar
+    // column now falls above the bubble instead of below it.
+    int y=std::max(cm.top(),height()-cm.bottom()-m_content->height());
     if (m_right)
     {
-        m_content->move(width()-contentsMargins().right()-m_content->width(),contentsMargins().top());
+        m_content->move(width()-cm.right()-m_content->width(),y);
     }
     else
     {
-        m_content->move(contentsMargins().left(),contentsMargins().top());
+        m_content->move(cm.left(),y);
     }
 }
 

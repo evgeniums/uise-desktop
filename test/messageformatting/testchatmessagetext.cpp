@@ -244,6 +244,99 @@ BOOST_AUTO_TEST_CASE(TestMessageWithoutCodeBlockIsUntouched)
     );
 }
 
+namespace {
+
+//! A table wide enough that no reasonable bubble width fits it unpinned -- same shape as
+//! demo/messageformatting's own "too wide for the bubble" sample -- followed by a short prose
+//! line, so the LAST rendered block is ordinary text rather than the table itself. Isolates the
+//! reservesHorizontalScrollBar() gate (this test group) from the separate "ends inside a table
+//! cell" exclusion (TestMessageEndingInATableThatFitsStillExcludesInlineOverlay below).
+QString wideTableThenProseMarkdown()
+{
+    return QStringLiteral(
+        "| Package | Version | Licence | Maintainer | Updated | Description |\n"
+        "|---|---|---|---|---|---|\n"
+        "| libexample-core | 1.24.7 | Apache-2.0 | infrastructure-team | 2026-08-14 | Shared runtime helpers |\n"
+        "\n"
+        "and a short line after it\n"
+    );
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTablePinnedReservesScrollbarAndExcludesInlineOverlay)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            browser.setHtmlContent(markdownToHtml(wideTableThenProseMarkdown()));
+
+            // Narrow enough that the table cannot fit -- applyWideTableLayout() pins it to its
+            // natural width and switches the horizontal scrollbar on.
+            browser.setWrapWidth(320);
+
+            UISE_TEST_REQUIRE(browser.reservesHorizontalScrollBar());
+
+            // The row is a fixed sibling overlay, positioned once per negotiation pass and never
+            // re-derived as the user scrolls -- tucking it onto a line inside a horizontally
+            // scrollable document would let that line slide out from under a timestamp that never
+            // moves. This must hold even though the trailing "and a short line after it" block is
+            // itself plain LTR text outside the table.
+            UISE_TEST_CHECK(!browser.lastLineRect().isValid());
+
+            // The reserved band must be counted in the hint WITHOUT the widget ever being shown --
+            // horizontalScrollBar()->isVisible() stays false on a widget that was never laid out
+            // on screen, which is exactly the stale read this gate replaces.
+            UISE_TEST_REQUIRE(browser.horizontalScrollBar()!=nullptr);
+            auto docHeight=static_cast<int>(browser.document()->size().height()+2*browser.frameWidth());
+            UISE_TEST_CHECK_EQUAL(browser.sizeHint().height(),
+                                   docHeight+browser.horizontalScrollBar()->sizeHint().height());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestWideTableUnpinsAndRestoresInlineOverlayWhenBubbleWidens)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            browser.setHtmlContent(markdownToHtml(wideTableThenProseMarkdown()));
+            browser.setWrapWidth(320);
+            UISE_TEST_REQUIRE(browser.reservesHorizontalScrollBar());
+            UISE_TEST_REQUIRE(!browser.lastLineRect().isValid());
+
+            // Widen well past the table's own natural width -- applyWideTableLayout() re-measures
+            // on every setWrapWidth() call (the un-pin loop at its own top), so a table pinned for
+            // a narrower bubble un-pins once it genuinely fits.
+            browser.setWrapWidth(2000);
+
+            UISE_TEST_CHECK(!browser.reservesHorizontalScrollBar());
+            UISE_TEST_CHECK(browser.lastLineRect().isValid());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMessageEndingInATableThatFitsStillExcludesInlineOverlay)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral(
+                "short table below:\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"));
+
+            // Small enough that it was never pinned -- the scrollbar reservation must stay off...
+            UISE_TEST_CHECK(!browser.reservesHorizontalScrollBar());
+
+            // ...but a timestamp landing inside a table cell reads as one of the table's OWN
+            // values rather than the message's status row, so the overlay is refused regardless.
+            UISE_TEST_CHECK(!browser.lastLineRect().isValid());
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestCopyCodeBlockEmitsSignalAndCopiesText)
 {
     TestThread::instance()->execGuiThread(
