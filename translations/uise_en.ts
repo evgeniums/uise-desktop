@@ -133,7 +133,7 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../include/uise/desktop/ipp/chatmessagesview.ipp" line="+121"/>
+        <location filename="../include/uise/desktop/utils/datetime.hpp" line="+407"/>
         <source>Today</source>
         <comment>ChatMessagesView</comment>
         <translation>Today</translation>
@@ -328,7 +328,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatMessagesView</name>
     <message>
-        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+181"/>
+        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+182"/>
         <source>Unread messages</source>
         <translation>Unread messages</translation>
     </message>
@@ -590,7 +590,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1317"/>
+        <location filename="../src/chatmessage.cpp" line="+1577"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -616,7 +616,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+366"/>
+        <location filename="../src/chatmessagetext.cpp" line="+436"/>
         <source>Copy</source>
         <translation>Copy</translation>
     </message>
