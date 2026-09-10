@@ -54,6 +54,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QColor>
 #include <QTextLayout>
 #include <QFontMetricsF>
+#include <QTextFrame>
+#include <QMimeData>
+#include <QClipboard>
+#include <QImage>
 
 #include <uise/test/uise-testthread.hpp>
 
@@ -64,6 +68,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/hyperlinkdialog.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -2342,6 +2347,1044 @@ BOOST_AUTO_TEST_CASE(TestCloseButtonLeadsOnEveryPlatform)
             // bottom-left expand button. Asserted unconditionally: a #ifdef here would let the
             // non-macOS layout regress untested on the machine this suite usually runs on.
             UISE_TEST_CHECK_EQUAL(layout->indexOf(toolbar.button(MessageEditorToolbarButton::Close)),0);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMessageEditorShowsLinkButtonByDefault)
+{
+    // Deliberately NOT a change to TestToolbarButtonVisibilityDefaults above: that test builds a
+    // BARE MessageEditorToolbar, whose own ctor-default for Link is still hidden (Stage 6's
+    // Mention keeps that shape). Stage 5b makes Link visible from MessageEditor's OWN ctor
+    // instead -- a shipped feature, not a hidden placeholder -- so the assertion belongs on a
+    // real MessageEditor, not on the toolbar in isolation.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::Link));
+            // RemoveLink stays hidden until the caret is inside a link -- see
+            // TestRemoveLinkButtonVisibilityTracksCaret.
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::RemoveLink));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestLinkEnabledInMarkdownDisabledInPlaintext)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setExpandButtonVisible(true);
+            editor.setExpanded(true);
+
+            // Unlike every other row in FormattingButtons, Link stays enabled in Markdown mode
+            // too -- inserting a literal "[title](url)" is exactly the kind of thing that mode
+            // should still help with.
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Link));
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Bold));
+
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Link));
+
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Link));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestRemoveLinkButtonVisibilityTracksCaret)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setExpandButtonVisible(true);
+            // syncToolbarState() early-returns while the toolbar is hidden (see its own doc
+            // comment), so RemoveLink's visibility is only ever pushed while expanded.
+            editor.setExpanded(true);
+
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            // insertLink() deliberately leaves the caret OUTSIDE the link it just inserted (so
+            // typing continues in plain text), so RemoveLink is hidden at that moment -- moving
+            // the caret back INTO the link is what reveals it.
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::RemoveLink));
+
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::RemoveLink));
+
+            auto outside=editor.textEdit()->textCursor();
+            outside.movePosition(QTextCursor::End);
+            outside.insertText(QStringLiteral(" plain"));
+            editor.textEdit()->setTextCursor(outside);
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::RemoveLink));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertLinkWysiwygRoundTrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            // Measured: a real QTextCharFormat anchor (not literal text) exports via
+            // toMarkdown() as "[title](url)" bit-identical, with no baked colour of its own --
+            // that is the viewer's job, never this editor's.
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Example](https://example.com)")
+            );
+
+            // The anchor is a real char format on the document, and carries NO baked colour of
+            // its own (Qt's own markdown importer bakes #0000ff; this editor must not).
+            bool foundAnchor=false;
+            for (auto block=editor.textEdit()->document()->begin(); block.isValid(); block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto format=it.fragment().charFormat();
+                    if (format.isAnchor()
+                        && format.anchorHref()==QStringLiteral("https://example.com"))
+                    {
+                        foundAnchor=true;
+                        UISE_TEST_CHECK(!format.hasProperty(QTextFormat::ForegroundBrush));
+                    }
+                }
+            }
+            UISE_TEST_CHECK(foundAnchor);
+
+            // The caret is deliberately left OUTSIDE the link, so the next thing typed is not
+            // swallowed into it -- measured, without this "Example" + " plain" exported as
+            // "[Example plain](url)".
+            UISE_TEST_CHECK(!editor.textEdit()->currentCharFormat().isAnchor());
+
+            auto typing=editor.textEdit()->textCursor();
+            typing.insertText(QStringLiteral(" plain"));
+            editor.textEdit()->setTextCursor(typing);
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Example](https://example.com) plain")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertLinkEmptyTitleUsesUrl)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertLink(QStringLiteral("https://example.com"),QString{});
+
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[https://example.com](https://example.com)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertLinkMarkdownModeIsLiteralText)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            // Markdown mode's document IS source text -- a literal insert, not an anchor char
+            // format, and text(Markdown) must return it byte-for-byte with no escaping.
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown),
+                QStringLiteral("[Example](https://example.com)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestRemoveLinkClearsWholeRun)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+
+            // Two same-href fragments with different weight -- the shape an anchor applied over
+            // an already-formatted selection splits into (measured), and the case
+            // selectLinkRunAtCursor()/removeLink() must walk across as ONE link.
+            auto cursor=textEdit->textCursor();
+            QTextCharFormat boldAnchor;
+            boldAnchor.setAnchor(true);
+            boldAnchor.setAnchorHref(QStringLiteral("https://example.com"));
+            boldAnchor.setFontWeight(QFont::Bold);
+            cursor.insertText(QStringLiteral("bo"),boldAnchor);
+
+            QTextCharFormat plainAnchor;
+            plainAnchor.setAnchor(true);
+            plainAnchor.setAnchorHref(QStringLiteral("https://example.com"));
+            cursor.insertText(QStringLiteral("ld"),plainAnchor);
+            textEdit->setTextCursor(cursor);
+
+            // Caret in the middle of the run, no selection -- removeLink() must extend to the
+            // whole run itself.
+            auto caret=textEdit->textCursor();
+            caret.setPosition(2);
+            textEdit->setTextCursor(caret);
+
+            emit editor.toolbar()->removeLinkRequested();
+
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain),QStringLiteral("bold"));
+
+            bool anyAnchor=false;
+            bool firstFragmentStillBold=false;
+            for (auto block=textEdit->document()->begin(); block.isValid(); block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto fragment=it.fragment();
+                    const auto format=fragment.charFormat();
+                    if (format.isAnchor())
+                    {
+                        anyAnchor=true;
+                    }
+                    if (fragment.text()==QStringLiteral("bo") && format.fontWeight()>=QFont::Bold)
+                    {
+                        firstFragmentStillBold=true;
+                    }
+                }
+            }
+
+            UISE_TEST_CHECK(!anyAnchor);
+            UISE_TEST_CHECK(firstFragmentStillBold);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestLinkDisabledInsideCodeFence)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            emit editor.toolbar()->codeBlockRequested();
+            // The placeholder is left selected -- type over it to land the caret on real fenced
+            // content, the same as a user would.
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("code"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            QSignalSpy spy(&editor,&AbstractMessageEditor::linkRequested);
+            emit editor.toolbar()->linkRequested();
+            UISE_TEST_CHECK_EQUAL(spy.count(),0);
+
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+            UISE_TEST_CHECK(!editor.text(TextFormat::Markdown).contains(QStringLiteral("[Example]")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestContextMenuRemoveLinkOnlyWhenInsideLink)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            MessageEditor editor;
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            auto findFormatting=[](const std::vector<MenuItem>& items) -> const std::vector<MenuItem>*
+            {
+                for (const auto& item : items)
+                {
+                    if (item.id==static_cast<int>(MessageEditorMenuAction::Formatting))
+                    {
+                        return &item.children;
+                    }
+                }
+                return nullptr;
+            };
+            auto hasRow=[](const std::vector<MenuItem>& items, MessageEditorMenuAction action)
+            {
+                for (const auto& item : items)
+                {
+                    if (item.id==static_cast<int>(action))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            std::vector<MenuItem> captured;
+            editor.setContextMenuHandler([&](std::vector<MenuItem>& items) { captured=items; });
+
+            // Caret moved INTO the link -- insertLink() itself leaves it just outside, so the
+            // next thing typed is not swallowed into the link.
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+
+            QMetaObject::invokeMethod(&editor,"showContextMenu",Q_ARG(QPoint,QPoint(0,0)));
+            auto* formatting=findFormatting(captured);
+            UISE_TEST_REQUIRE(formatting!=nullptr);
+            UISE_TEST_CHECK(hasRow(*formatting,MessageEditorMenuAction::Link));
+            UISE_TEST_CHECK(hasRow(*formatting,MessageEditorMenuAction::RemoveLink));
+
+            captured.clear();
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            cursor.insertText(QStringLiteral(" plain"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            QMetaObject::invokeMethod(&editor,"showContextMenu",Q_ARG(QPoint,QPoint(0,0)));
+            formatting=findFormatting(captured);
+            UISE_TEST_REQUIRE(formatting!=nullptr);
+            UISE_TEST_CHECK(hasRow(*formatting,MessageEditorMenuAction::Link));
+            UISE_TEST_CHECK(!hasRow(*formatting,MessageEditorMenuAction::RemoveLink));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteStripsBakedColorsAndFonts)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral(
+                "<html><body><p style=\"color:#1f2937;font-family:Calibri;font-size:14pt\">"
+                "Hello <b>world</b></p></body></html>"
+            ));
+            mime->setText(QStringLiteral("Hello world"));
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+
+            bool foundBakedFormat=false;
+            bool foundBold=false;
+            for (auto block=editor.textEdit()->document()->begin(); block.isValid(); block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto format=it.fragment().charFormat();
+                    if (format.hasProperty(QTextFormat::ForegroundBrush)
+                        || format.hasProperty(QTextFormat::FontFamilies)
+                        || format.hasProperty(QTextFormat::FontPointSize))
+                    {
+                        foundBakedFormat=true;
+                    }
+                    if (format.fontWeight()>=QFont::Bold)
+                    {
+                        foundBold=true;
+                    }
+                }
+            }
+
+            // Non-lossy: the strip removes cosmetic paint only -- bold survives.
+            UISE_TEST_CHECK(!foundBakedFormat);
+            UISE_TEST_CHECK(foundBold);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteFixesInvisibleTable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral(
+                "<html><body><table border=\"0\"><tr><td>A</td><td>B</td></tr></table></body></html>"
+            ));
+            mime->setText(QStringLiteral("A\tB"));
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+
+            QTextTable* table=nullptr;
+            auto* root=editor.textEdit()->document()->rootFrame();
+            for (auto it=root->begin(); !it.atEnd(); ++it)
+            {
+                if (auto* candidate=qobject_cast<QTextTable*>(it.currentFrame()))
+                {
+                    table=candidate;
+                    break;
+                }
+            }
+
+            UISE_TEST_REQUIRE(table!=nullptr);
+            UISE_TEST_CHECK_EQUAL(table->format().border(),1.0);
+            UISE_TEST_CHECK(!table->format().borderCollapse());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteConvertsPreToLiteralFence)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral(
+                "<html><body><p>before</p><pre><code>int x = 1;</code></pre><p>after</p></body></html>"
+            ));
+            mime->setText(QStringLiteral("before\nint x = 1;\nafter"));
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+
+            bool foundLiteralFence=false;
+            bool foundPropertyBasedBlock=false;
+            for (auto block=editor.textEdit()->document()->begin(); block.isValid(); block=block.next())
+            {
+                if (isFenceLine(block.text()))
+                {
+                    foundLiteralFence=true;
+                }
+
+                const auto bf=block.blockFormat();
+                if (bf.hasProperty(QTextFormat::BlockCodeFence)
+                    || !bf.stringProperty(QTextFormat::BlockCodeLanguage).isEmpty()
+                    || bf.nonBreakableLines())
+                {
+                    foundPropertyBasedBlock=true;
+                }
+            }
+
+            UISE_TEST_CHECK(foundLiteralFence);
+            UISE_TEST_CHECK(!foundPropertyBasedBlock);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPasteKeepsUndoStack)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+
+            auto typed=editor.textEdit()->textCursor();
+            typed.insertText(QStringLiteral("typed before paste"));
+            editor.textEdit()->setTextCursor(typed);
+            UISE_TEST_REQUIRE(editor.textEdit()->document()->isUndoAvailable());
+
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral("<html><body><p>pasted</p></body></html>"));
+            mime->setText(QStringLiteral("pasted"));
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+            UISE_TEST_CHECK(editor.text(TextFormat::Plain).contains(QStringLiteral("pasted")));
+
+            // The paste must NOT have wiped the history. QTextDocument::setUndoRedoEnabled(false)
+            // CLEARS the undo stack outright (measured: one step before, zero after), so running
+            // the normalization passes with undo suppressed -- which is right for a whole-document
+            // load -- made Ctrl+Z after ANY paste a no-op, throwing away everything typed before.
+            UISE_TEST_REQUIRE(editor.textEdit()->document()->isUndoAvailable());
+
+            // And one undo takes the whole paste back out, normalization included, because it all
+            // shares insertFromMimeData()'s own edit block.
+            editor.textEdit()->undo();
+            UISE_TEST_CHECK(!editor.text(TextFormat::Plain).contains(QStringLiteral("pasted")));
+            UISE_TEST_CHECK(editor.text(TextFormat::Plain).contains(QStringLiteral("typed before paste")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHyperlinkDialogFitsItsHeightCeiling)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            ModalHyperlinkDialog frame;
+            frame.resize(700,600);
+
+            UISE_TEST_REQUIRE(frame.openDialog(true,false));
+            // QPointer, never auto* -- see the accessor's own declaration.
+            auto dialog=frame.dialog();
+            UISE_TEST_REQUIRE(!dialog.isNull());
+
+            // ModalPopup::updateWidgetGeometry() caps the popup at maxHeightPercent() of the HOST
+            // FRAME's rect even with auto-height on, so a low percentage does not make the box
+            // tidier -- it clips it. Measured at the original 40%: a 220px host gave an 88px
+            // popup and the two fields were squeezed into nothing.
+            const auto ceiling=frame.height()*frame.maxHeightPercent()/100;
+            UISE_TEST_CHECK(dialog->sizeHint().height()<=ceiling);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertedLinkIsPaintedWithoutTouchingDocument)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            textEdit->setLinkColor(QColor(0x1A,0x6F,0xD4));
+
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            auto* document=textEdit->document();
+
+            // The colour lands as a LAYOUT format, which is the whole point: an anchor otherwise
+            // renders exactly like ordinary text (measured), and the blue an imported link showed
+            // was baked into the DOCUMENT by Qt's importer -- frozen at its theme and leaking into
+            // toHtml(). This is what makes a freshly inserted link visible as a link.
+            const auto formats=document->firstBlock().layout()->formats();
+            bool paintedLinkColor=false;
+            for (const auto& range : formats)
+            {
+                if (range.format.foreground().color()==QColor(0x1A,0x6F,0xD4))
+                {
+                    paintedLinkColor=true;
+                }
+            }
+            UISE_TEST_CHECK(paintedLinkColor);
+
+            // ...and nowhere else: the document's own char formats stay clean, so nothing is
+            // frozen at the current theme and no colour reaches the sent message.
+            for (auto it=document->firstBlock().begin(); !it.atEnd(); ++it)
+            {
+                UISE_TEST_CHECK(!it.fragment().charFormat()
+                                    .hasProperty(QTextFormat::ForegroundBrush));
+            }
+            UISE_TEST_CHECK(!editor.text(TextFormat::Html).contains(QStringLiteral("1a6fd4"),
+                                                                    Qt::CaseInsensitive));
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Example](https://example.com)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestImportedLinkColorIsStripped)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.loadText(QStringLiteral("see [Example](https://example.com) here"),
+                            TextFormat::Markdown);
+
+            // Qt's markdown importer bakes foreground=#0000ff onto every anchor it reads. Left
+            // alone that is the only reason an imported link looked like one -- and it is frozen
+            // at import time, leaks into toHtml(), and overrides whatever linkColor a host set.
+            bool anchorSeen=false;
+            for (auto block=editor.textEdit()->document()->begin(); block.isValid();
+                 block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto format=it.fragment().charFormat();
+                    if (!format.isAnchor())
+                    {
+                        continue;
+                    }
+                    anchorSeen=true;
+                    UISE_TEST_CHECK(!format.hasProperty(QTextFormat::ForegroundBrush));
+                    // The anchor itself must survive the strip untouched.
+                    UISE_TEST_CHECK_EQUAL_QSTR(format.anchorHref(),
+                                               QStringLiteral("https://example.com"));
+                }
+            }
+            UISE_TEST_CHECK(anchorSeen);
+            UISE_TEST_CHECK(!editor.text(TextFormat::Html).contains(QStringLiteral("0000ff"),
+                                                                    Qt::CaseInsensitive));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestNumbersStyleTablePastesAsTable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            QSignalSpy attachments(&editor,&AbstractMessageEditor::attachmentsPasted);
+
+            // A faithful replica of what macOS Numbers/Pages actually put on the pasteboard,
+            // dumped from a real copy: the true table as text/html, a tab-separated text/plain,
+            // and an image rendition whose data is ZERO BYTES -- which Qt still reports through
+            // hasImage(). Judging on the image alone (mimeDataHasAttachments()) sent the whole
+            // payload to the attachment flow and inserted nothing, which is how a copied
+            // spreadsheet table used to reach this editor.
+            // Markup copied VERBATIM from a real macOS Numbers copy (dumped off the pasteboard),
+            // not a reconstruction -- the fill lives on the <td>, the text colour on a <font>
+            // that repeats it in its own style attribute, and every cell carries a black border.
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral(
+                "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse: collapse\">\n"
+                "<tbody>\n<tr>\n"
+                "<td valign=\"top\" style=\"width: 108.0px; height: 14.0px; "
+                "background-color: #b0b3b2; border-style: solid; "
+                "border-width: 1.0px 1.0px 1.0px 1.0px; "
+                "border-color: #000000 #000000 #000000 #000000; "
+                "padding: 4.0px 4.0px 4.0px 4.0px\">\n"
+                "<p style=\"margin: 0.0px 0.0px 0.0px 0.0px\">"
+                "<font face=\"Helvetica Neue\" size=\"2\" color=\"#000000\" "
+                "style=\"font: 10.0px 'Helvetica Neue'; font-variant-ligatures: common-ligatures; "
+                "color: #000000\"><b>11</b><b></b></font></p>\n</td>\n"
+                "<td valign=\"top\" style=\"width: 108.0px; height: 14.0px; "
+                "background-color: #b0b3b2; border-style: solid; "
+                "border-width: 1.0px 1.0px 1.0px 1.0px; "
+                "border-color: #000000 #000000 #000000 #000000; "
+                "padding: 4.0px 4.0px 4.0px 4.0px\">\n"
+                "<p style=\"margin: 0.0px 0.0px 0.0px 0.0px\">"
+                "<font face=\"Helvetica Neue\" size=\"2\" color=\"#000000\" "
+                "style=\"font: 10.0px 'Helvetica Neue'; color: #000000\">"
+                "<b>12</b></font></p>\n</td>\n</tr>\n<tr>\n"
+                "<td valign=\"top\" style=\"width: 108.0px; height: 13.0px; "
+                "background-color: #d4d4d4; border-style: solid; "
+                "border-width: 1.0px 1.0px 1.0px 1.0px; "
+                "border-color: #000000 #000000 #000000 #000000; "
+                "padding: 4.0px 4.0px 4.0px 4.0px\">\n"
+                "<p style=\"margin: 0.0px 0.0px 0.0px 0.0px\">"
+                "<font face=\"Helvetica Neue\" size=\"2\" color=\"#000000\" "
+                "style=\"font: 10.0px 'Helvetica Neue'; color: #000000\">A</font></p>\n</td>\n"
+                "<td valign=\"top\" style=\"width: 108.0px; height: 13.0px; "
+                "border-style: solid; border-width: 1.0px 1.0px 1.0px 1.0px; "
+                "border-color: #000000 #000000 #000000 #000000; "
+                "padding: 4.0px 4.0px 4.0px 4.0px\">\n"
+                "<p style=\"margin: 0.0px 0.0px 0.0px 0.0px\">"
+                "<font face=\"Helvetica Neue\" size=\"2\" color=\"#000000\">Aaaa</font></p>\n"
+                "</td>\n</tr>\n</tbody>\n</table>"
+            ));
+            mime->setText(QStringLiteral("11\t12\nA\tAaaa"));
+            mime->setData(QStringLiteral("application/x-qt-image"),QByteArray());
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+
+            UISE_TEST_CHECK_EQUAL(attachments.count(),0);
+
+            QTextTable* table=nullptr;
+            auto* root=editor.textEdit()->document()->rootFrame();
+            for (auto it=root->begin(); !it.atEnd(); ++it)
+            {
+                if (auto* candidate=qobject_cast<QTextTable*>(it.currentFrame()))
+                {
+                    table=candidate;
+                    break;
+                }
+            }
+            UISE_TEST_REQUIRE(table!=nullptr);
+            UISE_TEST_CHECK_EQUAL(table->rows(),2);
+            UISE_TEST_CHECK_EQUAL(table->columns(),2);
+            // ...and it went through the same normalization every other pasted table does.
+            UISE_TEST_CHECK_EQUAL(table->format().border(),1.0);
+            UISE_TEST_CHECK(!table->format().borderCollapse());
+
+            // Including the PER-CELL borders and FILLS Numbers bakes in. Measured on the real
+            // payload: every cell carries an explicit #000000 border, and 14 of 20 carry a
+            // light fill (#b0b3b2/#d4d4d4/#f2f2f2) on the cell format AND on the block format
+            // inside it. Leaving the fills while stripping the char foregrounds was the worst
+            // of both worlds -- the text fell back to the palette, giving WHITE text on a
+            // near-white cell in a dark theme. Nothing baked may survive, in either carrier.
+            for (int row=0; row<table->rows(); ++row)
+            {
+                for (int column=0; column<table->columns(); ++column)
+                {
+                    const auto cell=table->cellAt(row,column);
+                    const auto cellFormat=cell.format().toTableCellFormat();
+                    UISE_TEST_CHECK(!cellFormat.hasProperty(QTextFormat::TableCellLeftBorderBrush));
+                    UISE_TEST_CHECK(!cellFormat.hasProperty(QTextFormat::TableCellTopBorderBrush));
+                    UISE_TEST_CHECK(!cellFormat.hasProperty(QTextFormat::TableCellLeftBorder));
+                    UISE_TEST_CHECK(!cellFormat.hasProperty(QTextFormat::BackgroundBrush));
+
+                    for (auto it=cell.begin(); !it.atEnd(); ++it)
+                    {
+                        const auto block=it.currentBlock();
+                        if (!block.isValid())
+                        {
+                            continue;
+                        }
+                        UISE_TEST_CHECK(!block.blockFormat()
+                                            .hasProperty(QTextFormat::BackgroundBrush));
+                        for (auto fragmentIt=block.begin(); !fragmentIt.atEnd(); ++fragmentIt)
+                        {
+                            const auto charFormat=fragmentIt.fragment().charFormat();
+                            UISE_TEST_CHECK(!charFormat
+                                                .hasProperty(QTextFormat::ForegroundBrush));
+                            UISE_TEST_CHECK(!charFormat
+                                                .hasProperty(QTextFormat::BackgroundBrush));
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+namespace {
+
+void pressReturn(MessageEditor& editor)
+{
+    QKeyEvent press(QEvent::KeyPress,Qt::Key_Return,Qt::NoModifier);
+    QApplication::sendEvent(editor.textEdit(),&press);
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestReturnKeepsOneBlockPerLine)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.setFinishOnEnter(false);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("aa"));
+            editor.textEdit()->setTextCursor(cursor);
+            pressReturn(editor);
+            cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("bb"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            // ONE BLOCK PER LINE, and that is load-bearing: every block-level format (list,
+            // heading, blockquote, code block, horizontal rule, indent) acts on a block, so a
+            // message whose lines shared one block would apply a bullet to all of them at once.
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),2);
+
+            // The export still spells that as ONE newline, not the blank line a block boundary
+            // normally becomes -- mergeProseBlocksForExport() joins prose blocks on the export
+            // clone, so markdownToHtml() renders "<p>aa<br/>bb</p>" and the composer and bubble
+            // agree line for line.
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),
+                                       QStringLiteral("aa\nbb"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBlockFormatAppliesToOneLineOnly)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.setFinishOnEnter(false);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("aa"));
+            editor.textEdit()->setTextCursor(cursor);
+            pressReturn(editor);
+            cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("list item"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            emit editor.toolbar()->bulletListRequested(true);
+
+            // Only the caret's own line becomes a list item. Regression test for exactly the
+            // opposite: while Return inserted a soft break instead of a block, every line shared
+            // one block and the bullet swallowed all of them.
+            auto* document=editor.textEdit()->document();
+            UISE_TEST_REQUIRE_EQUAL(document->blockCount(),2);
+            UISE_TEST_CHECK(document->firstBlock().textList()==nullptr);
+            UISE_TEST_CHECK(document->lastBlock().textList()!=nullptr);
+
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(markdown.contains(QStringLiteral("- list item")));
+            UISE_TEST_CHECK(!markdown.contains(QStringLiteral("- aa")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTwoReturnsGiveABlankLineThatSurvives)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.setFinishOnEnter(false);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("aa"));
+            editor.textEdit()->setTextCursor(cursor);
+            pressReturn(editor);
+            pressReturn(editor);
+            cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("bb"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK_EQUAL_QSTR(markdown.trimmed(),
+                                       QStringLiteral("aa\n%1\nbb").arg(QChar(0x200b)));
+
+            // ...and it survives the Markdown round trip, which is what it exists for.
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),
+                                       markdown.trimmed());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestLineBreaksSurviveTheMarkdownRoundTrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.loadText(QStringLiteral("aa\nbb\ncc"),TextFormat::Markdown);
+
+            // setMarkdown() follows CommonMark, where a single newline inside a paragraph is a
+            // SPACE -- measured, "aa\nbb" comes back as one block reading "aa bb", so a typed
+            // line break was destroyed on re-import. markdownWithParagraphPerLine() gives each
+            // line its own block again.
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),3);
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),
+                                       QStringLiteral("aa\nbb\ncc"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBlankLinesSurviveMarkdownRoundTrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("Hello"));
+            cursor.insertBlock();
+            cursor.insertBlock();
+            cursor.insertText(QStringLiteral("World"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            const auto blocksBefore=editor.textEdit()->document()->blockCount();
+            UISE_TEST_REQUIRE_EQUAL(blocksBefore,3);
+
+            // qtextmarkdownwriter writes NOTHING for an empty block, so without help the blank
+            // line simply ceases to exist -- measured, 3 blocks in and 2 out, which is what made
+            // two tables weld themselves together after a Markdown round trip. Exported as a
+            // NO-BREAK SPACE paragraph it survives, the same trick the paragraph indent uses.
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(markdown.contains(QChar(0x200b)));
+
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),blocksBefore);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBlankLineExportLeavesTheLiveDocumentAlone)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("Hello"));
+            cursor.insertBlock();
+            cursor.insertBlock();
+            cursor.insertText(QStringLiteral("World"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            const auto undoBefore=editor.textEdit()->document()->availableUndoSteps();
+
+            UISE_TEST_CHECK(editor.text(TextFormat::Markdown).contains(QChar(0x200b)));
+
+            // The markers exist only in the exported COPY: an export must never edit what the user
+            // is typing, nor push anything onto their undo stack.
+            UISE_TEST_CHECK(!editor.textEdit()->document()->toRawText().contains(QChar(0x200b)));
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->availableUndoSteps(),undoBefore);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTableOnlyMessageGainsNoLeadingBlankLine)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            emit editor.toolbar()->tableRequested(1,2);
+
+            // A QTextDocument always carries an empty block before a leading table, and the user
+            // cannot delete it -- so it is structure, not a blank line anybody typed. Filling it
+            // would put a blank line above every message that merely starts with a table.
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(!markdown.trimmed().startsWith(QChar(0x200b)));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBlankLineInsideCodeFenceIsNotFilled)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.textEdit()->setPlainText(QStringLiteral("```\ncode\n\nmore\n```"));
+
+            // A marker inside a fence would be a character injected into the user's code.
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(!markdown.contains(QChar(0x200b)));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestNoBlankLineMarkerNextToATable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("cc"));
+            cursor.insertBlock();
+            editor.textEdit()->setTextCursor(cursor);
+            emit editor.toolbar()->tableRequested(2,2);
+
+            // A Return pressed to get OUT of the paragraph above a table is not a blank line the
+            // author wanted, and a table does not need one to stand apart -- messagetext.css gives
+            // it its own margins. Marking it produced a doubled gap: the margin AND a blank line.
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(!markdown.contains(QChar(0x200b)));
+
+            // ...while a blank line between two ordinary lines is still preserved.
+            MessageEditor plain;
+            plain.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            auto plainCursor=plain.textEdit()->textCursor();
+            plainCursor.insertText(QStringLiteral("aa"));
+            plainCursor.insertBlock();
+            plainCursor.insertBlock();
+            plainCursor.insertText(QStringLiteral("bb"));
+            plain.textEdit()->setTextCursor(plainCursor);
+            UISE_TEST_CHECK(plain.text(TextFormat::Markdown).contains(QChar(0x200b)));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExportCollapsesRedundantBlankLines)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            emit editor.toolbar()->tableRequested(2,2);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            editor.textEdit()->setTextCursor(cursor);
+            emit editor.toolbar()->tableRequested(2,2);
+
+            // Qt's own writer puts a bare extra newline in front of every table, so two adjacent
+            // tables showed TWO blank source lines between them before anything was authored --
+            // which is most of why a single authored blank line looked so large in Markdown mode.
+            // One blank line separates any two block constructs; more mean the same thing.
+            const auto markdown=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK(!markdown.contains(QStringLiteral("\n\n\n")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTableStaysVisibleAcrossModeRoundTrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            emit editor.toolbar()->tableRequested(2,2);
+
+            auto findTable=[&]() -> QTextTable*
+            {
+                auto* root=editor.textEdit()->document()->rootFrame();
+                for (auto it=root->begin(); !it.atEnd(); ++it)
+                {
+                    if (auto* candidate=qobject_cast<QTextTable*>(it.currentFrame()))
+                    {
+                        return candidate;
+                    }
+                }
+                return nullptr;
+            };
+
+            auto* table=findTable();
+            UISE_TEST_REQUIRE(table!=nullptr);
+            UISE_TEST_CHECK_EQUAL(table->format().border(),1.0);
+
+            // A mode round trip rebuilds the document through setMarkdown(), and Qt's importer
+            // gives the re-created table border=0 with borderCollapse ON -- which paints nothing
+            // at all. Normalizing only on the paste path is what made a table lose its grid the
+            // moment the editor was switched to Markdown and back.
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            table=findTable();
+            UISE_TEST_REQUIRE(table!=nullptr);
+            UISE_TEST_CHECK_EQUAL(table->format().border(),1.0);
+            UISE_TEST_CHECK(!table->format().borderCollapse());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestImageOnlyPasteStillGoesToAttachments)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            QSignalSpy attachments(&editor,&AbstractMessageEditor::attachmentsPasted);
+
+            // The other side of the same rule: image bits with no renderable text (a screenshot,
+            // or a browser's "copy image", whose HTML is a lone <img> that renders to nothing but
+            // a U+FFFC object replacement character) must still reach the attachment flow.
+            auto* mime=new QMimeData();
+            mime->setHtml(QStringLiteral("<meta charset='utf-8'><img src=\"https://ex.com/cat.png\">"));
+            QImage image(4,4,QImage::Format_ARGB32);
+            image.fill(Qt::red);
+            mime->setImageData(image);
+            QApplication::clipboard()->setMimeData(mime);
+
+            editor.textEdit()->pasteFromClipboard();
+
+            UISE_TEST_CHECK_EQUAL(attachments.count(),1);
+            UISE_TEST_CHECK(editor.isEmpty());
         }
     );
 }

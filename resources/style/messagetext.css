@@ -78,6 +78,14 @@ blockquote {
     padding-left: 8px;
 }
 
+/* NO vertical margin on the table, deliberately. Measured on white, counting the empty rows
+   between one element's last ink and the next's first: two tables sit 9 rows apart with no
+   margin at all (the table frame's own spacing), and 9 is the gap wanted everywhere. A margin
+   here lands on EVERY table edge, so it doubles up between two tables -- 8px measured 25 rows --
+   while the one boundary that is too tight, a paragraph's 6px margin-bottom above a table, cannot
+   be reached from a stylesheet: Qt's CSS has no sibling selector. markdownToHtml() closes that gap
+   with an inline margin-top on a table that follows a paragraph (writeTable(): 9 minus this file's
+   `p { margin-bottom }`). Change that value and the renderer's number must follow. */
 table {
     border-collapse: collapse;
 }

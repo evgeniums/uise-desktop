@@ -115,7 +115,14 @@ const std::array<TableActionRow,7> TableActionRows{{
 //! setFormattingEnabled(false) outside MessageEditingMode::Wysiwyg (Stage 5a decision: formatting
 //! is WYSIWYG-only). Mode and Close are deliberately excluded -- they must stay usable in every
 //! mode, Mode most of all since it is the only way back to Wysiwyg.
-constexpr std::array<MessageEditorToolbarButton,18> FormattingButtons{{
+//!
+//! Link is ALSO excluded, as of Stage 5b: unlike every other row here, it is useful in
+//! MessageEditingMode::Markdown too -- Markdown mode's document is source text, and inserting a
+//! literal "[title](url)" there is exactly the kind of thing a formatting-averse mode should
+//! still help with. MessageEditor::updateMessageEditingMode() enables/disables it on its own
+//! mode-by-mode rule instead of this blanket one. RemoveLink stays here: there is no anchor
+//! concept in Markdown source, so its Wysiwyg-only gating is correct as-is.
+constexpr std::array<MessageEditorToolbarButton,17> FormattingButtons{{
     MessageEditorToolbarButton::Bold,
     MessageEditorToolbarButton::Italic,
     MessageEditorToolbarButton::Underline,
@@ -130,7 +137,6 @@ constexpr std::array<MessageEditorToolbarButton,18> FormattingButtons{{
     MessageEditorToolbarButton::CodeBlock,
     MessageEditorToolbarButton::Table,
     MessageEditorToolbarButton::HorizontalRule,
-    MessageEditorToolbarButton::Link,
     MessageEditorToolbarButton::RemoveLink,
     MessageEditorToolbarButton::Mention,
     MessageEditorToolbarButton::ClearFormatting

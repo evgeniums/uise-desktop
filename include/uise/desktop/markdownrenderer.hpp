@@ -146,6 +146,31 @@ UISE_DESKTOP_EXPORT QString markdownToHtml(const QString& markdown,
  */
 UISE_DESKTOP_EXPORT QString markdownToPlainText(const QString& markdown, int maxSourceChars=4096);
 
+/**
+ * @brief Rewrite the single newlines that a CHAT message means as visible line breaks into
+ *  U+2028 LINE SEPARATOR, leaving every newline that is markdown SYNTAX alone.
+ *
+ * This is the rule markdownToHtml() already applies internally, exposed because the message
+ * EDITOR needs the identical decision when it imports markdown back into a WYSIWYG document, and
+ * the two must not drift.
+ *
+ * Why the editor needs it: `QTextDocument::setMarkdown()` follows CommonMark, where a single
+ * newline inside a paragraph is a SPACE. Measured, "aa\nbb" comes back as one block reading
+ * "aa bb" -- so a line break the user typed, exported correctly as one newline, was silently
+ * eaten the moment the document was re-imported (switching to Markdown mode and back, or loading
+ * a message for editing). Feeding the source through this first turns that newline into a
+ * character `setMarkdown()` keeps verbatim, and the break survives: same source comes back as one
+ * block reading "aa<LS>bb", which re-exports byte-identically.
+ *
+ * Newlines that carry syntax are untouched: blank lines, fenced regions, table rows, list items,
+ * headings and every other block opener -- see the implementation's own notes for the full set
+ * and for what merging them away used to break.
+ *
+ * @param markdown Source text, GitHub-flavoured markdown.
+ * @return The same source with in-paragraph newlines replaced by U+2028.
+ */
+UISE_DESKTOP_EXPORT QString markdownWithChatLineBreaks(const QString& markdown);
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_MARKDOWN_RENDERER_HPP

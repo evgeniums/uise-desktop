@@ -58,6 +58,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/messageeditor.hpp>
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/hyperlinkdialog.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -509,7 +510,20 @@ int main(int argc, char *argv[])
 
     auto renderMarkdown=[mdSource,softBreakCheck,mdBody,mdMessage,htmlOutput,mdReply,logMsg]()
     {
-        auto src=mdSource->toPlainText();
+        // NOT toPlainText(): it is documented to replace U+00A0 with an ordinary space, and does.
+        // MessageEditor exports a blank line as a NO-BREAK SPACE paragraph (the only way one
+        // survives markdown at all -- see fillEmptyBlocksForExport()), and a line holding a single
+        // ORDINARY space is a blank line to CommonMark, so the paragraph would be dropped and two
+        // tables either side of it would weld back together. Measured end to end: the same source
+        // read back with toPlainText() renders "</table><p></p><table>", and read back this way
+        // "</table><p> </p><table>".
+        //
+        // Same trap and same fix as MessageEditor::plainTextKeepingIndent(); worth knowing about in
+        // any host that stores this markdown in a QTextDocument-backed widget on its way to the
+        // renderer.
+        auto src=mdSource->document()->toRawText();
+        src.replace(QChar::ParagraphSeparator,QLatin1Char('\n'));
+        src.replace(QChar::LineSeparator,QLatin1Char('\n'));
 
         MarkdownRenderOptions options;
         options.hardLineBreaks=softBreakCheck->isChecked();
@@ -680,6 +694,43 @@ int main(int argc, char *argv[])
     auto* sendToBubbleButton=new QPushButton(QStringLiteral("Send this into the bubble above"));
     rootLayout->addWidget(sendToBubbleButton);
 
+    // Stage 5b: the editor has no dialog of its own -- the HOST owns the hyperlink dialog,
+    // exactly like every other AbstractHyperlinkDialog-family consumer (mirrors
+    // demo/replypreview's own ModalReplyDialog wiring). setMinimumSize() is needed for the same
+    // reason noted there: FrameWithModalPopup sizes its popup as a percentage of ITS OWN rect(),
+    // and with no content of its own this frame would otherwise collapse to a sliver in
+    // rootLayout's QVBoxLayout -- making every dialog opened on it a percentage of ~nothing.
+    // The 520px height is not decorative: even with popup auto-height on, the popup's ceiling is
+    // maxHeightPercent() of THIS frame, so a host sized to the dialog's own natural height still
+    // clips it (measured: a 220px host squeezed the two fields into an 88px popup).
+    auto* linkDialogFrame=new ModalHyperlinkDialog();
+    linkDialogFrame->setMinimumSize(560,520);
+    rootLayout->addWidget(linkDialogFrame);
+
+    QObject::connect(msgEditor,&AbstractMessageEditor::linkRequested,central,
+        [linkDialogFrame,msgEditor](const QString& defaultTitle, const QString& existingUrl)
+        {
+            const bool isNew=linkDialogFrame->openDialog(true,false);
+            if (isNew)
+            {
+                QObject::connect(
+                    linkDialogFrame->dialog(),
+                    &AbstractHyperlinkDialog::linkAccepted,
+                    msgEditor,
+                    [linkDialogFrame,msgEditor](const QString& url, const QString& title)
+                    {
+                        msgEditor->insertLink(url,title);
+                        linkDialogFrame->closePopup();
+                    }
+                );
+            }
+
+            linkDialogFrame->dialog()->setUrl(existingUrl);
+            linkDialogFrame->dialog()->setLinkTitle(defaultTitle);
+            linkDialogFrame->showDialog();
+        }
+    );
+
     auto modeName=[](MessageEditingMode mode)
     {
         switch (mode)
@@ -778,49 +829,6 @@ int main(int argc, char *argv[])
     w.resize(760,900);
     w.setWindowTitle("Message Formatting Demo");
     w.show();
-
-    // TEMPORARY WIDTH DIAGNOSTIC -- remove once the horizontal-scrollbar cause is identified.
-    // Reports what actually floors this scroll area's content width: with widgetResizable(true)
-    // a horizontal scrollbar appears exactly when central's minimum width exceeds the viewport,
-    // and central's minimum is the widest minimum among the rows below. Deferred so the first
-    // real layout pass has happened before anything is measured.
-    QTimer::singleShot(0,central,
-        [central,mainFrame,rootLayout,logMsg]()
-        {
-            // Written to BOTH the demo's own log pane and qDebug(): the pane is at the very
-            // bottom of a long scrolling window, while qDebug() lands in Qt Creator's
-            // Application Output where it can just be copied out.
-            auto report=[logMsg](const QString& line)
-            {
-                logMsg(line);
-                qDebug().noquote()<<line;
-            };
-
-            report(QStringLiteral("--- WIDTH DIAGNOSTIC (temporary) ---"));
-            report(QStringLiteral("viewport=%1  central.min=%2  central.hint=%3")
-                       .arg(mainFrame->viewport()->width())
-                       .arg(central->minimumSizeHint().width())
-                       .arg(central->sizeHint().width()));
-            for (int i=0;i<rootLayout->count();++i)
-            {
-                auto* item=rootLayout->itemAt(i);
-                auto* widget=item!=nullptr ? item->widget() : nullptr;
-                if (widget==nullptr)
-                {
-                    continue;
-                }
-                report(QStringLiteral("  [%1] %2%3 min=%4 hint=%5")
-                           .arg(i,2)
-                           .arg(QString::fromLatin1(widget->metaObject()->className()))
-                           .arg(widget->objectName().isEmpty()
-                                    ? QString()
-                                    : QStringLiteral("#%1").arg(widget->objectName()))
-                           .arg(widget->minimumSizeHint().width())
-                           .arg(widget->sizeHint().width()));
-            }
-            report(QStringLiteral("--- end width diagnostic ---"));
-        }
-    );
 
     auto ret=app.exec();
     return ret;

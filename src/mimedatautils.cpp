@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFileInfo>
 #include <QUrl>
 #include <QRegularExpression>
+#include <QTextDocumentFragment>
 
 #include <uise/desktop/utils/mimedatautils.hpp>
 
@@ -205,6 +206,30 @@ bool mimeDataHasAttachments(const QMimeData* mimeData)
     }
 
     return !mimeDataLocalFilePaths(mimeData).isEmpty() || mimeDataHasImages(mimeData);
+}
+
+//--------------------------------------------------------------------------
+
+bool mimeDataHasRenderableText(const QMimeData* mimeData)
+{
+    if (mimeData==nullptr)
+    {
+        return false;
+    }
+
+    if (mimeData->hasHtml())
+    {
+        auto text=QTextDocumentFragment::fromHtml(mimeData->html()).toPlainText();
+
+        // Qt renders an inline image as U+FFFC OBJECT REPLACEMENT CHARACTER, which is not
+        // whitespace -- without this a browser's "copy image", whose HTML is a lone <img>, would
+        // report renderable text and be inserted as an empty paragraph instead of attached.
+        text.remove(QChar::ObjectReplacementCharacter);
+
+        return !text.trimmed().isEmpty();
+    }
+
+    return mimeData->hasText() && !mimeData->text().trimmed().isEmpty();
 }
 
 //--------------------------------------------------------------------------

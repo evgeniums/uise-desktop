@@ -80,6 +80,27 @@ UISE_DESKTOP_EXPORT bool mimeDataHasImages(const QMimeData* mimeData);
 UISE_DESKTOP_EXPORT bool mimeDataHasAttachments(const QMimeData* mimeData);
 
 /**
+ * @brief Check whether mimeData carries text that would actually RENDER as text.
+ * @param mimeData Payload to inspect; nullptr is treated as carrying no text.
+ * @return true if the payload's HTML renders to non-whitespace text, or -- with no HTML -- its
+ *  text/plain is non-whitespace.
+ *
+ * This exists to tell a DOCUMENT SELECTION apart from an IMAGE, in the very common case where a
+ * payload advertises both. Measured on macOS: copying a table in Numbers or Pages puts
+ * text/html (the real table), text/plain (tab-separated) AND an image rendition on the
+ * pasteboard -- Qt reports hasImage()==true for the last one even though its data is zero bytes.
+ * mimeDataHasAttachments() alone therefore calls a copied spreadsheet table "an image", which is
+ * how a Numbers table used to reach a message editor as an attachment instead of as a table.
+ *
+ * The decision is delegated to Qt's own HTML parser rather than a hand-rolled tag scan, because
+ * "does this render as text" is exactly the question the parser answers. One subtlety it forces:
+ * Qt renders an inline image as U+FFFC OBJECT REPLACEMENT CHARACTER, which is NOT whitespace --
+ * so those are removed before the emptiness test, or a browser's "copy image" (whose HTML is a
+ * lone `<img>`) would look like text. Measured against both.
+ */
+UISE_DESKTOP_EXPORT bool mimeDataHasRenderableText(const QMimeData* mimeData);
+
+/**
  * @brief Get the private MIME format this application uses to carry an explicit filename
  *  alongside image bits it itself put on the clipboard (e.g. ChatImageViewerController's
  *  Copy action).

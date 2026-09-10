@@ -23,6 +23,11 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+#include <array>
+#include <memory>
+#include <vector>
+
 #include <QKeyEvent>
 #include <QTextEdit>
 #include <QTextDocument>
@@ -71,6 +76,33 @@ std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("DropdownMenu::%1").arg(alias),context);
 }
+
+//! U+00A0 NO-BREAK SPACE -- what a plain paragraph's indent is made of. See
+//! MessageEditor::applyIndentStep() for why it is not an ordinary space.
+constexpr const char16_t NoBreakSpace=0x00a0;
+
+/** @brief U+200B ZERO WIDTH SPACE -- what an otherwise-empty paragraph is exported as, so the
+ *  blank line it draws survives markdown at all. See fillEmptyBlocksForExport().
+ *
+ * Deliberately NOT the no-break space above, even though that is what the indent uses and the
+ * first cut of this used it too. Measured, side by side:
+ *
+ *  |                                  | U+00A0 | U+200B |
+ *  |----------------------------------|--------|--------|
+ *  | QChar::isSpace()                 | true   | false  |
+ *  | stripped by QString::trimmed()   | yes    | no     |
+ *  | survives QTextDocument::toPlainText() | NO | yes   |
+ *  | rendered gap in the bubble       | 15px   | 15px   |
+ *
+ * That third row is the one that matters: toPlainText() is documented to replace U+00A0 with an
+ * ORDINARY space, and a line holding one of those is a blank line to CommonMark -- so the moment
+ * this markdown passed through any QTextDocument-backed plain-text widget on its way to the
+ * renderer, the paragraph was dropped and the two tables either side of it welded back together.
+ * A zero-width space is not whitespace by any of these measures, so it survives that round trip
+ * (and any trimmed()-based blank-line logic) while drawing the same gap. Being zero-width it also
+ * leaves no visible artefact in the message text.
+ */
+constexpr const char16_t BlankLineMarker=0x200b;
 
 /** @brief QTextDocument::toPlainText()'s character normalization, MINUS its no-break-space leg.
  *
@@ -327,6 +359,349 @@ QString restoreCodeFences(const QString& markdown)
     return out.join(QLatin1Char('\n'));
 }
 
+/** @brief Give every otherwise-empty paragraph a ZERO WIDTH SPACE, so the blank line it draws
+ *  survives being exported to markdown.
+ *
+ * `qtextmarkdownwriter` writes NOTHING for an empty block, so a blank line simply ceases to exist
+ * the moment a WYSIWYG document is exported: measured, "Hello / <blank> / World" comes back as two
+ * blocks rather than three, and two tables separated by blank lines come back welded together
+ * (13 blocks in, 11 out) -- in the composer after a Markdown round trip, and in the rendered bubble
+ * too, since the bubble only ever sees the exported markdown.
+ *
+ * A zero-width space fixes it for the same reason a no-break space fixes a paragraph indent (see
+ * MessageEditor::applyIndentStep()): it carries no markdown meaning, is not CommonMark whitespace,
+ * and is not collapsed by the HTML the message is finally rendered as. Measured: such a paragraph
+ * round-trips through toMarkdown()/setMarkdown() byte-identically, the block count is preserved
+ * exactly (13 in, 13 out), and it adds a 15px gap in the rendered bubble. See BlankLineMarker for
+ * why it is that character and not the indent's own U+00A0.
+ *
+ * Four kinds of empty block are deliberately left alone:
+ *  - anything INSIDE a fenced code block, tracked with the same fenceRun() the highlighter uses:
+ *    a marker character there would be injected into the user's code;
+ *  - anything inside a TABLE, where an empty cell must stay an empty cell rather than gain a
+ *    character of content;
+ *  - the TRAILING run of empty blocks, which draws nothing at the end of a message anyway -- there
+ *    is nothing after it to be separated from, and preserving it would append stray whitespace to
+ *    every message that happens to end with a Return;
+ *  - the one empty block Qt FORCES around a table. A QTextDocument always carries a block before a
+ *    leading table and one after every table -- measured, and the user cannot delete them. They are
+ *    structure, not a blank line somebody typed, so filling them would put a blank line above every
+ *    message that merely starts with a table. Only the extras beyond that first one are the user's,
+ *    which is why a run adjacent to a table has exactly one skipped: authored as
+ *    "table / Return / Return / table", the document holds three empty blocks and the export
+ *    carries two.
+ */
+void fillEmptyBlocksForExport(QTextDocument* document)
+{
+    struct BlockInfo
+    {
+        int position;
+        bool empty;
+        bool inTable;
+        bool inFence;
+        QString text;
+    };
+
+    std::vector<BlockInfo> blocks;
+    QString openFence;
+    for (auto block=document->begin(); block.isValid() && block!=document->end();
+         block=block.next())
+    {
+        const auto text=block.text();
+        const auto fence=fenceRun(text);
+
+        bool inFence=!openFence.isEmpty();
+        if (inFence)
+        {
+            if (!fence.isEmpty() && fence.at(0)==openFence.at(0) && fence.size()>=openFence.size())
+            {
+                openFence.clear();
+            }
+        }
+        else if (!fence.isEmpty())
+        {
+            openFence=fence;
+            inFence=true;
+        }
+
+        QTextCursor probe(block);
+        blocks.push_back(BlockInfo{block.position(),text.isEmpty(),
+                                   probe.currentTable()!=nullptr,inFence,text});
+    }
+
+    int lastMeaningfulIndex=-1;
+    for (std::size_t i=0; i<blocks.size(); ++i)
+    {
+        if (!blocks[i].empty)
+        {
+            lastMeaningfulIndex=static_cast<int>(i);
+        }
+    }
+
+    std::vector<int> positions;
+    for (std::size_t i=0; i<blocks.size(); ++i)
+    {
+        const auto& info=blocks[i];
+        if (!info.empty || info.inTable || info.inFence)
+        {
+            continue;
+        }
+        if (static_cast<int>(i)>lastMeaningfulIndex)
+        {
+            continue;
+        }
+
+        // An empty block ADJACENT TO A TABLE is never marked. Partly because Qt forces one there
+        // (a document always carries a block before a leading table and after every table, and
+        // the user cannot delete them), and partly because a table does not need a blank line to
+        // stand apart from its neighbours the way two paragraphs do: the table frame's own
+        // spacing already separates it (measured 9 rows between two tables), and the renderer
+        // gives a table that follows a paragraph the few pixels that boundary lacks
+        // (markdownrenderer.cpp, writeTable()). Marking these produced a doubled gap -- that
+        // spacing AND a blank line -- for a Return the user had only pressed to get out of the
+        // paragraph above.
+        const bool nextIsTable=(i+1<blocks.size()) && blocks[i+1].inTable;
+        const bool previousIsTable=(i>0) && blocks[i-1].inTable;
+        if (nextIsTable || previousIsTable)
+        {
+            continue;
+        }
+
+        positions.push_back(info.position);
+    }
+
+    // Empty visual lines INSIDE a block. Since Return inserts a soft break rather than starting a
+    // new paragraph (see EnhancedTextEdit::keyPressEvent()), a blank line a user types is now two
+    // consecutive U+2028s inside ONE block -- there is no empty BLOCK to find. Without this pass
+    // the loop above sees nothing to mark, the export writes a bare "aa\n\nbb", and the blank
+    // line is gone again on the next import.
+    for (const auto& info : blocks)
+    {
+        if (info.inTable || info.inFence || info.text.isEmpty())
+        {
+            continue;
+        }
+
+        const auto segments=info.text.split(QChar::LineSeparator);
+        int offset=0;
+        for (int segment=0; segment<segments.size(); ++segment)
+        {
+            // The trailing segment draws nothing after it, exactly as a trailing run of empty
+            // blocks does -- see this function's own doc comment.
+            if (segments.at(segment).isEmpty() && segment+1<segments.size())
+            {
+                positions.push_back(info.position+offset);
+            }
+            offset+=segments.at(segment).size()+1;
+        }
+    }
+
+    // Back to front: inserting a character shifts every later position.
+    std::sort(positions.begin(),positions.end());
+    for (auto it=positions.rbegin(); it!=positions.rend(); ++it)
+    {
+        QTextCursor cursor(document);
+        cursor.setPosition(*it);
+        cursor.insertText(QString(QChar(BlankLineMarker)));
+    }
+}
+
+/** @brief Collapse runs of consecutive blank lines down to one, outside fenced code blocks.
+ *
+ * Cosmetic, and worth it because the source is something a Markdown-mode author reads. Qt's own
+ * writer puts a bare extra newline in front of every table (measured -- "|3|4|\n\n\n|a|b|"), so
+ * even a document with no authored blank line at all showed two blank lines between two tables,
+ * and one WITH an authored blank showed four. One blank line is all markdown needs to separate any
+ * two block constructs, and more mean exactly the same thing to every parser -- so this changes
+ * nothing about how the message renders, only how much empty space the source view shows. Measured
+ * after: 2 blank source lines become 1 with no authored gap, and 4 become 3 with one.
+ *
+ * The blank-line MARKER is unaffected: a paragraph holding a zero-width space is not an empty
+ * line, so it is never part of a run and never collapsed -- which is exactly the distinction the
+ * marker exists to draw.
+ *
+ * Fenced regions are skipped: blank lines inside a code block are content.
+ */
+QString collapseBlankRuns(const QString& markdown)
+{
+    const auto lines=markdown.split(QLatin1Char('\n'));
+    QStringList out;
+    out.reserve(lines.size());
+
+    QString openFence;
+    int blankRun=0;
+
+    for (const auto& line : lines)
+    {
+        const auto fence=fenceRun(line);
+        if (!openFence.isEmpty())
+        {
+            if (!fence.isEmpty() && fence.at(0)==openFence.at(0) && fence.size()>=openFence.size())
+            {
+                openFence.clear();
+            }
+            out.append(line);
+            continue;
+        }
+        if (!fence.isEmpty())
+        {
+            openFence=fence;
+            blankRun=0;
+            out.append(line);
+            continue;
+        }
+
+        if (line.isEmpty())
+        {
+            ++blankRun;
+            // ONE empty line already separates any two block constructs in markdown; further ones
+            // mean exactly the same thing to every parser, so they are dropped. Verified by
+            // rendering rather than assumed, because welding two tables together is precisely the
+            // bug this whole section exists to fix: "|3|4|\n\n|a|b|" still renders as two
+            // separate <table> elements.
+            if (blankRun>1)
+            {
+                continue;
+            }
+        }
+        else
+        {
+            blankRun=0;
+        }
+
+        out.append(line);
+    }
+
+    return out.join(QLatin1Char('\n'));
+}
+
+/** @brief The inverse of mergeProseBlocksForExport(): give every typed line its own block again
+ *  on the way IN.
+ *
+ * `setMarkdown()` follows CommonMark, where a single newline inside a paragraph is a SPACE --
+ * measured, "aa\nbb" comes back as ONE block reading "aa bb", so a line break the user typed and
+ * exported correctly was destroyed the moment the document was re-imported (a Markdown-mode round
+ * trip, or loading a message to edit).
+ *
+ * markdownWithChatLineBreaks() already knows which newlines are prose and which are syntax -- it is
+ * the rule markdownToHtml() applies, shared rather than duplicated so the editor and the bubble
+ * cannot disagree. It marks the prose ones with U+2028; turning each of those into a paragraph
+ * break is what gives the editor one block per line, which is what every block-level format needs.
+ */
+QString markdownWithParagraphPerLine(const QString& markdown)
+{
+    auto prepared=markdownWithChatLineBreaks(markdown);
+    prepared.replace(QChar::LineSeparator,QStringLiteral("\n\n"));
+    return prepared;
+}
+
+/** @brief Join each run of consecutive ORDINARY paragraphs into one, separated by U+2028, so the
+ *  export spells a typed line break as ONE newline instead of a blank line.
+ *
+ * A Return in this editor creates a new QTextBlock, and that is deliberate -- every block-level
+ * format (list, heading, blockquote, code block, horizontal rule, indent) acts on a block, so a
+ * message whose lines are all one block would apply a bullet to every line at once. The cost is
+ * that qtextmarkdownwriter spells a block boundary as a BLANK LINE, so one typed line break left
+ * the editor as "aa\n\nbb" -- two paragraphs, which the bubble then draws with messagetext.css's
+ * paragraph margins, visibly looser than the tight line that was typed.
+ *
+ * Joining them HERE, on the throwaway export clone, gets both: the live document keeps one block
+ * per line so formatting still works, while the exported markdown says "aa\nbb", which
+ * markdownToHtml() renders as "<p>aa<br/>bb</p>" -- the composer and the bubble agreeing line for
+ * line. MessageEditor's import does the inverse (see loadText()), so the round trip is stable.
+ *
+ * Only ORDINARY paragraphs are joined. A block that is a list item, a heading, a blockquote, a
+ * horizontal rule, a table cell or part of a fenced code block keeps its own boundary, because in
+ * every one of those the boundary is what the construct is made of.
+ */
+void mergeProseBlocksForExport(QTextDocument* document)
+{
+    struct Boundary
+    {
+        int position;
+    };
+    std::vector<Boundary> boundaries;
+
+    QString openFence;
+    bool previousWasProse=false;
+    int previousEnd=-1;
+
+    for (auto block=document->begin(); block.isValid() && block!=document->end();
+         block=block.next())
+    {
+        const auto text=block.text();
+        const auto fence=fenceRun(text);
+
+        bool inFence=!openFence.isEmpty();
+        if (inFence)
+        {
+            if (!fence.isEmpty() && fence.at(0)==openFence.at(0) && fence.size()>=openFence.size())
+            {
+                openFence.clear();
+            }
+        }
+        else if (!fence.isEmpty())
+        {
+            openFence=fence;
+            inFence=true;
+        }
+
+        QTextCursor probe(block);
+        const auto blockFormat=block.blockFormat();
+        const bool prose=!inFence
+                         && probe.currentTable()==nullptr
+                         && block.textList()==nullptr
+                         && blockFormat.headingLevel()==0
+                         && !blockFormat.hasProperty(QTextFormat::BlockQuoteLevel)
+                         && !blockFormat.hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth);
+
+        if (prose && previousWasProse && previousEnd>=0)
+        {
+            boundaries.push_back(Boundary{previousEnd});
+        }
+
+        previousWasProse=prose;
+        previousEnd=block.position()+block.length()-1;
+    }
+
+    // Back to front, so joining one pair cannot shift the position of a pair still to be joined.
+    for (auto it=boundaries.rbegin(); it!=boundaries.rend(); ++it)
+    {
+        QTextCursor cursor(document);
+        cursor.setPosition(it->position);
+        // Removing the paragraph separator merges the next block into this one; the line separator
+        // put in its place is what qtextmarkdownwriter writes as a single newline.
+        cursor.deleteChar();
+        cursor.insertText(QString(QChar::LineSeparator));
+    }
+}
+
+/** @brief The WYSIWYG markdown export, in one place: blank lines preserved, code fences restored.
+ *
+ * Works on a CLONE rather than the live document -- fillEmptyBlocksForExport() inserts real
+ * characters, and an export must never mutate what the user is editing (nor push anything onto
+ * their undo stack).
+ */
+QString wysiwygMarkdown(const QTextDocument* document)
+{
+    std::unique_ptr<QTextDocument> clone(document->clone());
+    fillEmptyBlocksForExport(clone.get());
+    mergeProseBlocksForExport(clone.get());
+    return collapseBlankRuns(restoreCodeFences(clone->toMarkdown()));
+}
+
+//! wysiwygMarkdown() for a selection -- same treatment, so copying a range with blank lines in it
+//! yields the same markdown as sending the whole thing would.
+QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
+{
+    QTextDocument temp;
+    QTextCursor cursor(&temp);
+    cursor.insertFragment(fragment);
+    fillEmptyBlocksForExport(&temp);
+    mergeProseBlocksForExport(&temp);
+    return collapseBlankRuns(restoreCodeFences(temp.toMarkdown()));
+}
+
 /** @brief Turn every property-based code block in a document into the literal "```" text form.
  *
  * Qt's markdown importer consumes the fences it reads into QTextBlockFormat properties, so a code
@@ -336,8 +711,15 @@ QString restoreCodeFences(const QString& markdown)
  *
  * Runs are processed back to front so that inserting the two fence lines for one run cannot shift
  * the block numbers of the runs still to be handled.
+ *
+ * @param suppressUndo Disable undo around the rewrite. Correct for the whole-document LOADS this
+ *  was written for (loadText(), a mode switch), where the undo stack is meaningless anyway --
+ *  but it must be false on the PASTE path, because QTextDocument::setUndoRedoEnabled(false)
+ *  CLEARS the undo stack outright (measured: one undo step before, zero after), which would
+ *  silently throw away everything the user had typed before pasting. With it false the rewrite
+ *  simply joins the caller's own edit block, so one Ctrl+Z still takes the whole paste back out.
  */
-void convertCodeBlocksToText(QTextDocument* document)
+void convertCodeBlocksToText(QTextDocument* document, bool suppressUndo=true)
 {
     const auto isCode=[](const QTextBlock& block)
     {
@@ -382,7 +764,10 @@ void convertCodeBlocksToText(QTextDocument* document)
     }
 
     const auto undoEnabled=document->isUndoRedoEnabled();
-    document->setUndoRedoEnabled(false);
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(false);
+    }
 
     for (auto run=runs.rbegin(); run!=runs.rend(); ++run)
     {
@@ -411,9 +796,323 @@ void convertCodeBlocksToText(QTextDocument* document)
         region.setCharFormat(QTextCharFormat{});
     }
 
-    document->setUndoRedoEnabled(undoEnabled);
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(undoEnabled);
+    }
 }
 
+/** @brief Drop the presentation Qt's own importers bake onto every anchor they read.
+ *
+ * `setMarkdown()`/`setHtml()` do not merely record an anchor's href -- they also write
+ * `foreground=#0000ff` straight into the document's char format (measured, and visible in
+ * `toHtml()` as `<span style=" color:#0000ff;">`). Before this stage that was the *only* reason
+ * an imported link looked like a link at all, since Qt's layout draws an anchor exactly like
+ * ordinary text otherwise -- which is precisely why a freshly inserted link looked plain until it
+ * had been round-tripped through Markdown mode.
+ *
+ * It does NOT fight the highlighter for the on-screen colour: measured, a layout format set by
+ * QSyntaxHighlighter already wins over the document's own char format, so links render in
+ * linkColor either way. What it does do is freeze a theme-specific colour into the DOCUMENT,
+ * where it leaks into every `toHtml()` export and travels with the message.
+ *
+ * Stripping it here leaves the anchor itself (href and `isAnchor()`) completely intact -- the
+ * markdown still exports as `[title](url)` -- and hands presentation to
+ * MessageEditorHighlighter::highlightLinks(), which paints typed and imported links alike in one
+ * themed colour. Same shape and same reasoning as normalizeBlockquoteIndent() re-indenting the
+ * 40px margin those importers bake in beside it.
+ *
+ * @param suppressUndo See convertCodeBlocksToText() -- true for the whole-document loads, false
+ *  on the paste path, where disabling undo would clear the stack.
+ */
+void stripImportedAnchorStyle(QTextDocument* document, bool suppressUndo=true)
+{
+    // Collected first, mutated after -- see stripBakedRichTextFormatting() for why a format write
+    // must not happen while a block's fragment iterator is live.
+    struct Run
+    {
+        int start;
+        int end;
+        QTextCharFormat format;
+    };
+    std::vector<Run> runs;
+
+    for (auto block=document->begin(); block.isValid() && block!=document->end();
+         block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+
+            auto format=fragment.charFormat();
+            if (!format.isAnchor())
+            {
+                continue;
+            }
+            if (!format.hasProperty(QTextFormat::ForegroundBrush)
+                && !format.hasProperty(QTextFormat::FontUnderline))
+            {
+                continue;
+            }
+
+            format.clearProperty(QTextFormat::ForegroundBrush);
+            format.clearProperty(QTextFormat::FontUnderline);
+            runs.push_back(Run{fragment.position(),fragment.position()+fragment.length(),format});
+        }
+    }
+
+    if (runs.empty())
+    {
+        return;
+    }
+
+    const auto undoEnabled=document->isUndoRedoEnabled();
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(false);
+    }
+
+    for (const auto& run : runs)
+    {
+        QTextCursor fragmentCursor(document);
+        fragmentCursor.setPosition(run.start);
+        fragmentCursor.setPosition(run.end,QTextCursor::KeepAnchor);
+        fragmentCursor.setCharFormat(run.format);
+    }
+
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(undoEnabled);
+    }
+}
+
+/**
+ * @brief The border/collapse/brush half of a visible table -- shared by MessageEditor::
+ *  applyTable() (a freshly typed table) and normalizeImportedTables() below (one that arrived from outside).
+ *
+ * Factored out so the two can never drift: see MessageEditor::applyTable()'s own comment for the
+ * full measured rationale (setBorderCollapse(false) being load-bearing, the theme-neutral mid
+ * grey). Width/cell padding are deliberately NOT touched here -- a typed table wants its own
+ * defaults (applyTable() sets those separately), while a pasted table's existing width/padding
+ * are left alone in normalizeImportedTables() so real imported content is not reflowed.
+ */
+void applyTableVisibilityFormat(QTextTableFormat& format)
+{
+    format.setBorderCollapse(false);
+    format.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
+    format.setBorder(1);
+    format.setBorderBrush(QColor(0x80,0x80,0x80));
+}
+
+/** @brief Force every top-level table overlapping [rangeStart,rangeEnd) to the same visible,
+ *  theme-neutral border Stage 4/5a already give a typed table.
+ *
+ * An externally pasted table (Qt's own external-HTML import) measured to arrive with
+ * `border=0, borderCollapse=false` -- 0 painted border pixels, i.e. invisible, the identical
+ * root cause Stage 4 fixed for typed tables. Reusing applyTableVisibilityFormat() closes it here
+ * too, without touching whatever width/cell padding the pasted markup specified.
+ *
+ * Only top-level tables are walked (document->rootFrame()'s direct children) -- a table nested
+ * inside another table's cell is not reached, matching applyTable()'s own single-level scope.
+ *
+ * Runs on EVERY route foreign content takes into the document, not just paste: a table that
+ * arrives through setMarkdown()/setHtml() -- a loadText(), or the Markdown-mode round trip -- is
+ * rebuilt by Qt's importer with border=0 and borderCollapse=true and is just as invisible as a
+ * pasted one. Wiring it only to paste is what made a table lose its grid the moment the editor
+ * was switched to Markdown mode and back.
+ *
+ * @param suppressUndo See convertCodeBlocksToText() -- true for the whole-document loads, false
+ *  on the paste path, where disabling undo would clear the user's stack.
+ */
+void normalizeImportedTables(QTextDocument* document, int rangeStart, int rangeEnd,
+                             bool suppressUndo=true)
+{
+    const auto undoEnabled=document->isUndoRedoEnabled();
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(false);
+    }
+
+    auto* root=document->rootFrame();
+    for (auto it=root->begin(); !it.atEnd(); ++it)
+    {
+        auto* table=qobject_cast<QTextTable*>(it.currentFrame());
+        if (table==nullptr)
+        {
+            continue;
+        }
+
+        if (table->lastPosition()<rangeStart || table->firstPosition()>=rangeEnd)
+        {
+            continue;
+        }
+
+        auto format=table->format();
+        applyTableVisibilityFormat(format);
+        table->setFormat(format);
+
+        // Drop the PER-CELL borders an importer bakes in, so the grid is drawn by the table's own
+        // theme-neutral format above and by nothing else -- exactly the state a typed table is in.
+        //
+        // Not hypothetical: measured against a real table copied from macOS Numbers, whose HTML
+        // gives every one of its cells an explicit #000000 border. Fixing only the table format
+        // left those in place, so the pasted table drew a black grid that vanished against a dark
+        // background (13833 painted pixels on black against 17071 on white). With them cleared
+        // the same table paints 22801/23347 -- the same grid in both themes, which is the whole
+        // point of the mid grey.
+        for (int row=0; row<table->rows(); ++row)
+        {
+            for (int column=0; column<table->columns(); ++column)
+            {
+                auto cell=table->cellAt(row,column);
+                auto cellFormat=cell.format().toTableCellFormat();
+
+                bool changed=false;
+                // BackgroundBrush rides along with the borders for the same reason and one more.
+                // Measured on the real Numbers payload: 14 of its 20 cells carry a baked fill
+                // (#b0b3b2/#d4d4d4/#f2f2f2) on the CELL format, which nothing else in this file
+                // touches -- stripBakedRichTextFormatting() only ever saw CHAR formats. Keeping
+                // those while stripping the char foregrounds was the worst of both worlds: the
+                // fills stayed light and the text fell back to the palette, i.e. WHITE text on a
+                // near-white cell in a dark theme.
+                //
+                // Stripped rather than kept-with-their-text because markdown has no cell-fill
+                // syntax at all: toMarkdown() drops these, so a composer that showed them would
+                // be showing the author something the recipient can never receive.
+                const std::array<QTextFormat::Property,9> cellProperties{{
+                    QTextFormat::TableCellLeftBorder,
+                    QTextFormat::TableCellTopBorder,
+                    QTextFormat::TableCellRightBorder,
+                    QTextFormat::TableCellBottomBorder,
+                    QTextFormat::TableCellLeftBorderBrush,
+                    QTextFormat::TableCellTopBorderBrush,
+                    QTextFormat::TableCellRightBorderBrush,
+                    QTextFormat::TableCellBottomBorderBrush,
+                    QTextFormat::BackgroundBrush
+                }};
+                for (auto property : cellProperties)
+                {
+                    if (cellFormat.hasProperty(property))
+                    {
+                        cellFormat.clearProperty(property);
+                        changed=true;
+                    }
+                }
+
+                if (changed)
+                {
+                    cell.setFormat(cellFormat);
+                }
+            }
+        }
+    }
+
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(undoEnabled);
+    }
+}
+
+/**
+ * @brief Strip baked colour/font formatting a rich-text/HTML paste carries, over one range.
+ *
+ * External HTML bakes `color`/`font-family`/`font-size` per run (measured: a browser's own
+ * `#1f2937`/`Calibri`/`14pt` survive straight through QTextEdit::insertFromMimeData()) -- the
+ * exact theme-rot trap already documented for table borders and blockquote colour elsewhere in
+ * this file: correct only until the user switches theme, forever after that.
+ *
+ * Measured non-lossy: clearing ForegroundBrush/BackgroundBrush/FontFamilies/FontPointSize per
+ * fragment leaves bold/italic/anchors/headings/lists/tables untouched and the resulting
+ * toMarkdown() output byte-identical to the unstripped version -- this removes cosmetic paint,
+ * nothing markdown itself carries.
+ *
+ * Ranged rather than whole-document: existing content in the editor never carries baked colours
+ * in the first place (nothing else in this file sets ForegroundBrush), so a whole-document pass
+ * would be harmless here too, but restricting to the pasted range is the more defensible
+ * invariant and costs nothing extra to write.
+ */
+void stripBakedRichTextFormatting(QTextDocument* document, int rangeStart, int rangeEnd)
+{
+    // Collected first, mutated after: writing a fragment's format back via setCharFormat() can
+    // merge it with an identically-formatted neighbour, which would invalidate the block's own
+    // fragment iterator if a mutation happened mid-walk (the same reason applyClearFormatting()
+    // re-fetches its block by position each iteration rather than holding a fragment iterator
+    // across an edit).
+    struct Run
+    {
+        int start;
+        int end;
+        QTextCharFormat format;
+    };
+    std::vector<Run> runs;
+
+    // Block-level fills, collected the same way. Qt's HTML importer writes a cell's
+    // background-color onto the BLOCK format inside the cell as well as onto the cell itself
+    // (measured: the same #b0b3b2/#d4d4d4/#f2f2f2 appear in both places for a Numbers table), so
+    // clearing only one of the two leaves the fill on screen.
+    std::vector<int> blockBackgrounds;
+
+    for (auto block=document->findBlock(rangeStart); block.isValid() && block.position()<rangeEnd;
+         block=block.next())
+    {
+        if (block.blockFormat().hasProperty(QTextFormat::BackgroundBrush))
+        {
+            blockBackgrounds.push_back(block.position());
+        }
+
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+
+            const auto fragmentStart=fragment.position();
+            const auto fragmentEnd=fragmentStart+fragment.length();
+            if (fragmentEnd<=rangeStart || fragmentStart>=rangeEnd)
+            {
+                continue;
+            }
+
+            auto format=fragment.charFormat();
+            if (!format.hasProperty(QTextFormat::ForegroundBrush)
+                && !format.hasProperty(QTextFormat::BackgroundBrush)
+                && !format.hasProperty(QTextFormat::FontFamilies)
+                && !format.hasProperty(QTextFormat::FontPointSize))
+            {
+                continue;
+            }
+
+            format.clearProperty(QTextFormat::ForegroundBrush);
+            format.clearProperty(QTextFormat::BackgroundBrush);
+            format.clearProperty(QTextFormat::FontFamilies);
+            format.clearProperty(QTextFormat::FontPointSize);
+
+            runs.push_back(Run{fragmentStart,fragmentEnd,format});
+        }
+    }
+
+    for (const auto& run : runs)
+    {
+        QTextCursor fragmentCursor(document);
+        fragmentCursor.setPosition(run.start);
+        fragmentCursor.setPosition(run.end,QTextCursor::KeepAnchor);
+        fragmentCursor.setCharFormat(run.format);
+    }
+
+    for (auto position : blockBackgrounds)
+    {
+        QTextCursor blockCursor(document->findBlock(position));
+        auto blockFormat=blockCursor.blockFormat();
+        blockFormat.clearProperty(QTextFormat::BackgroundBrush);
+        blockCursor.setBlockFormat(blockFormat);
+    }
+}
 
 }
 
@@ -439,6 +1138,25 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
         explicit MessageEditorHighlighter(QTextDocument* document) : QSyntaxHighlighter(document)
         {}
 
+        //! QSyntaxHighlighter block states. Deliberately not -1, which is the "never highlighted"
+        //! value previousBlockState() reports for a block Qt has not visited.
+        //!
+        //! Public (Stage 5b): QTextFormat::BlockCodeFence, the property-based predicate
+        //! currentFormatState() otherwise uses for state.codeBlock, is NEVER set on a literal
+        //! fence block -- convertCodeBlocksToText() strips exactly that property on the way in,
+        //! since a literal fence carries no block properties at all (that is the whole point of
+        //! it being visible, editable text). Measured: QTextBlock::userState() reflects fence
+        //! membership correctly and SYNCHRONOUSLY once this highlighter is attached to a real
+        //! QTextEdit's document (no explicit rehighlight() needed, unlike a bare, view-less
+        //! QTextDocument) -- so block.userState()==InFence is the query that actually works for
+        //! "is the caret on/inside a literal fence", and MessageEditor::currentFormatState() uses
+        //! it below.
+        enum BlockState : int
+        {
+            OutsideFence=0,
+            InFence=1
+        };
+
         void setBlockquoteColor(const QColor& color)
         {
             if (m_blockquoteColor==color)
@@ -458,6 +1176,28 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             }
 
             m_codeBlockColor=color;
+            rehighlight();
+        }
+
+        void setLinkColor(const QColor& color)
+        {
+            if (m_linkColor==color)
+            {
+                return;
+            }
+
+            m_linkColor=color;
+            rehighlight();
+        }
+
+        void setLinkUnderline(bool enable)
+        {
+            if (m_linkUnderline==enable)
+            {
+                return;
+            }
+
+            m_linkUnderline=enable;
             rehighlight();
         }
 
@@ -529,20 +1269,60 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
                 // never instead of them.
                 setFormat(0,static_cast<int>(text.size()),format);
             }
+
+            highlightLinks();
         }
 
     private:
 
-        //! QSyntaxHighlighter block states. Deliberately not -1, which is the "never highlighted"
-        //! value previousBlockState() reports for a block Qt has not visited.
-        enum BlockState : int
+        /** @brief Paint every anchor run in the current block, on the same display-only terms as
+         *  the blockquote and code-block colours above.
+         *
+         * Needed because an anchor renders as ORDINARY TEXT otherwise: measured, a document with
+         * an anchor and the same document without one paint pixel-for-pixel identically (429 px
+         * each). Qt's own markdown importer papers over this by baking foreground=#0000ff onto
+         * every anchor it reads, which is why a link only *looked* right after a round trip
+         * through Markdown mode -- but that colour is frozen at import time, ignores the theme,
+         * and leaks into toHtml(). stripImportedAnchorStyle() removes it on the way in, and this
+         * paints all links, typed and imported alike, in one themed colour.
+         *
+         * Runs LAST so a link inside a blockquote reads as a link rather than as quoted text --
+         * later setFormat() calls win over earlier ones on an overlapping range.
+         */
+        void highlightLinks()
         {
-            OutsideFence=0,
-            InFence=1
-        };
+            if (!m_linkColor.isValid() && !m_linkUnderline)
+            {
+                return;
+            }
+
+            const auto block=currentBlock();
+            const auto blockStart=block.position();
+            for (auto it=block.begin(); !it.atEnd(); ++it)
+            {
+                const auto fragment=it.fragment();
+                if (!fragment.isValid() || !fragment.charFormat().isAnchor())
+                {
+                    continue;
+                }
+
+                QTextCharFormat format;
+                if (m_linkColor.isValid())
+                {
+                    format.setForeground(m_linkColor);
+                }
+                // Set either way, so linkUnderline:false also strips an underline an imported
+                // document happened to carry.
+                format.setFontUnderline(m_linkUnderline);
+
+                setFormat(fragment.position()-blockStart,fragment.length(),format);
+            }
+        }
 
         QColor m_blockquoteColor;
         QColor m_codeBlockColor;
+        QColor m_linkColor;
+        bool m_linkUnderline=false;
 };
 
 /******************************EnhancedTextEdit********************************/
@@ -889,6 +1669,30 @@ void EnhancedTextEdit::setCodeBlockColor(const QColor& color)
 
 //--------------------------------------------------------------------------
 
+void EnhancedTextEdit::setLinkColor(const QColor& color)
+{
+    m_linkColor=color;
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setLinkColor(color);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setLinkUnderline(bool enable)
+{
+    m_linkUnderline=enable;
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setLinkUnderline(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void EnhancedTextEdit::applyTabStopDistance()
 {
     // Qt's default is a flat 80px that ignores the font entirely; at this widget's space width
@@ -901,6 +1705,12 @@ void EnhancedTextEdit::applyTabStopDistance()
 
 bool EnhancedTextEdit::canInsertFromMimeData(const QMimeData* source) const
 {
+    // Deliberately the BROAD mimeDataHasAttachments() test, not isAttachmentPaste(): this is the
+    // predicate Qt's drag-and-drop machinery consults, and refusing every image/file-bearing
+    // payload here is what lets a DROP fall through to an ancestor FileDropOverlay. Paste does
+    // not come through here at all (QWidgetTextControl::paste() calls insertFromMimeData()
+    // directly, no canPaste() gate -- see pasteFromClipboard()), so the finer paste-side
+    // classification below cannot change how a drop is routed.
     if (mimeDataHasAttachments(source))
     {
         return false;
@@ -911,15 +1721,79 @@ bool EnhancedTextEdit::canInsertFromMimeData(const QMimeData* source) const
 
 //--------------------------------------------------------------------------
 
+bool EnhancedTextEdit::isAttachmentPaste(const QMimeData* source) const
+{
+    if (!mimeDataHasAttachments(source))
+    {
+        return false;
+    }
+
+    // A file payload is unambiguous -- those are attachments however much text rides along (a
+    // file dragged from Finder carries its own path as text/plain).
+    if (!mimeDataLocalFilePaths(source).isEmpty())
+    {
+        return true;
+    }
+
+    // Image bits PLUS text that actually renders is a DOCUMENT SELECTION with a picture preview
+    // attached, not a picture. Measured on macOS: Numbers and Pages both put text/html (the real
+    // table), text/plain (tab-separated) and an image rendition on the pasteboard at once -- and
+    // Qt reports hasImage()==true for that rendition even though its data is ZERO BYTES. Judging
+    // on the image alone therefore turned every copied spreadsheet table into an attachment, with
+    // nothing inserted. See mimeDataHasRenderableText() for how the two are told apart, and why
+    // an image-only payload (a screenshot, a browser's "copy image") still lands here.
+    return !mimeDataHasRenderableText(source);
+}
+
+//--------------------------------------------------------------------------
+
 void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
 {
-    if (mimeDataHasAttachments(source))
+    if (isAttachmentPaste(source))
     {
         emit attachmentsPasted(source);
         return;
     }
 
+    // Stage 5b: normalize a rich-text/table paste so it satisfies the same invariants typed
+    // WYSIWYG content already does -- no baked colour/font (theme-rot, measured: an external
+    // #1f2937/Calibri/14pt survives straight through otherwise), a visible table border (Stage
+    // 4's own fix, measured invisible at border=0 otherwise), and a literal "```" fence rather
+    // than a property-based code block (so restoreCodeFences() keeps seeing only the one form it
+    // knows how to export).
+    //
+    // Gated on acceptRichText() rather than an explicit mode check: MessageEditor already turns
+    // it off in Markdown/Plaintext mode (updateMessageEditingMode()), and Qt's own
+    // QTextEdit::insertFromMimeData() degrades a rich payload to plain text there on its own --
+    // so this block is naturally unreachable outside Wysiwyg, with no mode plumbing needed here.
+    auto cursor=textCursor();
+    cursor.beginEditBlock();
+
+    const auto insertStart=cursor.selectionStart();
     QTextEdit::insertFromMimeData(source);
+    const auto insertEnd=textCursor().position();
+
+    if (acceptRichText() && insertEnd>insertStart)
+    {
+        stripBakedRichTextFormatting(document(),insertStart,insertEnd);
+        normalizeImportedTables(document(),insertStart,insertEnd,false);
+        // Whole-document, not ranged -- but idempotent on content that already satisfies the
+        // literal-fence invariant (nothing else in this editor ever creates a property-based
+        // code block), so re-running it here only ever touches what was just pasted.
+        //
+        // suppressUndo=false: undo is NOT disabled around a paste, because doing that clears the
+        // whole undo stack (measured) -- see the function's own doc comment. Everything here is
+        // already inside this function's edit block, so it groups into the paste's single
+        // undoable action instead.
+        convertCodeBlocksToText(document(),false);
+        // stripBakedRichTextFormatting() above already cleared the foreground off every pasted
+        // fragment, anchors included -- this also drops an underline a pasted link carried, so a
+        // pasted link and a typed one are painted by the same linkColor/linkUnderline rule.
+        stripImportedAnchorStyle(document(),false);
+        emit pastedRichText();
+    }
+
+    cursor.endEditBlock();
 }
 
 //--------------------------------------------------------------------------
@@ -1164,9 +2038,17 @@ MessageEditor::MessageEditor(QWidget* parent)
     connect(pimpl->toolbar,&MessageEditorToolbar::indentDecreaseRequested,this,[this]{ applyIndentStep(-1); });
     connect(pimpl->toolbar,&MessageEditorToolbar::clearFormattingRequested,this,&MessageEditor::applyClearFormatting);
 
-    // Stage 5b/6: Link/RemoveLink/Mention default to hidden (MessageEditorToolbar's own ctor)
-    // and are deliberately left unconnected here -- no toolbar API change is needed to wire
-    // them up when those stages land.
+    // Stage 5b: Link is a shipped feature, not a hidden placeholder like Mention (Stage 6) still
+    // is below -- made permanently visible here rather than left at the toolbar's own
+    // ctor-default hidden state. RemoveLink's visibility stays dynamic (see syncToolbarState()):
+    // it appears only while the caret is inside an existing link.
+    pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Link,true);
+
+    connect(pimpl->toolbar,&MessageEditorToolbar::linkRequested,this,&MessageEditor::onLinkButtonRequested);
+    connect(pimpl->toolbar,&MessageEditorToolbar::removeLinkRequested,this,&MessageEditor::removeLink);
+
+    // Stage 6: Mention stays hidden and unconnected -- no toolbar API change is needed to wire
+    // it up when that stage lands.
 
     connect(pimpl->editor,&QTextEdit::cursorPositionChanged,this,&MessageEditor::syncToolbarState);
     connect(pimpl->editor,&QTextEdit::selectionChanged,this,&MessageEditor::syncToolbarState);
@@ -1215,6 +2097,23 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::editPreviousRequested,
         this,
         &AbstractMessageEditor::editPreviousRequested
+    );
+
+    // The mechanical half of paste normalization (strip baked colour/font, fix an invisible
+    // pasted table, convert a pasted code block to literal fences) is done inside
+    // EnhancedTextEdit itself, which needs no MessageEditor state for any of it. Re-indenting a
+    // pasted blockquote DOES need blockquoteIndent(), which lives here -- so that one step runs
+    // from this handler instead.
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::pastedRichText,
+        this,
+        [this]()
+        {
+            // suppressUndo=false -- disabling undo here would clear the entire undo stack on
+            // every paste (measured), throwing away everything typed before it.
+            normalizeBlockquoteIndent(false);
+        }
     );
 
     // Tab/Shift+Tab land in exactly the same applier the toolbar's indent buttons use, so the
@@ -1267,9 +2166,18 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
             {
                 case (TextFormat::Markdown):
                 {
-                    pimpl->editor->setMarkdown(text);
+                    // markdownWithChatLineBreaks() first: setMarkdown() follows CommonMark, where
+                    // a single newline inside a paragraph is a SPACE -- measured, "aa\nbb" comes
+                    // back as one block reading "aa bb", so a line break the user typed and
+                    // exported correctly was eaten on the way back in. See that function's own
+                    // declaration; it is the identical rule markdownToHtml() applies, shared
+                    // rather than duplicated so the editor and the bubble cannot disagree.
+                    pimpl->editor->setMarkdown(markdownWithParagraphPerLine(text));
                     normalizeBlockquoteIndent();
                     convertCodeBlocksToText(pimpl->editor->document());
+                    stripImportedAnchorStyle(pimpl->editor->document());
+                    normalizeImportedTables(pimpl->editor->document(),0,
+                                            pimpl->editor->document()->characterCount());
                     break;
                 }
 
@@ -1284,6 +2192,9 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
                     pimpl->editor->setHtml(text);
                     normalizeBlockquoteIndent();
                     convertCodeBlocksToText(pimpl->editor->document());
+                    stripImportedAnchorStyle(pimpl->editor->document());
+                    normalizeImportedTables(pimpl->editor->document(),0,
+                                            pimpl->editor->document()->characterCount());
                     break;
                 }
             }
@@ -1338,7 +2249,7 @@ QString MessageEditor::text(TextFormat format) const
         {
             switch (format)
             {
-                case (TextFormat::Markdown): return restoreCodeFences(pimpl->editor->toMarkdown());
+                case (TextFormat::Markdown): return wysiwygMarkdown(pimpl->editor->document());
                 case (TextFormat::Plain): return plainTextKeepingIndent(pimpl->editor->document());
                 case (TextFormat::Html): return pimpl->editor->toHtml();
             }
@@ -1386,7 +2297,7 @@ QString MessageEditor::selectedText(TextFormat format) const
         {
             switch (format)
             {
-                case (TextFormat::Markdown): return restoreCodeFences(fragment.toMarkdown());
+                case (TextFormat::Markdown): return wysiwygMarkdown(fragment);
                 case (TextFormat::Plain): return plainTextKeepingIndent(cursor);
                 case (TextFormat::Html): return fragment.toHtml();
             }
@@ -1701,7 +2612,7 @@ void MessageEditor::updateMessageEditingMode()
     // a rich Wysiwyg document converts to markdown source; a Markdown/Plaintext document already
     // IS its own source/literal text.
     const auto src=(from==MessageEditingMode::Wysiwyg)
-        ? restoreCodeFences(pimpl->editor->toMarkdown())
+        ? wysiwygMarkdown(pimpl->editor->document())
         : plainTextKeepingIndent(pimpl->editor->document());
 
     switch (to)
@@ -1709,9 +2620,17 @@ void MessageEditor::updateMessageEditingMode()
         case (MessageEditingMode::Wysiwyg):
         {
             pimpl->editor->setAcceptRichText(true);
-            pimpl->editor->setMarkdown(src);
+            // See loadText()'s own note: without this the Markdown-mode round trip silently
+            // folds every typed line break into a space.
+            pimpl->editor->setMarkdown(markdownWithParagraphPerLine(src));
             normalizeBlockquoteIndent();
             convertCodeBlocksToText(pimpl->editor->document());
+            stripImportedAnchorStyle(pimpl->editor->document());
+            // Without this a table loses its grid the moment the editor is switched to Markdown
+            // mode and back: setMarkdown() rebuilds it with border=0/borderCollapse=true, which
+            // paints nothing at all.
+            normalizeImportedTables(pimpl->editor->document(),0,
+                                    pimpl->editor->document()->characterCount());
             break;
         }
 
@@ -1737,6 +2656,10 @@ void MessageEditor::updateMessageEditingMode()
     // toolbar's formatting half greys out rather than vanishing, so the bar's width stays
     // stable across a mode switch.
     pimpl->toolbar->setFormattingEnabled(to==MessageEditingMode::Wysiwyg);
+    // Stage 5b: Link is excluded from that blanket rule (see FormattingButtons's own comment in
+    // messageeditortoolbar.cpp) because it stays useful in Markdown mode too -- only Plaintext,
+    // which carries no markup meaning at all, disables it.
+    pimpl->toolbar->setButtonEnabled(MessageEditorToolbarButton::Link,to!=MessageEditingMode::Plaintext);
     syncToolbarState();
 }
 
@@ -1833,7 +2756,16 @@ MessageEditorFormatState MessageEditor::currentFormatState() const
     // span and a fenced code block do not both light up the same InlineCode button.
     state.inlineCode=cf.fontFixedPitch() && !bf.hasProperty(QTextFormat::BlockCodeFence);
     state.blockquote=bf.hasProperty(QTextFormat::BlockQuoteLevel);
-    state.codeBlock=bf.hasProperty(QTextFormat::BlockCodeFence);
+    // BlockCodeFence is kept as a belt-and-braces case (content that reached the document by a
+    // path that skipped convertCodeBlocksToText()), but it is NOT what a literal fence carries --
+    // convertCodeBlocksToText() strips that property on the way in, since a literal fence is
+    // ordinary text with no block properties at all. MessageEditorHighlighter::InFence, tracked
+    // via QTextBlock::userState() and measured to update synchronously on every edit once
+    // attached to a real QTextEdit, is what actually reflects "the caret is on/inside a fence"
+    // for the form this editor's fences actually take (Stage 5b, fixing a state.codeBlock that
+    // was otherwise always false for one).
+    state.codeBlock=bf.hasProperty(QTextFormat::BlockCodeFence)
+        || cursor.block().userState()==MessageEditorHighlighter::InFence;
     state.headingLevel=bf.headingLevel();
     state.insideLink=cf.isAnchor();
     state.insideTable=cursor.currentTable()!=nullptr;
@@ -1886,7 +2818,13 @@ void MessageEditor::syncToolbarState()
         return;
     }
 
-    pimpl->toolbar->setFormatState(currentFormatState());
+    const auto state=currentFormatState();
+    pimpl->toolbar->setFormatState(state);
+
+    // Stage 5b: "a second Remove link ... appears only when the caret is inside an existing
+    // link" -- setFormatState() already computes insideLink but (per its own Stage 5a doc
+    // comment) does not act on it; this is where it is acted on.
+    pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::RemoveLink,state.insideLink);
 }
 
 //--------------------------------------------------------------------------
@@ -2150,10 +3088,10 @@ void MessageEditor::applyTable(int rows, int columns)
     //
     // Measured with a standalone offscreen probe against Qt 6.8.2, rendering this exact format to
     // a QImage and counting border pixels: collapse=true -> 0 pixels, collapse=false -> 2720.
+    // Border/collapse/brush are set by applyTableVisibilityFormat() below, shared with
+    // normalizeImportedTables() so a typed table and an imported one cannot end up with different
+    // visibility fixes.
     QTextTableFormat format;
-    format.setBorderCollapse(false);
-    format.setBorderStyle(QTextFrameFormat::BorderStyle_Solid);
-    format.setBorder(1);
     format.setCellPadding(4);
     format.setCellSpacing(0);
 
@@ -2188,9 +3126,10 @@ void MessageEditor::applyTable(int rows, int columns)
     // colour works in both and cannot rot on a theme change. Opaque rather than alpha-softened:
     // measured contrast 3.95:1 on light and 5.32:1 on dark, where alpha 170 gave only 2.32:1 and
     // 2.82:1 -- and an invisible table has been reported twice already.
-    format.setBorderBrush(QColor(0x80,0x80,0x80));
+    applyTableVisibilityFormat(format);
 
     auto cursor=pimpl->editor->textCursor();
+
     cursor.insertTable(rows,columns,format);
 
     // insertTable() moves ITS OWN cursor into the first cell (qtextcursor.cpp: d->setPosition(
@@ -2293,10 +3232,6 @@ void MessageEditor::applyTableAction(MessageEditorTableAction action)
 //--------------------------------------------------------------------------
 
 namespace {
-
-//! U+00A0 NO-BREAK SPACE -- what a plain paragraph's indent is actually made of. See
-//! MessageEditor::applyIndentStep() for why it is not an ordinary space.
-constexpr const char16_t NoBreakSpace=0x00a0;
 
 //! How deep Tab may nest a blockquote before it stops. Arbitrary, but holding Tab down should
 //! reach a stop rather than build "> > > > > > > >" forever.
@@ -2696,7 +3631,7 @@ void MessageEditor::applySourceIndentStep(int delta, bool markdownSource)
 
 //--------------------------------------------------------------------------
 
-void MessageEditor::normalizeBlockquoteIndent()
+void MessageEditor::normalizeBlockquoteIndent(bool suppressUndo)
 {
     auto* document=pimpl->editor->document();
 
@@ -2712,7 +3647,10 @@ void MessageEditor::normalizeBlockquoteIndent()
     // Only blocks that ARE quoted are touched. A blanket pass would zero left margins Qt may have
     // set on other constructs for reasons of its own.
     const auto undoEnabled=document->isUndoRedoEnabled();
-    document->setUndoRedoEnabled(false);
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(false);
+    }
 
     QTextCursor cursor(document);
     cursor.beginEditBlock();
@@ -2731,11 +3669,20 @@ void MessageEditor::normalizeBlockquoteIndent()
     }
     cursor.endEditBlock();
 
-    // Undo is suppressed rather than grouped: this runs immediately after a whole-document load,
-    // where the undo stack is meaningless anyway, and QTextDocumentPrivate::changeObjectFormat()
-    // appends an undo item per format write -- a document full of quotes would otherwise bury the
-    // user's first real edit under a pile of invisible ones.
-    document->setUndoRedoEnabled(undoEnabled);
+    // Undo is suppressed rather than grouped for the whole-document LOAD callers, where the undo
+    // stack is meaningless anyway, and where QTextDocumentPrivate::changeObjectFormat() appending
+    // an undo item per format write would otherwise bury the user's first real edit under a pile
+    // of invisible ones.
+    //
+    // It must NOT be suppressed on the paste path, and that is not a preference: measured,
+    // QTextDocument::setUndoRedoEnabled(false) CLEARS the undo stack outright (one step before,
+    // zero after), so doing it on every paste threw away everything the user had typed before --
+    // Ctrl+V then Ctrl+Z did nothing at all. With suppressUndo false the re-indent just joins the
+    // caller's own edit block instead, and one Ctrl+Z still takes the whole paste back out.
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(undoEnabled);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -2815,6 +3762,262 @@ void MessageEditor::applyClearFormatting()
         pos=block.position()+block.length();
     }
     editCursor.endEditBlock();
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::removeLink()
+{
+    auto cursor=pimpl->editor->textCursor();
+    if (!cursor.hasSelection())
+    {
+        if (!selectLinkRunAtCursor(cursor))
+        {
+            return;
+        }
+    }
+    else if (!cursor.charFormat().isAnchor())
+    {
+        // A selection exists but the caret's own end of it isn't inside a link -- nothing
+        // reliable to remove; same kind of guard applyTableAction() uses outside a table.
+        return;
+    }
+
+    const auto start=cursor.selectionStart();
+    const auto end=cursor.selectionEnd();
+    auto* document=pimpl->editor->document();
+
+    // Collected first, mutated after -- same reason as stripBakedRichTextFormatting(): writing a
+    // fragment's format back can merge it with a neighbour, which would invalidate the block's
+    // fragment iterator if that happened mid-walk.
+    struct Run
+    {
+        int start;
+        int end;
+        QTextCharFormat format;
+    };
+    std::vector<Run> runs;
+
+    for (auto block=document->findBlock(start); block.isValid() && block.position()<end;
+         block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+
+            const auto fragmentStart=fragment.position();
+            const auto fragmentEnd=fragmentStart+fragment.length();
+            if (fragmentEnd<=start || fragmentStart>=end || !fragment.charFormat().isAnchor())
+            {
+                continue;
+            }
+
+            // clear-then-setCharFormat, not merge{anchor=false}: measured that a merge alone --
+            // with or without also merging an empty href -- leaves "[LINK]()" (empty-URL
+            // markdown, still a link). Per fragment, not one blanket format over the whole
+            // range, so mixed bold/italic runs inside the link survive (measured: an anchor
+            // applied over an already-formatted selection splits into same-href fragments with
+            // different weight). Also clears the colour Qt's own importer bakes onto an anchor
+            // (setMarkdown()'s blue), so removed link text does not stay coloured.
+            auto format=fragment.charFormat();
+            format.clearProperty(QTextFormat::IsAnchor);
+            format.clearProperty(QTextFormat::AnchorHref);
+            format.clearProperty(QTextFormat::AnchorName);
+            format.clearProperty(QTextFormat::ForegroundBrush);
+
+            runs.push_back(Run{fragmentStart,fragmentEnd,format});
+        }
+    }
+
+    if (runs.empty())
+    {
+        return;
+    }
+
+    QTextCursor editCursor(document);
+    editCursor.beginEditBlock();
+    for (const auto& run : runs)
+    {
+        QTextCursor fragmentCursor(document);
+        fragmentCursor.setPosition(run.start);
+        fragmentCursor.setPosition(run.end,QTextCursor::KeepAnchor);
+        fragmentCursor.setCharFormat(run.format);
+    }
+    editCursor.endEditBlock();
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::selectLinkRunAtCursor(QTextCursor& cursor) const
+{
+    const auto position=cursor.position();
+
+    // QTextCursor::charFormat() with no selection is documented to return the format of the
+    // character immediately PRECEDING position() -- matched below by requiring start<position,
+    // so the fragment this finds is exactly the one charFormat() itself just consulted.
+    if (!cursor.charFormat().isAnchor())
+    {
+        return false;
+    }
+    const auto href=cursor.charFormat().anchorHref();
+
+    struct FragmentSpan
+    {
+        int start;
+        int end;
+        bool isLink;
+    };
+    std::vector<FragmentSpan> spans;
+    int currentIndex=-1;
+
+    // Links do not cross block boundaries in this editor (nothing here ever inserts one that
+    // does), so the walk is block-local.
+    const auto block=cursor.block();
+    for (auto it=block.begin(); !it.atEnd(); ++it)
+    {
+        const auto fragment=it.fragment();
+        if (!fragment.isValid())
+        {
+            continue;
+        }
+
+        const auto start=fragment.position();
+        const auto end=start+fragment.length();
+        const auto format=fragment.charFormat();
+        spans.push_back(FragmentSpan{start,end,format.isAnchor() && format.anchorHref()==href});
+
+        if (currentIndex==-1 && position>start && position<=end)
+        {
+            currentIndex=static_cast<int>(spans.size())-1;
+        }
+    }
+
+    if (currentIndex==-1 || !spans[static_cast<std::size_t>(currentIndex)].isLink)
+    {
+        return false;
+    }
+
+    // Extend outward while the immediate neighbour is both a link AND the SAME href, and
+    // contiguous -- a different href never merges (measured), so this cannot walk past one link
+    // into an adjacent one.
+    auto first=static_cast<std::size_t>(currentIndex);
+    while (first>0 && spans[first-1].isLink && spans[first-1].end==spans[first].start)
+    {
+        --first;
+    }
+
+    auto last=static_cast<std::size_t>(currentIndex);
+    while (last+1<spans.size() && spans[last+1].isLink && spans[last+1].start==spans[last].end)
+    {
+        ++last;
+    }
+
+    cursor.setPosition(spans[first].start);
+    cursor.setPosition(spans[last].end,QTextCursor::KeepAnchor);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onLinkButtonRequested()
+{
+    const auto state=currentFormatState();
+    if (state.codeBlock)
+    {
+        // Refused: an anchor's href is not backslash-escaped by Qt's markdown writer the way
+        // fence content is, so restoreCodeFences() cannot safely unescape it (measured) -- same
+        // gate insertLink() itself applies, kept here too so the dialog is never opened for a
+        // link that could not be inserted anyway.
+        return;
+    }
+
+    auto cursor=pimpl->editor->textCursor();
+
+    QString existingUrl;
+    if (state.insideLink && selectLinkRunAtCursor(cursor))
+    {
+        // Select the whole run now, before the dialog opens: the dialog is modal, so this
+        // selection is still exactly what insertLink() replaces once the user accepts.
+        pimpl->editor->setTextCursor(cursor);
+        existingUrl=cursor.charFormat().anchorHref();
+    }
+
+    const auto defaultTitle=cursor.hasSelection() ? plainTextKeepingIndent(cursor) : QString{};
+
+    emit linkRequested(defaultTitle,existingUrl);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertLink(const QString& url, const QString& title)
+{
+    if (url.isEmpty())
+    {
+        return;
+    }
+    const auto displayTitle=title.isEmpty() ? url : title;
+
+    if (messageEditingMode()==MessageEditingMode::Markdown)
+    {
+        // Markdown mode's document IS source text -- a literal insert, no escaping, same
+        // philosophy as applySourceIndentStep()'s own "Markdown mode edits source" rule.
+        auto cursor=pimpl->editor->textCursor();
+        cursor.insertText(QLatin1Char('[')+displayTitle+QStringLiteral("](")+url+QLatin1Char(')'));
+        pimpl->editor->setTextCursor(cursor);
+        finishFormatAction();
+        return;
+    }
+
+    if (messageEditingMode()!=MessageEditingMode::Wysiwyg)
+    {
+        // Plaintext: Link is disabled in the toolbar for this mode
+        // (updateMessageEditingMode()) -- reached only if a host calls insertLink() directly,
+        // against the documented contract.
+        return;
+    }
+
+    if (currentFormatState().codeBlock)
+    {
+        return;
+    }
+
+    auto cursor=pimpl->editor->textCursor();
+    auto format=cursor.charFormat();
+    format.setAnchor(true);
+    format.setAnchorHref(url);
+    // Deliberately no colour set here -- measured that setMarkdown()'s own importer bakes
+    // foreground=#0000ff onto an anchor, and this editor must not do the same: link colour is
+    // the viewer's job (ChatMessageTextBrowser::applyLinkStyle()), same rule already applied to
+    // blockquote/code-block colour elsewhere in this file.
+    //
+    // insertText() replaces the selection if cursor has one -- which is also how "edit an
+    // existing link" works, since onLinkButtonRequested() already extended the selection to the
+    // whole previous run before emitting linkRequested().
+    cursor.insertText(displayTitle,format);
+
+    // The caret is left holding the anchor format, so WITHOUT this the next thing typed is
+    // swallowed into the link: measured, "Example" + typing " plain" exported as
+    // "[Example plain](url)" rather than "[Example](url) plain". Clearing the anchor properties
+    // on the collapsed cursor (and on the widget, which tracks its own insertion format) fixes
+    // it, and measurably does NOT disturb the text just inserted.
+    QTextCharFormat continuation=cursor.charFormat();
+    continuation.clearProperty(QTextFormat::IsAnchor);
+    continuation.clearProperty(QTextFormat::AnchorHref);
+    continuation.clearProperty(QTextFormat::AnchorName);
+    cursor.setCharFormat(continuation);
+
+    // Same fix applyTable()'s own comment documents: insertText() on a COPY of the widget's
+    // cursor does not by itself move the widget's own caret.
+    pimpl->editor->setTextCursor(cursor);
+    pimpl->editor->setCurrentCharFormat(continuation);
 
     finishFormatAction();
 }
@@ -2932,6 +4135,19 @@ void MessageEditor::showContextMenu(const QPoint& pos)
 
         formatting.push_back(MenuItem::separator());
 
+        formatting.push_back(MenuItem(static_cast<int>(MessageEditorMenuAction::Link),tr("Insert link"),menuIcon(QStringLiteral("link"),pimpl->editor)));
+        formatting.back().isEnabled=canFormat && !state.codeBlock;
+        // "Remove link" appears only while the caret is inside an existing link -- unlike the
+        // rest of this submenu, omitted rather than greyed: a context menu is one-shot and has
+        // no stable-width concern the way the persistent toolbar does (see that comment on
+        // MessageEditorToolbar::setFormattingEnabled()).
+        if (state.insideLink)
+        {
+            formatting.push_back(MenuItem(static_cast<int>(MessageEditorMenuAction::RemoveLink),tr("Remove link"),menuIcon(QStringLiteral("removeLink"),pimpl->editor)));
+        }
+
+        formatting.push_back(MenuItem::separator());
+
         formatting.push_back(MenuItem(static_cast<int>(MessageEditorMenuAction::ClearFormatting),tr("Clear formatting"),menuIcon(QStringLiteral("clearFormatting"),pimpl->editor)));
         formatting.back().isEnabled=canFormat;
 
@@ -3031,6 +4247,18 @@ void MessageEditor::onContextMenuItemTriggered(int id)
         case (MessageEditorMenuAction::HorizontalRule):
         {
             applyHorizontalRule();
+            break;
+        }
+
+        case (MessageEditorMenuAction::Link):
+        {
+            onLinkButtonRequested();
+            break;
+        }
+
+        case (MessageEditorMenuAction::RemoveLink):
+        {
+            removeLink();
             break;
         }
 

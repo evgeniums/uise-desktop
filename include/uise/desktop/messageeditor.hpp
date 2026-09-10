@@ -104,6 +104,30 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
      */
     Q_PROPERTY(QColor codeBlockColor READ codeBlockColor WRITE setCodeBlockColor)
 
+    /**
+     * QSS: qproperty-linkColor: #1A6FD4; -- colour of a hyperlink's text, deliberately named and
+     * valued to match ChatMessageTextBrowser's own linkColor/linkUnderline properties, so a link
+     * reads the same in the composer and in the chat bubble it becomes (the same rule
+     * blockquoteColor follows against messagetext.css).
+     *
+     * This is not cosmetic polish: an anchor renders as ORDINARY TEXT without it. Measured, a
+     * document with an anchor and one without paint pixel-for-pixel identically -- so an inserted
+     * link is invisible AS a link until something paints it. Qt's own markdown importer hides
+     * that by baking foreground=#0000ff onto every anchor it reads, which is why a freshly
+     * inserted link looked plain while the same link looked blue after a round trip through
+     * Markdown mode. That baked colour is frozen at the theme it was imported in and leaks into
+     * toHtml(), so it is stripped on the way in rather than relied on.
+     *
+     * Applied through the highlighter like blockquoteColor: no document write, no undo step, no
+     * export leakage, and a theme switch costs one rehighlight(). An INVALID colour (the default)
+     * leaves link text in the ordinary text colour.
+     */
+    Q_PROPERTY(QColor linkColor READ linkColor WRITE setLinkColor)
+
+    //! QSS: qproperty-linkUnderline: false; -- see linkColor. Set either way rather than only
+    //! when true, so false also suppresses an underline an imported document carried.
+    Q_PROPERTY(bool linkUnderline READ linkUnderline WRITE setLinkUnderline)
+
     public:
 
         //! Ceiling used by effectiveMaxHeight() when no QSS "max-height" is in effect, and the
@@ -233,6 +257,20 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
             return m_codeBlockColor;
         }
 
+        //! See the linkColor property. Applied by the same highlighter, on the same terms.
+        void setLinkColor(const QColor& color);
+        QColor linkColor() const noexcept
+        {
+            return m_linkColor;
+        }
+
+        //! See the linkUnderline property.
+        void setLinkUnderline(bool enable);
+        bool linkUnderline() const noexcept
+        {
+            return m_linkUnderline;
+        }
+
         //! The ceiling actually in force: an already-set QSS/C++ QWidget::maximumHeight() if one
         //! is in effect, otherwise maxHeight() raised to maxHeightPercent() of the reference
         //! widget's height when that is larger.
@@ -313,6 +351,19 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
          */
         void indentStepRequested(int delta);
 
+        /**
+         * @brief A rich-text/table paste was normalized (Stage 5b).
+         *
+         * Emitted right after insertFromMimeData() has stripped baked colours/fonts, fixed an
+         * otherwise-invisible pasted table's border, and converted any pasted property-based
+         * code block back to this editor's literal-fence form -- all of which need no state
+         * beyond the document itself. What DOES need MessageEditor's own state is re-indenting a
+         * pasted blockquote to blockquoteIndent() (Qt's HTML importer bakes its own 40px), so
+         * that one step is left to MessageEditor's handler for this signal rather than done here
+         * -- same division of labour as indentStepRequested() above.
+         */
+        void pastedRichText();
+
     protected:
 
         void keyPressEvent(QKeyEvent* event) override;
@@ -336,6 +387,22 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
          */
         void insertFromMimeData(const QMimeData* source) override;
 
+    private:
+
+        /**
+         * @brief Whether a PASTED payload should go to the attachment flow rather than into the
+         *  document -- a finer question than canInsertFromMimeData()'s.
+         *
+         * Narrower than mimeDataHasAttachments() on purpose: a payload carrying image bits AND
+         * renderable text is a document selection with a picture preview (a Numbers or Pages
+         * table, measured, advertises a zero-byte image rendition alongside its real HTML), not a
+         * picture. A file payload, or image bits with no text, still goes to attachments.
+         *
+         * Used only on the paste path; drops keep routing through the broader
+         * canInsertFromMimeData() test so they still propagate to a FileDropOverlay.
+         */
+        bool isAttachmentPaste(const QMimeData* source) const;
+
     private slots:
 
         void updateSize();
@@ -355,6 +422,8 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
 
         QColor m_blockquoteColor;
         QColor m_codeBlockColor;
+        QColor m_linkColor;
+        bool m_linkUnderline=false;
 
         //! Owned by this widget's document (QSyntaxHighlighter parents itself to it), so it is
         //! never deleted here.
@@ -475,6 +544,27 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void setMaxHeightPercent(int percent);
         int maxHeightPercent() const;
         void setMaxHeightReferenceWidget(QWidget* widget);
+
+        /**
+         * @brief Apply the link a host's AbstractHyperlinkDialog-family dialog collected, in
+         *  response to AbstractMessageEditor::linkRequested().
+         *
+         * MessageEditingMode::Markdown inserts the LITERAL text "[title](url)" -- that mode's
+         * document is markdown source, so this is a plain text insert, no escaping (same
+         * philosophy as applySourceIndentStep()). MessageEditingMode::Wysiwyg builds a real
+         * QTextCharFormat anchor instead (measured: round-trips through toMarkdown()/
+         * setMarkdown() as "[title](url)" bit-identical), inheriting whatever bold/italic is
+         * already at the caret but never baking a colour -- link colour is the viewer's job
+         * (ChatMessageTextBrowser::applyLinkStyle()), not this editor's.
+         *
+         * If linkRequested()'s own selection is still in force (either the user's own selection,
+         * or the whole existing link run the editor selected before emitting the signal for an
+         * "edit" case), that selection is REPLACED by url/title; otherwise the link is inserted
+         * at the caret. A call while the caret is inside a fenced code block is a no-op -- an
+         * anchor's href is not backslash-escaped by Qt's markdown writer the way fence content
+         * is, so restoreCodeFences() cannot safely unescape it (measured).
+         */
+        void insertLink(const QString& url, const QString& title);
 
     public slots:
 
@@ -609,11 +699,43 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          */
         void applySourceIndentStep(int delta, bool markdownSource);
 
-        //! Re-indent every quoted block to blockquoteIndent(), replacing the flat 40px per level
-        //! Qt's markdown and HTML importers bake in. Called after each of those imports, so a
-        //! quote applied here and a quote loaded from markdown render identically.
-        void normalizeBlockquoteIndent();
+        /**
+         * @brief Re-indent every quoted block to blockquoteIndent(), replacing the flat 40px per
+         *  level Qt's markdown and HTML importers bake in. Called after each of those imports, so
+         *  a quote applied here and a quote loaded from markdown render identically.
+         *
+         * @param suppressUndo Disable undo around the re-indent. Right for the whole-document
+         *  loads this was written for; WRONG for the paste path, since
+         *  QTextDocument::setUndoRedoEnabled(false) clears the undo stack outright (measured) --
+         *  see the note in the implementation.
+         */
+        void normalizeBlockquoteIndent(bool suppressUndo=true);
         void applyClearFormatting();
+
+        /**
+         * @brief Extend `cursor`'s selection to the full contiguous anchor run it is inside.
+         * @return false, cursor left untouched, if the position is not inside a link at all.
+         *
+         * "The whole link" is the widest run reachable from the caret's own fragment by walking
+         * to the previous/next fragment IN THE SAME BLOCK while it is also an anchor with the
+         * SAME href (measured: Qt merges adjacent same-href inserts into one fragment already,
+         * but a run built by two separate applyLink()-style char-format writes, or one with
+         * mixed bold/italic inside it, stays split across several fragments with identical
+         * hrefs) -- a different href never merges, so this cannot walk past one link into an
+         * adjacent one. Links do not cross block boundaries in this editor, so the walk is
+         * block-local.
+         */
+        bool selectLinkRunAtCursor(QTextCursor& cursor) const;
+
+        //! Handles MessageEditorToolbar::linkRequested() and the context menu's Insert-link row.
+        //! See AbstractMessageEditor::linkRequested()'s own doc comment for the argument
+        //! contract this computes.
+        void onLinkButtonRequested();
+
+        //! Handles MessageEditorToolbar::removeLinkRequested() and the context menu's
+        //! Remove-link row. A pure document edit with no external input, unlike Link -- never
+        //! relayed outward.
+        void removeLink();
 
         std::unique_ptr<MessageEditor_p> pimpl;
 

@@ -7,6 +7,14 @@
 uise--MessageEditor uise--EnhancedTextEdit {
 qproperty-codeBlockColor: #D0D0D0;
 qproperty-blockquoteColor: #BBBBBB;
+/* Kept in step with dark/chat.qss's ChatMessageTextBrowser::linkColor/linkUnderline, so a link
+   reads the same in the composer and in the bubble it becomes. Without this an inserted link is
+   invisible AS a link -- Qt's layout draws an anchor exactly like ordinary text, and the blue an
+   imported link used to show was baked into the document by Qt's own markdown importer, frozen at
+   the theme it arrived in (and unreadable on this background). See
+   EnhancedTextEdit::setLinkColor(). */
+qproperty-linkColor: #7FB3F0;
+qproperty-linkUnderline: false;
 }
 
 uise--MessageEditorToolbar {

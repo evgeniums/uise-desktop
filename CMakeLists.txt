@@ -262,6 +262,9 @@ SET (HEADERS
     include/uise/desktop/abstractforwarddialog.hpp
     include/uise/desktop/forwarddialog.hpp
 
+    include/uise/desktop/abstracthyperlinkdialog.hpp
+    include/uise/desktop/hyperlinkdialog.hpp
+
     include/uise/desktop/abstracteditbar.hpp
     include/uise/desktop/editbar.hpp
 
@@ -460,6 +463,8 @@ SET (SOURCES
     src/forwardbar.cpp
     src/abstractforwarddialog.cpp
     src/forwarddialog.cpp
+
+    src/hyperlinkdialog.cpp
 
     src/editbar.cpp
 

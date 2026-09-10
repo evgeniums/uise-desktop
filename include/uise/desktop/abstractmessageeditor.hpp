@@ -445,6 +445,24 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! widgets to the row they have just moved into.
         void stackedArrangementChanged(bool stacked);
 
+        /**
+         * @brief The toolbar's Link button (or the context menu's "Insert link" row) was
+         *  activated -- task-message-formatting-plan.md, Stage 5b.
+         *
+         * The editor has no dialog of its own (same reasoning as attachmentsPasted() handing an
+         * attachment off to the host rather than showing a file picker itself): a HOST connects
+         * this, opens its own AbstractHyperlinkDialog-family dialog pre-filled with the two
+         * arguments below, and calls insertLink() from the dialog's own acceptance signal.
+         *
+         * @param defaultTitle Text to pre-fill the dialog's title field with -- the caret's
+         *  current selection if there is one (plain text, indent-preserving), otherwise empty.
+         * @param existingUrl Empty for a fresh link ("Insert link"); the link's current href if
+         *  the caret was already inside one ("Edit link") -- the editor has already extended the
+         *  selection to the whole link run in that case, so a host's insertLink() call replaces
+         *  exactly that run.
+         */
+        void linkRequested(const QString& defaultTitle, const QString& existingUrl);
+
     protected:
 
         //! Called by the implementation when the content crosses the one-line boundary (or

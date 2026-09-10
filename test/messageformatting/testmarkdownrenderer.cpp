@@ -462,4 +462,88 @@ BOOST_AUTO_TEST_CASE(TestFenceDelimiterIsABlockBoundary)
     UISE_TEST_CHECK(inside.contains(QStringLiteral("line one\nline two")));
 }
 
+BOOST_AUTO_TEST_CASE(TestBlankLineMarkerParagraphKeepsItsOwnLine)
+{
+    // How a blank line reaches the bubble at all. qtextmarkdownwriter writes NOTHING for an empty
+    // block, so MessageEditor exports one as a paragraph holding a single U+200B ZERO WIDTH SPACE
+    // (fillEmptyBlocksForExport()) -- which only works if the renderer keeps it as a paragraph of
+    // its own rather than folding it away. Measured: it renders as a 15px gap, where an empty
+    // <p></p> renders as nothing and the blocks either side weld together.
+    const QString marker=QString(QChar(0x200b));
+    auto html=renderMd(QStringLiteral("Hello\n\n%1\n\nWorld").arg(marker));
+
+    UISE_TEST_CHECK(html.contains(QStringLiteral("Hello")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral("World")));
+    UISE_TEST_CHECK(html.contains(marker));
+
+    // ...and it really is a separate paragraph, not text appended to either neighbour.
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("Hello")+marker));
+    UISE_TEST_CHECK(!html.contains(marker+QStringLiteral("World")));
+}
+
+BOOST_AUTO_TEST_CASE(TestBlankLineMarkerSurvivesAPlainTextRoundTrip)
+{
+    // Why the marker is U+200B and not the indent's own U+00A0: toPlainText() replaces a no-break
+    // space with an ORDINARY space, and a line holding one of those is a blank line to CommonMark
+    // -- so the paragraph was dropped and two tables either side of it welded back together the
+    // moment this markdown passed through any QTextDocument-backed widget. A zero-width space is
+    // not whitespace by any of those measures.
+    const QString marker=QString(QChar(0x200b));
+    const QString source=QStringLiteral("Hello\n\n%1\n\nWorld").arg(marker);
+
+    QString readBack;
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            QTextDocument document;
+            document.setPlainText(source);
+            readBack=document.toPlainText();
+        }
+    );
+
+    UISE_TEST_CHECK(readBack.contains(marker));
+    UISE_TEST_CHECK(renderMd(readBack).contains(marker));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmptyParagraphIsNotRendered)
+{
+    // A QTextDocument built from markdown always carries an empty block before and after every
+    // table -- structure, not content. Rendering those as <p></p> cost real vertical space through
+    // messagetext.css's paragraph margins (measured: two adjacent tables shrank from 99px to 84px
+    // once they were dropped), which made every gap look bigger than what was authored.
+    auto html=renderMd(QStringLiteral("|1|2|\n|-|-|\n|3|4|\n\n|a|b|\n|-|-|\n|c|d|"));
+
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<p></p>")));
+    // ...and the two tables are still two tables, not one welded slab.
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<table")),2);
+
+    // A DELIBERATE blank line is not structural and must survive: it carries the marker, so the
+    // paragraph is not empty by this test.
+    const QString blankMarker=QString(QChar(0x200b));
+    auto withGap=renderMd(QStringLiteral("|1|2|\n|-|-|\n|3|4|\n\n%1\n\n|a|b|\n|-|-|\n|c|d|")
+                              .arg(blankMarker));
+    UISE_TEST_CHECK(withGap.contains(blankMarker));
+    UISE_TEST_CHECK_EQUAL(withGap.count(QStringLiteral("<table")),2);
+}
+
+BOOST_AUTO_TEST_CASE(TestTableAfterParagraphGetsInlineTopMargin)
+{
+    // Measured on white, counting empty rows between one element's last ink and the next's
+    // first: two tables sit 9 rows apart unstyled, a paragraph's 6px margin-bottom left text 6
+    // rows above a table, and Qt's CSS subset has no sibling selector to close that one boundary
+    // -- so writeTable() closes it inline, on the table, and only there. 3px measured as exactly
+    // the difference; a stylesheet margin doubled up between two tables instead (8px -> 25 rows).
+    auto afterText=renderMd(QStringLiteral("cc\n\n|1|2|\n|-|-|\n|3|4|"));
+    UISE_TEST_CHECK(afterText.contains(QStringLiteral("</p><table style=\"margin-top:3px\">")));
+
+    // Two adjacent tables already sit at the wanted distance: neither gets the margin.
+    auto adjacent=renderMd(QStringLiteral("|1|2|\n|-|-|\n|3|4|\n\n|5|6|\n|-|-|\n|7|8|"));
+    UISE_TEST_CHECK(!adjacent.contains(QStringLiteral("style=\"margin-top")));
+    UISE_TEST_CHECK_EQUAL(adjacent.count(QStringLiteral("<table")),2);
+
+    // A table at the very start of the message has nothing above it to space from.
+    auto leading=renderMd(QStringLiteral("|1|2|\n|-|-|\n|3|4|"));
+    UISE_TEST_CHECK(!leading.contains(QStringLiteral("style=\"margin-top")));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -578,6 +578,28 @@ class HtmlWriter
                 tag=QStringLiteral("p");
             }
 
+            // An ordinary paragraph with nothing in it is emitted as NOTHING. It is not content:
+            // a QTextDocument built by setMarkdown() always carries an empty block before and
+            // after every table (measured -- "table / table" comes back as
+            // "<p></p><table>..</table><p></p><table>..</table><p></p>"), and those blocks exist
+            // only because Qt's structure demands them. Rendering them cost real vertical space
+            // through messagetext.css's own paragraph margins -- measured, two adjacent tables
+            // shrank from 99px to 84px once they were dropped -- which made every gap look larger
+            // than what was actually authored.
+            //
+            // A DELIBERATE blank line is not affected: MessageEditor exports one as a paragraph
+            // holding a zero-width space (see fillEmptyBlocksForExport()), which has a fragment
+            // and so is not empty by this test. That is the whole point of the marker -- it is
+            // what tells an authored blank line apart from structural padding, here as well as in
+            // markdown.
+            //
+            // Lists and headings are excluded: an empty list item still has to render its bullet,
+            // and an empty heading still occupies its own line.
+            if (tag==QStringLiteral("p") && block.begin()==block.end())
+            {
+                return;
+            }
+
             m_html+=QLatin1Char('<')+tag+QLatin1Char('>');
 
             auto marker=fmt.marker();
@@ -800,7 +822,34 @@ class HtmlWriter
 
         void writeTable(QTextTable* table)
         {
-            m_html+=QStringLiteral("<table>");
+            // A table directly after a PARAGRAPH gets 3px of top margin, inline. Measured on
+            // white, counting the empty rows between one element's last ink and the next's
+            // first: two adjacent tables sit 9 rows apart with no styling at all -- the table
+            // frame's own spacing -- and 9 is the distance wanted everywhere. A paragraph's
+            // margin-bottom is 6px, so text sat 6 rows above a table and read as flush. 3px is
+            // exactly the difference, and it scales one row per pixel (2px measured 8, 4px
+            // measured 10).
+            //
+            // Inline, and on the TABLE, because nothing else can express it. Qt's CSS subset has
+            // no sibling selector; an inline margin-bottom on the preceding <p> is ignored
+            // (measured: 7 rows with or without it); and a stylesheet margin on `table` lands on
+            // every table edge, so it doubles up between two tables (8px measured 25 rows) and
+            // cannot be taken back on one side without a negative margin -- which Qt honours,
+            // but which also pulls the paragraph AFTER a table in from 10 rows to 7 (measured).
+            //
+            // "</p>" here is always a real paragraph: an empty structural block emits nothing
+            // (writeBlock()), and MessageEditor never generates a blank-line marker next to a
+            // table (fillEmptyBlocksForExport()). Headings and lists carry margins of their own.
+            //
+            // Keep in step with `p { margin-bottom }` in messagetext.css: this is 9 minus that.
+            if (m_html.endsWith(QStringLiteral("</p>")))
+            {
+                m_html+=QStringLiteral("<table style=\"margin-top:3px\">");
+            }
+            else
+            {
+                m_html+=QStringLiteral("<table>");
+            }
             int rows=table->rows();
             int cols=table->columns();
             for (int r=0;r<rows;++r)
@@ -941,6 +990,15 @@ QString markdownToPlainText(const QString& markdown, int maxSourceChars)
     QTextDocument doc;
     doc.setMarkdown(src,QTextDocument::MarkdownDialectGitHub);
     return doc.toPlainText();
+}
+
+//--------------------------------------------------------------------------
+
+QString markdownWithChatLineBreaks(const QString& markdown)
+{
+    // The same call markdownToHtml() makes on the way in, exposed for MessageEditor's own import
+    // so the two cannot drift -- see the declaration for why the editor needs it.
+    return preserveChatLineBreaks(markdown);
 }
 
 //--------------------------------------------------------------------------
