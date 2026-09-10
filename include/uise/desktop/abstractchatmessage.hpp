@@ -859,6 +859,48 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bottomY;
         }
 
+        //! Ask this bubble to be at least `height` px tall overall, regardless of how little its
+        //! own content needs. The host row (ChatMessage::updateAvatarForced()) uses this to keep
+        //! a forced-visible avatar column's tail in sync with the bubble's own bottom edge: the
+        //! avatar column (e.g. 32px image + a few px bottom offset) can be taller than a single
+        //! one-line bubble, and ChatMessageAvatar paints the tail at the avatar column's OWN
+        //! bottom edge -- so without this, a short bubble leaves the tail hanging below it.
+        //!
+        //! The shortfall (if any) is reserved as blank space at the TOP of the bubble -- inside
+        //! its own rounded/coloured box, ahead of header/reply/body/comment, via
+        //! applyAvatarSyncPad() -- rather than by repositioning the whole bubble lower within a
+        //! taller row. Padding the bubble itself keeps the vertical rhythm between this message
+        //! and the PREVIOUS one in the same batch unchanged: the extra room reads as part of
+        //! THIS bubble growing slightly, not as a bigger gap in front of it. 0 (the default)
+        //! requests no minimum.
+        //!
+        //! Safe to call before this bubble has ever been negotiated (setContent() not called
+        //! yet, or before the first updateBubbleWidth() pass) -- the request is simply recorded
+        //! and takes effect starting with the next pass; renegotiateBubbleWidth() only re-runs
+        //! one if a pass has already happened.
+        void setMinimumBubbleHeight(int height)
+        {
+            if (m_minimumBubbleHeight==height)
+            {
+                return;
+            }
+            m_minimumBubbleHeight=height;
+            renegotiateBubbleWidth();
+        }
+
+        int minimumBubbleHeight() const noexcept
+        {
+            return m_minimumBubbleHeight;
+        }
+
+        //! Extra blank space setMaximumBubbleWidth() last reserved at the TOP of the bubble to
+        //! satisfy setMinimumBubbleHeight() -- see applyAvatarSyncPad()'s own doc comment. 0
+        //! when minimumBubbleHeight() is already met by the bubble's own natural content.
+        int avatarSyncPad() const noexcept
+        {
+            return m_avatarSyncPad;
+        }
+
         /**
          * @brief Set whether this bubble is currently selected (selection-mode checkbox).
          * @param enable New state.
@@ -964,6 +1006,21 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! or reparent (setParent()) anything -- both are expensive and this can run once per
         //! message on every chat load; see [[todo-chat-message-paint-and-layout-cost]].
         virtual void updateBottomPlacement() {}
+
+        //! Reserve exactly `pad` px of blank space at the TOP of the concrete layout, ahead of
+        //! header/reply/body/comment -- see setMinimumBubbleHeight()'s own doc comment for why.
+        //! A no-op default for a content type with no such layout to touch. Called from
+        //! setMaximumBubbleWidth(), which keeps avatarSyncPad() in sync with
+        //! minimumBubbleHeight() every negotiation pass -- growing/shrinking the reserved space
+        //! shifts every section below it, and the manually-placed bottom() row with them (both
+        //! read the SAME layout's own sizeHint(), via sectionsBottom/lineBottom), so the whole
+        //! visible stack moves down/up together while the bubble's own bottom edge (and hence
+        //! the tail beside it) stays exactly where minimumBubbleHeight() puts it. Must not
+        //! repolish or reparent anything -- same constraint as updateBottomPlacement() above,
+        //! for the same reason (can run once per message on every chat load). An override that
+        //! DOES reserve real layout space must also invalidate that layout before returning --
+        //! the caller reads this content's own sizeHint() (which reflects it) immediately after.
+        virtual void applyAvatarSyncPad(int /*pad*/) {}
 
         //! Record the current selected/sent state -- see setSelected()'s doc comment for why an
         //! override must call these. isContentSelected()/isContentSent() below read it back.
@@ -1128,6 +1185,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         int m_bottomExtraHeight=0;
         //! See bottomY().
         int m_bottomY=0;
+
+        //! See setMinimumBubbleHeight().
+        int m_minimumBubbleHeight=0;
+        //! See avatarSyncPad(). Tracked here (not just as the concrete spacer's own size) so
+        //! setMaximumBubbleWidth() can recover this bubble's true NATURAL height (i.e. with the
+        //! pad's own contribution subtracted back out) from AbstractChatMessageChild::sizeHint(),
+        //! which already includes whatever pad is currently applied.
+        int m_avatarSyncPad=0;
 
         void setMaximumBubbleWidth(int width);
 };

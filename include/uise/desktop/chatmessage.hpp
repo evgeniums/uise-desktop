@@ -33,6 +33,7 @@ class QBoxLayout;
 class QPainterPath;
 class QGraphicsOpacityEffect;
 class QResizeEvent;
+class QSpacerItem;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -182,6 +183,10 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         //! ChatMessageContentWrapper::resizeEvent()'s own move-only re-application.
         void resizeEvent(QResizeEvent* event) override;
 
+        //! Resizes m_avatarSyncSpacer (index 0 of m_layout, ahead of header/reply/body/comment)
+        //! to `pad` px -- see AbstractChatMessageContent::applyAvatarSyncPad()'s own doc comment.
+        void applyAvatarSyncPad(int pad) override;
+
     private slots:
 
         void updateFirstInBatch();
@@ -197,6 +202,14 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         //! the layout on a fresh build, before any negotiation pass has had a chance to decide
         //! isBottomInline().
         bool m_bottomInLayout=true;
+
+        //! Index-0 item of m_layout, reserving avatarSyncPad() px of blank space ahead of
+        //! header/reply/body/comment -- see applyAvatarSyncPad(). Recreated by updateWidgets()
+        //! (which clears m_layout entirely, along with every other item) at whatever pad
+        //! avatarSyncPad() currently reports, so a rebuild triggered by setReply()/setComment()
+        //! does not silently lose an already-settled pad; resized in place by
+        //! applyAvatarSyncPad() the rest of the time.
+        QSpacerItem* m_avatarSyncSpacer=nullptr;
 };
 
 class UISE_DESKTOP_EXPORT ChatMessageSelector : public AbstractChatMessageSelector

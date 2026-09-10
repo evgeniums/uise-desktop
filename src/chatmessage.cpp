@@ -39,6 +39,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QRectF>
 #include <QStyleOption>
 #include <QStyle>
+#include <QSpacerItem>
+#include <QBoxLayout>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
@@ -397,6 +399,24 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
     // activating the layout or moving anything yet.
     refreshSectionHints();
 
+    // A host row (ChatMessage::updateAvatarForced()) can ask this bubble to be at least as tall
+    // as an adjacent avatar column via setMinimumBubbleHeight() -- see that method's own doc
+    // comment. AbstractChatMessageChild::sizeHint().height() already includes whatever pad is
+    // CURRENTLY applied (it is real space inside m_layout, not a number added on afterwards), so
+    // subtracting the old m_avatarSyncPad back out recovers this bubble's true natural height
+    // before deciding the new one. Done here, BEFORE sectionsBottom/lineBottom are read below,
+    // so the whole rest of this method -- unaware that a pad even exists -- sees a layout whose
+    // own sizeHint() already reflects it, exactly like any other change to a section's height.
+    auto naturalHeight=AbstractChatMessageChild::sizeHint().height()-m_avatarSyncPad;
+    auto newAvatarSyncPad=std::max(0,m_minimumBubbleHeight-naturalHeight);
+    if (newAvatarSyncPad!=m_avatarSyncPad)
+    {
+        m_avatarSyncPad=newAvatarSyncPad;
+        // applyAvatarSyncPad() (overridden by the concrete layout owner) is responsible for
+        // invalidating its own layout so the sizeHint() read below already reflects the new pad.
+        applyAvatarSyncPad(m_avatarSyncPad);
+    }
+
     // The trailing section's height is FINAL now (its own updateMaximumBubbleWidth() just ran,
     // above -- for ChatMessageText that re-wraps the document at the width PINNED during
     // bubbleWidthHint(), reproducing an identical layout, so m_inlineLineRect is still
@@ -710,6 +730,15 @@ void ChatMessageContent::updateWidgets()
         delete item;
     }
 
+    // Always index 0, ahead of every section -- recreated on every rebuild (the clearing loop
+    // above just deleted the previous one, a QSpacerItem, along with everything else) at
+    // whatever pad avatarSyncPad() currently reports, so a rebuild triggered by setReply()/
+    // setComment() on an already-synced bubble does not silently drop back to zero pad until
+    // the next negotiation pass happens to touch it again. See applyAvatarSyncPad()'s own doc
+    // comment for what this space is for.
+    m_avatarSyncSpacer=new QSpacerItem(0,avatarSyncPad(),QSizePolicy::Minimum,QSizePolicy::Fixed);
+    m_layout->addSpacerItem(m_avatarSyncSpacer);
+
     // show() clears WA_WState_Hidden synchronously, so the very next sizeHint() counts this
     // section -- addWidget() alone leaves it hidden until a queued _q_showIfNotHidden when this
     // frame is already visible (e.g. setReply()/setComment() re-running this on a bubble already
@@ -746,6 +775,24 @@ void ChatMessageContent::updateWidgets()
     }
     m_layout->addStretch(1);
     Style::updateWidgetStyle(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::applyAvatarSyncPad(int pad)
+{
+    if (m_avatarSyncSpacer!=nullptr)
+    {
+        m_avatarSyncSpacer->changeSize(0,pad,QSizePolicy::Minimum,QSizePolicy::Fixed);
+    }
+    if (m_layout!=nullptr)
+    {
+        // changeSize() alone does not tell m_layout its own cached sizeHint is now stale --
+        // AbstractChatMessageContent::setMaximumBubbleWidth() (the only caller) reads
+        // AbstractChatMessageChild::sizeHint() (i.e. m_layout's own) right after this returns,
+        // so it must already reflect the new pad.
+        m_layout->invalidate();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1386,6 +1433,20 @@ void ChatMessage::updateAvatarForced()
     pimpl->avatarFrame->setAvatarSize(avatarSize);
     pimpl->avatarFrame->setFixedWidth(columnWidth);
     pimpl->avatarFramePlaceholder->setFixedWidth(columnWidth);
+
+    // ChatMessageAvatar paints the tail at the avatar COLUMN's own bottom edge, and that column
+    // can be taller than a short bubble (e.g. a one-line message beside the 32px forced avatar
+    // image) -- ask the bubble to reserve the shortfall as blank space at its OWN top (see
+    // AbstractChatMessageContent::setMinimumBubbleHeight()'s own doc comment) rather than
+    // leaving the tail to hang below it. Only while the avatar image is actually forced visible
+    // (isAvatarVisible(), just settled above) -- avatarFrame's own sizeHint() collapses once
+    // its avatar child is hidden (not last-in-batch, or right-aligned), so there is nothing to
+    // sync against then and this bubble's height should be purely its own again.
+    if (content()!=nullptr)
+    {
+        auto minHeight=isAvatarVisible() ? pimpl->avatarFrame->sizeHint().height() : 0;
+        content()->setMinimumBubbleHeight(minHeight);
+    }
 }
 
 //--------------------------------------------------------------------------
