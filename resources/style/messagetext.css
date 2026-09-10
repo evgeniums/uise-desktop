@@ -41,10 +41,27 @@ code, pre {
     font-family: "Menlo","Consolas","monospace";
 }
 
+/* Three of the four declarations this rule used to carry did nothing, and one of them did active
+   harm. Measured, all of it:
+
+   - `padding` on a text block is parsed and then IGNORED by Qt. `padding: 6px 8px` and no padding
+     rule at all produce byte-identical geometry, and the background box hugs the text to within a
+     pixel either way. `margin` moves the box and the text TOGETHER, so it cannot substitute.
+     Real padding is painted instead — see ChatMessageTextBrowser::codeBlockPadding, which also
+     reserves the room as block margins.
+   - `border-radius` is likewise ignored on a block; the painted box carries it now
+     (codeBlockRadius).
+   - `white-space: pre-wrap` was the harmful one. It overrides the white-space mode Qt derives
+     QTextBlockFormat::nonBreakableLines() from, taking it from 1 to 0 — and that flag is the ONLY
+     marker an UNTAGGED code block has in the document (BlockCodeLanguage exists only for
+     ```<pre class="language-x">```). With the rule in place an untagged code block was
+     indistinguishable from any other styled paragraph, which is why the timestamp overlaid it and
+     why nothing could find it to paint or decorate. applyCodeBlockLayout() now reads the flag and
+     clears it, which restores exactly the wrapping this rule was here to provide.
+
+   The vertical margins are kept: they are real, and they are what separates a code block from the
+   paragraphs around it. */
 pre {
-    white-space: pre-wrap;
-    padding: 6px 8px;
-    border-radius: 4px;
     margin-top: 4px;
     margin-bottom: 4px;
 }

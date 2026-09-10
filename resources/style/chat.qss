@@ -34,6 +34,35 @@ border-radius: 6px;
 padding: 4px;
 }
 
+/* The floating language + Copy strip over a code block. Structural only -- colours are per theme,
+   like every other rule here. It sits INSIDE the painted code-block box (see
+   ChatMessageTextBrowser::codeBlockPadding), so it keeps its own padding small: the box's padding
+   is already providing the gap to the code. */
+uise--ChatMessageTextBrowser #codeBlockOverlay {
+border-radius: 4px;
+padding: 1px 2px;
+}
+
+uise--ChatMessageTextBrowser #codeBlockLanguage {
+padding: 0px 4px;
+font-size: 10px;
+}
+
+uise--ChatMessageTextBrowser #codeBlockCopyButton {
+border-radius: 4px;
+padding: 3px;
+}
+
+uise--ChatMessageTextBrowser #codeBlockCopyButton #icon,
+uise--ChatMessageTextBrowser #codeBlockCopyButton uise--RoundedImage {
+min-width: 13px;
+max-width: 13px;
+min-height: 13px;
+max-height: 13px;
+margin: 0px;
+padding: 0px;
+}
+
 /* The expanded viewer's Full screen / Copy table / Close row is styled as an ordinary dialog
    button row: 4px radius here matching abstractdialog.qss's own
    "#dialogButtonsFrame uise--PushButton QPushButton {border-radius: 4px; ...}". Padding and

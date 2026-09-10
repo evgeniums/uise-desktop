@@ -94,9 +94,146 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     // is a lot of standing visual weight in a chat log.
     Q_PROPERTY(bool tableExpandButtonVisibleOnHover READ isTableExpandButtonVisibleOnHover WRITE setTableExpandButtonVisibleOnHover)
 
+    /**
+     * QSS: qproperty-codeBlockPadding: 8; -- breathing room between a code block's text and the
+     * edge of its coloured background, in pixels.
+     *
+     * Painted rather than laid out, because Qt's rich text has no way to express it: `padding` on
+     * a block is parsed and then **ignored** (measured -- `pre { padding: 6px 8px }` and no
+     * padding rule at all produce byte-identical geometry), and `margin` moves the background box
+     * and the text together, so the background keeps hugging the text to within a pixel either
+     * way. The block therefore reserves the room as a margin and paintEvent() fills the rounded
+     * rect back out over it -- see applyCodeBlockLayout().
+     */
+    Q_PROPERTY(int codeBlockPadding READ codeBlockPadding WRITE setCodeBlockPadding)
+
+    /**
+     * QSS: qproperty-codeBlockOverlay: true; -- show a small floating strip over each code block
+     * carrying its language and a Copy button.
+     *
+     * The language half exists because Qt cannot render it: QTextDocument::toHtml() does not even
+     * emit QTextFormat::BlockCodeLanguage, the layout never reads it, and Qt's CSS subset has no
+     * `content:` property to inject it with. It has to be drawn as a widget or not at all.
+     */
+    Q_PROPERTY(bool codeBlockOverlay READ isCodeBlockOverlayEnabled WRITE setCodeBlockOverlayEnabled)
+
+    //! Reveal-on-hover for that strip, mirroring tableExpandButtonVisibleOnHover for the same
+    //! reason: standing chrome over every code block in a chat log is a lot of visual weight.
+    Q_PROPERTY(bool codeBlockOverlayVisibleOnHover READ isCodeBlockOverlayVisibleOnHover WRITE setCodeBlockOverlayVisibleOnHover)
+
+    //! QSS: qproperty-codeBlockRadius: 4; -- corner radius of that painted background. Also not
+    //! expressible in the document: Qt ignores `border-radius` on a text block.
+    Q_PROPERTY(int codeBlockRadius READ codeBlockRadius WRITE setCodeBlockRadius)
+
     public:
 
+        //! Pixels between a code block's text and the edge of its painted background -- see the
+        //! codeBlockPadding property for why this is painted rather than laid out.
+        constexpr static const int DefaultCodeBlockPadding=8;
+
+        //! Corner radius of that background, matching what the `pre` rule in messagetext.css used
+        //! to ask for with a `border-radius` Qt ignores.
+        constexpr static const int DefaultCodeBlockRadius=4;
+
         explicit ChatMessageTextBrowser(QWidget *parent = nullptr);
+
+        //! One fenced code block on the current document. Positions rather than QTextBlock
+        //! handles, matching TrackedTable: they survive the re-layouts that happen between
+        //! loading the content and painting it.
+        struct TrackedCodeBlock
+        {
+            int firstPosition=0;
+            int lastPosition=0;
+            QString language;       //!< empty for an untagged fence
+            QPointer<QWidget> overlay;
+        };
+
+        //! Every code block applyCodeBlockLayout() found, in document order.
+        const std::vector<TrackedCodeBlock>& codeBlocks() const noexcept
+        {
+            return m_codeBlocks;
+        }
+
+        //! Bounding rect of one tracked code block in VIEWPORT coordinates, already inflated by
+        //! codeBlockPadding() -- i.e. the rect paintEvent() fills, and the one an overlay should
+        //! position itself against. Invalid if the block is no longer in the document.
+        QRect codeBlockViewportRect(const TrackedCodeBlock& codeBlock) const;
+
+        //! The tracked code block under a viewport point, or nullptr.
+        const TrackedCodeBlock* codeBlockAt(const QPoint& viewportPos) const;
+
+        /**
+         * @brief Put one tracked code block's text on the clipboard, exactly as the overlay's Copy
+         *  button does.
+         *
+         * Always emits codeBlockCopied(); additionally shows a confirmation toast unless that was
+         * turned off. Same contract as ChatMessageTableViewer::copyTable(), deliberately -- a host
+         * should not have to learn two ways of being told that something was copied.
+         */
+        void copyCodeBlock(const TrackedCodeBlock& codeBlock);
+
+        /**
+         * @brief Show a "Copied" toast after copyCodeBlock(). On by default.
+         *
+         * Turn it off when the host wants to present the confirmation itself -- codeBlockCopied()
+         * is emitted either way, so a host can disable this and react to the signal instead.
+         */
+        void setCopyToastEnabled(bool enable) noexcept
+        {
+            m_copyToastEnabled=enable;
+        }
+
+        bool isCopyToastEnabled() const noexcept
+        {
+            return m_copyToastEnabled;
+        }
+
+        /**
+         * @brief Use a host-supplied Toast instead of this widget's own private one.
+         * @param toast Not owned; pass nullptr to go back to the built-in fallback.
+         *
+         * Same idiom, and the same reasoning, as ChatMessageTableViewer::setToast(): routing every
+         * confirmation through one shared toast keeps position and styling consistent instead of
+         * each widget popping its own. A chat log full of these widgets makes that matter more
+         * here than anywhere -- a host will almost certainly want to set one.
+         */
+        void setToast(Toast* toast) noexcept
+        {
+            m_toast=toast;
+        }
+
+        Toast* toast() const noexcept
+        {
+            return m_toast;
+        }
+
+        void setCodeBlockOverlayEnabled(bool enable);
+        bool isCodeBlockOverlayEnabled() const noexcept
+        {
+            return m_codeBlockOverlay;
+        }
+
+        void setCodeBlockOverlayVisibleOnHover(bool enable);
+        bool isCodeBlockOverlayVisibleOnHover() const noexcept
+        {
+            return m_codeBlockOverlayOnHover;
+        }
+
+        void setCodeBlockPadding(int padding);
+        int codeBlockPadding() const noexcept
+        {
+            return m_codeBlockPadding;
+        }
+
+        void setCodeBlockRadius(int radius) noexcept
+        {
+            m_codeBlockRadius=radius;
+            viewport()->update();
+        }
+        int codeBlockRadius() const noexcept
+        {
+            return m_codeBlockRadius;
+        }
 
         void setMessageTextWidget(AbstractChatMessageText* widget);
 
@@ -262,12 +399,30 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
 
     signals:
 
+        /**
+         * @brief Emitted whenever a code block reaches the clipboard, regardless of whether a
+         *  toast was shown -- the hook for a host that presents its own confirmation.
+         * @param language The fence's language tag, empty for an untagged block.
+         */
+        void codeBlockCopied(const QString& language);
+
         //! See AbstractChatMessageBody::linkActivated() -- ChatMessageText relays this signal
         //! there. Emitted from anchorClicked(), not from a mouse-press handler, so link
         //! activation always uses Qt's own hit-testing (hyperlinks can wrap across lines, etc.).
         void linkActivated(const QUrl& url);
 
     protected:
+
+        /**
+         * @brief Fills each tracked code block's rounded background, then paints the document over
+         *  it as usual.
+         *
+         * The colour is taken from the block's OWN background brush, which is where
+         * messagetext.css's `pre { background-color }` already put it -- deliberately not a second
+         * qproperty of this widget, so the editor-side lesson does not repeat itself: two places
+         * naming the same colour is two places to forget on a theme change.
+         */
+        void paintEvent(QPaintEvent* event) override;
 
         void wheelEvent(QWheelEvent *event) override;
         void mousePressEvent(QMouseEvent* event) override;
@@ -378,6 +533,28 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          */
         void applyWideTableLayout();
 
+        /**
+         * @brief Find every fenced code block on the freshly loaded document, record it, and give
+         *  each one room for its painted padding.
+         *
+         * Called from setHtmlContent() right after setHtml(), for the same reason
+         * applyWideTableLayout() is: the document has just been rebuilt, so anything recorded for
+         * the previous message is gone with it.
+         *
+         * **How a code block is recognised, and why it takes a step to do it.** Qt's HTML parser
+         * marks a `<pre>` with QTextBlockFormat::nonBreakableLines(), which is the one signal that
+         * does not depend on the markup being tagged -- QTextFormat::BlockCodeLanguage is only set
+         * for `<pre class="language-x">`, so an UNTAGGED fence carries nothing at all. But our own
+         * messagetext.css used to clear even that: `white-space: pre-wrap` overrides the white-space
+         * mode Qt derives the flag from, and measured, it took `nonBreakableLines` from 1 to 0 and
+         * left an untagged code block indistinguishable from a styled paragraph. So the rule is
+         * gone from the stylesheet, and the flag is instead read here and then CLEARED, which
+         * restores exactly the wrapping `pre-wrap` was there to provide. The runs live in
+         * m_codeBlocks from then on, the same way applyWideTableLayout() keeps m_tables.
+         */
+        void applyCodeBlockLayout();
+
+
         //! Create/position/show one expand button per pinned table, or hide them all when nothing
         //! is pinned. Buttons are children of viewport() anchored to its RIGHT edge (not the
         //! table's own right edge, which by definition is scrolled off-screen) at the table's own
@@ -387,6 +564,22 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! Show/hide every expand button according to tableExpandButtonVisibleOnHover() and
         //! whether the pointer is currently over this widget.
         void updateTableExpandButtonVisibility();
+
+        //! Create (or reuse) and position the floating language+Copy strip over each tracked code
+        //! block. Called from applyWideTableLayout(), which is the pass that already runs on every
+        //! bubble-width negotiation -- the strip has to follow the block when the width changes.
+        //! The toast to show a copy confirmation on: the host-supplied one if setToast() was
+        //! called, otherwise a lazily created private fallback. See the identical helper on
+        //! ChatMessageTableViewer for why it is parented to the window and drawn in-parent.
+        Toast* ensureCopyToast();
+
+        void updateCodeBlockOverlays();
+
+        //! Hover gate for those strips, mirroring updateTableExpandButtonVisibility() exactly.
+        void updateCodeBlockOverlayVisibility();
+
+        //! Plain text of one tracked code block, as it would be copied.
+        QString codeBlockText(const TrackedCodeBlock& codeBlock) const;
 
         //! Open the pinned table at `index` in a resizable top-level window (FloatingDialogFrame,
         //! the only shell in this library that hosts an arbitrary widget) showing just that table
@@ -419,6 +612,14 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         bool m_tableExpandButton=true;
         bool m_tableExpandButtonOnHover=true;
         std::vector<TrackedTable> m_tables;
+        std::vector<TrackedCodeBlock> m_codeBlocks;
+        int m_codeBlockPadding=DefaultCodeBlockPadding;
+        int m_codeBlockRadius=DefaultCodeBlockRadius;
+        bool m_codeBlockOverlay=true;
+        bool m_codeBlockOverlayOnHover=true;
+        bool m_copyToastEnabled=true;
+        Toast* m_toast=nullptr;         //!< host-supplied, not owned
+        Toast* m_ownToast=nullptr;      //!< lazy fallback, parented to the hosting window
 };
 
 /**

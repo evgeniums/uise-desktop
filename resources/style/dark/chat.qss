@@ -169,3 +169,15 @@ border: 1px solid #EEEEEE;
 #tableViewerFrame {
 background-color: #232323;
 }
+
+
+/* The code-block overlay strip. Same job as #tableExpandButton's fill above: mask the code behind
+   it cleanly so the label and icon stay legible, without becoming a second visual element in its
+   own right. The language label is deliberately quieter than the code it labels. */
+uise--ChatMessageTextBrowser #codeBlockOverlay {
+background-color: #3A3A3A;
+}
+
+uise--ChatMessageTextBrowser #codeBlockLanguage {
+color: #A8A8A8;
+}

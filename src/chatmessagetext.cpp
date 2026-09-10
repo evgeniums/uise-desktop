@@ -31,6 +31,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 #include <QMenu>
 #include <QTextCursor>
+#include <QPainter>
+#include <algorithm>
+#include <QLabel>
+#include <QClipboard>
 #include <QTextBlock>
 #include <QTextLayout>
 #include <QTextDocument>
@@ -205,6 +209,25 @@ QRect ChatMessageTextBrowser::lastLineRect() const
         return {};
     }
 
+    // A code block has no trailing space to overlay onto. The whole mechanism rests on there
+    // being blank room to the right of the last WORD, but a code block paints a background across
+    // the full bubble width, so the timestamp does not land in empty space -- it lands on top of
+    // the code. Returning an invalid rect is already the "no room here" signal
+    // AbstractChatMessageContent::evaluateInlineBottom() understands, and it puts the row on its
+    // own full-width line below, which is exactly what is wanted.
+    //
+    // Read from m_codeBlocks rather than from the block format, because by this point
+    // applyCodeBlockLayout() has deliberately CLEARED nonBreakableLines() to restore wrapping --
+    // the format no longer says "code", which is exactly why the runs are recorded.
+    const auto position=block.position();
+    for (const auto& codeBlock : m_codeBlocks)
+    {
+        if (position>=codeBlock.firstPosition && position<=codeBlock.lastPosition)
+        {
+            return {};
+        }
+    }
+
     auto* lay=block.layout();
     auto line=lay->lineAt(lay->lineCount()-1);
     // blockBoundingRect() reads the layout bubbleWidthHint()/updateMaximumBubbleWidth() already
@@ -216,6 +239,432 @@ QRect ChatMessageTextBrowser::lastLineRect() const
     int offY=frameWidth()+contentsMargins().top();
     return QRect{qFloor(br.x()+line.x())+offX, qFloor(br.y()+line.y())+offY,
                  qCeil(line.naturalTextWidth()), qCeil(line.height())};
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockPadding(int padding)
+{
+    if (m_codeBlockPadding==padding)
+    {
+        return;
+    }
+
+    m_codeBlockPadding=padding;
+
+    // The padding is reserved as block margins by applyCodeBlockLayout(), so changing it after
+    // content is loaded has to redo that pass -- repainting alone would inflate the box over text
+    // that has not made room for it.
+    applyCodeBlockLayout();
+    viewport()->update();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyCodeBlockLayout()
+{
+    m_codeBlocks.clear();
+
+    auto* doc=document();
+    if (doc==nullptr)
+    {
+        return;
+    }
+
+    // Collected first, mutated second: clearing nonBreakableLines() as we go would destroy the
+    // very flag the run detection reads.
+    std::vector<TrackedCodeBlock> found;
+    for (auto block=doc->begin(); block.isValid() && block!=doc->end(); block=block.next())
+    {
+        if (!block.blockFormat().nonBreakableLines())
+        {
+            continue;
+        }
+
+        TrackedCodeBlock tracked;
+        tracked.firstPosition=block.position();
+        tracked.lastPosition=block.position()+block.length()-1;
+        tracked.language=block.blockFormat().stringProperty(QTextFormat::BlockCodeLanguage);
+
+        auto next=block.next();
+        while (next.isValid() && next!=doc->end() && next.blockFormat().nonBreakableLines())
+        {
+            tracked.lastPosition=next.position()+next.length()-1;
+            if (tracked.language.isEmpty())
+            {
+                tracked.language=next.blockFormat().stringProperty(QTextFormat::BlockCodeLanguage);
+            }
+            block=next;
+            next=block.next();
+        }
+
+        found.push_back(tracked);
+    }
+
+    if (found.empty())
+    {
+        return;
+    }
+
+    // Undo suppressed and signals left alone for the same reason the editor's blockquote
+    // normalisation does it: this runs immediately after a whole-document load, where the undo
+    // stack is meaningless, and QTextDocumentPrivate::changeObjectFormat() appends an item per
+    // format write.
+    const auto undoEnabled=doc->isUndoRedoEnabled();
+    doc->setUndoRedoEnabled(false);
+
+    for (const auto& tracked : found)
+    {
+        for (auto block=doc->findBlock(tracked.firstPosition);
+             block.isValid() && block.position()<=tracked.lastPosition;
+             block=block.next())
+        {
+            QTextCursor cursor(block);
+            auto format=cursor.blockFormat();
+
+            // Cleared, so the code wraps exactly as `white-space: pre-wrap` used to make it --
+            // that rule is gone from messagetext.css precisely so this flag survives long enough
+            // to be read above. See applyCodeBlockLayout()'s doc comment.
+            format.setNonBreakableLines(false);
+
+            // The room the painted padding fills. Left/right on every line so the box can inflate
+            // sideways without reaching under the text; top only on the first line and bottom only
+            // on the last, so the gap does not repeat between the lines of one block.
+            format.setLeftMargin(m_codeBlockPadding);
+            format.setRightMargin(m_codeBlockPadding);
+            format.setTopMargin(block.position()==tracked.firstPosition ? m_codeBlockPadding : 0);
+            const auto isLast=(block.position()+block.length()-1)>=tracked.lastPosition;
+            format.setBottomMargin(isLast ? m_codeBlockPadding : 0);
+
+            cursor.setBlockFormat(format);
+        }
+    }
+
+    doc->setUndoRedoEnabled(undoEnabled);
+
+    m_codeBlocks=std::move(found);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageTextBrowser::codeBlockViewportRect(const TrackedCodeBlock& codeBlock) const
+{
+    auto* doc=document();
+    if (doc==nullptr)
+    {
+        return {};
+    }
+
+    auto first=doc->findBlock(codeBlock.firstPosition);
+    auto last=doc->findBlock(codeBlock.lastPosition);
+    if (!first.isValid() || !last.isValid())
+    {
+        return {};
+    }
+
+    auto* layout=doc->documentLayout();
+    // Union rather than first..last arithmetic: a wrapped code line makes a block taller than one
+    // line, and blockBoundingRect() already accounts for that.
+    auto rect=layout->blockBoundingRect(first).united(layout->blockBoundingRect(last));
+    if (!rect.isValid())
+    {
+        return {};
+    }
+
+    // Document coordinates to viewport coordinates. The document's own margin is already in
+    // blockBoundingRect()'s origin (same as lastLineRect() relies on).
+    rect.translate(-horizontalScrollBar()->value(),-verticalScrollBar()->value());
+
+    // The box spans the full text width rather than only the longest line: a code block reads as
+    // a slab, and a ragged right edge following the longest line looks like a mistake.
+    rect.setLeft(doc->documentMargin());
+    rect.setRight(qMax<qreal>(rect.left(),viewport()->width()-doc->documentMargin()));
+
+    return rect.toAlignedRect();
+}
+
+//--------------------------------------------------------------------------
+
+const ChatMessageTextBrowser::TrackedCodeBlock* ChatMessageTextBrowser::codeBlockAt(
+        const QPoint& viewportPos) const
+{
+    for (const auto& codeBlock : m_codeBlocks)
+    {
+        if (codeBlockViewportRect(codeBlock).contains(viewportPos))
+        {
+            return &codeBlock;
+        }
+    }
+
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockOverlayEnabled(bool enable)
+{
+    if (m_codeBlockOverlay==enable)
+    {
+        return;
+    }
+    m_codeBlockOverlay=enable;
+    updateCodeBlockOverlays();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockOverlayVisibleOnHover(bool enable)
+{
+    if (m_codeBlockOverlayOnHover==enable)
+    {
+        return;
+    }
+    m_codeBlockOverlayOnHover=enable;
+    updateCodeBlockOverlayVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessageTextBrowser::codeBlockText(const TrackedCodeBlock& codeBlock) const
+{
+    auto* doc=document();
+    if (doc==nullptr)
+    {
+        return {};
+    }
+
+    QStringList lines;
+    for (auto block=doc->findBlock(codeBlock.firstPosition);
+         block.isValid() && block.position()<=codeBlock.lastPosition;
+         block=block.next())
+    {
+        lines.append(block.text());
+    }
+
+    return lines.join(QLatin1Char('\n'));
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::copyCodeBlock(const TrackedCodeBlock& codeBlock)
+{
+    // setText() rather than the selectAll()+copy() route ChatMessageTableViewer::copyTable()
+    // takes. That viewer holds one table and nothing else, so selecting everything IS selecting
+    // the table; here the code block is one part of a message, and selecting it would both
+    // clobber whatever the user had selected and put the surrounding prose on the clipboard.
+    // Code is wanted as plain text anyway -- the html/markdown/ODF flavours the copy path adds
+    // are exactly what a paste into an editor or terminal does not want.
+    QGuiApplication::clipboard()->setText(codeBlockText(codeBlock));
+
+    // Emitted unconditionally, before the toast: a host that turned the built-in toast off is
+    // relying on this to show its own. Same contract as tableCopied().
+    emit codeBlockCopied(codeBlock.language);
+
+    if (m_copyToastEnabled)
+    {
+        auto* toast=ensureCopyToast();
+        if (toast!=nullptr)
+        {
+            toast->show(tr("Copied"));
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+Toast* ChatMessageTextBrowser::ensureCopyToast()
+{
+    if (m_toast!=nullptr)
+    {
+        return m_toast;
+    }
+
+    if (m_ownToast==nullptr)
+    {
+        // Parented to the hosting window rather than to this browser, and drawn in-parent rather
+        // than as a Qt::Tool window -- both for the reasons ChatMessageTableViewer::ensureToast()
+        // records. The window parent matters more here: these widgets are recycled by
+        // FlyweightListView, and a toast owned by one would be destroyed mid-animation the moment
+        // its bubble was rebound to another message.
+        auto* host=window();
+        m_ownToast=new Toast(host!=nullptr ? host : static_cast<QWidget*>(this));
+        m_ownToast->setDrawInParent(true);
+    }
+
+    return m_ownToast;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateCodeBlockOverlays()
+{
+    // Overlays are REUSED across passes rather than rebuilt, for the same reason the table
+    // buttons are: this runs on every bubble-width negotiation, and a chat load negotiates a lot.
+    for (std::size_t i=0;i<m_codeBlocks.size();++i)
+    {
+        auto& tracked=m_codeBlocks[i];
+
+        if (!m_codeBlockOverlay)
+        {
+            if (!tracked.overlay.isNull())
+            {
+                tracked.overlay->hide();
+            }
+            continue;
+        }
+
+        if (tracked.overlay.isNull())
+        {
+            auto* strip=new QFrame(viewport());
+            strip->setObjectName(QStringLiteral("codeBlockOverlay"));
+            strip->setCursor(Qt::ArrowCursor);
+            strip->setFocusPolicy(Qt::NoFocus);
+
+            auto* layout=Layout::horizontal(strip);
+
+            // Language label first, and only when there is one: an untagged fence has nothing to
+            // say here, and an empty label would still take space and draw a background.
+            auto* language=new QLabel(strip);
+            language->setObjectName(QStringLiteral("codeBlockLanguage"));
+            language->setFocusPolicy(Qt::NoFocus);
+            layout->addWidget(language);
+
+            auto* copyButton=new IconTextButton(
+                Style::instance().svgIconLocator().icon(
+                    QStringLiteral("ChatMessageTextBrowser::copyCodeBlock"),this),
+                strip);
+            copyButton->setObjectName(QStringLiteral("codeBlockCopyButton"));
+            copyButton->setCursor(Qt::ArrowCursor);
+            copyButton->setFocusPolicy(Qt::NoFocus);
+            copyButton->setToolTip(tr("Copy code"));
+            layout->addWidget(copyButton);
+
+            const auto index=i;
+            connect(copyButton,&IconTextButton::clicked,this,
+                [this,index]()
+                {
+                    // Re-read through the index rather than capturing the text: the document is
+                    // rebuilt on every new message this recycled widget shows, and a captured
+                    // string would go stale (or, worse, copy a previous sender's code).
+                    if (index<m_codeBlocks.size())
+                    {
+                        copyCodeBlock(m_codeBlocks[index]);
+                    }
+                }
+            );
+
+            tracked.overlay=strip;
+        }
+
+        auto* strip=qobject_cast<QFrame*>(tracked.overlay.data());
+        if (strip==nullptr)
+        {
+            continue;
+        }
+
+        auto* language=strip->findChild<QLabel*>(QStringLiteral("codeBlockLanguage"));
+        if (language!=nullptr)
+        {
+            language->setText(tracked.language);
+            language->setVisible(!tracked.language.isEmpty());
+        }
+
+        const auto rect=codeBlockViewportRect(tracked);
+        if (!rect.isValid())
+        {
+            strip->hide();
+            continue;
+        }
+
+        // adjustSize() rather than sizeHint(), for the reason the table button records: the size
+        // is owned by QSS, and positioning from an unclamped hint would put the strip where it
+        // does not end up.
+        strip->adjustSize();
+        const auto size=strip->size();
+
+        // Top-right of the block, inset by the padding so it sits inside the painted box rather
+        // than straddling its corner.
+        constexpr int margin=2;
+        const auto x=rect.right()-size.width()-margin;
+        const auto y=rect.top()+margin;
+        strip->move(qMax(rect.left(),x),y);
+        strip->raise();
+    }
+
+    // Overlays for code blocks that no longer exist (a recycled bubble now showing a shorter
+    // message) are destroyed with the QPointer entries themselves when m_codeBlocks is rebuilt;
+    // this catches any left parented to the viewport in the meantime.
+    for (auto* orphan : viewport()->findChildren<QFrame*>(QStringLiteral("codeBlockOverlay")))
+    {
+        const bool tracked=std::any_of(m_codeBlocks.begin(),m_codeBlocks.end(),
+            [orphan](const TrackedCodeBlock& c){ return c.overlay.data()==orphan; });
+        if (!tracked)
+        {
+            orphan->hide();
+            orphan->deleteLater();
+        }
+    }
+
+    updateCodeBlockOverlayVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateCodeBlockOverlayVisibility()
+{
+    // Deliberately coarse, exactly like updateTableExpandButtonVisibility(): one answer for every
+    // code block in the message rather than hit-testing which one the pointer is over. underMouse()
+    // stays true while the pointer is on the strip itself, since it is a child of viewport().
+    const bool visible=m_codeBlockOverlay && (!m_codeBlockOverlayOnHover || underMouse());
+    for (auto& tracked : m_codeBlocks)
+    {
+        if (!tracked.overlay.isNull())
+        {
+            tracked.overlay->setVisible(visible && codeBlockViewportRect(tracked).isValid());
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::paintEvent(QPaintEvent* event)
+{
+    if (!m_codeBlocks.empty())
+    {
+        QPainter painter(viewport());
+        painter.setRenderHint(QPainter::Antialiasing,true);
+        painter.setPen(Qt::NoPen);
+
+        auto* doc=document();
+        for (const auto& codeBlock : m_codeBlocks)
+        {
+            const auto block=doc->findBlock(codeBlock.firstPosition);
+            if (!block.isValid())
+            {
+                continue;
+            }
+
+            // The block's own brush, i.e. whatever messagetext.css's `pre { background-color }`
+            // resolved to for the current theme. No second source, so nothing to keep in step.
+            const auto brush=block.blockFormat().background();
+            if (brush.style()==Qt::NoBrush)
+            {
+                continue;
+            }
+
+            const auto rect=codeBlockViewportRect(codeBlock);
+            if (rect.isValid() && rect.intersects(event->rect()))
+            {
+                painter.setBrush(brush);
+                painter.drawRoundedRect(rect,m_codeBlockRadius,m_codeBlockRadius);
+            }
+        }
+    }
+
+    // Painted UNDER the document, not over it: the base class draws the text, and Qt will also
+    // repaint the block's own (text-hugging) background on top of ours -- same colour, so the
+    // union is simply the inflated box.
+    QTextBrowser::paintEvent(event);
 }
 
 //--------------------------------------------------------------------------
@@ -284,6 +733,11 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     {
         ensureSyntaxHighlighter(html);
     }
+    // Both of these re-derive per-message state that setHtml() has just discarded along with the
+    // old document. Code blocks first: it clears QTextBlockFormat::nonBreakableLines(), which the
+    // wide-table pass has no opinion about but which anything reading block formats afterwards
+    // would otherwise see in a transient state.
+    applyCodeBlockLayout();
     // setHtml() rebuilt the document, so any table pinned for the PREVIOUS content is gone along
     // with it -- re-measure and re-pin for this one (task-message-formatting-plan.md, Stage 4).
     applyWideTableLayout();
@@ -299,6 +753,9 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // someone else's message. See this method's own header doc comment.
     m_lastHtml.clear();
     setPlainText(text);
+    // Plain text has no code blocks; clear anything tracked for the HTML this replaces (a
+    // recycled flyweight bubble would otherwise paint the previous message's boxes).
+    m_codeBlocks.clear();
     // Plain text has no tables -- this clears any pin/button left over from previous HTML content
     // (whose document setPlainText() has just discarded) and puts the scrollbar policy back.
     applyWideTableLayout();
@@ -573,6 +1030,7 @@ void ChatMessageTextBrowser::enterEvent(QEnterEvent* event)
 {
     QTextBrowser::enterEvent(event);
     updateTableExpandButtonVisibility();
+    updateCodeBlockOverlayVisibility();
 }
 
 //--------------------------------------------------------------------------
@@ -784,6 +1242,11 @@ void ChatMessageTextBrowser::updateTableExpandButtons()
     // appearing -- otherwise a message that re-lays out while the pointer is elsewhere would
     // flash its buttons on.
     updateTableExpandButtonVisibility();
+
+    // Piggy-backing on the same pass on purpose: this is the one that already runs on every
+    // bubble-width negotiation, and a code block's overlay has to follow its block when the
+    // width changes just as a table's button does.
+    updateCodeBlockOverlays();
 }
 
 //--------------------------------------------------------------------------
@@ -1248,6 +1711,7 @@ void ChatMessageTextBrowser::leaveEvent(QEvent* event)
     clearHoveredAnchor();
     QTextBrowser::leaveEvent(event);
     updateTableExpandButtonVisibility();
+    updateCodeBlockOverlayVisibility();
 }
 
 //--------------------------------------------------------------------------

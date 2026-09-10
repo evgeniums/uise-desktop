@@ -158,17 +158,25 @@ border: none;
    (structure in ../chat.qss). Deliberately low-contrast at rest so it does not compete with the
    message text it sits on top of, lifting to full contrast on hover. It keeps this treatment
    rather than the dialog-button one below -- it is an overlay on content, not a dialog control. */
-/* Icons here are dark (see chat.json's light-mode currentColor), so the backing behind the button
-   must be light for contrast.
+/* Both this and the code-block strip below take light/abstractdialog.qss's own button palette --
+   the #218DAE accent fill with #0099b8 on hover -- so floating chrome over message content reads
+   as the same kind of control everywhere in the app rather than inventing a third look.
+
+   The icons are light to match (chat.json's light-mode currentColor is #EEEEEE/#FFFFFF for this
+   context, mirroring the dialog button's own text colours) -- they used to be dark for contrast
+   against a white backing, and the two have to move together.
 
    OPAQUE, unlike ChatMessageImageItem's #menuButton which this is otherwise modelled on. That one
    floats over a photo, where letting the image show through is the point. This one floats over a
    TABLE: text under the button is unreadable either way, so translucency buys nothing, and all it
    actually does is let cell borders and glyphs bleed through and make the button itself look
-   noisy. The button's job here is to mask what is behind it cleanly. No :hover rule on purpose:
-   the icon's own hovered colour is the feedback. */
+   noisy. The button's job here is to mask what is behind it cleanly. */
 uise--ChatMessageTextBrowser #tableExpandButton {
-background-color: #FFFFFF;
+background-color: #218DAE;
+}
+
+uise--ChatMessageTextBrowser #tableExpandButton:hover {
+background-color: #0099b8;
 }
 
 /* The expanded viewer's own button row follows light/abstractdialog.qss's button palette, with
@@ -211,4 +219,23 @@ padding: 3px 12px;
    row around the Copy table button is transparent. */
 #tableViewerFrame {
 background-color: #FFFFFF;
+}
+
+
+/* The code-block overlay strip. Same job as #tableExpandButton's fill above: mask the code behind
+   it cleanly so the label and icon stay legible, without becoming a second visual element in its
+   own right. The language label is deliberately quieter than the code it labels. */
+uise--ChatMessageTextBrowser #codeBlockOverlay {
+background-color: #218DAE;
+}
+
+/* #EEEEEE is the dialog button's own text colour on this fill, not a fresh choice. */
+uise--ChatMessageTextBrowser #codeBlockLanguage {
+color: #EEEEEE;
+}
+
+/* The Copy button itself stays transparent so the strip reads as one control, and takes the
+   dialog button's hover fill as its own feedback. */
+uise--ChatMessageTextBrowser #codeBlockCopyButton:hover {
+background-color: #0099b8;
 }

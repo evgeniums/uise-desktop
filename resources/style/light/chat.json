@@ -5,10 +5,10 @@
             "name" : "ChatMessageTextBrowser",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" }
+                    "off" : { "currentColor" : "#EEEEEE" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#FFFFFF" }
                 }
             }
         },

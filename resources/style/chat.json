@@ -3,7 +3,8 @@
         {
             "name" : "ChatMessageTextBrowser",
             "aliases" : {
-                "expandTable" : "${uise-svg-icons-1}/arrows-diagonal"
+                "expandTable" : "${uise-svg-icons-1}/arrows-diagonal",
+                "copyCodeBlock" : "${uise-svg-icons-1}/copy"
             }
         },
         {
