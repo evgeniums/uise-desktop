@@ -111,7 +111,19 @@ struct MessageEditorFormatState
     bool numberedList=false;
     bool blockquote=false;
     bool codeBlock=false;
+
+    //! Caret is inside an ORDINARY hyperlink -- a MENTION anchor is excluded (Stage 6, see
+    //! insideMention below), so the Remove-link button/row this drives never offers to unlink a
+    //! mention, and "Edit link" never opens the hyperlink dialog on one.
     bool insideLink=false;
+
+    //! Caret is inside a mention anchor (a `whitem-mention:` href). Mutually exclusive with
+    //! insideLink above. Not reflected on any toolbar button of its own -- a mention has no
+    //! "remove" action to offer; Backspace/Delete already delete it whole (see the atomicity
+    //! guard in EnhancedTextEdit::keyPressEvent()). Exists so MessageEditor's own gates
+    //! (canInsertMentionAtCursor(), the context-menu row's isEnabled) can tell a mention and an
+    //! ordinary link apart.
+    bool insideMention=false;
 
     //! Caret is inside a QTextTable -- gates the row/column edits in the table drop-down, which
     //! are meaningless anywhere else.

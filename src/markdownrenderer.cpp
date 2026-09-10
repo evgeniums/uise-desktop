@@ -675,7 +675,27 @@ class HtmlWriter
             if (underline) m_html+=QStringLiteral("<u>");
             if (code) m_html+=QStringLiteral("<code>");
 
-            m_html+=escapeText(frag.text());
+            // MarkdownRenderOptions::extraLinkify -- an optional host hook for link detection
+            // this renderer cannot do on its own (its own doc comment's example is bare-domain
+            // detection, but a host-resolved "@username" mention is exactly the same shape: a
+            // plain-text pattern this generic renderer has no directory to resolve on its own).
+            // Consulted only for a plain run -- not already an anchor, not inside inline code or
+            // a fenced block -- matching the documented contract precisely. Previously declared
+            // but never actually called anywhere in this file; a host setting it had no way to
+            // discover that short of reading this source.
+            QString extra;
+            if (!anchor && !code && m_options.extraLinkify)
+            {
+                extra=m_options.extraLinkify(frag.text());
+            }
+            if (!extra.isEmpty())
+            {
+                m_html+=extra;
+            }
+            else
+            {
+                m_html+=escapeText(frag.text());
+            }
 
             if (code) m_html+=QStringLiteral("</code>");
             if (underline) m_html+=QStringLiteral("</u>");

@@ -315,6 +315,127 @@ BOOST_AUTO_TEST_CASE(TestCustomSchemeAllowedWhenAdded)
     UISE_TEST_CHECK(html.contains(QStringLiteral("whitem-mention:12345")));
 }
 
+BOOST_AUTO_TEST_CASE(TestMentionSchemeRejectedByDefaultOptions)
+{
+    // Stage 6 landed: the SHIPPED default allowlist must still reject the mention scheme --
+    // AbstractChatMessageText::setMentionsEnabled() is the only place that adds it, via a
+    // caller-owned copy (see ChatMessageText::loadText()'s Markdown branch). A plain
+    // markdownToHtml(src) call anywhere else keeps degrading it to escaped plain text.
+    auto html=renderMd(QStringLiteral("[User](whitem-mention:12345)"));
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<a ")));
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("whitem-mention:")));
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionHrefSeparatorsSurviveRendering)
+{
+    // Every uid shape this project actually produces round-trips through the renderer once the
+    // scheme is allowlisted -- '/'-separated, ':'-separated, dashes and underscores.
+    MarkdownRenderOptions options;
+    options.allowedLinkSchemes<<mentionUrlScheme();
+
+    const QStringList uids{
+        QStringLiteral("srv1/0123456789abcdef"),
+        QStringLiteral("srv1:0123456789abcdef"),
+        QStringLiteral("aaaa-bbbb-cccc"),
+        QStringLiteral("user_name_123")
+    };
+    for (const auto& uid : uids)
+    {
+        auto html=renderMd(QStringLiteral("[Alice](%1)").arg(mentionHref(uid)),options);
+        UISE_TEST_CHECK(html.contains(QStringLiteral("<a ")));
+        UISE_TEST_CHECK(html.contains(mentionHref(uid)));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyHookIsConsulted)
+{
+    // MarkdownRenderOptions::extraLinkify is a documented host hook that was declared but never
+    // actually wired into the renderer -- found while investigating why a plain "@alice" mention
+    // (insertMentionText()'s own form) never became clickable in the bubble. General regression
+    // test for the wiring itself, not mention-specific.
+    MarkdownRenderOptions options;
+    int calls=0;
+    options.extraLinkify=[&calls](const QString& text) -> QString
+    {
+        ++calls;
+        if (text.contains(QStringLiteral("MATCH")))
+        {
+            return QStringLiteral("<a href=\"custom:hit\">MATCH</a>");
+        }
+        return QString{};
+    };
+
+    auto html=renderMd(QStringLiteral("before MATCH after"),options);
+    UISE_TEST_CHECK(calls>0);
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<a href=\"custom:hit\">MATCH</a>")));
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyEmptyReturnFallsBackToDefaultEscaping)
+{
+    MarkdownRenderOptions options;
+    options.extraLinkify=[](const QString&) -> QString { return QString{}; };
+
+    auto html=renderMd(QStringLiteral("plain & <text>"),options);
+    // An empty extraLinkify return must not swallow the run or leave it unescaped -- the run's
+    // own default escaping still applies.
+    UISE_TEST_CHECK(html.contains(QStringLiteral("plain &amp;")));
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<text>")));
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyNotCalledInsideAnchorOrCode)
+{
+    // Matches the documented contract precisely: "once per plain (non-anchor, non-code) text
+    // run". An anchor or a code span/block must never be offered to the hook.
+    MarkdownRenderOptions options;
+    QStringList seen;
+    options.extraLinkify=[&seen](const QString& text) -> QString
+    {
+        seen<<text;
+        return QString{};
+    };
+
+    renderMd(QStringLiteral("[a link](https://example.com) and `inline code` and plain text"),options);
+
+    bool sawPlain=false;
+    for (const auto& text : seen)
+    {
+        UISE_TEST_CHECK(!text.contains(QStringLiteral("a link")));
+        UISE_TEST_CHECK(!text.contains(QStringLiteral("inline code")));
+        if (text.contains(QStringLiteral("plain text")))
+        {
+            sawPlain=true;
+        }
+    }
+    UISE_TEST_CHECK(sawPlain);
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyResolvesPlainUsernameMentionToAnAnchor)
+{
+    // The concrete motivating case: MessageEditor::insertMentionText() puts a literal "@alice"
+    // into the document with NO anchor formatting at all, by design -- it must be
+    // indistinguishable from hand-typed text (task-message-formatting-plan.md, Stage 6).  Making
+    // it clickable in the rendered BUBBLE needs a directory lookup this generic renderer cannot
+    // do on its own -- exactly what extraLinkify exists for. A host resolves "@alice" against its
+    // own character cache and returns a whitem-mention: anchor; note the returned href bypasses
+    // allowedLinkSchemes entirely (see the field's own TRUST BOUNDARY doc comment), so this test
+    // does not add the scheme to the allowlist -- it does not need to.
+    MarkdownRenderOptions options;
+    options.extraLinkify=[](const QString& text) -> QString
+    {
+        if (text.contains(QStringLiteral("@alice")))
+        {
+            auto escaped=text.toHtmlEscaped();
+            escaped.replace(QStringLiteral("@alice"),
+                QStringLiteral("<a href=\"whitem-mention:usr-0001\">Alice Anderson</a>"));
+            return escaped;
+        }
+        return QString{};
+    };
+
+    auto html=renderMd(QStringLiteral("hi @alice, look at this"),options);
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<a href=\"whitem-mention:usr-0001\">Alice Anderson</a>")));
+}
+
 BOOST_AUTO_TEST_CASE(TestRawScriptTagNeutralized)
 {
     auto html=renderMd(QStringLiteral("hello <script>alert(1)</script> world"));

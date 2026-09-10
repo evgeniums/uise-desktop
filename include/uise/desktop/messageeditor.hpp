@@ -128,6 +128,24 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
     //! when true, so false also suppresses an underline an imported document carried.
     Q_PROPERTY(bool linkUnderline READ linkUnderline WRITE setLinkUnderline)
 
+    /**
+     * QSS: qproperty-mentionColor: #7A3FBF; -- colour of a MENTION anchor's text, task-message-
+     * formatting-plan.md Stage 6, deliberately distinct from linkColor above and kept in step
+     * with ChatMessageTextBrowser::mentionColor, so a mention reads the same in the composer and
+     * in the bubble it becomes (the same rule linkColor/blockquoteColor already follow).
+     *
+     * Applied by the same highlighter, on the same display-only terms: no document write, no
+     * undo step, no export leakage. An INVALID colour (the default) falls back to linkColor -- a
+     * mention IS an anchor, so the blanket link colour is the right fallback, and it is exactly
+     * what the viewer does too (its `a[href^="whitem-mention:"]` rule is emitted only when its
+     * own mentionColor is valid, leaving the blanket `a` rule in charge otherwise).
+     *
+     * There is deliberately no separate "mentionUnderline" property: linkUnderline is one
+     * app-wide decision about whether anchors underline at all, and the hover-underline machinery
+     * on the viewer side already treats every anchor identically.
+     */
+    Q_PROPERTY(QColor mentionColor READ mentionColor WRITE setMentionColor)
+
     public:
 
         //! Ceiling used by effectiveMaxHeight() when no QSS "max-height" is in effect, and the
@@ -271,6 +289,56 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
             return m_linkUnderline;
         }
 
+        //! See the mentionColor property. Applied by the same highlighter, on the same terms.
+        void setMentionColor(const QColor& color);
+        QColor mentionColor() const noexcept
+        {
+            return m_mentionColor;
+        }
+
+        /**
+         * @brief The in-progress "@word" at the caret, if any -- task-message-formatting-plan.md,
+         *  Stage 6. What mentionQueryChanged() reports, exposed for a host to query directly too
+         *  (e.g. MessageEditor::onMentionButtonRequested() does, to fill
+         *  AbstractMessageEditor::mentionRequested()'s `prefix` argument).
+         *
+         * Recomputed from scratch on every call and emits nothing, so it is safe to call from
+         * anywhere.
+         */
+        struct MentionQuery
+        {
+            bool isActive=false;
+
+            //! Document position of the '@' itself. -1 when !isActive.
+            int position=-1;
+
+            //! Text after the '@', up to the caret. Empty right after '@' is typed.
+            QString prefix;
+        };
+
+        MentionQuery mentionQueryAtCursor() const;
+
+        /**
+         * @brief Extend `cursor` to cover the in-progress "@word" (the '@' included), so an
+         *  insert REPLACES what the user typed rather than landing beside it.
+         * @return false, `cursor` left untouched, if there is no candidate at the caret.
+         */
+        bool selectMentionQueryAtCursor(QTextCursor& cursor) const;
+
+        /**
+         * @brief Widen `cursor`'s selection outward so no mention run is left only PARTLY
+         *  covered by it.
+         * @return true if the selection was actually changed.
+         *
+         * The measured worst case this exists for: a selection starting inside a mention and
+         * ending outside it, deleted, leaves the REMAINDER of the run as a smaller anchor
+         * carrying the SAME href -- a live, clickable, wrong mention. Selecting the run whole
+         * first turns every such gesture into the measured clean case (one edit, no residue).
+         * Called by the Backspace/Delete/typing guard in keyPressEvent() and by
+         * MessageEditor::cut().
+         */
+        bool snapSelectionToMentions(QTextCursor& cursor) const;
+
         //! The ceiling actually in force: an already-set QSS/C++ QWidget::maximumHeight() if one
         //! is in effect, otherwise maxHeight() raised to maxHeightPercent() of the reference
         //! widget's height when that is larger.
@@ -364,6 +432,16 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
          */
         void pastedRichText();
 
+        //! See AbstractMessageEditor::mentionQueryChanged() -- relayed there verbatim by
+        //! MessageEditor, same arrangement as attachmentsPasted()/editPreviousRequested().
+        void mentionQueryChanged(const QString& prefix, int position);
+
+        //! See AbstractMessageEditor::mentionQueryClosed().
+        void mentionQueryClosed();
+
+        //! See AbstractMessageEditor::mentionCompletionRequested() -- relayed there verbatim.
+        void mentionCompletionRequested(const QString& prefix, int position);
+
     protected:
 
         void keyPressEvent(QKeyEvent* event) override;
@@ -407,11 +485,21 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
 
         void updateSize();
 
+        //! Recompute the caret's "@word" candidate and emit mentionQueryChanged()/
+        //! mentionQueryClosed() only when it has actually changed. Connected to BOTH
+        //! QTextEdit::textChanged and QTextEdit::cursorPositionChanged: neither implies the
+        //! other, and recomputing from scratch makes running twice for one edit harmless.
+        void updateMentionQuery();
+
     private:
 
         //! DefaultTabStopSpaces space-widths of the CURRENT font, applied in the ctor and again
         //! on every font change.
         void applyTabStopDistance();
+
+        //! The Backspace/Delete/typing guard documented at its call site in keyPressEvent().
+        //! @return true if the key was fully handled here and must NOT reach QTextEdit.
+        bool applyMentionAtomicityGuard(QKeyEvent* event);
 
         bool m_autoResize;
         bool m_newLineOnEnter;
@@ -424,6 +512,16 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         QColor m_codeBlockColor;
         QColor m_linkColor;
         bool m_linkUnderline=false;
+        QColor m_mentionColor;
+
+        //! Last state reported through the two mention signals, so a keystroke that does not
+        //! change it emits nothing at all (both signals drive a host popup).
+        MentionQuery m_lastMentionQuery;
+
+        //! Document position of an '@' the user dismissed with Escape, or -1. Cleared as soon as
+        //! the caret leaves that word, so typing on after Escape does not silently reopen the
+        //! host's selector, while starting a NEW "@word" does.
+        int m_dismissedMentionPosition=-1;
 
         //! Owned by this widget's document (QSyntaxHighlighter parents itself to it), so it is
         //! never deleted here.
@@ -566,6 +664,54 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          */
         void insertLink(const QString& url, const QString& title);
 
+        /**
+         * @brief Insert a mention in its hidden-UID ANCHOR form, in response to
+         *  AbstractMessageEditor::mentionRequested() (task-message-formatting-plan.md, Stage 6).
+         *
+         * MessageEditingMode::Wysiwyg builds a real QTextCharFormat anchor with href
+         * mentionHref(uid) and `title` as its display text -- measured to round-trip through
+         * toMarkdown()/setMarkdown() as "[title](whitem-mention:uid)" byte-identically, for every
+         * uid shape this project produces and for every title free of unescaped '['/']'. (A title
+         * containing a literal ']' or an unmatched '[' does NOT round-trip -- but that is a
+         * pre-existing property of Qt's markdown writer for ANY link title, equally true of
+         * insertLink(), and deliberately not special-cased here.)
+         *
+         * MessageEditingMode::Markdown inserts the literal text "[title](whitem-mention:uid)" --
+         * that mode's document IS markdown source. MessageEditingMode::Plaintext REFUSES: there
+         * is no way to carry a hidden uid in a document with no markup, and quietly writing the
+         * title instead would send a message that mentions nobody. insertMentionText() is that
+         * mode's route.
+         *
+         * If the caret is inside an in-progress "@word" (the one mentionQueryChanged() reports),
+         * that word is REPLACED, '@' included. An explicit selection wins over it, and is
+         * replaced instead -- same rule as insertLink().
+         *
+         * A no-op inside a fenced code block, inside an existing link, or inside an existing
+         * mention -- see canInsertMentionAtCursor().
+         *
+         * @param uid Character uid. Must be non-empty and contain no raw space (see
+         *  mentionHref()).
+         * @param title Display text. Falls back to `uid` when empty, same as insertLink() falls
+         *  back to the url.
+         */
+        void insertMention(const QString& uid, const QString& title);
+
+        /**
+         * @brief Insert a mention in its PLAIN "@username" text form.
+         *
+         * Unlike insertLink() and insertMention() above, valid in EVERY MessageEditingMode
+         * including Plaintext: the payload is ordinary text carrying no markup meaning, so there
+         * is no mode that cannot express it. The '@' is supplied here rather than asked of the
+         * caller (and is not doubled if the caller already prefixed it).
+         *
+         * Always inserted with the anchor properties cleared off the inherited char format, so a
+         * plain mention typed right after a link is provably plain.
+         *
+         * Replaces the in-progress "@word" / the current explicit selection, same rule as
+         * insertMention().
+         */
+        void insertMentionText(const QString& username);
+
     public slots:
 
         void selectAll() override;
@@ -587,6 +733,7 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         virtual void updateEditingFinished() override;
         void updateExpanded() override;
         void updateExpandButtonVisible() override;
+        void updateMentionButtonVisible() override;
         void updateStackedArrangement() override;
 
     private:
@@ -713,8 +860,9 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void applyClearFormatting();
 
         /**
-         * @brief Extend `cursor`'s selection to the full contiguous anchor run it is inside.
-         * @return false, cursor left untouched, if the position is not inside a link at all.
+         * @brief Extend `cursor`'s selection to the full contiguous ORDINARY-HYPERLINK run it is
+         *  inside.
+         * @return false, cursor left untouched, if the position is not inside one.
          *
          * "The whole link" is the widest run reachable from the caret's own fragment by walking
          * to the previous/next fragment IN THE SAME BLOCK while it is also an anchor with the
@@ -724,6 +872,13 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          * hrefs) -- a different href never merges, so this cannot walk past one link into an
          * adjacent one. Links do not cross block boundaries in this editor, so the walk is
          * block-local.
+         *
+         * A MENTION run is deliberately NOT one (Stage 6): "Remove link" must never offer to
+         * unlink a mention, and "Edit link" must never open the hyperlink dialog on one. Both
+         * gate on MessageEditorFormatState::insideLink, which excludes mentions for the same
+         * reason. Implemented as a thin wrapper over the generalized selectAnchorRun() helper
+         * (anonymous namespace in messageeditor.cpp), which the Stage 6 atomicity guard in
+         * EnhancedTextEdit also reuses for the mention case.
          */
         bool selectLinkRunAtCursor(QTextCursor& cursor) const;
 
@@ -736,6 +891,26 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! Remove-link row. A pure document edit with no external input, unlike Link -- never
         //! relayed outward.
         void removeLink();
+
+        /**
+         * @brief Whether a mention can be inserted at the caret right now.
+         *
+         * Three gates: not inside a fenced code block (an anchor's href is not backslash-escaped
+         * by Qt's markdown writer the way fence content is, so restoreCodeFences() cannot safely
+         * unescape it -- the same measured reason insertLink() refuses there), not inside an
+         * existing hyperlink, and not inside an existing mention.
+         *
+         * Deliberately does NOT include the insideTable gate '@'-DETECTION applies (see
+         * EnhancedTextEdit::mentionQueryAtCursor()): auto-popping a host's selector inside a
+         * compact table cell is a positioning problem, while a deliberate toolbar click or
+         * context-menu selection is an explicit request, and "| @alice | done |" is a perfectly
+         * ordinary thing to compose.
+         */
+        bool canInsertMentionAtCursor() const;
+
+        //! Handles MessageEditorToolbar::mentionRequested() and the context menu's "Mention
+        //! someone" row. See AbstractMessageEditor::mentionRequested() for the argument contract.
+        void onMentionButtonRequested();
 
         std::unique_ptr<MessageEditor_p> pimpl;
 

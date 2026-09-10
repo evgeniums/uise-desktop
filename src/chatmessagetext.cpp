@@ -787,6 +787,18 @@ void ChatMessageTextBrowser::setLinkUnderline(bool enable)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageTextBrowser::setMentionColor(const QColor& color)
+{
+    if (m_mentionColor==color)
+    {
+        return;
+    }
+    m_mentionColor=color;
+    applyDocumentStyle();
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::setSyntaxHighlightingEnabled(bool enable)
 {
     if (m_syntaxHighlightingEnabled==enable)
@@ -848,6 +860,19 @@ void ChatMessageTextBrowser::applyDocumentStyle()
                 .arg(m_linkColor.name(),m_linkUnderline ? "underline" : "none");
     }
     css+=QStringLiteral("\n")+linkCss;
+
+    // Stage 6: a mention reads as distinct from an ordinary link. Appended after the blanket `a`
+    // rule for belt and braces, though measured it wins either way -- Qt's CSS engine uses
+    // ordinary specificity, and an attribute selector outranks a bare element selector regardless
+    // of append order. Emitted only when a colour is actually set, so an unstyled host leaves a
+    // mention on the blanket `a` rule above rather than on Qt's own baked #0000ff default.
+    if (m_mentionColor.isValid())
+    {
+        css+=QStringLiteral("\na[href^=\"%1:\"] { color: %2; text-decoration: %3; }")
+                .arg(mentionUrlScheme(),
+                     m_mentionColor.name(),
+                     m_linkUnderline ? QStringLiteral("underline") : QStringLiteral("none"));
+    }
 
     document()->setDefaultStyleSheet(css);
 
@@ -1848,13 +1873,27 @@ void ChatMessageText::loadText(const QString& text, TextFormat format)
             pimpl->text->setHtmlContent(text);
             break;
         case TextFormat::Markdown:
+        {
             // Rendered to sanitized HTML and routed through setHtmlContent() -- NOT
             // QTextBrowser::setMarkdown() directly -- so this content gets messagetext.css,
             // linkColor/linkUnderline and theme-switch replay the same way Html content already
             // does (task-message-formatting-plan.md, Stage 2; see src/newpasswordwizard.cpp's
             // own comment on why setMarkdown() bypasses setDefaultStyleSheet() entirely).
-            pimpl->text->setHtmlContent(markdownToHtml(text));
+            MarkdownRenderOptions options;
+            if (isMentionsEnabled())
+            {
+                // A caller-owned COPY -- the shipped DEFAULT options object used everywhere else
+                // is never touched, so a plain markdownToHtml(src) call anywhere in the tree
+                // still rejects the scheme (Stage 6).
+                options.allowedLinkSchemes.append(mentionUrlScheme());
+            }
+            // Independent of mentionsEnabled above -- see setExtraLinkify()'s own doc comment.
+            // Threaded through unconditionally when set; null is the common case and
+            // markdownToHtml() already treats a null hook as "not set".
+            options.extraLinkify=extraLinkify();
+            pimpl->text->setHtmlContent(markdownToHtml(text,options));
             break;
+        }
         case TextFormat::Plain:
             // setPlainTextContent(), not setPlainText() directly -- clears m_lastHtml, without
             // which a later theme switch would replay a PREVIOUS message's HTML back over this
@@ -1894,6 +1933,33 @@ void ChatMessageText::clearContentSelection()
 void ChatMessageText::updateChatMessage()
 {
     pimpl->text->setMessageTextWidget(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::updateMentionsEnabled()
+{
+    if (pimpl->sourceFormat!=TextFormat::Markdown || pimpl->sourceText.isEmpty())
+    {
+        // Only the Markdown branch of loadText() consults the allowlist -- Html content was
+        // already rendered by the host and Plain content has no anchors at all, so there is
+        // nothing here to re-render.
+        return;
+    }
+    loadText(pimpl->sourceText,pimpl->sourceFormat);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::updateExtraLinkify()
+{
+    // Same gate as updateMentionsEnabled() -- only the Markdown branch of loadText() consults
+    // extraLinkify() at all.
+    if (pimpl->sourceFormat!=TextFormat::Markdown || pimpl->sourceText.isEmpty())
+    {
+        return;
+    }
+    loadText(pimpl->sourceText,pimpl->sourceFormat);
 }
 
 //--------------------------------------------------------------------------

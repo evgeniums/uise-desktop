@@ -69,6 +69,12 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     Q_PROPERTY(QColor linkColor READ linkColor WRITE setLinkColor)
     Q_PROPERTY(bool linkUnderline READ linkUnderline WRITE setLinkUnderline)
 
+    //! task-message-formatting-plan.md, Stage 6: a mention anchor is styled DISTINCTLY from an
+    //! ordinary link, via the same QSS-reachable channel and for the same reason as linkColor
+    //! above (QSS cannot reach a QTextDocument's char formats). See mentionColor()'s own doc
+    //! comment.
+    Q_PROPERTY(QColor mentionColor READ mentionColor WRITE setMentionColor)
+
     // task-message-formatting-plan.md, Stage 3: reactive, not a load-time gate -- the setter
     // itself attaches/detaches and repaints immediately, since a bubble can be constructed and
     // loaded before its first QStyle::polish() (Style::updateWidgetStyle() bails on an un-
@@ -322,6 +328,29 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
             return m_linkUnderline;
         }
         void setLinkUnderline(bool enable);
+
+        /**
+         * @brief Colour of a `whitem-mention:` anchor's text (task-message-formatting-plan.md,
+         *  Stage 6). INVALID by default, which leaves a mention on the blanket `a` rule (i.e.
+         *  linkColor above) -- distinctness is opt-in.
+         *
+         * Emitted by applyDocumentStyle() as a CSS ATTRIBUTE selector,
+         * `a[href^="whitem-mention:"]`, deliberately not a `class="mention"` attribute: Qt's HTML
+         * parser maps only `class="language-x"` on `<pre>` onto a QTextFormat
+         * (BlockCodeLanguage), so a generic class attribute would be discarded on the way in,
+         * whereas the href is already there for activation regardless. Measured: an attribute
+         * selector outranks a bare element selector in Qt's CSS engine, so the rule wins over the
+         * blanket `a` rule regardless of which order the two are appended in.
+         *
+         * Text-decoration is taken from linkUnderline() above, not a property of its own -- see
+         * EnhancedTextEdit::mentionColor's doc comment for why there is no separate
+         * "mentionUnderline".
+         */
+        QColor mentionColor() const noexcept
+        {
+            return m_mentionColor;
+        }
+        void setMentionColor(const QColor& color);
 
         /**
          * @brief Enable/disable code-block syntax highlighting (task-message-formatting-plan.md,
@@ -604,6 +633,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         bool m_ownContextMenu=true;
         QColor m_linkColor;
         bool m_linkUnderline=false;
+        QColor m_mentionColor;
         QString m_lastHtml;
         QString m_hoveredAnchor;
         SyntaxHighlighter* m_highlighter=nullptr;
@@ -767,6 +797,15 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
     protected:
 
         void updateChatMessage() override;
+
+        //! Re-renders the last loadText() source through the new allowlist -- see
+        //! AbstractChatMessageText::setMentionsEnabled(). This is exactly what
+        //! ChatMessageText_p::sourceText was cached for (its own doc comment names Stage 6).
+        void updateMentionsEnabled() override;
+
+        //! Re-renders the last loadText() source with the new extraLinkify hook threaded through
+        //! -- see AbstractChatMessageText::setExtraLinkify().
+        void updateExtraLinkify() override;
 
     private:
 

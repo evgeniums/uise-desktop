@@ -37,6 +37,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextBlock>
 #include <QTextLayout>
 #include <QAbstractTextDocumentLayout>
+#include <QColor>
+#include <QUrl>
 
 #include <uise/test/uise-testthread.hpp>
 
@@ -60,6 +62,36 @@ void loadMarkdown(ChatMessageTextBrowser& browser, const QString& markdown, int 
     // The format writes in applyCodeBlockLayout() invalidate the block layouts; in the real widget
     // the bubble-width negotiation redoes them before anything reads a line count.
     (void)browser.document()->documentLayout()->documentSize();
+}
+
+//! Same as loadMarkdown(), but with the mention scheme allowlisted -- the caller-owned options
+//! copy AbstractChatMessageText::setMentionsEnabled() itself builds (task-message-formatting-
+//! plan.md, Stage 6). Used to test the RENDERER's opt-in leg directly, independent of
+//! ChatMessageText's own wiring (covered separately below via a live ChatMessageText).
+void loadMarkdownWithMentions(ChatMessageTextBrowser& browser, const QString& markdown, int width=320)
+{
+    MarkdownRenderOptions options;
+    options.allowedLinkSchemes.append(mentionUrlScheme());
+    browser.setHtmlContent(markdownToHtml(markdown,options));
+    browser.document()->setTextWidth(width);
+    (void)browser.document()->documentLayout()->documentSize();
+}
+
+//! Whether the document holds any anchor fragment matching `href`.
+bool documentHasAnchor(QTextDocument* document, const QString& href)
+{
+    for (auto block=document->begin(); block.isValid(); block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto format=it.fragment().charFormat();
+            if (format.isAnchor() && format.anchorHref()==href)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 QTextBlock lastRenderedBlock(const ChatMessageTextBrowser& browser)
@@ -276,6 +308,203 @@ BOOST_AUTO_TEST_CASE(TestPlainTextContentClearsTrackedCodeBlocks)
             // painting the previous message's boxes.
             browser.setPlainTextContent(QStringLiteral("plain"));
             UISE_TEST_CHECK(browser.codeBlocks().empty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionsDisabledByDefault)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageText message;
+            UISE_TEST_CHECK(!message.isMentionsEnabled());
+
+            // The renderer's OWN default options reject the scheme regardless -- this is the
+            // sanitization leg testmarkdownrenderer.cpp's TestMentionSchemeRejectedByDefaultOptions
+            // already covers; here the concern is the WIDGET-level default.
+            message.loadText(QStringLiteral("[Alice](whitem-mention:usr1)"),TextFormat::Markdown);
+
+            auto* browser=message.findChild<ChatMessageTextBrowser*>();
+            UISE_TEST_REQUIRE(browser!=nullptr);
+            UISE_TEST_CHECK(!documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr1")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionAnchorRenderedOnlyWhenMentionsEnabled)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageText message;
+            message.setMentionsEnabled(true);
+            message.loadText(QStringLiteral("[Alice](whitem-mention:usr1)"),TextFormat::Markdown);
+
+            auto* browser=message.findChild<ChatMessageTextBrowser*>();
+            UISE_TEST_REQUIRE(browser!=nullptr);
+            UISE_TEST_CHECK(documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr1")));
+
+            // An ordinary link in the SAME message is unaffected either way.
+            message.loadText(QStringLiteral("[site](https://example.com)"),TextFormat::Markdown);
+            UISE_TEST_CHECK(documentHasAnchor(browser->document(),QStringLiteral("https://example.com")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTogglingMentionsEnabledRerendersLoadedContent)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageText message;
+            message.loadText(QStringLiteral("[Alice](whitem-mention:usr1)"),TextFormat::Markdown);
+
+            auto* browser=message.findChild<ChatMessageTextBrowser*>();
+            UISE_TEST_REQUIRE(browser!=nullptr);
+            UISE_TEST_CHECK(!documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr1")));
+
+            // setMentionsEnabled() re-renders the CACHED source -- ChatMessageText_p::sourceText,
+            // whose own doc comment already names Stage 6 as the reason it exists -- without a
+            // second loadText() call from the host.
+            message.setMentionsEnabled(true);
+            UISE_TEST_CHECK(documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr1")));
+
+            message.setMentionsEnabled(false);
+            UISE_TEST_CHECK(!documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr1")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyResolvesPlainMentionInBubble)
+{
+    // The concrete reported scenario: MessageEditor::insertMentionText() puts a literal
+    // "@alice" into the SENT message with no anchor formatting at all (by design). Rendering it
+    // as a clickable mention in the BUBBLE needs a directory lookup this widget cannot do on its
+    // own -- mentionsEnabled alone is not enough, since it only allowlists the whitem-mention:
+    // scheme for anchors that already exist in the source; a host also has to supply
+    // extraLinkify to actually RECOGNIZE the bare "@alice" text and turn it into one.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageText message;
+            message.setMentionsEnabled(true);
+            message.setExtraLinkify(
+                [](const QString& text) -> QString
+                {
+                    if (!text.contains(QStringLiteral("@alice")))
+                    {
+                        return QString{};
+                    }
+                    auto escaped=text.toHtmlEscaped();
+                    escaped.replace(QStringLiteral("@alice"),
+                        QStringLiteral("<a href=\"whitem-mention:usr-0001\">Alice Anderson</a>"));
+                    return escaped;
+                }
+            );
+
+            message.loadText(QStringLiteral("hi @alice, look at this"),TextFormat::Markdown);
+
+            auto* browser=message.findChild<ChatMessageTextBrowser*>();
+            UISE_TEST_REQUIRE(browser!=nullptr);
+            UISE_TEST_CHECK(documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr-0001")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExtraLinkifyReactivelyRerendersLoadedContent)
+{
+    // setExtraLinkify(), like setMentionsEnabled(), re-renders the CACHED source immediately --
+    // a qproperty- style setter arriving after loadText() already ran still takes effect.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageText message;
+            message.loadText(QStringLiteral("hi @alice"),TextFormat::Markdown);
+
+            auto* browser=message.findChild<ChatMessageTextBrowser*>();
+            UISE_TEST_REQUIRE(browser!=nullptr);
+            UISE_TEST_CHECK(!documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr-0001")));
+
+            message.setExtraLinkify(
+                [](const QString& text) -> QString
+                {
+                    if (!text.contains(QStringLiteral("@alice")))
+                    {
+                        return QString{};
+                    }
+                    return QStringLiteral("hi <a href=\"whitem-mention:usr-0001\">Alice Anderson</a>");
+                }
+            );
+            // mentionsEnabled was never turned on here -- extraLinkify's own returned HTML
+            // bypasses allowedLinkSchemes entirely (see its TRUST BOUNDARY doc comment), so it
+            // does not need mentionsEnabled to work.
+            UISE_TEST_CHECK(documentHasAnchor(browser->document(),QStringLiteral("whitem-mention:usr-0001")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionStyledDistinctlyFromOrdinaryLink)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            browser.setLinkColor(QColor(0x1A,0x6F,0xD4));
+            browser.setMentionColor(QColor(0x7A,0x3F,0xBF));
+
+            loadMarkdownWithMentions(
+                browser,
+                QStringLiteral("ordinary [site](https://example.com) and mention [Alice](whitem-mention:usr1)")
+            );
+
+            QColor linkColor;
+            QColor mentionColor;
+            for (auto block=browser.document()->begin(); block.isValid(); block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto format=it.fragment().charFormat();
+                    if (!format.isAnchor())
+                    {
+                        continue;
+                    }
+                    if (format.anchorHref()==QStringLiteral("https://example.com"))
+                    {
+                        linkColor=format.foreground().color();
+                    }
+                    else if (format.anchorHref()==QStringLiteral("whitem-mention:usr1"))
+                    {
+                        mentionColor=format.foreground().color();
+                    }
+                }
+            }
+            UISE_TEST_CHECK_EQUAL_QSTR(linkColor.name(),QColor(0x1A,0x6F,0xD4).name());
+            UISE_TEST_CHECK_EQUAL_QSTR(mentionColor.name(),QColor(0x7A,0x3F,0xBF).name());
+            UISE_TEST_CHECK(linkColor!=mentionColor);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionUrlReachesLinkActivated)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdownWithMentions(browser,QStringLiteral("[Alice](whitem-mention:usr1)"));
+
+            // setOpenLinks(false) already keeps activation with the host for ANY scheme --
+            // confirmed here rather than assumed, since a custom scheme is exactly the case a
+            // browser's OWN openLinks=true default would otherwise swallow via setSource().
+            UISE_TEST_CHECK(!browser.openLinks());
+
+            QSignalSpy spy(&browser,&ChatMessageTextBrowser::linkActivated);
+            const QUrl mentionUrl(QStringLiteral("whitem-mention:usr1"));
+            emit browser.anchorClicked(mentionUrl);
+
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(0).at(0).toUrl().toString(),mentionUrl.toString());
         }
     );
 }

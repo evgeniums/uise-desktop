@@ -81,6 +81,11 @@ std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 //! MessageEditor::applyIndentStep() for why it is not an ordinary space.
 constexpr const char16_t NoBreakSpace=0x00a0;
 
+//! Longest "@word" prefix reported through EnhancedTextEdit::mentionQueryChanged() (Stage 6).
+//! Past this the candidate is dropped rather than truncated: nothing a user TYPES to pick a name
+//! is this long, so a longer run is a paste, and a paste is not a mention gesture.
+constexpr const int MaxMentionQueryChars=64;
+
 /** @brief U+200B ZERO WIDTH SPACE -- what an otherwise-empty paragraph is exported as, so the
  *  blank line it draws survives markdown at all. See fillEmptyBlocksForExport().
  *
@@ -672,7 +677,20 @@ void mergeProseBlocksForExport(QTextDocument* document)
         // Removing the paragraph separator merges the next block into this one; the line separator
         // put in its place is what qtextmarkdownwriter writes as a single newline.
         cursor.deleteChar();
-        cursor.insertText(QString(QChar::LineSeparator));
+
+        // Stage 6 regression, root-caused here rather than where it was first reported: insertText()
+        // with no explicit format inherits cursor.charFormat() -- the format of the PRECEDING
+        // character, per its own documented rule -- and if the first block ends on an ANCHOR (an
+        // ordinary link or a mention), the separator is written WITH that anchor format and Qt then
+        // merges it into the anchor's own fragment, since adjacent same-format runs merge. Measured:
+        // a block ending "...Alice"(anchor) joined this way left the fragment as "Alice<U+2028>",
+        // and qtextmarkdownwriter serialized that as a literal newline INSIDE the link's own title --
+        // "[Alice\n](whitem-mention:usr1)" -- corrupting the mention regardless of what, if anything,
+        // was typed on the next line. A blank, explicitly-constructed format has none of that: the
+        // separator becomes its OWN fragment, never merges into a neighbour's formatting, and
+        // qtextmarkdownwriter's "one U+2028 -> one newline" rule (this function's own reason for
+        // being) applies exactly once, outside any anchor/bold/italic run either side of it.
+        cursor.insertText(QString(QChar::LineSeparator),QTextCharFormat{});
     }
 }
 
@@ -1191,6 +1209,120 @@ void stripBakedRichTextFormatting(QTextDocument* document, int rangeStart, int r
     }
 }
 
+//! An anchor carrying the mention scheme -- see mentionUrlScheme() (Stage 6).
+bool isMentionFormat(const QTextCharFormat& format)
+{
+    return format.isAnchor() && isMentionHref(format.anchorHref());
+}
+
+//! An anchor that is NOT a mention -- what "a link" means throughout this editor as of Stage 6.
+bool isLinkFormat(const QTextCharFormat& format)
+{
+    return format.isAnchor() && !isMentionHref(format.anchorHref());
+}
+
+//! Which side of cursor.position() an anchor-run walk looks at -- see selectAnchorRun().
+enum class AnchorRunSide
+{
+    //! The run containing the character BEFORE position() -- QTextCursor::charFormat()'s own
+    //! documented rule (format of the preceding character, cursor unselected), and what
+    //! Backspace and an insert-at-the-caret act on.
+    Before,
+
+    //! The run containing the character AT position() -- what a forward Delete acts on.
+    After
+};
+
+/**
+ * @brief Extend `cursor`'s selection to the full contiguous anchor run at its position.
+ * @param side Which neighbouring character the run is anchored on -- see AnchorRunSide.
+ * @param matches Which anchors this walk may consider AT ALL -- isLinkFormat for an ordinary
+ *  link, isMentionFormat for a mention. The SAME-HREF contiguity rule is applied on top of it
+ *  regardless, so a walk can never cross from one anchor into an adjacent DIFFERENT one
+ *  (measured: two adjacent anchors with different hrefs never merge into one fragment).
+ * @return false, cursor untouched, if the position is not inside a matching run.
+ *
+ * Generalized out of what used to be MessageEditor::selectLinkRunAtCursor()'s body (Stage 5b) so
+ * the Stage 6 atomicity guard, which lives on EnhancedTextEdit and cannot reach a private
+ * MessageEditor member, reuses the identical walk instead of a second copy of it.
+ * selectLinkRunAtCursor() is now a two-line wrapper over this, with `side` fixed to Before
+ * (its own behaviour is unchanged: computing currentIndex from the block walk and matching on the
+ * SPAN's own format is equivalent to the old "check cursor.charFormat() first" shape whenever the
+ * cursor carries no selection, since the span satisfying position>start && position<=end is
+ * exactly the one holding the character immediately preceding position()).
+ *
+ * A run built by two separate char-format writes, or one with mixed bold/italic inside it, stays
+ * split across several fragments with identical hrefs, which is what the outward walk is for.
+ * Anchors do not cross block boundaries in this editor, so the walk is block-local.
+ */
+template <typename PredicateT>
+bool selectAnchorRun(QTextCursor& cursor, AnchorRunSide side, const PredicateT& matches)
+{
+    const auto position=cursor.position();
+
+    struct FragmentSpan
+    {
+        int start;
+        int end;
+        bool isAnchor;
+        QTextCharFormat format;
+    };
+    std::vector<FragmentSpan> spans;
+    int currentIndex=-1;
+
+    const auto block=cursor.block();
+    for (auto it=block.begin(); !it.atEnd(); ++it)
+    {
+        const auto fragment=it.fragment();
+        if (!fragment.isValid())
+        {
+            continue;
+        }
+
+        const auto start=fragment.position();
+        const auto end=start+fragment.length();
+        const auto format=fragment.charFormat();
+        spans.push_back(FragmentSpan{start,end,format.isAnchor(),format});
+
+        const auto inRange=(side==AnchorRunSide::Before)
+            ? (position>start && position<=end)
+            : (position>=start && position<end);
+        if (currentIndex==-1 && inRange)
+        {
+            currentIndex=static_cast<int>(spans.size())-1;
+        }
+    }
+
+    if (currentIndex==-1 || !matches(spans[static_cast<std::size_t>(currentIndex)].format))
+    {
+        return false;
+    }
+    const auto href=spans[static_cast<std::size_t>(currentIndex)].format.anchorHref();
+
+    auto isSameRun=[&](const FragmentSpan& span)
+    {
+        return span.isAnchor && matches(span.format) && span.format.anchorHref()==href;
+    };
+
+    // Extend outward while the immediate neighbour matches AND carries the SAME href, and is
+    // contiguous.
+    auto first=static_cast<std::size_t>(currentIndex);
+    while (first>0 && isSameRun(spans[first-1]) && spans[first-1].end==spans[first].start)
+    {
+        --first;
+    }
+
+    auto last=static_cast<std::size_t>(currentIndex);
+    while (last+1<spans.size() && isSameRun(spans[last+1]) && spans[last+1].start==spans[last].end)
+    {
+        ++last;
+    }
+
+    cursor.setPosition(spans[first].start);
+    cursor.setPosition(spans[last].end,QTextCursor::KeepAnchor);
+    return true;
+}
+
 }
 
 /*****************************MessageEditorHighlighter*************************/
@@ -1275,6 +1407,19 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             }
 
             m_linkUnderline=enable;
+            rehighlight();
+        }
+
+        //! See EnhancedTextEdit::mentionColor -- Stage 6. Applied by highlightLinks() below, on
+        //! the same display-only terms as setLinkColor().
+        void setMentionColor(const QColor& color)
+        {
+            if (m_mentionColor==color)
+            {
+                return;
+            }
+
+            m_mentionColor=color;
             rehighlight();
         }
 
@@ -1363,12 +1508,21 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
          * and leaks into toHtml(). stripImportedAnchorStyle() removes it on the way in, and this
          * paints all links, typed and imported alike, in one themed colour.
          *
-         * Runs LAST so a link inside a blockquote reads as a link rather than as quoted text --
-         * later setFormat() calls win over earlier ones on an overlapping range.
+         * Stage 6: a MENTION is an anchor too, so it is painted by this same pass -- but with
+         * m_mentionColor when that is valid, so it reads as distinct from an ordinary link. One
+         * pass with a per-fragment colour choice rather than a second pass that overwrites the
+         * first: the result does not then depend on setFormat() call ORDER, and it matches
+         * ChatMessageTextBrowser::applyDocumentStyle() exactly, where the
+         * `a[href^="whitem-mention:"]` rule wins over the blanket `a` rule by CSS specificity
+         * when present, and leaves it in charge when absent -- an unset mentionColor falls back
+         * to linkColor here for the identical reason.
+         *
+         * Runs LAST so a link (or mention) inside a blockquote reads as one rather than as quoted
+         * text -- later setFormat() calls win over earlier ones on an overlapping range.
          */
         void highlightLinks()
         {
-            if (!m_linkColor.isValid() && !m_linkUnderline)
+            if (!m_linkColor.isValid() && !m_mentionColor.isValid() && !m_linkUnderline)
             {
                 return;
             }
@@ -1378,15 +1532,20 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             for (auto it=block.begin(); !it.atEnd(); ++it)
             {
                 const auto fragment=it.fragment();
-                if (!fragment.isValid() || !fragment.charFormat().isAnchor())
+                const auto anchorFormat=fragment.charFormat();
+                if (!fragment.isValid() || !anchorFormat.isAnchor())
                 {
                     continue;
                 }
 
+                const auto& color=(isMentionHref(anchorFormat.anchorHref()) && m_mentionColor.isValid())
+                    ? m_mentionColor
+                    : m_linkColor;
+
                 QTextCharFormat format;
-                if (m_linkColor.isValid())
+                if (color.isValid())
                 {
-                    format.setForeground(m_linkColor);
+                    format.setForeground(color);
                 }
                 // Set either way, so linkUnderline:false also strips an underline an imported
                 // document happened to carry.
@@ -1400,6 +1559,7 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
         QColor m_codeBlockColor;
         QColor m_linkColor;
         bool m_linkUnderline=false;
+        QColor m_mentionColor;
 };
 
 /******************************EnhancedTextEdit********************************/
@@ -1426,6 +1586,18 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
     // which would report nothing-to-paste for an attachment payload (see
     // canInsertFromMimeData() below).
     setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Stage 6: '@'-word detection is pure OBSERVATION -- no key is intercepted for it and nothing
+    // about typing changes (the Stage 5b lesson about not altering global typing semantics to
+    // achieve a feature). Driven off these two signals rather than QTextDocument::contentsChange
+    // because what updateMentionQuery() needs is not the EDIT DELTA but the caret's CURRENT
+    // surroundings, and because paste, IME commit and undo/redo all reach these two anyway.
+    // Neither signal implies the other (a caret move with no text change fires only
+    // cursorPositionChanged; a programmatic setPlainText() fires only textChanged), and
+    // updateMentionQuery() recomputes from scratch and early-outs when nothing has actually
+    // changed, so firing twice for one edit costs nothing.
+    connect(this,&QTextEdit::textChanged,this,&EnhancedTextEdit::updateMentionQuery);
+    connect(this,&QTextEdit::cursorPositionChanged,this,&EnhancedTextEdit::updateMentionQuery);
 }
 
 //--------------------------------------------------------------------------
@@ -1635,21 +1807,38 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
         return;
     }
 
-    // Tab/Shift+Tab mean one of two things, and a literal tab character is neither of them.
-    //
-    // INSIDE A TABLE they move between cells. Qt does NOT do this on its own: neither
-    // QWidgetTextControl nor QTextEdit has any NextCell/PreviousCell handling, so Tab would just
-    // insert a tab into the current cell and there would be no keyboard way across a table at
-    // all -- only clicking, or walking the arrow keys through every character.
-    //
-    // OUTSIDE ONE they are an indent gesture, handed to MessageEditor as a signal because what a
-    // step means depends on the editing mode -- see indentStepRequested(). The key is consumed
-    // either way; a tab character never reaches the document, which is the point (a leading tab
-    // makes markdown read the line as an indented code block, and a mid-line tab is collapsed to
-    // one space by the time the message is rendered as HTML).
+    // Tab/Shift+Tab mean one of THREE things, and a literal tab character is none of them.
     if ((event->key()==Qt::Key_Tab || event->key()==Qt::Key_Backtab)
         && !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)))
     {
+        // Stage 6, checked FIRST: while an "@word" is in progress, Tab means "complete it" --
+        // the classic autocomplete keyboard gesture -- rather than either meaning below. The
+        // editor cannot resolve "eri" to anyone on its own (no user directory; see
+        // AbstractMessageEditor::mentionRequested()'s own doc comment), so this is pure gesture
+        // recognition: the key is consumed regardless of whether a host is even connected to
+        // mentionCompletionRequested(), so a mention query never "eats" a literal tab character
+        // or silently triggers an indent step instead. Direction (Tab vs Shift+Tab) is not
+        // distinguished -- there is no "previous candidate" concept here, since the editor holds
+        // no candidate list to step through. mentionQueryAtCursor() already excludes being
+        // inside a table (see its own doc comment), so there is no real ambiguity with the
+        // table-cell-navigation branch below even though this check runs before it.
+        const auto query=mentionQueryAtCursor();
+        if (query.isActive)
+        {
+            emit mentionCompletionRequested(query.prefix,query.position);
+            return;
+        }
+
+        // INSIDE A TABLE they move between cells. Qt does NOT do this on its own: neither
+        // QWidgetTextControl nor QTextEdit has any NextCell/PreviousCell handling, so Tab would
+        // just insert a tab into the current cell and there would be no keyboard way across a
+        // table at all -- only clicking, or walking the arrow keys through every character.
+        //
+        // OUTSIDE ONE they are an indent gesture, handed to MessageEditor as a signal because
+        // what a step means depends on the editing mode -- see indentStepRequested(). The key is
+        // consumed either way; a tab character never reaches the document, which is the point (a
+        // leading tab makes markdown read the line as an indented code block, and a mid-line tab
+        // is collapsed to one space by the time the message is rendered as HTML).
         const auto backwards=(event->key()==Qt::Key_Backtab)
             || (event->modifiers() & Qt::ShiftModifier);
 
@@ -1690,6 +1879,36 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
             }
         }
         event->setModifiers(event->modifiers() & ~(Qt::ControlModifier | Qt::ShiftModifier));
+    }
+
+    // --- Stage 6: mention atomicity -----------------------------------------------------------
+    //
+    // A mention is one user-visible token. Qt gives it no such status on its own; measured, all
+    // five: a character typed anywhere in (runStart, runEnd] is absorbed INTO the anchor,
+    // splitting the title and keeping the href; Backspace and Delete shrink the run one character
+    // at a time, never crossing out of it; deleting a selection that only PARTLY covers the run
+    // leaves the remainder as a smaller anchor still carrying the same href -- a live, clickable,
+    // WRONG mention; a Return pressed right at/inside the run does not start a clean new block at
+    // all -- the anchor format survives onto it and the mention's own text gains an embedded
+    // '\r'; selecting the run whole and deleting it removes it cleanly, in one user-visible
+    // action, with no residue. That last shape is the target every branch of the guard converges
+    // on -- see applyMentionAtomicityGuard()'s own doc comment for the five branches.
+    //
+    // Inert by construction outside Wysiwyg: a Markdown/Plaintext document holds no anchors, so
+    // every predicate the guard checks is false and the key falls through untouched.
+    if (applyMentionAtomicityGuard(event))
+    {
+        return;
+    }
+
+    // Escape closes an in-progress mention query -- REPORTED, never CONSUMED: a host's own Escape
+    // handling (closing a dialog, cancelling a reply bar) must keep working exactly as it did, and
+    // a host that wants to eat Escape for its own popup installs its own filter for that.
+    if (event->key()==Qt::Key_Escape && m_lastMentionQuery.isActive)
+    {
+        m_dismissedMentionPosition=m_lastMentionQuery.position;
+        m_lastMentionQuery=MentionQuery{};
+        emit mentionQueryClosed();
     }
 
     QTextEdit::keyPressEvent(event);
@@ -1770,12 +1989,360 @@ void EnhancedTextEdit::setLinkUnderline(bool enable)
 
 //--------------------------------------------------------------------------
 
+void EnhancedTextEdit::setMentionColor(const QColor& color)
+{
+    m_mentionColor=color;
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setMentionColor(color);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void EnhancedTextEdit::applyTabStopDistance()
 {
     // Qt's default is a flat 80px that ignores the font entirely; at this widget's space width
     // that is more than twenty spaces per tab. Measured against the font in force instead, so a
     // tab lines up with what DefaultTabStopSpaces actually promises at any font size.
     setTabStopDistance(DefaultTabStopSpaces*QFontMetricsF(font()).horizontalAdvance(QLatin1Char(' ')));
+}
+
+//--------------------------------------------------------------------------
+
+EnhancedTextEdit::MentionQuery EnhancedTextEdit::mentionQueryAtCursor() const
+{
+    MentionQuery query;
+
+    const auto cursor=textCursor();
+    if (cursor.hasSelection())
+    {
+        // A selection means the user is not mid-typing a word.
+        return query;
+    }
+
+    // --- gates, all four from the Stage 6 brief's own enumeration ("inside a code fence, inside
+    // an existing link, inside a table cell") plus the anchor test that also covers a mention
+    // already inserted --------------------------------------------------------------------------
+    //
+    // A fenced code block. block.userState() rather than only QTextFormat::BlockCodeFence, for
+    // exactly the reason MessageEditor::currentFormatState() spells out: convertCodeBlocksToText()
+    // strips that property, because a literal fence is ordinary text. The property test is kept
+    // alongside as the same belt-and-braces case.
+    const auto block=cursor.block();
+    const auto blockFormat=cursor.blockFormat();
+    if (block.userState()==MessageEditorHighlighter::InFence
+        || blockFormat.hasProperty(QTextFormat::BlockCodeFence))
+    {
+        return query;
+    }
+
+    // Inside an existing anchor: an ordinary hyperlink's title, or a mention already inserted.
+    // One test covers both -- offering a selector inside either is meaningless, and it is what
+    // stops the ANCHOR form of a mention re-triggering detection from within itself. (The PLAIN
+    // "@username" form deliberately does re-trigger: it is indistinguishable from a hand-typed
+    // "@alice", and both are legitimately still an @-word the user may want to re-pick.)
+    if (cursor.charFormat().isAnchor())
+    {
+        return query;
+    }
+
+    // Inside a table cell -- per the brief's own enumeration. Deliberately NOT applied to a
+    // deliberate insert (see MessageEditor::canInsertMentionAtCursor()); this gate is about not
+    // auto-popping a host's selector inside a compact grid.
+    if (cursor.currentTable()!=nullptr)
+    {
+        return query;
+    }
+
+    // --- the walk back ------------------------------------------------------------------------
+    const auto text=block.text();
+    const auto offset=cursor.position()-block.position();
+
+    // Back over the word characters. A word character is anything that is neither whitespace nor
+    // '@' -- deliberately permissive, since a username's alphabet is the HOST's business, not
+    // this widget's, and the host filters the prefix it is handed anyway.
+    auto i=offset;
+    while (i>0 && !text.at(i-1).isSpace() && text.at(i-1)!=QLatin1Char('@'))
+    {
+        --i;
+    }
+    if (i==0 || text.at(i-1)!=QLatin1Char('@'))
+    {
+        return query;
+    }
+    const auto at=i-1;
+
+    // The '@' must START a word: whitespace before it, or the start of the block. An '@' in the
+    // middle of a token ("a@b", an e-mail address) is not a mention gesture.
+    if (at>0 && !text.at(at-1).isSpace())
+    {
+        return query;
+    }
+
+    const auto prefix=text.mid(at+1,offset-at-1);
+    if (prefix.size()>MaxMentionQueryChars)
+    {
+        // A guard against a pathological paste handing a host's selector a giant filter string.
+        return query;
+    }
+
+    query.isActive=true;
+    query.position=block.position()+at;
+    query.prefix=prefix;
+    return query;
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::updateMentionQuery()
+{
+    auto query=mentionQueryAtCursor();
+
+    // An '@' dismissed with Escape stays dismissed while the caret is still in that same word;
+    // starting a NEW one (a different '@' position) clears the latch.
+    if (query.isActive && query.position==m_dismissedMentionPosition)
+    {
+        query=MentionQuery{};
+    }
+    else
+    {
+        m_dismissedMentionPosition=-1;
+    }
+
+    if (query.isActive==m_lastMentionQuery.isActive
+        && query.position==m_lastMentionQuery.position
+        && query.prefix==m_lastMentionQuery.prefix)
+    {
+        return;
+    }
+
+    const auto wasActive=m_lastMentionQuery.isActive;
+    m_lastMentionQuery=query;
+
+    if (query.isActive)
+    {
+        emit mentionQueryChanged(query.prefix,query.position);
+    }
+    else if (wasActive)
+    {
+        emit mentionQueryClosed();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::selectMentionQueryAtCursor(QTextCursor& cursor) const
+{
+    const auto query=mentionQueryAtCursor();
+    if (!query.isActive)
+    {
+        return false;
+    }
+    // The '@' is INCLUDED: an inserted mention replaces the whole gesture, not just its tail.
+    cursor.setPosition(query.position);
+    cursor.setPosition(query.position+1+query.prefix.size(),QTextCursor::KeepAnchor);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::snapSelectionToMentions(QTextCursor& cursor) const
+{
+    const auto start=cursor.selectionStart();
+    const auto end=cursor.selectionEnd();
+    auto newStart=start;
+    auto newEnd=end;
+
+    QTextCursor probe(document());
+
+    // START side: the run containing the character AT `start`. If `start` is strictly inside it,
+    // widen backwards; a selection that already begins at the run's first character covers it
+    // whole.
+    probe.setPosition(start);
+    auto run=probe;
+    if (selectAnchorRun(run,AnchorRunSide::After,isMentionFormat) && run.selectionStart()<start)
+    {
+        newStart=run.selectionStart();
+    }
+
+    // END side: the run containing the character BEFORE `end`, mirrored.
+    probe.setPosition(end);
+    run=probe;
+    if (selectAnchorRun(run,AnchorRunSide::Before,isMentionFormat) && run.selectionEnd()>end)
+    {
+        newEnd=run.selectionEnd();
+    }
+
+    if (newStart==start && newEnd==end)
+    {
+        return false;
+    }
+    cursor.setPosition(newStart);
+    cursor.setPosition(newEnd,QTextCursor::KeepAnchor);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::applyMentionAtomicityGuard(QKeyEvent* event)
+{
+    const bool isBackspace=(event->key()==Qt::Key_Backspace);
+    const bool isDelete=(event->key()==Qt::Key_Delete);
+    const bool isReturn=(event->key()==Qt::Key_Return || event->key()==Qt::Key_Enter);
+
+    // "This key will put text into the document." Tested on the delivered text rather than a
+    // key-code range: that is what actually reaches the document (an IME commit string included),
+    // while leaving every navigation/shortcut key alone. Control/Meta chords are excluded, so
+    // Ctrl+V is NOT caught here -- a paste reaches insertFromMimeData(), a separate path, and one
+    // the '@'-detection observers (textChanged/cursorPositionChanged) already pick up. Return's
+    // own event->text() ("\r", 0x0D) fails this test, which is exactly why it needs its own
+    // branch below rather than falling into the "inserts" one.
+    const auto typed=event->text();
+    const bool inserts=!typed.isEmpty()
+        && typed.at(0).unicode()>=0x20
+        && !(event->modifiers() & (Qt::ControlModifier|Qt::MetaModifier));
+
+    if (!isBackspace && !isDelete && !isReturn && !inserts)
+    {
+        return false;
+    }
+
+    auto cursor=textCursor();
+
+    // --- BRANCH 1: a selection that only PARTLY covers a mention ------------------------------
+    // Widen it to whole runs at both ends and hand the key straight to Qt: the edit it is about
+    // to do now lands on the measured CLEAN shape (whole run, one edit, no residue) instead of
+    // the measured mangled one (a selection deleted across only PART of a run leaves the
+    // remainder as a smaller anchor still carrying the same href). Covers Backspace, Delete and
+    // typing-over-a-selection in one place. Never consumes the key.
+    if (cursor.hasSelection())
+    {
+        if (snapSelectionToMentions(cursor))
+        {
+            setTextCursor(cursor);
+        }
+        return false;
+    }
+
+    // --- BRANCH 2: Backspace at/inside a mention -> delete the WHOLE run ----------------------
+    if (isBackspace)
+    {
+        auto run=cursor;
+        // position() > run.selectionStart() guards the document-position-0 edge case: charFormat()
+        // there falls back to the FOLLOWING character (measured), so without this check a
+        // Backspace at the very START of a mention that starts the document -- an ordinary no-op
+        // in Qt -- would delete the whole mention instead.
+        if (selectAnchorRun(run,AnchorRunSide::Before,isMentionFormat)
+            && cursor.position()>run.selectionStart())
+        {
+            run.beginEditBlock();
+            run.removeSelectedText();
+            run.endEditBlock();
+            setTextCursor(run);
+            return true;
+        }
+        return false;
+    }
+
+    // --- BRANCH 3: Delete (forward) at/inside a mention -- the same, looking the other way ----
+    if (isDelete)
+    {
+        auto run=cursor;
+        if (selectAnchorRun(run,AnchorRunSide::After,isMentionFormat)
+            && cursor.position()<run.selectionEnd())
+        {
+            run.beginEditBlock();
+            run.removeSelectedText();
+            run.endEditBlock();
+            setTextCursor(run);
+            return true;
+        }
+        return false;
+    }
+
+    // --- BRANCH 3.5: Return/Enter at/inside a mention -----------------------------------------
+    // Measured against a real EnhancedTextEdit (QApplication::sendEvent(Key_Return) right after
+    // insertMention()): the new block does NOT start clean -- the mention's anchor format
+    // survives onto it and the mention's own fragment gains an embedded '\r' instead of a real
+    // block split, so toMarkdown() serializes "[Alice\n](whitem-mention:usr1)X" for what should
+    // have been two separate lines. A bare QTextCursor::insertBlock() call in ISOLATION (no
+    // QTextEdit/QWidgetTextControl involved) does NOT reproduce this on the same document
+    // content -- so whatever produces it lives specifically inside QWidgetTextControl's own
+    // Return handling, not in insertBlock() itself, and chasing the exact undocumented mechanism
+    // is not worth it.
+    //
+    // Fixed by sidestepping the question entirely: insert the block OURSELVES, with an explicitly
+    // cleared format, and CONSUME the key so QTextEdit::keyPressEvent()'s own Return handling
+    // never runs for this case at all -- the same "build it right rather than let Qt guess" shape
+    // Branch 4 uses for typing, just applied to block insertion instead of character insertion.
+    // (Separately verified with a standalone probe: cursor.insertBlock(blockFormat,
+    // clearedFormat) alone does produce the clean two-block shape this branch relies on.)
+    //
+    // A caret INSIDE the run (not just at its end) is handled by the same code: `run.
+    // selectionEnd()` is always the mention's own end regardless of where inside it the caret
+    // was, so the whole mention stays intact on the FIRST line and the new block starts empty
+    // right after it -- consistent with Branch 4 never splitting a mention's title either.
+    if (isReturn)
+    {
+        auto run=cursor;
+        bool atMention=selectAnchorRun(run,AnchorRunSide::Before,isMentionFormat);
+        if (!atMention && cursor.position()==0)
+        {
+            atMention=selectAnchorRun(run,AnchorRunSide::After,isMentionFormat);
+        }
+        if (!atMention)
+        {
+            return false;
+        }
+
+        cursor.setPosition(run.selectionEnd());
+        QTextCharFormat continuation=cursor.charFormat();
+        continuation.clearProperty(QTextFormat::IsAnchor);
+        continuation.clearProperty(QTextFormat::AnchorHref);
+        continuation.clearProperty(QTextFormat::AnchorName);
+
+        cursor.insertBlock(cursor.blockFormat(),continuation);
+        setTextCursor(cursor);
+        setCurrentCharFormat(continuation);
+        return true;
+    }
+
+    // --- BRANCH 4: typing at/inside a mention ---------------------------------------------------
+    // Resolution is NON-DESTRUCTIVE by design (confirmed choice): move the caret past the run's
+    // end and strip the anchor properties off the format the insert would otherwise inherit, then
+    // let the key do exactly what it always did. Nothing the user typed is lost and nothing
+    // already written is replaced.
+    //
+    // insertMention()/insertMentionText() already apply this same strip, but only at the INSTANT
+    // of insertion (Stage 5b's insertLink() established the pattern); this re-applies it for a
+    // caret the user later navigated back to (click or arrow key), which is exactly the case that
+    // still reproduced the absorption bug.
+    auto run=cursor;
+    bool atMention=selectAnchorRun(run,AnchorRunSide::Before,isMentionFormat);
+    if (!atMention && cursor.position()==0)
+    {
+        // Document position 0: charFormat() looks FORWARD there (measured), so a mention starting
+        // the document is "hot" on its leading edge too.
+        atMention=selectAnchorRun(run,AnchorRunSide::After,isMentionFormat);
+    }
+    if (!atMention)
+    {
+        return false;
+    }
+
+    cursor.setPosition(run.selectionEnd());
+    QTextCharFormat continuation=cursor.charFormat();
+    continuation.clearProperty(QTextFormat::IsAnchor);
+    continuation.clearProperty(QTextFormat::AnchorHref);
+    continuation.clearProperty(QTextFormat::AnchorName);
+    setTextCursor(cursor);
+    // THIS is the load-bearing call: QTextCursor::setCharFormat() on a COLLAPSED cursor is
+    // documented to do nothing, and the widget tracks its own insertion format separately.
+    setCurrentCharFormat(continuation);
+
+    return false;
 }
 
 //--------------------------------------------------------------------------
@@ -2146,8 +2713,13 @@ MessageEditor::MessageEditor(QWidget* parent)
     connect(pimpl->toolbar,&MessageEditorToolbar::linkRequested,this,&MessageEditor::onLinkButtonRequested);
     connect(pimpl->toolbar,&MessageEditorToolbar::removeLinkRequested,this,&MessageEditor::removeLink);
 
-    // Stage 6: Mention stays hidden and unconnected -- no toolbar API change is needed to wire
-    // it up when that stage lands.
+    // Stage 6: unlike Link, Mention stays HIDDEN until a host opts in via
+    // setMentionButtonVisible(true) -- a mention button with no user directory behind it does
+    // nothing at all (the editor has no selector of its own; see
+    // AbstractMessageEditor::mentionRequested()). It IS enabled in every editing mode, though,
+    // because its plain "@username" form (insertMentionText()) is valid in all three -- see
+    // FormattingButtons' own comment in messageeditortoolbar.cpp.
+    connect(pimpl->toolbar,&MessageEditorToolbar::mentionRequested,this,&MessageEditor::onMentionButtonRequested);
 
     connect(pimpl->editor,&QTextEdit::cursorPositionChanged,this,&MessageEditor::syncToolbarState);
     connect(pimpl->editor,&QTextEdit::selectionChanged,this,&MessageEditor::syncToolbarState);
@@ -2196,6 +2768,28 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::editPreviousRequested,
         this,
         &AbstractMessageEditor::editPreviousRequested
+    );
+
+    // See AbstractMessageEditor::mentionQueryChanged()/mentionQueryClosed()/
+    // mentionCompletionRequested() -- relayed here verbatim, same arrangement as
+    // editPreviousRequested() above.
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::mentionQueryChanged,
+        this,
+        &AbstractMessageEditor::mentionQueryChanged
+    );
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::mentionQueryClosed,
+        this,
+        &AbstractMessageEditor::mentionQueryClosed
+    );
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::mentionCompletionRequested,
+        this,
+        &AbstractMessageEditor::mentionCompletionRequested
     );
 
     // The mechanical half of paste normalization (strip baked colour/font, fix an invisible
@@ -2456,6 +3050,16 @@ void MessageEditor::selectAll()
 
 void MessageEditor::cut()
 {
+    // Stage 6: the same whole-run rule the Backspace/Delete atomicity guard applies -- a
+    // selection deleted across only PART of a mention would leave the remainder as a smaller
+    // anchor still carrying the same href. copy() is deliberately left alone: copying a partial
+    // mention mangles nothing in the live document, only its clipboard text.
+    auto cursor=pimpl->editor->textCursor();
+    if (pimpl->editor->snapSelectionToMentions(cursor))
+    {
+        pimpl->editor->setTextCursor(cursor);
+    }
+
     // QTextEdit's own clipboard behavior, matching the composer's stock text-edit actions --
     // deliberately not selectedText(TextFormat::Markdown) plus a manual delete.
     pimpl->editor->cut();
@@ -2839,6 +3443,14 @@ void MessageEditor::updateExpandButtonVisible()
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::updateMentionButtonVisible()
+{
+    pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Mention,isMentionButtonVisible());
+    Layout::activateUpward(this);
+}
+
+//--------------------------------------------------------------------------
+
 MessageEditorFormatState MessageEditor::currentFormatState() const
 {
     const auto cf=pimpl->editor->currentCharFormat();
@@ -2866,7 +3478,11 @@ MessageEditorFormatState MessageEditor::currentFormatState() const
     state.codeBlock=bf.hasProperty(QTextFormat::BlockCodeFence)
         || cursor.block().userState()==MessageEditorHighlighter::InFence;
     state.headingLevel=bf.headingLevel();
-    state.insideLink=cf.isAnchor();
+    // Stage 6: a mention is an anchor too, but not a LINK for any purpose this state drives --
+    // the Remove-link button/row must never offer to unlink one, and "Edit link" must never open
+    // the hyperlink dialog on one. The two flags are mutually exclusive.
+    state.insideMention=isMentionFormat(cf);
+    state.insideLink=isLinkFormat(cf);
     state.insideTable=cursor.currentTable()!=nullptr;
 
     if (list!=nullptr)
@@ -3877,10 +4493,13 @@ void MessageEditor::removeLink()
             return;
         }
     }
-    else if (!cursor.charFormat().isAnchor())
+    else if (!isLinkFormat(cursor.charFormat()))
     {
-        // A selection exists but the caret's own end of it isn't inside a link -- nothing
-        // reliable to remove; same kind of guard applyTableAction() uses outside a table.
+        // A selection exists but the caret's own end of it isn't inside an ORDINARY link --
+        // nothing reliable to remove; same kind of guard applyTableAction() uses outside a table.
+        // Stage 6: a selection spanning a link and a mention unlinks only the link -- a mention
+        // has no "remove" action of its own (Backspace/Delete already delete it whole, see the
+        // atomicity guard in EnhancedTextEdit::keyPressEvent()).
         return;
     }
 
@@ -3912,7 +4531,7 @@ void MessageEditor::removeLink()
 
             const auto fragmentStart=fragment.position();
             const auto fragmentEnd=fragmentStart+fragment.length();
-            if (fragmentEnd<=start || fragmentStart>=end || !fragment.charFormat().isAnchor())
+            if (fragmentEnd<=start || fragmentStart>=end || !isLinkFormat(fragment.charFormat()))
             {
                 continue;
             }
@@ -3923,7 +4542,9 @@ void MessageEditor::removeLink()
             // range, so mixed bold/italic runs inside the link survive (measured: an anchor
             // applied over an already-formatted selection splits into same-href fragments with
             // different weight). Also clears the colour Qt's own importer bakes onto an anchor
-            // (setMarkdown()'s blue), so removed link text does not stay coloured.
+            // (setMarkdown()'s blue), so removed link text does not stay coloured. Stage 6:
+            // isLinkFormat() excludes a mention fragment from this walk entirely, so a selection
+            // spanning both leaves the mention untouched.
             auto format=fragment.charFormat();
             format.clearProperty(QTextFormat::IsAnchor);
             format.clearProperty(QTextFormat::AnchorHref);
@@ -3957,71 +4578,9 @@ void MessageEditor::removeLink()
 
 bool MessageEditor::selectLinkRunAtCursor(QTextCursor& cursor) const
 {
-    const auto position=cursor.position();
-
-    // QTextCursor::charFormat() with no selection is documented to return the format of the
-    // character immediately PRECEDING position() -- matched below by requiring start<position,
-    // so the fragment this finds is exactly the one charFormat() itself just consulted.
-    if (!cursor.charFormat().isAnchor())
-    {
-        return false;
-    }
-    const auto href=cursor.charFormat().anchorHref();
-
-    struct FragmentSpan
-    {
-        int start;
-        int end;
-        bool isLink;
-    };
-    std::vector<FragmentSpan> spans;
-    int currentIndex=-1;
-
-    // Links do not cross block boundaries in this editor (nothing here ever inserts one that
-    // does), so the walk is block-local.
-    const auto block=cursor.block();
-    for (auto it=block.begin(); !it.atEnd(); ++it)
-    {
-        const auto fragment=it.fragment();
-        if (!fragment.isValid())
-        {
-            continue;
-        }
-
-        const auto start=fragment.position();
-        const auto end=start+fragment.length();
-        const auto format=fragment.charFormat();
-        spans.push_back(FragmentSpan{start,end,format.isAnchor() && format.anchorHref()==href});
-
-        if (currentIndex==-1 && position>start && position<=end)
-        {
-            currentIndex=static_cast<int>(spans.size())-1;
-        }
-    }
-
-    if (currentIndex==-1 || !spans[static_cast<std::size_t>(currentIndex)].isLink)
-    {
-        return false;
-    }
-
-    // Extend outward while the immediate neighbour is both a link AND the SAME href, and
-    // contiguous -- a different href never merges (measured), so this cannot walk past one link
-    // into an adjacent one.
-    auto first=static_cast<std::size_t>(currentIndex);
-    while (first>0 && spans[first-1].isLink && spans[first-1].end==spans[first].start)
-    {
-        --first;
-    }
-
-    auto last=static_cast<std::size_t>(currentIndex);
-    while (last+1<spans.size() && spans[last+1].isLink && spans[last+1].start==spans[last].end)
-    {
-        ++last;
-    }
-
-    cursor.setPosition(spans[first].start);
-    cursor.setPosition(spans[last].end,QTextCursor::KeepAnchor);
-    return true;
+    // A thin wrapper over the generalized walk (Stage 6) -- see selectAnchorRun()'s own doc
+    // comment for why this is behaviourally identical to the pre-Stage-6 body.
+    return selectAnchorRun(cursor,AnchorRunSide::Before,isLinkFormat);
 }
 
 //--------------------------------------------------------------------------
@@ -4029,12 +4588,15 @@ bool MessageEditor::selectLinkRunAtCursor(QTextCursor& cursor) const
 void MessageEditor::onLinkButtonRequested()
 {
     const auto state=currentFormatState();
-    if (state.codeBlock)
+    if (state.codeBlock || state.insideMention)
     {
-        // Refused: an anchor's href is not backslash-escaped by Qt's markdown writer the way
+        // codeBlock: an anchor's href is not backslash-escaped by Qt's markdown writer the way
         // fence content is, so restoreCodeFences() cannot safely unescape it (measured) -- same
         // gate insertLink() itself applies, kept here too so the dialog is never opened for a
-        // link that could not be inserted anyway.
+        // link that could not be inserted anyway. insideMention (Stage 6): "Edit link" must never
+        // open the hyperlink dialog on a mention -- state.insideLink already excludes mentions
+        // (see currentFormatState()), so this can only be reached by a host that calls this
+        // directly against the documented contract; refused here too for the same reason.
         return;
     }
 
@@ -4083,8 +4645,13 @@ void MessageEditor::insertLink(const QString& url, const QString& title)
         return;
     }
 
-    if (currentFormatState().codeBlock)
+    const auto state=currentFormatState();
+    if (state.codeBlock || state.insideMention)
     {
+        // insideMention (Stage 6): inserting an anchor at a position inside a mention run would
+        // split the run into two half-titles both still carrying the mention href -- the same
+        // mangled shape the Backspace/Delete atomicity guard exists to prevent, arrived at from
+        // the other side.
         return;
     }
 
@@ -4117,6 +4684,142 @@ void MessageEditor::insertLink(const QString& url, const QString& title)
     // cursor does not by itself move the widget's own caret.
     pimpl->editor->setTextCursor(cursor);
     pimpl->editor->setCurrentCharFormat(continuation);
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::canInsertMentionAtCursor() const
+{
+    const auto state=currentFormatState();
+    // codeBlock: same measured reason insertLink() refuses there -- an anchor's href is not
+    // backslash-escaped by Qt's markdown writer the way fence content is. insideMention: would
+    // split one mention run into two half-titles sharing the same href. insideLink: a hidden-uid
+    // anchor has no business living inside an ordinary hyperlink's title.
+    //
+    // Deliberately does NOT gate on state.insideTable -- the '@'-DETECTION side gate
+    // (EnhancedTextEdit::mentionQueryAtCursor()) exists to stop an AUTO-POPPED selector from
+    // appearing inside a compact table cell; a deliberate toolbar click or context-menu selection
+    // is an explicit request, and a mention inside a table cell is ordinary content.
+    return !state.codeBlock && !state.insideMention && !state.insideLink;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onMentionButtonRequested()
+{
+    if (!canInsertMentionAtCursor())
+    {
+        return;
+    }
+
+    const auto query=pimpl->editor->mentionQueryAtCursor();
+    emit mentionRequested(query.isActive ? query.prefix : QString{});
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertMention(const QString& uid, const QString& title)
+{
+    if (uid.isEmpty() || uid.contains(QLatin1Char(' ')))
+    {
+        // A raw space inside the href comes back EMPTY through Qt's markdown writer (measured),
+        // producing an anchor that renders but refers to nobody. UIDs in this project never
+        // contain one; refused rather than silently emitted if one ever does.
+        return;
+    }
+    const auto displayTitle=title.isEmpty() ? uid : title;
+
+    if (messageEditingMode()==MessageEditingMode::Markdown)
+    {
+        // Markdown mode's document IS source text -- a literal insert, no escaping, same
+        // philosophy as insertLink()'s own Markdown branch.
+        auto cursor=pimpl->editor->textCursor();
+        if (!cursor.hasSelection())
+        {
+            pimpl->editor->selectMentionQueryAtCursor(cursor);
+        }
+        cursor.insertText(
+            QLatin1Char('[')+displayTitle+QStringLiteral("](")+mentionHref(uid)+QLatin1Char(')')
+        );
+        pimpl->editor->setTextCursor(cursor);
+        finishFormatAction();
+        return;
+    }
+
+    if (messageEditingMode()!=MessageEditingMode::Wysiwyg)
+    {
+        // Plaintext: there is no way to carry a hidden uid in a document with no markup, and
+        // quietly writing the title instead would send a message that mentions nobody --
+        // insertMentionText() is that mode's route. Reached only if a host calls this directly
+        // against the documented contract.
+        return;
+    }
+
+    if (!canInsertMentionAtCursor())
+    {
+        return;
+    }
+
+    auto cursor=pimpl->editor->textCursor();
+    if (!cursor.hasSelection())
+    {
+        // Replace the in-progress "@word" (the '@' included) rather than inserting beside it --
+        // same rule insertLink() follows for an existing link run.
+        pimpl->editor->selectMentionQueryAtCursor(cursor);
+    }
+
+    auto format=cursor.charFormat();
+    format.setAnchor(true);
+    format.setAnchorHref(mentionHref(uid));
+    // Deliberately no colour set here, same reasoning as insertLink() -- mention colour is the
+    // highlighter's job (EnhancedTextEdit::mentionColor), not this editor's document.
+    cursor.insertText(displayTitle,format);
+
+    // Same continuation-clearing fix insertLink() established (Stage 5b): without it, the next
+    // character typed is absorbed into the mention. The atomicity guard
+    // (EnhancedTextEdit::applyMentionAtomicityGuard()) re-applies this same fix for a caret the
+    // user later navigates back to; this call covers the instant right after insertion.
+    QTextCharFormat continuation=cursor.charFormat();
+    continuation.clearProperty(QTextFormat::IsAnchor);
+    continuation.clearProperty(QTextFormat::AnchorHref);
+    continuation.clearProperty(QTextFormat::AnchorName);
+    cursor.setCharFormat(continuation);
+
+    pimpl->editor->setTextCursor(cursor);
+    pimpl->editor->setCurrentCharFormat(continuation);
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertMentionText(const QString& username)
+{
+    // Valid in EVERY MessageEditingMode, Plaintext included (the confirmed Stage 6 design
+    // choice): the payload is ordinary text carrying no markup meaning, so there is no mode that
+    // cannot express it -- unlike insertLink()/insertMention(), which refuse in Plaintext.
+    const auto text=username.startsWith(QLatin1Char('@'))
+        ? username
+        : QLatin1Char('@')+username;
+
+    auto cursor=pimpl->editor->textCursor();
+    if (!cursor.hasSelection())
+    {
+        pimpl->editor->selectMentionQueryAtCursor(cursor);
+    }
+
+    // Always inserted with the anchor properties cleared off the inherited char format, so a
+    // plain mention typed right after a link (or an existing mention) is provably plain.
+    auto format=cursor.charFormat();
+    format.clearProperty(QTextFormat::IsAnchor);
+    format.clearProperty(QTextFormat::AnchorHref);
+    format.clearProperty(QTextFormat::AnchorName);
+    cursor.insertText(text,format);
+
+    pimpl->editor->setTextCursor(cursor);
+    pimpl->editor->setCurrentCharFormat(format);
 
     finishFormatAction();
 }
@@ -4178,6 +4881,23 @@ void MessageEditor::showContextMenu(const QPoint& pos)
     items.back().isEnabled=canPasteFromClipboard();
 
     items.push_back(MenuItem::separator());
+
+    // Stage 6: TOP-LEVEL row, not inside the Formatting submenu below, and for that reason
+    // checked/built regardless of messageEditingMode() -- the submenu is built only in Wysiwyg
+    // (see the comment just below), while a mention (its plain "@username" form most of all) is
+    // valid in every mode. Hidden unless a host opts in (setMentionMenuItemVisible()), so no
+    // existing menu changes shape by default.
+    if (isMentionMenuItemVisible())
+    {
+        items.push_back(MenuItem(
+            static_cast<int>(MessageEditorMenuAction::Mention),
+            tr("Mention someone"),
+            menuIcon(QStringLiteral("mention"),pimpl->editor)
+        ));
+        items.back().isEnabled=!pimpl->editor->isReadOnly() && canInsertMentionAtCursor();
+
+        items.push_back(MenuItem::separator());
+    }
 
     // Formatting submenu -- only in MessageEditingMode::Wysiwyg (Stage 5a decision: formatting
     // is WYSIWYG-only). Fifteen greyed rows in Markdown/Plaintext mode would be worse than no
@@ -4358,6 +5078,12 @@ void MessageEditor::onContextMenuItemTriggered(int id)
         case (MessageEditorMenuAction::RemoveLink):
         {
             removeLink();
+            break;
+        }
+
+        case (MessageEditorMenuAction::Mention):
+        {
+            onMentionButtonRequested();
             break;
         }
 

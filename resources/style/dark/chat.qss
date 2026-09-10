@@ -27,6 +27,9 @@ border:none;
 selection-background-color: #4A70A9; /* selected message */
 qproperty-linkColor: #7FB3F0; /* task-urls-and characters-in-messages.md, Stage 1 */
 qproperty-linkUnderline: false;
+qproperty-mentionColor: #C9A2F5; /* task-message-formatting-plan.md, Stage 6 -- kept in step
+    with dark/messageeditor.qss's EnhancedTextEdit::mentionColor, so a mention looks the same in
+    the composer and in the bubble it becomes */
 }
 
 /* Jump-to-message highlight -- same tint as a reply block's own background (see

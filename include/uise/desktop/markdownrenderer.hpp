@@ -36,6 +36,47 @@ You may select, at your option, one of the above-listed licenses.
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /**
+ * @brief Scheme for a character mention's anchor href -- "whitem-mention:<uid>", with the
+ *  character's title as the anchor's display text (task-message-formatting-plan.md, Stage 6).
+ *
+ * Deliberately NOT in MarkdownRenderOptions::allowedLinkSchemes' default list: a renderer that
+ * accepted this scheme unconditionally would emit a clickable in-app link for any message text
+ * that merely contains one, whether the host understands mentions or not. A viewer opts in per
+ * instance -- see AbstractChatMessageText::setMentionsEnabled(), which supplies a caller-owned
+ * copy of the allowlist with this scheme appended.
+ *
+ * An inline function rather than a QString constant, so nothing depends on cross-TU static
+ * initialization order.
+ */
+inline QString mentionUrlScheme()
+{
+    return QStringLiteral("whitem-mention");
+}
+
+/**
+ * @brief Build a mention anchor's href from a character uid.
+ *
+ * @param uid Must contain no raw SPACE: measured, a space inside an href comes back EMPTY through
+ *  QTextDocument::toMarkdown()/setMarkdown() -- the same "a space truncates an href unless
+ *  angle-bracketed" property AbstractHyperlinkDialog's own URL validator already guards against
+ *  for ordinary URLs. Every other uid shape tested (alnum, '/'-separated, ':'-separated, dashes,
+ *  underscores, parentheses) round-trips byte-identically.
+ */
+inline QString mentionHref(const QString& uid)
+{
+    return mentionUrlScheme()+QLatin1Char(':')+uid;
+}
+
+//! Whether `href` is a mention anchor's href. Prefix test on the scheme plus its colon -- the
+//! same shape as the `a[href^="whitem-mention:"]` CSS rule
+//! ChatMessageTextBrowser::applyDocumentStyle() emits, so the editor and the viewer can never
+//! disagree about what counts as a mention.
+inline bool isMentionHref(const QString& href)
+{
+    return href.startsWith(mentionUrlScheme()+QLatin1Char(':'));
+}
+
+/**
  * @brief Options controlling markdownToHtml().
  *
  * A plain, cheaply-copyable value type -- no pimpl, modelled after ReplyPreviewData. Every field
@@ -52,8 +93,9 @@ struct UISE_DESKTOP_EXPORT MarkdownRenderOptions
      * opens a link itself (ChatMessageTextBrowser::setOpenLinks(false) already keeps that
      * decision with the host, via linkActivated()), but a host handler may still hand the URL
      * straight to QDesktopServices::openUrl() or similar, so a "javascript:"/"file:" href must
-     * never reach the emitted HTML in the first place. Stage 6 (mentions) adds
-     * "whitem-mention" to a caller-supplied copy of this list.
+     * never reach the emitted HTML in the first place. Stage 6 (mentions) adds mentionUrlScheme()
+     * to a caller-supplied copy of this list -- see AbstractChatMessageText::setMentionsEnabled(),
+     * the only place that does so; the DEFAULT list below is never touched.
      */
     QStringList allowedLinkSchemes{
         QStringLiteral("http"),
@@ -88,11 +130,23 @@ struct UISE_DESKTOP_EXPORT MarkdownRenderOptions
      *
      * Bare-domain detection (e.g. "example.com" with no scheme and no "www.") needs a
      * maintained TLD table -- exactly what whitemclient::chat::extractTextEntities() already
-     * has, entirely outside this repo's scope. When set, called once per plain (non-anchor,
-     * non-code) text run with that run's RAW (unescaped) text; must return an already-escaped
-     * HTML fragment (its own text re-escaped, with any additional anchors it wants to add) --
-     * returning an empty string leaves the run's own default escaping in place. Null by default,
-     * meaning this renderer relies solely on Qt's own GitHub-dialect autolink detection.
+     * has, entirely outside this repo's scope. A plain "@username" mention (task-message-
+     * formatting-plan.md, Stage 6's insertMentionText() form) is the identical shape: it needs a
+     * character-directory lookup this generic renderer has no business doing, to turn it into a
+     * `whitem-mention:` anchor the way an explicit `[Title](whitem-mention:uid)` anchor already
+     * renders as one. When set, called once per plain (non-anchor, non-code) text run with that
+     * run's RAW (unescaped) text; must return an already-escaped HTML fragment (its own text
+     * re-escaped, with any additional anchors it wants to add) -- returning an empty string
+     * leaves the run's own default escaping in place. Null by default, meaning this renderer
+     * relies solely on Qt's own GitHub-dialect autolink detection.
+     *
+     * TRUST BOUNDARY: the returned fragment is inserted VERBATIM, bypassing every check this
+     * renderer otherwise applies to itself -- it is not re-escaped, and any `<a href>` inside it
+     * is never run through isSchemeAllowed()/allowedLinkSchemes above. This is the one place a
+     * host can put arbitrary HTML into a rendered bubble, so the callback is entirely responsible
+     * for escaping its own output and for only ever emitting hrefs it trusts (e.g. a scheme it
+     * knows to be safe, built from data it resolved itself) -- never rendering untrusted
+     * user-supplied text back out unescaped.
      */
     std::function<QString(const QString&)> extraLinkify;
 };

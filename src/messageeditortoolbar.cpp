@@ -122,7 +122,15 @@ const std::array<TableActionRow,7> TableActionRows{{
 //! still help with. MessageEditor::updateMessageEditingMode() enables/disables it on its own
 //! mode-by-mode rule instead of this blanket one. RemoveLink stays here: there is no anchor
 //! concept in Markdown source, so its Wysiwyg-only gating is correct as-is.
-constexpr std::array<MessageEditorToolbarButton,17> FormattingButtons{{
+//!
+//! Mention is ALSO excluded, as of Stage 6, for a stronger reason than Link's: its plain form
+//! (MessageEditor::insertMentionText(), a literal "@username") carries no markup meaning at all
+//! and is deliberately valid in EVERY MessageEditingMode, Plaintext included -- the one mode a
+//! blanket formatting-is-Wysiwyg-only grey-out would take it away in. The button therefore stays
+//! enabled in every mode; which of insertMentionText()/insertMention() a host's click handler
+//! calls is the host's own decision, made from whatever user selector it opens on
+//! mentionRequested().
+constexpr std::array<MessageEditorToolbarButton,16> FormattingButtons{{
     MessageEditorToolbarButton::Bold,
     MessageEditorToolbarButton::Italic,
     MessageEditorToolbarButton::Underline,
@@ -138,7 +146,6 @@ constexpr std::array<MessageEditorToolbarButton,17> FormattingButtons{{
     MessageEditorToolbarButton::Table,
     MessageEditorToolbarButton::HorizontalRule,
     MessageEditorToolbarButton::RemoveLink,
-    MessageEditorToolbarButton::Mention,
     MessageEditorToolbarButton::ClearFormatting
 }};
 

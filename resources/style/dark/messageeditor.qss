@@ -15,6 +15,11 @@ qproperty-blockquoteColor: #BBBBBB;
    EnhancedTextEdit::setLinkColor(). */
 qproperty-linkColor: #7FB3F0;
 qproperty-linkUnderline: false;
+/* Task-message-formatting-plan.md, Stage 6: a mention reads as distinct from an ordinary link --
+   a light violet against the link blue above, and legible on this background. Kept in step with
+   dark/chat.qss's ChatMessageTextBrowser::mentionColor so a mention looks the same in the
+   composer and in the bubble it becomes. See EnhancedTextEdit::setMentionColor(). */
+qproperty-mentionColor: #C9A2F5;
 }
 
 uise--MessageEditorToolbar {

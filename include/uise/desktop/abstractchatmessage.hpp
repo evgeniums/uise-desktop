@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGE_HPP
 
 #include <limits>
+#include <functional>
 
 #include <QPointer>
 #include <QDateTime>
@@ -1635,6 +1636,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
 
     Q_PROPERTY(int maxBubbleWidth READ maxBubbleWidth WRITE setMaxBubbleWidth)
 
+    //! QSS: qproperty-mentionsEnabled: true; -- see setMentionsEnabled() (task-message-
+    //! formatting-plan.md, Stage 6).
+    Q_PROPERTY(bool mentionsEnabled READ isMentionsEnabled WRITE setMentionsEnabled)
+
     public:
 
         constexpr static const int DefaultMaxBubbleWidth=600;
@@ -1661,6 +1666,68 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
             return m_maxBubbleWidth;
         }
 
+        /**
+         * @brief Whether this body recognizes `whitem-mention:` anchors in Markdown content
+         *  (task-message-formatting-plan.md, Stage 6). Default FALSE.
+         *
+         * When on, loadText()'s Markdown branch renders with a CALLER-SUPPLIED COPY of
+         * MarkdownRenderOptions::allowedLinkSchemes with mentionUrlScheme() appended -- the
+         * shipped DEFAULT list is never touched, so a plain markdownToHtml(src) call anywhere
+         * else still rejects the scheme.
+         *
+         * A non-virtual setter consulted by the EXISTING loadText(), deliberately NOT a new
+         * parameter on the pure-virtual loadText() above -- that would be an API/ABI break for
+         * every subclass, in and out of tree. Same arrangement ChatMessageTextBrowser's
+         * linkColor/linkUnderline already use (configured through a setter, not through
+         * loadText()'s own arguments).
+         *
+         * Reactive rather than a load-time-only gate: the implementation hook below re-renders
+         * content already showing, so a qproperty- value arriving from QSS after loadText() has
+         * already run still takes effect (same reasoning as
+         * ChatMessageTextBrowser::setSyntaxHighlightingEnabled()).
+         */
+        void setMentionsEnabled(bool enable)
+        {
+            auto changed=(m_mentionsEnabled!=enable);
+            m_mentionsEnabled=enable;
+            if (changed)
+            {
+                updateMentionsEnabled();
+            }
+        }
+
+        bool isMentionsEnabled() const noexcept
+        {
+            return m_mentionsEnabled;
+        }
+
+        /**
+         * @brief Optional host hook resolving a PLAIN "@username" mention into a clickable
+         *  anchor -- see MarkdownRenderOptions::extraLinkify's own doc comment, including its
+         *  TRUST BOUNDARY warning (the callback's returned HTML is inserted verbatim, never
+         *  checked against allowedLinkSchemes or anything else this body's own sanitization
+         *  otherwise applies).
+         *
+         * Threaded through to the SAME options object setMentionsEnabled() builds, but
+         * independent of it: a host may want extraLinkify for bare-domain detection with
+         * mentions off, or mentions (the explicit `[Title](whitem-mention:uid)` anchor form) with
+         * no extraLinkify at all. Making MessageEditor::insertMentionText()'s PLAIN "@username"
+         * form clickable in THIS body needs both set together -- mentionsEnabled to allow the
+         * `whitem-mention:` scheme at all, extraLinkify to actually recognize the bare text and
+         * turn it into one, since a generic renderer with no character directory cannot do that
+         * resolution on its own.
+         *
+         * A plain setter, not a Q_PROPERTY: a std::function is not a registered Qt metatype and
+         * has no QSS representation, same reasoning as AbstractMessageEditor::
+         * setContextMenuHandler(). Reactive like setMentionsEnabled(), via the same-shaped
+         * updateExtraLinkify() hook below.
+         */
+        void setExtraLinkify(std::function<QString(const QString&)> hook)
+        {
+            m_extraLinkify=std::move(hook);
+            updateExtraLinkify();
+        }
+
     protected:
 
         //! Clamp a negotiation budget by maxBubbleWidth(), pass-through when the cap is disabled.
@@ -1669,9 +1736,26 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
             return (m_maxBubbleWidth>0 && width>m_maxBubbleWidth) ? m_maxBubbleWidth : width;
         }
 
+        //! Reacts to setMentionsEnabled() -- an implementation re-renders its current content
+        //! from whatever source it cached. No default behaviour.
+        virtual void updateMentionsEnabled() {}
+
+        //! What an implementation's loadText() should thread into its own MarkdownRenderOptions::
+        //! extraLinkify. May be null (the default) -- callers must check before calling it.
+        const std::function<QString(const QString&)>& extraLinkify() const noexcept
+        {
+            return m_extraLinkify;
+        }
+
+        //! Reacts to setExtraLinkify() -- an implementation re-renders its current content from
+        //! whatever source it cached. No default behaviour.
+        virtual void updateExtraLinkify() {}
+
     private:
 
         int m_maxBubbleWidth=DefaultMaxBubbleWidth;
+        bool m_mentionsEnabled=false;
+        std::function<QString(const QString&)> m_extraLinkify;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame

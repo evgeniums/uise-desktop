@@ -159,6 +159,19 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     //! by a host that wants to open the editor already expanded.
     Q_PROPERTY(bool expanded READ isExpanded WRITE setExpanded NOTIFY expandedChanged)
 
+    //! QSS: qproperty-mentionButtonVisible: true; -- whether the toolbar's Mention button is
+    //! shown at all (task-message-formatting-plan.md, Stage 6). Default FALSE, on the same
+    //! reasoning as expandButtonVisible above: unlike Link, which is self-contained, a Mention
+    //! button with no user directory behind it does nothing -- the editor has no selector of its
+    //! own and never will (see mentionRequested()). A host with a directory sets this true once.
+    Q_PROPERTY(bool mentionButtonVisible READ isMentionButtonVisible WRITE setMentionButtonVisible)
+
+    //! QSS: qproperty-mentionMenuItemVisible: true; -- whether the right-click context menu
+    //! carries a "Mention someone" row. Independent of mentionButtonVisible above: the toolbar is
+    //! only reachable while the editor is expanded, so a host whose composer never expands still
+    //! wants the menu route, and vice versa.
+    Q_PROPERTY(bool mentionMenuItemVisible READ isMentionMenuItemVisible WRITE setMentionMenuItemVisible)
+
     public:
 
         using WidgetQFrame::WidgetQFrame;
@@ -250,6 +263,33 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool isExpanded() const noexcept
         {
             return m_expanded;
+        }
+
+        //! Show/hide the toolbar's Mention button. See the mentionButtonVisible property.
+        void setMentionButtonVisible(bool enable)
+        {
+            m_mentionButtonVisible=enable;
+            updateMentionButtonVisible();
+        }
+
+        bool isMentionButtonVisible() const noexcept
+        {
+            return m_mentionButtonVisible;
+        }
+
+        //! Show/hide the context menu's "Mention someone" row. See the mentionMenuItemVisible
+        //! property. A plain setter with no update hook, unlike setMentionButtonVisible() above:
+        //! the menu is rebuilt from scratch on every right-click
+        //! (MessageEditor::showContextMenu()), so it re-reads this on its own -- same
+        //! arrangement as setContextMenuEnabled().
+        void setMentionMenuItemVisible(bool enable) noexcept
+        {
+            m_mentionMenuItemVisible=enable;
+        }
+
+        bool isMentionMenuItemVisible() const noexcept
+        {
+            return m_mentionMenuItemVisible;
         }
 
         void setFinishOnEnter(bool enable)
@@ -463,6 +503,80 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          */
         void linkRequested(const QString& defaultTitle, const QString& existingUrl);
 
+        /**
+         * @brief The toolbar's Mention button (or the context menu's "Mention someone" row) was
+         *  activated -- task-message-formatting-plan.md, Stage 6.
+         *
+         * Same host-owns-the-picker arrangement as linkRequested(): the editor has no user
+         * selector of its own, and building one here would need a user directory it has no
+         * business knowing about (the actual group-chat picker is out of scope for this stage,
+         * blocked on group chats -- see todo-group-chat-mention-picker.md). A HOST connects this,
+         * opens its own selector, and calls insertMention() or insertMentionText() from the
+         * selector's own acceptance signal.
+         *
+         * @param prefix The in-progress "@word"'s text after the '@' if the caret is inside one
+         *  (so a selector opened mid-typing can come up already filtered), otherwise empty.
+         *
+         * Deliberately does NOT pre-select anything in the document the way linkRequested() does
+         * for an existing link run: a user selector may well be a non-modal popup, and a visible
+         * selection sitting under it -- destroyed by the first caret move -- would be worse than
+         * useless. insertMention()/insertMentionText() recompute the same "@word" from the LIVE
+         * caret instead, so the replace still happens as long as the caret has not moved.
+         */
+        void mentionRequested(const QString& prefix);
+
+        /**
+         * @brief The caret is inside a word that started with '@', and that word has just
+         *  changed -- relayed verbatim from EnhancedTextEdit::mentionQueryChanged().
+         *
+         * Emitted on every keystroke, paste, IME commit and undo/redo that changes the word or
+         * moves the caret within it, and once when the word first becomes a candidate. Pure
+         * observation: no key is intercepted and nothing about typing changes (the Stage 5b
+         * lesson about not altering global typing semantics to achieve a feature).
+         *
+         * @param prefix Text after the '@', up to the caret. Empty immediately after '@' is typed.
+         * @param position Document position of the '@' itself, for a host that wants to anchor a
+         *  popup at it via QTextEdit::cursorRect(QTextCursor).
+         *
+         * Never emitted while the caret is inside a fenced code block, inside an existing anchor
+         * (an ordinary link or an already-inserted mention), or inside a table cell.
+         */
+        void mentionQueryChanged(const QString& prefix, int position);
+
+        //! The candidate "@word" the last mentionQueryChanged() reported has stopped being one --
+        //! whitespace typed, the caret moved out of it, a selection made, Escape pressed, or one
+        //! of the gates above closing over it. A host closes its selector on this.
+        void mentionQueryClosed();
+
+        /**
+         * @brief Tab (or Shift+Tab) was pressed while an "@word" was in progress -- the classic
+         *  autocomplete keyboard gesture, e.g. type "@eri" then Tab to accept "erin" without
+         *  opening a picker at all.
+         *
+         * Checked BEFORE Tab's two ordinary meanings (table-cell navigation, the indent gesture
+         * behind indentStepRequested()), so it wins whenever a query is active; Tab keeps its
+         * ordinary meaning the rest of the time. Direction (Tab vs Shift+Tab) is not
+         * distinguished -- there is no "previous candidate" concept here, since the editor holds
+         * no candidate list to step through.
+         *
+         * Same host-owns-the-resolution arrangement as mentionRequested(): the editor cannot
+         * resolve "eri" to anyone on its own (no user directory), so this is pure gesture
+         * recognition -- the key is CONSUMED regardless of whether a host is even connected to
+         * this signal (that consumption, not the signal, is what stops a mention query "eating" a
+         * literal tab character or triggering indentStepRequested() by accident). A host connects
+         * this, looks "prefix" up in its own directory, and calls insertMention() or
+         * insertMentionText() with whatever it decides is the best match -- both already replace
+         * the in-progress "@word" via the same mechanism mentionRequested()'s own handler uses, so
+         * nothing else is needed from the editor to finish the job. A host that does not connect
+         * this at all still gets a harmless, consumed Tab -- not a literal tab character and not
+         * an indent step -- while a mention query happens to be active.
+         *
+         * @param prefix Text after the '@', up to the caret -- identical to mentionQueryChanged()'s
+         *  own argument, taken from the SAME live query.
+         * @param position Document position of the '@' itself.
+         */
+        void mentionCompletionRequested(const QString& prefix, int position);
+
     protected:
 
         //! Called by the implementation when the content crosses the one-line boundary (or
@@ -509,6 +623,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! Reacts to setExpandButtonVisible().
         virtual void updateExpandButtonVisible() {}
 
+        //! Reacts to setMentionButtonVisible().
+        virtual void updateMentionButtonVisible() {}
+
         const ContextMenuHandler& contextMenuHandler() const
         {
             return m_contextMenuHandler;
@@ -523,6 +640,8 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         int m_insertedTableWidthPercent=DefaultInsertedTableWidthPercent;
         bool m_finishOnEnter=true;
         bool m_contextMenuEnabled=true;
+        bool m_mentionButtonVisible=false;
+        bool m_mentionMenuItemVisible=false;
         ContextMenuHandler m_contextMenuHandler;
 };
 

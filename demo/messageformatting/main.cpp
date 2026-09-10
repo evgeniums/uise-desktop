@@ -45,6 +45,11 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextFormat>
 #include <QStringList>
 #include <QDebug>
+#include <QUrl>
+#include <QDialog>
+#include <QListWidget>
+#include <QFrame>
+#include <QRegularExpression>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -198,6 +203,14 @@ QString sampleMarkdown()
         "```\n"
         "\n"
         "A backtick-escaped mention prints literally: `@alice`.\n"
+        "\n"
+        "Stage 6: a mention, styled distinctly from an ordinary link when mentions are enabled on "
+        "this bubble -- [Alice Anderson](whitem-mention:usr-0001) beside "
+        "[an ordinary link](https://example.com).\n"
+        "\n"
+        "A PLAIN mention too (MessageEditor::insertMentionText()'s own form, e.g. \"Insert as "
+        "@username\" above) -- hi @bob, this needs extraLinkify (see linkifyDemoMentions()) to "
+        "become clickable at all, since it carries no anchor formatting of its own.\n"
     );
 }
 
@@ -290,6 +303,318 @@ void logCodeLanguages(const QString& html, const std::function<void(const QStrin
     }
     logMsg(QStringLiteral("  Code languages recovered from rendered document: ")+resolved.join(QStringLiteral(", ")));
 }
+
+// Stage 6: stands in for a host's real user directory -- the group-chat picker itself is out of
+// scope for this stage (todo-group-chat-mention-picker.md is blocked on group chats, which are
+// not implemented), so this demo exercises exactly what the library actually ships: the
+// detection SIGNAL (mentionQueryChanged/mentionQueryClosed/mentionRequested) and the two insert
+// forms (insertMention()/insertMentionText()) -- not a real selector widget.
+//
+// username is deliberately EMPTY for one entry (Frank), mirroring
+// todo-mentions-in-messages.md's own framing: "Characters might not have valid usernames and
+// [are] identified by UID only." insertMentionForUser() below is the POLICY a real host is
+// expected to apply from this fact -- the library itself has no opinion (see its own doc comment
+// on AbstractMessageEditor::mentionRequested()): insertMention()/insertMentionText() are two
+// independent, host-callable functions, and choosing between them is exactly the kind of
+// application/character-cache knowledge a generic editor widget cannot have.
+struct DemoUser
+{
+    QString uid;
+    QString username;  // empty means "no username set" -- see insertMentionForUser()
+    QString title;
+};
+
+const std::vector<DemoUser>& demoUsers()
+{
+    static const std::vector<DemoUser> users{
+        {QStringLiteral("usr-0001"),QStringLiteral("alice"),QStringLiteral("Alice Anderson")},
+        {QStringLiteral("usr-0002"),QStringLiteral("bob"),QStringLiteral("Bob Brown")},
+        {QStringLiteral("usr-0003"),QStringLiteral("carol"),QStringLiteral("Carol Clarke")},
+        {QStringLiteral("usr-0004"),QStringLiteral("dave"),QStringLiteral("Dave Dixon")},
+        {QStringLiteral("usr-0005"),QStringLiteral("erin"),QStringLiteral("Erin Ellis")},
+        {QStringLiteral("usr-0006"),QString{},QStringLiteral("Frank Fisher")}
+    };
+    return users;
+}
+
+/**
+ * @brief The production POLICY this demo recommends: prefer the plain "@username" form when the
+ *  character has one, and fall back to the hidden-UID anchor form only when they don't.
+ *
+ * This is host/application logic, not library behaviour -- MessageEditor itself never makes this
+ * choice (see insertMention()/insertMentionText()'s own doc comments). It lives here, in the
+ * demo, purely to SHOW where a real host is expected to put it; a real whitemdesktop integration
+ * would ask its own CharacterCache/username field the same question this checks
+ * (user.username.isEmpty()), not re-derive it from a hardcoded list.
+ */
+void insertMentionForUser(MessageEditor* editor, const DemoUser& user)
+{
+    if (user.username.isEmpty())
+    {
+        editor->insertMention(user.uid,user.title);
+    }
+    else
+    {
+        editor->insertMentionText(user.username);
+    }
+}
+
+//! One place building a user's list-row label, so every list (the dialog, the combo) reads the
+//! same way and a username-less user (Frank) never renders as the broken-looking "Frank Fisher
+//! (@)" a naive %1 (@%2) format would produce for an empty username.
+QString demoUserLabel(const DemoUser& user)
+{
+    return user.username.isEmpty()
+        ? QStringLiteral("%1 (no username -- UID only)").arg(user.title)
+        : QStringLiteral("%1 (@%2)").arg(user.title,user.username);
+}
+
+//! Whether `user` matches an "@word" prefix -- the ONE filter predicate every list in this demo
+//! (the combo, the picker dialog, and mentionCompletionRequested()'s own autocomplete below)
+//! shares, so they can never quietly disagree about what "matches" means.
+bool demoUserMatchesPrefix(const DemoUser& user, const QString& prefix)
+{
+    return prefix.isEmpty() || user.username.startsWith(prefix,Qt::CaseInsensitive)
+        || user.title.contains(prefix,Qt::CaseInsensitive);
+}
+
+//! The single BEST match for an autocomplete prefix -- the first demoUsers() entry matching it,
+//! or nullptr. Deliberately simplistic (first-match, not best-ranked): a real host's directory
+//! would rank by relevance/recency; this demo only needs to prove the gesture round-trips.
+const DemoUser* bestMatchingDemoUser(const QString& prefix)
+{
+    const auto& users=demoUsers();
+    for (const auto& user : users)
+    {
+        if (demoUserMatchesPrefix(user,prefix))
+        {
+            return &user;
+        }
+    }
+    return nullptr;
+}
+
+//! MarkdownRenderOptions::extraLinkify for this demo -- see AbstractChatMessageText::
+//! setExtraLinkify(), wired onto mdBody below. Scans a PLAIN text run for "@username" patterns
+//! matching a demoUsers() entry and turns each one into a whitem-mention: anchor, exactly the
+//! directory lookup a real host's character cache would do (this demo's version just checks the
+//! same 6-entry list every other mention widget in it already uses). A "@word" matching no known
+//! user is left untouched for the run's own default escaping -- the whole point of returning an
+//! EMPTY string when nothing was found (see extraLinkify's own doc comment).
+QString linkifyDemoMentions(const QString& text)
+{
+    static const QRegularExpression atWord(QStringLiteral("@[A-Za-z0-9_]+"));
+
+    QString result;
+    int last=0;
+    bool foundAny=false;
+
+    auto it=atWord.globalMatch(text);
+    while (it.hasNext())
+    {
+        const auto match=it.next();
+        const auto username=match.captured().mid(1); // drop the leading '@'
+
+        const DemoUser* user=nullptr;
+        for (const auto& candidate : demoUsers())
+        {
+            if (!candidate.username.isEmpty()
+                && candidate.username.compare(username,Qt::CaseInsensitive)==0)
+            {
+                user=&candidate;
+                break;
+            }
+        }
+        if (user==nullptr)
+        {
+            continue;
+        }
+
+        foundAny=true;
+        result+=text.mid(last,match.capturedStart()-last).toHtmlEscaped();
+        result+=QStringLiteral("<a href=\"%1\">%2</a>")
+            .arg(mentionHref(user->uid),user->title.toHtmlEscaped());
+        last=match.capturedEnd();
+    }
+
+    if (!foundAny)
+    {
+        return QString{};
+    }
+    result+=text.mid(last).toHtmlEscaped();
+    return result;
+}
+
+/**
+ * @brief Mock user-selector dialog -- exercises the toolbar Mention button and the context menu's
+ *  "Mention someone" row end to end. NOT library API and not a stand-in for the real group-chat
+ *  picker (out of scope for Stage 6, blocked on group chats -- see
+ *  todo-group-chat-mention-picker.md); just enough UI that clicking the button actually does
+ *  something. mentionRequested() deliberately shows no dialog of its own (the editor has no user
+ *  directory to search) -- the HOST opens one, same shape as the hyperlink dialog wired to
+ *  linkRequested() below.
+ */
+class MentionPickerDialog : public QDialog
+{
+    public:
+
+        //! What the dialog was accepted with -- see acceptedForm().
+        enum class Form
+        {
+            Recommended,  //! insertMentionForUser()'s own policy: @username if set, else anchor.
+            ForceAnchor,  //! Always the hidden-UID form, even for a user who HAS a username.
+            ForcePlainText //! Always literal "@username" -- disabled when the user has none.
+        };
+
+        explicit MentionPickerDialog(QWidget* parent=nullptr) : QDialog(parent)
+        {
+            setWindowTitle(QStringLiteral("Mention someone (mock picker)"));
+
+            auto* layout=Layout::vertical(this);
+
+            m_prefixLabel=new QLabel(this);
+            m_prefixLabel->setWordWrap(true);
+            layout->addWidget(m_prefixLabel);
+
+            m_list=new QListWidget(this);
+            connect(m_list,&QListWidget::itemDoubleClicked,this,
+                [this](QListWidgetItem*) { acceptAs(Form::Recommended); });
+            connect(m_list,&QListWidget::currentRowChanged,this,
+                [this](int) { updateForceTextEnabled(); });
+            layout->addWidget(m_list);
+
+            // The RECOMMENDED policy -- see insertMentionForUser() -- is the primary/default
+            // action (double-click and Enter both trigger it), matching what a real host is
+            // expected to do automatically rather than ask the end user to choose a wire format.
+            m_recommendedButton=new QPushButton(QStringLiteral("Insert"),this);
+            m_recommendedButton->setDefault(true);
+            layout->addWidget(m_recommendedButton);
+
+            // The two FORCED forms stay available underneath, clearly secondary -- useful for
+            // deliberately exercising each library entry point independently of the policy above,
+            // which is exactly what this dialog exists to let you do.
+            auto* buttonRow=new QFrame(this);
+            auto* buttonLayout=Layout::horizontal(buttonRow);
+            buttonLayout->addWidget(new QLabel(QStringLiteral("Force:"),buttonRow));
+            m_forceAnchorButton=new QPushButton(QStringLiteral("hidden-UID mention"),buttonRow);
+            m_forceTextButton=new QPushButton(QStringLiteral("@username text"),buttonRow);
+            auto* cancelButton=new QPushButton(QStringLiteral("Cancel"),buttonRow);
+            buttonLayout->addWidget(m_forceAnchorButton);
+            buttonLayout->addWidget(m_forceTextButton);
+            buttonLayout->addStretch(1);
+            buttonLayout->addWidget(cancelButton);
+            layout->addWidget(buttonRow);
+
+            connect(m_recommendedButton,&QPushButton::clicked,this,[this]() { acceptAs(Form::Recommended); });
+            connect(m_forceAnchorButton,&QPushButton::clicked,this,[this]() { acceptAs(Form::ForceAnchor); });
+            connect(m_forceTextButton,&QPushButton::clicked,this,[this]() { acceptAs(Form::ForcePlainText); });
+            connect(cancelButton,&QPushButton::clicked,this,&QDialog::reject);
+
+            resize(380,340);
+        }
+
+        //! Repopulates the list, filtered by the "@word" prefix mentionRequested() handed over --
+        //! same filter logic as the combo box below, so both stay consistent.
+        //!
+        //! Falls back to the FULL list when the filter matches nobody, rather than a silently
+        //! empty one: the fake directory is only 5 names (alice/bob/carol/dave/erin), so testing
+        //! with any other placeholder word -- "@username", "@test", one's own name -- would
+        //! otherwise leave both this dialog and the combo below looking broken (empty, nothing
+        //! to click) when detection itself worked correctly. A real host's directory is large
+        //! enough that "no matches" is a legitimate, distinct state from "still narrowing it
+        //! down" -- this demo's fake one is not, so the fallback is demo-only pragmatism, not a
+        //! recommended real-world default.
+        void setPrefixFilter(const QString& prefix)
+        {
+            m_list->clear();
+            m_indices.clear();
+            const auto& users=demoUsers();
+            for (std::size_t i=0;i<users.size();++i)
+            {
+                const auto& user=users[i];
+                if (demoUserMatchesPrefix(user,prefix))
+                {
+                    m_list->addItem(demoUserLabel(user));
+                    m_indices.push_back(i);
+                }
+            }
+
+            bool fellBackToFullList=false;
+            if (m_list->count()==0 && !prefix.isEmpty())
+            {
+                fellBackToFullList=true;
+                for (std::size_t i=0;i<users.size();++i)
+                {
+                    m_list->addItem(demoUserLabel(users[i]));
+                    m_indices.push_back(i);
+                }
+            }
+
+            if (prefix.isEmpty())
+            {
+                m_prefixLabel->setText(QStringLiteral("Pick a user to mention:"));
+            }
+            else if (fellBackToFullList)
+            {
+                m_prefixLabel->setText(QStringLiteral(
+                    "No demo user matches \"@%1\" (only alice/bob/carol/dave/erin exist here) -- "
+                    "showing everyone instead:").arg(prefix));
+            }
+            else
+            {
+                m_prefixLabel->setText(QStringLiteral("Filtering by \"@%1\":").arg(prefix));
+            }
+
+            if (m_list->count()>0)
+            {
+                m_list->setCurrentRow(0);
+            }
+            updateForceTextEnabled();
+        }
+
+        //! Valid only once exec() has returned QDialog::Accepted.
+        Form acceptedForm() const noexcept { return m_form; }
+
+        //! Valid only once exec() has returned QDialog::Accepted. nullptr if the list was empty.
+        const DemoUser* selectedUser() const
+        {
+            auto row=m_list->currentRow();
+            if (row<0 || static_cast<std::size_t>(row)>=m_indices.size())
+            {
+                return nullptr;
+            }
+            return &demoUsers().at(m_indices.at(static_cast<std::size_t>(row)));
+        }
+
+    private:
+
+        //! "Force: @username text" is meaningless (inserts a bare "@" with no name) for a user
+        //! with no username -- greyed out rather than silently producing that, so the one demo
+        //! user without one (Frank) can't be driven into it by accident.
+        void updateForceTextEnabled()
+        {
+            const auto* user=selectedUser();
+            m_forceTextButton->setEnabled(user!=nullptr && !user->username.isEmpty());
+        }
+
+        void acceptAs(Form form)
+        {
+            if (m_list->count()==0)
+            {
+                return;
+            }
+            m_form=form;
+            accept();
+        }
+
+        QLabel* m_prefixLabel=nullptr;
+        QListWidget* m_list=nullptr;
+        QPushButton* m_recommendedButton=nullptr;
+        QPushButton* m_forceAnchorButton=nullptr;
+        QPushButton* m_forceTextButton=nullptr;
+        std::vector<std::size_t> m_indices;
+        Form m_form=Form::Recommended;
+};
 
 // Builds a real ChatMessage/ChatMessageContent bubble around `body`, so bubble-width negotiation
 // is genuinely exercised -- see demo/chatmessagefiles/main.cpp's own makeMessage(), this demo's
@@ -484,8 +809,26 @@ int main(int argc, char *argv[])
 
     rootLayout->addWidget(new QLabel(QStringLiteral("Live-rendered bubble:")));
     auto* mdBody=new ChatMessageText();
+    // Stage 6: opted in explicitly, same shape as syntaxHighlighting/wideTableScroll above --
+    // default false, so an existing host stays unchanged until it asks for mention rendering.
+    mdBody->setMentionsEnabled(true);
+    // Makes a PLAIN "@alice" mention (MessageEditor::insertMentionText()'s own form) clickable
+    // too, not just the explicit [Title](whitem-mention:uid) anchor form -- see
+    // linkifyDemoMentions()'s own doc comment. mentionsEnabled alone only allowlists the scheme
+    // for anchors already present in the source; recognizing BARE "@word" text needs this too.
+    mdBody->setExtraLinkify(linkifyDemoMentions);
     auto* mdMessage=makeMessage(central,AbstractChatMessage::Direction::Sent,mdBody);
     rootLayout->addWidget(mdMessage);
+
+    // Stage 6, item 5: the existing setOpenLinks(false)/linkActivated switchboard needs no change
+    // at all for a custom scheme -- clicking a mention logs scheme "whitem-mention", clicking an
+    // ordinary link logs "https", through the one connection below.
+    QObject::connect(mdBody,&AbstractChatMessageBody::linkActivated,central,
+        [logMsg](const QUrl& url)
+        {
+            logMsg(QStringLiteral("Link activated: scheme=%1 url=%2").arg(url.scheme(),url.toString()));
+        }
+    );
 
     rootLayout->addWidget(new QLabel(QStringLiteral("Generated HTML (what actually reaches setHtmlContent()):")));
     auto* htmlOutput=new QPlainTextEdit();
@@ -527,6 +870,16 @@ int main(int argc, char *argv[])
 
         MarkdownRenderOptions options;
         options.hardLineBreaks=softBreakCheck->isChecked();
+        if (mdBody->isMentionsEnabled())
+        {
+            // Kept in step with what mdBody->loadText(...,Markdown) below does internally when
+            // hardLineBreaks is on, so the HTML shown in the inspection pane always matches what
+            // the bubble actually rendered, regardless of which branch below produced it.
+            options.allowedLinkSchemes.append(mentionUrlScheme());
+        }
+        // Same reasoning as the scheme above -- mdBody's own extraLinkify, so a plain "@bob"
+        // shows up linkified in the inspection pane too, not just in the bubble itself.
+        options.extraLinkify=linkifyDemoMentions;
         auto html=markdownToHtml(src,options);
 
         if (options.hardLineBreaks)
@@ -580,6 +933,16 @@ int main(int argc, char *argv[])
                           renderMarkdown();
                           logMsg(QStringLiteral("Sanitization checks against the hostile sample:"));
                           checkSanitization(htmlOutput->toPlainText(),logMsg);
+
+                          // Stage 6's OTHER leg: the DEFAULT options above correctly reject the
+                          // scheme (checked above), but a caller-owned copy with it added --
+                          // exactly what setMentionsEnabled(true) builds internally -- accepts
+                          // the identical hostile input. Both legs visible side by side.
+                          MarkdownRenderOptions mentionOptions;
+                          mentionOptions.allowedLinkSchemes.append(mentionUrlScheme());
+                          const auto mentionHtml=markdownToHtml(hostileMarkdown(),mentionOptions);
+                          logMsg(QStringLiteral("  (opt-in) whitem-mention: accepted with the scheme added: %1")
+                                 .arg(mentionHtml.contains(QStringLiteral("whitem-mention:12345")) ? "yes" : "no"));
                       });
 
     QObject::connect(insertLangButton,&QPushButton::clicked,central,
@@ -624,6 +987,10 @@ int main(int argc, char *argv[])
 
     auto* msgEditor=new MessageEditor(central);
     msgEditor->setExpandButtonVisible(true);
+    // Stage 6: both default off, same reasoning as expandButtonVisible -- a mention button/menu
+    // row with no user directory behind it does nothing at all.
+    msgEditor->setMentionButtonVisible(true);
+    msgEditor->setMentionMenuItemVisible(true);
     // Ceiling is 40% of the window, never below 180px -- resize the demo window and the editor's
     // growth limit follows it. Both the auto-resize growth and the expanded height stop here.
     msgEditor->setMaxHeight(180);
@@ -728,6 +1095,233 @@ int main(int argc, char *argv[])
             linkDialogFrame->dialog()->setUrl(existingUrl);
             linkDialogFrame->dialog()->setLinkTitle(defaultTitle);
             linkDialogFrame->showDialog();
+        }
+    );
+
+    // Stage 6: the editor has no user selector of its own (see mentionRequested()'s own doc
+    // comment) -- the real group-chat picker is out of scope for this stage, blocked on group
+    // chats (todo-group-chat-mention-picker.md). This small combo + two buttons stands in for it,
+    // exercising both insert forms explicitly rather than building a picker widget.
+    auto* mentionFrame=new QFrame(central);
+    auto* mentionLayout=Layout::horizontal(mentionFrame);
+    rootLayout->addWidget(mentionFrame);
+
+    mentionLayout->addWidget(new QLabel(QStringLiteral("Mention (Stage 6):")));
+
+    auto* mentionCombo=new QComboBox();
+    mentionLayout->addWidget(mentionCombo,1);
+
+    auto* insertMentionAnchorButton=new QPushButton(QStringLiteral("Insert as mention (hidden UID)"));
+    mentionLayout->addWidget(insertMentionAnchorButton);
+
+    auto* insertMentionTextButton=new QPushButton(QStringLiteral("Insert as @username"));
+    mentionLayout->addWidget(insertMentionTextButton);
+
+    // Repopulates mentionCombo filtered by `prefix`, storing each row's REAL demoUsers() index as
+    // item data (Qt::UserRole) rather than relying on row position -- once the combo is filtered,
+    // row 0 is not demoUsers()[0] any more, and reading currentIndex() straight into demoUsers()
+    // (the original version of this demo did exactly that) silently inserted the WRONG user.
+    // Falls back to the full list when nothing matches (see MentionPickerDialog::setPrefixFilter()
+    // for why -- same reasoning, same 5-name fake directory).
+    auto populateMentionCombo=[mentionCombo](const QString& prefix)
+    {
+        mentionCombo->clear();
+        const auto& users=demoUsers();
+        for (std::size_t i=0;i<users.size();++i)
+        {
+            const auto& user=users[i];
+            if (demoUserMatchesPrefix(user,prefix))
+            {
+                mentionCombo->addItem(demoUserLabel(user),QVariant::fromValue(static_cast<qulonglong>(i)));
+            }
+        }
+        if (mentionCombo->count()==0 && !prefix.isEmpty())
+        {
+            for (std::size_t i=0;i<users.size();++i)
+            {
+                mentionCombo->addItem(demoUserLabel(users[i]),QVariant::fromValue(static_cast<qulonglong>(i)));
+            }
+        }
+    };
+    populateMentionCombo(QString{});
+
+    auto currentMentionComboUser=[mentionCombo]() -> const DemoUser*
+    {
+        if (mentionCombo->count()==0)
+        {
+            return nullptr;
+        }
+        return &demoUsers().at(static_cast<std::size_t>(mentionCombo->currentData().toULongLong()));
+    };
+
+    QObject::connect(insertMentionAnchorButton,&QPushButton::clicked,central,
+        [msgEditor,currentMentionComboUser]()
+        {
+            if (const auto* user=currentMentionComboUser())
+            {
+                msgEditor->insertMention(user->uid,user->title);
+            }
+        }
+    );
+    QObject::connect(insertMentionTextButton,&QPushButton::clicked,central,
+        [msgEditor,currentMentionComboUser,logMsg]()
+        {
+            const auto* user=currentMentionComboUser();
+            if (user==nullptr)
+            {
+                return;
+            }
+            if (user->username.isEmpty())
+            {
+                // Frank has none -- forcing this form on him would insert a bare "@" with no
+                // name, which is not useful to demonstrate; the MentionPickerDialog above greys
+                // its own equivalent button out for the same user for the same reason.
+                logMsg(QStringLiteral("%1 has no username -- \"Insert as @username\" has nothing "
+                                       "to insert (try \"Insert as mention\" instead).").arg(user->title));
+                return;
+            }
+            msgEditor->insertMentionText(user->username);
+        }
+    );
+
+    // The detection signal made visible -- the running proof it carries enough to drive a real
+    // selector, without building one: filters mentionCombo down to matching users as the prefix
+    // changes, and restores the full list when the query closes.
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionQueryChanged,central,
+        [populateMentionCombo,logMsg](const QString& prefix, int position)
+        {
+            logMsg(QStringLiteral("Mention query: prefix=\"%1\" at position %2").arg(prefix).arg(position));
+            populateMentionCombo(prefix);
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionQueryClosed,central,
+        [populateMentionCombo,logMsg]()
+        {
+            logMsg(QStringLiteral("Mention query closed"));
+            populateMentionCombo(QString{});
+        }
+    );
+
+    // One picker instance, reused for BOTH triggers -- a deliberate toolbar/menu click (a modal-
+    // feeling, ACTIVATED popup, keyboard-navigable) and live typing of "@word" (a NON-activating
+    // popup that updates as you type without stealing keyboard focus from the text edit -- a
+    // truly modal QDialog::exec() would block every further keystroke the moment the first '@'
+    // appeared, which is exactly wrong for "keep typing to keep narrowing it down"). Both paths
+    // share the same accept/cancel handling below via QDialog::accepted()/rejected(), which
+    // accept()/reject() emit regardless of whether the dialog was opened with exec() or show().
+    //
+    // Selecting a row from the LIVE (non-activating) popup still needs a MOUSE click -- with
+    // keyboard focus deliberately left on the text edit so typing keeps working, there is no
+    // widget for arrow-key/Enter navigation to reach. A real host wanting full keyboard
+    // navigation while typing (Slack/Discord-style) builds an inline overlay that intercepts
+    // Up/Down/Enter/Escape itself rather than a separate top-level window -- a materially bigger
+    // feature than this demo attempts; mentionQueryChanged()/mentionQueryClosed() are exactly the
+    // two signals such an overlay would be driven by.
+    auto* mentionPicker=new MentionPickerDialog(&w);
+
+    QObject::connect(mentionPicker,&QDialog::accepted,msgEditor,
+        [msgEditor,mentionPicker,logMsg]()
+        {
+            const auto* user=mentionPicker->selectedUser();
+            if (user==nullptr)
+            {
+                return;
+            }
+
+            QString formLabel;
+            switch (mentionPicker->acceptedForm())
+            {
+                case MentionPickerDialog::Form::Recommended:
+                    // The production POLICY this demo recommends -- see insertMentionForUser():
+                    // @username when the character has one, the hidden-UID anchor only when they
+                    // don't. Neither insertMention() nor insertMentionText() makes this choice on
+                    // its own; it is host logic, demonstrated here rather than library behaviour.
+                    insertMentionForUser(msgEditor,*user);
+                    formLabel=user->username.isEmpty()
+                        ? QStringLiteral("mention (recommended: no username)")
+                        : QStringLiteral("@username (recommended)");
+                    break;
+                case MentionPickerDialog::Form::ForceAnchor:
+                    msgEditor->insertMention(user->uid,user->title);
+                    formLabel=QStringLiteral("mention (forced)");
+                    break;
+                case MentionPickerDialog::Form::ForcePlainText:
+                    msgEditor->insertMentionText(user->username);
+                    formLabel=QStringLiteral("@username (forced)");
+                    break;
+            }
+            logMsg(QStringLiteral("Mention picker inserted %1 as %2").arg(user->title,formLabel));
+        }
+    );
+    QObject::connect(mentionPicker,&QDialog::rejected,msgEditor,
+        [logMsg]()
+        {
+            logMsg(QStringLiteral("Mention picker cancelled"));
+        }
+    );
+
+    // Trigger 1: the toolbar Mention button / context menu's "Mention someone" row. A deliberate
+    // click, so the popup ACTIVATES and grabs keyboard focus -- fully navigable with the mouse or
+    // keyboard, closed by picking a row/button or Cancel.
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionRequested,central,
+        [mentionPicker,logMsg](const QString& prefix)
+        {
+            logMsg(QStringLiteral("Mention requested (toolbar/menu), prefix=\"%1\"").arg(prefix));
+            mentionPicker->setPrefixFilter(prefix);
+            mentionPicker->setAttribute(Qt::WA_ShowWithoutActivating,false);
+            mentionPicker->show();
+            mentionPicker->raise();
+            mentionPicker->activateWindow();
+        }
+    );
+
+    // Trigger 2: typing "@word" directly in the editor -- what was previously invisible beyond
+    // the combo box below. Shown NON-activating (WA_ShowWithoutActivating) so the text edit keeps
+    // keyboard focus and typing the next character keeps working; the popup just tracks along,
+    // re-filtered on every keystroke via the same setPrefixFilter() the toolbar path uses.
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionQueryChanged,central,
+        [mentionPicker](const QString& prefix, int)
+        {
+            mentionPicker->setPrefixFilter(prefix);
+            mentionPicker->setAttribute(Qt::WA_ShowWithoutActivating,true);
+            mentionPicker->show();
+            mentionPicker->raise();
+        }
+    );
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionQueryClosed,central,
+        [mentionPicker]()
+        {
+            mentionPicker->hide();
+        }
+    );
+
+    // Trigger 3: Tab pressed while "@word" is in progress -- the autocomplete gesture, distinct
+    // from BOTH triggers above. Unlike the picker (which always shows a UI to choose from) this
+    // is deliberately SILENT-on-no-match, the conventional autocomplete contract: it either
+    // completes to the one best guess or does nothing, it never falls back to "show everyone" the
+    // way the picker's own small-fake-directory pragmatism does (see
+    // MentionPickerDialog::setPrefixFilter()) -- a real host with a real directory would want the
+    // same silence, not a promptless directory dump on every unmatched Tab.
+    QObject::connect(msgEditor,&AbstractMessageEditor::mentionCompletionRequested,central,
+        [msgEditor,mentionPicker,logMsg](const QString& prefix, int position)
+        {
+            const auto* user=bestMatchingDemoUser(prefix);
+            if (user==nullptr)
+            {
+                logMsg(QStringLiteral("Tab-complete: no demo user matches \"@%1\" at position %2 -- nothing inserted")
+                       .arg(prefix).arg(position));
+                return;
+            }
+            // Same recommended POLICY the picker's primary button applies -- see
+            // insertMentionForUser(): @username when the character has one, hidden-UID anchor
+            // only when they don't. Autocomplete has no separate "force" concept; there is no UI
+            // moment to offer one in.
+            insertMentionForUser(msgEditor,*user);
+            logMsg(QStringLiteral("Tab-complete: \"@%1\" -> %2").arg(prefix,user->title));
+            // The live popup (if it happened to be showing for this same query) no longer has
+            // anything to track -- the query it was filtering on is gone now that the mention is
+            // inserted, so hide it rather than leaving it showing the pre-completion filter.
+            mentionPicker->hide();
         }
     );
 

@@ -69,6 +69,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/hyperlinkdialog.hpp>
+#include <uise/desktop/markdownrenderer.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -1089,6 +1090,78 @@ BOOST_AUTO_TEST_CASE(TestTabNeverInsertsTabCharacter)
 
             pressTab(editor,true);
             UISE_TEST_CHECK(!editor.text(TextFormat::Plain).contains(QChar('\t')));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTabCompletesMentionQueryInsteadOfIndenting)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("hi @eri"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(editor.textEdit()->mentionQueryAtCursor().isActive);
+
+            QSignalSpy completionSpy(&editor,&AbstractMessageEditor::mentionCompletionRequested);
+
+            pressTab(editor);
+
+            UISE_TEST_REQUIRE_EQUAL(completionSpy.count(),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(completionSpy.at(0).at(0).toString(),QStringLiteral("eri"));
+
+            // Neither an indent step nor a literal tab character reached the document -- Tab was
+            // fully consumed by the completion gesture, same as every other Tab branch.
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain).trimmed(),QStringLiteral("hi @eri"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTabOutsideMentionQueryStillIndents)
+{
+    // Regression guard: Tab's ORDINARY meaning (the indent gesture) must be untouched when no
+    // mention query is active -- the new branch is checked first but must fall through cleanly.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("hi there"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(!editor.textEdit()->mentionQueryAtCursor().isActive);
+
+            QSignalSpy completionSpy(&editor,&AbstractMessageEditor::mentionCompletionRequested);
+            pressTab(editor);
+
+            UISE_TEST_CHECK_EQUAL(completionSpy.count(),0);
+            UISE_TEST_CHECK(editor.text(TextFormat::Plain).contains(QChar(0x00a0))); // NBSP indent
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTabInsideTableStillNavigatesCells)
+{
+    // Regression guard for the doc comment's own claim: mentionQueryAtCursor() already excludes
+    // being inside a table, so the new completion branch must never intercept table-cell Tab
+    // navigation even though it is checked first.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertTable(2,2);
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(editor.textEdit()->textCursor().currentTable()!=nullptr);
+            UISE_TEST_REQUIRE(!editor.textEdit()->mentionQueryAtCursor().isActive);
+
+            const auto before=editor.textEdit()->textCursor().position();
+            QSignalSpy completionSpy(&editor,&AbstractMessageEditor::mentionCompletionRequested);
+            pressTab(editor);
+
+            UISE_TEST_CHECK_EQUAL(completionSpy.count(),0);
+            UISE_TEST_CHECK(editor.textEdit()->textCursor().position()!=before);
         }
     );
 }
@@ -2747,6 +2820,842 @@ BOOST_AUTO_TEST_CASE(TestContextMenuRemoveLinkOnlyWhenInsideLink)
             formatting=findFormatting(captured);
             UISE_TEST_REQUIRE(formatting!=nullptr);
             UISE_TEST_CHECK(hasRow(*formatting,MessageEditorMenuAction::Link));
+            UISE_TEST_CHECK(!hasRow(*formatting,MessageEditorMenuAction::RemoveLink));
+        }
+    );
+}
+
+namespace {
+
+//! Send a single key press directly to the editor's text edit -- same idiom as pressTab() above,
+//! generalized to any key/modifier/text payload (Stage 6's Backspace/Delete/typing/Escape tests
+//! all need this, and none of the existing helpers cover it).
+void pressKey(MessageEditor& editor, int key, Qt::KeyboardModifiers modifiers=Qt::NoModifier,
+              const QString& text={})
+{
+    QKeyEvent event(QEvent::KeyPress,key,modifiers,text);
+    QApplication::sendEvent(editor.textEdit(),&event);
+}
+
+//! Insert a mention run directly via char format, bypassing MessageEditor::insertMention() --
+//! used by the atomicity-guard tests below, which exercise EnhancedTextEdit's keyPressEvent()
+//! independent of the insert API that normally builds this shape.
+void insertRawMention(QTextCursor& cursor, const QString& uid, const QString& title)
+{
+    QTextCharFormat format;
+    format.setAnchor(true);
+    format.setAnchorHref(mentionHref(uid));
+    cursor.insertText(title,format);
+}
+
+//! Whether the document holds any fragment anchored on `href` -- the after-the-fact check every
+//! "whole run removed cleanly, no residue" test below converges on.
+bool documentHasAnchor(QTextDocument* document, const QString& href)
+{
+    for (auto block=document->begin(); block.isValid(); block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto format=it.fragment().charFormat();
+            if (format.isAnchor() && format.anchorHref()==href)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionButtonHiddenUntilHostOptsIn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(!editor.isMentionButtonVisible());
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::Mention));
+
+            editor.setMentionButtonVisible(true);
+            UISE_TEST_CHECK(editor.isMentionButtonVisible());
+            UISE_TEST_CHECK(editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::Mention));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionMenuRowHiddenUntilHostOptsIn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            MessageEditor editor;
+            UISE_TEST_CHECK(!editor.isMentionMenuItemVisible());
+
+            std::vector<MenuItem> captured;
+            editor.setContextMenuHandler([&](std::vector<MenuItem>& items) { captured=items; });
+
+            auto hasMention=[](const std::vector<MenuItem>& items)
+            {
+                for (const auto& item : items)
+                {
+                    if (item.id==static_cast<int>(MessageEditorMenuAction::Mention))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            QMetaObject::invokeMethod(&editor,"showContextMenu",Q_ARG(QPoint,QPoint(0,0)));
+            UISE_TEST_CHECK(!hasMention(captured));
+
+            captured.clear();
+            editor.setMentionMenuItemVisible(true);
+            QMetaObject::invokeMethod(&editor,"showContextMenu",Q_ARG(QPoint,QPoint(0,0)));
+            UISE_TEST_CHECK(hasMention(captured));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionButtonEnabledInEveryMode)
+{
+    // Deviation from Link's own gating (Stage 6, confirmed decision): Mention's plain
+    // "@username" form is valid in Plaintext too, so unlike Link the button stays enabled there
+    // -- see FormattingButtons' own comment in messageeditortoolbar.cpp.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Mention));
+
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Mention));
+
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            UISE_TEST_CHECK(editor.toolbar()->isButtonEnabled(MessageEditorToolbarButton::Mention));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionWysiwygRoundTrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // Measured: round-trips through toMarkdown() as "[title](whitem-mention:uid)"
+            // byte-identically, same shape as insertLink().
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Alice](whitem-mention:usr1)")
+            );
+
+            bool foundAnchor=false;
+            for (auto block=editor.textEdit()->document()->begin(); block.isValid(); block=block.next())
+            {
+                for (auto it=block.begin(); !it.atEnd(); ++it)
+                {
+                    const auto format=it.fragment().charFormat();
+                    if (format.isAnchor() && format.anchorHref()==QStringLiteral("whitem-mention:usr1"))
+                    {
+                        foundAnchor=true;
+                        UISE_TEST_CHECK(!format.hasProperty(QTextFormat::ForegroundBrush));
+                    }
+                }
+            }
+            UISE_TEST_CHECK(foundAnchor);
+
+            // Same continuation fix insertLink() established -- the caret is left OUTSIDE the
+            // mention, so the next thing typed is not swallowed into it.
+            UISE_TEST_CHECK(!editor.textEdit()->currentCharFormat().isAnchor());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionMarkdownModeIsLiteralText)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // Markdown mode's document IS source text -- a literal insert, byte-for-byte.
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown),
+                QStringLiteral("[Alice](whitem-mention:usr1)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionRefusedInPlaintextMode)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // There is no way to carry a hidden uid in a document with no markup -- refused
+            // entirely, unlike insertMentionText() which is the Plaintext route.
+            UISE_TEST_CHECK(editor.isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionRefusedInsideCodeFenceAndInsideALink)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+
+            emit editor.toolbar()->codeBlockRequested();
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("code"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+            UISE_TEST_CHECK(!editor.text(TextFormat::Markdown).contains(QStringLiteral("whitem-mention")));
+
+            MessageEditor linkEditor;
+            linkEditor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+            auto inside=linkEditor.textEdit()->textCursor();
+            inside.setPosition(3);
+            linkEditor.textEdit()->setTextCursor(inside);
+
+            linkEditor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+            // Refused: a mention anchor inserted mid-link would split the link's own run without
+            // producing anything sensible either. The link itself must survive untouched.
+            UISE_TEST_CHECK(!linkEditor.text(TextFormat::Markdown).contains(QStringLiteral("whitem-mention")));
+            UISE_TEST_CHECK(linkEditor.text(TextFormat::Markdown).contains(QStringLiteral("[Example](https://example.com)")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionTextWorksInEveryMode)
+{
+    // The confirmed Stage 6 decision -- unlike insertLink()/insertMention(), valid in EVERY
+    // mode, Plaintext included, because the payload is ordinary text with no markup meaning.
+    for (auto mode : {MessageEditingMode::Wysiwyg,MessageEditingMode::Markdown,MessageEditingMode::Plaintext})
+    {
+        TestThread::instance()->execGuiThread(
+            [&]()
+            {
+                MessageEditor editor;
+                editor.setMessageEditingMode(mode);
+                editor.insertMentionText(QStringLiteral("alice"));
+
+                UISE_TEST_CHECK(editor.text(TextFormat::Plain).contains(QStringLiteral("@alice")));
+                // Never an anchor -- a plain mention carries no href in any mode.
+                UISE_TEST_CHECK(!editor.text(TextFormat::Html).contains(QStringLiteral("<a ")));
+            }
+        );
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertMentionReplacesTypedAtWord)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("hi @ali"));
+            editor.textEdit()->setTextCursor(cursor);
+
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice Anderson"));
+
+            // The typed "@ali" is REPLACED, '@' included -- not left beside the inserted mention.
+            const auto markdown=editor.text(TextFormat::Markdown).trimmed();
+            UISE_TEST_CHECK_EQUAL_QSTR(markdown,QStringLiteral("hi [Alice Anderson](whitem-mention:usr1)"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionQuerySignalTracksTypedWord)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            QSignalSpy spy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("@"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(0).at(0).toString(),QString{});
+
+            cursor.insertText(QStringLiteral("a"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),2);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(1).at(0).toString(),QStringLiteral("a"));
+
+            cursor.insertText(QStringLiteral("li"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),3);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(2).at(0).toString(),QStringLiteral("ali"));
+
+            QSignalSpy closedSpy(&editor,&AbstractMessageEditor::mentionQueryClosed);
+            cursor.insertText(QStringLiteral(" "));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(closedSpy.count(),1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionQueryNeedsWordStartAt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            QSignalSpy spy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+
+            // '@' in the MIDDLE of a token (an e-mail address, say) is not a mention gesture.
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("a@b"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(spy.count(),0);
+
+            // Preceded by whitespace -- a genuine candidate.
+            cursor.insertText(QStringLiteral(" @c"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(0).at(0).toString(),QStringLiteral("c"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionQuerySuppressedInFenceLinkAndTable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            emit editor.toolbar()->codeBlockRequested();
+            QSignalSpy fenceSpy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral(" @x"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(fenceSpy.count(),0);
+        }
+    );
+
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+
+            QSignalSpy linkSpy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+            // Inherits the anchor's own char format, same as real typing inside a link would --
+            // cursor.charFormat().isAnchor() gates detection regardless of href.
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("@"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(linkSpy.count(),0);
+        }
+    );
+
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertTable(2,2);
+            editor.textEdit()->setTextCursor(cursor);
+
+            QSignalSpy tableSpy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+            auto inCell=editor.textEdit()->textCursor();
+            inCell.insertText(QStringLiteral(" @y"));
+            editor.textEdit()->setTextCursor(inCell);
+            UISE_TEST_CHECK_EQUAL(tableSpy.count(),0);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionQueryClosedOnEscapeAndNotReopenedByTypingOn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("@ali"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK(editor.textEdit()->mentionQueryAtCursor().isActive);
+
+            QSignalSpy closedSpy(&editor,&AbstractMessageEditor::mentionQueryClosed);
+            QSignalSpy changedSpy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+            pressKey(editor,Qt::Key_Escape);
+            UISE_TEST_CHECK_EQUAL(closedSpy.count(),1);
+
+            // Typing ON in the SAME word must not reopen it -- the dismissal latch lives in
+            // updateMentionQuery(), not in mentionQueryAtCursor() itself (which stays a pure,
+            // stateless query), so the effect is asserted via the signal rather than the query.
+            auto more=editor.textEdit()->textCursor();
+            more.insertText(QStringLiteral("ce"));
+            editor.textEdit()->setTextCursor(more);
+            UISE_TEST_CHECK_EQUAL(changedSpy.count(),0);
+
+            // Starting a NEW word clears the latch.
+            auto next=editor.textEdit()->textCursor();
+            next.insertText(QStringLiteral(" @bob"));
+            editor.textEdit()->setTextCursor(next);
+            UISE_TEST_CHECK_EQUAL(changedSpy.count(),1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBackspaceRemovesWholeMention)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+            cursor.insertText(QStringLiteral(" there"),QTextCharFormat{});
+            const auto runEnd=3+5; // "hi " + "Alice"
+
+            auto atEnd=textEdit->textCursor();
+            atEnd.setPosition(runEnd);
+            textEdit->setTextCursor(atEnd);
+
+            pressKey(editor,Qt::Key_Backspace);
+
+            UISE_TEST_CHECK(!documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain).trimmed(),QStringLiteral("hi  there"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestBackspaceAtMentionLeadingEdgeIsNotDestructive)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            // The mention starts the DOCUMENT -- the measured edge case where charFormat() at
+            // position 0 falls back to the FOLLOWING character.
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            auto atStart=textEdit->textCursor();
+            atStart.setPosition(0);
+            textEdit->setTextCursor(atStart);
+
+            pressKey(editor,Qt::Key_Backspace);
+
+            // An ordinary no-op Backspace at document start -- the mention must survive intact.
+            UISE_TEST_CHECK(documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain).trimmed(),QStringLiteral("Alice"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestDeleteRemovesWholeMention)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+            cursor.insertText(QStringLiteral(" there"),QTextCharFormat{});
+
+            auto atStart=textEdit->textCursor();
+            atStart.setPosition(3); // start of the mention run
+            textEdit->setTextCursor(atStart);
+
+            pressKey(editor,Qt::Key_Delete);
+
+            UISE_TEST_CHECK(!documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain).trimmed(),QStringLiteral("hi  there"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTypingInsideMentionLandsAfterIt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // Strictly INSIDE the run (between 'l' and 'i' of "Alice").
+            auto middle=textEdit->textCursor();
+            middle.setPosition(5);
+            textEdit->setTextCursor(middle);
+
+            pressKey(editor,Qt::Key_X,Qt::NoModifier,QStringLiteral("X"));
+
+            // The mention's TITLE is untouched -- "X" landed after it, not inside it.
+            UISE_TEST_CHECK(documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("hi [Alice](whitem-mention:usr1)X")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTypingAtMentionEndIsNotSwallowed)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // Exactly at the run's END, the same boundary insertLink()'s own continuation fix
+            // covers at the instant of insertion -- this proves the guard re-applies it for a
+            // caret the user later navigated back to.
+            auto atEnd=textEdit->textCursor();
+            atEnd.setPosition(8); // "hi " (3) + "Alice" (5)
+            textEdit->setTextCursor(atEnd);
+
+            pressKey(editor,Qt::Key_X,Qt::NoModifier,QStringLiteral("X"));
+
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("hi [Alice](whitem-mention:usr1)X")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestReturnAfterMentionStartsCleanBlock)
+{
+    // Regression test: measured that a real Return keypress right after a mention did NOT split
+    // the block at all -- the anchor format survived onto the new line and the mention's own
+    // fragment gained an embedded '\r', exporting as "[Alice\n](whitem-mention:usr1)X" instead of
+    // two clean lines. A bare QTextCursor::insertBlock() call alone does not reproduce this in
+    // isolation -- the defect lives specifically in QWidgetTextControl's own Return handling.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setFinishOnEnter(false); // Enter inserts a newline here, it doesn't "send"
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            pressKey(editor,Qt::Key_Return,Qt::NoModifier,QStringLiteral("\r"));
+            pressKey(editor,Qt::Key_X,Qt::NoModifier,QStringLiteral("X"));
+
+            // Two REAL blocks in the live document -- the fix's own mechanism (insertBlock() done
+            // by hand, key consumed) actually ran, rather than Qt's own (buggy) Return handling.
+            UISE_TEST_CHECK_EQUAL(textEdit->document()->blockCount(),2);
+            UISE_TEST_CHECK(documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+
+            // 'X' itself must not be an anchor -- the whole point of clearing the continuation
+            // format before inserting the block.
+            for (auto it=textEdit->document()->lastBlock().begin(); !it.atEnd(); ++it)
+            {
+                UISE_TEST_CHECK(!it.fragment().charFormat().isAnchor());
+            }
+
+            // mergeProseBlocksForExport() joins two adjacent ORDINARY paragraphs with a single
+            // newline on export (task-message-formatting-plan.md §4c.10's own "one Return, one
+            // newline" rule) -- so the two live blocks above still export as ONE markdown
+            // newline, not a blank line, and NOT with the '\r' folded into the link's own title.
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Alice](whitem-mention:usr1)\nX")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestReturnInsideMentionKeepsItWholeOnFirstLine)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setFinishOnEnter(false);
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            // Strictly INSIDE the run (between 'l' and 'i').
+            auto middle=textEdit->textCursor();
+            middle.setPosition(2);
+            textEdit->setTextCursor(middle);
+
+            pressKey(editor,Qt::Key_Return,Qt::NoModifier,QStringLiteral("\r"));
+
+            // The mention is not split by Return landing mid-title -- the whole title stays on
+            // the FIRST block, and the caret's new block starts empty right after it, consistent
+            // with the same rule the Backspace/Delete/typing branches already follow.
+            UISE_TEST_CHECK_EQUAL(textEdit->document()->blockCount(),2);
+            UISE_TEST_CHECK_EQUAL_QSTR(textEdit->document()->firstBlock().text(),QStringLiteral("Alice"));
+            UISE_TEST_CHECK(textEdit->document()->lastBlock().text().isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestReturnAfterMentionWithNothingTypedExportsCleanly)
+{
+    // Regression for the ACTUAL root cause (found on real testing, not where it was first
+    // suspected): the atomicity guard's own Return handling already produced two clean live
+    // blocks -- this reproduces the exact reported shape (a mention, Enter, nothing typed after)
+    // to pin mergeProseBlocksForExport()'s OWN bug, which is what actually corrupted the export.
+    // That function joined two blocks for export by inserting a U+2028 separator with NO explicit
+    // format, inheriting whatever format sat at the boundary; when the first block ended on an
+    // anchor, the separator merged into the anchor's own fragment and qtextmarkdownwriter
+    // serialized it as a literal newline INSIDE the mention's title --
+    // "[Frank Fisher\n](whitem-mention:usr-0006)" -- regardless of anything typed afterward.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setFinishOnEnter(false);
+            editor.insertMention(QStringLiteral("usr-0006"),QStringLiteral("Frank Fisher"));
+
+            pressKey(editor,Qt::Key_Return,Qt::NoModifier,QStringLiteral("\r"));
+
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Frank Fisher](whitem-mention:usr-0006)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestReturnAfterOrdinaryLinkExportsCleanlyToo)
+{
+    // mergeProseBlocksForExport() does not special-case mentions -- it treats every ANCHOR
+    // identically, so a plain Stage 5b hyperlink sitting at a block boundary was equally exposed
+    // to the same latent bug (pre-existing since Stage 5b, only surfaced by Stage 6 testing).
+    // Guards the general fix in that function, not just the mention-specific symptom that found it.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setFinishOnEnter(false);
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+
+            pressKey(editor,Qt::Key_Return,Qt::NoModifier,QStringLiteral("\r"));
+
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Example](https://example.com)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPartialSelectionDeleteRemovesWholeMention)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            const auto mentionStart=cursor.position();
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+            cursor.insertText(QStringLiteral(" there"),QTextCharFormat{});
+
+            // A selection starting BEFORE the run and ending STRICTLY INSIDE it -- the measured
+            // worst case: deleted unguarded, this leaves a smaller anchor still carrying the
+            // same href.
+            auto selection=textEdit->textCursor();
+            selection.setPosition(mentionStart-1);
+            selection.setPosition(mentionStart+3,QTextCursor::KeepAnchor);
+            textEdit->setTextCursor(selection);
+
+            pressKey(editor,Qt::Key_Backspace);
+
+            UISE_TEST_CHECK(!documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCutSnapsToWholeMention)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.insertText(QStringLiteral("hi "));
+            const auto mentionStart=cursor.position();
+            insertRawMention(cursor,QStringLiteral("usr1"),QStringLiteral("Alice"));
+            cursor.insertText(QStringLiteral(" there"),QTextCharFormat{});
+
+            auto selection=textEdit->textCursor();
+            selection.setPosition(mentionStart-1);
+            selection.setPosition(mentionStart+3,QTextCursor::KeepAnchor);
+            textEdit->setTextCursor(selection);
+
+            editor.cut();
+
+            UISE_TEST_CHECK(!documentHasAnchor(textEdit->document(),mentionHref(QStringLiteral("usr1"))));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionPaintedWithItsOwnColorWithoutTouchingDocument)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            textEdit->setLinkColor(QColor(0x1A,0x6F,0xD4));
+            textEdit->setMentionColor(QColor(0x7A,0x3F,0xBF));
+
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            const auto formats=textEdit->document()->firstBlock().layout()->formats();
+            bool paintedMentionColor=false;
+            for (const auto& range : formats)
+            {
+                if (range.format.foreground().color()==QColor(0x7A,0x3F,0xBF))
+                {
+                    paintedMentionColor=true;
+                }
+            }
+            UISE_TEST_CHECK(paintedMentionColor);
+
+            for (auto it=textEdit->document()->firstBlock().begin(); !it.atEnd(); ++it)
+            {
+                UISE_TEST_CHECK(!it.fragment().charFormat().hasProperty(QTextFormat::ForegroundBrush));
+            }
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestMentionFallsBackToLinkColorWhenUnset)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            auto* textEdit=editor.textEdit();
+            textEdit->setLinkColor(QColor(0x1A,0x6F,0xD4));
+            // mentionColor left INVALID -- a mention falls back to the blanket link colour, same
+            // rule ChatMessageTextBrowser::applyDocumentStyle() follows for the viewer.
+
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            const auto formats=textEdit->document()->firstBlock().layout()->formats();
+            bool paintedLinkColor=false;
+            for (const auto& range : formats)
+            {
+                if (range.format.foreground().color()==QColor(0x1A,0x6F,0xD4))
+                {
+                    paintedLinkColor=true;
+                }
+            }
+            UISE_TEST_CHECK(paintedLinkColor);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestRemoveLinkLeavesAMentionAlone)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+
+            // Same signal removeLink() itself listens to -- a mention has no "remove" action of
+            // its own, so this must be a no-op.
+            emit editor.toolbar()->removeLinkRequested();
+
+            UISE_TEST_CHECK(documentHasAnchor(editor.textEdit()->document(),mentionHref(QStringLiteral("usr1"))));
+            UISE_TEST_CHECK_EQUAL_QSTR(
+                editor.text(TextFormat::Markdown).trimmed(),
+                QStringLiteral("[Alice](whitem-mention:usr1)")
+            );
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsideMentionDoesNotOfferRemoveLink)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            Style::instance().applyStyleSheet();
+
+            MessageEditor editor;
+            editor.setExpandButtonVisible(true);
+            editor.setExpanded(true);
+            editor.insertMention(QStringLiteral("usr1"),QStringLiteral("Alice"));
+
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+
+            UISE_TEST_CHECK(!editor.toolbar()->isButtonVisible(MessageEditorToolbarButton::RemoveLink));
+
+            auto findFormatting=[](const std::vector<MenuItem>& items) -> const std::vector<MenuItem>*
+            {
+                for (const auto& item : items)
+                {
+                    if (item.id==static_cast<int>(MessageEditorMenuAction::Formatting))
+                    {
+                        return &item.children;
+                    }
+                }
+                return nullptr;
+            };
+            auto hasRow=[](const std::vector<MenuItem>& items, MessageEditorMenuAction action)
+            {
+                for (const auto& item : items)
+                {
+                    if (item.id==static_cast<int>(action))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            std::vector<MenuItem> captured;
+            editor.setContextMenuHandler([&](std::vector<MenuItem>& items) { captured=items; });
+            QMetaObject::invokeMethod(&editor,"showContextMenu",Q_ARG(QPoint,QPoint(0,0)));
+
+            auto* formatting=findFormatting(captured);
+            UISE_TEST_REQUIRE(formatting!=nullptr);
             UISE_TEST_CHECK(!hasRow(*formatting,MessageEditorMenuAction::RemoveLink));
         }
     );
