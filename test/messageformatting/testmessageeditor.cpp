@@ -96,6 +96,8 @@ class StubMessageEditor : public AbstractMessageEditor
         bool hasSelection() const override { return false; }
         bool isEmpty() const override { return true; }
         bool canPasteFromClipboard() const override { return false; }
+        void setMaxLength(int length) override { m_maxLength=length; }
+        int maxLength() const override { return m_maxLength; }
         void addLeadingWidget(QWidget*) override {}
         void addTrailingWidget(QWidget*) override {}
         void selectAll() override {}
@@ -111,6 +113,10 @@ class StubMessageEditor : public AbstractMessageEditor
         {
             legacyHookCalled=true;
         }
+
+    private:
+
+        int m_maxLength=0;
 };
 
 //! MessageEditor subclass overriding the deprecated hook directly -- used to prove MessageEditor

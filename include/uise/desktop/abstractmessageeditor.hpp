@@ -459,7 +459,52 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
             return true;
         }
 
+        /**
+         * @brief Whether the content carries formatting the user actually APPLIED (bold, a list, a
+         *  heading, a table...), as opposed to plain text that merely CONTAINS markdown-looking
+         *  characters.
+         *
+         * This is hasFormatting()'s first step on its own. The two differ exactly where it matters
+         * for a host deciding what format to STORE: hasFormatting() also answers true for text
+         * whose markdown rendering merely differs from its source, which is as true of a pasted
+         * block of indented source code as it is of deliberately typed "**bold**". A host that
+         * must not corrupt what the user typed needs to tell those apart -- see whitemdesktop's
+         * ChatPageBottom::textMessageFormat(), which only applies its markdown-losslessness check
+         * when this returns false.
+         *
+         * Defaults to TRUE for the same reason hasFormatting() does: an implementation that does
+         * not override it keeps today's behaviour (the host trusts markdown and skips any
+         * demotion), which is the safe direction.
+         */
+        virtual bool hasAppliedFormatting() const
+        {
+            return true;
+        }
+
         virtual bool canPasteFromClipboard() const =0;
+
+        /**
+         * @brief Set a ceiling (Unicode code points, roughly - see the concrete implementation's
+         *  own doc comment for exactly what unit it counts in) on how much text a single
+         *  paste/drop may insert, 0 meaning unlimited (the default).
+         *
+         * Pure virtual, not base-stored, unlike e.g. setMessageEditingMode()'s m_mode: the real
+         * enforcement point is inside the concrete text-editing widget's own insertFromMimeData()
+         * override, not anything AbstractMessageEditor itself does, so each concrete
+         * implementation owns its own storage. Declared here anyway (rather than living only on
+         * MessageEditor, the way setMaxHeight()/setMaxHeightPercent() do) so a host never needs a
+         * qobject_cast to reach it - see uise-messageeditor-api-surface-abstract-vs-concrete's own
+         * lesson about that trap.
+         *
+         * A paste/drop that would exceed this is REJECTED whole (nothing inserted, not truncated)
+         * and reported via insertRejected() below, never silently trimmed - unlike e.g.
+         * FileUploadWidget::enforceMaxCommentLength(), which truncates an over-length TYPED value
+         * after the fact; a paste is a single user gesture a host can reasonably refuse outright
+         * instead.
+         */
+        virtual void setMaxLength(int maxLength) =0;
+
+        virtual int maxLength() const =0;
 
     public slots:
 
@@ -496,6 +541,18 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          *  yourself, same contract as FileDropOverlay::dropped().
          */
         void attachmentsPasted(const QMimeData* mimeData);
+
+        /**
+         * @brief A paste/drop was refused outright because it would have made the document exceed
+         *  maxLength() - see setMaxLength()'s own doc comment. Nothing was inserted; the document
+         *  is exactly as it was before the gesture.
+         * @param attemptedLength What the document's length would have become had the insert gone
+         *  through (same unit as maxLength() itself).
+         * @param maxLength The limit that was in effect at rejection time, i.e. maxLength()'s
+         *  value when this fired - passed explicitly so a host does not need to re-query it from
+         *  inside the handler.
+         */
+        void insertRejected(int attemptedLength, int maxLength);
 
         /**
          * @brief A plain Up-arrow was pressed while the editor was EMPTY.

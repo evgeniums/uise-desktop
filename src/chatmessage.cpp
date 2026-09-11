@@ -418,9 +418,10 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
     }
 
     // The trailing section's height is FINAL now (its own updateMaximumBubbleWidth() just ran,
-    // above -- for ChatMessageText that re-wraps the document at the width PINNED during
-    // bubbleWidthHint(), reproducing an identical layout, so m_inlineLineRect is still
-    // accurate).
+    // above). It does NOT follow that m_inlineLineRect (captured one pass earlier) is still
+    // accurate for every document shape -- see the re-measurement below, right before it is used,
+    // for the measured counter-example (an indented block) and why this is re-read rather than
+    // trusted here.
     //
     // bottom() is NOT a layout item in either mode -- it is placed manually by positionBottom()
     // -- so the layout's own height covers everything EXCEPT the row, and both the row's Y and
@@ -437,8 +438,37 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
         // before the layout below has been re-activated, so the sections' actual geometry can
         // still be a pass behind, while their hints are always current.
         auto sectionsBottom=AbstractChatMessageChild::sizeHint().height()-contentsMargins().bottom();
-        auto slack=m_inlineLineRect.isValid()
-            ? std::max(0,t->sizeHint().height()-(m_inlineLineRect.bottom()+1))
+
+        // Re-measure the trailing line HERE, after section->updateMaximumBubbleWidth() above has
+        // already re-wrapped the document, rather than trusting m_inlineLineRect (captured one
+        // pass earlier, inside evaluateInlineBottom()'s own bubbleWidthHint() call) to still
+        // describe the CURRENT layout. The comment above this method's declaration claims re-
+        // wrapping at the pinned width "reproduces an identical layout" -- true for lineWrapColumn
+        // OrWidth, but ChatMessageTextBrowser::updateSize() actually re-lays the document out at
+        // its freshly recomputed idealWidth(), and for a document containing an INDENTED block
+        // (blockquote, list) that is not idempotent: the block's usable text width is textWidth
+        // minus its own left margin, so a small width change can re-wrap it into more lines than
+        // the pass evaluateInlineBottom() measured. When that happens t->sizeHint().height() grows
+        // to include those lines while a stale m_inlineLineRect still points at the OLD last line,
+        // inflating slack by exactly that height -- and m_bottomExtraHeight below is clamped to
+        // -slack, so the bubble is shortened by precisely the newly-wrapped lines, clipping them
+        // (traced from a real markdown-only clipping report; a plain message has no indented
+        // blocks and converges in one wrap, which is why the symptom never showed there -- this
+        // reasoning has not been confirmed against a live build, see the todo file this shipped
+        // with for what to verify first). lastTextLineRect() is a cheap read of the layout already
+        // computed above (see its own doc comment) -- not a second document layout pass, so this
+        // costs nothing extra.
+        // Falls back to m_inlineLineRect only when THIS read is itself invalid (a pinned wide
+        // table reserving the horizontal scrollbar, RTL text, a code block/table cell -- see
+        // lastLineRect()'s own doc comment) -- that condition does not depend on which pass
+        // measured it, so reusing the earlier value there is exact, not an approximation. Only
+        // this dead-space MEASUREMENT is refreshed; the inline-vs-row DECISION (m_bottomInline/
+        // m_inlineBubbleWidth) stays exactly as evaluateInlineBottom() made it.
+        auto currentLine=t->lastTextLineRect();
+        const auto& lineRect=currentLine.isValid() ? currentLine : m_inlineLineRect;
+
+        auto slack=lineRect.isValid()
+            ? std::max(0,t->sizeHint().height()-(lineRect.bottom()+1))
             : 0;
         auto lineBottom=sectionsBottom-slack;
 

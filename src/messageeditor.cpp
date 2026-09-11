@@ -2402,6 +2402,36 @@ void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
         return;
     }
 
+    // task-message-text-length-limits.md: reject the WHOLE insert rather than truncating it --
+    // this is the single funnel every paste/drop path (Ctrl+V, context-menu Paste, middle-click
+    // paste, a text drop) reaches, per this override's own class-level doc comment, so one check
+    // here covers all of them. Typing is deliberately NOT gated the same way: a keystroke-by-
+    // keystroke cap would need to fight IME composition and would need its own throttled error
+    // presentation to avoid a toast per character -- out of scope, and unnecessary in practice
+    // (typing to 100k characters by hand is not a realistic path here the way a paste is).
+    //
+    // source->text() is Qt's own best plain-text rendering of the payload (it degrades HTML/rich
+    // content the same way QTextEdit::insertFromMimeData() below would), so the length check and
+    // the actual insert always agree on how much text is about to land. QString::length() counts
+    // UTF-16 code units, not Unicode code points -- an approximation shared with every other
+    // length here (document()->characterCount(), QTextCursor::selectedText().length()); this is a
+    // client-side convenience gate, not the authoritative limit (whitemclient's own UTF-8
+    // codepoint count, enforced server-side of this widget, is what actually decides).
+    if (maxLength()>0)
+    {
+        const auto incomingLength=source->text().length();
+        // characterCount() counts the implicit trailing paragraph separator as one character;
+        // subtracted here so an empty document reads as length 0, not 1.
+        const auto currentLength=document()->characterCount()-1;
+        const auto selectedLength=textCursor().selectedText().length();
+        const auto resultLength=currentLength-selectedLength+incomingLength;
+        if (resultLength>maxLength())
+        {
+            emit insertRejected(resultLength,maxLength());
+            return;
+        }
+    }
+
     // Stage 5b: normalize a rich-text/table paste so it satisfies the same invariants typed
     // WYSIWYG content already does -- no baked colour/font (theme-rot, measured: an external
     // #1f2937/Calibri/14pt survives straight through otherwise), a visible table border (Stage
@@ -2774,6 +2804,13 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::attachmentsPasted,
         this,
         &AbstractMessageEditor::attachmentsPasted
+    );
+
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::insertRejected,
+        this,
+        &AbstractMessageEditor::insertRejected
     );
 
     connect(
@@ -3165,7 +3202,7 @@ bool fragmentIsFormatted(const QTextFragment& fragment, const QFont& defaultFont
 
 //--------------------------------------------------------------------------
 
-bool MessageEditor::hasFormatting() const
+bool MessageEditor::hasAppliedFormatting() const
 {
     auto* doc=pimpl->editor->document();
     if (doc==nullptr || doc->isEmpty())
@@ -3173,9 +3210,9 @@ bool MessageEditor::hasFormatting() const
         return false;
     }
 
-    // Step 1 -- what the user APPLIED. Read straight off the document, so it is exact and says
-    // nothing about the text's own characters: "2 * 3" typed with no formatting is plain here,
-    // even though exporting it as markdown would escape that asterisk.
+    // What the user APPLIED. Read straight off the document, so it is exact and says nothing
+    // about the text's own characters: "2 * 3" typed with no formatting is plain here, even
+    // though exporting it as markdown would escape that asterisk.
     //
     // A child frame means a table, the one construct that is not a block property.
     if (!doc->rootFrame()->childFrames().isEmpty())
@@ -3196,6 +3233,24 @@ bool MessageEditor::hasFormatting() const
                 return true;
             }
         }
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::hasFormatting() const
+{
+    auto* doc=pimpl->editor->document();
+    if (doc==nullptr || doc->isEmpty())
+    {
+        return false;
+    }
+
+    // Step 1 -- what the user APPLIED, see hasAppliedFormatting().
+    if (hasAppliedFormatting())
+    {
+        return true;
     }
 
     // Step 2 -- markdown SYNTAX the user typed by hand rather than applied. Nothing above can see
@@ -3218,6 +3273,20 @@ bool MessageEditor::hasFormatting() const
 bool MessageEditor::canPasteFromClipboard() const
 {
     return pimpl->editor->canPasteFromClipboard();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setMaxLength(int length)
+{
+    pimpl->editor->setMaxLength(length);
+}
+
+//--------------------------------------------------------------------------
+
+int MessageEditor::maxLength() const
+{
+    return pimpl->editor->maxLength();
 }
 
 //--------------------------------------------------------------------------

@@ -75,6 +75,13 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
     //! The result is never below maxHeight, which is what keeps a small window usable.
     Q_PROPERTY(int maxHeightPercent READ maxHeightPercent WRITE setMaxHeightPercent)
 
+    //! QSS: qproperty-maxLength: 100000; -- ceiling (Unicode code points) a single paste/drop may
+    //! bring the document to; 0 (the default) means unlimited. Enforced in insertFromMimeData()
+    //! only -- typing is not gated, see that override's own doc comment for why. task-message-
+    //! text-length-limits.md's paste/insert gate; the value a host actually wires in is
+    //! ChatSettings::maxTotalTextLength(), forwarded through MessageEditor::setMaxLength().
+    Q_PROPERTY(int maxLength READ maxLength WRITE setMaxLength)
+
     /**
      * QSS: qproperty-blockquoteColor: #666666; -- colour of text inside a blockquote, matching the
      * `blockquote` colour in the per-theme messagetext.css so a quote reads the same in the
@@ -226,6 +233,16 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         int maxHeightPercent() const noexcept
         {
             return m_maxHeightPercent;
+        }
+
+        void setMaxLength(int length) noexcept
+        {
+            m_maxLength=length;
+        }
+
+        int maxLength() const noexcept
+        {
+            return m_maxLength;
         }
 
         /**
@@ -397,6 +414,13 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         void attachmentsPasted(const QMimeData* mimeData);
 
         /**
+         * @brief See AbstractMessageEditor::insertRejected() -- relayed there verbatim by
+         *  MessageEditor. Emitted from insertFromMimeData() instead of inserting, when the
+         *  incoming text would take the document past maxLength().
+         */
+        void insertRejected(int attemptedLength, int maxLength);
+
+        /**
          * @brief See AbstractMessageEditor::editPreviousRequested() -- relayed there verbatim by
          *  MessageEditor. Emitted for a plain Up-arrow while the document is empty.
          */
@@ -507,6 +531,7 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         int m_maxHeight=DefaultMaxHeight;
         int m_maxHeightPercent=0;
         QPointer<QWidget> m_maxHeightReference;
+        int m_maxLength=0;
 
         QColor m_blockquoteColor;
         QColor m_codeBlockColor;
@@ -575,7 +600,16 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! text carrying no block properties at all, see convertCodeBlocksToText()).
         bool hasFormatting() const override;
 
+        //! See AbstractMessageEditor::hasAppliedFormatting() -- hasFormatting()'s first step (the
+        //! exact document scan) on its own, without its second, rendering-based step.
+        bool hasAppliedFormatting() const override;
+
         bool canPasteFromClipboard() const override;
+
+        //! See AbstractMessageEditor::setMaxLength(). Forwarded to the embedded EnhancedTextEdit,
+        //! which owns the actual enforcement (insertFromMimeData()) and storage.
+        void setMaxLength(int length) override;
+        int maxLength() const override;
 
         void addLeadingWidget(QWidget* widget) override;
         void addTrailingWidget(QWidget* widget) override;
