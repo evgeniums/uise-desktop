@@ -568,6 +568,13 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
 
         bool isEmpty() const override;
 
+        //! See AbstractMessageEditor::hasFormatting(). Answered in two steps -- what the user
+        //! APPLIED (exact, read straight off the document) and, failing that, whether the literal
+        //! text would render as anything but plain paragraphs (which is what catches markdown
+        //! SYNTAX typed by hand, a fenced code block above all: this editor's fences are ordinary
+        //! text carrying no block properties at all, see convertCodeBlocksToText()).
+        bool hasFormatting() const override;
+
         bool canPasteFromClipboard() const override;
 
         void addLeadingWidget(QWidget* widget) override;
@@ -739,6 +746,21 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
     private:
 
         void setupReturnPressed();
+
+        /**
+         * @brief Push the host's placeholder into the text edit, or suppress it.
+         *
+         * Qt draws the placeholder whenever QTextDocument::isEmpty(), which counts CHARACTERS only
+         * -- so an empty block carrying a list, heading or quote is still "empty" to it and the
+         * placeholder lands on top of the bullet the layout is painting. Called from the
+         * textChanged relay, which also fires for format-only edits.
+         */
+        void updatePlaceHolderText();
+
+        //! Whether the (single, textually empty) block has block formatting worth showing on its
+        //! own -- see updatePlaceHolderText(). False whenever the placeholder could not be drawn
+        //! anyway, so a caller never has to check isEmpty() itself.
+        bool hasVisibleBlockFormatting() const;
 
         //! Reflects the caret's live formatting onto pimpl->toolbar. Connected to
         //! EnhancedTextEdit::cursorPositionChanged()/selectionChanged()/

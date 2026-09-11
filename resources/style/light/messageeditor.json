@@ -30,7 +30,7 @@
             "name" : "MessageEditor",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" },
+                    "off" : { "currentColor" : "#777777" },
                     "on" :  { "currentColor" : "#000000" }
                 },
                 "hovered" : {

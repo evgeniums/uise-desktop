@@ -412,6 +412,208 @@ BOOST_AUTO_TEST_CASE(TestBulletAndNumberedList)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestHasFormattingIsFalseForOrdinaryText)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(!editor.hasFormatting());   // empty
+
+            editor.loadText(QStringLiteral("Привет! Как дела?"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasFormatting());
+
+            // Markdown-special characters that are NOT markdown: a lone asterisk is not emphasis,
+            // and nothing was applied. This is the case the document walk exists for -- comparing
+            // the MARKDOWN serialization instead would see the escaped "2 \* 3" and call it
+            // formatted.
+            editor.loadText(QStringLiteral("2 * 3 = 6, 50% off, a_b_c"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasFormatting());
+
+            editor.loadText(QStringLiteral("line one\nline two"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasFormatting());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHasFormattingIsTrueForAppliedFormatting)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setExpanded(true);
+            editor.loadText(QStringLiteral("word"),TextFormat::Plain);
+            UISE_TEST_REQUIRE(!editor.hasFormatting());
+
+            editor.textEdit()->selectAll();
+            editor.toolbar()->button(MessageEditorToolbarButton::Bold)->click();
+            UISE_TEST_CHECK(editor.hasFormatting());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHasFormattingIsTrueForAppliedBlockFormatting)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setExpanded(true);
+            editor.loadText(QStringLiteral("item"),TextFormat::Plain);
+            UISE_TEST_REQUIRE(!editor.hasFormatting());
+
+            editor.toolbar()->button(MessageEditorToolbarButton::BulletList)->click();
+            UISE_TEST_CHECK(editor.hasFormatting());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHasFormattingCatchesHandTypedMarkdownSyntax)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // Nothing is APPLIED in any of these -- the text simply IS markdown, which only the
+            // render-based second step can see. A fenced code block is the one that matters most:
+            // this editor's fences are ordinary text carrying no block properties at all
+            // (convertCodeBlocksToText()), so the document walk finds nothing on them.
+            MessageEditor editor;
+
+            editor.loadText(QStringLiteral("```\nint x = 1;\n```"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasFormatting());
+
+            editor.loadText(QStringLiteral("**bold**"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasFormatting());
+
+            editor.loadText(QStringLiteral("- one\n- two"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasFormatting());
+
+            editor.loadText(QStringLiteral("# Heading"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasFormatting());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHeadingOnEmptyEditorFormatsWhatIsTypedNext)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            // No loadText() -- the whole point is the EMPTY document at position 0. A heading set
+            // here used to change nothing visible: mergeCharFormat() applies to a selection, and
+            // an empty block has no characters to select, so the size/weight only appeared after a
+            // round trip through markdown.
+            emit editor.toolbar()->headingMenu()->itemToggled(2,true);
+
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->textCursor().blockFormat().headingLevel(),2);
+            // The format the NEXT character will be typed in -- the only one that exists on an
+            // empty block, and what makes the caret itself take the heading's height.
+            const auto cf=editor.textEdit()->currentCharFormat();
+            UISE_TEST_CHECK_EQUAL(cf.intProperty(QTextFormat::FontSizeAdjustment),2);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(cf.fontWeight()),static_cast<int>(QFont::Bold));
+
+            // ...and it survives all the way onto real typed text.
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("title"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(
+                editor.textEdit()->textCursor().charFormat().intProperty(QTextFormat::FontSizeAdjustment),2);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestClearDoesNotCarryHeadingFormatIntoTheNextMessage)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            emit editor.toolbar()->headingMenu()->itemToggled(1,true);
+            UISE_TEST_REQUIRE(
+                editor.textEdit()->currentCharFormat().intProperty(QTextFormat::FontSizeAdjustment)==3);
+
+            // QWidgetTextControlPrivate::setContent() deliberately re-applies the pre-clear char
+            // format, so without an explicit reset the message AFTER a send would be typed in the
+            // heading's size and weight.
+            editor.clear();
+            const auto cf=editor.textEdit()->currentCharFormat();
+            UISE_TEST_CHECK_EQUAL(cf.intProperty(QTextFormat::FontSizeAdjustment),0);
+            UISE_TEST_CHECK(!editor.textEdit()->textCursor().blockFormat().hasProperty(QTextFormat::HeadingLevel));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestListOnEmptyEditorHidesThePlaceholder)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setExpanded(true);
+            editor.setPlaceHolderText(QStringLiteral("Write a message..."));
+            // Nothing applied yet: the editor really is pristine, so the prompt belongs on screen.
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->placeholderText().toStdString(),
+                                  std::string{"Write a message..."});
+
+            // Qt paints the placeholder on QTextDocument::isEmpty(), which counts CHARACTERS only
+            // -- so without suppression the prompt would be drawn straight over the bullet the
+            // layout is also painting.
+            editor.toolbar()->button(MessageEditorToolbarButton::BulletList)->click();
+            UISE_TEST_REQUIRE(editor.textEdit()->textCursor().currentList()!=nullptr);
+            UISE_TEST_CHECK(editor.textEdit()->placeholderText().isEmpty());
+
+            // Taking the list off again puts the prompt back -- the host's own value was kept, not
+            // overwritten.
+            editor.toolbar()->button(MessageEditorToolbarButton::BulletList)->click();
+            UISE_TEST_REQUIRE(editor.textEdit()->textCursor().currentList()==nullptr);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->placeholderText().toStdString(),
+                                  std::string{"Write a message..."});
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHeadingOnEmptyEditorHidesThePlaceholderToo)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setPlaceHolderText(QStringLiteral("Write a message..."));
+
+            emit editor.toolbar()->headingMenu()->itemToggled(1,true);
+            UISE_TEST_CHECK(editor.textEdit()->placeholderText().isEmpty());
+
+            // Back to plain: the editor is pristine again and so is the prompt.
+            emit editor.toolbar()->headingMenu()->itemToggled(0,true);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->placeholderText().toStdString(),
+                                  std::string{"Write a message..."});
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestPlaceholderIsUntouchedOnAnUnformattedEditor)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setPlaceHolderText(QStringLiteral("Write a message..."));
+
+            // Typing makes the document non-empty, at which point Qt stops drawing the placeholder
+            // on its own -- the suppression must not interfere either way.
+            editor.loadText(QStringLiteral("hello"),TextFormat::Plain);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->placeholderText().toStdString(),
+                                  std::string{"Write a message..."});
+
+            editor.clear();
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->placeholderText().toStdString(),
+                                  std::string{"Write a message..."});
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestListLevelCanBeSteppedUpAndDown)
 {
     TestThread::instance()->execGuiThread(
@@ -1947,6 +2149,82 @@ BOOST_AUTO_TEST_CASE(TestExpandTogglesToolbarAndScrollbar)
             UISE_TEST_CHECK(editor.toolbar()->isHidden());
             UISE_TEST_CHECK(editor.textEdit()->verticalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
             UISE_TEST_CHECK(editor.textEdit()->isAutoResizingEnabled());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestExpandSuppressesSendOnEnterAndCollapseRestoresIt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            // The default, and what a chat composer wants while collapsed: Enter sends.
+            UISE_TEST_REQUIRE(editor.isFinishOnEnter());
+            UISE_TEST_CHECK(editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(!editor.textEdit()->isNewLineOnEnter());
+
+            // Expanded means "composing something longer/formatted" -- Enter is the key the user
+            // now needs for a new paragraph, so it must stop sending.
+            editor.setExpanded(true);
+            UISE_TEST_CHECK(!editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(editor.textEdit()->isNewLineOnEnter());
+            // The host's own setting is REPORTED unchanged throughout -- nothing was saved off and
+            // nothing overwrote it, which is what makes the restore below free.
+            UISE_TEST_CHECK(editor.isFinishOnEnter());
+
+            editor.setExpanded(false);
+            UISE_TEST_CHECK(editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(!editor.textEdit()->isNewLineOnEnter());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCollapseDoesNotTurnSendOnEnterOnForAHostThatNeverWantedIt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            // The file-upload dialog's comment editor and demo/messageformatting both do this:
+            // Enter never sends there. Collapsing must not "restore" a behaviour the host never
+            // asked for -- the rule suppresses finishOnEnter, it does not impose it.
+            editor.setFinishOnEnter(false);
+            UISE_TEST_CHECK(!editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(editor.textEdit()->isNewLineOnEnter());
+
+            editor.setExpanded(true);
+            UISE_TEST_CHECK(!editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(editor.textEdit()->isNewLineOnEnter());
+
+            editor.setExpanded(false);
+            UISE_TEST_CHECK(!editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(editor.textEdit()->isNewLineOnEnter());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestSetFinishOnEnterWhileExpandedTakesEffectOnCollapse)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setFinishOnEnter(false);
+            editor.setExpanded(true);
+
+            // A host changing its mind mid-expansion is recorded but cannot take effect yet --
+            // expanded still wins.
+            editor.setFinishOnEnter(true);
+            UISE_TEST_CHECK(editor.isFinishOnEnter());
+            UISE_TEST_CHECK(!editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(editor.textEdit()->isNewLineOnEnter());
+
+            // ...and is what the collapse then lands on, rather than the value from before the
+            // expansion.
+            editor.setExpanded(false);
+            UISE_TEST_CHECK(editor.effectiveFinishOnEnter());
+            UISE_TEST_CHECK(!editor.textEdit()->isNewLineOnEnter());
         }
     );
 }

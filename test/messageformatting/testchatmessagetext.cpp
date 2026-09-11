@@ -35,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QClipboard>
 #include <QTextDocument>
 #include <QTextBlock>
+#include <QTextCursor>
+#include <QTextDocumentFragment>
 #include <QTextLayout>
 #include <QAbstractTextDocumentLayout>
 #include <QColor>
@@ -158,7 +160,7 @@ BOOST_AUTO_TEST_CASE(TestSeparateCodeBlocksStaySeparate)
     );
 }
 
-BOOST_AUTO_TEST_CASE(TestCodeBlockReservesPaddingRoomAndStillWraps)
+BOOST_AUTO_TEST_CASE(TestCodeBlockReservesPaddingRoomAndDoesNotWrap)
 {
     TestThread::instance()->execGuiThread(
         [&]()
@@ -184,9 +186,183 @@ BOOST_AUTO_TEST_CASE(TestCodeBlockReservesPaddingRoomAndStillWraps)
             UISE_TEST_CHECK_EQUAL(static_cast<int>(last.blockFormat().bottomMargin()),padding);
             UISE_TEST_CHECK_EQUAL(static_cast<int>(first.blockFormat().bottomMargin()),0);
 
-            // The marker is cleared once read, which restores exactly the wrapping the removed
-            // `white-space: pre-wrap` rule used to provide.
-            UISE_TEST_CHECK(!first.blockFormat().nonBreakableLines());
+            // The marker is read and deliberately LEFT SET: a code line keeps its natural width,
+            // because wrapping it destroys the indentation carrying the code's structure. An
+            // earlier revision cleared it here to restore the wrapping the removed
+            // `white-space: pre-wrap` rule used to provide; overflow is now answered by
+            // codeBlockWidenBubble / codeBlockScroll / codeBlockExpandButton instead.
+            UISE_TEST_CHECK(first.blockFormat().nonBreakableLines());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCodeBlockNaturalWidthIsMeasured)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral("```\nshort\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+            const auto narrow=browser.widestCodeBlockWidth();
+            UISE_TEST_CHECK(narrow>0);
+
+            // Same block, a much longer line: the measured width has to follow the CONTENT, since
+            // it is what decides both the bubble widening and the overflow verdict.
+            ChatMessageTextBrowser wide;
+            loadMarkdown(wide,QStringLiteral(
+                "```\nint averylongidentifier = someOtherVeryLongIdentifier + 123456789;\n```\n"));
+            UISE_TEST_REQUIRE(wide.codeBlocks().size()==1);
+            UISE_TEST_CHECK(wide.widestCodeBlockWidth()>narrow);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestNoCodeBlockMeansNoMeasuredWidth)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral("Just some prose, no fence anywhere.\n"));
+            UISE_TEST_CHECK(browser.codeBlocks().empty());
+            // 0, not a stale value from whatever this recycled widget showed before -- the bubble
+            // widening reads this to decide whether it may exceed maxBubbleWidth at all.
+            UISE_TEST_CHECK_EQUAL(browser.widestCodeBlockWidth(),0);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestWideCodeBlockTurnsOnHorizontalScroll)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral(
+                "```\nint averylongidentifier = someOtherVeryLongIdentifier + 123456789;\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+
+            // Deliberately far narrower than the block's own natural width.
+            browser.setWrapWidth(60);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+            UISE_TEST_CHECK(browser.reservesHorizontalScrollBar());
+
+            // Widened past what the content needs: the overflow treatment has to go away again,
+            // exactly as a wide table's pinning does when its bubble grows.
+            browser.setWrapWidth(browser.widestCodeBlockWidth()+50);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+            UISE_TEST_CHECK(!browser.reservesHorizontalScrollBar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCodeBlockWidthIsAWrapWidthNotAContentWidth)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral(
+                "```\nint averylongidentifier = someOtherVeryLongIdentifier + 123456789;\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+
+            // The regression: widestCodeBlockWidth() is what the bubble widens itself TO, so
+            // wrapping at exactly that value has to be the boundary at which the block stops
+            // overflowing. It used to report the raw CONTENT width instead, which is
+            // 2*documentMargin() short of the document TEXT width the content needs -- so a bubble
+            // widened to fit its own code was handed a width 8px too narrow, clipped the tail of
+            // every long line, and then reported no overflow (natural > wrapWidth being false at
+            // exactly that width), leaving the scrollbar off. A NARROWER bubble, where the
+            // shortfall was bigger than the margins, got its scrollbar correctly -- which is how
+            // the two cases came to disagree.
+            const auto needed=browser.widestCodeBlockWidth();
+            UISE_TEST_REQUIRE(needed>0);
+
+            browser.setWrapWidth(needed);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+            UISE_TEST_CHECK(!browser.reservesHorizontalScrollBar());
+
+            // One pixel under, and it must overflow -- there is no dead band between "fits" and
+            // "scrolls".
+            browser.setWrapWidth(needed-1);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAsNeeded);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCodeBlockSlabIsPaddedAroundItsText)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral("```\nint x = 1;\nint y = 2;\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+
+            const auto& tracked=browser.codeBlocks().front();
+            const auto slab=browser.codeBlockViewportRect(tracked);
+            UISE_TEST_REQUIRE(slab.isValid());
+
+            auto* doc=browser.document();
+            auto* layout=doc->documentLayout();
+            const auto first=layout->blockBoundingRect(doc->findBlock(tracked.firstPosition));
+            const auto last=layout->blockBoundingRect(doc->findBlock(tracked.lastPosition));
+
+            // blockBoundingRect() is the union of the block's LINE rects and excludes its margins
+            // entirely, so the slab has to be inflated back over the vertical room
+            // applyCodeBlockLayout() reserved -- without that the code sat flush against the top
+            // and bottom edges of its own background.
+            const auto padding=browser.codeBlockPadding();
+            UISE_TEST_CHECK(slab.top()<=qRound(first.top())-padding);
+            UISE_TEST_CHECK(slab.bottom()>=qRound(last.bottom())+padding-1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCodeBlockLanguageSurvivesIntoTheExpandedViewer)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral("```cpp\nint x = 1;\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+            UISE_TEST_REQUIRE(browser.codeBlocks().front().language.toStdString()==std::string{"cpp"});
+
+            // The viewer rebuilds its HTML from the block's text + language through
+            // markdownToHtml(), NOT from a selection's toHtml(): Qt's HTML exporter never emits
+            // the class="language-x" attribute its own parser reads back into
+            // QTextFormat::BlockCodeLanguage, so the round trip lost the language and
+            // ensureSyntaxHighlighter()'s documentHasCodeLanguage() gate then refused to attach a
+            // highlighter -- the expanded code came out in one flat colour. Asserted on the
+            // rebuilt markup rather than through the dialog, which needs a window to open.
+            const auto rebuilt=markdownToHtml(QStringLiteral("```cpp\nint x = 1;\n```"));
+            UISE_TEST_CHECK(rebuilt.contains(QStringLiteral("language-cpp")));
+
+            // ...whereas the path it replaced does not carry it, which is the whole bug.
+            QTextCursor cursor(browser.document());
+            cursor.setPosition(browser.codeBlocks().front().firstPosition);
+            cursor.setPosition(browser.codeBlocks().front().lastPosition,QTextCursor::KeepAnchor);
+            UISE_TEST_CHECK(!cursor.selection().toHtml().contains(QStringLiteral("language-cpp")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestCodeBlockScrollCanBeTurnedOff)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            browser.setCodeBlockScrollEnabled(false);
+            loadMarkdown(browser,QStringLiteral(
+                "```\nint averylongidentifier = someOtherVeryLongIdentifier + 123456789;\n```\n"));
+            UISE_TEST_REQUIRE(browser.codeBlocks().size()==1);
+
+            browser.setWrapWidth(60);
+            UISE_TEST_CHECK(browser.horizontalScrollBarPolicy()==Qt::ScrollBarAlwaysOff);
+            UISE_TEST_CHECK(!browser.reservesHorizontalScrollBar());
         }
     );
 }

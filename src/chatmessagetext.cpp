@@ -163,6 +163,12 @@ void ChatMessageTextBrowser::setWrapWidth(int w)
     // previously pinned table now fits and should be un-pinned again.
     applyWideTableLayout();
     updateSize();
+    // AFTER updateSize(), not before: the code-overflow verdict now reads
+    // QTextDocument::idealWidth(), which only reflects the NEW wrap width once the document has
+    // been laid out at it. Running it first would test the previous pass' layout and lag the
+    // scrollbar by one negotiation. applyWideTableLayout() above has already had its say on the
+    // shared scrollbar; this runs after it, so the combined decision is the final one.
+    applyCodeBlockOverflow();
 }
 
 //--------------------------------------------------------------------------
@@ -227,9 +233,12 @@ QRect ChatMessageTextBrowser::lastLineRect() const
     // AbstractChatMessageContent::evaluateInlineBottom() understands, and it puts the row on its
     // own full-width line below, which is exactly what is wanted.
     //
-    // Read from m_codeBlocks rather than from the block format, because by this point
-    // applyCodeBlockLayout() has deliberately CLEARED nonBreakableLines() to restore wrapping --
-    // the format no longer says "code", which is exactly why the runs are recorded.
+    // Read from m_codeBlocks rather than from the block format: the runs are recorded precisely so
+    // every later reader has one answer to "is this position inside code", independent of which
+    // formats happen to be on the block at the time. (The format's own nonBreakableLines() would
+    // also answer it now that applyCodeBlockLayout() leaves the flag set, but m_codeBlocks stays
+    // the single source of truth -- it is also what the painting, the overlays and the overflow
+    // verdict all read.)
     const auto position=block.position();
     for (const auto& codeBlock : m_codeBlocks)
     {
@@ -284,11 +293,39 @@ void ChatMessageTextBrowser::setCodeBlockPadding(int padding)
 
 void ChatMessageTextBrowser::applyCodeBlockLayout()
 {
+    // Overlays are RECYCLED across passes, exactly as applyWideTableLayout() recycles its expand
+    // buttons and for the same reasons: this now runs on every content load AND on every
+    // applyDocumentStyle() replay, and simply clearing m_codeBlocks would drop the QPointers
+    // without destroying the widgets -- leaving each pass' strips parented to viewport() and
+    // visible on top of the next pass' own.
+    std::vector<QPointer<QWidget>> recycled;
+    recycled.reserve(m_codeBlocks.size());
+    for (auto& tracked : m_codeBlocks)
+    {
+        recycled.push_back(tracked.overlay);
+    }
     m_codeBlocks.clear();
+
+    auto dropUnusedOverlays=[&recycled](std::size_t keep)
+    {
+        for (std::size_t i=keep;i<recycled.size();++i)
+        {
+            if (!recycled[i].isNull())
+            {
+                // Deleted outright rather than deleteLater()'d -- same reasoning as
+                // applyWideTableLayout()'s dropUnusedButtons().
+                delete recycled[i].data();
+            }
+        }
+        recycled.clear();
+    };
 
     auto* doc=document();
     if (doc==nullptr)
     {
+        dropUnusedOverlays(0);
+        m_anyCodeOverflow=false;
+        updateHorizontalOverflow();
         return;
     }
 
@@ -324,6 +361,9 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
 
     if (found.empty())
     {
+        dropUnusedOverlays(0);
+        m_anyCodeOverflow=false;
+        updateHorizontalOverflow();
         return;
     }
 
@@ -343,10 +383,13 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
             QTextCursor cursor(block);
             auto format=cursor.blockFormat();
 
-            // Cleared, so the code wraps exactly as `white-space: pre-wrap` used to make it --
-            // that rule is gone from messagetext.css precisely so this flag survives long enough
-            // to be read above. See applyCodeBlockLayout()'s doc comment.
-            format.setNonBreakableLines(false);
+            // nonBreakableLines is deliberately LEFT SET (an earlier revision cleared it here, to
+            // wrap the code the way `white-space: pre-wrap` used to): a code line must keep its
+            // natural width, because wrapping it destroys the indentation that carries the code's
+            // structure. What happens when that does not fit is answered by codeBlockWidenBubble /
+            // codeBlockScroll / codeBlockExpandButton instead -- see applyCodeBlockOverflow().
+            // Leaving it set is also what makes this whole method idempotent, so it can safely run
+            // again after applyDocumentStyle()'s setHtml() replay restores the flag.
 
             // The room the painted padding fills. Left/right on every line so the box can inflate
             // sideways without reaching under the text; top only on the first line and bottom only
@@ -363,7 +406,211 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
 
     doc->setUndoRedoEnabled(undoEnabled);
 
+    // The width each block WANTS, measured by laying the whole document out unconstrained -- the
+    // same measurement, taken the same way and for the same reason, as applyWideTableLayout()'s
+    // own natural-width pass. Done AFTER the margins above so the measurement includes them: they
+    // are part of what has to fit.
+    //
+    // `line.x() + naturalTextWidth() + rightMargin` is NOT an approximation -- it is character for
+    // character the formula QTextDocumentLayout::layoutBlock() itself accumulates into
+    // layoutStruct->contentsWidth (qtextdocumentlayout.cpp), which is what ends up as the root
+    // frame's width and therefore as the horizontal scrollbar's own range. Measuring it any other
+    // way would risk disagreeing with the thing that actually decides whether the content
+    // overflows. In particular NOT blockBoundingRect().width(), which reports the block's LAYOUT
+    // width (the full text width it was laid out into), not the width its text needs -- the same
+    // distinction lastLineRect() already relies on when it takes its own width from
+    // naturalTextWidth() rather than from the bounding rect it uses for the origin.
+    const auto restoreWidth=doc->textWidth();
+    doc->setTextWidth(-1);
+    // Forces the relayout at the new width before any block layout is read: setTextWidth()
+    // invalidates the layouts but does not rebuild them, and an un-laid-out block reports no lines
+    // at all -- the same guard, for the same reason, as MessageEditor::textLineCount()'s own
+    // QTextDocument::size() call (and as this file's own test helper already does).
+    (void)doc->size();
+    for (auto& tracked : found)
+    {
+        qreal natural=0;
+        for (auto block=doc->findBlock(tracked.firstPosition);
+             block.isValid() && block.position()<=tracked.lastPosition;
+             block=block.next())
+        {
+            auto* layout=block.layout();
+            if (layout==nullptr)
+            {
+                continue;
+            }
+            const auto rightMargin=block.blockFormat().rightMargin();
+            for (int i=0;i<layout->lineCount();++i)
+            {
+                const auto line=layout->lineAt(i);
+                natural=qMax(natural,line.x()+line.naturalTextWidth()+rightMargin);
+            }
+        }
+        tracked.naturalWidth=natural;
+    }
+    doc->setTextWidth(restoreWidth);
+
+    for (std::size_t i=0;i<found.size();++i)
+    {
+        if (i<recycled.size())
+        {
+            found[i].overlay=recycled[i];
+        }
+    }
+    dropUnusedOverlays(found.size());
+
     m_codeBlocks=std::move(found);
+
+    applyCodeBlockOverflow();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setViewerMode(bool enable)
+{
+    if (m_viewerMode==enable)
+    {
+        return;
+    }
+    m_viewerMode=enable;
+
+    if (m_viewerMode)
+    {
+        // NoWrap makes lineWrapColumnOrWidth() 0, which is already the "nothing negotiated" case
+        // applyCodeBlockOverflow() and updateSize() both guard on -- so the bubble's wrap-width
+        // machinery goes quiet on its own and only the scrollbar policy needs taking back, below.
+        setLineWrapMode(NoWrap);
+        setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    }
+
+    updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+qreal ChatMessageTextBrowser::codeContentToWrapWidth(qreal contentWidth) const
+{
+    auto* doc=document();
+    return contentWidth+(doc!=nullptr ? 2*doc->documentMargin() : 0);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyCodeBlockOverflow()
+{
+    // A wrap width of 0 means none has been negotiated yet (applyCodeBlockLayout() also runs from
+    // setHtmlContent(), which can precede the first bubbleWidthHint()) -- there is nothing to
+    // compare against, so nothing overflows this pass; setWrapWidth() calls back once it knows.
+    // Same rule, same reason, as applyWideTableLayout()'s own wrapWidth>0 guard.
+    const auto wrapWidth=lineWrapColumnOrWidth();
+
+    // QTextDocument::idealWidth() is Qt's OWN answer to "how wide does this document need to be",
+    // assembled by the same layout pass that decides what gets clipped -- so it cannot disagree
+    // with what is actually on screen the way an independent re-measurement can.
+    //
+    // This deliberately does NOT test our own TrackedCodeBlock::naturalWidth. That measurement
+    // drives the bubble WIDENING (below, via widestCodeBlockWidth()), and it is only ever an
+    // estimate of what Qt will do; when it came up short, the bubble was sized from the short
+    // value AND the overflow test -- being the same short value compared against a width derived
+    // from it -- concluded "fits" by construction. The block was then clipped with no scrollbar at
+    // all, by anything from one character to most of a word depending on the content. Asking Qt
+    // instead makes those two failure modes independent: an under-measured widening now costs a
+    // slightly narrow bubble, never a missing scrollbar.
+    //
+    // Gated on there being a code block at all, so a document whose idealWidth is raised by
+    // something else (a pinned table) is left to m_anyTablePinned, which owns that case.
+    m_anyCodeOverflow=false;
+    if (m_codeBlockScroll && wrapWidth>0 && !m_codeBlocks.empty() && document()!=nullptr)
+    {
+        m_anyCodeOverflow=(qCeil(document()->idealWidth())>wrapWidth);
+    }
+
+    updateHorizontalOverflow();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::updateHorizontalOverflow()
+{
+    // A viewer owns its own scrollbars -- see setViewerMode(). Both bars are permanently
+    // as-needed there, and letting the bubble's overflow logic switch the horizontal one off
+    // would take away the very thing the expanded viewer exists to provide.
+    if (m_viewerMode)
+    {
+        return;
+    }
+
+    const auto anyOverflow=(m_anyTablePinned || m_anyCodeOverflow);
+    setHorizontalScrollBarPolicy(anyOverflow ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+
+    // Mirrors updateSize()'s own clamp check rather than reading the scroll area's own
+    // horizontalScrollBar()->isVisible(), which is a pass behind the decision being made here --
+    // see reservesHorizontalScrollBar()'s own doc comment. idealWidth() covers BOTH sources: a
+    // pinned table's fixed frame width and a non-wrapping code line's naturalTextWidth() both feed
+    // QTextDocumentLayout's contentsWidth, which is what idealWidth() reports.
+    const auto cap=lineWrapColumnOrWidth();
+    setHScrollReserved(anyOverflow && cap>0
+                       && document()!=nullptr && qCeil(document()->idealWidth())>cap);
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageTextBrowser::widestCodeBlockWidth() const
+{
+    qreal widest=0;
+    for (const auto& tracked : m_codeBlocks)
+    {
+        widest=qMax(widest,tracked.naturalWidth);
+    }
+    if (widest<=0)
+    {
+        return 0;
+    }
+    // Returned as a WRAP width, not as the raw content width, because that is what every caller
+    // compares it against or feeds into setWrapWidth() -- see codeContentToWrapWidth(). Without
+    // the conversion a bubble widened to exactly this value came out 2*documentMargin() too narrow
+    // for its own code.
+    return qCeil(codeContentToWrapWidth(widest));
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockWidenBubbleEnabled(bool enable)
+{
+    if (m_codeBlockWidenBubble==enable)
+    {
+        return;
+    }
+    m_codeBlockWidenBubble=enable;
+    // Only the HOST's own width negotiation can act on this (ChatMessageText::bubbleWidthHint()),
+    // so ask for one rather than trying to re-derive a width here.
+    updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockScrollEnabled(bool enable)
+{
+    if (m_codeBlockScroll==enable)
+    {
+        return;
+    }
+    m_codeBlockScroll=enable;
+    applyCodeBlockOverflow();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeBlockExpandButtonEnabled(bool enable)
+{
+    if (m_codeBlockExpandButton==enable)
+    {
+        return;
+    }
+    m_codeBlockExpandButton=enable;
+    updateCodeBlockOverlays();
 }
 
 //--------------------------------------------------------------------------
@@ -395,6 +642,16 @@ QRect ChatMessageTextBrowser::codeBlockViewportRect(const TrackedCodeBlock& code
     // Document coordinates to viewport coordinates. The document's own margin is already in
     // blockBoundingRect()'s origin (same as lastLineRect() relies on).
     rect.translate(-horizontalScrollBar()->value(),-verticalScrollBar()->value());
+
+    // Inflate back over the vertical room applyCodeBlockLayout() reserved as top/bottom block
+    // margins. blockBoundingRect() is `layout->boundingRect()` moved to `layout->position()`
+    // (qtextdocumentlayout.cpp) -- the union of the block's LINE rects, which excludes the block's
+    // own margins entirely. So without this the slab hugs the text exactly and the padding, though
+    // reserved in the layout, is never painted: the code sits flush against the top and bottom
+    // edges of its own background. The horizontal half needs no equivalent -- the left edge is
+    // pinned to documentMargin() below, which is already codeBlockPadding() left of the text
+    // (the block's leftMargin), and the right edge spans the viewport.
+    rect.adjust(0,-m_codeBlockPadding,0,m_codeBlockPadding);
 
     // The box spans the full text width rather than only the longest line: a code block reads as
     // a slab, and a ragged right edge following the longest line looks like a mistake.
@@ -574,6 +831,24 @@ void ChatMessageTextBrowser::updateCodeBlockOverlays()
                 }
             );
 
+            auto* expandButton=new IconTextButton(
+                Style::instance().svgIconLocator().icon(
+                    QStringLiteral("ChatMessageTextBrowser::expandCodeBlock"),this),
+                strip);
+            expandButton->setObjectName(QStringLiteral("codeBlockExpandButton"));
+            expandButton->setCursor(Qt::ArrowCursor);
+            expandButton->setFocusPolicy(Qt::NoFocus);
+            expandButton->setToolTip(tr("Open code in a larger window"));
+            layout->addWidget(expandButton);
+
+            connect(expandButton,&IconTextButton::clicked,this,
+                [this,index]()
+                {
+                    // Same re-read-through-the-index rule as Copy above.
+                    openCodeBlockViewer(static_cast<int>(index));
+                }
+            );
+
             tracked.overlay=strip;
         }
 
@@ -588,6 +863,15 @@ void ChatMessageTextBrowser::updateCodeBlockOverlays()
         {
             language->setText(tracked.language);
             language->setVisible(!tracked.language.isEmpty());
+        }
+
+        // Per-pass rather than once at creation, for the same reason the language label is: the
+        // strip is recycled across content loads, so whatever the property says now has to win
+        // over whatever the block it last showed needed.
+        auto* expandButton=strip->findChild<IconTextButton*>(QStringLiteral("codeBlockExpandButton"));
+        if (expandButton!=nullptr)
+        {
+            expandButton->setVisible(m_codeBlockExpandButton);
         }
 
         const auto rect=codeBlockViewportRect(tracked);
@@ -692,6 +976,13 @@ void ChatMessageTextBrowser::paintEvent(QPaintEvent* event)
 
 QSize ChatMessageTextBrowser::sizeHint() const
 {
+    // A viewer fills the window it was given rather than shrink-wrapping to its content, and its
+    // scrollbars are permanent rather than reserved -- see setViewerMode().
+    if (m_viewerMode)
+    {
+        return QTextBrowser::sizeHint();
+    }
+
     if (document())
     {
         QSizeF docSize = document()->size();
@@ -732,9 +1023,97 @@ QSize ChatMessageTextBrowser::sizeHint() const
 
 //--------------------------------------------------------------------------
 
+bool ChatMessageTextBrowser::canScrollHorizontally() const
+{
+    // The live RANGE, not the policy or m_hScrollReserved: those record what this pass decided,
+    // while this has to answer "is there anywhere to go right now" for a gesture arriving between
+    // passes. A bubble with nothing to scroll must fall straight through to the list.
+    const auto* bar=horizontalScrollBar();
+    return bar!=nullptr && bar->maximum()>bar->minimum();
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::wheelEvent(QWheelEvent *event)
 {
-    event->ignore();
+    // A bubble refuses the wheel so the chat LIST scrolls under the pointer instead; a standalone
+    // viewer is the thing that should scroll. See setViewerMode().
+    if (m_viewerMode)
+    {
+        QTextBrowser::wheelEvent(event);
+        return;
+    }
+
+    // ...with one exception: a bubble that has somewhere to scroll HORIZONTALLY (a wide code block
+    // or a pinned table) takes a predominantly-horizontal gesture for itself. The two uses do not
+    // actually compete -- a wheel event carries both axes, the list only ever wants the vertical
+    // one, and a mouse wheel produces no horizontal delta at all -- so an ordinary vertical scroll
+    // over a code block still reaches the list exactly as before.
+    //
+    // What WOULD break the list is deciding per event: a touchpad swipe is never purely vertical,
+    // so a few stray horizontal pixels mid-gesture would silently eat frames from the list and
+    // read as stutter. Hence the axis is latched ONCE per gesture (ScrollBegin..ScrollEnd) and
+    // held, which is the same axis-lock every native scroll view uses. A mouse, which reports no
+    // phase at all, is decided per event -- it has no gesture to latch.
+    if (!m_horizontalWheelScroll || !canScrollHorizontally())
+    {
+        m_wheelAxis=WheelAxis::Undecided;
+        event->ignore();
+        return;
+    }
+
+    const auto delta=event->angleDelta();
+    const auto phase=event->phase();
+
+    if (phase==Qt::ScrollBegin)
+    {
+        m_wheelAxis=WheelAxis::Undecided;
+    }
+
+    auto axis=m_wheelAxis;
+    if (axis==WheelAxis::Undecided && !delta.isNull())
+    {
+        axis=(qAbs(delta.x())>qAbs(delta.y())) ? WheelAxis::Horizontal : WheelAxis::Vertical;
+        // Latched only for a real gesture. Qt::NoScrollPhase is a mouse wheel, where every event
+        // stands alone, so carrying a decision over from the previous notch would be wrong.
+        if (phase!=Qt::NoScrollPhase)
+        {
+            m_wheelAxis=axis;
+        }
+    }
+
+    if (phase==Qt::ScrollEnd)
+    {
+        m_wheelAxis=WheelAxis::Undecided;
+    }
+
+    auto* bar=horizontalScrollBar();
+    if (axis!=WheelAxis::Horizontal || bar==nullptr)
+    {
+        event->ignore();
+        return;
+    }
+
+    const auto pixels=event->pixelDelta().x();
+    // pixelDelta() is exact and is what a touchpad reports; angleDelta() is the fallback for
+    // devices that only report notches (8 units per degree, 15 degrees per notch by Qt's own
+    // convention -- one singleStep per notch is what QAbstractScrollArea itself would apply).
+    const auto step=(pixels!=0) ? pixels : (delta.x()/(8*15))*bar->singleStep();
+
+    const auto target=qBound(bar->minimum(),bar->value()-step,bar->maximum());
+    if (target==bar->value())
+    {
+        // Already at the end in this direction: CHAIN to the parent rather than swallowing the
+        // rest of the gesture. The chat view scrolls horizontally too once the window is too
+        // narrow for its bubbles, and a bubble that kept eating horizontal input would make that
+        // unreachable wherever a code block happened to sit under the pointer. Standard nested-
+        // scroll behaviour -- the inner view consumes what it can use, the outer gets the rest.
+        event->ignore();
+        return;
+    }
+
+    bar->setValue(target);
+    event->accept();
 }
 
 //--------------------------------------------------------------------------
@@ -780,9 +1159,11 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // someone else's message. See this method's own header doc comment.
     m_lastHtml.clear();
     setPlainText(text);
-    // Plain text has no code blocks; clear anything tracked for the HTML this replaces (a
-    // recycled flyweight bubble would otherwise paint the previous message's boxes).
-    m_codeBlocks.clear();
+    // Plain text has no code blocks -- run the pass anyway rather than clearing m_codeBlocks by
+    // hand: it finds none, and its own empty path is what destroys the previous content's overlay
+    // strips (a bare clear() would drop the QPointers and leave the widgets parented to viewport()
+    // and visible) and clears the code half of the shared scrollbar decision.
+    applyCodeBlockLayout();
     // Plain text has no tables -- this clears any pin/button left over from previous HTML content
     // (whose document setPlainText() has just discarded) and puts the scrollbar policy back.
     applyWideTableLayout();
@@ -925,8 +1306,18 @@ void ChatMessageTextBrowser::applyDocumentStyle()
     if (!m_lastHtml.isEmpty())
     {
         setHtml(m_lastHtml);
-        // The replay rebuilt the document, discarding every pinned table format with it -- same
-        // reason setHtmlContent() re-pins after its own setHtml() (Stage 4).
+        // The replay rebuilt the document, discarding every per-message format derived from the
+        // PREVIOUS load along with it -- both passes have to run again, exactly as they do after
+        // setHtmlContent()'s own setHtml().
+        //
+        // Code blocks first, same order as setHtmlContent(). Omitting this was a real bug: the
+        // replay restores QTextBlockFormat::nonBreakableLines() from the `<pre>` markup and drops
+        // the padding margins, so without re-running this pass a code block kept its natural width
+        // with nothing tracking it -- no padding, no overflow verdict, and (because m_codeBlocks
+        // still held the previous pass' entries) a slab painted from stale positions. The visible
+        // symptom was a code block clipped at the bubble's edge with no scrollbar, on any bubble
+        // that had been through a style/theme pass -- i.e. in practice, all of them.
+        applyCodeBlockLayout();
         applyWideTableLayout();
         // The reload above reset every anchor to the base style, including one that was mid-hover
         // -- re-apply its hover-underline immediately rather than waiting for the next mouse move.
@@ -1120,8 +1511,8 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     if (document()==nullptr)
     {
         dropUnusedButtons(0);
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        setHScrollReserved(false);
+        m_anyTablePinned=false;
+        updateHorizontalOverflow();
         return;
     }
 
@@ -1137,8 +1528,8 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     if (tables.empty())
     {
         dropUnusedButtons(0);
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        setHScrollReserved(false);
+        m_anyTablePinned=false;
+        updateHorizontalOverflow();
         return;
     }
 
@@ -1203,15 +1594,11 @@ void ChatMessageTextBrowser::applyWideTableLayout()
     }
     dropUnusedButtons(tables.size());
 
-    setHorizontalScrollBarPolicy(anyPinned ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
-    // Mirrors updateSize()'s own clamp check (same reasoning: a pinned table's fixed frame width
-    // feeds directly into idealWidth(), pushing it past the wrap width) rather than reading the
-    // scroll area's own horizontalScrollBar()->isVisible() -- that only catches up once the
-    // viewport has actually been laid out at the new geometry, a pass behind the decision being
-    // made right here. See reservesHorizontalScrollBar()'s own doc comment for why sizeHint() and
-    // lastLineRect() both need this to be current for THIS pass, not the previous one.
-    auto cap=lineWrapColumnOrWidth();
-    setHScrollReserved(anyPinned && cap>0 && qCeil(document()->idealWidth())>cap);
+    // The scrollbar policy and height reservation are decided by updateHorizontalOverflow(), which
+    // owns them for BOTH overflow sources -- setting them here would switch the bar back off for a
+    // code block that had just decided it needs one. See that method's own doc comment.
+    m_anyTablePinned=anyPinned;
+    updateHorizontalOverflow();
     if (anyPinned)
     {
         // The pins changed the layout; re-shrink-wrap so the document's own height reflects the
@@ -1392,6 +1779,59 @@ QString tableToTabSeparated(QTextTable* table, int selectionStart, int selection
         }
     }
     return out;
+}
+
+//! Floor a viewer may be shrunk to once it is open -- small enough to get out of the way, large
+//! enough to still be a viewer. See applyExpandedViewerSize().
+constexpr int ViewerMinWidth=280;
+constexpr int ViewerMinHeight=200;
+
+/**
+ * @brief Initial size for an expanded viewer (table or code), in window coordinates.
+ *
+ * At least HALF the window it was opened from in each direction: the whole point of expanding is
+ * to see more than the bubble showed, and the previous fixed 400px height plus a content-derived
+ * width routinely opened a window smaller than the bubble's own content on a large display. The
+ * content's own width still wins where it is wider, and the window itself is the ceiling -- a
+ * viewer larger than the window it came from cannot be positioned sensibly.
+ *
+ * @param contentWidth The content's own preferred width, already including whatever slack the
+ *  caller wants for a frame and scrollbar.
+ */
+QSize expandedViewerSize(const QWidget* anchor, int contentWidth)
+{
+    const auto* win=(anchor!=nullptr) ? anchor->window() : nullptr;
+    // A widget with no window yet (constructed off-screen) has nothing to take a fraction OF --
+    // fall back to the fixed size this used to open at rather than to zero.
+    const QSize windowSize=(win!=nullptr && win->width()>0 && win->height()>0)
+                           ? win->size() : QSize{900,400};
+
+    const int w=qMin(qMax(contentWidth,windowSize.width()/2),windowSize.width());
+    const int h=qMin(qMax(400,windowSize.height()/2),windowSize.height());
+    return QSize{w,h};
+}
+
+/**
+ * @brief Open `frame` at `size`, then let the user shrink it again.
+ *
+ * Sizing a FloatingDialogFrame is not a resize() away: popup() calls QWidget::adjustSize(), which
+ * takes the frame's SIZE HINT and throws away any geometry set beforehand -- so a resize() on the
+ * content (what this used to do) had no effect at all, and the viewer opened at whatever its
+ * content happened to hint. For a code viewer that is QTextBrowser's own small default, which is
+ * how an expanded code block ended up smaller than the bubble it came from.
+ *
+ * minimumSize is the one channel adjustSize() must honour, so the size is imposed that way and
+ * then relaxed to a usable floor once the frame has taken it. Relaxing afterwards does not resize
+ * anything -- the frame already has its geometry -- it only stops the initial size from becoming
+ * a permanent lower bound the user cannot drag back. Doing it BEFORE popup() also keeps popup()'s
+ * own centring correct, which resizing afterwards would not.
+ */
+void applyExpandedViewerSize(QWidget* container, FloatingDialogFrame* frame, const QSize& size)
+{
+    container->setMinimumSize(size);
+    frame->popup();
+    container->setMinimumSize(qMin(ViewerMinWidth,size.width()),
+                              qMin(ViewerMinHeight,size.height()));
 }
 
 }
@@ -1608,7 +2048,8 @@ void ChatMessageTextBrowser::openTableViewer(int index)
 
     containerLayout->addWidget(buttonRow);
 
-    container->resize(qMin(static_cast<int>(m_tables[static_cast<std::size_t>(index)].naturalWidth)+48,900),400);
+    const auto viewerSize=expandedViewerSize(
+        this,static_cast<int>(m_tables[static_cast<std::size_t>(index)].naturalWidth)+48);
 
     // FloatingDialogFrame is the only shell in this library that hosts an arbitrary widget as a
     // resizable top-level window -- ChatImageViewerWindow, despite the name, is hard-wired to a
@@ -1651,7 +2092,138 @@ void ChatMessageTextBrowser::openTableViewer(int index)
     // disposes of the content; this disposes of the shell around it.
     connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
 
-    frame->popup();
+    // Not frame->resize(): popup() adjustSize()s over it -- see applyExpandedViewerSize().
+    applyExpandedViewerSize(container,frame,viewerSize);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::openCodeBlockViewer(int index)
+{
+    if (index<0 || static_cast<std::size_t>(index)>=m_codeBlocks.size() || document()==nullptr)
+    {
+        return;
+    }
+
+    const auto& tracked=m_codeBlocks[static_cast<std::size_t>(index)];
+
+    // Rebuilt from the block's own TEXT and language rather than taken as a selection's toHtml().
+    // Qt's HTML exporter does not emit the `class="language-x"` attribute its own PARSER reads
+    // back into QTextFormat::BlockCodeLanguage -- the round trip is asymmetric -- so the language
+    // was lost, ensureSyntaxHighlighter()'s documentHasCodeLanguage() gate then refused to attach
+    // a highlighter at all, and the expanded code came out in one flat colour.
+    //
+    // Going back through markdownToHtml() is also what guarantees parity rather than merely
+    // approximating it: this is the exact path that produced the bubble's own HTML.
+    const auto code=codeBlockText(tracked);
+
+    // A fence long enough to survive whatever backtick runs the code itself contains -- CommonMark
+    // closes a fence only on a run at least as long as the opening one, so a shorter fence around
+    // code containing ``` would terminate early and the tail would render as prose.
+    int longestRun=0;
+    int run=0;
+    for (const auto ch : code)
+    {
+        run=(ch==QLatin1Char('`')) ? run+1 : 0;
+        longestRun=qMax(longestRun,run);
+    }
+    const QString fence(qMax(3,longestRun+1),QLatin1Char('`'));
+
+    const auto codeHtml=markdownToHtml(fence+tracked.language+QStringLiteral("\n")
+                                       +code+QStringLiteral("\n")+fence);
+
+    auto* container=new QFrame();
+    container->setObjectName(QStringLiteral("codeBlockViewerFrame"));
+    auto* containerLayout=Layout::vertical(container);
+
+    // The SAME widget the bubble renders through, in viewer mode -- not a second browser. That is
+    // what makes the expanded code genuinely identical to the bubble's: the syntax highlighting,
+    // the painted slab with its padding and radius, messagetext.css and the theme-change replay
+    // are all this class's own behaviour, and a plain QTextBrowser has none of them (a
+    // QSyntaxHighlighter's formats live on the block layouts, not in the document, so they do not
+    // survive the toHtml() above at all -- the expanded code came out unhighlighted and with no
+    // background for exactly that reason).
+    auto* view=new ChatMessageTextBrowser(container);
+    view->setObjectName(QStringLiteral("codeBlockViewer"));
+    view->setViewerMode(true);
+    view->setToast(m_toast);
+    // Selectable, with the same right-click Copy the bubble offers.
+    view->setCopyable(true);
+    view->setSyntaxHighlightingEnabled(isSyntaxHighlightingEnabled());
+    view->setCodeBlockPadding(m_codeBlockPadding);
+    view->setCodeBlockRadius(m_codeBlockRadius);
+    // The strip would be redundant here: the language is not in doubt once the block is open on
+    // its own, and Copy/expand already live in the button row below.
+    view->setCodeBlockOverlayEnabled(false);
+    // setHtmlContent(), not setHtml(): it is the entry point that tracks the block, reserves the
+    // padding and attaches the highlighter. setHtml() alone would load the text and none of that.
+    view->setHtmlContent(codeHtml);
+    containerLayout->addWidget(view,1);
+
+    auto* buttonRow=new QFrame(container);
+    buttonRow->setObjectName(QStringLiteral("codeBlockViewerButtons"));
+    auto* buttonLayout=Layout::horizontal(buttonRow);
+    buttonLayout->addStretch(1);
+
+    auto* fullScreenButton=new PushButton(tr("Full screen"),buttonRow);
+    fullScreenButton->setObjectName(QStringLiteral("codeBlockViewerFullScreenButton"));
+    buttonLayout->addWidget(fullScreenButton);
+
+    auto* copyButton=new PushButton(tr("Copy code"),buttonRow);
+    copyButton->setObjectName(QStringLiteral("codeBlockViewerCopyButton"));
+    // Copies from the ORIGINAL tracked block rather than from the viewer's own document: this is
+    // the same text the overlay's Copy button puts on the clipboard (codeBlockText()'s plain,
+    // un-highlighted form), so the two routes cannot disagree about what "copy this code" means.
+    connect(copyButton,&PushButton::clicked,this,
+        [this,index]()
+        {
+            if (static_cast<std::size_t>(index)<m_codeBlocks.size())
+            {
+                copyCodeBlock(m_codeBlocks[static_cast<std::size_t>(index)]);
+            }
+        }
+    );
+    buttonLayout->addWidget(copyButton);
+
+    auto* closeButton=new PushButton(tr("Close"),buttonRow);
+    closeButton->setObjectName(QStringLiteral("codeBlockViewerCloseButton"));
+    buttonLayout->addWidget(closeButton);
+
+    containerLayout->addWidget(buttonRow);
+
+    // Same sizing rule as openTableViewer() -- the content's own natural width plus room for the
+    // frame and a scrollbar, floored at half the window so expanding always gains real room.
+    const auto viewerSize=expandedViewerSize(this,static_cast<int>(tracked.naturalWidth)+48);
+
+    auto* frame=new FloatingDialogFrame(this);
+    frame->setWidget(container,true);
+    frame->setAutoCloseOnOutsideClick(true);
+
+    auto toggleFullScreen=[frame,fullScreenButton]()
+    {
+        if (frame->isFullScreen())
+        {
+            frame->showNormal();
+            fullScreenButton->setText(tr("Full screen"));
+        }
+        else
+        {
+            frame->showFullScreen();
+            fullScreenButton->setText(tr("Exit full screen"));
+        }
+    };
+    connect(fullScreenButton,&PushButton::clicked,frame,toggleFullScreen);
+
+    auto* fullScreenShortcut=new QShortcut(Qt::Key_F11,frame);
+    fullScreenShortcut->setContext(Qt::WindowShortcut);
+    connect(fullScreenShortcut,&QShortcut::activated,frame,toggleFullScreen);
+
+    connect(closeButton,&PushButton::clicked,frame,[frame](){frame->close();});
+
+    connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
+
+    // Not frame->resize(): popup() adjustSize()s over it -- see applyExpandedViewerSize().
+    applyExpandedViewerSize(container,frame,viewerSize);
 }
 
 //--------------------------------------------------------------------------
@@ -2015,8 +2587,36 @@ void ChatMessageText::updateExtraLinkify()
 
 int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 {
-    auto wrapWidth=clampToMaxBubbleWidth(forMaxWidth);
+    auto wrapWidth=codeAwareWrapWidth(forMaxWidth);
     pimpl->text->setWrapWidth(wrapWidth);
+
+    // One corrective pass, and the reason it is needed rather than optional: widestCodeBlockWidth()
+    // is measured by us, and it is measured too EARLY -- before the widget's style is applied, so
+    // the font it measures with is not the font Qt finally lays out with. Instrumented against
+    // three real code blocks, our figure came out a constant 1.075x short of Qt's every time
+    // (454 vs 488, 642 vs 690, 485 vs 521): a pure font-size ratio, not an offset, which is why
+    // adding a fixed fudge could never have fixed it. A block whose corrected width would have
+    // cleared maxBubbleWidth but whose measured one did not therefore never widened the bubble at
+    // all, and was clipped to the cap instead -- the "second block stays narrow while the first
+    // stretches" case.
+    //
+    // QTextDocument::idealWidth(), read AFTER setWrapWidth() has laid the document out, is Qt's
+    // own answer and needs no correction. It is safe to widen to it because the document is
+    // wrapped at wrapWidth: prose can never push idealWidth past that, so any excess is content
+    // that does not wrap -- i.e. the code block. Gated on there actually being one, so a long
+    // unbreakable URL in ordinary prose still respects maxBubbleWidth.
+    //
+    // One pass suffices: re-laying out at the wider width cannot grow idealWidth again (the code
+    // still does not wrap, and the prose only gets more room), so there is nothing to iterate.
+    if (pimpl->text->isCodeBlockWidenBubbleEnabled() && pimpl->text->widestCodeBlockWidth()>0)
+    {
+        const auto needed=qCeil(pimpl->text->document()->idealWidth());
+        if (needed>wrapWidth && forMaxWidth>wrapWidth)
+        {
+            wrapWidth=qMin(needed,forMaxWidth);
+            pimpl->text->setWrapWidth(wrapWidth);
+        }
+    }
     // qCeil, not a plain truncating cast: lastHintWidth must be >= the document's true
     // idealWidth() (the natural width of its widest line) for updateMaximumBubbleWidth()'s pin
     // below to be sound -- rounding DOWN could land under idealWidth and force an extra wrap
@@ -2032,9 +2632,37 @@ int ChatMessageText::bubbleWidthHint(int forMaxWidth)
 
 //--------------------------------------------------------------------------
 
+int ChatMessageText::codeAwareWrapWidth(int forMaxWidth) const
+{
+    auto wrapWidth=clampToMaxBubbleWidth(forMaxWidth);
+
+    // task-message-formatting-plan.md: a code block may push the bubble past maxBubbleWidth, up to
+    // (never beyond) whatever the negotiation itself offered. Code is the one content kind that
+    // cannot re-flow -- see ChatMessageTextBrowser::codeBlockWidenBubble's own doc comment -- so
+    // spending the view's spare horizontal room on it is strictly better than putting the reader
+    // on a scrollbar for width the layout was willing to give. Anything the widened bubble still
+    // cannot show falls through to codeBlockScroll/codeBlockExpandButton.
+    //
+    // qMin against forMaxWidth, not just the code width: the budget is a hard ceiling (exceeding
+    // it would overflow the message list itself, not merely the bubble), and a single very long
+    // line must not be allowed to ask for more than the view has.
+    if (pimpl->text->isCodeBlockWidenBubbleEnabled())
+    {
+        const auto code=pimpl->text->widestCodeBlockWidth();
+        if (code>wrapWidth)
+        {
+            wrapWidth=qMin(code,forMaxWidth);
+        }
+    }
+
+    return wrapWidth;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageText::updateMaximumBubbleWidth()
 {
-    auto w=clampToMaxBubbleWidth(chatContent()->maximumBubbleWidth());
+    auto w=codeAwareWrapWidth(chatContent()->maximumBubbleWidth());
 
     // Pin the re-wrap to the width bubbleWidthHint() actually measured this pass' document at,
     // instead of re-deriving it from the bubble's own final width -- which, in inline mode, can
@@ -2049,6 +2677,17 @@ void ChatMessageText::updateMaximumBubbleWidth()
     // budget genuinely changes the result.
     if (pimpl->lastHintWidth>0 && pimpl->lastHintWidth<=w)
     {
+        w=pimpl->lastHintWidth;
+    }
+    else if (pimpl->lastHintWidth>w
+             && pimpl->text->isCodeBlockWidenBubbleEnabled()
+             && pimpl->text->widestCodeBlockWidth()>0)
+    {
+        // lastHintWidth can now legitimately EXCEED what codeAwareWrapWidth() returns here:
+        // bubbleWidthHint()'s corrective pass widens past maxBubbleWidth using Qt's own
+        // idealWidth, which this function's own seed (our under-measured widestCodeBlockWidth())
+        // does not know about. Re-wrapping at the smaller value would undo that correction and
+        // clip the block again, one pass after it was fixed.
         w=pimpl->lastHintWidth;
     }
     pimpl->text->setWrapWidth(w);
@@ -2074,11 +2713,17 @@ QRect ChatMessageText::lastTextLineRect() const
 
 int ChatMessageText::ownWidthCeiling() const
 {
-    // clampToMaxBubbleWidth() against the largest possible value is exactly maxBubbleWidth()
-    // itself when the cap is enabled (>0), or a pass-through (no cap) when it's disabled -- same
-    // helper bubbleWidthHint()/updateMaximumBubbleWidth() already use, so this can never
-    // disagree with what they actually enforced.
-    return clampToMaxBubbleWidth(std::numeric_limits<int>::max());
+    // codeAwareWrapWidth() against the largest possible value is exactly maxBubbleWidth() itself
+    // when the cap is enabled (>0) and no code block wants more, or a pass-through (no cap) when
+    // it's disabled -- the same helper bubbleWidthHint()/updateMaximumBubbleWidth() use, so this
+    // can never disagree with what they actually enforced.
+    //
+    // Passing INT_MAX as the budget is what makes the code-block branch report the ceiling this
+    // section could ever ask for rather than what it happens to want against the CURRENT budget:
+    // this is documented as a ceiling "REGARDLESS of forMaxWidth", and a caller uses it to decide
+    // how much room to offer in the first place. Under-reporting it would cap the negotiation
+    // below the width a wide code block is about to ask for, and the bubble would never widen.
+    return codeAwareWrapWidth(std::numeric_limits<int>::max());
 }
 
 //--------------------------------------------------------------------------

@@ -4,7 +4,8 @@
             "name" : "ChatMessageTextBrowser",
             "aliases" : {
                 "expandTable" : "${uise-svg-icons-1}/arrows-diagonal",
-                "copyCodeBlock" : "${uise-svg-icons-1}/copy"
+                "copyCodeBlock" : "${uise-svg-icons-1}/copy",
+                "expandCodeBlock" : "${uise-svg-icons-1}/arrows-diagonal"
             }
         },
         {

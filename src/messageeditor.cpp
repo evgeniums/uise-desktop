@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -34,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextDocumentFragment>
 #include <QTextCursor>
 #include <QTextBlock>
+#include <QTextFragment>
+#include <QTextFrame>
 #include <QTextLayout>
 #include <QTextList>
 #include <QTextTable>
@@ -2519,6 +2522,11 @@ class MessageEditor_p
         EnhancedTextEdit* editor;
         IconTextButton* expandButton;
 
+        //! The placeholder the HOST asked for, which is not always the one the text edit currently
+        //! carries -- see MessageEditor::updatePlaceHolderText(), which suppresses it while the
+        //! empty block has block formatting of its own to show.
+        QString placeHolderText;
+
         QPointer<DropdownMenu> contextMenu;
 
         //! The mode updateMessageEditingMode() last actually applied to the document -- distinct
@@ -2745,6 +2753,11 @@ MessageEditor::MessageEditor(QWidget* parent)
         [this]()
         {
             updateArrangementForContent();
+            // QTextEdit::textChanged is relayed from QTextDocument::contentsChanged, which
+            // QTextDocumentPrivate::finishEdit() emits for a FORMAT-only edit too -- so this also
+            // fires for "turn the empty block into a list item", which is precisely the case the
+            // placeholder has to react to. See updatePlaceHolderText().
+            updatePlaceHolderText();
             emit textChanged();
         }
     );
@@ -3028,6 +3041,15 @@ QString MessageEditor::selectedText(TextFormat format) const
 void MessageEditor::clear()
 {
     pimpl->editor->clear();
+
+    // QTextEdit::clear() does NOT reset the format the next typed character will use:
+    // QWidgetTextControlPrivate::setContent() saves the cursor's char format before rebuilding the
+    // document and re-applies it afterwards (`charFormatForInsertion`), deliberately, so that
+    // setPlainText() keeps a caller's formatting. For a composer that is wrong -- clear() is what
+    // runs after a message is SENT, and a heading, bold or inline-code format left over from it
+    // would silently style the next message too. The block format needs no such care: the document
+    // rebuild drops it (list object included) on its own.
+    pimpl->editor->setCurrentCharFormat(QTextCharFormat{});
 }
 
 //--------------------------------------------------------------------------
@@ -3091,6 +3113,104 @@ bool MessageEditor::hasSelection() const
 bool MessageEditor::isEmpty() const
 {
     return pimpl->editor->document()->isEmpty();
+}
+
+//--------------------------------------------------------------------------
+
+namespace {
+
+//! Whether a block carries any of the block-level formatting this editor can apply.
+bool blockIsFormatted(const QTextBlock& block)
+{
+    if (block.textList()!=nullptr)
+    {
+        return true;
+    }
+    const auto bf=block.blockFormat();
+    return bf.headingLevel()>0
+           || bf.hasProperty(QTextFormat::BlockQuoteLevel)
+           || bf.hasProperty(QTextFormat::BlockCodeFence)
+           || bf.hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth)
+           || bf.nonBreakableLines()
+           || bf.indent()>0
+           || bf.leftMargin()>0;
+}
+
+//! Whether a fragment's char format differs from the document's own default in any way this
+//! editor treats as formatting. Compared against the DEFAULT font rather than against a blank
+//! QTextCharFormat: the editor's own font is not necessarily Qt's, and every fragment carries it.
+bool fragmentIsFormatted(const QTextFragment& fragment, const QFont& defaultFont)
+{
+    const auto cf=fragment.charFormat();
+    if (cf.isAnchor())
+    {
+        return true;
+    }
+    if (cf.intProperty(QTextFormat::FontSizeAdjustment)!=0)
+    {
+        return true;
+    }
+    if (cf.hasProperty(QTextFormat::ForegroundBrush) || cf.hasProperty(QTextFormat::BackgroundBrush))
+    {
+        return true;
+    }
+    return cf.fontItalic()!=defaultFont.italic()
+           || cf.fontUnderline()!=defaultFont.underline()
+           || cf.fontStrikeOut()!=defaultFont.strikeOut()
+           || cf.fontFixedPitch()!=defaultFont.fixedPitch()
+           || (cf.hasProperty(QTextFormat::FontWeight) && cf.fontWeight()!=defaultFont.weight());
+}
+
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::hasFormatting() const
+{
+    auto* doc=pimpl->editor->document();
+    if (doc==nullptr || doc->isEmpty())
+    {
+        return false;
+    }
+
+    // Step 1 -- what the user APPLIED. Read straight off the document, so it is exact and says
+    // nothing about the text's own characters: "2 * 3" typed with no formatting is plain here,
+    // even though exporting it as markdown would escape that asterisk.
+    //
+    // A child frame means a table, the one construct that is not a block property.
+    if (!doc->rootFrame()->childFrames().isEmpty())
+    {
+        return true;
+    }
+    for (auto block=doc->begin(); block.isValid() && block!=doc->end(); block=block.next())
+    {
+        if (blockIsFormatted(block))
+        {
+            return true;
+        }
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto fragment=it.fragment();
+            if (fragment.isValid() && fragmentIsFormatted(fragment,doc->defaultFont()))
+            {
+                return true;
+            }
+        }
+    }
+
+    // Step 2 -- markdown SYNTAX the user typed by hand rather than applied. Nothing above can see
+    // it: this editor's fenced code blocks are deliberately ordinary text carrying no block
+    // properties at all (convertCodeBlocksToText()), and the same goes for a hand-typed "**bold**"
+    // or "- item". Rendering is the only reliable test, so ask the renderer: if stripping markdown
+    // changes the text, the text is markdown.
+    //
+    // Compared against the PLAIN serialization, never the markdown one: text(Markdown) escapes
+    // specials, so comparing against that would report "2 \* 3" as formatted for a message that
+    // has none.
+    const auto plain=text(TextFormat::Plain);
+    // maxSourceChars raised from markdownToPlainText()'s own preview-sized default: truncation
+    // here would make a long plain message differ from itself and be labelled markdown.
+    return markdownToPlainText(plain,std::numeric_limits<int>::max()).trimmed()!=plain.trimmed();
 }
 
 //--------------------------------------------------------------------------
@@ -3383,14 +3503,71 @@ void MessageEditor::updateEditingFinished()
 
 void MessageEditor::setupReturnPressed()
 {
-    pimpl->editor->setNewLineOnEnter(!isFinishOnEnter());
+    // effectiveFinishOnEnter(), not isFinishOnEnter(): Enter inserts a line break while the editor
+    // is expanded regardless of the host's setting -- see that method's own doc comment. Re-run
+    // from updateExpanded() as well as from updateFinishOnEnter(), since either input can change
+    // the answer.
+    pimpl->editor->setNewLineOnEnter(!effectiveFinishOnEnter());
 }
 
 //--------------------------------------------------------------------------
 
 void MessageEditor::setPlaceHolderText(const QString& text)
 {
-    pimpl->editor->setPlaceholderText(text);
+    pimpl->placeHolderText=text;
+    updatePlaceHolderText();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::updatePlaceHolderText()
+{
+    // Qt paints the placeholder on QTextDocument::isEmpty(), which is a pure CHARACTER count
+    // (`d->length() <= 1`, qtextdocument.cpp) -- block FORMAT is invisible to it. So an empty block
+    // that has just been turned into a list item is still "empty" as far as Qt is concerned, and
+    // the placeholder gets drawn straight over the bullet or number the layout is also painting.
+    //
+    // Suppressed by clearing the base class's own value rather than by intercepting the paint:
+    // QTextEdit draws the placeholder inside its own paintEvent(), and save/restore around a call
+    // to the base paintEvent() would recurse -- QTextEdit::setPlaceholderText() calls
+    // viewport->update() whenever the document is empty, which is exactly this case.
+    pimpl->editor->setPlaceholderText(
+        hasVisibleBlockFormatting() ? QString{} : pimpl->placeHolderText);
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::hasVisibleBlockFormatting() const
+{
+    // Only ever interesting while the placeholder could actually be drawn, i.e. while the document
+    // holds ONE empty block: a second block already makes QTextDocument::isEmpty() false (a block
+    // separator is itself a character), so Qt stops painting the placeholder on its own and there
+    // is nothing here to suppress.
+    auto* doc=pimpl->editor->document();
+    if (doc==nullptr || !doc->isEmpty())
+    {
+        return false;
+    }
+
+    const auto block=doc->firstBlock();
+    if (!block.isValid())
+    {
+        return false;
+    }
+
+    // A list paints a marker, and a heading changes the line's own metrics -- either way the
+    // editor is no longer visually pristine and a "Write a message..." in body text sitting in it
+    // reads as leftover content rather than as a prompt. Blockquote and indent are included for
+    // the same reason: both move the caret away from the margin the placeholder is drawn at.
+    if (block.textList()!=nullptr)
+    {
+        return true;
+    }
+    const auto bf=block.blockFormat();
+    return bf.headingLevel()>0
+           || bf.hasProperty(QTextFormat::BlockQuoteLevel)
+           || bf.indent()>0
+           || bf.leftMargin()>0;
 }
 
 //--------------------------------------------------------------------------
@@ -3399,6 +3576,12 @@ void MessageEditor::updateExpanded()
 {
     pimpl->editor->setExpandedEnabled(isExpanded());
     pimpl->toolbar->setVisible(isExpanded());
+
+    // Enter stops sending while expanded and starts again on collapse -- see
+    // AbstractMessageEditor::effectiveFinishOnEnter(), which owns that rule. Nothing is saved or
+    // restored here: the host's own finishOnEnter is never written to, so re-running this is all a
+    // collapse needs to put the previous behaviour back.
+    setupReturnPressed();
 
     {
         // setChecked() below would otherwise re-emit toggled() -> our re-assert handler ->
@@ -3518,6 +3701,11 @@ void MessageEditor::restoreEditorFocus()
 void MessageEditor::finishFormatAction()
 {
     syncToolbarState();
+    // Deterministic rather than relying on the textChanged relay to also cover format-only edits:
+    // applying a list to an EMPTY block changes no characters at all, and that is exactly the case
+    // the placeholder has to react to. Idempotent, so running from both paths costs nothing --
+    // QTextEdit::setPlaceholderText() early-outs on an unchanged value.
+    updatePlaceHolderText();
     restoreEditorFocus();
 }
 
@@ -3687,6 +3875,18 @@ void MessageEditor::applyHeading(int level)
     cf.setProperty(QTextFormat::FontSizeAdjustment,level>0 ? (4-level) : 0);
     cf.setFontWeight(level>0 ? QFont::Bold : QFont::Normal);
     cursor.mergeCharFormat(cf);
+
+    // ...and onto what the editor types NEXT, which is a separate thing and the only one that
+    // exists on an EMPTY block: mergeCharFormat() above applies to a selection, and an empty block
+    // has no characters to select, so on its own it changes nothing and the heading only appeared
+    // once the text had been round-tripped through markdown. (Setting a heading on a block that
+    // already had text worked precisely because the selection was non-empty.) Merging into the
+    // widget's current format also makes the caret itself take the heading's height straight away,
+    // which is the only feedback there is that the mode took effect on an empty line.
+    //
+    // Applied through the WIDGET's own cursor, not the local copy above -- the copy's selection is
+    // BlockUnderCursor, and the current char format belongs to the real caret.
+    pimpl->editor->mergeCurrentCharFormat(cf);
 
     finishFormatAction();
 }

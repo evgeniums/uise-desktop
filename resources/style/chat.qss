@@ -48,13 +48,18 @@ padding: 0px 4px;
 font-size: 10px;
 }
 
-uise--ChatMessageTextBrowser #codeBlockCopyButton {
+/* Both strip buttons share every metric -- they sit side by side in one strip and any difference
+   between them would read as a mistake rather than as a distinction. */
+uise--ChatMessageTextBrowser #codeBlockCopyButton,
+uise--ChatMessageTextBrowser #codeBlockExpandButton {
 border-radius: 4px;
 padding: 3px;
 }
 
 uise--ChatMessageTextBrowser #codeBlockCopyButton #icon,
-uise--ChatMessageTextBrowser #codeBlockCopyButton uise--RoundedImage {
+uise--ChatMessageTextBrowser #codeBlockCopyButton uise--RoundedImage,
+uise--ChatMessageTextBrowser #codeBlockExpandButton #icon,
+uise--ChatMessageTextBrowser #codeBlockExpandButton uise--RoundedImage {
 min-width: 13px;
 max-width: 13px;
 min-height: 13px;
@@ -74,7 +79,10 @@ padding: 0px;
    throughout these rules. */
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
 border-radius: 4px;
 }
 
@@ -82,8 +90,19 @@ border-radius: 4px;
    right-hand side -- the same job abstractdialog.qss's own
    "#dialogButtonsFrame {padding: 0 4px 4px 4px}" does for a dialog's button row. Doing it here
    rather than as a right margin on the Close button keeps the buttons themselves uniform. */
-#tableViewerFrame #tableViewerButtons {
-padding: 0px 8px 8px 8px;
+/* The TOP padding is what keeps the buttons clear of the content above them -- with a horizontal
+   scrollbar showing (a wide table, an overflowing code line) that scrollbar is the bottom edge of
+   the browser, and the buttons sat directly against it. */
+#tableViewerFrame #tableViewerButtons,
+#codeBlockViewerFrame #codeBlockViewerButtons {
+padding: 12px 8px 12px 8px;
+}
+
+/* The browser above the row needs the same inset, or the code's slab runs flush into the window's
+   own edges. The table viewer has never needed this (its own document margin plus the table's
+   border read as an inset already), but a code block paints an edge-to-edge background. */
+#codeBlockViewerFrame uise--ChatMessageTextBrowser {
+margin: 8px 8px 0px 8px;
 }
 
 /* The uise--PushButton wrappers must stay borderless -- the inner QPushButton above already
@@ -93,9 +112,12 @@ padding: 0px 8px 8px 8px;
    each other; the row's own padding above handles the distance to the window edges. */
 #tableViewerFrame #tableViewerFullScreenButton,
 #tableViewerFrame #tableViewerCopyButton,
-#tableViewerFrame #tableViewerCloseButton {
+#tableViewerFrame #tableViewerCloseButton,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton,
+#codeBlockViewerFrame #codeBlockViewerCopyButton,
+#codeBlockViewerFrame #codeBlockViewerCloseButton {
 border: none;
-margin: 0px 0px 0px 8px;
+margin: 0px 0px 0px 12px;
 }
 
 /* IconTextButton's icon has no sensible default size of its own -- it must be set explicitly per

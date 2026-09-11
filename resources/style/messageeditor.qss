@@ -21,10 +21,21 @@ padding: 2px 4px;
    Targeted at the two side FRAMES rather than at #expandButton by name, so a host's own icon
    button dropped in with addLeadingWidget()/addTrailingWidget() comes out the same size as the
    expand button it sits next to instead of needing the host to redeclare all of this. The expand
-   button is itself a member of #leadingWidgets, so it is still covered. */
-uise--MessageEditorToolbar uise--IconTextButton uise--RoundedImage,
+   button is itself a member of #leadingWidgets, so it is still covered.
+
+   The SIDE frames are deliberately sized larger than the toolbar's own buttons below: what a host
+   puts there is a composer's primary actions (attach, send), which were 26px in whitemdesktop
+   before they moved inside the editor and read as too small at the toolbar's density. The
+   formatting toolbar's own buttons are a dense strip of secondary controls and stay compact. */
 uise--MessageEditor #leadingWidgets uise--IconTextButton uise--RoundedImage,
 uise--MessageEditor #trailingWidgets uise--IconTextButton uise--RoundedImage {
+min-width: 26px;
+max-width: 26px;
+min-height: 26px;
+max-height: 26px;
+}
+
+uise--MessageEditorToolbar uise--IconTextButton uise--RoundedImage {
 min-width: 18px;
 max-width: 18px;
 min-height: 18px;
@@ -34,10 +45,37 @@ max-height: 18px;
 uise--MessageEditorToolbar uise--IconTextButton,
 uise--MessageEditor #leadingWidgets uise--IconTextButton,
 uise--MessageEditor #trailingWidgets uise--IconTextButton {
-padding: 4px;
+padding: 6px;
 margin: 0 1px;
 border-radius: 4px;
 border: 1px solid transparent;
+}
+
+/* No horizontal margin on the LEADING buttons: the 6px padding above already separates them from
+   each other and from the composer's edge, and stacking a margin on top of it only pushes the
+   group inward without making it any easier to hit. The vertical half is left to the shared rule.
+   The trailing group keeps its inset -- see below. */
+uise--MessageEditor #leadingWidgets uise--IconTextButton {
+margin-left: 0px;
+margin-right: 0px;
+}
+
+/* ...except on the expand button, whose right margin is not spacing between buttons at all: it is
+   the LAST leading item, so that gap separates the whole group from the TEXT AREA. Re-stated here
+   because the rule above (2 types + 1 id) would otherwise out-specify #expandButton's own margin
+   shorthand further down (1 type + 1 id) and leave the button flush against the text. */
+uise--MessageEditor #leadingWidgets #expandButton {
+margin-right: 4px;
+}
+
+uise--MessageEditor #leadingWidgets {
+margin-left: 0px;
+}
+
+/* Insets the trailing GROUP from the composer's outer edge, rather than adding per-button margins
+   that would also open gaps between adjacent buttons. */
+uise--MessageEditor #trailingWidgets {
+margin-right: 8px;
 }
 
 /* light/reset.qss and dark/reset.qss both sort AFTER this file in the cascade (root-dir files

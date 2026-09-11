@@ -150,9 +150,15 @@ background-color: #2A2A2A;
    the light theme, that file applies ONE outlined treatment to every button with no
    primary/secondary split, so Copy table is not singled out here either -- matching the dialogs
    is the point. Sizing matches that file's own values (min-width 80px, padding 4px 12px). */
+/* The code-block viewer (ChatMessageTextBrowser::openCodeBlockViewer()) is the same shell with the
+   same three roles, so it is styled by the same rules rather than a parallel copy -- the two
+   viewers differing in button treatment would be a bug, not a distinction. */
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
 color: #CCCCCC;
 border: 1px solid #999999;
 background-color: transparent;
@@ -161,7 +167,10 @@ padding: 4px 12px;
 }
 #tableViewerFrame #tableViewerFullScreenButton QPushButton:hover,
 #tableViewerFrame #tableViewerCopyButton QPushButton:hover,
-#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
+#tableViewerFrame #tableViewerCloseButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton:hover {
 color: #EEEEEE;
 border: 1px solid #EEEEEE;
 }
@@ -169,7 +178,8 @@ border: 1px solid #EEEEEE;
 /* FloatingDialogFrame is a translucent top-level window -- content that does not paint its own
    background shows straight through it (see docs/styling.md section 7). Without this the button
    row around the Copy table button is transparent. */
-#tableViewerFrame {
+#tableViewerFrame,
+#codeBlockViewerFrame {
 background-color: #232323;
 }
 

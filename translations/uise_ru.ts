@@ -621,7 +621,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1600"/>
+        <location filename="../src/chatmessage.cpp" line="+1661"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
@@ -647,66 +647,76 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+1481"/>
+        <location filename="../src/chatmessagetext.cpp" line="+1921"/>
         <source>Copied</source>
-        <translation type="unfinished"></translation>
+        <translation>Скопировано</translation>
     </message>
     <message>
         <location line="+38"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Copy table</source>
-        <translation type="unfinished"></translation>
+        <translation>Копировать таблицу</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Select all</source>
-        <translation type="unfinished">Выделить всё</translation>
+        <translation>Выделить всё</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1039"/>
+        <location line="-1222"/>
         <source>Copied</source>
-        <translation type="unfinished"></translation>
+        <translation>Скопировано</translation>
     </message>
     <message>
         <location line="+71"/>
+        <location line="+1355"/>
         <source>Copy code</source>
-        <translation type="unfinished"></translation>
+        <translation>Копировать код</translation>
     </message>
     <message>
-        <location line="+720"/>
+        <location line="-1331"/>
+        <source>Open code in a larger window</source>
+        <translation>Открыть код в большом окне</translation>
+    </message>
+    <message>
+        <location line="+826"/>
         <source>Show the full table</source>
-        <translation type="unfinished"></translation>
+        <translation>Показать таблицу целиком</translation>
     </message>
     <message>
-        <location line="+316"/>
-        <location line="+35"/>
+        <location line="+369"/>
+        <location line="+36"/>
+        <location line="+96"/>
+        <location line="+39"/>
         <source>Full screen</source>
-        <translation type="unfinished"></translation>
+        <translation>Во весь экран</translation>
     </message>
     <message>
-        <location line="-31"/>
+        <location line="-167"/>
         <source>Copy table</source>
-        <translation type="unfinished"></translation>
+        <translation>Копировать таблицу</translation>
     </message>
     <message>
         <location line="+5"/>
+        <location line="+143"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="-111"/>
+        <location line="+135"/>
         <source>Exit full screen</source>
-        <translation type="unfinished"></translation>
+        <translation>Обычный размер</translation>
     </message>
     <message>
-        <location line="+203"/>
+        <location line="+199"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -1056,32 +1066,32 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location filename="../src/hyperlinkdialog.cpp" line="+77"/>
         <source>URL</source>
-        <translation type="unfinished"></translation>
+        <translation>Ссылка</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>https://example.com</source>
-        <translation type="unfinished"></translation>
+        <translation>https://example.com</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Title (optional)</source>
-        <translation type="unfinished"></translation>
+        <translation>Название (необязательно)</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Link text</source>
-        <translation type="unfinished"></translation>
+        <translation>Текст ссылки</translation>
     </message>
     <message>
         <location line="+15"/>
         <source>Insert link</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
         <location line="+33"/>
         <source>Enter a URL.</source>
-        <translation type="unfinished"></translation>
+        <translation>Введите ссылку.</translation>
     </message>
 </context>
 <context>
@@ -1138,14 +1148,14 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+2595"/>
+        <location filename="../src/messageeditor.cpp" line="+2603"/>
         <source>Show formatting toolbar</source>
-        <translation type="unfinished"></translation>
+        <translation>Показать панель форматирования</translation>
     </message>
     <message>
-        <location line="+1125"/>
+        <location line="+1317"/>
         <source>code here</source>
-        <translation type="unfinished"></translation>
+        <translation>код</translation>
     </message>
     <message>
         <location line="+1144"/>
@@ -1165,102 +1175,102 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+16"/>
         <source>Mention someone</source>
-        <translation type="unfinished"></translation>
+        <translation>Упомянуть</translation>
     </message>
     <message>
         <location line="+21"/>
         <source>Bold</source>
-        <translation type="unfinished"></translation>
+        <translation>Полужирный</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Italic</source>
-        <translation type="unfinished"></translation>
+        <translation>Курсив</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Underline</source>
-        <translation type="unfinished"></translation>
+        <translation>Подчёркнутый</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Strikethrough</source>
-        <translation type="unfinished"></translation>
+        <translation>Зачёркнутый</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Inline code</source>
-        <translation type="unfinished"></translation>
+        <translation>Код в строке</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Heading 1</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 1</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Heading 2</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 2</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Heading 3</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 3</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Normal text</source>
-        <translation type="unfinished"></translation>
+        <translation>Обычный текст</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Bulleted list</source>
-        <translation type="unfinished"></translation>
+        <translation>Маркированный список</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Numbered list</source>
-        <translation type="unfinished"></translation>
+        <translation>Нумерованный список</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Blockquote</source>
-        <translation type="unfinished"></translation>
+        <translation>Цитата</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Code block</source>
-        <translation type="unfinished"></translation>
+        <translation>Блок кода</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Table</source>
-        <translation type="unfinished"></translation>
+        <translation>Таблица</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Horizontal rule</source>
-        <translation type="unfinished"></translation>
+        <translation>Разделитель</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Insert link</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>Remove link</source>
-        <translation type="unfinished"></translation>
+        <translation>Удалить ссылку</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Clear formatting</source>
-        <translation type="unfinished"></translation>
+        <translation>Очистить форматирование</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Formatting</source>
-        <translation type="unfinished"></translation>
+        <translation>Форматирование</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -1278,187 +1288,187 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location filename="../src/messageeditortoolbar.cpp" line="+99"/>
         <source>Insert row above</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить строку выше</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Insert row below</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить строку ниже</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Insert column left</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить столбец слева</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Insert column right</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить столбец справа</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Delete row</source>
-        <translation type="unfinished"></translation>
+        <translation>Удалить строку</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Delete column</source>
-        <translation type="unfinished"></translation>
+        <translation>Удалить столбец</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Delete table</source>
-        <translation type="unfinished"></translation>
+        <translation>Удалить таблицу</translation>
     </message>
     <message>
         <location line="+129"/>
         <source>Editing mode</source>
-        <translation type="unfinished"></translation>
+        <translation>Режим редактирования</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>Formatted text</source>
-        <translation type="unfinished"></translation>
+        <translation>Форматированный текст</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Markdown source</source>
-        <translation type="unfinished"></translation>
+        <translation>Исходный Markdown</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Plain text</source>
-        <translation type="unfinished"></translation>
+        <translation>Простой текст</translation>
     </message>
     <message>
         <location line="+31"/>
         <source>Undo</source>
-        <translation type="unfinished">Отменить</translation>
+        <translation>Отменить</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Redo</source>
-        <translation type="unfinished">Повторить</translation>
+        <translation>Повторить</translation>
     </message>
     <message>
         <location line="+9"/>
         <source>Bold</source>
-        <translation type="unfinished"></translation>
+        <translation>Полужирный</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Italic</source>
-        <translation type="unfinished"></translation>
+        <translation>Курсив</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Underline</source>
-        <translation type="unfinished"></translation>
+        <translation>Подчёркнутый</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Strikethrough</source>
-        <translation type="unfinished"></translation>
+        <translation>Зачёркнутый</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Inline code</source>
-        <translation type="unfinished"></translation>
+        <translation>Код в строке</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Heading</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок</translation>
     </message>
     <message>
         <location line="+7"/>
         <source>Heading 1</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 1</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Heading 2</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 2</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Heading 3</source>
-        <translation type="unfinished"></translation>
+        <translation>Заголовок 3</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Normal text</source>
-        <translation type="unfinished"></translation>
+        <translation>Обычный текст</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Bulleted list</source>
-        <translation type="unfinished"></translation>
+        <translation>Маркированный список</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Numbered list</source>
-        <translation type="unfinished"></translation>
+        <translation>Нумерованный список</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Increase indent (Tab)</source>
-        <translation type="unfinished"></translation>
+        <translation>Увеличить отступ (Tab)</translation>
     </message>
     <message>
         <location line="+7"/>
         <source>Decrease indent (Shift+Tab)</source>
-        <translation type="unfinished"></translation>
+        <translation>Уменьшить отступ (Shift+Tab)</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>Blockquote</source>
-        <translation type="unfinished"></translation>
+        <translation>Цитата</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Code block</source>
-        <translation type="unfinished"></translation>
+        <translation>Блок кода</translation>
     </message>
     <message>
         <location line="+9"/>
         <source>Insert table (Tab moves between cells)</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить таблицу (Tab — переход между ячейками)</translation>
     </message>
     <message>
         <location line="+15"/>
         <source>%1 × %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 × %2</translation>
     </message>
     <message>
         <location line="+53"/>
         <source>Insert horizontal rule</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить разделитель</translation>
     </message>
     <message>
         <location line="+10"/>
         <source>Insert link</source>
-        <translation type="unfinished"></translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Remove link</source>
-        <translation type="unfinished"></translation>
+        <translation>Удалить ссылку</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Mention someone</source>
-        <translation type="unfinished"></translation>
+        <translation>Упомянуть</translation>
     </message>
     <message>
         <location line="+7"/>
         <source>Clear formatting</source>
-        <translation type="unfinished"></translation>
+        <translation>Очистить форматирование</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
 </context>
 <context>

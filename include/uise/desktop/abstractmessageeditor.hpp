@@ -292,6 +292,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
             return m_mentionMenuItemVisible;
         }
 
+        //! The host's own choice: does a bare Enter finish editing (i.e. "send") rather than
+        //! insert a line break? Note that this is what the HOST asked for, which is not
+        //! necessarily what Enter does right now -- see effectiveFinishOnEnter().
         void setFinishOnEnter(bool enable)
         {
             m_finishOnEnter=enable;
@@ -301,6 +304,27 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool isFinishOnEnter() const noexcept
         {
             return m_finishOnEnter;
+        }
+
+        /**
+         * @brief What Enter ACTUALLY does right now: finish editing, or insert a line break.
+         *
+         * finishOnEnter as the host set it, suppressed while the editor is expanded. Expanding is
+         * the deliberate "I am composing something longer/formatted" gesture -- it is what reveals
+         * the formatting toolbar and lifts the height clamp -- and in that state a bare Enter that
+         * sends the message is exactly wrong: it is the key the user now needs for a new paragraph.
+         * Collapsing restores the host's setting on its own, because this never writes to
+         * m_finishOnEnter: the property keeps meaning "what the host wants" at all times, so there
+         * is no saved value to restore and nothing for a host's own setFinishOnEnter() call
+         * mid-expansion to fight with.
+         *
+         * An implementation drives its key handling from THIS, not from isFinishOnEnter() -- see
+         * MessageEditor::setupReturnPressed(), which is the single place that pushes it into the
+         * text edit.
+         */
+        bool effectiveFinishOnEnter() const noexcept
+        {
+            return m_finishOnEnter && !m_expanded;
         }
 
         /**
@@ -409,6 +433,31 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         virtual bool hasSelection() const =0;
 
         virtual bool isEmpty() const =0;
+
+        /**
+         * @brief Whether this editor's content actually USES any formatting, i.e. whether storing
+         *  it as markdown carries anything a plain string would not.
+         *
+         * For a host that stamps a format flag on what it sends: a composer left in its default
+         * rich mode would otherwise label every "Hi" as markdown, which is both untrue and useless
+         * to anything that later wants to treat markdown messages differently (offering "Copy
+         * markdown" only where there is markdown to copy, say). The flag should describe the
+         * CONTENT, not the mode the composer happened to be in.
+         *
+         * Deliberately not pure virtual, and defaulting to TRUE: an out-of-tree implementation
+         * that does not override it keeps today's behaviour (everything treated as formatted),
+         * which is the safe direction -- mislabelling formatted text as plain would render its
+         * markup literally, while the reverse renders identically either way.
+         *
+         * A host pairs this with the SERIALIZATION it stores: when this returns false, take
+         * text(TextFormat::Plain), not text(TextFormat::Markdown) -- the latter escapes markdown
+         * specials (`*` becomes `\*`), which is correct to store under a Markdown flag and wrong
+         * to store under a Plain one.
+         */
+        virtual bool hasFormatting() const
+        {
+            return true;
+        }
 
         virtual bool canPasteFromClipboard() const =0;
 

@@ -187,32 +187,44 @@ background-color: #0099b8;
    fill, while Full screen and Close take the borderless-accent-text treatment that file gives
    its dismissive buttons (#close/#cancel/#no/...). Sizing matches that file's own final
    override (min-width 80px, padding 3px 12px). */
-#tableViewerFrame #tableViewerCopyButton QPushButton {
+/* The code-block viewer (ChatMessageTextBrowser::openCodeBlockViewer()) is the same shell with the
+   same three roles, so it is styled by the same rules rather than a parallel copy -- the two
+   viewers differing in button treatment would be a bug, not a distinction. */
+#tableViewerFrame #tableViewerCopyButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton {
 background-color: #218DAE;
 color: #EEEEEE;
 border: 1px solid #218DAE;
 }
-#tableViewerFrame #tableViewerCopyButton QPushButton:hover {
+#tableViewerFrame #tableViewerCopyButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton:hover {
 background-color: #0099b8;
 color: #FFFFFF;
 border: 1px solid #0099b8;
 }
 
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
 color: #555555;
 border: 1px solid #999999;
 background-color: transparent;
 }
 #tableViewerFrame #tableViewerFullScreenButton QPushButton:hover,
-#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
+#tableViewerFrame #tableViewerCloseButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton:hover,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton:hover {
 color: #444444;
 border: 1px solid #444444;
 }
 
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton,
+#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
 min-width: 80px;
 padding: 3px 12px;
 }
@@ -220,7 +232,8 @@ padding: 3px 12px;
 /* FloatingDialogFrame is a translucent top-level window -- content that does not paint its own
    background shows straight through it (see docs/styling.md section 7). Without this the button
    row around the Copy table button is transparent. */
-#tableViewerFrame {
+#tableViewerFrame,
+#codeBlockViewerFrame {
 background-color: #FFFFFF;
 }
 
@@ -237,8 +250,9 @@ uise--ChatMessageTextBrowser #codeBlockLanguage {
 color: #EEEEEE;
 }
 
-/* The Copy button itself stays transparent so the strip reads as one control, and takes the
-   dialog button's hover fill as its own feedback. */
-uise--ChatMessageTextBrowser #codeBlockCopyButton:hover {
+/* The strip's buttons stay transparent so it reads as one control, and take the dialog button's
+   hover fill as their own feedback. */
+uise--ChatMessageTextBrowser #codeBlockCopyButton:hover,
+uise--ChatMessageTextBrowser #codeBlockExpandButton:hover {
 background-color: #0099b8;
 }
