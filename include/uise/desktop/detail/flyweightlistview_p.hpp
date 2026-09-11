@@ -180,6 +180,9 @@ class FlyweightListView_p : public OrientationInvariant
 
         bool scrollToItem(const typename ItemT::IdType &id, int offset);
 
+        bool scrollToItemEdge(const typename ItemT::IdType &id, Direction direction);
+        bool itemFitsViewport(const typename ItemT::IdType &id) const;
+
         bool hasItem(const typename ItemT::IdType& id) const noexcept;
         const ItemT* item(const typename ItemT::IdType& id) const noexcept;
         const ItemT* firstItem() const noexcept;
@@ -296,6 +299,12 @@ class FlyweightListView_p : public OrientationInvariant
 
         void setJumpEdgeInvisibleItemCount(size_t value);
         size_t jumpEdgeInvisibleItemCount() const;
+
+        void setJumpEdgeInvisibleSize(int value);
+        void resetJumpEdgeInvisibleSize();
+        int jumpEdgeInvisibleSize() const;
+        int jumpEdgeInvisibleSizeAuto() const;
+        int jumpEdgeInvisibleSizeEffective() const;
 
         JumpEdge* jumpEdgeControl() const
         {
@@ -441,6 +450,10 @@ class FlyweightListView_p : public OrientationInvariant
         JumpEdge* m_jumpEdge;
         QSize m_jumpEdgeOffset;
         size_t m_jumpEdgeInvisibleItemCount;
+        std::optional<int> m_jumpEdgeInvisibleSize;
+
+        bool m_pendingViewportChangedInform;
+        int m_lastInformedListPos;
 
         FlyweightListViewAlignment m_itemsAlignment;
 

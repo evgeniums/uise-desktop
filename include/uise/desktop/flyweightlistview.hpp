@@ -311,6 +311,27 @@ class FlyweightListView : public QFrame
         bool scrollToItem(const typename ItemT::IdType& id, int offset=0);
 
         /**
+         * @brief Scroll so that one edge of an item aligns with the corresponding edge of the
+         * viewport -- the item's own top for Direction::HOME, its own bottom for Direction::END.
+         * @param id Id of the item.
+         * @param direction Which edge of the item to align.
+         * @return True if item exists in the view, false otherwise.
+         *
+         * Unlike scrollToItem(id,offset), which takes a raw pixel offset, this needs no manual
+         * offset arithmetic from the caller -- meant for "go to message beginning/end" style
+         * navigation on an item that may be taller than the viewport.
+         */
+        bool scrollToItemEdge(const typename ItemT::IdType& id, Direction direction);
+
+        /**
+         * @brief Check whether an item's own widget is no taller than the viewport.
+         * @param id Id of the item.
+         * @return True if the item fits entirely within the viewport height (width, if
+         * horizontal), false if it is taller or the item does not exist in the view.
+         */
+        bool itemFitsViewport(const typename ItemT::IdType& id) const;
+
+        /**
          * @brief Scroll to beginning or end of the view.
          * @param direction Dericetion to scroll.
          */
@@ -629,6 +650,21 @@ class FlyweightListView : public QFrame
 
         void setJumpEdgeInvisibleItemCount(size_t value);
         size_t jumpEdgeInvisibleItemCount() const;
+
+        /**
+         * @brief Set the hidden-height (in pixels) past the edge that alone is enough to show
+         * the JumpEdge control, regardless of how few items that height happens to be.
+         * @param value Threshold in pixels.
+         *
+         * Complements jumpEdgeInvisibleItemCount(): the control shows once EITHER threshold is
+         * met. Without this, a single message taller than the viewport never shows the control,
+         * since it only ever counts as one item no matter how many screenfuls of it are hidden.
+         */
+        void setJumpEdgeInvisibleSize(int value);
+        void resetJumpEdgeInvisibleSize();
+        int jumpEdgeInvisibleSize() const;
+        int jumpEdgeInvisibleSizeAuto() const;
+        int jumpEdgeInvisibleSizeEffective() const;
 
         void updateJumpEdgeVisibility();
 

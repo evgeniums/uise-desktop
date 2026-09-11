@@ -781,6 +781,22 @@ bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessage(const Id& id, int of
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessageEdge(const Id& id, Direction direction)
+{
+    return m_listView->scrollToItemEdge(id,direction);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::messageFitsViewport(const Id& id) const
+{
+    return m_listView->itemFitsViewport(id);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 bool ChatMessagesView<BaseMessageT,Traits>::highlightMessage(const Id& id)
 {
     auto item=m_listView->item(id);

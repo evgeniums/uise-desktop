@@ -424,6 +424,17 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! via loadMessagesAround()).
         bool scrollToMessage(const Id& id, int offset=0);
 
+        //! Scroll so that one edge of a message already present in the loaded window aligns with
+        //! the corresponding edge of the viewport -- the message's own top for Direction::HOME,
+        //! its own bottom for Direction::END. Same never-fetches contract as scrollToMessage().
+        //! Meant for "go to message beginning/end" navigation on a message taller than the
+        //! viewport -- see messageFitsViewport().
+        bool scrollToMessageEdge(const Id& id, Direction direction);
+
+        //! Whether a message already present in the loaded window is no taller than the
+        //! viewport. False if `id` isn't loaded.
+        bool messageFitsViewport(const Id& id) const;
+
         //! Start the transient jump-to-message highlight (see AbstractChatMessage::
         //! startHighlight()) on a message already present in the loaded window. False if `id`
         //! isn't loaded -- same never-fetches contract as scrollToMessage(). Any previously

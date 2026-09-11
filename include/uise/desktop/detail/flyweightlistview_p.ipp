@@ -110,6 +110,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_jumpEdge(nullptr),
         m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
         m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
+        m_pendingViewportChangedInform(false),
+        m_lastInformedListPos(0),
         m_itemsAlignment(FlyweightListViewAlignment::Center),
         m_firstShowDone(false)
 {
@@ -931,18 +933,43 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
     auto l_cleared=m_cleared;
     m_cleared=false;
 
+    // Captured before keepCurrentConfiguration() overwrites m_listSize, so these are the
+    // geometry as of the PREVIOUS call -- m_llist's own position isn't touched by
+    // keepCurrentConfiguration() itself (the scroll already happened in scrollTo(), before
+    // viewportUpdated()/this method run), so without this the comparison below would always be
+    // against stale (already-current) values.
+    auto l_listPos=m_lastInformedListPos;
+    auto l_listSize=oprop(m_listSize,OProp::size);
+
     keepCurrentConfiguration();
 
     m_scrollBarsTimer.shot(10,[this](){updateScrollBars();});
 
+    auto curListPos=oprop(m_llist->pos(),OProp::pos);
+    auto curListSize=oprop(m_listSize,OProp::size);
+    m_lastInformedListPos=curListPos;
+
     //! @todo Use ID comparer for comparing od ids
-    if (
+    bool boundaryChanged=
             l_cleared ||
             l_firstViewportItemID!=m_firstViewportItemID ||
             !itemOrdersEqual(l_firstViewportSortValue,m_firstViewportSortValue) ||
             l_lastViewportItemID!=m_lastViewportItemID ||
-            !itemOrdersEqual(l_lastViewportSortValue,m_lastViewportSortValue)
-        )
+            !itemOrdersEqual(l_lastViewportSortValue,m_lastViewportSortValue);
+
+    // Scrolling within a single item taller than the viewport changes neither boundary item, so
+    // boundaryChanged alone used to leave updateJumpEdgeVisibility() permanently stale for that
+    // case -- widen the trigger to any actual scroll/resize, while still gating the (heavier,
+    // prefetch-driving) m_viewportChangedCb strictly on boundaryChanged, matching its original
+    // contract.
+    bool geometryChanged=l_listPos!=curListPos || l_listSize!=curListSize;
+
+    if (boundaryChanged)
+    {
+        m_pendingViewportChangedInform=true;
+    }
+
+    if (boundaryChanged || geometryChanged)
     {
 #if 0
         qDebug() << printCurrentDateTime() << ": FlyweightListView_p::informViewportUpdated()  " << m_obj << " inform";
@@ -951,9 +978,13 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::informViewportUpdated(
             [this]()
             {
                 updateJumpEdgeVisibility();
-                if (m_viewportChangedCb)
+                if (m_pendingViewportChangedInform)
                 {
-                    m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
+                    m_pendingViewportChangedInform=false;
+                    if (m_viewportChangedCb)
+                    {
+                        m_viewportChangedCb(item(m_firstViewportItemID),item(m_lastViewportItemID));
+                    }
                 }
             }
         );
@@ -1635,6 +1666,67 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItem(const typ
 
     scrollTo(cb);
     return true;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItemEdge(const typename ItemT::IdType &id, Direction direction)
+{
+    const auto& idx=itemIdx();
+    auto it=idx.find(id);
+    if (it==idx.end())
+    {
+        return false;
+    }
+
+    // Same "widget's viewport position == oldPos-mapToParent(widgetListPos)" identity
+    // scrollToItem() uses, simplified: since m_llist's own current position appears on both
+    // sides of that subtraction, it cancels out, leaving -widgetListPos for the HOME case
+    // (offset=0 -- the item's own top flush with the viewport top). For END, the item's own
+    // bottom (widgetListPos+widgetSize) must land flush with the viewport bottom (viewSize),
+    // i.e. widgetListPos+newPos+widgetSize==viewSize.
+    auto cb=[direction,&it,this](int minPos, int maxPos, int oldPos)
+    {
+        auto widget=it->widget();
+        if (!widget || widget->parent()!=m_llist)
+        {
+            return oldPos;
+        }
+
+        const auto widgetListPos=oprop(widget->pos(),OProp::pos);
+
+        int newPos=-widgetListPos;
+        if (direction==Direction::END)
+        {
+            const auto widgetSize=oprop(widget,OProp::size);
+            const auto viewSize=oprop(m_view,OProp::size);
+            newPos=viewSize-widgetSize-widgetListPos;
+        }
+        return qBound(minPos,newPos,maxPos);
+    };
+
+    scrollTo(cb);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemFitsViewport(const typename ItemT::IdType &id) const
+{
+    const auto& idx=itemIdx();
+    auto it=idx.find(id);
+    if (it==idx.end())
+    {
+        return false;
+    }
+
+    auto widget=it->widget();
+    if (!widget)
+    {
+        return false;
+    }
+
+    return oprop(widget,OProp::size)<=oprop(m_view,OProp::size);
 }
 
 //--------------------------------------------------------------------------
@@ -2352,8 +2444,25 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
 
     auto jumpEdgeInvisibleItemCount=m_jumpEdge->badgeText().isEmpty()? m_jumpEdgeInvisibleItemCount : 2;
 
+    // A pure item count misses a single message taller than the viewport -- it only ever
+    // contributes 1 to invisibleCount no matter how many screenfuls of it are actually hidden.
+    // OR in a height-based rule alongside the item-count one so either is sufficient to show the
+    // control. listPos<=0 is how far the list has scrolled past its own top (see
+    // updateScrollBars(): m_vbar->setValue(-m_llist->y())), so -listPos is the height hidden
+    // above the viewport and listPos+listSize-viewSize is the height hidden below it.
+    const auto listPos=oprop(m_llist->pos(),OProp::pos);
+    const auto listSize=oprop(m_llist,OProp::size);
+    const auto viewSize=oprop(m_view,OProp::size);
+    const auto jumpEdgeInvisibleSize=jumpEdgeInvisibleSizeEffective();
+
     if (m_stick==Direction::HOME)
     {
+        const auto hiddenAbove=std::max(-listPos,0);
+        if (hiddenAbove>=jumpEdgeInvisibleSize)
+        {
+            showControl=true;
+        }
+
         auto it=order.find(m_firstViewportSortValue);
         if (it!=order.end())
         {
@@ -2370,6 +2479,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
     }
     else
     {
+        const auto hiddenBelow=std::max(listPos+listSize-viewSize,0);
+        if (hiddenBelow>=jumpEdgeInvisibleSize)
+        {
+            showControl=true;
+        }
+
         // Exclude the last-viewport item itself, matching the HOME branch's own [begin, it)
         // above, which never counts its own boundary item -- this used to start the count AT
         // m_lastViewportSortValue's own hit, so the control showed with one fewer genuinely
@@ -2444,6 +2559,47 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemCount() const
 {
     return m_jumpEdgeInvisibleItemCount;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setJumpEdgeInvisibleSize(int value)
+{
+    m_jumpEdgeInvisibleSize=value;
+    updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resetJumpEdgeInvisibleSize()
+{
+    m_jumpEdgeInvisibleSize.reset();
+    updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSize() const
+{
+    return m_jumpEdgeInvisibleSize.value_or(0);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeAuto() const
+{
+    // One full viewport of hidden content past the edge -- far enough from the edge that the
+    // control does not flicker in/out during ordinary scrolling, but still means "there is
+    // genuinely another screenful to go", which a pure item count misses for a single message
+    // taller than the viewport.
+    return oprop(m_view,OProp::size);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeEffective() const
+{
+    return m_jumpEdgeInvisibleSize.value_or(jumpEdgeInvisibleSizeAuto());
 }
 
 //--------------------------------------------------------------------------

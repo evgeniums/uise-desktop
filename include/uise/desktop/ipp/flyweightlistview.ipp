@@ -314,6 +314,20 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToItem(const typen
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToItemEdge(const typename ItemT::IdType &id, Direction direction)
+{
+    return pimpl->scrollToItemEdge(id,direction);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::itemFitsViewport(const typename ItemT::IdType &id) const
+{
+    return pimpl->itemFitsViewport(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView<ItemT,OrderComparer,IdComparer>::hasItem(const typename ItemT::IdType &id) const noexcept
 {
     return pimpl->hasItem(id);
@@ -723,6 +737,41 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 size_t FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleItemCount() const
 {
     return pimpl->jumpEdgeInvisibleItemCount();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeInvisibleSize(int value)
+{
+    pimpl->setJumpEdgeInvisibleSize(value);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::resetJumpEdgeInvisibleSize()
+{
+    pimpl->resetJumpEdgeInvisibleSize();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSize() const
+{
+    return pimpl->jumpEdgeInvisibleSize();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeAuto() const
+{
+    return pimpl->jumpEdgeInvisibleSizeAuto();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeEffective() const
+{
+    return pimpl->jumpEdgeInvisibleSizeEffective();
 }
 
 //--------------------------------------------------------------------------
