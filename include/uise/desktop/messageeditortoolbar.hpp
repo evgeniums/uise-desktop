@@ -45,6 +45,12 @@ class MessageEditorToolbar_p;
 /**
  * @brief Addressable buttons of MessageEditorToolbar, for setButtonVisible()/setButtonEnabled()/
  *  button().
+ *
+ * Declared with no explicit values -- a dense 0..N-1 range used as an array index (see
+ * MessageEditorToolbar_p::ButtonCount) -- so a new entry MUST be appended at the end, never
+ * inserted: inserting would renumber every value after it. SpellCheck (task-spellcheck.md) is
+ * appended after Close for that reason; its LAYOUT position (built beside Mention, in the ctor)
+ * is unrelated to this enum's declaration order.
  */
 enum class MessageEditorToolbarButton
 {
@@ -69,7 +75,8 @@ enum class MessageEditorToolbarButton
     RemoveLink,
     Mention,
     ClearFormatting,
-    Close
+    Close,
+    SpellCheck
 };
 
 /**
@@ -131,6 +138,12 @@ struct MessageEditorFormatState
 
     //! 0 == normal (non-heading) text.
     int headingLevel=0;
+
+    //! task-spellcheck.md. Editor-WIDE state, not caret state, unlike every other field here --
+    //! it rides in this struct only so the Check-spelling button can be driven by wireCheckable()
+    //! like every other checkable button, i.e. from the state the EDITOR reports rather than from
+    //! the button's own click history (see this struct's own doc comment above for that trap).
+    bool spellCheckEnabled=false;
 };
 
 /**
@@ -247,6 +260,12 @@ class UISE_DESKTOP_EXPORT MessageEditorToolbar : public Frame
 
         //! Stage 6, same arrangement as linkRequested()/removeLinkRequested() above.
         void mentionRequested();
+
+        //! task-spellcheck.md. `enable` is the state the editor should end up in -- same
+        //! wireCheckable() contract as boldRequested() and friends, NOT the button's own checked
+        //! state. Unlike Bold/Italic/etc. this reflects EDITOR-wide state, not caret state -- see
+        //! MessageEditorFormatState::spellCheckEnabled.
+        void spellCheckRequested(bool enable);
 
         //! MessageEditor reacts to this by calling setExpanded(false).
         void closeRequested();

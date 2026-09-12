@@ -271,6 +271,7 @@ SET (HEADERS
     include/uise/desktop/editbar.hpp
 
     include/uise/desktop/messageeditingmode.hpp
+    include/uise/desktop/abstractspellchecker.hpp
     include/uise/desktop/abstractmessageeditor.hpp
     include/uise/desktop/messageeditortoolbar.hpp
     include/uise/desktop/messageeditor.hpp
@@ -472,6 +473,7 @@ SET (SOURCES
 
     src/editbar.cpp
 
+    src/abstractspellchecker.cpp
     src/messageeditortoolbar.cpp
     src/messageeditor.cpp
     src/messageselectionpanel.cpp

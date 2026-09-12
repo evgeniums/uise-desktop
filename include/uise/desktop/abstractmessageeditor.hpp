@@ -56,8 +56,10 @@ namespace uise {
  *  itself (see AbstractMessageEditor::setContextMenuHandler()).
  *
  * Ids 10-49 are the Stage 5a formatting submenu (Formatting=10 is the submenu row itself); 50-51
- * and 60 are reserved for the Stage 5b hyperlink and Stage 6 mention rows respectively, so no
- * future id assignment can collide with a consumer's own id ( >= UserAction ).
+ * and 60 are reserved for the Stage 5b hyperlink and Stage 6 mention rows respectively; 70-73 and
+ * 80-87 are the task-spellcheck.md spelling rows (see their own comment below) -- so no future id
+ * assignment can collide with a consumer's own id ( >= UserAction ). Free bands: 6-9, 26-29,
+ * 34-39, 41-49, 52-59, 61-69, 74-79, 100-999.
  */
 enum class MessageEditorMenuAction
 {
@@ -98,6 +100,31 @@ enum class MessageEditorMenuAction
 
     //! Reserved for Stage 6's mention insertion -- never added to the menu in Stage 5a.
     Mention=60,
+
+    //! task-spellcheck.md. Checkable "Check spelling" row, offered whenever a checker is set
+    //! (see AbstractMessageEditor::spellCheckMenuItemVisible) regardless of whether the click
+    //! landed on a misspelling -- turning the feature off is most wanted precisely when the
+    //! underlines are wrong about correct text.
+    SpellCheckEnabled=70,
+
+    //! Offered only while checker->canAddToDictionary() and the click landed on a misspelling.
+    AddToDictionary=71,
+
+    //! Session-only "stop underlining this word" -- offered whenever the click landed on a
+    //! misspelling, regardless of canAddToDictionary().
+    IgnoreWord=72,
+
+    //! Inert placeholder row shown in place of the suggestion band below when the checker has
+    //! nothing to offer. A dedicated id rather than reusing MenuItem's default id=-1, which
+    //! DropdownMenu would relay through itemTriggered(-1) like any other id.
+    SpellNoSuggestions=73,
+
+    //! Contiguous band of up to MessageEditor::MaxSpellSuggestions replacement rows for the
+    //! misspelling under the mouse, built in showContextMenu() and dispatched by RANGE rather
+    //! than by individual case labels (see MessageEditor::onContextMenuItemTriggered()) -- so
+    //! raising the suggestion count later needs no new enumerator.
+    SpellSuggestionFirst=80,
+    SpellSuggestionLast=87,
 
     //! First id free for a consumer's own items -- the editor never acts on an id >= this
     //! itself, it only relays it through contextMenuItemTriggered()/contextMenuItemToggled().
@@ -171,6 +198,29 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     //! only reachable while the editor is expanded, so a host whose composer never expands still
     //! wants the menu route, and vice versa.
     Q_PROPERTY(bool mentionMenuItemVisible READ isMentionMenuItemVisible WRITE setMentionMenuItemVisible)
+
+    //! QSS: qproperty-spellCheckButtonVisible: true; -- whether the toolbar's Check-spelling
+    //! button is shown at all (task-spellcheck.md). Default FALSE, same reasoning as
+    //! mentionButtonVisible above: the editor ships no dictionary and never will (see
+    //! MessageEditor::setSpellChecker()), so the button does nothing until a host supplies a
+    //! checker.
+    Q_PROPERTY(bool spellCheckButtonVisible READ isSpellCheckButtonVisible WRITE setSpellCheckButtonVisible)
+
+    //! QSS: qproperty-spellCheckMenuItemVisible: true; -- whether the context menu carries the
+    //! spelling rows (suggestions, Add to dictionary, Ignore word, Check spelling). Independent
+    //! of spellCheckButtonVisible above, for the same reason the mention pair is: the toolbar is
+    //! only reachable while the editor is expanded, so a host whose composer never expands still
+    //! wants the menu route, and vice versa.
+    Q_PROPERTY(bool spellCheckMenuItemVisible READ isSpellCheckMenuItemVisible WRITE setSpellCheckMenuItemVisible)
+
+    //! QSS: qproperty-spellCheckEnabled: false; -- the user-facing "check spelling as I type"
+    //! toggle, driven by the toolbar button and the context-menu row.
+    //!
+    //! Defaults to TRUE, unlike every other opt-in on this class: the feature is completely
+    //! inert until setSpellChecker() is given a ready checker, so a true default costs an
+    //! existing host nothing, and a host that wires a checker gets the feature without a second
+    //! call. The user's own toggle then turns it off from there.
+    Q_PROPERTY(bool spellCheckEnabled READ isSpellCheckEnabled WRITE setSpellCheckEnabled NOTIFY spellCheckEnabledChanged)
 
     public:
 
@@ -290,6 +340,50 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool isMentionMenuItemVisible() const noexcept
         {
             return m_mentionMenuItemVisible;
+        }
+
+        //! Show/hide the toolbar's Check-spelling button. See the spellCheckButtonVisible
+        //! property.
+        void setSpellCheckButtonVisible(bool enable)
+        {
+            m_spellCheckButtonVisible=enable;
+            updateSpellCheckButtonVisible();
+        }
+
+        bool isSpellCheckButtonVisible() const noexcept
+        {
+            return m_spellCheckButtonVisible;
+        }
+
+        //! Show/hide the context menu's spelling rows. See the spellCheckMenuItemVisible
+        //! property. A plain setter with no update hook, same arrangement as
+        //! setMentionMenuItemVisible(): the menu is rebuilt from scratch on every right-click, so
+        //! it re-reads this on its own.
+        void setSpellCheckMenuItemVisible(bool enable) noexcept
+        {
+            m_spellCheckMenuItemVisible=enable;
+        }
+
+        bool isSpellCheckMenuItemVisible() const noexcept
+        {
+            return m_spellCheckMenuItemVisible;
+        }
+
+        //! Toggle "check spelling as I type". See the spellCheckEnabled property.
+        void setSpellCheckEnabled(bool enable)
+        {
+            auto changed=(m_spellCheckEnabled!=enable);
+            m_spellCheckEnabled=enable;
+            updateSpellCheckEnabled();
+            if (changed)
+            {
+                emit spellCheckEnabledChanged(m_spellCheckEnabled);
+            }
+        }
+
+        bool isSpellCheckEnabled() const noexcept
+        {
+            return m_spellCheckEnabled;
         }
 
         //! The host's own choice: does a bare Enter finish editing (i.e. "send") rather than
@@ -683,6 +777,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          */
         void mentionCompletionRequested(const QString& prefix, int position);
 
+        //! See the spellCheckEnabled property.
+        void spellCheckEnabledChanged(bool enabled);
+
     protected:
 
         //! Called by the implementation when the content crosses the one-line boundary (or
@@ -732,6 +829,12 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! Reacts to setMentionButtonVisible().
         virtual void updateMentionButtonVisible() {}
 
+        //! Reacts to setSpellCheckButtonVisible().
+        virtual void updateSpellCheckButtonVisible() {}
+
+        //! Reacts to setSpellCheckEnabled().
+        virtual void updateSpellCheckEnabled() {}
+
         const ContextMenuHandler& contextMenuHandler() const
         {
             return m_contextMenuHandler;
@@ -748,6 +851,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool m_contextMenuEnabled=true;
         bool m_mentionButtonVisible=false;
         bool m_mentionMenuItemVisible=false;
+        bool m_spellCheckButtonVisible=false;
+        bool m_spellCheckMenuItemVisible=false;
+        bool m_spellCheckEnabled=true;
         ContextMenuHandler m_contextMenuHandler;
 };
 

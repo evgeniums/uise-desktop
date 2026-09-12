@@ -130,6 +130,11 @@ const std::array<TableActionRow,7> TableActionRows{{
 //! enabled in every mode; which of insertMentionText()/insertMention() a host's click handler
 //! calls is the host's own decision, made from whatever user selector it opens on
 //! mentionRequested().
+//!
+//! SpellCheck is excluded too, task-spellcheck.md, for exactly Mention's reason: a misspelling is
+//! a misspelling in Markdown source and in Plaintext exactly as much as in Wysiwyg, so the
+//! blanket formatting-is-Wysiwyg-only grey-out would take the feature away in the two modes whose
+//! content is pure prose -- precisely where it matters most.
 constexpr std::array<MessageEditorToolbarButton,16> FormattingButtons{{
     MessageEditorToolbarButton::Bold,
     MessageEditorToolbarButton::Italic,
@@ -161,7 +166,7 @@ class MessageEditorToolbar_p
         //! with no explicit values, so it is a dense 0..ButtonCount-1 range. Keep in step with
         //! that enum: every entry must be filled in the constructor, since button() and the
         //! setters dereference this unconditionally.
-        static constexpr size_t ButtonCount=22;
+        static constexpr size_t ButtonCount=23;
 
         std::array<IconTextButton*,ButtonCount> buttons{};
 
@@ -497,6 +502,19 @@ MessageEditorToolbar::MessageEditorToolbar(QWidget* parent)
     pimpl->btn(MessageEditorToolbarButton::Mention)->setVisible(false);
     connect(pimpl->btn(MessageEditorToolbarButton::Mention),&IconTextButton::clicked,this,&MessageEditorToolbar::mentionRequested);
 
+    // --- 13a: Check spelling (task-spellcheck.md) -- hidden by default, same arrangement as
+    // Link/RemoveLink/Mention above: a checker with no dictionary behind it does nothing (the
+    // editor ships none, see AbstractSpellChecker's own doc comment), so a host opts in via
+    // AbstractMessageEditor::setSpellCheckButtonVisible(true) once it has one. Checkable, and
+    // driven by MessageEditorFormatState::spellCheckEnabled like the formatting toggles above --
+    // see that field's own doc comment for why this one is editor-wide rather than caret state.
+
+    pimpl->btn(MessageEditorToolbarButton::SpellCheck)=makeButton("spellCheck",tr("Check spelling"),"spellCheck",true);
+    layout->addWidget(pimpl->btn(MessageEditorToolbarButton::SpellCheck));
+    pimpl->btn(MessageEditorToolbarButton::SpellCheck)->setVisible(false);
+    wireCheckable(pimpl->btn(MessageEditorToolbarButton::SpellCheck),
+                  &MessageEditorFormatState::spellCheckEnabled,&MessageEditorToolbar::spellCheckRequested);
+
     // --- 14: Clear formatting ---
 
     pimpl->btn(MessageEditorToolbarButton::ClearFormatting)=makeButton("clearFormatting",tr("Clear formatting"),"clearFormatting",false);
@@ -576,6 +594,7 @@ void MessageEditorToolbar::setFormatState(const MessageEditorFormatState& state)
     pimpl->btn(MessageEditorToolbarButton::NumberedList)->setChecked(state.numberedList);
     pimpl->btn(MessageEditorToolbarButton::Blockquote)->setChecked(state.blockquote);
     pimpl->btn(MessageEditorToolbarButton::CodeBlock)->setChecked(state.codeBlock);
+    pimpl->btn(MessageEditorToolbarButton::SpellCheck)->setChecked(state.spellCheckEnabled);
 
     // setItemChecked() does NOT enforce group exclusivity on its own (only a real user toggle
     // does, see DropdownMenu::onItemToggled()) -- uncheck every level explicitly, then check the

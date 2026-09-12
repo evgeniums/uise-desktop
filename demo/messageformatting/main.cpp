@@ -50,6 +50,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QListWidget>
 #include <QFrame>
 #include <QRegularExpression>
+#include <QSet>
+#include <QHash>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -303,6 +305,116 @@ void logCodeLanguages(const QString& html, const std::function<void(const QStrin
     }
     logMsg(QStringLiteral("  Code languages recovered from rendered document: ")+resolved.join(QStringLiteral(", ")));
 }
+
+/**
+ * @brief Stands in for a real hunspell-backed checker (task-spellcheck.md) -- exercises exactly
+ *  what the library actually ships: the AbstractSpellChecker seam, dictionary-vote checking
+ *  against a small hardcoded word list, and the async dictionaryChanged() -> rehighlight() path.
+ *
+ * isReady() starts FALSE and is flipped by the "Load dictionary" button wired up below, so the
+ * async leg (an editor already holding text, then squiggles appearing a moment after a dictionary
+ * finishes "loading") is actually visible rather than always-on from the first paint.
+ */
+class DemoSpellChecker : public AbstractSpellChecker
+{
+    public:
+
+        explicit DemoSpellChecker(QObject* parent=nullptr) : AbstractSpellChecker(parent)
+        {
+            for (const auto* word : {
+                "the","quick","brown","fox","jumps","over","lazy","dog","hello","world",
+                "message","editor","formatting","toolbar","spelling","dictionary","word",
+                "text","bold","italic","heading","table","link","mention","quote","code",
+                "correct","checker","language","custom","suggest","fix","ignore","add",
+                "load","auto","enable","disable","chat","send","type","paragraph","example"
+            })
+            {
+                m_dictionary.insert(QString::fromLatin1(word));
+            }
+            // A couple of deliberate typos with a real suggestion each, so "Suggest fixes" has
+            // something to offer the moment the demo text loads.
+            m_suggestions.insert(QStringLiteral("wrold"),QStringLiteral("world"));
+            m_suggestions.insert(QStringLiteral("recieve"),QStringLiteral("receive"));
+            m_suggestions.insert(QStringLiteral("teh"),QStringLiteral("the"));
+        }
+
+        bool isReady() const override
+        {
+            return m_ready;
+        }
+
+        void loadDictionary()
+        {
+            if (m_ready)
+            {
+                return;
+            }
+            m_ready=true;
+            emit dictionaryChanged();
+        }
+
+        SpellCheckVerdict check(const QString& word) const override
+        {
+            const auto lower=word.toLower();
+            if (m_dictionary.contains(lower) || m_ignored.contains(lower) || m_added.contains(lower))
+            {
+                return SpellCheckVerdict::Correct;
+            }
+            return SpellCheckVerdict::Misspelled;
+        }
+
+        QStringList suggestions(const QString& word, int maxCount) const override
+        {
+            QStringList out;
+            auto it=m_suggestions.find(word.toLower());
+            if (it!=m_suggestions.end())
+            {
+                out << it.value();
+            }
+            while (out.size()>maxCount)
+            {
+                out.removeLast();
+            }
+            return out;
+        }
+
+        bool canAddToDictionary() const override
+        {
+            return true;
+        }
+
+        void addToDictionary(const QString& word) override
+        {
+            m_added.insert(word.toLower());
+            m_lastAction=QStringLiteral("added \"%1\" to dictionary").arg(word);
+            emit dictionaryChanged();
+        }
+
+        void ignoreWord(const QString& word) override
+        {
+            m_ignored.insert(word.toLower());
+            m_lastAction=QStringLiteral("ignored \"%1\"").arg(word);
+            emit dictionaryChanged();
+        }
+
+        //! What the LAST addToDictionary()/ignoreWord() call did, for the demo's status readout.
+        //! Empty until the first one -- loadDictionary() does not set it, since dictionaryChanged()
+        //! also fires for that and the "Load dictionary" button already reports it separately.
+        QString lastAction() const
+        {
+            return m_lastAction;
+        }
+
+    private:
+
+        QString m_lastAction;
+
+        bool m_ready=false;
+        QSet<QString> m_dictionary;
+        QSet<QString> m_added;
+        QSet<QString> m_ignored;
+        QHash<QString,QString> m_suggestions;
+};
 
 // Stage 6: stands in for a host's real user directory -- the group-chat picker itself is out of
 // scope for this stage (todo-group-chat-mention-picker.md is blocked on group chats, which are
@@ -1011,14 +1123,37 @@ int main(int argc, char *argv[])
     // row with no user directory behind it does nothing at all.
     msgEditor->setMentionButtonVisible(true);
     msgEditor->setMentionMenuItemVisible(true);
+    // task-spellcheck.md: same off-by-default reasoning as Mention above -- a Check-spelling
+    // button/menu row with no checker behind it does nothing at all.
+    msgEditor->setSpellCheckButtonVisible(true);
+    msgEditor->setSpellCheckMenuItemVisible(true);
     // Ceiling is 40% of the window, never below 180px -- resize the demo window and the editor's
     // growth limit follows it. Both the auto-resize growth and the expanded height stop here.
     msgEditor->setMaxHeight(180);
     msgEditor->setMaxHeightPercent(40);
     msgEditor->setFinishOnEnter(false);
     msgEditor->setPlaceHolderText(QStringLiteral("Type a message..."));
-    msgEditor->loadText(QStringLiteral("Try **bold**, *italic*, a heading, or a fenced code block."),TextFormat::Markdown);
+    msgEditor->loadText(QStringLiteral(
+        "This line has a wrold of teh "
+        "typos to **demonstrate** *spellcheck*."
+    ),TextFormat::Markdown);
     rootLayout->addWidget(msgEditor);
+
+    // task-spellcheck.md: no dictionary loaded yet -- squiggles appear only after "Load
+    // dictionary" below, so the async dictionaryChanged() -> rehighlight() leg is visible rather
+    // than always-on from the first paint.
+    auto* spellChecker=new DemoSpellChecker(msgEditor);
+    msgEditor->setSpellChecker(spellChecker);
+    QObject::connect(spellChecker,&AbstractSpellChecker::dictionaryChanged,central,
+        [spellChecker,logMsg]()
+        {
+            const auto action=spellChecker->lastAction();
+            if (!action.isEmpty())
+            {
+                logMsg(QStringLiteral("Spellcheck: %1").arg(action));
+            }
+        }
+    );
 
     // Leading/trailing widgets INSIDE the editor, mirroring the attach/send pair a real composer
     // puts either side of the text (whitemdesktop's ChatPageBottom builds exactly this shape by
@@ -1064,6 +1199,22 @@ int main(int argc, char *argv[])
     auto* editorStackedLabel=new QLabel(QStringLiteral("side widgets: row"));
     editorStatusLayout->addWidget(editorStackedLabel);
     editorStatusLayout->addStretch(1);
+
+    // task-spellcheck.md: "Load dictionary" -- flips DemoSpellChecker::isReady() and emits
+    // dictionaryChanged(), which is what actually makes the "wrold"/"teh" squiggles above appear
+    // a moment later rather than immediately.
+    auto* spellDictionaryLabel=new QLabel(QStringLiteral("dictionary: not loaded"));
+    editorStatusLayout->addWidget(spellDictionaryLabel);
+    auto* loadDictionaryButton=new QPushButton(QStringLiteral("Load dictionary"));
+    editorStatusLayout->addWidget(loadDictionaryButton);
+    QObject::connect(loadDictionaryButton,&QPushButton::clicked,central,
+        [spellChecker,spellDictionaryLabel,loadDictionaryButton]()
+        {
+            spellChecker->loadDictionary();
+            spellDictionaryLabel->setText(QStringLiteral("dictionary: loaded"));
+            loadDictionaryButton->setEnabled(false);
+        }
+    );
 
     auto* editorReadoutLabel=new QLabel(QStringLiteral(
         "text(TextFormat::Markdown) -- live (the headline Stage 5a fix: switch to \"Markdown "

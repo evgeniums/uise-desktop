@@ -30,7 +30,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/abstractspellchecker.hpp>
 #include <uise/desktop/abstractmessageeditor.hpp>
+
+class QTimer;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -152,6 +155,20 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
      * on the viewer side already treats every anchor identically.
      */
     Q_PROPERTY(QColor mentionColor READ mentionColor WRITE setMentionColor)
+
+    /**
+     * QSS: qproperty-spellCheckUnderlineColor: #FF3B30; -- pen colour of the squiggle drawn under
+     * a word no loaded dictionary accepts (task-spellcheck.md).
+     *
+     * Applied through the highlighter like blockquoteColor/linkColor/mentionColor above, on the
+     * same display-only terms: no document write, no undo step, no export leakage, and a theme
+     * switch costs one rehighlight(). Unlike linkColor, an INVALID colour does NOT disable the
+     * pass -- the squiggle's SHAPE (QTextCharFormat::SpellCheckUnderline, the platform's OWN
+     * spelling-underline style) is the marker and this colour is decoration on top of it, so a
+     * host that ships no stylesheet still gets a working spellchecker, in the platform's own
+     * default underline colour.
+     */
+    Q_PROPERTY(QColor spellCheckUnderlineColor READ spellCheckUnderlineColor WRITE setSpellCheckUnderlineColor)
 
     public:
 
@@ -312,6 +329,73 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         {
             return m_mentionColor;
         }
+
+        //! See the spellCheckUnderlineColor property. Applied by the same highlighter, on the
+        //! same terms.
+        void setSpellCheckUnderlineColor(const QColor& color);
+        QColor spellCheckUnderlineColor() const noexcept
+        {
+            return m_spellCheckUnderlineColor;
+        }
+
+        /**
+         * @brief Attach a spell checker (task-spellcheck.md). NOT owned -- the HOST owns it, and
+         *  one checker is normally shared by every editor in the application, since a dictionary
+         *  set is expensive to build.
+         *
+         * The editor ships no dictionary and never will -- same host-owns-the-data arrangement as
+         * mentionRequested()'s user directory. Passing nullptr detaches and clears the verdict
+         * cache. This widget connects the checker's AbstractSpellChecker::dictionaryChanged()
+         * itself; re-attaching a different checker, or the current one being destroyed, is
+         * handled here rather than left to the caller.
+         */
+        void setSpellChecker(AbstractSpellChecker* checker);
+        AbstractSpellChecker* spellChecker() const noexcept
+        {
+            return m_spellChecker;
+        }
+
+        //! Toggle "check spelling as I type" on this widget. See
+        //! AbstractMessageEditor::spellCheckEnabled -- MessageEditor forwards its own setting
+        //! down to this widget via this setter.
+        void setSpellCheckEnabled(bool enable);
+        bool isSpellCheckEnabled() const noexcept
+        {
+            return m_spellCheckEnabled;
+        }
+
+        /**
+         * @brief A spell-checkable word and where it sits in the document (task-spellcheck.md).
+         *
+         * Produced by the SAME tokenizer the highlighter's own pass uses (see spellTokens() in
+         * messageeditor.cpp's anonymous namespace), so the context menu can never offer to fix a
+         * word the highlighter would not have underlined, and vice versa.
+         */
+        struct SpellWord
+        {
+            bool isValid=false;
+
+            //! Document position of the first character. -1 when !isValid.
+            int position=-1;
+
+            int length=0;
+            QString text;
+        };
+
+        //! The spell-checkable word covering `documentPosition`, or an invalid SpellWord if that
+        //! position is in whitespace, in a fenced code block, inside an anchor or an inline-code
+        //! run, or in a token the tokenizer drops entirely (a URL, an "@handle", anything
+        //! containing a digit, a camelCase/PascalCase identifier -- see spellTokens()).
+        SpellWord spellWordAt(int documentPosition) const;
+
+        //! spellWordAt(textCursor().position()).
+        SpellWord spellWordAtCursor() const;
+
+        /**
+         * @brief Extend `cursor` to cover `word`.
+         * @return false, `cursor` left untouched, for an invalid word.
+         */
+        bool selectSpellWord(QTextCursor& cursor, const SpellWord& word) const;
 
         /**
          * @brief The in-progress "@word" at the caret, if any -- task-message-formatting-plan.md,
@@ -515,6 +599,12 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! other, and recomputing from scratch makes running twice for one edit harmless.
         void updateMentionQuery();
 
+        //! Connected to AbstractSpellChecker::dictionaryChanged(). Coalesces a burst of these
+        //! (several dictionaries finishing within a few ms is several signals) into ONE
+        //! rehighlight() via m_spellRehighlightTimer, which is O(document) and not worth paying
+        //! more than once for one dictionary-load event.
+        void onSpellDictionaryChanged();
+
     private:
 
         //! DefaultTabStopSpaces space-widths of the CURRENT font, applied in the ctor and again
@@ -538,6 +628,15 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         QColor m_linkColor;
         bool m_linkUnderline=false;
         QColor m_mentionColor;
+        QColor m_spellCheckUnderlineColor;
+        bool m_spellCheckEnabled=true;
+
+        //! Not owned -- see setSpellChecker(). Nulled automatically if the checker is destroyed
+        //! first (connected to QObject::destroyed()).
+        QPointer<AbstractSpellChecker> m_spellChecker;
+
+        //! Lazily created in onSpellDictionaryChanged(); see that slot's own doc comment.
+        QTimer* m_spellRehighlightTimer=nullptr;
 
         //! Last state reported through the two mention signals, so a keystroke that does not
         //! change it emits nothing at all (both signals drive a host popup).
@@ -753,6 +852,25 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          */
         void insertMentionText(const QString& username);
 
+        //! Suggestion rows offered per misspelling in the context menu (task-spellcheck.md).
+        //! Kept small: a suggestion list is read at a glance, not scanned, and hunspell routinely
+        //! returns far more than a short screen has room for above Cut/Copy/Paste.
+        constexpr static const int MaxSpellSuggestions=8;
+
+        //! Forwarded to the embedded EnhancedTextEdit -- see EnhancedTextEdit::setSpellChecker().
+        void setSpellChecker(AbstractSpellChecker* checker);
+        AbstractSpellChecker* spellChecker() const;
+
+        /**
+         * @brief Replace `word` with `replacement` as ONE undoable edit (task-spellcheck.md).
+         *
+         * Keeps the word's own char format, so a misspelling fixed inside a bold sentence stays
+         * bold, and leaves the caret after the replacement with focus back in the text edit. Same
+         * shape as insertMentionText(), minus its anchor-clearing step: this never runs inside an
+         * anchor, since the tokenizer that produced `word` never yields a word inside one.
+         */
+        void replaceSpellWord(const EnhancedTextEdit::SpellWord& word, const QString& replacement);
+
     public slots:
 
         void selectAll() override;
@@ -776,6 +894,8 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void updateExpandButtonVisible() override;
         void updateMentionButtonVisible() override;
         void updateStackedArrangement() override;
+        void updateSpellCheckButtonVisible() override;
+        void updateSpellCheckEnabled() override;
 
     private:
 
@@ -967,6 +1087,17 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! Handles MessageEditorToolbar::mentionRequested() and the context menu's "Mention
         //! someone" row. See AbstractMessageEditor::mentionRequested() for the argument contract.
         void onMentionButtonRequested();
+
+        //! Handles the context menu's suggestion rows (task-spellcheck.md), `index` counted from
+        //! MessageEditorMenuAction::SpellSuggestionFirst -- see onContextMenuItemTriggered()'s
+        //! range dispatch.
+        void applySpellSuggestion(int index);
+
+        //! Handles the context menu's "Add to dictionary" row.
+        void addSpellWordToDictionary();
+
+        //! Handles the context menu's "Ignore word" row.
+        void ignoreSpellWord();
 
         std::unique_ptr<MessageEditor_p> pimpl;
 

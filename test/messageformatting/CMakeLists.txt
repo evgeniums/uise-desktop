@@ -9,6 +9,7 @@ SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testsyntaxhighlighter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testmessageeditor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatmessagetext.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testspellcheck.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)
