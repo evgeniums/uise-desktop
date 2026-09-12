@@ -267,6 +267,34 @@ void ChatMessageFileItem::refresh()
 
 //--------------------------------------------------------------------------
 
+void ChatMessageFileItem::setNameText(const QString& text)
+{
+    pimpl->nameLabel->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::setInfoText(const QString& text)
+{
+    pimpl->infoLabel->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::setTypeIcon(std::shared_ptr<SvgIcon> icon)
+{
+    // See the declaration's own doc comment: the icon slot shows exactly one of load control /
+    // image preview / type icon at a time (updateIconSlot()), and only the last of those is ours
+    // to replace.
+    if (!pimpl->fileIcon->isVisible())
+    {
+        return;
+    }
+    pimpl->fileIcon->setSvgIcon(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
 AbstractLoadControl* ChatMessageFileItem::loadControl() const
 {
     return ensureLoadControl()->loadControl();

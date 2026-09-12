@@ -44,6 +44,7 @@ namespace uise {
 class IconTextButton;
 class AbstractLoadControl;
 class LoadControlMenu;
+class SvgIcon;
 
 class ChatMessageFileItem_p;
 
@@ -92,8 +93,14 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          *
          * Called by setItem(); also useful after mutating item() in place without replacing it
          * wholesale (e.g. a progress-only update -- see AbstractChatMessageFiles::updateItem()).
+         *
+         * Virtual so a specialized row built through AbstractChatMessageFiles::ChatFileItemBuilder
+         * can restyle itself for its own kind of attachment: override, call this base
+         * implementation first (it does all the state-dependent work -- load control, image
+         * preview, menu), then adjust presentation through setNameText()/setInfoText()/
+         * setTypeIcon() below.
          */
-        void refresh();
+        virtual void refresh();
 
         /**
          * @brief The icon slot's load control overlay.
@@ -207,6 +214,35 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         void cancelRequested();
 
     protected:
+
+        /**
+         * @brief Replace the first (file-name) line's text.
+         *
+         * For a specialized row whose identity is better expressed by what the attachment IS
+         * than by its file name. Call from a refresh() override, AFTER the base implementation
+         * (which sets this line from item().fileName()).
+         */
+        void setNameText(const QString& text);
+
+        /**
+         * @brief Replace the second (size/progress) line's text.
+         *
+         * Same contract as setNameText(). Note the base implementation rewrites this line on
+         * every refresh() -- including each progress tick of a running transfer -- so an override
+         * that wants its text to survive must re-apply it each time rather than setting it once.
+         */
+        void setInfoText(const QString& text);
+
+        /**
+         * @brief Replace the type icon shown in the icon slot.
+         *
+         * NO-OP unless the icon slot is currently showing the type icon at all: a row that is
+         * still transferring shows a load control there, and an image row shows its preview.
+         * That check lives here so a subclass can call this unconditionally from refresh()
+         * without duplicating updateIconSlot()'s state logic (and without being able to force a
+         * static icon over a live progress control by accident).
+         */
+        void setTypeIcon(std::shared_ptr<SvgIcon> icon);
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 

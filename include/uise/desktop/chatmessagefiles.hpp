@@ -60,6 +60,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
         ChatMessageFiles& operator=(const ChatMessageFiles&)=delete;
         ChatMessageFiles& operator=(ChatMessageFiles&&)=delete;
 
+        void setItemBuilder(ChatFileItemBuilder builder) override;
+
         void setItems(ChatFileItems items) override;
         const ChatFileItems& items() const override;
         void updateItem(const QUuid& id, const ChatFileItem& item) override;

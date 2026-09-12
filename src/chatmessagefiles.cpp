@@ -50,6 +50,8 @@ class ChatMessageFiles_p
 
         ChatFileItems items;
 
+        AbstractChatMessageFiles::ChatFileItemBuilder itemBuilder;
+
         ChatMessageText* comment=nullptr;
         QString commentText;
         TextFormat commentFormat=TextFormat::Markdown;
@@ -97,6 +99,17 @@ ChatMessageFiles::ChatMessageFiles(QWidget* parent)
 
 ChatMessageFiles::~ChatMessageFiles()
 {}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::setItemBuilder(ChatFileItemBuilder builder)
+{
+    pimpl->itemBuilder=std::move(builder);
+    // Rebuild unconditionally so the host may install this before OR after setItems() -- with no
+    // items yet this is an empty loop, and with items already in place the existing rows are
+    // replaced by whatever the new builder produces.
+    rebuildList();
+}
 
 //--------------------------------------------------------------------------
 
@@ -152,7 +165,19 @@ void ChatMessageFiles::rebuildList()
 
     for (const auto& item : pimpl->items)
     {
-        auto row=new ChatMessageFileItem(pimpl->contentsFrame);
+        // A host-installed builder may substitute a specialized row for certain kinds of
+        // attachment (see setItemBuilder()); anything it declines (nullptr) or any row it was
+        // never asked about falls back to the generic item. Whatever comes back is a
+        // ChatMessageFileItem, so every connect() below applies unchanged either way.
+        ChatMessageFileItem* row=nullptr;
+        if (pimpl->itemBuilder)
+        {
+            row=pimpl->itemBuilder(item,pimpl->contentsFrame);
+        }
+        if (row==nullptr)
+        {
+            row=new ChatMessageFileItem(pimpl->contentsFrame);
+        }
         row->setTextVerticalAlignment(pimpl->textVerticalAlignment);
         row->setItem(item,incoming);
 

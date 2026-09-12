@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_ABSTRACTCHATMESSAGEFILES_HPP
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGEFILES_HPP
 
+#include <functional>
+
 #include <QUuid>
 #include <QList>
 #include <QUrl>
@@ -39,6 +41,10 @@ You may select, at your option, one of the above-listed licenses.
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
+
+//! Only ever named as a pointer here (see ChatFileItemBuilder) -- the full definition lives in
+//! chatmessagefileitem.hpp, which this header deliberately does not pull in.
+class ChatMessageFileItem;
 
 /**
  * @brief Interface of a file chat message body: a vertical list of file items plus an optional
@@ -75,6 +81,31 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
         {
             return m_maxBubbleWidth;
         }
+
+        /**
+         * @brief Builds the widget for ONE attachment row.
+         * @param item The row's content, already populated -- inspect it (name, mime, ...) to
+         *  decide what to build.
+         * @param parent Parent to construct the row under; must be used as-is.
+         * @return A row widget, or nullptr to let the default ChatMessageFileItem be built.
+         *
+         * Deliberately returns ChatMessageFileItem* rather than QWidget*: rebuildList() wires a
+         * dozen signals against that class, and a specialized row is a SUBCLASS that keeps every
+         * one of them working rather than a replacement that would need its own wiring.
+         *
+         * This library stays app-agnostic -- it knows only that a host MAY substitute a row, never
+         * why. Deciding which kinds deserve a specialized row (an invitation, an account config,
+         * ...) is entirely the host's business; see whitemdesktop's initFilesBody().
+         */
+        using ChatFileItemBuilder=std::function<ChatMessageFileItem*(const ChatFileItem& item, QWidget* parent)>;
+
+        /**
+         * @brief Install a per-row builder, replacing any previous one.
+         *
+         * Rebuilds the current rows immediately, so a host may install this before or after
+         * setItems() without having to care about the order.
+         */
+        virtual void setItemBuilder(ChatFileItemBuilder builder) =0;
 
         virtual void setItems(ChatFileItems items) =0;
         virtual const ChatFileItems& items() const =0;
