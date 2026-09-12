@@ -19,6 +19,12 @@ qproperty-linkUnderline: false;
    ChatMessageTextBrowser::mentionColor so a mention looks the same in the composer and in the
    bubble it becomes. See EnhancedTextEdit::setMentionColor(). */
 qproperty-mentionColor: #7A3FBF;
+/* Squiggle under a word no loaded dictionary accepts (task-spellcheck.md). Apple's own light-mode
+   systemRed, for a colour that reads as an obvious "error" the moment it appears rather than a
+   muted accent -- unlike every other colour on this page, this one exists to be noticed. A theme
+   colour, so being re-applied on every repolish is the point -- see
+   EnhancedTextEdit::setSpellCheckUnderlineColor(). */
+qproperty-spellCheckUnderlineColor: #FF3B30;
 }
 
 uise--MessageEditorToolbar {

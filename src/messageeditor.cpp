@@ -52,6 +52,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QTimer>
 #include <QBoxLayout>
+#include <QHash>
+#include <QStringView>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/mimedatautils.hpp>
@@ -61,6 +63,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/abstractspellchecker.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -1326,6 +1329,191 @@ bool selectAnchorRun(QTextCursor& cursor, AnchorRunSide side, const PredicateT& 
     return true;
 }
 
+//! Longest run tokenized as a spell-checkable word (task-spellcheck.md). Past this it is a paste
+//! of something that is not prose.
+constexpr const int MaxSpellWordChars=64;
+
+//! Blocks longer than this are skipped by the spell pass entirely -- a pasted wall of text should
+//! not make every keystroke in it quadratic.
+constexpr const int MaxSpellBlockChars=10000;
+
+//! Offsets WITHIN one block's text -- see spellTokens()/nonProseRuns().
+struct SpellToken
+{
+    int start=0;
+    int length=0;
+};
+
+//! Whether [start,start+length) overlaps any range in `excluded`.
+bool spellRangeExcluded(int start, int length, const std::vector<SpellToken>& excluded)
+{
+    const auto end=start+length;
+    for (const auto& range : excluded)
+    {
+        if (start<range.start+range.length && end>range.start)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** @brief Ranges of a block that carry no prose and must never be tokenized as words.
+ *
+ * Anchors -- an ordinary link AND a mention, one isAnchor() test covers both, exactly as
+ * EnhancedTextEdit::mentionQueryAtCursor()'s own gate does -- and fixed-pitch runs (inline code).
+ * A fenced code BLOCK never reaches this function at all: MessageEditorHighlighter::
+ * highlightBlock() returns before ever calling the spell pass for one, see
+ * MessageEditorHighlighter::highlightMisspellings()'s own call site.
+ *
+ * Links and mentions are excluded on purpose, not merely as a courtesy: QSyntaxHighlighter::
+ * setFormat() ASSIGNS the format it is given rather than merging it onto whatever this
+ * highlighter already painted, so a spell format applied over a link range would erase the
+ * link's own foreground colour -- and setFontUnderline()/setUnderlineStyle() write the very same
+ * QTextCharFormat property, so a run could carry the link underline or the spell squiggle, never
+ * both. Skipping anchors here removes the collision outright rather than trying to merge around
+ * it, which also happens to be exactly what the task's own brief asks for ("hyperlinks and
+ * usernames should pass spell checker").
+ */
+std::vector<SpellToken> nonProseRuns(const QTextBlock& block)
+{
+    std::vector<SpellToken> runs;
+    const auto blockStart=block.position();
+    for (auto it=block.begin(); !it.atEnd(); ++it)
+    {
+        const auto fragment=it.fragment();
+        if (!fragment.isValid())
+        {
+            continue;
+        }
+        const auto format=fragment.charFormat();
+        if (format.isAnchor() || format.fontFixedPitch())
+        {
+            runs.push_back(SpellToken{fragment.position()-blockStart,fragment.length()});
+        }
+    }
+    return runs;
+}
+
+//! A whitespace-delimited run that is not prose at all: a URL, an e-mail address, or a plain
+//! "@handle"/"#tag". One textual test applied to the WHOLE run rather than three separate checks
+//! on individual words, so e.g. "teh" inside "https://x.example/teh" is never offered as a
+//! misspelling on its own.
+bool isSkippableSpellRun(QStringView run)
+{
+    return run.contains(QLatin1String("://"))
+        || run.contains(QLatin1Char('@'))
+        || run.startsWith(QLatin1String("www."))
+        || run.startsWith(QLatin1Char('#'));
+}
+
+/** @brief Cut `text` into spell-checkable words (task-spellcheck.md).
+ *
+ * Genuinely new code -- nothing else in this editor does word boundaries.
+ * EnhancedTextEdit::mentionQueryAtCursor()'s own word rule ("anything that is neither whitespace
+ * nor '@'") is deliberately NOT reused here: it is permissive on purpose, for a username alphabet
+ * that is the HOST's business, and would tokenize a whole URL as one "word".
+ *
+ * Rules, in order:
+ *  1. Split on QChar::isSpace(). A run containing "://" or '@', or starting with "www." or '#',
+ *     is dropped WHOLE (isSkippableSpellRun()) -- a URL/e-mail/handle/tag is not prose.
+ *  2. Inside a surviving run, a word STARTS only at QChar::isLetter() -- a digit never starts one.
+ *  3. A word CONTINUES over letters, and over an apostrophe/right single quote/hyphen only when
+ *     the NEXT character is also a letter -- so "don't" and "well-known" are one token each,
+ *     while a trailing "word-" or "word'" stops at the letter.
+ *  4. A token containing any digit is dropped whole (abc123, v1beta) -- one cheap rule that
+ *     removes most code-ish noise a chat composer can carry unfenced.
+ *  5. A token of length 1 is dropped -- "a"/"I" are correct anyway, and a single-letter squiggle
+ *     is only ever an annoyance.
+ *  6. A token longer than MaxSpellWordChars is dropped.
+ *  7. A token is dropped if it has an uppercase letter anywhere past position 0 while not being
+ *     ALL uppercase -- camelCase/PascalCase identifiers ("getFooBar"). "NASA" and "Alice" both
+ *     survive. Dropped whole rather than split: splitting would yield fragments that mostly pass
+ *     the dictionary, which looks like it works while adding cost for no real benefit.
+ */
+std::vector<SpellToken> spellTokens(const QString& text)
+{
+    std::vector<SpellToken> tokens;
+
+    int runStart=0;
+    auto flushRun=[&](int runEnd)
+    {
+        if (runEnd<=runStart)
+        {
+            return;
+        }
+        const QStringView run(text.constData()+runStart,runEnd-runStart);
+        if (isSkippableSpellRun(run))
+        {
+            return;
+        }
+
+        int i=runStart;
+        while (i<runEnd)
+        {
+            if (!text.at(i).isLetter())
+            {
+                ++i;
+                continue;
+            }
+
+            const auto wordStart=i;
+            bool hasDigit=false;
+            bool hasUpperPastFirst=false;
+            bool allUpper=text.at(i).isUpper();
+            ++i;
+            while (i<runEnd)
+            {
+                const auto c=text.at(i);
+                if (c.isLetter())
+                {
+                    if (c.isUpper())
+                    {
+                        hasUpperPastFirst=true;
+                    }
+                    else
+                    {
+                        allUpper=false;
+                    }
+                    ++i;
+                    continue;
+                }
+                if (c.isDigit())
+                {
+                    hasDigit=true;
+                    ++i;
+                    continue;
+                }
+                if ((c==QLatin1Char('\'') || c==QChar(0x2019) || c==QLatin1Char('-'))
+                    && i+1<runEnd && text.at(i+1).isLetter())
+                {
+                    ++i;
+                    continue;
+                }
+                break;
+            }
+
+            const auto length=i-wordStart;
+            if (!hasDigit && length>1 && length<=MaxSpellWordChars
+                && !(hasUpperPastFirst && !allUpper))
+            {
+                tokens.push_back(SpellToken{wordStart,length});
+            }
+        }
+    };
+
+    for (int i=0; i<=text.size(); ++i)
+    {
+        if (i==text.size() || text.at(i).isSpace())
+        {
+            flushRun(i);
+            runStart=i+1;
+        }
+    }
+
+    return tokens;
+}
+
 }
 
 /*****************************MessageEditorHighlighter*************************/
@@ -1426,6 +1614,54 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             rehighlight();
         }
 
+        //! task-spellcheck.md. NOT owned -- EnhancedTextEdit::setSpellChecker() nulls this back
+        //! out itself when the checker changes or is destroyed.
+        void setSpellChecker(AbstractSpellChecker* checker)
+        {
+            if (m_spellChecker==checker)
+            {
+                return;
+            }
+
+            m_spellChecker=checker;
+            clearSpellCache();
+        }
+
+        void setSpellCheckEnabled(bool enable)
+        {
+            if (m_spellCheckEnabled==enable)
+            {
+                return;
+            }
+
+            m_spellCheckEnabled=enable;
+            rehighlight();
+        }
+
+        //! See EnhancedTextEdit::spellCheckUnderlineColor. Applied by highlightMisspellings()
+        //! below, on the same display-only terms as every colour property above -- except that,
+        //! unlike them, an INVALID colour does not disable the pass: see that property's own doc
+        //! comment for why.
+        void setSpellCheckUnderlineColor(const QColor& color)
+        {
+            if (m_spellCheckUnderlineColor==color)
+            {
+                return;
+            }
+
+            m_spellCheckUnderlineColor=color;
+            rehighlight();
+        }
+
+        //! Drops every cached verdict and re-highlights -- called when the checker itself
+        //! changes, and (debounced, from EnhancedTextEdit::onSpellDictionaryChanged()) when the
+        //! checker's own AbstractSpellChecker::dictionaryChanged() fires.
+        void clearSpellCache()
+        {
+            m_spellCache.clear();
+            rehighlight();
+        }
+
     protected:
 
         void highlightBlock(const QString& text) override
@@ -1496,6 +1732,14 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             }
 
             highlightLinks();
+
+            // LAST, after highlightLinks(), on the same rule this file already documents: a
+            // later setFormat() wins over an earlier one on an overlapping range. Nothing here
+            // actually overlaps a link or mention -- anchors are skipped wholesale, see
+            // nonProseRuns() -- but running last is what keeps a misspelling's squiggle visible
+            // over a blockquote's own colour (highlightMisspellings() reads that colour back via
+            // format() and re-applies it, rather than starting from a blank format).
+            highlightMisspellings(text);
         }
 
     private:
@@ -1558,11 +1802,100 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             }
         }
 
+        /** @brief Underline every word no active dictionary accepts (task-spellcheck.md).
+         *
+         * Runs after highlightLinks() -- see that call site's own comment for why -- and skips
+         * anything nonProseRuns() marks (an anchor or an inline-code run), so a link/mention/code
+         * span is never handed to check() at all, never mind painted over.
+         *
+         * QSyntaxHighlighter::setFormat() ASSIGNS the format it is given rather than merging it
+         * onto whatever this highlighter already painted for the range (it merges only onto the
+         * DOCUMENT's own char formats, which is what the blockquote pass's comment above is
+         * describing) -- so seeding `format` from this->format(token.start) rather than from a
+         * default-constructed QTextCharFormat is what keeps a misspelling's blockquote colour
+         * intact instead of erasing it.
+         */
+        void highlightMisspellings(const QString& text)
+        {
+            if (!m_spellCheckEnabled || m_spellChecker==nullptr || !m_spellChecker->isReady()
+                || text.isEmpty() || text.size()>MaxSpellBlockChars)
+            {
+                return;
+            }
+
+            const auto excluded=nonProseRuns(currentBlock());
+            for (const auto& token : spellTokens(text))
+            {
+                if (spellRangeExcluded(token.start,token.length,excluded))
+                {
+                    continue;
+                }
+
+                const auto word=text.mid(token.start,token.length);
+                const auto cached=m_spellCache.constFind(word);
+                bool correct=false;
+                if (cached!=m_spellCache.constEnd())
+                {
+                    correct=cached.value();
+                }
+                else
+                {
+                    const auto verdict=m_spellChecker->check(word);
+                    if (verdict==SpellCheckVerdict::Unknown)
+                    {
+                        // No answer yet: paint nothing and cache nothing. The checker emits
+                        // dictionaryChanged() once it can answer, and EnhancedTextEdit
+                        // re-highlights from that (debounced).
+                        continue;
+                    }
+                    correct=(verdict==SpellCheckVerdict::Correct);
+                    if (m_spellCache.size()>SpellCacheLimit)
+                    {
+                        // A composer never approaches this in practice; a wholesale clear rather
+                        // than an LRU because the refill cost is a handful of cheap lookups.
+                        m_spellCache.clear();
+                    }
+                    m_spellCache.insert(word,correct);
+                }
+
+                if (correct)
+                {
+                    continue;
+                }
+
+                auto format=this->format(token.start);
+                // QTextCharFormat::SpellCheckUnderline -- deliberately the platform's OWN
+                // spelling-underline style rather than a style forced here: Qt resolves it
+                // through QPlatformTheme::SpellCheckUnderlineStyle at paint time (qpainter.cpp),
+                // which is exactly the "let the platform decide how misspellings look" contract
+                // this style exists for. On macOS specifically that resolves to a dotted line
+                // (qcocoatheme.mm) rather than a wavy one -- accepted as the native look there,
+                // not overridden.
+                format.setUnderlineStyle(QTextCharFormat::SpellCheckUnderline);
+                if (m_spellCheckUnderlineColor.isValid())
+                {
+                    format.setUnderlineColor(m_spellCheckUnderlineColor);
+                }
+                setFormat(token.start,token.length,format);
+            }
+        }
+
+        //! Verdicts cleared wholesale past this size -- see highlightMisspellings().
+        constexpr static const int SpellCacheLimit=5000;
+
         QColor m_blockquoteColor;
         QColor m_codeBlockColor;
         QColor m_linkColor;
         bool m_linkUnderline=false;
         QColor m_mentionColor;
+
+        AbstractSpellChecker* m_spellChecker=nullptr;
+        bool m_spellCheckEnabled=true;
+        QColor m_spellCheckUnderlineColor;
+
+        //! true==correct. SpellCheckVerdict::Unknown is NEVER cached, so an async checker that
+        //! has not answered yet converges instead of being poisoned by a stale miss.
+        mutable QHash<QString,bool> m_spellCache;
 };
 
 /******************************EnhancedTextEdit********************************/
@@ -2000,6 +2333,154 @@ void EnhancedTextEdit::setMentionColor(const QColor& color)
     {
         m_highlighter->setMentionColor(color);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setSpellCheckUnderlineColor(const QColor& color)
+{
+    m_spellCheckUnderlineColor=color;
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setSpellCheckUnderlineColor(color);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setSpellChecker(AbstractSpellChecker* checker)
+{
+    if (m_spellChecker==checker)
+    {
+        return;
+    }
+
+    if (!m_spellChecker.isNull())
+    {
+        disconnect(m_spellChecker,nullptr,this,nullptr);
+    }
+    m_spellChecker=checker;
+
+    if (checker!=nullptr)
+    {
+        // The signal lives on the CHECKER, not on the highlighter: MessageEditorHighlighter
+        // declares no signals and needs no moc pass, and giving it a Q_OBJECT purely to carry one
+        // notification would add a moc pass to the whole editor for nothing. This widget is
+        // already a QObject, so it does the connecting.
+        connect(checker,&AbstractSpellChecker::dictionaryChanged,this,
+            &EnhancedTextEdit::onSpellDictionaryChanged);
+        // A checker the host destroys out from under an attached editor detaches cleanly rather
+        // than leaving m_spellChecker dangling.
+        connect(checker,&QObject::destroyed,this,
+            [this]()
+            {
+                setSpellChecker(nullptr);
+            }
+        );
+    }
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setSpellChecker(checker);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setSpellCheckEnabled(bool enable)
+{
+    m_spellCheckEnabled=enable;
+
+    if (m_highlighter!=nullptr)
+    {
+        m_highlighter->setSpellCheckEnabled(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::onSpellDictionaryChanged()
+{
+    // Coalesces a burst of these (several dictionaries finishing within a few ms is several
+    // signals) into ONE rehighlight(), which is O(document) and not worth paying more than once
+    // per dictionary-load event.
+    if (m_spellRehighlightTimer==nullptr)
+    {
+        m_spellRehighlightTimer=new QTimer(this);
+        m_spellRehighlightTimer->setSingleShot(true);
+        m_spellRehighlightTimer->setInterval(150);
+        connect(m_spellRehighlightTimer,&QTimer::timeout,this,
+            [this]()
+            {
+                if (m_highlighter!=nullptr)
+                {
+                    m_highlighter->clearSpellCache();
+                }
+            }
+        );
+    }
+    m_spellRehighlightTimer->start();
+}
+
+//--------------------------------------------------------------------------
+
+EnhancedTextEdit::SpellWord EnhancedTextEdit::spellWordAt(int documentPosition) const
+{
+    SpellWord result;
+
+    auto* doc=document();
+    const auto block=doc->findBlock(documentPosition);
+    if (!block.isValid())
+    {
+        return result;
+    }
+
+    const auto blockStart=block.position();
+    const auto offset=documentPosition-blockStart;
+    const auto text=block.text();
+    const auto excluded=nonProseRuns(block);
+
+    for (const auto& token : spellTokens(text))
+    {
+        if (offset<token.start || offset>token.start+token.length)
+        {
+            continue;
+        }
+        if (spellRangeExcluded(token.start,token.length,excluded))
+        {
+            return result;
+        }
+
+        result.isValid=true;
+        result.position=blockStart+token.start;
+        result.length=token.length;
+        result.text=text.mid(token.start,token.length);
+        return result;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
+EnhancedTextEdit::SpellWord EnhancedTextEdit::spellWordAtCursor() const
+{
+    return spellWordAt(textCursor().position());
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::selectSpellWord(QTextCursor& cursor, const SpellWord& word) const
+{
+    if (!word.isValid)
+    {
+        return false;
+    }
+
+    cursor.setPosition(word.position);
+    cursor.setPosition(word.position+word.length,QTextCursor::KeepAnchor);
+    return true;
 }
 
 //--------------------------------------------------------------------------
@@ -2571,6 +3052,12 @@ class MessageEditor_p
 
         //! See MessageEditor::setBlockquoteIndent().
         qreal blockquoteIndent=MessageEditor::DefaultBlockquoteIndent;
+
+        //! task-spellcheck.md. The misspelled word the CURRENTLY OPEN context menu was built
+        //! for, captured at build time from the MOUSE position rather than the caret -- see
+        //! MessageEditor::showContextMenu(). Reset on every menu open.
+        EnhancedTextEdit::SpellWord spellContextWord;
+        QStringList spellSuggestions;
 };
 
 //--------------------------------------------------------------------------
@@ -2758,6 +3245,11 @@ MessageEditor::MessageEditor(QWidget* parent)
     // because its plain "@username" form (insertMentionText()) is valid in all three -- see
     // FormattingButtons' own comment in messageeditortoolbar.cpp.
     connect(pimpl->toolbar,&MessageEditorToolbar::mentionRequested,this,&MessageEditor::onMentionButtonRequested);
+
+    // task-spellcheck.md. `enable` is authoritative editor state computed by wireCheckable(), the
+    // same contract as boldRequested()/italicRequested()/etc. above -- setSpellCheckEnabled()
+    // both applies it and pushes it back onto the toolbar/menu.
+    connect(pimpl->toolbar,&MessageEditorToolbar::spellCheckRequested,this,&AbstractMessageEditor::setSpellCheckEnabled);
 
     connect(pimpl->editor,&QTextEdit::cursorPositionChanged,this,&MessageEditor::syncToolbarState);
     connect(pimpl->editor,&QTextEdit::selectionChanged,this,&MessageEditor::syncToolbarState);
@@ -3703,6 +4195,22 @@ void MessageEditor::updateMentionButtonVisible()
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::updateSpellCheckButtonVisible()
+{
+    pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::SpellCheck,isSpellCheckButtonVisible());
+    Layout::activateUpward(this);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::updateSpellCheckEnabled()
+{
+    pimpl->editor->setSpellCheckEnabled(isSpellCheckEnabled());
+    syncToolbarState();
+}
+
+//--------------------------------------------------------------------------
+
 MessageEditorFormatState MessageEditor::currentFormatState() const
 {
     const auto cf=pimpl->editor->currentCharFormat();
@@ -3736,6 +4244,10 @@ MessageEditorFormatState MessageEditor::currentFormatState() const
     state.insideMention=isMentionFormat(cf);
     state.insideLink=isLinkFormat(cf);
     state.insideTable=cursor.currentTable()!=nullptr;
+    // Editor-WIDE, not caret-derived like everything else here -- see
+    // MessageEditorFormatState::spellCheckEnabled's own doc comment for why it still rides in
+    // this struct.
+    state.spellCheckEnabled=isSpellCheckEnabled();
 
     if (list!=nullptr)
     {
@@ -5095,6 +5607,83 @@ void MessageEditor::insertMentionText(const QString& username)
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::setSpellChecker(AbstractSpellChecker* checker)
+{
+    pimpl->editor->setSpellChecker(checker);
+}
+
+//--------------------------------------------------------------------------
+
+AbstractSpellChecker* MessageEditor::spellChecker() const
+{
+    return pimpl->editor->spellChecker();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::replaceSpellWord(const EnhancedTextEdit::SpellWord& word, const QString& replacement)
+{
+    auto cursor=pimpl->editor->textCursor();
+    if (!pimpl->editor->selectSpellWord(cursor,word))
+    {
+        return;
+    }
+
+    // Keeps the word's own char format (bold/italic survive), same idiom as insertMentionText()
+    // minus its anchor-clearing step -- the tokenizer that produced `word` never yields one
+    // inside an anchor, see nonProseRuns().
+    const auto format=cursor.charFormat();
+    cursor.insertText(replacement,format);
+
+    pimpl->editor->setTextCursor(cursor);
+    pimpl->editor->setCurrentCharFormat(format);
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applySpellSuggestion(int index)
+{
+    if (index<0 || index>=pimpl->spellSuggestions.size())
+    {
+        return;
+    }
+    replaceSpellWord(pimpl->spellContextWord,pimpl->spellSuggestions.at(index));
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::addSpellWordToDictionary()
+{
+    auto* checker=pimpl->editor->spellChecker();
+    if (checker==nullptr || !pimpl->spellContextWord.isValid)
+    {
+        return;
+    }
+    // The checker is expected to emit AbstractSpellChecker::dictionaryChanged() itself, which is
+    // what actually removes the squiggle -- no editor-side signal is added for persistence: the
+    // host owns the checker, so persisting the word is the checker's job, and a relay signal here
+    // would be a second, redundant contract for the same fact.
+    checker->addToDictionary(pimpl->spellContextWord.text);
+    restoreEditorFocus();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::ignoreSpellWord()
+{
+    auto* checker=pimpl->editor->spellChecker();
+    if (checker==nullptr || !pimpl->spellContextWord.isValid)
+    {
+        return;
+    }
+    checker->ignoreWord(pimpl->spellContextWord.text);
+    restoreEditorFocus();
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::showContextMenu(const QPoint& pos)
 {
     if (!isContextMenuEnabled())
@@ -5127,6 +5716,92 @@ void MessageEditor::showContextMenu(const QPoint& pos)
     }
 
     std::vector<MenuItem> items;
+
+    // task-spellcheck.md. Spelling rows FIRST, above Cut -- where macOS, Windows and GTK all put
+    // them, and the only place a suggestion list is reachable without scrolling past the standard
+    // rows below.
+    //
+    // The word is taken from the MOUSE position, not the caret: right-clicking a misspelling is
+    // the gesture, and Qt does not move the caret on a right-press. Nothing in the document is
+    // SELECTED while the menu is open -- a visible selection sitting under a non-modal popup is
+    // destroyed by the first caret move and worse than useless, the same reasoning
+    // mentionRequested()'s own doc comment records -- the range is remembered in pimpl instead and
+    // selected only when a fix is actually applied (see replaceSpellWord()).
+    pimpl->spellContextWord=EnhancedTextEdit::SpellWord{};
+    pimpl->spellSuggestions.clear();
+    if (isSpellCheckMenuItemVisible() && pimpl->editor->spellChecker()!=nullptr)
+    {
+        auto* checker=pimpl->editor->spellChecker();
+        if (isSpellCheckEnabled() && checker->isReady() && !pimpl->editor->isReadOnly())
+        {
+            const auto cursor=pimpl->editor->cursorForPosition(pos);
+            const auto word=pimpl->editor->spellWordAt(cursor.position());
+
+            // Suppressed while a SELECTION spans anything other than exactly this one word: the
+            // three rows below act on a single word (suggest/add/ignore), which is ambiguous the
+            // moment more than one word is selected -- there is no such thing as a multi-word
+            // dictionary entry (the tokenizer splits every check() call on whitespace before it
+            // ever runs, so a phrase added here could never be matched again). A selection made
+            // by double-clicking the misspelling itself still matches this word's own span
+            // exactly, so that case is deliberately still allowed through.
+            const auto selection=pimpl->editor->textCursor();
+            const bool selectionAllowsWordActions=!selection.hasSelection()
+                || (selection.selectionStart()==word.position
+                    && selection.selectionEnd()==word.position+word.length);
+
+            if (word.isValid && selectionAllowsWordActions
+                && checker->check(word.text)==SpellCheckVerdict::Misspelled)
+            {
+                pimpl->spellContextWord=word;
+                pimpl->spellSuggestions=checker->suggestions(word.text,MaxSpellSuggestions);
+
+                const auto count=qMin(static_cast<int>(pimpl->spellSuggestions.size()),MaxSpellSuggestions);
+                for (int i=0; i<count; ++i)
+                {
+                    items.push_back(MenuItem(
+                        static_cast<int>(MessageEditorMenuAction::SpellSuggestionFirst)+i,
+                        pimpl->spellSuggestions.at(i)
+                    ));
+                }
+                if (count==0)
+                {
+                    // A section row rather than a plain one: DropdownMenu renders a
+                    // section+disabled row as an inert label -- exactly an unclickable "nothing
+                    // to offer" line.
+                    items.push_back(MenuItem::section(
+                        static_cast<int>(MessageEditorMenuAction::SpellNoSuggestions),
+                        tr("No suggestions")
+                    ));
+                    items.back().isEnabled=false;
+                }
+
+                if (checker->canAddToDictionary())
+                {
+                    items.push_back(MenuItem(
+                        static_cast<int>(MessageEditorMenuAction::AddToDictionary),
+                        tr("Add to dictionary"),
+                        menuIcon(QStringLiteral("addToDictionary"),pimpl->editor)
+                    ));
+                }
+                items.push_back(MenuItem(
+                    static_cast<int>(MessageEditorMenuAction::IgnoreWord),
+                    tr("Ignore word"),
+                    menuIcon(QStringLiteral("ignoreWord"),pimpl->editor)
+                ));
+                items.push_back(MenuItem::separator());
+            }
+        }
+
+        // Offered whether or not the click landed on a misspelling -- turning the feature off is
+        // most wanted precisely when the underlines are wrong about correct text.
+        items.push_back(MenuItem::checkable(
+            static_cast<int>(MessageEditorMenuAction::SpellCheckEnabled),
+            tr("Check spelling"),
+            isSpellCheckEnabled(),
+            menuIcon(QStringLiteral("spellCheck"),pimpl->editor)
+        ));
+        items.push_back(MenuItem::separator());
+    }
 
     items.push_back(MenuItem(
         static_cast<int>(MessageEditorMenuAction::Cut),
@@ -5362,8 +6037,37 @@ void MessageEditor::onContextMenuItemTriggered(int id)
             break;
         }
 
+        case (MessageEditorMenuAction::AddToDictionary):
+        {
+            addSpellWordToDictionary();
+            break;
+        }
+
+        case (MessageEditorMenuAction::IgnoreWord):
+        {
+            ignoreSpellWord();
+            break;
+        }
+
+        case (MessageEditorMenuAction::SpellNoSuggestions):
+        {
+            // The inert "No suggestions" row -- isEnabled=false already stops DropdownMenu from
+            // triggering it, this case exists only so it is not silently relayed as a consumer id
+            // through the default branch below.
+            break;
+        }
+
         default:
         {
+            // A RANGE rather than eight case labels: the band is contiguous by construction
+            // (MessageEditorMenuAction::SpellSuggestionFirst..SpellSuggestionLast), so raising
+            // MessageEditor::MaxSpellSuggestions later needs no new enumerator and no new case.
+            if (id>=static_cast<int>(MessageEditorMenuAction::SpellSuggestionFirst)
+                && id<=static_cast<int>(MessageEditorMenuAction::SpellSuggestionLast))
+            {
+                applySpellSuggestion(id-static_cast<int>(MessageEditorMenuAction::SpellSuggestionFirst));
+                break;
+            }
             emit contextMenuItemTriggered(id);
             break;
         }
@@ -5460,6 +6164,12 @@ void MessageEditor::onContextMenuItemToggled(int id, bool checked)
             {
                 applyHeading(0);
             }
+            break;
+        }
+
+        case (MessageEditorMenuAction::SpellCheckEnabled):
+        {
+            setSpellCheckEnabled(checked);
             break;
         }
 

@@ -28,6 +28,7 @@
                 "link": "${uise-svg-icons-1}/link",
                 "removeLink": "${uise-svg-icons-1}/link-off",
                 "mention": "${uise-svg-icons-1}/at",
+                "spellCheck": "${uise-svg-icons-1}/text-spellcheck",
                 "clearFormatting": "${uise-svg-icons-1}/clear-formatting",
                 "close": "${uise-svg-icons-1}/x",
                 "tableRowAbove": "${uise-svg-icons-1}/row-insert-top",
