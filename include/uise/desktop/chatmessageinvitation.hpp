@@ -59,6 +59,18 @@ class UISE_DESKTOP_EXPORT ChatMessageInvitation : public AbstractChatMessageInvi
         void presetIdentityText(const QString& text) override;
         void presetIcon(const QString& icon) override;
 
+        //! Width this card wants for the current bubble-width negotiation. The default
+        //! implementation (ChatMessageContentSection's, a bare sizeHint().width()) is not enough
+        //! here for two reasons: it never clamps to \a forMaxWidth, and it has no cap of its own,
+        //! so a long title would stretch the bubble across the whole chat. Mirrors what
+        //! ChatMessageFiles::bubbleWidthHint() does for a file row.
+        int bubbleWidthHint(int forMaxWidth) override;
+
+        //! MaxBubbleWidth -- the ceiling bubbleWidthHint() above will never exceed, so widening
+        //! the bubble to seat the bottom row inline cannot push this card past it either (see the
+        //! base declaration's own doc comment).
+        int ownWidthCeiling() const override;
+
         //! Styled after ChatMessageFileItem's row -- no single trailing line for the bubble's
         //! bottom row to share (default null rect => the bottom row gets its own line below),
         //! same as ChatMessageError.
@@ -71,6 +83,17 @@ class UISE_DESKTOP_EXPORT ChatMessageInvitation : public AbstractChatMessageInvi
         void updateAvatar() override;
 
         void updateChatMessage() override;
+
+        //! Clicking the card performs its primary action, the same way clicking a
+        //! ChatMessageFileItem's row opens the file -- reported through
+        //! menuActionTriggered(MenuAction::AddContact) rather than a signal of its own, so a
+        //! click and the menu's own "Add contact" entry land in exactly one host handler. Only
+        //! the LEFT button is intercepted: a right-click still falls through to the bubble's
+        //! context menu. Gated on isInvitationActionable() so a click can never perform what the
+        //! menu would have hidden, and the menu button's own clicks never reach here (it accepts
+        //! them itself).
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
 
     private slots:
 

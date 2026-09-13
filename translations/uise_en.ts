@@ -76,32 +76,32 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location filename="../src/abstractchatmessageerror.cpp" line="+74"/>
         <source>Unsupported message type</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Unsupported message type</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>This message needs a newer version</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">This message needs a newer version</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Message is too large</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Message is too large</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>This message could not be read</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">This message could not be read</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Update the application to see this message.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Update the application to see this message.</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Ask the sender to send shorter messages.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ask the sender to send shorter messages.</translation>
     </message>
 </context>
 <context>
@@ -114,67 +114,67 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+2"/>
         <source>Expired</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Expired</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Already in contacts</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Already in contacts</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Update the application to open this invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Update the application to open this invitation</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <source>Add contact</source>
-        <translation type="unfinished"></translation>
+        <location line="+48"/>
+        <source>Show QR code</source>
+        <translation type="unfinished">Show QR code</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Join chat</source>
-        <translation type="unfinished"></translation>
+        <location line="+9"/>
+        <source>Copy username</source>
+        <translation type="unfinished">Copy username</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Copy temporary code</source>
+        <translation type="unfinished">Copy temporary code</translation>
     </message>
     <message>
         <location line="+4"/>
-        <source>Open</source>
-        <translation type="unfinished">Open</translation>
-    </message>
-    <message>
-        <location line="+16"/>
-        <source>Show QR code</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Copy username</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Copy temporary code</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+3"/>
         <source>Save as file</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Save as file</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Contact invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Contact invitation</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Group chat invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Group chat invitation</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Invitation</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Add contact</source>
+        <translation type="unfinished">Add contact</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Join chat</source>
+        <translation type="unfinished">Join chat</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Open</source>
+        <translation type="unfinished">Open</translation>
     </message>
 </context>
 <context>
@@ -971,7 +971,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+640"/>
+        <location filename="../src/htreetab.cpp" line="+671"/>
         <source>Collapse</source>
         <translation type="unfinished">Collapse</translation>
     </message>
@@ -1642,7 +1642,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Open in new window</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+191"/>
+        <location filename="../src/htreenode.cpp" line="+193"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Expand</translation>
@@ -1792,7 +1792,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReactionIconPack</name>
     <message>
-        <location filename="../src/reactioniconpack.cpp" line="+56"/>
+        <location filename="../src/reactioniconpack.cpp" line="+63"/>
         <source>thumbs up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2656,6 +2656,92 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>m</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for minutes -- NOT months (e.g. &quot;5m 12s&quot;).</extracomment>
         <translation type="vanished">m</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageError</name>
+    <message>
+        <source>Unsupported message type</source>
+        <translation type="vanished">Unsupported message type</translation>
+    </message>
+    <message>
+        <source>This message needs a newer version</source>
+        <translation type="vanished">This message needs a newer version</translation>
+    </message>
+    <message>
+        <source>Message is too large</source>
+        <translation type="vanished">Message is too large</translation>
+    </message>
+    <message>
+        <source>This message could not be read</source>
+        <translation type="vanished">This message could not be read</translation>
+    </message>
+    <message>
+        <source>Update the application to see this message.</source>
+        <translation type="vanished">Update the application to see this message.</translation>
+    </message>
+    <message>
+        <source>Ask the sender to send shorter messages.</source>
+        <translation type="vanished">Ask the sender to send shorter messages.</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageInvitation</name>
+    <message>
+        <source>Password required</source>
+        <translation type="vanished">Password required</translation>
+    </message>
+    <message>
+        <source>Expired</source>
+        <translation type="vanished">Expired</translation>
+    </message>
+    <message>
+        <source>Already in contacts</source>
+        <translation type="vanished">Already in contacts</translation>
+    </message>
+    <message>
+        <source>Update the application to open this invitation</source>
+        <translation type="vanished">Update the application to open this invitation</translation>
+    </message>
+    <message>
+        <source>Show QR code</source>
+        <translation type="vanished">Show QR code</translation>
+    </message>
+    <message>
+        <source>Copy username</source>
+        <translation type="vanished">Copy username</translation>
+    </message>
+    <message>
+        <source>Copy temporary code</source>
+        <translation type="vanished">Copy temporary code</translation>
+    </message>
+    <message>
+        <source>Save as file</source>
+        <translation type="vanished">Save as file</translation>
+    </message>
+    <message>
+        <source>Contact invitation</source>
+        <translation type="vanished">Contact invitation</translation>
+    </message>
+    <message>
+        <source>Group chat invitation</source>
+        <translation type="vanished">Group chat invitation</translation>
+    </message>
+    <message>
+        <source>Invitation</source>
+        <translation type="vanished">Invitation</translation>
+    </message>
+    <message>
+        <source>Add contact</source>
+        <translation type="vanished">Add contact</translation>
+    </message>
+    <message>
+        <source>Join chat</source>
+        <translation type="vanished">Join chat</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation type="vanished">Open</translation>
     </message>
 </context>
 <context>

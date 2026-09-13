@@ -274,6 +274,12 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // gap is what makes a node's status icon (e.g. character online/offline) flicker in on
     // every navbar item recreation.
     navbar->addItem(node->name(),node->nodeTooltip(),node->id(),node->titleIcon());
+    // Same seeding reason as the title icon above: leading/trailing widgets are also stored on
+    // the node (see HTreeNode::leadingWidget()'s doc comment) precisely so they can be handed to
+    // the item at creation instead of arriving later over leadingWidgetUpdated() once the item
+    // already exists. A no-op for the overwhelming majority of nodes, which carry neither.
+    navbar->setItemLeadingWidget(index,node->leadingWidget());
+    navbar->setItemTrailingWidget(index,node->trailingWidget());
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
 
@@ -348,6 +354,24 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         [this,index](std::shared_ptr<SvgIcon> icon)
         {
             navbar->setItemTrailingIcon(index,std::move(icon));
+        }
+    );
+    node->connect(
+        node,
+        &HTreeNode::leadingWidgetUpdated,
+        self,
+        [this,index](QWidget* widget)
+        {
+            navbar->setItemLeadingWidget(index,widget);
+        }
+    );
+    node->connect(
+        node,
+        &HTreeNode::trailingWidgetUpdated,
+        self,
+        [this,index](QWidget* widget)
+        {
+            navbar->setItemTrailingWidget(index,widget);
         }
     );
 
@@ -456,6 +480,13 @@ bool HTreeTab_p::reconstructLastNode(int index, HTreePath path)
     navbar->blockSignals(true);
     navbar->setItemId(index,cand->id());
     navbar->setItemIcon(index,cand->titleIcon());
+    // The item survives an in-place reconstruct, so re-push the node's stored widgets the same
+    // way its icon is re-pushed above -- setItemIcon() just rebuilt the item's layout via
+    // setIconPosition(), which already re-added whatever leading widget the item held, so this
+    // is the identity no-op guarded by IconTextButton::setLeadingWidget() unless cand carries a
+    // different widget than the surviving item does.
+    navbar->setItemLeadingWidget(index,cand->leadingWidget());
+    navbar->setItemTrailingWidget(index,cand->trailingWidget());
     navbar->blockSignals(false);
 
     // cand may or may not still carry the tab-level signal wiring from when it was last

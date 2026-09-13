@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/ripple.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -250,20 +251,97 @@ std::shared_ptr<SvgIcon> IconTextButton::trailingSvgIcon() const
 
 //--------------------------------------------------------------------------
 
+void IconTextButton::setLeadingWidget(QWidget* widget)
+{
+    if (m_leadingWidget==widget)
+    {
+        // Idempotent on purpose: HTreeTab_p::reconstructLastNode() re-pushes the node's stored
+        // widget into the surviving item on every reconstruct, and the destroy branch below
+        // would otherwise delete a widget the caller is still handing us.
+        return;
+    }
+    if (!m_leadingWidget.isNull())
+    {
+        destroyWidget(m_leadingWidget);
+    }
+    m_leadingWidget=widget;
+    if (widget)
+    {
+        // QWidget::setParent() hides the widget as a side effect (QWidgetPrivate::setParent_sys()),
+        // and re-adding it to the layout below can then queue an unwanted show -- capture the
+        // caller's intended visibility now and re-assert it last, after both of those have run,
+        // so a widget that is legitimately hidden at attach time (e.g. a control with nothing to
+        // show yet) does not flash into view, and a visible one does not silently vanish.
+        const bool wasHidden=widget->isHidden();
+        widget->setParent(this);
+        rebuildLayout();
+        widget->setVisible(!wasHidden);
+        return;
+    }
+    rebuildLayout();
+}
+
+//--------------------------------------------------------------------------
+
+void IconTextButton::setTrailingWidget(QWidget* widget)
+{
+    if (m_trailingWidget==widget)
+    {
+        return;
+    }
+    if (!m_trailingWidget.isNull())
+    {
+        destroyWidget(m_trailingWidget);
+    }
+    m_trailingWidget=widget;
+    if (widget)
+    {
+        const bool wasHidden=widget->isHidden();
+        widget->setParent(this);
+        rebuildLayout();
+        widget->setVisible(!wasHidden);
+        return;
+    }
+    rebuildLayout();
+}
+
+//--------------------------------------------------------------------------
+
 void IconTextButton::setIconPosition(IconPosition iconPosition)
+{
+    m_iconPosition=iconPosition;
+    rebuildLayout();
+}
+
+//--------------------------------------------------------------------------
+
+void IconTextButton::rebuildLayout()
 {
     if (m_layout)
     {
         m_layout->removeWidget(m_icon->parentWidget());
         m_layout->removeWidget(m_text);
         m_layout->removeWidget(m_trailingIcon->parentWidget());
+        if (!m_leadingWidget.isNull())
+        {
+            m_layout->removeWidget(m_leadingWidget);
+        }
+        if (!m_trailingWidget.isNull())
+        {
+            m_layout->removeWidget(m_trailingWidget);
+        }
     }
 
-    m_iconPosition=iconPosition;
     m_icon->setVisible(true);
 
-    // trailing icon visibility is preserved across layout rebuilds
-    bool trailingVisible=m_trailingIcon->parentWidget()->isVisible();
+    // Visibility of everything this rebuild re-adds is preserved across it. !isHidden(), NOT
+    // isVisible(): isVisible() is also false whenever THIS button is itself hidden -- which
+    // NavigationBar::updateSingleItemVisibleMode() makes the normal state for most navbar items --
+    // and restoring that false would turn an implicitly hidden child into an EXPLICITLY hidden
+    // one, which the parent's later show() then refuses to bring back on its own.
+    bool trailingVisible=!m_trailingIcon->parentWidget()->isHidden();
+    const bool leadingWidgetVisible=!m_leadingWidget.isNull() && !m_leadingWidget->isHidden();
+    const bool trailingWidgetVisible=!m_trailingWidget.isNull() && !m_trailingWidget->isHidden();
 
     switch (m_iconPosition)
     {
@@ -319,7 +397,34 @@ void IconTextButton::setIconPosition(IconPosition iconPosition)
         break;
     }
 
+    // Leading/trailing widgets bracket the icon+text group in every IconPosition -- they are not
+    // part of the icon-vs-text ordering the switch above decides, just first/last in whichever
+    // direction m_layout now runs. Alignment mirrors each branch's own convention: no explicit
+    // alignment for the two horizontal text-visible cases above (BeforeText/AfterText), AlignCenter
+    // for the three that already center their children (AboveText/BelowText/Invisible).
+    const bool centered=m_iconPosition==IconPosition::AboveText
+                         || m_iconPosition==IconPosition::BelowText
+                         || m_iconPosition==IconPosition::Invisible;
+    if (!m_leadingWidget.isNull())
+    {
+        if (centered) m_layout->insertWidget(0,m_leadingWidget,0,Qt::AlignCenter);
+        else          m_layout->insertWidget(0,m_leadingWidget);
+    }
+    if (!m_trailingWidget.isNull())
+    {
+        if (centered) m_layout->addWidget(m_trailingWidget,0,Qt::AlignCenter);
+        else          m_layout->addWidget(m_trailingWidget);
+    }
+
     m_trailingIcon->parentWidget()->setVisible(trailingVisible);
+    if (!m_leadingWidget.isNull())
+    {
+        m_leadingWidget->setVisible(leadingWidgetVisible);
+    }
+    if (!m_trailingWidget.isNull())
+    {
+        m_trailingWidget->setVisible(trailingWidgetVisible);
+    }
 
     // Drives ripple.qss's choice between the wide/flat ellipse tuned for horizontal rows
     // (BeforeText/AfterText) and the fuller fill needed for the much-closer-to-square

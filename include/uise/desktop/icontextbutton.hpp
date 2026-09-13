@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ICONTEXTBUTTON_HPP
 
 #include <QFrame>
+#include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -80,6 +81,38 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void setTrailingSvgIcon(std::shared_ptr<SvgIcon> icon);
 
         std::shared_ptr<SvgIcon> trailingSvgIcon() const;
+
+        /**
+         * @brief Set arbitrary widget placed before everything else in the button (ahead of the
+         * leading icon), in every IconPosition. Unlike a widget added to layout() directly, this
+         * one survives setIconPosition()'s layout rebuild -- it is re-added on every rebuild the
+         * same way the trailing icon already is.
+         *
+         * The button takes ownership: the widget is reparented into it and destroyed with it (see
+         * destroyWidget()). Passing a different widget, or nullptr, destroys the previous one.
+         * Passing the same widget again is a no-op. Reparenting hides the widget (Qt), so its
+         * visibility as observed just before the call is restored right after reparenting --
+         * callers may attach an already-hidden widget without it flashing into view.
+         *
+         * @param widget Widget to place, or nullptr to remove the current one.
+         */
+        void setLeadingWidget(QWidget* widget);
+
+        QWidget* leadingWidget() const noexcept
+        {
+            return m_leadingWidget.get();
+        }
+
+        /**
+         * @brief Set arbitrary widget placed after everything else in the button (behind the
+         * trailing icon). See setLeadingWidget() for ownership/ordering/visibility semantics.
+         */
+        void setTrailingWidget(QWidget* widget);
+
+        QWidget* trailingWidget() const noexcept
+        {
+            return m_trailingWidget.get();
+        }
 
         void setParentHovered(bool enable);
 
@@ -157,12 +190,20 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         void setHovered(bool enable);
 
+        //! Shared by the constructor and setIconPosition(): (re)builds m_layout from scratch for
+        //! the current m_iconPosition, then re-adds the leading/trailing widgets (if any) so they
+        //! survive the rebuild -- see setLeadingWidget()'s doc comment.
+        void rebuildLayout();
+
         IconPosition m_iconPosition;
 
         QBoxLayout* m_layout;
         RoundedImage* m_icon;
         RoundedImage* m_trailingIcon;
         QLabel* m_text;
+
+        QPointer<QWidget> m_leadingWidget;
+        QPointer<QWidget> m_trailingWidget;
 
         bool m_parentHovered;
         bool m_checked;

@@ -245,6 +245,33 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageInvitation : public AbstractChatMes
 //! above), so translations (see translations/uise_ru.ts) resolve consistently.
 UISE_DESKTOP_EXPORT QString formatInvitationHeadline(AbstractChatMessageInvitation::Kind kind);
 
+//! "Add contact" / "Join chat" -- widget-free twin of
+//! AbstractChatMessageInvitation::formatActionText(), which delegates to it. Same reason
+//! formatInvitationHeadline() above is a free function.
+UISE_DESKTOP_EXPORT QString formatInvitationActionText(AbstractChatMessageInvitation::Kind kind);
+
+//! Whether the card's primary action ("Add contact"/"Join chat") can be performed at all -- false
+//! for an Expired or Unsupported invitation, which has nothing usable to act on. Single definition
+//! shared by the menu builder below (which hides AddContact/ShowQrCode when this is false) and by
+//! the concrete card's own click handling (ChatMessageInvitation::mouseReleaseEvent(), which must
+//! not open a card whose menu would not have offered the action either).
+UISE_DESKTOP_EXPORT bool isInvitationActionable(AbstractChatMessageInvitation::State state);
+
+//! The card's action set for a given state, shared by BOTH the card's own drop-down
+//! (AbstractChatMessageInvitation::menuItems(), which delegates here) and a host's right-click
+//! submenu over the same card -- the identical "one builder, two call sites" split
+//! buildChatFileMenuItems() (chatfileitem.hpp) already uses for file rows, and for the same
+//! reason: neither menu can then offer a different action set than the other for the same card.
+//! Ids are MenuAction values; a host nesting these under a submenu is expected to offset them
+//! into its own id space and unwind that offset when dispatching.
+UISE_DESKTOP_EXPORT std::vector<MenuItem> buildInvitationMenuItems(
+    AbstractChatMessageInvitation::Kind kind,
+    AbstractChatMessageInvitation::State state,
+    bool hasUsername,
+    bool hasTemporaryCode,
+    QWidget* iconContext
+);
+
 }
 
 #endif // UISE_DESKTOP_ABSTRACTCHATMESSAGEINVITATION_HPP

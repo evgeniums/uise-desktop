@@ -76,32 +76,32 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location filename="../src/abstractchatmessageerror.cpp" line="+74"/>
         <source>Unsupported message type</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Неподдерживаемый тип сообщения</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>This message needs a newer version</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Нужна более новая версия приложения</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Message is too large</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Сообщение слишком большое</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>This message could not be read</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Не удалось прочитать сообщение</translation>
     </message>
     <message>
         <location line="+16"/>
         <source>Update the application to see this message.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Обновите приложение, чтобы увидеть это сообщение.</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>Ask the sender to send shorter messages.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Попросите отправителя писать короче.</translation>
     </message>
 </context>
 <context>
@@ -114,67 +114,67 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+2"/>
         <source>Expired</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Истёк</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Already in contacts</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Уже в контактах</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Update the application to open this invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Обновите приложение, чтобы открыть это приглашение</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <source>Add contact</source>
-        <translation type="unfinished"></translation>
+        <location line="+48"/>
+        <source>Show QR code</source>
+        <translation type="unfinished">Показать QR-код</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Join chat</source>
-        <translation type="unfinished"></translation>
+        <location line="+9"/>
+        <source>Copy username</source>
+        <translation type="unfinished">Скопировать никнейм</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Copy temporary code</source>
+        <translation type="unfinished">Скопировать временный код</translation>
     </message>
     <message>
         <location line="+4"/>
-        <source>Open</source>
-        <translation type="unfinished">Открыть</translation>
-    </message>
-    <message>
-        <location line="+16"/>
-        <source>Show QR code</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Copy username</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Copy temporary code</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+3"/>
         <source>Save as file</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Сохранить в файл</translation>
     </message>
     <message>
         <location line="+20"/>
         <source>Contact invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Приглашение в контакты</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Group chat invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Приглашение в групповой чат</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Invitation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Приглашение</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Add contact</source>
+        <translation type="unfinished">Добавить контакт</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Join chat</source>
+        <translation type="unfinished">Войти в чат</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Open</source>
+        <translation type="unfinished">Открыть</translation>
     </message>
 </context>
 <context>
@@ -974,7 +974,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+640"/>
+        <location filename="../src/htreetab.cpp" line="+671"/>
         <source>Collapse</source>
         <translation type="unfinished">Свернуть</translation>
     </message>
@@ -1645,7 +1645,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Открыть в новом окне</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+191"/>
+        <location filename="../src/htreenode.cpp" line="+193"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Развернуть</translation>
@@ -1795,7 +1795,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReactionIconPack</name>
     <message>
-        <location filename="../src/reactioniconpack.cpp" line="+56"/>
+        <location filename="../src/reactioniconpack.cpp" line="+63"/>
         <source>thumbs up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2659,6 +2659,92 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>m</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for minutes -- NOT months (e.g. &quot;5m 12s&quot;).</extracomment>
         <translation type="vanished">м</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageError</name>
+    <message>
+        <source>Unsupported message type</source>
+        <translation type="vanished">Неподдерживаемый тип сообщения</translation>
+    </message>
+    <message>
+        <source>This message needs a newer version</source>
+        <translation type="vanished">Нужна более новая версия приложения</translation>
+    </message>
+    <message>
+        <source>Message is too large</source>
+        <translation type="vanished">Сообщение слишком большое</translation>
+    </message>
+    <message>
+        <source>This message could not be read</source>
+        <translation type="vanished">Не удалось прочитать сообщение</translation>
+    </message>
+    <message>
+        <source>Update the application to see this message.</source>
+        <translation type="vanished">Обновите приложение, чтобы увидеть это сообщение.</translation>
+    </message>
+    <message>
+        <source>Ask the sender to send shorter messages.</source>
+        <translation type="vanished">Попросите отправителя писать короче.</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageInvitation</name>
+    <message>
+        <source>Password required</source>
+        <translation type="vanished">Требуется пароль</translation>
+    </message>
+    <message>
+        <source>Expired</source>
+        <translation type="vanished">Истёк</translation>
+    </message>
+    <message>
+        <source>Already in contacts</source>
+        <translation type="vanished">Уже в контактах</translation>
+    </message>
+    <message>
+        <source>Update the application to open this invitation</source>
+        <translation type="vanished">Обновите приложение, чтобы открыть это приглашение</translation>
+    </message>
+    <message>
+        <source>Show QR code</source>
+        <translation type="vanished">Показать QR-код</translation>
+    </message>
+    <message>
+        <source>Copy username</source>
+        <translation type="vanished">Скопировать никнейм</translation>
+    </message>
+    <message>
+        <source>Copy temporary code</source>
+        <translation type="vanished">Скопировать временный код</translation>
+    </message>
+    <message>
+        <source>Save as file</source>
+        <translation type="vanished">Сохранить в файл</translation>
+    </message>
+    <message>
+        <source>Contact invitation</source>
+        <translation type="vanished">Приглашение в контакты</translation>
+    </message>
+    <message>
+        <source>Group chat invitation</source>
+        <translation type="vanished">Приглашение в групповой чат</translation>
+    </message>
+    <message>
+        <source>Invitation</source>
+        <translation type="vanished">Приглашение</translation>
+    </message>
+    <message>
+        <source>Add contact</source>
+        <translation type="vanished">Добавить контакт</translation>
+    </message>
+    <message>
+        <source>Join chat</source>
+        <translation type="vanished">Войти в чат</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation type="vanished">Открыть</translation>
     </message>
 </context>
 <context>
