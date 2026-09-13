@@ -279,6 +279,43 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setItemTrailingIcon(int index, std::shared_ptr<SvgIcon> icon);
 
         /**
+         * @brief Embed a widget at the leading edge of an existing item, before its icon/text.
+         *
+         * Not to be confused with addLeadingWidget() above, which puts a widget in the bar's own
+         * left frame, outside every item. This one lives inside item @b index and scrolls, hides
+         * (see setSingleVisibleMode()) and is destroyed with it.
+         *
+         * The item takes ownership (see IconTextButton::setLeadingWidget()): a previously set
+         * widget is destroyed, nullptr clears it, and re-setting the same pointer is a no-op. The
+         * widget's own visibility is preserved across this call and across every later
+         * setItemIcon()/setItemName() layout rebuild.
+         *
+         * @param index Item index.
+         * @param widget Widget to embed, or nullptr to remove the current one.
+         */
+        void setItemLeadingWidget(int index, QWidget* widget);
+
+        /**
+         * @brief Get the widget currently embedded at the leading edge of an item, if any.
+         * @param index Item index.
+         */
+        QWidget* itemLeadingWidget(int index) const;
+
+        /**
+         * @brief Embed a widget at the trailing edge of an existing item, after its trailing icon.
+         * See setItemLeadingWidget() for ownership/visibility semantics.
+         * @param index Item index.
+         * @param widget Widget to embed, or nullptr to remove the current one.
+         */
+        void setItemTrailingWidget(int index, QWidget* widget);
+
+        /**
+         * @brief Get the widget currently embedded at the trailing edge of an item, if any.
+         * @param index Item index.
+         */
+        QWidget* itemTrailingWidget(int index) const;
+
+        /**
          * @brief Find item by ID
          * @param id ID to look for.
          * @return Id of found item or -1 if such id not found.

@@ -94,48 +94,65 @@ QString AbstractChatMessageInvitation::formatStateText() const
 
 QString AbstractChatMessageInvitation::formatActionText() const
 {
-    switch (kind())
-    {
-        case (Kind::Contact):
-            return tr("Add contact");
-        case (Kind::GroupChat):
-            return tr("Join chat");
-        case (Kind::Unknown):
-            break;
-    }
-    return tr("Open");
+    return formatInvitationActionText(kind());
 }
 
 //--------------------------------------------------------------------------
 
 std::vector<MenuItem> AbstractChatMessageInvitation::menuItems(QWidget* iconContext) const
 {
+    return buildInvitationMenuItems(kind(),state(),hasUsername(),hasTemporaryCode(),iconContext);
+}
+
+//--------------------------------------------------------------------------
+
+bool isInvitationActionable(AbstractChatMessageInvitation::State state)
+{
+    using State=AbstractChatMessageInvitation::State;
+    return state!=State::Expired && state!=State::Unsupported;
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<MenuItem> buildInvitationMenuItems(
+        AbstractChatMessageInvitation::Kind kind,
+        AbstractChatMessageInvitation::State state,
+        bool hasUsername,
+        bool hasTemporaryCode,
+        QWidget* iconContext
+    )
+{
+    using MenuAction=AbstractChatMessageInvitation::MenuAction;
+
     std::vector<MenuItem> items;
 
     // AddContact/ShowQrCode need a usable invitation to act on -- hidden (not just disabled) for
     // Expired/Unsupported, same gate the previous single-action-button design applied.
-    bool actionable=state()!=State::Expired && state()!=State::Unsupported;
-    if (actionable)
+    if (isInvitationActionable(state))
     {
-        items.push_back(MenuItem(static_cast<int>(MenuAction::AddContact),formatActionText(),
+        items.push_back(MenuItem(static_cast<int>(MenuAction::AddContact),formatInvitationActionText(kind),
                                  invitationMenuIcon(QStringLiteral("addContact"),iconContext)));
-        items.push_back(MenuItem(static_cast<int>(MenuAction::ShowQrCode),tr("Show QR code"),
+        items.push_back(MenuItem(static_cast<int>(MenuAction::ShowQrCode),
+                                 AbstractChatMessageInvitation::tr("Show QR code"),
                                  invitationMenuIcon(QStringLiteral("qrcode"),iconContext)));
     }
 
     // CopyUsername/CopyTemporaryCode/SaveAsFile stay available regardless of state -- even an
     // expired or unsupported invitation's raw bytes/identity strings are still worth keeping.
-    if (hasUsername())
+    if (hasUsername)
     {
-        items.push_back(MenuItem(static_cast<int>(MenuAction::CopyUsername),tr("Copy username"),
+        items.push_back(MenuItem(static_cast<int>(MenuAction::CopyUsername),
+                                 AbstractChatMessageInvitation::tr("Copy username"),
                                  invitationMenuIcon(QStringLiteral("copy"),iconContext)));
     }
-    if (hasTemporaryCode())
+    if (hasTemporaryCode)
     {
-        items.push_back(MenuItem(static_cast<int>(MenuAction::CopyTemporaryCode),tr("Copy temporary code"),
+        items.push_back(MenuItem(static_cast<int>(MenuAction::CopyTemporaryCode),
+                                 AbstractChatMessageInvitation::tr("Copy temporary code"),
                                  invitationMenuIcon(QStringLiteral("copy"),iconContext)));
     }
-    items.push_back(MenuItem(static_cast<int>(MenuAction::SaveAsFile),tr("Save as file"),
+    items.push_back(MenuItem(static_cast<int>(MenuAction::SaveAsFile),
+                             AbstractChatMessageInvitation::tr("Save as file"),
                              invitationMenuIcon(QStringLiteral("save"),iconContext)));
 
     return items;
@@ -163,6 +180,25 @@ QString formatInvitationHeadline(AbstractChatMessageInvitation::Kind kind)
     }
 
     return AbstractChatMessageInvitation::tr("Invitation");
+}
+
+//--------------------------------------------------------------------------
+
+QString formatInvitationActionText(AbstractChatMessageInvitation::Kind kind)
+{
+    using Kind=AbstractChatMessageInvitation::Kind;
+
+    switch (kind)
+    {
+        case (Kind::Contact):
+            return AbstractChatMessageInvitation::tr("Add contact");
+        case (Kind::GroupChat):
+            return AbstractChatMessageInvitation::tr("Join chat");
+        case (Kind::Unknown):
+            break;
+    }
+
+    return AbstractChatMessageInvitation::tr("Open");
 }
 
 //--------------------------------------------------------------------------

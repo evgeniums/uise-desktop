@@ -356,6 +356,112 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>uise::AbstractChatMessageError</name>
+    <message>
+        <location filename="../src/abstractchatmessageerror.cpp" line="+74"/>
+        <source>Unsupported message type</source>
+        <translation>Unsupported message type</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>This message needs a newer version</source>
+        <translation>This message needs a newer version</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Message is too large</source>
+        <translation>Message is too large</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>This message could not be read</source>
+        <translation>This message could not be read</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Update the application to see this message.</source>
+        <translation>Update the application to see this message.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Ask the sender to send shorter messages.</source>
+        <translation>Ask the sender to send shorter messages.</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AbstractChatMessageInvitation</name>
+    <message>
+        <location filename="../src/abstractchatmessageinvitation.cpp" line="+82"/>
+        <source>Password required</source>
+        <translation>Password required</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Expired</source>
+        <translation>Expired</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Already in contacts</source>
+        <translation>Already in contacts</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Update the application to open this invitation</source>
+        <translation>Update the application to open this invitation</translation>
+    </message>
+    <message>
+        <location line="+48"/>
+        <source>Show QR code</source>
+        <translation>Show QR code</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Copy username</source>
+        <translation>Copy username</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Copy temporary code</source>
+        <translation>Copy temporary code</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Save as file</source>
+        <translation>Save as file</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Contact invitation</source>
+        <translation>Contact invitation</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Group chat invitation</source>
+        <translation>Group chat invitation</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Invitation</source>
+        <translation>Invitation</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Add contact</source>
+        <translation>Add contact</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Join chat</source>
+        <translation>Join chat</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Open</source>
+        <translation>Open</translation>
+    </message>
+</context>
+<context>
     <name>uise::AbstractChatMessagesView</name>
     <message>
         <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+182"/>
@@ -620,7 +726,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1661"/>
+        <location filename="../src/chatmessage.cpp" line="+1691"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -1149,17 +1255,37 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+2603"/>
+        <location filename="../src/messageeditor.cpp" line="+3120"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
     <message>
-        <location line="+1317"/>
+        <location line="+1381"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+1144"/>
+        <location line="+1272"/>
+        <source>No suggestions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Add to dictionary</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Ignore word</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Check spelling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Cut</source>
         <translation>Cut</translation>
     </message>
@@ -1322,7 +1448,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Delete table</translation>
     </message>
     <message>
-        <location line="+129"/>
+        <location line="+134"/>
         <source>Editing mode</source>
         <translation>Editing mode</translation>
     </message>
@@ -1462,7 +1588,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Mention someone</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
+        <source>Check spelling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Clear formatting</source>
         <translation>Clear formatting</translation>
     </message>

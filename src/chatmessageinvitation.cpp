@@ -23,8 +23,10 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
-#include <QLabel>
+#include <algorithm>
+
 #include <QPixmap>
+#include <QMouseEvent>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -33,12 +35,23 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/elidedlabel.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /*****************************ChatMessageInvitation***************************/
 
 namespace {
+
+//! Gap between the caption and description lines -- same value ChatMessageFileItem uses between
+//! its own nameLabel and infoLabel, so an invitation card and a file row space their two lines
+//! identically.
+constexpr int TextLineSpacing=4;
+
+//! Hard cap on the bubble width of an invitation message, mirroring
+//! AbstractChatMessageFiles::DefaultMaxBubbleWidth (and chat.qss's own cap on a text bubble): the
+//! card's width otherwise tracks its title's full unelided length. See bubbleWidthHint().
+constexpr int MaxBubbleWidth=600;
 
 std::shared_ptr<SvgIcon> invitationMenuIcon(const QString& alias, QWidget* context)
 {
@@ -55,11 +68,23 @@ class ChatMessageInvitation_p
 
         QBoxLayout* layout=nullptr;
         WithRoundedImage* invitationIcon=nullptr;
-        QLabel* caption=nullptr;
-        QLabel* description=nullptr;
+
+        // ElidedLabel, NOT a word-wrapped QLabel: a QLabel with setWordWrap(true) reports a
+        // deliberately compact sizeHint() (Qt picks a readable block width rather than the text's
+        // full single-line width), and the default bubbleWidthHint() just forwards that -- so the
+        // bubble asked for far less width than one line needs and the caption wrapped even with
+        // room to spare beside it. ElidedLabel reports the full single-line width instead, and
+        // elides rather than wrapping when the bubble genuinely cannot grow that far. Same widget
+        // and same reasoning as ChatMessageFileItem's own nameLabel.
+        ElidedLabel* caption=nullptr;
+        ElidedLabel* description=nullptr;
 
         IconTextButton* menuButton=nullptr;
         QPointer<DropdownMenu> menu;
+
+        //! Set by mousePressEvent() so mouseReleaseEvent() only treats a release as a click when
+        //! the press that started it landed on this card too.
+        bool pressed=false;
 };
 
 //--------------------------------------------------------------------------
@@ -78,15 +103,30 @@ ChatMessageInvitation::ChatMessageInvitation(QWidget* parent)
     Layout::clear(textLayout);
     pimpl->layout->addLayout(textLayout,1);
 
-    pimpl->caption=new QLabel(this);
+    // Stretches bracketing the two labels, and an explicit gap between them -- copied from
+    // ChatMessageFileItem's own text column for the reason its constructor spells out: this
+    // column's height follows the row's (driven by the icon, well beyond what two lines of text
+    // need), and a plain QVBoxLayout with neither stretch hands that leftover space to the
+    // labels themselves (both default to a Preferred vertical size policy). Each label then
+    // centers its text inside its own inflated cell, so the caption drifts up and the
+    // description down, leaving a visibly bigger gap between them than the file row has.
+    textLayout->addStretch(1);
+
+    pimpl->caption=new ElidedLabel(this);
     pimpl->caption->setObjectName("caption");
-    pimpl->caption->setWordWrap(true);
+    pimpl->caption->setElideMode(Qt::ElideRight);
     textLayout->addWidget(pimpl->caption);
 
-    pimpl->description=new QLabel(this);
+    textLayout->addSpacing(TextLineSpacing);
+
+    pimpl->description=new ElidedLabel(this);
     pimpl->description->setObjectName("description");
-    pimpl->description->setWordWrap(true);
+    // ElideMiddle, like the file row's own name line: this line carries a title, a username or a
+    // "#code@domain", all of which have a meaningful tail worth keeping visible.
+    pimpl->description->setElideMode(Qt::ElideMiddle);
     textLayout->addWidget(pimpl->description);
+
+    textLayout->addStretch(1);
 
     pimpl->menuButton=new IconTextButton(
         invitationMenuIcon(QStringLiteral("menu"),this),
@@ -102,9 +142,21 @@ ChatMessageInvitation::ChatMessageInvitation(QWidget* parent)
     // (thirdparty/uise-desktop/src/chatmessagefileitem.cpp): DropdownFrame reparents itself
     // lazily to the trigger's actual window() on first opening.
     pimpl->menu=new DropdownMenu();
-    pimpl->menu->attachTo(pimpl->menuButton);
+
+    // Connected BEFORE attachTo() below, which wires its own clicked handler that actually opens
+    // the dropdown -- Qt invokes same-signal slots in connection order, so this one must run
+    // first to have the items in place by the time the popup is filled and measured. With the
+    // two connects the other way round the first click popped up an empty, tiny square (the
+    // items only landed afterwards, so it took a second click to show a real menu) -- the same
+    // trap ChatMessageFileItem's own constructor documents at length.
     connect(pimpl->menuButton,&IconTextButton::clicked,this,&ChatMessageInvitation::onMenuButtonClicked);
+
+    pimpl->menu->attachTo(pimpl->menuButton);
     connect(pimpl->menu,&DropdownMenu::itemTriggered,this,&ChatMessageInvitation::onMenuItemTriggered);
+
+    // Matches the default State::Available -- kept in sync from updateState() on every change
+    // after that, so a card that is never given a state still looks clickable, which it is.
+    setCursor(Qt::PointingHandCursor);
 
     setSizePolicy(QSizePolicy::Minimum,QSizePolicy::Fixed);
 }
@@ -163,6 +215,10 @@ void ChatMessageInvitation::updateState()
     // line instead -- see updateIdentityText()'s own body, called here too so a state change
     // alone (identityText() unchanged) still re-evaluates which of the two should show.
     updateIdentityText();
+
+    // Only a card that can actually be acted on advertises itself as clickable -- the same gate
+    // mouseReleaseEvent() applies before emitting.
+    setCursor(isInvitationActionable(state()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
 }
 
 //--------------------------------------------------------------------------
@@ -217,6 +273,57 @@ void ChatMessageInvitation::updateIcon()
             break;
     }
     pimpl->invitationIcon->image()->setSvgIcon(Style::instance().svgIconLocator().icon(icon,this));
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageInvitation::bubbleWidthHint(int forMaxWidth)
+{
+    // sizeHint() is the icon slot + the wider of the two ElidedLabels' FULL single-line text +
+    // the menu button. Clamped by this card's own cap first and the negotiation's budget second;
+    // whichever bites, the labels elide into whatever width the bubble ends up with.
+    auto capped=std::min(forMaxWidth,MaxBubbleWidth);
+    return std::min(sizeHint().width(),capped);
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageInvitation::ownWidthCeiling() const
+{
+    return MaxBubbleWidth;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageInvitation::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button()==Qt::LeftButton && isInvitationActionable(state()))
+    {
+        pimpl->pressed=true;
+        event->accept();
+        return;
+    }
+    AbstractChatMessageInvitation::mousePressEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageInvitation::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (pimpl->pressed && event->button()==Qt::LeftButton)
+    {
+        pimpl->pressed=false;
+
+        // Release must land back on the card -- dragging off it and letting go is a cancelled
+        // click, the same way any push button behaves.
+        if (rect().contains(event->pos()) && isInvitationActionable(state()))
+        {
+            emit menuActionTriggered(static_cast<int>(MenuAction::AddContact));
+        }
+        event->accept();
+        return;
+    }
+    AbstractChatMessageInvitation::mouseReleaseEvent(event);
 }
 
 //--------------------------------------------------------------------------
