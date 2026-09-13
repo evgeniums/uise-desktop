@@ -252,6 +252,8 @@ class HTreeNode_p
 
         QIcon icon;
         std::shared_ptr<SvgIcon> titleIcon;
+        QPointer<QWidget> leadingWidget;
+        QPointer<QWidget> trailingWidget;
         QString tooltip;
 
         QFrame* mainFrame=nullptr;
@@ -578,6 +580,44 @@ void HTreeNode::setTitleIcon(std::shared_ptr<SvgIcon> icon)
 {
     pimpl->titleIcon=icon;
     emit titleIconUpdated(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeNode::leadingWidget() const
+{
+    return pimpl->leadingWidget.get();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setLeadingWidget(QWidget* widget)
+{
+    if (pimpl->leadingWidget==widget)
+    {
+        return;
+    }
+    pimpl->leadingWidget=widget;
+    emit leadingWidgetUpdated(widget);
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeNode::trailingWidget() const
+{
+    return pimpl->trailingWidget.get();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setTrailingWidget(QWidget* widget)
+{
+    if (pimpl->trailingWidget==widget)
+    {
+        return;
+    }
+    pimpl->trailingWidget=widget;
+    emit trailingWidgetUpdated(widget);
 }
 
 //--------------------------------------------------------------------------

@@ -184,6 +184,22 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         //! exists with no icon slot.
         std::shared_ptr<SvgIcon> titleIcon() const;
 
+        //! Widget embedded at the leading edge of this node's navigation bar item, ahead of
+        //! titleIcon(). Stored on the node for the same reason titleIcon() is (see above): a
+        //! node is init()ed before HTreeTab_p::appendNode() creates its navbar item, so a widget
+        //! set before that point has nowhere to go yet and appendNode() must read it back to
+        //! seed the freshly created item.
+        //! Once seeded, the item takes ownership of the widget and destroys it with itself (see
+        //! NavigationBar::setItemLeadingWidget()) -- give the widget a parent at construction
+        //! (the node itself is the natural choice) so it is not a top-level window in the
+        //! meantime, and treat this getter's result as possibly gone after the item is
+        //! truncated.
+        QWidget* leadingWidget() const;
+
+        //! Widget embedded at the trailing edge of this node's navigation bar item, after the
+        //! trailing icon slot. See leadingWidget() for storage/ownership semantics.
+        QWidget* trailingWidget() const;
+
         void setContentWidget(QWidget* widget);
         QWidget* contentWidget() const;
 
@@ -299,6 +315,15 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         //! diverge since they happen in the same call.
         void setTitleIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
+        //! Store the leading widget and emit leadingWidgetUpdated() -- see leadingWidget()'s
+        //! doc comment. Does not reparent the widget itself; NavigationBar does that once an
+        //! item exists to receive it, so a node with no navbar item yet is never left holding a
+        //! half-attached widget.
+        void setLeadingWidget(QWidget* widget);
+
+        //! Store the trailing widget and emit trailingWidgetUpdated(). See setLeadingWidget().
+        void setTrailingWidget(QWidget* widget);
+
         void closeNode();
         void collapseNode();
         void expandNode();
@@ -337,6 +362,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
         void titleIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
         void trailingIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
+
+        void leadingWidgetUpdated(QWidget* widget);
+        void trailingWidgetUpdated(QWidget* widget);
 
         void toggleExpanded(bool enable);
 

@@ -163,7 +163,7 @@
         <translation>Open in new window</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+314"/>
+        <location filename="../src/htreenode.cpp" line="+316"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Expand</translation>
@@ -1127,7 +1127,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeNodeTitleBar</name>
     <message>
-        <location filename="../src/htreenode.cpp" line="-209"/>
+        <location filename="../src/htreenode.cpp" line="-211"/>
         <source>Close this section with all subsequent sections</source>
         <translation>Close this section with all subsequent sections</translation>
     </message>
@@ -1150,7 +1150,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+640"/>
+        <location filename="../src/htreetab.cpp" line="+671"/>
         <source>Collapse</source>
         <translation>Collapse</translation>
     </message>
