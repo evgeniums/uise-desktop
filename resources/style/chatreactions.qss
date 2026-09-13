@@ -1,0 +1,154 @@
+/* Bubble section (6th ChatMessageContentSection slot, between comment() and bottom() -- see
+   AbstractChatMessageContent::trailingSection()). maxBubbleWidth is this section's
+   ownWidthCeiling() -- it must not be left unbounded, or a widened-for-reactions bubble could
+   push past whatever cap a plain text body would already be held to; matches
+   uise--AbstractChatMessageText's own cap so a message with both reads consistently. */
+uise--ChatMessageReactions {
+qproperty-maxBubbleWidth: 500;
+}
+
+/* ChatMessageReactionsRow packs chips itself (no QLayout -- see utils/flowpack.hpp); these are
+   its only QSS-tunable knobs. maxVisibleChips: 0 means unlimited (no "..." overflow chip).
+   maxAvatarChipTypes / maxAvatarsPerChip gate the avatars-vs-count presentation decision (see
+   ChatMessageReactionsRow::setReactions()) -- default 2 reaction types, up to 3 users each. */
+uise--ChatMessageReactionsRow {
+qproperty-maxVisibleChips: 8;
+qproperty-maxAvatarChipTypes: 2;
+qproperty-maxAvatarsPerChip: 3;
+qproperty-chipSpacing: 6;
+qproperty-rowSpacing: 4;
+/* width kept free at the end of the last chip row for an inline time/status row -- passed
+   through to FlowPackOptions::reservedTailWidth */
+qproperty-tailGap: 10;
+}
+
+/* padding/border declared unconditionally so the [own="true"] background below only changes
+   colour, never the chip's box model -- same convention as dropdownmenu.qss's row rule */
+uise--ChatMessageReactionChip {
+padding:3px 8px;
+border-radius:12px;
+border:1px solid transparent;
+/* Width, on each side, of the solid ring painted behind every avatar -- see #avatarRing's own
+   comment. Its border-radius is NOT set here (it would need to track this property by hand);
+   ChatMessageReactionChip::updateAvatars() computes and applies it in C++ instead. */
+qproperty-avatarRingBorderWidth: 1;
+}
+
+uise--ChatMessageReactionChip #reactionIcon {
+min-width:16px;
+max-width:16px;
+min-height:16px;
+max-height:16px;
+}
+
+uise--ChatMessageReactionChip #avatars {
+padding:0;
+margin:0;
+}
+
+/* Matches #reactionIcon's own size (ChatMessageReactionChip's ReactionChipIconSize constant) --
+   deliberately the same size so the icon and the avatar stack read as one consistent scale.
+   Position AND overlap are both set in C++ (ChatMessageReactionChip::updateAvatars(), manual
+   setGeometry() -- see that class's own comment on why neither a QSS margin nor
+   QLayout::setSpacing() can express a genuine negative gap in Qt); these min/max-width rules are
+   redundant with AvatarWidget::setAvatarSize()'s own setFixedSize() call, kept only as a
+   self-documenting safety net. Do not add margin/position rules here -- they would be ignored. */
+uise--ChatMessageReactionChip #avatar {
+min-width:16px;
+max-width:16px;
+min-height:16px;
+max-height:16px;
+}
+
+/* Solid backdrop painted behind each avatar (see updateAvatars()'s own comment on the layering
+   trick this depends on) so overlapping same-coloured avatars still read as separate circles.
+   Size is ReactionChipIconSize + 2*avatarRingBorderWidth on each axis. border-radius is
+   deliberately NOT set here -- it would need to stay in sync with avatarRingBorderWidth by hand;
+   ChatMessageReactionChip::updateAvatars() computes it from the property's CURRENT value and
+   applies it per-instance instead, so the ring is always an exact circle regardless of that
+   value. Colour is per-theme (see light/dark chatreactions.qss) since it approximates whatever
+   surface the chip normally sits on, not a fixed brand colour. */
+uise--ChatMessageReactionChip #avatarRing {
+border:none;
+}
+
+uise--ChatMessageReactionChip #count {
+margin-left:4px;
+}
+
+/* the trailing "..." overflow chip (ChatMessageReactionsRow::moreRequested()) shows only the
+   dots glyph -- #reactionIcon/#count/#avatars all stay hidden, see setEllipsis(true) */
+uise--ChatMessageReactionChip[ellipsis="true"] #moreIcon {
+min-width:16px;
+max-width:16px;
+min-height:16px;
+max-height:16px;
+}
+
+/* --- gallery quick bar (collapsed state: 7 basic icons + chevron) --- */
+
+uise--ChatReactionQuickBar {
+padding:4px;
+}
+
+/* PushButton's own styling contract (pushbutton.hpp): the INNER QPushButton owns padding/
+   border/border-radius/background, the outer uise--PushButton wrapper supports only margin --
+   padding/border declared on the outer frame is inert (its own layout margins are hard-reset to
+   0 in its constructor). Emoji glyphs render via native QIcon (PushButton::setSvgIcon() ->
+   QAbstractButton::setIcon()), sized with the QSS "icon-size" property, NOT a child
+   uise--RoundedImage -- PushButton has no such child. */
+uise--ChatReactionQuickBar #quickButton QPushButton {
+icon-size:22px;
+padding:4px;
+border-radius:8px;
+border:1px solid transparent;
+}
+
+uise--ChatReactionQuickBar #expandButton QPushButton {
+icon-size:14px;
+padding:2px;
+border:none;
+}
+
+/* --- expanded gallery (recents row / search / scrollable grid) --- */
+
+uise--ChatReactionGallery {
+padding:8px;
+}
+
+uise--ChatReactionGallery #recentTitle {
+margin-bottom:4px;
+}
+
+uise--ChatReactionGallery #searchEdit {
+margin-top:8px;
+margin-bottom:8px;
+}
+
+/* fixed column count the gallery packs its persistent grid cells into
+   (ChatReactionGallery::rebuildGrid(), the Calendar_p::buildGrid() idiom) and how many full
+   rows are visible before the scroll area clips -- both purely presentational, no packing math
+   depends on these beyond sizing #galleryScroll's viewport */
+uise--ChatReactionGallery {
+qproperty-galleryColumns: 8;
+qproperty-galleryVisibleRows: 5;
+}
+
+uise--ChatReactionGallery #galleryButton QPushButton {
+icon-size:22px;
+padding:4px;
+border-radius:8px;
+border:1px solid transparent;
+}
+
+/* --- the dropdown frame hosting both quick-bar and gallery panels --- */
+
+uise--ChatReactionGalleryDropdown {
+padding:0;
+border:1px solid;
+border-radius:8px;
+qproperty-offsetX: 0;
+qproperty-offsetY: 4;
+qproperty-animationDurationMs: 150;
+qproperty-easingCurveType: 6;
+}

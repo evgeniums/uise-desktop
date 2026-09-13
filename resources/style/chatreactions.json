@@ -1,0 +1,69 @@
+{
+    "contexts" : [
+        {
+            "name" : "ChatReactions",
+            "aliases" : {
+                "expand" : "${uise-svg-icons-1}/chevron-down",
+                "collapse" : "${uise-svg-icons-1}/chevron-up",
+                "more" : "${uise-svg-icons-1}/dots",
+                "search" : "${uise-svg-icons-1}/search"
+            }
+        },
+        {
+            "name" : "ChatReactionPack",
+            "aliases" : {
+                "thumbsup" : "${uise-svg-icons-4}/emoji_u1f44d",
+                "heart" : "${uise-svg-icons-4}/emoji_u2764",
+                "joy" : "${uise-svg-icons-4}/emoji_u1f602",
+                "open-mouth" : "${uise-svg-icons-4}/emoji_u1f62e",
+                "cry" : "${uise-svg-icons-4}/emoji_u1f622",
+                "pray" : "${uise-svg-icons-4}/emoji_u1f64f",
+                "fire" : "${uise-svg-icons-4}/emoji_u1f525",
+
+                "grinning" : "${uise-svg-icons-4}/emoji_u1f600",
+                "smile-open" : "${uise-svg-icons-4}/emoji_u1f603",
+                "smile-eyes" : "${uise-svg-icons-4}/emoji_u1f604",
+                "grin" : "${uise-svg-icons-4}/emoji_u1f601",
+                "sweat-smile" : "${uise-svg-icons-4}/emoji_u1f605",
+                "rofl" : "${uise-svg-icons-4}/emoji_u1f923",
+                "blush" : "${uise-svg-icons-4}/emoji_u1f60a",
+                "slight-smile" : "${uise-svg-icons-4}/emoji_u1f642",
+                "wink" : "${uise-svg-icons-4}/emoji_u1f609",
+                "heart-eyes" : "${uise-svg-icons-4}/emoji_u1f60d",
+                "blow-kiss" : "${uise-svg-icons-4}/emoji_u1f618",
+                "wink-tongue" : "${uise-svg-icons-4}/emoji_u1f61c",
+                "hug" : "${uise-svg-icons-4}/emoji_u1f917",
+                "thinking" : "${uise-svg-icons-4}/emoji_u1f914",
+                "neutral" : "${uise-svg-icons-4}/emoji_u1f610",
+                "sleeping" : "${uise-svg-icons-4}/emoji_u1f634",
+                "sunglasses" : "${uise-svg-icons-4}/emoji_u1f60e",
+                "party-face" : "${uise-svg-icons-4}/emoji_u1f973",
+                "sob" : "${uise-svg-icons-4}/emoji_u1f62d",
+                "scream" : "${uise-svg-icons-4}/emoji_u1f631",
+                "rage" : "${uise-svg-icons-4}/emoji_u1f621",
+                "mind-blown" : "${uise-svg-icons-4}/emoji_u1f92f",
+                "thumbsdown" : "${uise-svg-icons-4}/emoji_u1f44e",
+                "clap" : "${uise-svg-icons-4}/emoji_u1f44f",
+                "raised-hands" : "${uise-svg-icons-4}/emoji_u1f64c",
+                "ok-hand" : "${uise-svg-icons-4}/emoji_u1f44c",
+                "victory" : "${uise-svg-icons-4}/emoji_u270c",
+                "handshake" : "${uise-svg-icons-4}/emoji_u1f91d",
+                "muscle" : "${uise-svg-icons-4}/emoji_u1f4aa",
+                "tada" : "${uise-svg-icons-4}/emoji_u1f389",
+                "birthday" : "${uise-svg-icons-4}/emoji_u1f382",
+                "gift" : "${uise-svg-icons-4}/emoji_u1f381",
+                "hundred" : "${uise-svg-icons-4}/emoji_u1f4af",
+                "check" : "${uise-svg-icons-4}/emoji_u2705",
+                "cross" : "${uise-svg-icons-4}/emoji_u274c",
+                "star" : "${uise-svg-icons-4}/emoji_u2b50",
+                "broken-heart" : "${uise-svg-icons-4}/emoji_u1f494",
+                "smiling-imp" : "${uise-svg-icons-4}/emoji_u1f608",
+                "eyes" : "${uise-svg-icons-4}/emoji_u1f440",
+                "clown" : "${uise-svg-icons-4}/emoji_u1f921",
+                "poop" : "${uise-svg-icons-4}/emoji_u1f4a9",
+                "rocket" : "${uise-svg-icons-4}/emoji_u1f680",
+                "smirk" : "${uise-svg-icons-4}/emoji_u1f60f"
+            }
+        }
+    ]
+}

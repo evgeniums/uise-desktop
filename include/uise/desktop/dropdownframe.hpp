@@ -320,6 +320,27 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         void popupBelow(QWidget* anchor);
 
         /**
+         * @brief Open the frame anchored ABOVE (or, if flipped, below) the given global rect,
+         *  left-aligned with it.
+         * @param anchorGlobalRect Global rect to anchor above, e.g. a context menu's own
+         *  fullRect() (see setChainParent()'s own doc comment for pinning a gallery above a menu).
+         *
+         * Anchored with its bottom edge at the rect's top edge by default (growing UPWARD as it
+         * opens -- see applyFrame()'s corner-pinned growth), like a submenu that opens above
+         * rather than beside its row; flips to growing downward from the rect's bottom edge only
+         * if there is not enough room above but more room below (mirrors popupBelow()'s own
+         * below-first, flip-to-above policy, inverted). Horizontally left-aligned with the rect
+         * by default, flipped to right-aligned only if it would overflow the screen's right edge.
+         */
+        void popupAboveRect(const QRect& anchorGlobalRect);
+
+        /**
+         * @brief Convenience overload of popupAboveRect() using the anchor widget's own global
+         *  rect.
+         */
+        void popupAbove(QWidget* anchor);
+
+        /**
          * @brief Open the frame anchored at a global position, e.g. the cursor position.
          * @param globalPos Global position of the frame's top-left corner (before any flip).
          *
@@ -344,6 +365,56 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
          * @param immediate If true, skip the close animation.
          */
         void closeDropdown(bool immediate=false);
+
+        /**
+         * @brief Re-measure and re-anchor an ALREADY OPEN frame after its content changed size.
+         * @param animate Reserved for a future smooth resize -- always applies immediately in
+         *  this implementation, regardless of the value passed. Accepted now so a call site
+         *  written against the eventual animated behaviour does not need a signature change
+         *  later.
+         *
+         * Re-runs the SAME anchoring the most recent popupX() call used (popupBelow()/popupAt()/
+         * popupBeside()(Rect)/popupAbove()(Rect)), against the CURRENT content() size -- the
+         * counterpart to those methods' own one-shot measurement for a host whose content
+         * changes shape while still open. Since that re-derives position from the ORIGINAL
+         * anchor every time, a frame anchored to grow in one direction (e.g. popupAboveRect()'s
+         * upward growth) keeps growing that same direction on every remeasure() too -- see
+         * remeasureKeepingTopLeft() below for the opposite, accordion-style need.
+         *
+         * No-op when the frame is closed, or when no popupX() call has ever measured it. Any
+         * chained child (setChainParent()) is closed first, since it was anchored to geometry
+         * that is about to move.
+         *
+         * This does not relax the class's own "content is sized once per opening" contract (see
+         * this class's doc comment) -- it EXTENDS it to "sized once per MEASUREMENT", and this is
+         * simply how a host triggers an additional one mid-opening, atomically, the same way the
+         * very first one already works.
+         */
+        void remeasure(bool animate=false);
+
+        /**
+         * @brief Re-measure an ALREADY OPEN frame's content size only, keeping its CURRENT
+         *  top-left corner fixed and growing/shrinking towards the bottom-right instead of
+         *  re-deriving position from whatever anchor the last popupX() call used.
+         * @param animate Reserved, see remeasure()'s own doc comment -- always applies
+         *  immediately in this implementation.
+         *
+         * The accordion counterpart to remeasure(): a fixed header revealing/hiding a panel
+         * below it, where the header's own on-screen position must never move regardless of how
+         * the popup was originally anchored -- see ChatReactionGalleryDropdown::setExpanded(),
+         * whose collapsed quick bar stays exactly where popupAboveRect() first placed it while
+         * the gallery unfolds downward beneath it (which can mean growing INTO whatever screen
+         * space the original anchor was placed above, e.g. a context menu -- deliberate, since
+         * once the user is picking a reaction the menu underneath is no longer the focus).
+         *
+         * Clamps the resulting size to the screen the current top-left corner is on, but never
+         * moves that corner itself to make room -- unlike every measureX(), there is no flip
+         * logic here, since the whole point is that the anchor is fixed by definition.
+         *
+         * No-op under the same preconditions as remeasure(). Any chained child is closed first,
+         * for the same reason remeasure() closes one.
+         */
+        void remeasureKeepingTopLeft(bool animate=false);
 
     signals:
 
@@ -446,6 +517,7 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         void measure(QWidget* anchor);
         void measureAt(const QPoint& globalPos);
         void measureBeside(const QRect& anchorGlobalRect);
+        void measureAbove(const QRect& anchorGlobalRect);
         QWidget* resolveHost(QWidget* anchor) const;
         void detachFromChainParent();
         void animateFrame(bool forward, bool immediate);

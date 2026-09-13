@@ -241,6 +241,10 @@ ReplyPreviewData makeForwardData(ReplyMessageKind kind)
             data.setDeleted(true);
             break;
 
+        case (ReplyMessageKind::Invitation):
+            data.setText(QStringLiteral("Contact invitation"));
+            break;
+
         case (ReplyMessageKind::Unknown):
             break;
     }
@@ -318,6 +322,7 @@ int main(int argc, char *argv[])
     kindCombo->addItem(QStringLiteral("Image"),static_cast<int>(ReplyMessageKind::Image));
     kindCombo->addItem(QStringLiteral("File"),static_cast<int>(ReplyMessageKind::File));
     kindCombo->addItem(QStringLiteral("Call"),static_cast<int>(ReplyMessageKind::Call));
+    kindCombo->addItem(QStringLiteral("Invitation"),static_cast<int>(ReplyMessageKind::Invitation));
     kindLayout->addWidget(kindCombo,1);
 
     auto* trimFrame=new QFrame(central);

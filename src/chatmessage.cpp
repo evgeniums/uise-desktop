@@ -234,6 +234,14 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
     m_commentWidthHint=(comment()!=nullptr) ? comment()->bubbleWidthHint(forMaxWidth) : 0;
     m_commentWidthHintValid=true;
 
+    // Same memoization for reactions() -- mandatory, not just an optimization: trailingSection()
+    // prefers a non-empty reactions() over comment()/body(), so evaluateInlineBottom() (next)
+    // needs THIS pass' bubbleWidthHint() call to have already run on it, exactly like comment()
+    // above.
+    m_reactionsWidthHintForMaxWidth=forMaxWidth;
+    m_reactionsWidthHint=(reactions()!=nullptr) ? reactions()->bubbleWidthHint(forMaxWidth) : 0;
+    m_reactionsWidthHintValid=true;
+
     // Decide whether the bottom row can be tucked into the trailing space of the last text line
     // -- must run AFTER body/comment are laid out (their lastTextLineRect() reflects this pass'
     // own wrap only right after bubbleWidthHint() ran) and BEFORE the section loop below, since
@@ -254,6 +262,10 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
         else if (section==static_cast<ChatMessageContentSection*>(comment()))
         {
             sectionWidthHint=m_commentWidthHint;
+        }
+        else if (section==static_cast<ChatMessageContentSection*>(reactions()))
+        {
+            sectionWidthHint=m_reactionsWidthHint;
         }
         else
         {
@@ -354,6 +366,7 @@ void AbstractChatMessageContent::rebuildSections()
     attach(m_reply);
     attach(m_body);
     attach(m_comment);
+    attach(m_reactions);
     attach(m_bottom);
 }
 
@@ -793,6 +806,17 @@ void ChatMessageContent::updateWidgets()
         m_layout->addWidget(comment(),0,Qt::AlignLeft);
         comment()->show();
     }
+    if (reactions()!=nullptr)
+    {
+        m_layout->addWidget(reactions(),0,Qt::AlignLeft);
+        // setVisible(...), NOT the unconditional show() the other sections get above -- an
+        // attached-but-empty reactions section (the common case, see
+        // AbstractChatMessageReactions::isEmpty()'s own doc comment) must stay out of the
+        // layout's effective sizeHint() until a reaction is actually set. setVisible(true) still
+        // clears WA_WState_Hidden synchronously (same guarantee the comment above documents for
+        // show()), so a non-empty section is still counted by the very next sizeHint().
+        reactions()->setVisible(!reactions()->isEmpty());
+    }
     if (bottom()!=nullptr)
     {
         m_layout->addWidget(bottom(),0,Qt::AlignLeft);
@@ -940,6 +964,10 @@ void ChatMessageContent::clearContentSelection()
     {
         comment()->clearContentSelection();
     }
+    if (reactions()!=nullptr)
+    {
+        reactions()->clearContentSelection();
+    }
     if (bottom()!=nullptr)
     {
         bottom()->clearContentSelection();
@@ -968,6 +996,10 @@ void ChatMessageContent::setSelected(bool enable)
     {
         comment()->setSelected(enable);
     }
+    if (reactions())
+    {
+        reactions()->setSelected(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -991,6 +1023,10 @@ void ChatMessageContent::setSent(bool enable)
     if (comment())
     {
         comment()->setSent(enable);
+    }
+    if (reactions())
+    {
+        reactions()->setSent(enable);
     }
 }
 

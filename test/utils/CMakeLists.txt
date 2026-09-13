@@ -8,6 +8,7 @@ SET (SOURCES
     testorientationinvariant.cpp
     testmiscutils.cpp
     testalbumlayout.cpp
+    testflowpack.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

@@ -1,0 +1,33 @@
+{
+    "theme" : "dark",
+
+    "_comment_ChatReactionPack" : "Deliberately no context entry below for 'ChatReactionPack': those aliases resolve to full-color Noto Emoji SVGs (see thirdparty/noto-emoji/), which must render byte-identical in both themes. SvgIcon::loadFromData() recolors an icon only by literal string-replacing 'currentColor' tokens against a context's 'modes' map (src/svgicon.cpp); a context with no 'modes' block gets an empty color map and the SVG passes through untouched. Do NOT add a 'modes' block for 'ChatReactionPack' here or in light/chatreactions.json.",
+
+    "contexts" : [
+        {
+            "name" : "ChatReactions",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on" :  { "currentColor" : "#FFFFFF" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FFFFFF" },
+                    "on" : { "currentColor" : "#FFFFFF" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#888888" },
+                    "on" :  { "currentColor" : "#888888" }
+                },
+                "checked" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                },
+                "checked-hovered" : {
+                    "off" : { "currentColor" : "#4C9AFF" },
+                    "on" :  { "currentColor" : "#4C9AFF" }
+                }
+            }
+        }
+    ]
+}

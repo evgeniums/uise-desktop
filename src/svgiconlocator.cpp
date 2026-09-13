@@ -393,6 +393,7 @@ void SvgIconLocator::reset(bool presetDefault)
         addIconDirSubstitution("${uise-svg-icons-1}","tabler-icons/outline");
         addIconDirSubstitution("${uise-svg-icons-2}","tabler-icons/filled");
         addIconDirSubstitution("${uise-svg-icons-3}","reshot");
+        addIconDirSubstitution("${uise-svg-icons-4}","noto-emoji");
     }
 }
 

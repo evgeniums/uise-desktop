@@ -1,0 +1,76 @@
+/* resting chip -- a subtle tint over whichever bubble background it sits on (chat.qss's
+   received/sent message colours), not a new hue */
+uise--ChatMessageReactionChip {
+background-color: rgba(0,0,0,10);
+border-color: transparent;
+}
+
+uise--ChatMessageReactionChip[hovered="true"] {
+background-color: rgba(0,0,0,18);
+}
+
+/* own-set reaction -- background/border only, the icon itself is never recoloured (see
+   resources/style/light/chatreactions.json's comment on ChatReactionPack). Same accent already
+   used for DropdownMenu's checked state (dropdownmenu.json/.qss) -- reused, not a new hue.
+   border-color is a low-alpha tint of that same accent, not the solid hex -- a fully opaque
+   border read as too harsh once every reaction the user has picked shows one. */
+uise--ChatMessageReactionChip[own="true"] {
+background-color: rgba(10,102,194,28);
+border-color: rgba(10,102,194,90);
+}
+
+uise--ChatMessageReactionChip[own="true"][hovered="true"] {
+background-color: rgba(10,102,194,40);
+}
+
+uise--ChatMessageReactionChip #count {
+color: #444444;
+}
+
+uise--ChatMessageReactionChip[own="true"] #count {
+color: #0A66C2;
+}
+
+/* Approximates chat.qss's own received-message bubble background (#F9FAFB) -- the ring only
+   needs to be a REASONABLE match for the common case, not a pixel-exact composite of the actual
+   bubble+chip-tint stack underneath it (see #avatarRing's own comment in chatreactions.qss). */
+uise--ChatMessageReactionChip #avatarRing {
+background-color: #F9FAFB;
+}
+
+/* --- gallery quick bar ---
+   [hovered="true"] IS set on the outer uise--PushButton wrapper (see PushButton::resetHover()),
+   but per its styling contract the background must be declared on the INNER QPushButton -- a
+   descendant selector rooted at the outer property does exactly that. :checked is QPushButton's
+   own native pseudo-class (PushButton::setChecked() forwards straight to the real button), so it
+   needs no dynamic property at all. */
+
+uise--ChatReactionQuickBar #quickButton[hovered="true"] QPushButton {
+background-color: rgba(0,0,0,10);
+}
+
+uise--ChatReactionQuickBar #quickButton QPushButton:checked {
+background-color: rgba(10,102,194,28);
+border-color: rgba(10,102,194,90);
+}
+
+/* --- expanded gallery --- */
+
+uise--ChatReactionGallery {
+background-color: #FFFFFF;
+}
+
+uise--ChatReactionGallery #recentTitle {
+color: #888888;
+}
+
+uise--ChatReactionGallery #galleryButton[hovered="true"] QPushButton {
+background-color: rgba(0,0,0,10);
+}
+
+/* --- dropdown frame --- */
+
+uise--ChatReactionGalleryDropdown {
+background-color: #FFFFFF;
+border-color: #D0D0D0;
+}

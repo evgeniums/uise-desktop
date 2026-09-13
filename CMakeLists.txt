@@ -65,6 +65,7 @@ SET (HEADERS
     include/uise/desktop/utils/filetypeicon.hpp
     include/uise/desktop/utils/pixmapscale.hpp
     include/uise/desktop/utils/albumlayout.hpp
+    include/uise/desktop/utils/flowpack.hpp
     include/uise/desktop/utils/mimedatautils.hpp
     include/uise/desktop/utils/dragsource.hpp
 
@@ -249,6 +250,11 @@ SET (HEADERS
     include/uise/desktop/chatmessageimageitem.hpp
     include/uise/desktop/abstractchatmessageimages.hpp
     include/uise/desktop/chatmessageimages.hpp
+
+    include/uise/desktop/chatreaction.hpp
+    include/uise/desktop/reactioniconpack.hpp
+    include/uise/desktop/chatmessagereactions.hpp
+    include/uise/desktop/chatreactiongallery.hpp
 
     include/uise/desktop/replypreviewdata.hpp
     include/uise/desktop/abstractreplypreview.hpp
@@ -454,11 +460,17 @@ SET (SOURCES
     src/chatfloatingavatar.cpp
 
     src/albumlayout.cpp
+    src/flowpack.cpp
     src/chatfileitem.cpp
     src/chatmessagefileitem.cpp
     src/chatmessagefiles.cpp
     src/chatmessageimageitem.cpp
     src/chatmessageimages.cpp
+
+    src/chatreaction.cpp
+    src/reactioniconpack.cpp
+    src/chatmessagereactions.cpp
+    src/chatreactiongallery.cpp
 
     src/replypreviewdata.cpp
     src/replypreview.cpp
@@ -510,6 +522,7 @@ QT6_ADD_RESOURCES(SOURCES resources/uise.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/file-icon-vectors.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/tabler-icons.qrc)
 QT6_ADD_RESOURCES(SOURCES thirdparty/reshot.qrc)
+QT6_ADD_RESOURCES(SOURCES thirdparty/noto-emoji.qrc)
 
 # ---------------------------------------------------------------------------
 # i18n: compile translations/uise_<lang>.ts -> <build>/translations/uise_<lang>.qm

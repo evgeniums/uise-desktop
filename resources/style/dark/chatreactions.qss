@@ -1,0 +1,69 @@
+uise--ChatMessageReactionChip {
+background-color: rgba(255,255,255,15);
+border-color: transparent;
+}
+
+uise--ChatMessageReactionChip[hovered="true"] {
+background-color: rgba(255,255,255,25);
+}
+
+/* own-set reaction -- background/border only, the icon itself is never recoloured (see
+   resources/style/dark/chatreactions.json's comment on ChatReactionPack). Same accent already
+   used for DropdownMenu's checked state (dropdownmenu.json/.qss) -- reused, not a new hue.
+   border-color is a low-alpha tint of that same accent, not the solid hex -- a fully opaque
+   border read as too harsh once every reaction the user has picked shows one. */
+uise--ChatMessageReactionChip[own="true"] {
+background-color: rgba(76,154,255,32);
+border-color: rgba(76,154,255,100);
+}
+
+uise--ChatMessageReactionChip[own="true"][hovered="true"] {
+background-color: rgba(76,154,255,45);
+}
+
+uise--ChatMessageReactionChip #count {
+color: #CCCCCC;
+}
+
+uise--ChatMessageReactionChip[own="true"] #count {
+color: #4C9AFF;
+}
+
+/* Approximates chat.qss's own received-message bubble background (#2d323b) -- see
+   light/chatreactions.qss's identical comment on why an exact composite match isn't the goal. */
+uise--ChatMessageReactionChip #avatarRing {
+background-color: #2d323b;
+}
+
+/* --- gallery quick bar -- see light/chatreactions.qss's comment on why [hovered] roots a
+   descendant selector into QPushButton while :checked needs no property at all --- */
+
+uise--ChatReactionQuickBar #quickButton[hovered="true"] QPushButton {
+background-color: rgba(255,255,255,15);
+}
+
+uise--ChatReactionQuickBar #quickButton QPushButton:checked {
+background-color: rgba(76,154,255,32);
+border-color: rgba(76,154,255,100);
+}
+
+/* --- expanded gallery --- */
+
+uise--ChatReactionGallery {
+background-color: #2B2B2B;
+}
+
+uise--ChatReactionGallery #recentTitle {
+color: #888888;
+}
+
+uise--ChatReactionGallery #galleryButton[hovered="true"] QPushButton {
+background-color: rgba(255,255,255,15);
+}
+
+/* --- dropdown frame --- */
+
+uise--ChatReactionGalleryDropdown {
+background-color: #2B2B2B;
+border-color: #444444;
+}

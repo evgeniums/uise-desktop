@@ -46,6 +46,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/withpathandsize.hpp>
 #include <uise/desktop/replypreviewdata.hpp>
 #include <uise/desktop/abstractmessageeditor.hpp> // TextFormat, shared with loadText()/setComment()
+#include <uise/desktop/chatreaction.hpp> // ChatReactions, used by AbstractChatMessageReactions
 
 class QVariantAnimation;
 
@@ -491,6 +492,54 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         void linkActivated(const QUrl& url);
 };
 
+/**
+ * @brief Reactions section -- the 6th AbstractChatMessageContent slot, between comment() and
+ *  bottom() in display order (task-chat-message-reactions.md).
+ *
+ * A genuine new slot, not a subclass of any existing section, for the same reason
+ * AbstractChatMessageComment gives for its own slot: an implicit conversion into a DIFFERENT
+ * setWidgets() parameter would be a silent mis-wiring footgun.
+ *
+ * isEmpty() is the one method every AbstractChatMessageContent host needs beyond the base
+ * ChatMessageContentSection interface -- see trailingSection()'s own doc comment for exactly why
+ * an ATTACHED-BUT-EMPTY reactions section must behave differently from an attached-but-empty
+ * comment (the opposite of AbstractChatMessageComment's own rule).
+ */
+class UISE_DESKTOP_EXPORT AbstractChatMessageReactions : public ChatMessageContentSection
+{
+    Q_OBJECT
+
+    public:
+
+        using ChatMessageContentSection::ChatMessageContentSection;
+
+        virtual void setReactions(ChatReactions reactions) =0;
+        virtual const ChatReactions& reactions() const =0;
+
+        //! True when reactions() is empty. Consulted by trailingSection() -- unlike
+        //! AbstractChatMessageComment, a non-null but EMPTY reactions section must NOT win
+        //! trailingSection() (see that method's own doc comment): most messages will carry an
+        //! attached-but-empty reactions section, and forcing row-mode bottom placement on every
+        //! one of them merely because the slot exists would be a universal, visible regression.
+        virtual bool isEmpty() const =0;
+
+        //! Propagated to every chip -- see ChatMessageReactionChip::setInteractive()'s own doc
+        //! comment on why a chip must become mouse-transparent rather than merely ignore clicks
+        //! while the message is in multi-select mode.
+        virtual void setInteractive(bool /*enable*/) {}
+
+    signals:
+
+        //! A chip for a reaction the current user does/does not already have was clicked -- see
+        //! ChatMessageReactionsRow::toggleRequested()'s own doc comment for currentlyOwn's exact
+        //! meaning (the OPTIMISTICALLY rendered state, not necessarily the last-confirmed one).
+        void toggleRequested(const QString& reactionId, bool currentlyOwn);
+
+        //! The trailing "..." overflow chip was clicked -- the host is expected to show a
+        //! who-reacted-with-what list (task-chat-message-reactions.md's "who-when-read submenu").
+        void moreRequested();
+};
+
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection
 {
     Q_OBJECT
@@ -649,16 +698,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
         /**
-         * @brief Set this bubble's up-to-5 content sections.
+         * @brief Set this bubble's up-to-6 content sections.
          * @param reply Defaulted, so every call site that predates the reply section keeps
          *  compiling unchanged.
          * @param comment Defaulted, so every call site that predates the comment section keeps
-         *  compiling unchanged. Display order is header / reply / body / comment / bottom
-         *  regardless of these parameters' position -- see ChatMessageContent::updateWidgets().
+         *  compiling unchanged. Display order is header / reply / body / comment / reactions /
+         *  bottom regardless of these parameters' position -- see
+         *  ChatMessageContent::updateWidgets().
+         * @param reactions Defaulted, so every call site that predates the reactions section
+         *  keeps compiling unchanged.
          */
         void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr,
                         AbstractChatMessageBottom* bottom=nullptr, AbstractChatMessageReply* reply=nullptr,
-                        AbstractChatMessageComment* comment=nullptr)
+                        AbstractChatMessageComment* comment=nullptr,
+                        AbstractChatMessageReactions* reactions=nullptr)
         {
             destroyWidget(m_header);
             m_header=header;
@@ -670,6 +723,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             m_reply=reply;
             destroyWidget(m_comment);
             m_comment=comment;
+            destroyWidget(m_reactions);
+            m_reactions=reactions;
             rebuildSections();
             updateWidgets();
             wireSelectionExclusivity();
@@ -737,6 +792,34 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             setComment(nullptr);
         }
 
+        /**
+         * @brief Attach, replace or remove the reactions section after construction, without
+         *  touching header()/body()/reply()/comment()/bottom().
+         * @param reactions New section, or nullptr to remove it -- see clearReactions(). Destroys
+         *  whatever reactions section was previously set.
+         *
+         * Unlike setReply()/setComment(), wireSelectionExclusivity() is deliberately NOT called
+         * here -- a reactions section carries no selectable text, same reasoning as setReply().
+         */
+        void setReactions(AbstractChatMessageReactions* reactions)
+        {
+            destroyWidget(m_reactions);
+            m_reactions=reactions;
+            rebuildSections();
+            updateWidgets();
+            // See setReply()'s identical re-application and setSelected()'s doc comment for why.
+            if (m_reactions!=nullptr)
+            {
+                m_reactions->setSelected(isContentSelected());
+                m_reactions->setSent(isContentSent());
+            }
+        }
+
+        void clearReactions()
+        {
+            setReactions(nullptr);
+        }
+
         AbstractChatMessageHeader* header() const noexcept
         {
             return m_header;
@@ -760,6 +843,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         AbstractChatMessageComment* comment() const noexcept
         {
             return m_comment;
+        }
+
+        AbstractChatMessageReactions* reactions() const noexcept
+        {
+            return m_reactions;
         }
 
         int maximumBubbleWidth() const noexcept
@@ -804,14 +892,48 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_commentWidthHint;
         }
 
-        //! The section the bottom row would be tucked into if there is room: the forward-comment
-        //! slot when present, otherwise the body. (Display order is header/reply/body/comment/
-        //! bottom -- comment sits closer to the bottom, so it is the visually LAST text.) A
-        //! non-null but empty comment still wins this -- it is what is visually last -- and its
-        //! own lastTextLineRect() then coming back invalid correctly forces row mode rather than
-        //! silently falling through to the body underneath it.
+        //! Same memoization as bodyWidthHint()/commentWidthHint() above, for reactions() --
+        //! mandatory rather than optional: evaluateInlineBottom() reads
+        //! trailingSection()->lastTextLineRect(), which per ChatMessageContentSection's own doc
+        //! comment is meaningful only immediately after that section's bubbleWidthHint() ran for
+        //! the CURRENT negotiation pass. Without this memo the section loop in updateBubbleWidth()
+        //! would call reactions()->bubbleWidthHint() (a full flowPack() re-pack) a second time on
+        //! top of the one evaluateInlineBottom() already needs, AND the inline decision would risk
+        //! running against a stale packing if the two calls ever disagreed.
+        int reactionsWidthHint(int forMaxWidth)
+        {
+            if (m_reactions==nullptr)
+            {
+                return 0;
+            }
+            if (!m_reactionsWidthHintValid || m_reactionsWidthHintForMaxWidth!=forMaxWidth)
+            {
+                return m_reactions->bubbleWidthHint(forMaxWidth);
+            }
+            return m_reactionsWidthHint;
+        }
+
+        //! The section the bottom row would be tucked into if there is room: the reactions slot
+        //! when it holds at least one reaction, else the forward-comment slot when present,
+        //! otherwise the body. (Display order is header/reply/body/comment/reactions/bottom --
+        //! reactions sits closer to the bottom than comment, so a NON-EMPTY reactions section is
+        //! the visually last content.)
+        //!
+        //! A non-null but EMPTY comment still wins over body -- see AbstractChatMessageComment's
+        //! own doc comment, "it is what is visually last". Reactions is the deliberate EXCEPTION
+        //! to that rule (see AbstractChatMessageReactions::isEmpty()'s own doc comment): unlike a
+        //! comment (rare, and meaningful even empty -- a forwarded message's sender line), a
+        //! reactions section is attached to essentially every message regardless of whether any
+        //! reaction was ever set, so treating an empty one as trailing would force row-mode
+        //! bottom placement almost universally. Gating on isEmpty() instead of visibility matches
+        //! ChatMessageImages' own isHidden()-not-isVisible() reasoning: bubbles are measured
+        //! off-screen, where isVisible() cannot be trusted.
         ChatMessageContentSection* trailingSection() const noexcept
         {
+            if (m_reactions!=nullptr && !m_reactions->isEmpty())
+            {
+                return m_reactions;
+            }
             if (m_comment!=nullptr)
             {
                 return m_comment;
@@ -1116,6 +1238,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         QPointer<AbstractChatMessageReply> m_reply=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
         QPointer<AbstractChatMessageComment> m_comment=nullptr;
+        QPointer<AbstractChatMessageReactions> m_reactions=nullptr;
         QPointer<AbstractChatMessageBottom> m_bottom=nullptr;
 
         //! The (body, comment) pair wireSelectionExclusivity() last connected -- see its own doc
@@ -1139,6 +1262,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         int m_commentWidthHint=0;
         int m_commentWidthHintForMaxWidth=0;
         bool m_commentWidthHintValid=false;
+
+        int m_reactionsWidthHint=0;
+        int m_reactionsWidthHintForMaxWidth=0;
+        bool m_reactionsWidthHintValid=false;
 
         //! Decides whether the bottom row fits inline (into the trailing space of
         //! trailingSection()'s last text line) or needs its own row below, and if inline,

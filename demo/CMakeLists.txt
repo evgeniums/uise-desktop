@@ -47,6 +47,7 @@ ADD_SUBDIRECTORY(replypreview)
 ADD_SUBDIRECTORY(forwardpreview)
 ADD_SUBDIRECTORY(editbar)
 ADD_SUBDIRECTORY(messageformatting)
+ADD_SUBDIRECTORY(chatreactions)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)

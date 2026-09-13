@@ -58,6 +58,17 @@ class DropdownFrame_p
 
         QPointer<QWidget> triggerWidget;
 
+        // Which popupX() call most recently measured this frame, and its argument -- what
+        // remeasure() replays. Recorded unconditionally on every popupX() call (even one that
+        // itself skips re-measuring because the frame is already visible -- see popupBelow()'s
+        // own isVisible() comment), so this always reflects the anchoring that is CURRENTLY
+        // correct for this opening, not necessarily the one that last actually ran measureX().
+        enum class MeasureKind : uint8_t { None, Below, At, Beside, Above };
+        MeasureKind lastMeasure=MeasureKind::None;
+        QPointer<QWidget> lastAnchorWidget;   // Below
+        QPoint lastAnchorPos;                 // At
+        QRect lastAnchorRect;                 // Beside, Above
+
         // the window whose deactivate/move/resize should auto-dismiss the frame -- tracked
         // explicitly because the frame is its own top-level window (window()==this), it is no
         // longer a child of this window the way it would be if it were embedded
@@ -913,6 +924,73 @@ void DropdownFrame::measureBeside(const QRect& anchorGlobalRect)
 
 //--------------------------------------------------------------------------
 
+void DropdownFrame::measureAbove(const QRect& anchorGlobalRect)
+{
+    QMargins m;
+    auto natural=measureContentSize(m);
+    QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
+
+    // bounded by the anchor rect's own screen, not the host window -- same reasoning as
+    // measureBeside().
+    auto* screen=QGuiApplication::screenAt(anchorGlobalRect.center());
+    if (screen==nullptr)
+    {
+        screen=!pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->screen() : QGuiApplication::primaryScreen();
+    }
+    auto avail=screen!=nullptr ? screen->availableGeometry() : anchorGlobalRect;
+
+    // horizontal anchor: left-aligned with the anchor rect by default, flipped to right-aligned
+    // only if it would overflow the screen's right edge -- mirrors measure()'s own below-left ->
+    // below-right policy.
+    int x=anchorGlobalRect.left();
+    bool rightAnchored=false;
+    if (x+full.width()>avail.right())
+    {
+        x=anchorGlobalRect.right()+1-full.width();
+        rightAnchored=true;
+    }
+    x=qMax(avail.left(),x);
+
+    // vertical anchor: ABOVE the anchor rect by default -- the deliberate inversion of measure()'s
+    // own below-first policy (this is what makes the frame grow UPWARD as it opens, pinned to the
+    // BOTTOM edge -- see applyFrame()'s corner-pinned growth). Flips to growing downward from the
+    // anchor rect's bottom edge only when there is not enough room above but more room below.
+    bool topAnchored=false; // true => flipped: pinned to the TOP edge, growing downward
+    auto availableAbove=qMax(1,anchorGlobalRect.top()-pimpl->offsetY-avail.top());
+    int y=anchorGlobalRect.top()-pimpl->offsetY-full.height();
+
+    if (full.height()>availableAbove && pimpl->verticalFlipEnabled)
+    {
+        auto belowGlobalY=anchorGlobalRect.bottom()+1+pimpl->offsetY;
+        auto availableBelow=qMax(1,avail.bottom()-belowGlobalY);
+        if (availableBelow>availableAbove)
+        {
+            topAnchored=true;
+            full.setHeight(qMin(full.height(),availableBelow));
+            y=belowGlobalY;
+        }
+        else
+        {
+            full.setHeight(qMin(full.height(),availableAbove));
+            y=anchorGlobalRect.top()-pimpl->offsetY-full.height();
+        }
+    }
+    else
+    {
+        full.setHeight(qMin(full.height(),availableAbove));
+    }
+
+    auto anchor_=topAnchored
+        ? (rightAnchored ? Qt::TopRightCorner : Qt::TopLeftCorner)
+        : (rightAnchored ? Qt::BottomRightCorner : Qt::BottomLeftCorner);
+
+    pimpl->fullRect=QRect(x,y,full.width(),full.height());
+    setAnchorCorner(anchor_);
+    setFullSize(full);
+}
+
+//--------------------------------------------------------------------------
+
 void DropdownFrame::measureAt(const QPoint& globalPos)
 {
     QMargins m;
@@ -1096,6 +1174,9 @@ void DropdownFrame::popupBelow(QWidget* anchor)
     auto* host=resolveHost(anchor);
     trackHost(host);
 
+    pimpl->lastMeasure=DropdownFrame_p::MeasureKind::Below;
+    pimpl->lastAnchorWidget=anchor;
+
     // If the frame is still visible here, this open is reversing a close animation that a
     // previous, very quick toggle interrupted mid-flight (see the animStopGuard comment).
     // Re-filling/re-measuring in that state would tear down and rebuild content while it is
@@ -1123,6 +1204,9 @@ void DropdownFrame::popupAt(const QPoint& globalPos)
     }
     trackHost(host);
 
+    pimpl->lastMeasure=DropdownFrame_p::MeasureKind::At;
+    pimpl->lastAnchorPos=globalPos;
+
     if (!isVisible())
     {
         fillContent();
@@ -1142,6 +1226,9 @@ void DropdownFrame::popupBesideRect(const QRect& anchorGlobalRect)
         return;
     }
     trackHost(host);
+
+    pimpl->lastMeasure=DropdownFrame_p::MeasureKind::Beside;
+    pimpl->lastAnchorRect=anchorGlobalRect;
 
     // see popupBelow()'s comment on the analogous isVisible() check -- reversing an in-flight
     // close animation must not re-fill/re-measure a still-visible frame
@@ -1163,6 +1250,42 @@ void DropdownFrame::popupBeside(QWidget* anchor)
         return;
     }
     popupBesideRect(DropdownFrame_p::globalRect(anchor));
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::popupAboveRect(const QRect& anchorGlobalRect)
+{
+    auto* host=resolveHost(nullptr);
+    if (host==nullptr)
+    {
+        return;
+    }
+    trackHost(host);
+
+    pimpl->lastMeasure=DropdownFrame_p::MeasureKind::Above;
+    pimpl->lastAnchorRect=anchorGlobalRect;
+
+    // see popupBelow()'s comment on the analogous isVisible() check -- reversing an in-flight
+    // close animation must not re-fill/re-measure a still-visible frame
+    if (!isVisible())
+    {
+        fillContent();
+        measureAbove(anchorGlobalRect);
+    }
+
+    beginOpen(host);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::popupAbove(QWidget* anchor)
+{
+    if (anchor==nullptr)
+    {
+        return;
+    }
+    popupAboveRect(DropdownFrame_p::globalRect(anchor));
 }
 
 //--------------------------------------------------------------------------
@@ -1214,6 +1337,101 @@ void DropdownFrame::closeDropdown(bool immediate)
     pimpl->focusBefore=nullptr;
 
     animateFrame(false,immediate);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::remeasure(bool animate)
+{
+    // animate is accepted but not yet honoured -- see this method's own doc comment. Reserved
+    // for a future smooth resize between the old and new fullRect().
+    Q_UNUSED(animate)
+
+    if (!isVisible() || pimpl->lastMeasure==DropdownFrame_p::MeasureKind::None)
+    {
+        return;
+    }
+
+    // A chained child was anchored to geometry that is about to move -- close it first rather
+    // than leave it floating over whatever this frame's new geometry turns out to be. Mirrors
+    // hideEvent()'s identical backstop for the frame closing outright.
+    if (!pimpl->chainChild.isNull())
+    {
+        pimpl->chainChild->closeDropdown(true);
+    }
+
+    switch (pimpl->lastMeasure)
+    {
+        case DropdownFrame_p::MeasureKind::Below:
+            if (!pimpl->lastAnchorWidget.isNull())
+            {
+                measure(pimpl->lastAnchorWidget.data());
+            }
+            break;
+        case DropdownFrame_p::MeasureKind::At:
+            measureAt(pimpl->lastAnchorPos);
+            break;
+        case DropdownFrame_p::MeasureKind::Beside:
+            measureBeside(pimpl->lastAnchorRect);
+            break;
+        case DropdownFrame_p::MeasureKind::Above:
+            measureAbove(pimpl->lastAnchorRect);
+            break;
+        case DropdownFrame_p::MeasureKind::None:
+            break;
+    }
+
+    // Re-run the SAME size the frame is already at (fully open, t==1.0 -- guaranteed by the
+    // isVisible() guard above combined with this class's contract that a visible frame is either
+    // fully open or animating, and only a fresh popupX() ever resets t to a smaller starting
+    // value) against the freshly recomputed fullRect()/anchorCorner(). applyFrame()'s own
+    // corner-pinned math is what makes this grow/shrink from the correct edge.
+    applyFrame(pimpl->t);
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::remeasureKeepingTopLeft(bool animate)
+{
+    // animate is accepted but not yet honoured -- see remeasure()'s own doc comment.
+    Q_UNUSED(animate)
+
+    if (!isVisible() || pimpl->lastMeasure==DropdownFrame_p::MeasureKind::None)
+    {
+        return;
+    }
+
+    // See remeasure()'s identical guard -- a chained child was anchored to geometry that is
+    // about to move.
+    if (!pimpl->chainChild.isNull())
+    {
+        pimpl->chainChild->closeDropdown(true);
+    }
+
+    QMargins m;
+    auto natural=measureContentSize(m);
+    QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
+
+    // The anchor IS the current top-left corner -- deliberately never moved to make room, unlike
+    // every measureX() above (there is no flip direction to choose here: growing away from a
+    // fixed top-left always means towards the bottom-right). Only the SIZE is clamped to the
+    // screen that corner is already on.
+    auto topLeft=pimpl->fullRect.topLeft();
+    auto* screen=QGuiApplication::screenAt(topLeft);
+    if (screen==nullptr)
+    {
+        screen=!pimpl->triggerWidget.isNull() ? pimpl->triggerWidget->screen() : QGuiApplication::primaryScreen();
+    }
+    auto avail=screen!=nullptr ? screen->availableGeometry() : QRect(topLeft,QSize(1,1));
+
+    full.setWidth(qMin(full.width(),qMax(1,avail.right()+1-topLeft.x())));
+    full.setHeight(qMin(full.height(),qMax(1,avail.bottom()+1-topLeft.y())));
+
+    pimpl->fullRect=QRect(topLeft,full);
+    setAnchorCorner(Qt::TopLeftCorner);
+    setFullSize(full);
+
+    applyFrame(pimpl->t);
 }
 
 //--------------------------------------------------------------------------
