@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -74,6 +75,66 @@ inline QString mentionHref(const QString& uid)
 inline bool isMentionHref(const QString& href)
 {
     return href.startsWith(mentionUrlScheme()+QLatin1Char(':'));
+}
+
+/**
+ * @brief Scheme for an inline emoji image's src -- "whitem-emoji:<reaction id>", where the
+ *  reaction id is ChatReactionId::make(iconId,packUri), the SAME identifier a chat message
+ *  reaction uses (see chatreaction.hpp).
+ *
+ * Reusing that identifier verbatim is the point: a reaction and an inline emoji naming the same
+ * graphic are provably the same thing, and ReactionIconPacks::instance().iconInfo() resolves
+ * either one with no separate lookup path.
+ *
+ * Deliberately NOT in MarkdownRenderOptions::allowedLinkSchemes' default list, and it must never
+ * be added there -- for a STRONGER reason than mentionUrlScheme() above. There is no anchor form
+ * of an emoji at all, so the only thing allowlisting it could do is let an emoji whose icon is
+ * NOT locally available degrade, through writeImage()'s own scheme-allowed branch, into a
+ * clickable <a href="whitem-emoji:..."> -- a dead in-app link. The correct degradation is the alt
+ * text (the emoji character itself), which is what the default already produces.
+ */
+inline QString emojiUrlScheme()
+{
+    return QStringLiteral("whitem-emoji");
+}
+
+/**
+ * @brief Build an inline emoji image's src from a reaction id.
+ *
+ * The payload is PERCENT-ENCODED, which is load-bearing rather than cosmetic: a pack URI is
+ * free to be a full URL (see AbstractReactionIconPack::uri()), and two independent parsers see
+ * this string raw -- Qt's markdown writer copies it verbatim into "![alt](src)", where a space
+ * or a ')' would corrupt the markdown outright, and markdownToHtml()'s own isSchemeAllowed()
+ * parses it with QUrl(src,QUrl::StrictMode). Encoding makes the payload one opaque token that
+ * survives both.
+ *
+ * For the DEFAULT pack (empty uri, so ChatReactionId::make() returns the bare icon id) encoding
+ * is a no-op, so the common case stays readable: "whitem-emoji:thumbsup".
+ */
+inline QString emojiSrc(const QString& reactionId)
+{
+    return emojiUrlScheme()+QLatin1Char(':')
+           +QString::fromLatin1(QUrl::toPercentEncoding(reactionId));
+}
+
+//! Whether `src` is an inline emoji image's src. Prefix test on the scheme plus its colon, the
+//! same shape as isMentionHref() above.
+inline bool isEmojiSrc(const QString& src)
+{
+    return src.startsWith(emojiUrlScheme()+QLatin1Char(':'));
+}
+
+//! Inverse of emojiSrc(). Returns an empty string when `src` is not an emoji src at all, which
+//! is also what an emoji src with an empty payload yields -- both are "nothing to resolve".
+inline QString emojiReactionId(const QString& src)
+{
+    if (!isEmojiSrc(src))
+    {
+        return QString{};
+    }
+    return QUrl::fromPercentEncoding(
+        src.mid(emojiUrlScheme().size()+1).toLatin1()
+    );
 }
 
 /**
@@ -147,8 +208,58 @@ struct UISE_DESKTOP_EXPORT MarkdownRenderOptions
      * for escaping its own output and for only ever emitting hrefs it trusts (e.g. a scheme it
      * knows to be safe, built from data it resolved itself) -- never rendering untrusted
      * user-supplied text back out unescaped.
+     *
+     * NOTE, when emojiEnabled is set: a plain run containing emoji characters is split around
+     * them, and this hook is then called once per non-emoji SEGMENT rather than once for the run
+     * as a whole ("see @bob <emoji> now" invokes it twice). Composing this way is deliberate --
+     * running the hook first would have it rewriting inside the `<a href>` attributes of its own
+     * output, and running it second would hand it HTML where its contract promises raw text. An
+     * emoji code point is never part of an "@username" or a bare domain, so a segment boundary is
+     * always a token boundary and no match this hook could have made is lost.
      */
     std::function<QString(const QString&)> extraLinkify;
+
+    /**
+     * @brief Whether emoji are recognized at all.
+     *
+     * With this on, two things become an `<img>`: a markdown image whose src is an emojiSrc()
+     * AND whose icon is registered locally, and a literal emoji CHARACTER in a plain text run
+     * that the default pack has a graphic for. Everything else about the rendering is unchanged.
+     *
+     * Default FALSE, the same opt-in shape (and for the same reason) as
+     * AbstractChatMessageText::setMentionsEnabled(): a renderer that emitted `<img>`
+     * unconditionally would change what every existing caller's bubbles look like.
+     *
+     * This is the ONLY switch that can make markdownToHtml() emit an `<img>` at all, so with it
+     * off the function's "`<img>` is never one of them" sanitization contract holds verbatim.
+     * With it on, the only `<img>` ever emitted is one this function BUILDS ITSELF out of a
+     * reaction id it has already resolved against ReactionIconPacks -- a src is never copied
+     * through from the source document, so no attacker-supplied URL can reach the output, and
+     * every other image still degrades to escaped alt text exactly as before.
+     */
+    bool emojiEnabled=false;
+
+    /**
+     * @brief Pixel size of an INLINE emoji image, so it mirrors the viewer's own text.
+     *
+     * This renderer has neither a widget nor a font, so it cannot derive this -- a caller
+     * computes it from the target's QFontMetrics (see ChatMessageText::loadText()). 0 emits no
+     * width/height at all and lets Qt fall back to the pixmap's own size.
+     */
+    int emojiInlineSize=0;
+
+    /**
+     * @brief A message that is NOTHING BUT emoji, at most this many of them, renders as one row
+     *  of large images (emojiOnlySize) instead of inline-sized ones. 0 disables the case.
+     *
+     * Both forms count and may be mixed: literal emoji characters and emoji markdown images.
+     * Every one of them must resolve locally, or the message falls back to ordinary inline
+     * rendering -- a half-large, half-inline row would look like a fault.
+     */
+    int emojiOnlyMaxCount=3;
+
+    //! Pixel size used by the emojiOnlyMaxCount case above.
+    int emojiOnlySize=64;
 };
 
 /**

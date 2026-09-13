@@ -112,6 +112,14 @@ const RawIconEntry rawIcons[]={
     {"poop",         0x1F4A9, false, {QT_TRANSLATE_NOOP("ReactionIconPack","poop"), QT_TRANSLATE_NOOP("ReactionIconPack","funny")}},
     {"rocket",       0x1F680, false, {QT_TRANSLATE_NOOP("ReactionIconPack","rocket"), QT_TRANSLATE_NOOP("ReactionIconPack","launch"), QT_TRANSLATE_NOOP("ReactionIconPack","fast")}},
     {"smirk",        0x1F60F, false, {QT_TRANSLATE_NOOP("ReactionIconPack","smirk"), QT_TRANSLATE_NOOP("ReactionIconPack","smug")}},
+
+    // Four added to bring the pack to 54, which is exactly the emoji picker's 9x6 grid -- at 50 it
+    // left four empty cells in the last row. Two faces and one hand fill the most obvious gaps in
+    // the existing set; sparkles joins fire/star/hundred as a non-figurative "reaction" symbol.
+    {"roll-eyes",    0x1F644, false, {QT_TRANSLATE_NOOP("ReactionIconPack","roll eyes"), QT_TRANSLATE_NOOP("ReactionIconPack","eyeroll"), QT_TRANSLATE_NOOP("ReactionIconPack","whatever")}},
+    {"grimacing",    0x1F62C, false, {QT_TRANSLATE_NOOP("ReactionIconPack","grimace"), QT_TRANSLATE_NOOP("ReactionIconPack","awkward"), QT_TRANSLATE_NOOP("ReactionIconPack","yikes")}},
+    {"sparkles",     0x2728,  false, {QT_TRANSLATE_NOOP("ReactionIconPack","sparkles"), QT_TRANSLATE_NOOP("ReactionIconPack","shiny"), QT_TRANSLATE_NOOP("ReactionIconPack","magic")}},
+    {"crossed-fingers", 0x1F91E, false, {QT_TRANSLATE_NOOP("ReactionIconPack","crossed fingers"), QT_TRANSLATE_NOOP("ReactionIconPack","good luck"), QT_TRANSLATE_NOOP("ReactionIconPack","hope")}},
 };
 // clang-format on
 
@@ -320,6 +328,177 @@ void DefaultReactionIconPack::retranslate()
 
 //--------------------------------------------------------------------------
 
+class EmojiCodeReactionIconPack::Pimpl
+{
+    public:
+
+        std::shared_ptr<AbstractReactionIconPack> source;
+
+        //! our index -> source index, in the source's own display order.
+        std::vector<size_t> toSource;
+
+        //! source index -> our index, for remapping search() results.
+        std::map<size_t,size_t> fromSource;
+
+        void build()
+        {
+            toSource.clear();
+            fromSource.clear();
+            if (!source)
+            {
+                return;
+            }
+            const auto n=source->count();
+            for (size_t i=0; i<n; ++i)
+            {
+                const auto* info=source->at(i);
+                if (info!=nullptr && !info->emojiCode.isEmpty())
+                {
+                    fromSource.emplace(i,toSource.size());
+                    toSource.push_back(i);
+                }
+            }
+        }
+};
+
+//--------------------------------------------------------------------------
+
+EmojiCodeReactionIconPack::EmojiCodeReactionIconPack(std::shared_ptr<AbstractReactionIconPack> source)
+    : pimpl(std::make_unique<Pimpl>())
+{
+    pimpl->source=std::move(source);
+    pimpl->build();
+}
+
+//--------------------------------------------------------------------------
+
+EmojiCodeReactionIconPack::~EmojiCodeReactionIconPack()
+{
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<AbstractReactionIconPack> EmojiCodeReactionIconPack::source() const
+{
+    return pimpl->source;
+}
+
+//--------------------------------------------------------------------------
+
+QString EmojiCodeReactionIconPack::uri() const
+{
+    return pimpl->source ? pimpl->source->uri() : QString{};
+}
+
+//--------------------------------------------------------------------------
+
+size_t EmojiCodeReactionIconPack::count() const
+{
+    return pimpl->toSource.size();
+}
+
+//--------------------------------------------------------------------------
+
+const ReactionIconInfo* EmojiCodeReactionIconPack::at(size_t index) const
+{
+    if (index>=pimpl->toSource.size())
+    {
+        return nullptr;
+    }
+    return pimpl->source->at(pimpl->toSource[index]);
+}
+
+//--------------------------------------------------------------------------
+
+const ReactionIconInfo* EmojiCodeReactionIconPack::find(const QString& iconId) const
+{
+    if (!pimpl->source)
+    {
+        return nullptr;
+    }
+    // Delegate, then re-check membership: an id the source knows but which carries no code is
+    // not in this view at all, and must come back as "not found" rather than as a hidden entry
+    // a caller could still reach by name.
+    const auto* info=pimpl->source->find(iconId);
+    if (info==nullptr || info->emojiCode.isEmpty())
+    {
+        return nullptr;
+    }
+    return info;
+}
+
+//--------------------------------------------------------------------------
+
+const ReactionIconInfo* EmojiCodeReactionIconPack::findByCode(const QString& emojiCode) const
+{
+    if (!pimpl->source)
+    {
+        return nullptr;
+    }
+    // No membership re-check needed: an entry found BY a non-empty code necessarily has one.
+    // An empty argument is already "not found" in every pack, see findByCode()'s doc comment.
+    return pimpl->source->findByCode(emojiCode);
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<size_t> EmojiCodeReactionIconPack::search(const QString& prefix) const
+{
+    std::vector<size_t> result;
+    if (!pimpl->source)
+    {
+        return result;
+    }
+
+    // The source's indices are meaningless to our caller -- remap every one that survives the
+    // filter into OUR index space, so the "indices into at()" contract holds for this pack too.
+    const auto sourceMatches=pimpl->source->search(prefix);
+    result.reserve(sourceMatches.size());
+    for (auto sourceIndex : sourceMatches)
+    {
+        auto it=pimpl->fromSource.find(sourceIndex);
+        if (it!=pimpl->fromSource.end())
+        {
+            result.push_back(it->second);
+        }
+    }
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
+std::vector<QString> EmojiCodeReactionIconPack::basicIconIds() const
+{
+    std::vector<QString> result;
+    if (!pimpl->source)
+    {
+        return result;
+    }
+    for (const auto& iconId : pimpl->source->basicIconIds())
+    {
+        if (find(iconId)!=nullptr)
+        {
+            result.push_back(iconId);
+        }
+    }
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
+void EmojiCodeReactionIconPack::retranslate()
+{
+    if (pimpl->source)
+    {
+        pimpl->source->retranslate();
+    }
+    // The source may have rebuilt its entries wholesale (DefaultReactionIconPack does), so every
+    // index we hold is stale until this runs.
+    pimpl->build();
+}
+
+//--------------------------------------------------------------------------
+
 class ReactionIconPacks::Pimpl
 {
     public:
@@ -389,7 +568,7 @@ void ReactionIconPacks::setDefaultPackUri(const QString& uri)
 
 //--------------------------------------------------------------------------
 
-std::shared_ptr<SvgIcon> ReactionIconPacks::icon(const QString& reactionId) const
+const ReactionIconInfo* ReactionIconPacks::iconInfo(const QString& reactionId) const
 {
     auto uri=ChatReactionId::packUri(reactionId);
     auto iconId=ChatReactionId::iconId(reactionId);
@@ -397,9 +576,16 @@ std::shared_ptr<SvgIcon> ReactionIconPacks::icon(const QString& reactionId) cons
     auto p=pack(uri);
     if (!p)
     {
-        return {};
+        return nullptr;
     }
-    const auto* info=p->find(iconId);
+    return p->find(iconId);
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<SvgIcon> ReactionIconPacks::icon(const QString& reactionId) const
+{
+    const auto* info=iconInfo(reactionId);
     if (info==nullptr)
     {
         return {};

@@ -58,6 +58,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMimeData>
 #include <QClipboard>
 #include <QImage>
+#include <QPixmap>
+#include <QUrl>
+#include <QVariant>
 
 #include <uise/test/uise-testthread.hpp>
 
@@ -70,6 +73,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/hyperlinkdialog.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/reactioniconpack.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -727,6 +731,31 @@ namespace {
 
 //! U+00A0, the character a paragraph indent is made of -- see MessageEditor::applyIndentStep().
 const QChar NoBreakSpace(0x00a0);
+
+//! The literal U+1F44D character, i.e. DefaultReactionIconPack's "thumbsup" emojiCode.
+QString thumbsUpChar()
+{
+    return QString::fromUcs4(U"\U0001F44D");
+}
+
+//! Whether the editor's document holds at least one emoji IMAGE fragment.
+bool hasEmojiImage(MessageEditor& editor)
+{
+    auto* doc=editor.textEdit()->document();
+    for (auto block=doc->begin(); block.isValid(); block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto format=it.fragment().charFormat();
+            if (format.isImageFormat()
+                && isEmojiSrc(format.toImageFormat().name()))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 //! Put the caret in a MessageEditor's document without selecting anything.
 void placeCaret(MessageEditor& editor, int blockIndex, int offset=0)
@@ -2325,6 +2354,58 @@ BOOST_AUTO_TEST_CASE(TestArrangementStacksOnMultilineAndReturnsOnlyWhenEmpty)
             // Only emptying it returns to inline.
             editor.loadText(QString(),TextFormat::Plain);
             UISE_TEST_CHECK(!editor.isStackedArrangement());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTrailingGroupStacksInReverseSoSendStaysAtTheBottom)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+
+            auto* send=new QPushButton();
+            send->setFixedSize(24,24);
+            editor.addTrailingWidget(send);
+            editor.show();
+
+            auto* layout=qobject_cast<QBoxLayout*>(editor.trailingWidgetsFrame()->layout());
+            UISE_TEST_CHECK(layout!=nullptr);
+
+            // As a ROW the group reads left-to-right, emoji nearest the text area and Send
+            // outermost, with the stretch last so the buttons pack toward the text.
+            UISE_TEST_CHECK(layout->direction()==QBoxLayout::LeftToRight);
+            UISE_TEST_CHECK(layout->itemAt(0)->widget()==editor.emojiButton());
+            UISE_TEST_CHECK(layout->itemAt(1)->widget()==send);
+            UISE_TEST_CHECK(layout->itemAt(layout->count()-1)->spacerItem()!=nullptr);
+
+            editor.loadText(QStringLiteral("a\nb\nc"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.isStackedArrangement());
+
+            // As a COLUMN the mapping REVERSES, unlike the leading group's: TopToBottom puts the
+            // group's first member (emoji) at the top and its last (Send) at the bottom, which is
+            // the corner Send occupies in the row arrangement too. The stretch moves to the FRONT
+            // so the pair still packs downward rather than floating to the top of the column.
+            UISE_TEST_CHECK(layout->direction()==QBoxLayout::TopToBottom);
+            UISE_TEST_CHECK(layout->itemAt(0)->spacerItem()!=nullptr);
+            UISE_TEST_CHECK(layout->itemAt(1)->widget()==editor.emojiButton());
+            UISE_TEST_CHECK(layout->itemAt(2)->widget()==send);
+
+            // The LEADING group keeps its own direction -- the two sides are deliberately
+            // opposite, and this is the assertion that says so.
+            auto* leading=qobject_cast<QBoxLayout*>(editor.leadingWidgetsFrame()->layout());
+            UISE_TEST_CHECK(leading!=nullptr);
+            UISE_TEST_CHECK(leading->direction()==QBoxLayout::BottomToTop);
+
+            // And the row form comes back intact, stretch included.
+            editor.loadText(QString(),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.isStackedArrangement());
+            UISE_TEST_CHECK(layout->direction()==QBoxLayout::LeftToRight);
+            UISE_TEST_CHECK(layout->itemAt(0)->widget()==editor.emojiButton());
+            UISE_TEST_CHECK(layout->itemAt(1)->widget()==send);
+            UISE_TEST_CHECK(layout->itemAt(layout->count()-1)->spacerItem()!=nullptr);
         }
     );
 }
@@ -4807,6 +4888,322 @@ BOOST_AUTO_TEST_CASE(TestImageOnlyPasteStillGoesToAttachments)
 
             UISE_TEST_CHECK_EQUAL(attachments.count(),1);
             UISE_TEST_CHECK(editor.isEmpty());
+        }
+    );
+}
+
+/**************************** emoji ****************************/
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiMarkdownModeInsertsCharacter)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // That mode's document IS markdown source, so the payload is the literal character,
+            // inserted verbatim with no escaping of any kind.
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiWysiwygExportsAsCharacter)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // The document holds an IMAGE...
+            UISE_TEST_CHECK(hasEmojiImage(editor));
+
+            // ...but a DEFAULT-pack one exports as the plain character: it says the same thing in
+            // a form every client understands. Specifically NOT "![...](...)", and above all not
+            // Qt's "![image](...)" empty-alt-text default.
+            const auto md=editor.text(TextFormat::Markdown).trimmed();
+            UISE_TEST_CHECK_EQUAL_QSTR(md,thumbsUpChar());
+            UISE_TEST_CHECK(!md.contains(QStringLiteral("![")));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiWysiwygPlainTextIsNotObjectReplacement)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // toRawText() renders an embedded image as U+FFFC OBJECT REPLACEMENT CHARACTER, so
+            // without plainTextWithEmoji() the Plain leg would silently drop the emoji entirely.
+            const auto plain=editor.text(TextFormat::Plain).trimmed();
+            UISE_TEST_CHECK_EQUAL_QSTR(plain,thumbsUpChar());
+            UISE_TEST_CHECK(!plain.contains(QChar(0xFFFC)));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiPlaintextModeIsNoOp)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // Refused outright: there is no way to carry an image, and writing the character
+            // instead would contradict the button being hidden in this mode.
+            UISE_TEST_CHECK(editor.isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiUnknownIdIsNoOp)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("no-such-icon"));
+            UISE_TEST_CHECK(editor.isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiReplacesSelection)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.loadText(QStringLiteral("replace me"),TextFormat::Plain);
+            editor.selectAll();
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertEmojiRefusedInsideCodeBlock)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.loadText(QStringLiteral("```\ncode\n```"),TextFormat::Markdown);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.movePosition(QTextCursor::Start);
+            cursor.movePosition(QTextCursor::Down);
+            editor.textEdit()->setTextCursor(cursor);
+
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // A markdown image is not backslash-escaped the way fence content is, so
+            // restoreCodeFences() could not safely unescape it -- the same refusal insertLink()
+            // makes, for the same measured reason.
+            UISE_TEST_CHECK(!hasEmojiImage(editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiSurvivesWysiwygMarkdownRoundTripAndStaysDisplayable)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            UISE_TEST_CHECK(hasEmojiImage(editor));
+
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            // On the way out the image became the plain character, which is what Markdown mode
+            // shows and edits.
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            // Back in WYSIWYG it is an image again -- and, the actual regression guard, a
+            // DISPLAYABLE one. setMarkdown() restores neither the size nor the document resource,
+            // so without normalizeImportedEmoji() this is Qt's 16px broken-file icon.
+            UISE_TEST_CHECK(hasEmojiImage(editor));
+
+            const auto src=emojiSrc(QStringLiteral("thumbsup"));
+            const auto resource=editor.textEdit()->document()->resource(
+                QTextDocument::ImageResource,QUrl(src));
+            UISE_TEST_CHECK(resource.isValid());
+            UISE_TEST_CHECK(!resource.value<QPixmap>().isNull());
+
+            // And it still exports as the character, so the trip is stable rather than merely
+            // survivable.
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTypedEmojiCharacterBecomesImageInWysiwyg)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.loadText(thumbsUpChar(),TextFormat::Plain);
+
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            // A character typed with the OS picker must look the same in the composer as one
+            // picked from the gallery -- otherwise the same emoji renders two different ways side
+            // by side. The export is unaffected either way.
+            UISE_TEST_CHECK(hasEmojiImage(editor));
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiButtonVisibilityFollowsModeAndOptIn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.show();
+
+            // Default off, like every other opt-in on this class.
+            UISE_TEST_CHECK(!editor.emojiButton()->isVisible());
+
+            editor.setEmojiButtonVisible(true);
+            UISE_TEST_CHECK(editor.emojiButton()->isVisible());
+
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            UISE_TEST_CHECK(editor.emojiButton()->isVisible());
+
+            // Hidden in Plaintext even though the opt-in is still on -- that mode cannot express
+            // an emoji at all.
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            UISE_TEST_CHECK(!editor.emojiButton()->isVisible());
+
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            UISE_TEST_CHECK(editor.emojiButton()->isVisible());
+
+            editor.setEmojiButtonVisible(false);
+            UISE_TEST_CHECK(!editor.emojiButton()->isVisible());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiGalleryOpenCloseKeepsButtonInSync)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+
+            // The "chat page became inactive" path a host owns.
+            editor.closeEmojiGallery();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+
+            // Switching to a mode that cannot use it closes it too.
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            editor.setMessageEditingMode(MessageEditingMode::Plaintext);
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+
+            // And the picker never opens in Plaintext in the first place.
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHoverOpenedGalleryLeavesButtonUnchecked)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            // The hover form. The button must stay UNCHECKED -- the rule is "hovering an
+            // UNCHECKED button shows the gallery", which would disable itself on first use if
+            // hovering checked the button.
+            editor.openEmojiGallery(false);
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+
+            // The click form pins it, and only then does the button read as checked.
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+
+            editor.closeEmojiGallery();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestOpeningAnAlreadyOpenGalleryOnlyPinsIt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.openEmojiGallery(false);
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+
+            // Pinning is one-way while it is up: a second unpinned request must not UNPIN a
+            // gallery the user has already committed to by clicking.
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            editor.openEmojiGallery(false);
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiGalleryFitsWholeDefaultPack)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // The size request: the dialog's grid must hold the WHOLE default pack with no
+            // scrolling. 9 columns x 6 visible rows = 54 slots for 50 icons, and ceil(50/9) is
+            // exactly 6 -- so this asserts the arithmetic the QSS depends on, and fails loudly if
+            // the pack ever outgrows the grid it is displayed in.
+            auto pack=ReactionIconPacks::instance().defaultPack();
+            UISE_TEST_CHECK(pack!=nullptr);
+
+            const int columns=9;
+            const int visibleRows=6;
+            const auto needed=(pack->count()+columns-1)/columns;
+            UISE_TEST_CHECK(needed<=static_cast<size_t>(visibleRows));
         }
     );
 }

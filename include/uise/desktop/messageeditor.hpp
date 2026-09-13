@@ -34,6 +34,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractmessageeditor.hpp>
 
 class QTimer;
+class QHideEvent;
+class QBoxLayout;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -43,6 +45,8 @@ namespace uise {
 
 class IconTextButton;
 class MessageEditorToolbar;
+class AbstractReactionIconPack;
+class FloatingEmojiGalleryDialog;
 
 //! Paints blockquotes and code blocks without writing to the document -- defined privately in
 //! messageeditor.cpp, since nothing outside the editor has any reason to construct one. See
@@ -728,6 +732,10 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! hidden in the ctor, see AbstractMessageEditor::expandButtonVisible), never nullptr.
         IconTextButton* expandButton() const;
 
+        //! The checkable emoji button on the right of the text area -- always present (built
+        //! hidden in the ctor, see AbstractMessageEditor::emojiButtonVisible), never nullptr.
+        IconTextButton* emojiButton() const;
+
         //! The embedded EnhancedTextEdit, for host-side tweaks this interface does not expose
         //! (e.g. FileUploadWidget's own max-height clamp).
         EnhancedTextEdit* textEdit() const;
@@ -852,10 +860,117 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          */
         void insertMentionText(const QString& username);
 
+        /**
+         * @brief Insert an emoji at the caret -- see AbstractMessageEditor::insertEmoji() for the
+         *  per-mode contract and the full list of cases this refuses.
+         *
+         * WYSIWYG detail worth knowing at the call site: the image is registered as a document
+         * resource under its own emojiSrc() URL immediately before it is inserted, so it is
+         * visible in the editor right away. The size is derived from the text edit's CURRENT
+         * font, and is baked into that image's QTextImageFormat -- a later font change therefore
+         * affects only emoji inserted after it, which is the honest behaviour for a document
+         * whose other content is likewise already laid out.
+         */
+        void insertEmoji(const QString& reactionId) override;
+
+        //! @copydoc AbstractMessageEditor::closeEmojiGallery()
+        void closeEmojiGallery() override;
+
+        /**
+         * @brief Open the emoji gallery, anchored so it unfolds UP and to the RIGHT of the emoji
+         *  button. A no-op in MessageEditingMode::Plaintext.
+         *
+         * @param pinned True (the CLICK behaviour, and the default): the gallery stays until it
+         *  is dismissed explicitly -- its X, unchecking the button, Escape, closeEmojiGallery()
+         *  -- and the emoji button reads as checked the whole time it is up.
+         *  False (the HOVER behaviour): the button stays unchecked, and the gallery closes itself
+         *  once the pointer has been away from both it and the button for EmojiHoverCloseDelayMs.
+         *  See isEmojiGalleryPinned().
+         *
+         * Calling this while the gallery is already open only ever PINS it -- it is never
+         * re-anchored or reloaded under a user who is already using it.
+         */
+        void openEmojiGallery(bool pinned=true);
+
+        //! Whether the emoji gallery is currently open, pinned or not. This -- not the emoji
+        //! button's own checked state -- is authoritative: IconTextButton::click() toggles
+        //! unconditionally after emitting clicked(), so the button's state is only ever written
+        //! from this.
+        bool isEmojiGalleryOpen() const noexcept;
+
+        /**
+         * @brief Whether an open gallery is PINNED (opened by a click) rather than merely hovered
+         *  into view.
+         *
+         * The distinction is what the emoji button's checked state actually shows: a hover-opened
+         * gallery leaves the button UNCHECKED, because the spec's own rule -- "when the emoji
+         * button is not checked, hovering it shows the gallery" -- only makes sense if hovering
+         * does not itself check the button. A hovered gallery closes itself once the pointer has
+         * been away from both it and the button for EmojiHoverCloseDelayMs; a pinned one never
+         * does.
+         *
+         * Clicking the button while a hovered gallery is up PINS it rather than closing it, and
+         * so does picking an emoji from it -- both are unambiguous "I am using this", and a
+         * gallery that vanished from under a user reaching for a second emoji would be a bug.
+         */
+        bool isEmojiGalleryPinned() const noexcept;
+
         //! Suggestion rows offered per misspelling in the context menu (task-spellcheck.md).
         //! Kept small: a suggestion list is read at a glance, not scanned, and hunspell routinely
         //! returns far more than a short screen has room for above Cut/Copy/Paste.
         constexpr static const int MaxSpellSuggestions=8;
+
+        //! Gap in pixels between the top of the emoji button and the bottom of the gallery it
+        //! opens, so the picker does not sit flush against the control that spawned it.
+        constexpr static const int EmojiGalleryGap=4;
+
+        /**
+         * @brief How long the pointer must REST on the emoji button before hovering opens the
+         *  gallery.
+         *
+         * Small enough to read as instant -- under the ~100ms at which a response stops feeling
+         * like a delay at all -- but not zero. The button sits immediately beside a composer's
+         * Send button, and a pointer crossing it on the way there covers its ~26px in well under
+         * this, so the threshold still costs a deliberate hover nothing while filtering out every
+         * pass-through. A click never waits for it.
+         *
+         * Note this is only ONE of the three things between the hover and a visible gallery; the
+         * other two are the first-open construction cost (paid up front instead, see
+         * warmEmojiGallery()) and the frame's fade-in (shortened in chatreactions.qss).
+         */
+        constexpr static const int EmojiHoverOpenDelayMs=80;
+
+        /**
+         * @brief Grace period after the pointer leaves BOTH the emoji button and the gallery
+         *  before a hover-opened gallery closes itself.
+         *
+         * The gap between the button and the dialog has to be crossable, and a pointer travelling
+         * from one to the other is briefly over neither.
+         */
+        constexpr static const int EmojiHoverCloseDelayMs=600;
+
+        //! How often the "is the pointer still on the button or the gallery" check runs while a
+        //! HOVER-opened gallery is up. Polled rather than driven by enter/leave events: the
+        //! gallery is a separate top-level window full of child widgets, and Qt's Enter/Leave
+        //! pairs across that boundary (and between the grid's own cells) are far harder to get
+        //! right than simply asking where the cursor is.
+        constexpr static const int EmojiHoverPollMs=150;
+
+        //! Inline emoji sizes are rounded UP to a multiple of this before they are rasterized.
+        //! SvgIcon's pixmap cache is keyed by exact QSize, so an unrounded per-font size would
+        //! grow it by one entry for every font tweak the app ever makes; quantizing keeps the
+        //! working set to a handful of sizes. A cache-pressure guard, not an optimisation.
+        constexpr static const int EmojiSizeQuantum=4;
+
+        /**
+         * @brief Pixel size an inline emoji image is given, so it mirrors the surrounding text.
+         *
+         * Derived from the font's ASCENT rather than its full height: Qt lays an inline image out
+         * with its bottom on the baseline, so the ascent is the room available above it -- a
+         * full-height image would push the line taller than the text around it. Rounded up to
+         * EmojiSizeQuantum.
+         */
+        static int emojiInlineSizeForFont(const QFont& font);
 
         //! Forwarded to the embedded EnhancedTextEdit -- see EnhancedTextEdit::setSpellChecker().
         void setSpellChecker(AbstractSpellChecker* checker);
@@ -893,6 +1008,15 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void updateExpanded() override;
         void updateExpandButtonVisible() override;
         void updateMentionButtonVisible() override;
+        void updateEmojiButtonVisible() override;
+
+        //! Closes the emoji gallery when this editor is hidden -- a floating top-level picker
+        //! left over a composer that is no longer on screen would otherwise hang around.
+        void hideEvent(QHideEvent* event) override;
+
+        //! Watches the emoji button for Enter/Leave, which is what arms and disarms the
+        //! hover-open timer. Never consumes anything.
+        bool eventFilter(QObject* watched, QEvent* event) override;
         void updateStackedArrangement() override;
         void updateSpellCheckButtonVisible() override;
         void updateSpellCheckEnabled() override;
@@ -927,6 +1051,60 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! Formatting submenu's isChecked rows), so both always agree.
         MessageEditorFormatState currentFormatState() const;
 
+        //! emojiButtonVisible() AND a mode that can actually express an emoji. Called from both
+        //! updateEmojiButtonVisible() and updateMessageEditingMode(), the two things that can
+        //! change either half of that.
+        void applyEmojiButtonVisibility();
+
+        //! Write the emoji button's checked state from the gallery's PINNED state -- the only
+        //! authority on it, and deliberately not merely "is it open": see isEmojiGalleryPinned().
+        void syncEmojiButtonChecked();
+
+        /**
+         * @brief Build the gallery dialog (hidden) if it does not exist yet, and return it.
+         *
+         * Split out of openEmojiGallery() so the cost can be paid BEFORE the user is waiting on
+         * it: constructing the dialog builds a cell per pack entry and rasterizes an SVG for each
+         * one, which is by far the largest part of the delay on the FIRST open and is invisible on
+         * every one after. warmEmojiGallery() runs it off the hover path entirely.
+         *
+         * @return The frame, or nullptr in MessageEditingMode::Plaintext (which never shows a
+         *  picker) or if the dialog could not be built.
+         */
+        FloatingEmojiGalleryDialog* ensureEmojiGallery();
+
+        //! Build the gallery ahead of time, on the next event-loop turn, so a later hover or
+        //! click shows an already-constructed dialog. Triggered when the emoji button first
+        //! becomes visible -- a composer that never opts in never pays for this.
+        void warmEmojiGallery();
+
+        //! Promote a hover-opened gallery to pinned -- on a click on the button, or on a pick.
+        //! A no-op when it is closed or already pinned.
+        void pinEmojiGallery();
+
+        //! Start/stop the poll that closes a hover-opened gallery once the pointer has left both
+        //! it and the emoji button. Never runs for a pinned gallery.
+        void startEmojiHoverPoll();
+        void stopEmojiHoverPoll();
+
+        //! One tick of that poll -- see EmojiHoverPollMs.
+        void onEmojiHoverPoll();
+
+        //! Whether the cursor is currently over the emoji button or anywhere over the gallery
+        //! window. Asked of QCursor::pos() rather than tracked through Enter/Leave, see
+        //! EmojiHoverPollMs.
+        bool isCursorOverEmojiUi() const;
+
+        //! The pack the gallery should show for the CURRENT editing mode: the default pack in
+        //! Wysiwyg, an EmojiCodeReactionIconPack view of it in Markdown (which can only insert a
+        //! literal character, so a codeless icon has nothing to offer there).
+        std::shared_ptr<AbstractReactionIconPack> emojiPackForCurrentMode() const;
+
+        //! Hand the gallery the pack for the current mode, skipping the work entirely when the
+        //! mode has not changed since it was last filled -- setPack() rebuilds the whole grid,
+        //! and a hover must not pay for that.
+        void applyEmojiPackForCurrentMode();
+
         /**
          * @brief Hand keyboard focus back to the text edit after a user-initiated toolbar or
          *  context-menu action, so typing continues where the caret already is.
@@ -938,6 +1116,15 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          * Same deferral rule the rest of this project's focus-restore paths follow.
          */
         void restoreEditorFocus();
+
+        //! Index of a side frame's stretch within its layout, or -1. The stretch is found by
+        //! asking for spacerItem() rather than assumed to be first or last -- applyArrangement()
+        //! moves the trailing group's from one end to the other.
+        static int stretchIndex(QBoxLayout* layout);
+
+        //! Move a side frame's stretch to the front of its layout (or back to the end), so the
+        //! group stays packed toward the text area whichever direction the layout runs in.
+        static void moveStretch(QBoxLayout* layout, bool toFront);
 
         //! Point the leading/trailing frames' own layouts along the axis the current arrangement
         //! calls for. Moves nothing: the frames stay in their permanently horizontal row beside

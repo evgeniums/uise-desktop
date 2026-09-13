@@ -27,6 +27,16 @@ p {
     margin-bottom: 6px;
 }
 
+/* A message that is nothing but one to three emoji is rendered as a single <p class="emoji-only">
+   of large <img> (see markdownToHtml()'s own emoji-only pre-pass). It gets none of the paragraph
+   margins above: the images ARE the message, so the bubble should hug them rather than frame them
+   like prose. An attribute selector because Qt's document CSS has no class selector -- the same
+   form applyDocumentStyle() already uses for a[href^="whitem-mention:"]. */
+p[class="emoji-only"] {
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
 h1, h2, h3, h4, h5, h6 {
     margin-top: 6px;
     margin-bottom: 4px;

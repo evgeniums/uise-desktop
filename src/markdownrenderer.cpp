@@ -44,6 +44,7 @@ You may select, at your option, one of the above-listed licenses.
 *    | Inline code                    | QTextCharFormat::fontFixedPitch()        | <code>             |
 *    | Link (explicit or autolink)    | QTextCharFormat::isAnchor()/anchorHref() | <a href=> (scheme-checked) |
 *    | Image                          | QTextCharFormat::isImageFormat()         | never <img> -- escaped text, optionally linked |
+*    | Emoji (image or character)     | emojiSrc() src / pack findByCode()       | <img> -- ONLY with MarkdownRenderOptions::emojiEnabled, and ONLY rebuilt from a locally resolved icon |
 *    | Soft/hard line break inside a block | QChar::LineSeparator / '\n'          | <br/>              |
 *
 *  Everything not in that table -- any raw tag the GitHub dialect's inline-HTML support admitted,
@@ -68,6 +69,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFont>
 
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/chatreaction.hpp>
+#include <uise/desktop/reactioniconpack.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -450,6 +453,185 @@ QString preserveChatLineBreaks(const QString& src)
     return out;
 }
 
+/******************************* Emoji recognition ******************************/
+
+//! One emoji found while scanning a plain text run.
+struct EmojiMatch
+{
+    int start;             //!< offset into the run, in QChar units
+    int length;            //!< QChar units consumed, variation selector included
+    QString reactionId;
+    const ReactionIconInfo* info;
+};
+
+/** @brief Find every default-pack emoji CHARACTER in a plain text run.
+ *
+ * Scans by CODE POINT, not by QChar: every supplementary-plane emoji is a surrogate pair, so a
+ * QChar-wise scan would compare half a character and never match.
+ *
+ * Two Unicode details this must get right, both of which are ordinary in real messages:
+ *  - a trailing VARIATION SELECTOR (U+FE0F/U+FE0E) is swallowed into the match. Text routinely
+ *    writes the heart as U+2764 U+FE0F while the pack's own codes are bare code points, and
+ *    leaving the selector behind would strand an invisible character beside the image -- enough
+ *    to make an otherwise emoji-only message fail its "nothing but emoji" test.
+ *  - a following ZERO WIDTH JOINER suppresses the match entirely. A family emoji opens with a
+ *    code point the pack may well have on its own, and substituting just that one would render
+ *    one person followed by orphan glyphs.
+ */
+std::vector<EmojiMatch> findEmojiCharacters(const QString& text)
+{
+    std::vector<EmojiMatch> matches;
+
+    auto pack=ReactionIconPacks::instance().defaultPack();
+    if (!pack || text.isEmpty())
+    {
+        return matches;
+    }
+
+    const auto ucs4=text.toUcs4();
+    int offset=0;
+    for (qsizetype i=0; i<ucs4.size(); ++i)
+    {
+        const char32_t cp=ucs4[i];
+        const auto chars=QString::fromUcs4(&cp,1);
+
+        const bool zwjFollows=(i+1<ucs4.size()) && ucs4[i+1]==0x200D;
+        const auto* info=zwjFollows ? nullptr : pack->findByCode(chars);
+
+        if (info!=nullptr && info->icon)
+        {
+            auto length=static_cast<int>(chars.size());
+            if (i+1<ucs4.size() && (ucs4[i+1]==0xFE0F || ucs4[i+1]==0xFE0E))
+            {
+                const char32_t vs=ucs4[i+1];
+                length+=static_cast<int>(QString::fromUcs4(&vs,1).size());
+                ++i;
+            }
+            matches.push_back({offset,length,
+                               ChatReactionId::make(info->iconId,pack->uri()),info});
+            offset+=length;
+            continue;
+        }
+        offset+=static_cast<int>(chars.size());
+    }
+
+    return matches;
+}
+
+/** @brief Whether the document is nothing but 1..maxCount emoji, and if so which.
+ *
+ * Accepts BOTH forms an emoji-only message can arrive in -- literal characters (typed, or
+ * authored in Markdown mode) and image fragments (authored in WYSIWYG and exported as
+ * "![code](whitem-emoji:id)") -- and a mix of the two, because a user editing such a message can
+ * easily produce one.
+ *
+ * Requires a single plain block: no list, heading, blockquote, code or table. Anything else is a
+ * message with structure, and structure means it is not the "just a couple of emoji" case this
+ * exists for. Every emoji must also resolve locally; a partial match falls back to ordinary
+ * inline rendering, since a row that was half large images and half text would read as a fault.
+ */
+bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
+                       std::vector<QString>& reactionIds)
+{
+    reactionIds.clear();
+    if (maxCount<=0)
+    {
+        return false;
+    }
+
+    auto* root=doc->rootFrame();
+    for (auto it=root->begin(); !it.atEnd(); ++it)
+    {
+        // A child FRAME is a table -- structure, so not this case.
+        if (it.currentFrame()!=nullptr)
+        {
+            return false;
+        }
+    }
+
+    int blocks=0;
+    for (auto block=doc->begin(); block.isValid(); block=block.next())
+    {
+        const auto blockFormat=block.blockFormat();
+        if (blockFormat.headingLevel()>0
+            || block.textList()!=nullptr
+            || blockFormat.hasProperty(QTextFormat::BlockQuoteLevel)
+            || blockFormat.hasProperty(QTextFormat::BlockCodeLanguage)
+            || blockFormat.nonBreakableLines()
+            || blockFormat.hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth))
+        {
+            return false;
+        }
+
+        if (block.text().trimmed().isEmpty() && block.begin().atEnd())
+        {
+            // A wholly empty block (e.g. a trailing newline) neither counts nor disqualifies.
+            continue;
+        }
+
+        if (++blocks>1)
+        {
+            return false;
+        }
+
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+
+            auto charFormat=fragment.charFormat();
+            if (charFormat.isImageFormat())
+            {
+                const auto reactionId=emojiReactionId(charFormat.toImageFormat().name());
+                if (reactionId.isEmpty())
+                {
+                    return false;
+                }
+                const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+                if (info==nullptr || !info->icon)
+                {
+                    return false;
+                }
+                reactionIds.push_back(reactionId);
+                if (static_cast<int>(reactionIds.size())>maxCount)
+                {
+                    return false;
+                }
+                continue;
+            }
+
+            const auto text=fragment.text();
+            const auto matches=findEmojiCharacters(text);
+
+            // Everything that is NOT one of the matches must be whitespace, or this message has
+            // text in it and is not emoji-only.
+            int cursor=0;
+            for (const auto& match : matches)
+            {
+                if (!QStringView{text}.mid(cursor,match.start-cursor).trimmed().isEmpty())
+                {
+                    return false;
+                }
+                reactionIds.push_back(match.reactionId);
+                if (static_cast<int>(reactionIds.size())>maxCount)
+                {
+                    return false;
+                }
+                cursor=match.start+match.length;
+            }
+            if (!QStringView{text}.mid(cursor).trimmed().isEmpty())
+            {
+                return false;
+            }
+        }
+    }
+
+    return !reactionIds.empty();
+}
+
 /******************************* QTextDocument -> HTML walk ******************************/
 
 //! One currently-open <ul>/<ol> in the nesting stack -- see HtmlWriter::openListItem().
@@ -464,7 +646,8 @@ class HtmlWriter
     public:
 
         explicit HtmlWriter(const MarkdownRenderOptions& options)
-            : m_options(options)
+            : m_options(options),
+              m_emojiSize(options.emojiInlineSize)
         {}
 
         QString render(QTextDocument* doc)
@@ -482,6 +665,32 @@ class HtmlWriter
             closeAllLists();
             adjustBlockquoteLevel(0);
 
+            return m_html;
+        }
+
+        /** @brief Render the "nothing but 1..N emoji" form: one row of large images.
+         *
+         * @param reactionIds Ids in document order, already verified to resolve locally by
+         *  emojiOnlyDocument().
+         * @param size Pixel size for each, i.e. MarkdownRenderOptions::emojiOnlySize.
+         *
+         * The `emoji-only` class is the hook messagetext.css uses to strip the paragraph margins,
+         * so the row sits tight in its bubble instead of carrying a normal paragraph's spacing.
+         */
+        QString renderEmojiOnly(const std::vector<QString>& reactionIds, int size)
+        {
+            m_html.clear();
+            m_html+=QStringLiteral("<p class=\"emoji-only\">");
+            for (const auto& reactionId : reactionIds)
+            {
+                const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+                if (info==nullptr || !info->icon)
+                {
+                    continue;
+                }
+                writeEmojiImg(reactionId,info,size);
+            }
+            m_html+=QStringLiteral("</p>");
             return m_html;
         }
 
@@ -675,27 +884,7 @@ class HtmlWriter
             if (underline) m_html+=QStringLiteral("<u>");
             if (code) m_html+=QStringLiteral("<code>");
 
-            // MarkdownRenderOptions::extraLinkify -- an optional host hook for link detection
-            // this renderer cannot do on its own (its own doc comment's example is bare-domain
-            // detection, but a host-resolved "@username" mention is exactly the same shape: a
-            // plain-text pattern this generic renderer has no directory to resolve on its own).
-            // Consulted only for a plain run -- not already an anchor, not inside inline code or
-            // a fenced block -- matching the documented contract precisely. Previously declared
-            // but never actually called anywhere in this file; a host setting it had no way to
-            // discover that short of reading this source.
-            QString extra;
-            if (!anchor && !code && m_options.extraLinkify)
-            {
-                extra=m_options.extraLinkify(frag.text());
-            }
-            if (!extra.isEmpty())
-            {
-                m_html+=extra;
-            }
-            else
-            {
-                m_html+=escapeText(frag.text());
-            }
+            writePlainRun(frag.text(),anchor,code);
 
             if (code) m_html+=QStringLiteral("</code>");
             if (underline) m_html+=QStringLiteral("</u>");
@@ -709,13 +898,114 @@ class HtmlWriter
             }
         }
 
+        /** @brief Emit one plain (non-image) text run, substituting emoji characters.
+         *
+         * Emoji substitution and MarkdownRenderOptions::extraLinkify have to COMPOSE here, and
+         * neither obvious ordering works: running the hook first would leave it rewriting inside
+         * the `<a href>` attributes of its own output, and running it second would hand it HTML
+         * where its contract promises raw text. So the RAW run is split around its emoji instead,
+         * and each non-emoji segment goes through the hook exactly as a whole run used to. An
+         * emoji code point is never part of an "@username" or a bare domain, so every split point
+         * is a token boundary -- see the note on extraLinkify's own doc comment.
+         *
+         * Inline code and fenced blocks are never substituted: an emoji character there is
+         * content, and swapping it for an image would corrupt the code being shown. That is the
+         * same gate extraLinkify already had.
+         */
+        void writePlainRun(const QString& text, bool anchor, bool code)
+        {
+            if (!m_options.emojiEnabled || code)
+            {
+                writeLinkifiedOrEscaped(text,anchor,code);
+                return;
+            }
+
+            const auto matches=findEmojiCharacters(text);
+            if (matches.empty())
+            {
+                writeLinkifiedOrEscaped(text,anchor,code);
+                return;
+            }
+
+            int cursor=0;
+            for (const auto& match : matches)
+            {
+                if (match.start>cursor)
+                {
+                    writeLinkifiedOrEscaped(text.mid(cursor,match.start-cursor),anchor,code);
+                }
+                writeEmojiImg(match.reactionId,match.info,m_emojiSize);
+                cursor=match.start+match.length;
+            }
+            if (cursor<text.size())
+            {
+                writeLinkifiedOrEscaped(text.mid(cursor),anchor,code);
+            }
+        }
+
+        //! The pre-emoji plain-run path, unchanged: consult extraLinkify for a genuinely plain
+        //! run, otherwise just escape. See MarkdownRenderOptions::extraLinkify -- its returned
+        //! fragment is a documented trust boundary and is inserted verbatim, never re-scanned.
+        void writeLinkifiedOrEscaped(const QString& text, bool anchor, bool code)
+        {
+            QString extra;
+            if (!anchor && !code && m_options.extraLinkify)
+            {
+                extra=m_options.extraLinkify(text);
+            }
+            if (!extra.isEmpty())
+            {
+                m_html+=extra;
+            }
+            else
+            {
+                m_html+=escapeText(text);
+            }
+        }
+
+        //! The one and only place this class emits an <img>. Everything in the tag is built here
+        //! from an already-resolved pack entry; nothing is copied through from the document, so
+        //! this cannot be made to emit a src the caller did not vouch for.
+        void writeEmojiImg(const QString& reactionId, const ReactionIconInfo* info, int size)
+        {
+            m_html+=QStringLiteral("<img src=\"")+escapeAttribute(emojiSrc(reactionId))
+                    +QStringLiteral("\"");
+            if (size>0)
+            {
+                const auto sizeStr=QString::number(size);
+                m_html+=QStringLiteral(" width=\"")+sizeStr+QStringLiteral("\" height=\"")
+                        +sizeStr+QStringLiteral("\"");
+            }
+            // The emoji character as alt text, so a reader whose renderer cannot resolve the
+            // resource still sees the right glyph in their own font rather than a broken box.
+            const auto alt=info->emojiCode.isEmpty() ? info->iconId : info->emojiCode;
+            m_html+=QStringLiteral(" alt=\"")+escapeAttribute(alt)+QStringLiteral("\"/>");
+        }
+
         void writeImage(const QTextImageFormat& imgFmt)
         {
+            auto src=imgFmt.name();
+
+            // The single, narrow exception to "never <img>" below: an emoji, and only when the
+            // host opted in AND the icon is registered locally. The tag is rebuilt from the
+            // resolved id rather than from `src`, so nothing attacker-controlled reaches the
+            // output. Anything that fails either test falls through to the degrade path, which
+            // for an emoji shows its alt text -- the emoji character itself.
+            if (m_options.emojiEnabled && isEmojiSrc(src))
+            {
+                const auto reactionId=emojiReactionId(src);
+                const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+                if (info!=nullptr && info->icon)
+                {
+                    writeEmojiImg(reactionId,info,m_emojiSize);
+                    return;
+                }
+            }
+
             // An <img> is never emitted regardless of alt text: a remote src would make
             // QTextBrowser fetch it on render, leaking the reader's IP to whoever hosts it, with
             // no user action involved at all -- only the escaped alt text (falling back to the
             // source URL when markdown gave no alt text) is ever shown.
-            auto src=imgFmt.name();
             auto alt=imgFmt.stringProperty(QTextFormat::ImageAltText);
             auto display=escapeText(alt.isEmpty() ? src : alt);
             if (isSchemeAllowed(src) && m_anchorsEmitted<m_options.maxAnchors)
@@ -967,6 +1257,12 @@ class HtmlWriter
 
         MarkdownRenderOptions m_options;
         QString m_html;
+
+        //! Pixel size every emoji <img> in THIS render gets. Always the inline size: the
+        //! emoji-only case (MarkdownRenderOptions::emojiOnlySize) never reaches this walk at all,
+        //! markdownToHtml() answers it directly -- see its own comment.
+        int m_emojiSize=0;
+
         int m_anchorsEmitted=0;
         bool m_inCodeBlock=false;
         QString m_codeLanguage;
@@ -992,6 +1288,21 @@ QString markdownToHtml(const QString& markdown, const MarkdownRenderOptions& opt
 
     QTextDocument doc;
     doc.setMarkdown(src,QTextDocument::MarkdownDialectGitHub);
+
+    // The "nothing but a couple of emoji" case is decided ONCE, on the whole document, before the
+    // walk -- it cannot be expressed inside HtmlWriter, which is a streaming per-fragment writer
+    // with no way to know whether what it is looking at is all there is. On a hit the result is
+    // built directly: one <p>, N inline <img> at the larger size, which lay out as a single row
+    // on their own with no <br> needed.
+    if (options.emojiEnabled)
+    {
+        std::vector<QString> emojiOnlyIds;
+        if (emojiOnlyDocument(&doc,options.emojiOnlyMaxCount,emojiOnlyIds))
+        {
+            HtmlWriter writer(options);
+            return writer.renderEmojiOnly(emojiOnlyIds,options.emojiOnlySize);
+        }
+    }
 
     HtmlWriter writer(options);
     return writer.render(&doc);

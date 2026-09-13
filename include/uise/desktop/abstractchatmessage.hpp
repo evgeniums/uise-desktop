@@ -1849,9 +1849,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
     //! formatting-plan.md, Stage 6).
     Q_PROPERTY(bool mentionsEnabled READ isMentionsEnabled WRITE setMentionsEnabled)
 
+    //! QSS: qproperty-emojiEnabled: true; -- see setEmojiEnabled().
+    Q_PROPERTY(bool emojiEnabled READ isEmojiEnabled WRITE setEmojiEnabled)
+
+    //! QSS: qproperty-emojiOnlySize: 64; -- see setEmojiOnlySize().
+    Q_PROPERTY(int emojiOnlySize READ emojiOnlySize WRITE setEmojiOnlySize)
+
     public:
 
         constexpr static const int DefaultMaxBubbleWidth=600;
+
+        //! Pixel size of each emoji in a message that is nothing but emoji. Roughly three times
+        //! a default text line, which is what makes such a message read as a gesture rather than
+        //! as a sentence -- the convention every messenger with this feature follows.
+        constexpr static const int DefaultEmojiOnlySize=64;
 
         using AbstractChatMessageBody::AbstractChatMessageBody;
 
@@ -1937,6 +1948,51 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
             updateExtraLinkify();
         }
 
+        /**
+         * @brief Whether emoji in this body's text render as icon-pack images.
+         *
+         * With this on, both an "whitem-emoji:" markdown image and a literal emoji CHARACTER
+         * become an inline `<img>` sized to the current text, and a message that is nothing but
+         * one to three emoji renders them large in a single row (emojiOnlySize below). An icon
+         * that is not registered locally degrades to the emoji character, never to a broken
+         * image.
+         *
+         * Default false, and reactive, on exactly the reasoning setMentionsEnabled() above
+         * spells out. Only the TextFormat::Markdown branch consults it -- a Plain message keeps
+         * rendering as plain text, deliberately.
+         */
+        void setEmojiEnabled(bool enable)
+        {
+            auto changed=(m_emojiEnabled!=enable);
+            m_emojiEnabled=enable;
+            if (changed)
+            {
+                updateEmojiEnabled();
+            }
+        }
+
+        bool isEmojiEnabled() const noexcept
+        {
+            return m_emojiEnabled;
+        }
+
+        //! Pixel size of each image in a "nothing but emoji" message -- see setEmojiEnabled()
+        //! and MarkdownRenderOptions::emojiOnlySize. Reactive, like the flag itself.
+        void setEmojiOnlySize(int size)
+        {
+            auto changed=(m_emojiOnlySize!=size);
+            m_emojiOnlySize=size;
+            if (changed)
+            {
+                updateEmojiEnabled();
+            }
+        }
+
+        int emojiOnlySize() const noexcept
+        {
+            return m_emojiOnlySize;
+        }
+
     protected:
 
         //! Clamp a negotiation budget by maxBubbleWidth(), pass-through when the cap is disabled.
@@ -1960,11 +2016,32 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         //! whatever source it cached. No default behaviour.
         virtual void updateExtraLinkify() {}
 
+        //! Reacts to setEmojiEnabled()/setEmojiOnlySize() -- an implementation re-renders its
+        //! current content from whatever source it cached. No default behaviour.
+        virtual void updateEmojiEnabled() {}
+
+    public:
+
+        /**
+         * @brief Re-render the current content from the source it was last loaded from.
+         *
+         * Needed because the usual cheap path for a style change replays the ALREADY RENDERED
+         * html, which has the old pixel sizes baked into its emoji `<img>` tags -- correct for a
+         * colour change, wrong for a FONT change, where the emoji would stay at the previous
+         * text's size while the text around them moved. A re-render is the only way to pick up a
+         * new size. No default behaviour.
+         */
+        virtual void reloadFromSource() {}
+
+    protected:
+
     private:
 
         int m_maxBubbleWidth=DefaultMaxBubbleWidth;
         bool m_mentionsEnabled=false;
         std::function<QString(const QString&)> m_extraLinkify;
+        bool m_emojiEnabled=false;
+        int m_emojiOnlySize=DefaultEmojiOnlySize;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame

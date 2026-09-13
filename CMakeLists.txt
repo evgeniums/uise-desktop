@@ -255,6 +255,8 @@ SET (HEADERS
     include/uise/desktop/reactioniconpack.hpp
     include/uise/desktop/chatmessagereactions.hpp
     include/uise/desktop/chatreactiongallery.hpp
+    include/uise/desktop/abstractemojigallerydialog.hpp
+    include/uise/desktop/emojigallerydialog.hpp
 
     include/uise/desktop/replypreviewdata.hpp
     include/uise/desktop/abstractreplypreview.hpp
@@ -471,6 +473,7 @@ SET (SOURCES
     src/reactioniconpack.cpp
     src/chatmessagereactions.cpp
     src/chatreactiongallery.cpp
+    src/emojigallerydialog.cpp
 
     src/replypreviewdata.cpp
     src/replypreview.cpp

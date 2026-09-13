@@ -641,6 +641,25 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! message that happens to load.
         void applyDocumentStyle();
 
+        /**
+         * @brief Register a QPixmap for every emoji `<img>` in `html` under its own URL, so Qt's
+         *  image handler resolves it out of the document's own resource table.
+         *
+         * MUST run BEFORE setHtml(). Qt's image handler falls back to a broken-file placeholder
+         * for a src it cannot resolve AND caches that placeholder under the same URL -- after
+         * which the key is poisoned for the rest of the document's life and a later registration
+         * is simply ignored.
+         *
+         * Runs on EVERY load rather than once: a non-empty setHtml() leaves the resource table
+         * alone, but clearText() goes through QTextDocument::clear(), which wipes it.
+         *
+         * Fed from SvgIcon's own pixmap cache, deliberately NOT from data: URIs -- a base64 blob
+         * per emoji per message would bloat m_lastHtml (which is replayed on every theme change)
+         * and defeat that cache entirely. A QPixmap is implicitly shared, so the same emoji
+         * repeated N times in one message costs one rasterization, not N.
+         */
+        void registerEmojiResources(const QString& html);
+
         //! Recomputes contextMenuPolicy() from m_copyable/m_ownContextMenu -- the two setters
         //! share this instead of each duplicating the combination.
         void updateContextMenuPolicy();
@@ -1034,6 +1053,13 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
         //! Re-renders the last loadText() source with the new extraLinkify hook threaded through
         //! -- see AbstractChatMessageText::setExtraLinkify().
         void updateExtraLinkify() override;
+
+        //! Re-renders the last loadText() source with the new emoji options -- see
+        //! AbstractChatMessageText::setEmojiEnabled().
+        void updateEmojiEnabled() override;
+
+        //! @copydoc AbstractChatMessageText::reloadFromSource()
+        void reloadFromSource() override;
 
     private:
 

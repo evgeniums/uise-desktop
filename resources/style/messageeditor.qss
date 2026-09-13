@@ -51,6 +51,40 @@ border-radius: 4px;
 border: 1px solid transparent;
 }
 
+/* Square ripple to match the square button.
+ *
+ * These buttons are icon-only, so without this they fall through to ripple.qss's
+ * `uise--IconTextButton[iconOnly="true"]` rule, which gives them a capsule clip and a
+ * corner-based ellipse -- a CIRCLE. That is right for a round host and wrong here: every button in
+ * this group is a 4px-radius rounded SQUARE, and the checkable ones (the expand/typography toggle,
+ * the emoji toggle, and the toolbar's Bold/Italic/... ) fill exactly that square when checked (see
+ * the [checked="true"] rules in light/ and dark/messageeditor.qss). A circular ripple growing
+ * inside a square highlight reads as two different controls.
+ *
+ * rippleShape is the blob's own geometry, rippleClip only crops it -- both are needed. "roundedrect"
+ * measures its half-extents to the nearest EDGES and draws rounded corners, so it grows evenly into
+ * the button's own shape instead of an ellipse reaching for the corners; the clip and the blob share
+ * the button's 4px radius, so the two agree at full size. Equal X/Y scale reaches every edge,
+ * padding included. Origin stays "center" (inherited from ripple.qss's base IconTextButton rule),
+ * which is what makes the ripple look like the checked highlight arriving.
+ *
+ * SPECIFICITY -- the reason [iconOnly="true"] is repeated here rather than dropped as redundant.
+ * Qt scores a selector as ids*256 + (attributes+pseudos)*16 + elements (QCss::Selector::
+ * specificity()), so the rule being overridden scores 18 (2 elements + 1 attribute). Written the
+ * obvious way, WITHOUT the attribute, the toolbar selector below would score just 3 and silently
+ * lose -- element count is nearly worthless against an attribute. With it kept, the toolbar scores
+ * 19 and the #leadingWidgets/#trailingWidgets pair 275. Keep the attribute on any future addition
+ * here. */
+uise--MessageEditorToolbar uise--IconTextButton[iconOnly="true"] uise--RippleOverlay,
+uise--MessageEditor #leadingWidgets uise--IconTextButton[iconOnly="true"] uise--RippleOverlay,
+uise--MessageEditor #trailingWidgets uise--IconTextButton[iconOnly="true"] uise--RippleOverlay {
+qproperty-rippleShape: "roundedrect";
+qproperty-rippleClip: "rounded";
+qproperty-rippleCornerRadius: 4;
+qproperty-rippleRadiusScaleX: 1.0;
+qproperty-rippleRadiusScaleY: 1.0;
+}
+
 /* No horizontal margin on the LEADING buttons: the 6px padding above already separates them from
    each other and from the composer's edge, and stacking a margin on top of it only pushes the
    group inward without making it any easier to hit. The vertical half is left to the shared rule.
@@ -76,6 +110,16 @@ margin-left: 0px;
    that would also open gaps between adjacent buttons. */
 uise--MessageEditor #trailingWidgets {
 margin-right: 8px;
+}
+
+/* The emoji button is the FIRST trailing item, so it sits nearest the text area -- the mirror of
+   where the expand button sits on the leading side. Its left margin is therefore the same kind of
+   gap #expandButton's right margin is: separation from the TEXT, not spacing between buttons. The
+   bottom margin matches #expandButton's, so the two line up across the row. Two ids keep this
+   ahead of the group-wide icon-sizing rule above, the same specificity concern documented for
+   #leadingWidgets #expandButton. */
+uise--MessageEditor #trailingWidgets #emojiButton {
+margin: 0 0 2px 4px;
 }
 
 /* light/reset.qss and dark/reset.qss both sort AFTER this file in the cascade (root-dir files

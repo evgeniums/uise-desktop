@@ -949,6 +949,10 @@ int main(int argc, char *argv[])
     // linkifyDemoMentions()'s own doc comment. mentionsEnabled alone only allowlists the scheme
     // for anchors already present in the source; recognizing BARE "@word" text needs this too.
     mdBody->setExtraLinkify(linkifyDemoMentions);
+    // Emoji rendering: also opted in, also default-false. With this on, both an
+    // "whitem-emoji:" markdown image and a literal emoji CHARACTER become an inline icon-pack
+    // image, and a message that is nothing but 1-3 emoji renders them large in one row.
+    mdBody->setEmojiEnabled(true);
     auto* mdMessage=makeMessage(central,AbstractChatMessage::Direction::Sent,mdBody);
     rootLayout->addWidget(mdMessage);
 
@@ -1127,6 +1131,11 @@ int main(int argc, char *argv[])
     // button/menu row with no checker behind it does nothing at all.
     msgEditor->setSpellCheckButtonVisible(true);
     msgEditor->setSpellCheckMenuItemVisible(true);
+    // Emoji: same off-by-default reasoning again, though for a different cause -- the feature is
+    // entirely self-contained (uise-desktop ships both the icon packs and the gallery), it just
+    // must not change an existing composer's appearance until the host asks for it. The button
+    // appears on the RIGHT of the text area, and hides itself in Plaintext mode.
+    msgEditor->setEmojiButtonVisible(true);
     // Ceiling is 40% of the window, never below 180px -- resize the demo window and the editor's
     // growth limit follows it. Both the auto-resize growth and the expanded height stop here.
     msgEditor->setMaxHeight(180);
@@ -1231,6 +1240,71 @@ int main(int argc, char *argv[])
 
     auto* sendToBubbleButton=new QPushButton(QStringLiteral("Send this into the bubble above"));
     rootLayout->addWidget(sendToBubbleButton);
+
+    // --- emoji: the four rendering rules, side by side, plus the one close path a host owns ---
+
+    auto* emojiLabel=new QLabel(QStringLiteral(
+        "Emoji: use the button on the RIGHT of the editor (WYSIWYG inserts an image, Markdown "
+        "source inserts the character, Plaintext hides the button entirely). HOVER it and the "
+        "gallery appears without checking the button, then closes itself shortly after the "
+        "pointer leaves both it and the button; CLICK it (or pick an emoji) and the gallery is "
+        "pinned open with the button checked. The presets below load straight into the bubble to "
+        "show the four rendering rules:"
+    ));
+    emojiLabel->setWordWrap(true);
+    rootLayout->addWidget(emojiLabel);
+
+    auto* emojiButtonsFrame=new QFrame(central);
+    auto* emojiButtonsLayout=Layout::horizontal(emojiButtonsFrame);
+    rootLayout->addWidget(emojiButtonsFrame);
+
+    // Literal characters, not "whitem-emoji:" images: this is exactly what arrives from a mobile
+    // client or an OS emoji picker, and the renderer has to recognize it either way.
+    struct EmojiPreset
+    {
+        const char* label;
+        QString text;
+    };
+    const std::vector<EmojiPreset> emojiPresets{
+        {"1 emoji (large)",     QString::fromUcs4(U"\U0001F602")},
+        {"3 emoji (large row)", QString::fromUcs4(U"\U0001F602\U0001F525\U0001F44D")},
+        // Four is past emojiOnlyMaxCount, so this one falls back to inline size -- the boundary
+        // is the whole point of having it here.
+        {"4 emoji (inline)",    QString::fromUcs4(U"\U0001F602\U0001F525\U0001F44D\U00002764")},
+        // Mixed text + emoji + a NON-emoji image: proves inline sizing and, in the same bubble,
+        // that an ordinary markdown image is still sanitized away to its alt text.
+        {"mixed + sanitized img",
+         QString::fromUcs4(U"text \U0001F44D more ")
+         +QStringLiteral("![not-an-emoji](https://example.com/x.png)")}
+    };
+    for (const auto& preset : emojiPresets)
+    {
+        auto* button=new QPushButton(QString::fromLatin1(preset.label));
+        emojiButtonsLayout->addWidget(button);
+        const auto text=preset.text;
+        QObject::connect(button,&QPushButton::clicked,central,
+            [mdBody,logMsg,text]()
+            {
+                mdBody->loadText(text,TextFormat::Markdown);
+                logMsg(QStringLiteral("Emoji preset loaded: %1").arg(text));
+            }
+        );
+    }
+
+    // The third close path from the spec -- "the chat page becomes inactive". uise-desktop has no
+    // page-active concept of its own (and the picker is a Qt::Dialog that deliberately survives
+    // application deactivation), so a host calls this; there is no way to exercise it by hand
+    // otherwise. The X button and unchecking the emoji button are the other two.
+    auto* closeEmojiButton=new QPushButton(QStringLiteral("Close emoji picker (host)"));
+    emojiButtonsLayout->addWidget(closeEmojiButton);
+    QObject::connect(closeEmojiButton,&QPushButton::clicked,central,
+        [msgEditor,logMsg]()
+        {
+            msgEditor->closeEmojiGallery();
+            logMsg(QStringLiteral("closeEmojiGallery() called by host"));
+        }
+    );
+    emojiButtonsLayout->addStretch(1);
 
     // Stage 5b: the editor has no dialog of its own -- the HOST owns the hyperlink dialog,
     // exactly like every other AbstractHyperlinkDialog-family consumer (mirrors

@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ABSTRACTMESSAGEEDITOR_HPP
 
 #include <functional>
+#include <tuple>
 #include <vector>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -199,6 +200,18 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     //! wants the menu route, and vice versa.
     Q_PROPERTY(bool mentionMenuItemVisible READ isMentionMenuItemVisible WRITE setMentionMenuItemVisible)
 
+    //! QSS: qproperty-emojiButtonVisible: true; -- whether the checkable emoji button on the
+    //! RIGHT of the text area (the trailing group, mirroring the expand button's place in the
+    //! leading one) is shown at all. Default FALSE, same reasoning as mentionButtonVisible above
+    //! -- not because the feature needs anything from the host (unlike mentions it is entirely
+    //! self-contained: uise-desktop ships both the icon packs and the gallery) but because an
+    //! existing composer must render exactly as it did before this property existed until it
+    //! opts in.
+    //!
+    //! Even when true, the button is hidden in MessageEditingMode::Plaintext, which has no way
+    //! to express an emoji at all -- see insertEmoji().
+    Q_PROPERTY(bool emojiButtonVisible READ isEmojiButtonVisible WRITE setEmojiButtonVisible)
+
     //! QSS: qproperty-spellCheckButtonVisible: true; -- whether the toolbar's Check-spelling
     //! button is shown at all (task-spellcheck.md). Default FALSE, same reasoning as
     //! mentionButtonVisible above: the editor ships no dictionary and never will (see
@@ -327,6 +340,61 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
             return m_mentionButtonVisible;
         }
 
+        //! Show/hide the emoji button. See the emojiButtonVisible property.
+        void setEmojiButtonVisible(bool enable)
+        {
+            m_emojiButtonVisible=enable;
+            updateEmojiButtonVisible();
+        }
+
+        bool isEmojiButtonVisible() const noexcept
+        {
+            return m_emojiButtonVisible;
+        }
+
+        /**
+         * @brief Insert an emoji at the caret, replacing the current selection.
+         * @param reactionId "<icon id>@<pack URI>", or a bare icon id for the default pack --
+         *  ChatReactionId::make(), the same identifier a message reaction uses.
+         *
+         * Per editing mode:
+         *  - MessageEditingMode::Markdown inserts the LITERAL Unicode character
+         *    (ReactionIconInfo::emojiCode). That mode's document IS markdown source, and an emoji
+         *    character carries no markdown meaning, so nothing needs escaping.
+         *  - MessageEditingMode::Wysiwyg inserts an IMAGE whose QTextImageFormat::name() is
+         *    emojiSrc(reactionId) (see markdownrenderer.hpp), so the pack reference survives export
+         *    for a client that has the same pack. A DEFAULT-pack image is converted straight back
+         *    to its character on the way out -- see MessageEditor::text().
+         *  - MessageEditingMode::Plaintext REFUSES. There is no way to carry an image there, and
+         *    quietly writing the character instead would contradict the button being hidden in
+         *    that mode.
+         *
+         * Also a no-op for an unresolvable reactionId, for an icon with no emojiCode in Markdown
+         * mode, and (in Wysiwyg) inside a fenced code block or an existing mention.
+         *
+         * Declared on the INTERFACE, with an empty default body rather than pure virtual, so an
+         * out-of-tree AbstractMessageEditor implementation keeps compiling. Deliberately NOT
+         * concrete-only the way insertLink()/insertMention() are: a host storing its editor as an
+         * AbstractMessageEditor* (the usual shape) cannot reach those without a second, cast
+         * pointer, and there is no reason to repeat that here.
+         */
+        virtual void insertEmoji(const QString& reactionId)
+        {
+            std::ignore=reactionId;
+        }
+
+        //! Close the emoji gallery if it is open, and un-check the emoji button.
+        //!
+        //! Exists because "the chat page became inactive" has no representation in this library:
+        //! there is no page-active concept here, and the gallery is a top-level Qt::Dialog that
+        //! deliberately STAYS visible when the application itself deactivates (see
+        //! FloatingDialogFrame), so application-level deactivation is not the right trigger
+        //! either. A host owns that signal and calls this -- the same division of labour
+        //! mentionRequested() has with the user directory. The editor closes the gallery on its
+        //! own only for the things it can see itself: being hidden, and a switch to
+        //! MessageEditingMode::Plaintext.
+        virtual void closeEmojiGallery() {}
+
         //! Show/hide the context menu's "Mention someone" row. See the mentionMenuItemVisible
         //! property. A plain setter with no update hook, unlike setMentionButtonVisible() above:
         //! the menu is rebuilt from scratch on every right-click
@@ -448,8 +516,14 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          * row; that row never changes. What changes is the direction of each frame's own layout:
          * a row of buttons beside a one-line text area becomes a column of buttons beside a text
          * area several lines tall, where there is vertical room for them and none to spare
-         * horizontally. The group's first widget ends up lowest in the column, nearest the text
-         * area's bottom edge, where it already was.
+         * horizontally.
+         *
+         * The two groups map their row order onto the column in OPPOSITE directions, because
+         * "keep each button where it already was" means opposite things on the two sides. In the
+         * LEADING group the first widget ends up lowest, nearest the text area's bottom edge
+         * where it already was. In the TRAILING group the order is reversed, so the group's LAST
+         * widget -- the one furthest from the text area, which for a chat composer is Send -- ends
+         * up at the bottom of the column rather than the top. Both groups stay packed downward.
          *
          * Driven by content, not by the host. Going back is deliberately NOT symmetric -- it
          * happens only when the editor is empty again, so that a composer being edited around the
@@ -829,6 +903,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! Reacts to setMentionButtonVisible().
         virtual void updateMentionButtonVisible() {}
 
+        //! Reacts to setEmojiButtonVisible().
+        virtual void updateEmojiButtonVisible() {}
+
         //! Reacts to setSpellCheckButtonVisible().
         virtual void updateSpellCheckButtonVisible() {}
 
@@ -851,6 +928,7 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool m_contextMenuEnabled=true;
         bool m_mentionButtonVisible=false;
         bool m_mentionMenuItemVisible=false;
+        bool m_emojiButtonVisible=false;
         bool m_spellCheckButtonVisible=false;
         bool m_spellCheckMenuItemVisible=false;
         bool m_spellCheckEnabled=true;

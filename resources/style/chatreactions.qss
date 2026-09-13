@@ -152,3 +152,46 @@ qproperty-offsetY: 4;
 qproperty-animationDurationMs: 150;
 qproperty-easingCurveType: 6;
 }
+
+/* --- the floating emoji picker (EmojiGalleryDialog) --- */
+
+/* The frame's own fade is the last of the three things between hovering the emoji button and
+   seeing the gallery (the other two being MessageEditor::EmojiHoverOpenDelayMs and, on the very
+   first open only, building the dialog -- which MessageEditor::warmEmojiGallery() now does ahead
+   of time). FloatingDialogFrame defaults to 150ms, which is right for a dialog the user opened
+   deliberately and too slow for one that is supposed to follow the pointer. Not 0: an instant
+   appearance of something this large is jarring, and 90ms still reads as immediate. */
+uise--FloatingEmojiGalleryDialog {
+qproperty-fadeDurationMs: 90;
+}
+
+/* The dialog's content IS a ChatReactionGallery, so everything above already styles the grid,
+   the search box and the recents row. Only the dialog's own chrome needs anything here. */
+
+/* EmojiGalleryDialog::construct() calls setButtons({}), which leaves Dialog<>'s buttons frame in
+   the layout with nothing in it. Without this it still reserves whatever padding abstractdialog.qss
+   gives a button row -- a strip of blank space under the grid with no buttons in it. */
+uise--EmojiGalleryDialog #dialogButtonsFrame {
+margin:0;
+padding:0;
+min-height:0px;
+max-height:0px;
+}
+
+/* Sized so the WHOLE default pack fits with no scrolling at all, which the reactions dropdown's
+   own 8x5 does not: 50 icons over 8 columns needs 7 rows, and only 5 are visible there.
+
+   9 columns x 6 rows is the smallest grid that closes that gap -- ceil(50/9) is exactly 6, so the
+   pack fills the viewport without leaving a half-empty spare row. One column wider and one row
+   taller (+20%) than the dropdown.
+
+   Scoped to this dialog rather than changed on uise--ChatReactionGallery itself: the reactions
+   popup is anchored to a message bubble and deliberately compact, whereas this is a dialog the
+   user opens to browse -- the two want different shapes, and widening the shipped popup is not
+   part of this. Two ids out-specify the bare-type rule that sets 8x5 above. */
+uise--EmojiGalleryDialog #emojiGallery {
+margin:0;
+padding:0;
+qproperty-galleryColumns: 9;
+qproperty-galleryVisibleRows: 6;
+}

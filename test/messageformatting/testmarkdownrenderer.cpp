@@ -42,9 +42,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextDocument>
 #include <QTextBlock>
 #include <QTextFormat>
+#include <QUrl>
 
 #include <uise/test/uise-testthread.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/chatreaction.hpp>
+#include <uise/desktop/reactioniconpack.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -61,6 +64,24 @@ QString renderMd(const QString& src, const MarkdownRenderOptions& options=Markdo
         }
     );
     return result;
+}
+
+//! The literal U+1F44D character, i.e. exactly what DefaultReactionIconPack stores as the
+//! "thumbsup" entry's emojiCode -- see reactioniconpack.cpp's own raw table.
+QString thumbsUp()
+{
+    return QString::fromUcs4(U"\U0001F44D");
+}
+
+//! Emoji on, with an inline size distinct from the emoji-only size so the two are told apart by
+//! the width attribute alone.
+MarkdownRenderOptions emojiOptions()
+{
+    MarkdownRenderOptions options;
+    options.emojiEnabled=true;
+    options.emojiInlineSize=18;
+    options.emojiOnlySize=64;
+    return options;
 }
 
 QString stripMd(const QString& src, int maxSourceLength=4096)
@@ -665,6 +686,170 @@ BOOST_AUTO_TEST_CASE(TestTableAfterParagraphGetsInlineTopMargin)
     // A table at the very start of the message has nothing above it to space from.
     auto leading=renderMd(QStringLiteral("|1|2|\n|-|-|\n|3|4|"));
     UISE_TEST_CHECK(!leading.contains(QStringLiteral("style=\"margin-top")));
+}
+
+/**************************** emoji ****************************/
+
+BOOST_AUTO_TEST_CASE(TestEmojiDisabledEmitsNoImg)
+{
+    // The regression guard for the whole feature: with the opt-in off, nothing about this
+    // renderer's output changes, and its "<img> is never emitted" sanitization contract holds
+    // verbatim -- for an emoji character, an emoji markdown image, and an ordinary image alike.
+    auto fromChar=renderMd(thumbsUp());
+    UISE_TEST_CHECK(!fromChar.contains(QStringLiteral("<img")));
+
+    auto fromImage=renderMd(QStringLiteral("![x](whitem-emoji:thumbsup)"));
+    UISE_TEST_CHECK(!fromImage.contains(QStringLiteral("<img")));
+
+    auto ordinary=renderMd(QStringLiteral("![x](https://example.com/x.png)"));
+    UISE_TEST_CHECK(!ordinary.contains(QStringLiteral("<img")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiCharacterBecomesImg)
+{
+    auto html=renderMd(QStringLiteral("hello ")+thumbsUp()+QStringLiteral(" there"),emojiOptions());
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<img src=\"whitem-emoji:thumbsup\"")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"18\"")));
+    // The surrounding text is untouched, and the emoji character itself is gone from the text.
+    UISE_TEST_CHECK(html.contains(QStringLiteral("hello ")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral(" there")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiMarkdownImageBecomesImg)
+{
+    auto html=renderMd(QStringLiteral("a ![x](whitem-emoji:thumbsup) b"),emojiOptions());
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<img src=\"whitem-emoji:thumbsup\"")));
+}
+
+BOOST_AUTO_TEST_CASE(TestUnknownEmojiDegradesToAltTextNotImgOrAnchor)
+{
+    // Not locally available -> the alt text, and specifically NOT a dead <a href="whitem-emoji:">.
+    // That is why the scheme must never be added to allowedLinkSchemes.
+    auto html=renderMd(QStringLiteral("![fallback](whitem-emoji:no-such-icon)"),emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<img")));
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<a href=\"whitem-emoji")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral("fallback")));
+}
+
+BOOST_AUTO_TEST_CASE(TestNonEmojiImageStillSanitizedWithEmojiEnabled)
+{
+    // 4.3: turning emoji on must not open the door for any other image.
+    auto html=renderMd(QStringLiteral("![evil](https://example.com/x.png)"),emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<img")));
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("example.com/x.png\"")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiOnlyMessagesRenderLarge)
+{
+    for (int count=1; count<=3; ++count)
+    {
+        QString src;
+        for (int i=0; i<count; ++i)
+        {
+            src+=thumbsUp();
+        }
+        auto html=renderMd(src,emojiOptions());
+        UISE_TEST_CHECK(html.contains(QStringLiteral("<p class=\"emoji-only\">")));
+        UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),count);
+        UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"64\"")));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestFourEmojiFallBackToInline)
+{
+    // One past emojiOnlyMaxCount -- the boundary, and the reason the count is checked rather
+    // than just "is everything an emoji".
+    auto html=renderMd(thumbsUp()+thumbsUp()+thumbsUp()+thumbsUp(),emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("emoji-only")));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),4);
+    UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"18\"")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiWithTextIsNotEmojiOnly)
+{
+    auto html=renderMd(thumbsUp()+QStringLiteral(" nice"),emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("emoji-only")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"18\"")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiInCodeStaysLiteral)
+{
+    // An emoji inside code is CONTENT -- substituting it would corrupt the code being shown.
+    auto inlineCode=renderMd(QStringLiteral("`")+thumbsUp()+QStringLiteral("`"),emojiOptions());
+    UISE_TEST_CHECK(!inlineCode.contains(QStringLiteral("<img")));
+
+    auto fenced=renderMd(QStringLiteral("```\n")+thumbsUp()+QStringLiteral("\n```"),emojiOptions());
+    UISE_TEST_CHECK(!fenced.contains(QStringLiteral("<img")));
+}
+
+BOOST_AUTO_TEST_CASE(TestVariationSelectorIsSwallowed)
+{
+    // Real text writes the heart as U+2764 U+FE0F while the pack's code is the bare U+2764. The
+    // selector has to be consumed INTO the match, or a lone invisible character is left behind --
+    // which would also make this fail the emoji-only test below.
+    const auto heartVs=QString::fromUcs4(U"\U00002764\U0000FE0F");
+    auto html=renderMd(heartVs,emojiOptions());
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<p class=\"emoji-only\">")));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),1);
+    UISE_TEST_CHECK(!html.contains(QString::fromUcs4(U"\U0000FE0F")));
+}
+
+BOOST_AUTO_TEST_CASE(TestZwjSequenceIsNotSubstituted)
+{
+    // A family emoji opens with U+1F468, which the pack may well carry on its own. Substituting
+    // only that first code point would render a man followed by two orphan glyphs.
+    const auto family=QString::fromUcs4(U"\U0001F468\U0000200D\U0001F469\U0000200D\U0001F467");
+    auto html=renderMd(family,emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("<img")));
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiComposesWithExtraLinkify)
+{
+    // The hook must still see -- and still linkify -- the non-emoji parts, and must be invoked
+    // once per SEGMENT rather than once per run. Its own output is never re-scanned for emoji.
+    int calls=0;
+    auto options=emojiOptions();
+    options.extraLinkify=[&calls](const QString& text)
+    {
+        ++calls;
+        if (!text.contains(QStringLiteral("@bob")))
+        {
+            return QString{};
+        }
+        auto escaped=text;
+        escaped.replace(QStringLiteral("@bob"),
+                        QStringLiteral("<a href=\"https://example.com/bob\">@bob</a>"));
+        return escaped;
+    };
+
+    auto html=renderMd(QStringLiteral("@bob ")+thumbsUp()+QStringLiteral(" hi"),options);
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<a href=\"https://example.com/bob\">")));
+    UISE_TEST_CHECK(html.contains(QStringLiteral("<img src=\"whitem-emoji:thumbsup\"")));
+    // Two segments around the single emoji.
+    UISE_TEST_CHECK_EQUAL(calls,2);
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiSrcRoundTrip)
+{
+    // The default pack's empty URI leaves the payload a bare, readable icon id...
+    UISE_TEST_CHECK_EQUAL(emojiSrc(QStringLiteral("thumbsup")).toStdString(),
+                          std::string("whitem-emoji:thumbsup"));
+
+    // ...while a pack URI containing the characters that would otherwise break either the
+    // markdown writer ('(' ')' ' ') or QUrl's strict parser ('/' ':') survives percent-encoding.
+    const auto hard=ChatReactionId::make(QStringLiteral("thumbsup"),
+                                         QStringLiteral("https://example.com/pack v2"));
+    const auto src=emojiSrc(hard);
+    UISE_TEST_CHECK(isEmojiSrc(src));
+    UISE_TEST_CHECK(!src.contains(QLatin1Char(' ')));
+    UISE_TEST_CHECK(!src.contains(QLatin1Char(')')));
+    UISE_TEST_CHECK_EQUAL(emojiReactionId(src).toStdString(),hard.toStdString());
+    UISE_TEST_CHECK_EQUAL(QUrl(src,QUrl::StrictMode).scheme().toStdString(),
+                          std::string("whitem-emoji"));
+
+    // Not an emoji src at all.
+    UISE_TEST_CHECK(!isEmojiSrc(QStringLiteral("https://example.com/x.png")));
+    UISE_TEST_CHECK(emojiReactionId(QStringLiteral("https://example.com/x.png")).isEmpty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

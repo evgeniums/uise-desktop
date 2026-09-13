@@ -142,8 +142,36 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         int galleryColumns() const noexcept { return m_galleryColumns; }
         void setGalleryColumns(int value);
 
+        //! Number of icon rows the scroll area shows before it starts scrolling. This is a real
+        //! height clamp on the viewport -- without one the gallery is as tall as its whole pack.
         int galleryVisibleRows() const noexcept { return m_galleryVisibleRows; }
         void setGalleryVisibleRows(int value);
+
+        /**
+         * @brief Override the search box's placeholder text.
+         * @param text New text, or an empty string to go back to the default tr("Search
+         *  reactions").
+         *
+         * This widget is reused verbatim as an EMOJI picker (see EmojiGalleryDialog), where
+         * every default string here names the wrong thing. Overriding beats forking the widget,
+         * and beats renaming the defaults -- the reactions UI that already ships wants exactly
+         * the wording it has.
+         *
+         * A QEvent::LanguageChange re-applies whatever was set here rather than reverting to the
+         * default, so a host must re-set its own tr()'d text from its own changeEvent().
+         */
+        void setSearchPlaceholderText(const QString& text);
+        QString searchPlaceholderText() const noexcept { return m_searchPlaceholderText; }
+
+        //! Override the "nothing matched" label. Empty restores tr("No matching reactions").
+        //! @see setSearchPlaceholderText()
+        void setEmptyText(const QString& text);
+        QString emptyText() const noexcept { return m_emptyText; }
+
+        //! Override the recents section title. Empty restores tr("Recently used").
+        //! @see setSearchPlaceholderText()
+        void setRecentTitleText(const QString& text);
+        QString recentTitleText() const noexcept { return m_recentTitleText; }
 
     Q_SIGNALS:
 
@@ -168,6 +196,10 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         void onSearchTextChanged(const QString& text);
         PushButton* ensureGridCell(size_t index);
 
+        //! Clamp the scroll viewport to galleryVisibleRows() rows, measured from a live cell's
+        //! own size hint so the clamp tracks the theme rather than duplicating its numbers.
+        void applyVisibleRowsHeight();
+
         std::shared_ptr<AbstractReactionIconPack> m_pack;
         QStringList m_ownReactionIds;
 
@@ -188,6 +220,12 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
 
         int m_galleryColumns=8;
         int m_galleryVisibleRows=5;
+
+        //! Host overrides for the three user-facing strings; empty means "use the default".
+        //! @see setSearchPlaceholderText()
+        QString m_searchPlaceholderText;
+        QString m_emptyText;
+        QString m_recentTitleText;
 };
 
 /**

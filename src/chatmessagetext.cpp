@@ -49,11 +49,17 @@ You may select, at your option, one of the above-listed licenses.
 #include <QContextMenuEvent>
 #include <QShortcut>
 #include <QAbstractTextDocumentLayout>
+#include <QRegularExpression>
+#include <QFontMetrics>
+#include <QHash>
+#include <QUrl>
 #include <QtMath>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
+#include <uise/desktop/reactioniconpack.hpp>
+#include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/syntaxhighlighter.hpp>
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -1125,9 +1131,65 @@ void ChatMessageTextBrowser::setMessageTextWidget(AbstractChatMessageText* widge
 
 //--------------------------------------------------------------------------
 
+void ChatMessageTextBrowser::registerEmojiResources(const QString& html)
+{
+    // One cheap substring test keeps the overwhelmingly common no-emoji message at the cost of a
+    // single QString::contains() rather than a regex pass.
+    if (!html.contains(emojiUrlScheme()))
+    {
+        return;
+    }
+
+    static const QRegularExpression imgRe(
+        QStringLiteral("<img\\s+src=\"([^\"]*)\"(?:\\s+width=\"(\\d+)\")?")
+    );
+
+    // A resource is keyed by URL alone, so one src cannot carry two sizes. A message is in
+    // practice either emoji-only (all large) or inline (all text-sized) -- the emoji-only rule
+    // requires the message to be nothing BUT emoji -- but register the largest width seen anyway:
+    // Qt scales a pixmap down cleanly and up badly.
+    QHash<QString,int> sizes;
+    auto it=imgRe.globalMatch(html);
+    while (it.hasNext())
+    {
+        const auto match=it.next();
+        const auto src=match.captured(1);
+        if (!isEmojiSrc(src))
+        {
+            continue;
+        }
+        const auto width=match.captured(2).toInt();
+        sizes[src]=std::max(sizes.value(src,0),width);
+    }
+
+    const auto dpr=devicePixelRatioF();
+    for (auto sizeIt=sizes.constBegin(); sizeIt!=sizes.constEnd(); ++sizeIt)
+    {
+        const auto* info=ReactionIconPacks::instance().iconInfo(emojiReactionId(sizeIt.key()));
+        if (info==nullptr || !info->icon)
+        {
+            continue;
+        }
+        auto px=sizeIt.value();
+        if (px<=0)
+        {
+            // No width attribute: fall back to the current text size, which is what an inline
+            // emoji would have been given anyway.
+            px=QFontMetrics(font()).ascent();
+        }
+        const auto devicePx=qRound(px*dpr);
+        document()->addResource(QTextDocument::ImageResource,QUrl(sizeIt.key()),
+                                info->icon->pixmap(QSize(devicePx,devicePx)));
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::setHtmlContent(const QString& html)
 {
     m_lastHtml=html;
+    // Before setHtml(), never after -- see registerEmojiResources()'s own doc comment.
+    registerEmojiResources(html);
     setHtml(html);
     // setHtml() does NOT replace the underlying QTextDocument object -- QWidgetTextControlPrivate::
     // setContent() only allocates a new one when this widget has none yet, otherwise it calls
@@ -1248,6 +1310,15 @@ void ChatMessageTextBrowser::changeEvent(QEvent* event)
         // unconditionally here instead of depending on the qproperty writers alone.
         applyDocumentStyle();
     }
+    else if (event->type()==QEvent::FontChange && m_messageTextWidget!=nullptr
+             && m_lastHtml.contains(emojiUrlScheme()))
+    {
+        // A font change moves the text but NOT the emoji: applyDocumentStyle()'s replay reuses
+        // m_lastHtml, whose <img> tags carry the size measured against the PREVIOUS font. Only a
+        // re-render from source can pick up the new one. Gated on the html actually containing an
+        // emoji, so the ordinary message keeps the cheap path untouched.
+        m_messageTextWidget->reloadFromSource();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1305,6 +1376,8 @@ void ChatMessageTextBrowser::applyDocumentStyle()
     // message that happens to load.
     if (!m_lastHtml.isEmpty())
     {
+        // Same rule as setHtmlContent(): resources go in before the HTML that references them.
+        registerEmojiResources(m_lastHtml);
         setHtml(m_lastHtml);
         // The replay rebuilt the document, discarding every per-message format derived from the
         // PREVIOUS load along with it -- both passes have to run again, exactly as they do after
@@ -2512,6 +2585,17 @@ void ChatMessageText::loadText(const QString& text, TextFormat format)
             // Threaded through unconditionally when set; null is the common case and
             // markdownToHtml() already treats a null hook as "not set".
             options.extraLinkify=extraLinkify();
+            if (isEmojiEnabled())
+            {
+                options.emojiEnabled=true;
+                // The renderer has no widget and no font of its own, so the inline size has to be
+                // measured here. Ascent rather than height, for the reason spelled out in
+                // MessageEditor::emojiInlineSizeForFont(): Qt puts an inline image's bottom on the
+                // baseline, so a full-height image would make every line carrying one taller than
+                // its neighbours.
+                options.emojiInlineSize=QFontMetrics(pimpl->text->font()).ascent();
+                options.emojiOnlySize=emojiOnlySize();
+            }
             pimpl->text->setHtmlContent(markdownToHtml(text,options));
             break;
         }
@@ -2577,6 +2661,29 @@ void ChatMessageText::updateExtraLinkify()
     // Same gate as updateMentionsEnabled() -- only the Markdown branch of loadText() consults
     // extraLinkify() at all.
     if (pimpl->sourceFormat!=TextFormat::Markdown || pimpl->sourceText.isEmpty())
+    {
+        return;
+    }
+    loadText(pimpl->sourceText,pimpl->sourceFormat);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::updateEmojiEnabled()
+{
+    // Same gate again -- only the Markdown branch of loadText() looks at the emoji options.
+    if (pimpl->sourceFormat!=TextFormat::Markdown || pimpl->sourceText.isEmpty())
+    {
+        return;
+    }
+    loadText(pimpl->sourceText,pimpl->sourceFormat);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::reloadFromSource()
+{
+    if (pimpl->sourceText.isEmpty())
     {
         return;
     }

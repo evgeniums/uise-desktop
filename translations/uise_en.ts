@@ -543,7 +543,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+1921"/>
+        <location filename="../src/chatmessagetext.cpp" line="+1994"/>
         <source>Copied</source>
         <translation type="unfinished">Copied</translation>
     </message>
@@ -566,23 +566,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatMessageTextBrowser</name>
     <message>
-        <location line="-1222"/>
+        <location line="-1289"/>
         <source>Copied</source>
         <translation type="unfinished">Copied</translation>
     </message>
     <message>
         <location line="+71"/>
-        <location line="+1355"/>
+        <location line="+1422"/>
         <source>Copy code</source>
         <translation type="unfinished">Copy code</translation>
     </message>
     <message>
-        <location line="-1331"/>
+        <location line="-1398"/>
         <source>Open code in a larger window</source>
         <translation type="unfinished">Open code in a larger window</translation>
     </message>
     <message>
-        <location line="+826"/>
+        <location line="+893"/>
         <source>Show the full table</source>
         <translation type="unfinished">Show the full table</translation>
     </message>
@@ -626,19 +626,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <name>ChatReactionGallery</name>
     <message>
         <location filename="../src/chatreactiongallery.cpp" line="+154"/>
-        <location line="+181"/>
+        <location line="+215"/>
         <source>Recently used</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-167"/>
-        <location line="+168"/>
+        <location line="-201"/>
+        <location line="+185"/>
         <source>Search reactions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-155"/>
-        <location line="+156"/>
+        <location line="-172"/>
+        <location line="+180"/>
         <source>No matching reactions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -734,6 +734,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+42"/>
         <source>Cancel</source>
         <translation type="unfinished">Cancel</translation>
+    </message>
+</context>
+<context>
+    <name>EmojiGalleryDialog</name>
+    <message>
+        <location filename="../src/emojigallerydialog.cpp" line="+73"/>
+        <location line="+83"/>
+        <source>Search emoji</source>
+        <translation type="unfinished">Search emoji</translation>
+    </message>
+    <message>
+        <location line="-82"/>
+        <location line="+83"/>
+        <source>No matching emoji</source>
+        <translation type="unfinished">No matching emoji</translation>
+    </message>
+    <message>
+        <location line="-68"/>
+        <location line="+61"/>
+        <source>Emoji</source>
+        <translation type="unfinished">Emoji</translation>
     </message>
 </context>
 <context>
@@ -1109,17 +1130,22 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+3120"/>
+        <location filename="../src/messageeditor.cpp" line="+3435"/>
         <source>Show formatting toolbar</source>
         <translation type="unfinished">Show formatting toolbar</translation>
     </message>
     <message>
-        <location line="+1381"/>
+        <location line="+32"/>
+        <source>Insert emoji</source>
+        <translation type="unfinished">Insert emoji</translation>
+    </message>
+    <message>
+        <location line="+1551"/>
         <source>code here</source>
         <translation type="unfinished">code here</translation>
     </message>
     <message>
-        <location line="+1272"/>
+        <location line="+1775"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2396,6 +2422,66 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+0"/>
         <source>smug</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>roll eyes</source>
+        <translation type="unfinished">roll eyes</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>eyeroll</source>
+        <translation type="unfinished">eyeroll</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>whatever</source>
+        <translation type="unfinished">whatever</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>grimace</source>
+        <translation type="unfinished">grimace</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>awkward</source>
+        <translation type="unfinished">awkward</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>yikes</source>
+        <translation type="unfinished">yikes</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>sparkles</source>
+        <translation type="unfinished">sparkles</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>shiny</source>
+        <translation type="unfinished">shiny</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>magic</source>
+        <translation type="unfinished">magic</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>crossed fingers</source>
+        <translation type="unfinished">crossed fingers</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>good luck</source>
+        <translation type="unfinished">good luck</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>hope</source>
+        <translation type="unfinished">hope</translation>
     </message>
 </context>
 <context>

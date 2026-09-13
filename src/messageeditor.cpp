@@ -44,7 +44,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextBlockFormat>
 #include <QFontDatabase>
 #include <QSyntaxHighlighter>
+#include <QFontMetrics>
 #include <QFontMetricsF>
+#include <QTextImageFormat>
+#include <QUrl>
+#include <QCursor>
+#include <QEvent>
 #include <QRegularExpression>
 #include <QMimeData>
 #include <QApplication>
@@ -64,6 +69,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/abstractspellchecker.hpp>
+#include <uise/desktop/chatreaction.hpp>
+#include <uise/desktop/reactioniconpack.hpp>
+#include <uise/desktop/emojigallerydialog.hpp>
+#include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -775,6 +784,90 @@ void padEmptyTableColumnsForExport(QTextFrame* frame)
     }
 }
 
+/** @brief Replace emoji images with their literal emoji characters.
+ *
+ * An emoji inserted in WYSIWYG mode is an image carrying an "whitem-emoji:<reaction id>" src.
+ * On the way out, one from the default pack becomes the plain Unicode character instead: that
+ * says exactly the same thing in a form EVERY client understands, with no pack lookup and no
+ * agreement about icon ids required.
+ *
+ * @param defaultPackOnly When true (the MARKDOWN export), an image from any other pack is left
+ *  alone, to be written as "![code](src)". Its graphic may simply not exist on the receiving
+ *  side, so the pack-qualified reference is the only thing that can find it again -- and a client
+ *  that cannot resolve it still has the alt text, which is the emoji character.
+ *  When false (the PLAIN-TEXT export), every pack is resolved: plain text cannot express a pack
+ *  reference at all, so the character is the only representation available and keeping the image
+ *  would just lose the emoji outright.
+ *
+ * Fragments are collected first and applied BACK TO FRONT: replacing one shifts the positions of
+ * everything after it. Same idiom, and the same reason, as convertCodeBlocksToText().
+ */
+void replaceEmojiImagesForExport(QTextDocument* document, bool defaultPackOnly)
+{
+    struct Replacement
+    {
+        int position;
+        int length;
+        QString code;
+        QTextCharFormat format;
+    };
+    std::vector<Replacement> replacements;
+
+    for (auto block=document->begin(); block.isValid(); block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+            auto charFormat=fragment.charFormat();
+            if (!charFormat.isImageFormat())
+            {
+                continue;
+            }
+
+            const auto imgFmt=charFormat.toImageFormat();
+            const auto reactionId=emojiReactionId(imgFmt.name());
+            if (reactionId.isEmpty())
+            {
+                continue;
+            }
+            if (defaultPackOnly && !ChatReactionId::packUri(reactionId).isEmpty())
+            {
+                continue;
+            }
+            const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+            if (info==nullptr || info->emojiCode.isEmpty())
+            {
+                continue;
+            }
+
+            // Strip the image-ness off the format the replacement TEXT will carry, or the
+            // inserted characters would simply become another image fragment.
+            auto plainFormat=charFormat;
+            plainFormat.setObjectType(QTextFormat::NoObject);
+            plainFormat.clearProperty(QTextFormat::ImageName);
+            plainFormat.clearProperty(QTextFormat::ImageAltText);
+            plainFormat.clearProperty(QTextFormat::ImageTitle);
+            plainFormat.clearProperty(QTextFormat::ImageWidth);
+            plainFormat.clearProperty(QTextFormat::ImageHeight);
+
+            replacements.push_back({fragment.position(),fragment.length(),
+                                    info->emojiCode,plainFormat});
+        }
+    }
+
+    for (auto it=replacements.rbegin(); it!=replacements.rend(); ++it)
+    {
+        QTextCursor cursor(document);
+        cursor.setPosition(it->position);
+        cursor.setPosition(it->position+it->length,QTextCursor::KeepAnchor);
+        cursor.insertText(it->code,it->format);
+    }
+}
+
 /** @brief The WYSIWYG markdown export, in one place: blank lines preserved, code fences restored.
  *
  * Works on a CLONE rather than the live document -- fillEmptyBlocksForExport() inserts real
@@ -787,7 +880,37 @@ QString wysiwygMarkdown(const QTextDocument* document)
     fillEmptyBlocksForExport(clone.get());
     mergeProseBlocksForExport(clone.get());
     padEmptyTableColumnsForExport(clone->rootFrame());
+    replaceEmojiImagesForExport(clone.get(),true);
     return collapseBlankRuns(restoreCodeFences(clone->toMarkdown()));
+}
+
+/** @brief plainTextKeepingIndent() with emoji images resolved to their codes.
+ *
+ * The TextFormat::Plain counterpart of wysiwygMarkdown(), and the two must stay in step. Without
+ * it a WYSIWYG emoji comes out of toRawText() as U+FFFC OBJECT REPLACEMENT CHARACTER -- the image
+ * is simply lost, silently, on every Plain export and every Plain copy.
+ *
+ * Works on a clone for the same reason wysiwygMarkdown() does.
+ */
+QString plainTextWithEmoji(const QTextDocument* document)
+{
+    std::unique_ptr<QTextDocument> clone(document->clone());
+    replaceEmojiImagesForExport(clone.get(),false);
+    return plainTextKeepingIndent(clone.get());
+}
+
+//! plainTextWithEmoji() for a selection.
+QString plainTextWithEmoji(const QTextCursor& cursor)
+{
+    if (!cursor.hasSelection())
+    {
+        return QString{};
+    }
+    QTextDocument temp;
+    QTextCursor tempCursor(&temp);
+    tempCursor.insertFragment(cursor.selection());
+    replaceEmojiImagesForExport(&temp,false);
+    return plainTextKeepingIndent(&temp);
 }
 
 //! wysiwygMarkdown() for a selection -- same treatment, so copying a range with blank lines in it
@@ -800,6 +923,7 @@ QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
     fillEmptyBlocksForExport(&temp);
     mergeProseBlocksForExport(&temp);
     padEmptyTableColumnsForExport(temp.rootFrame());
+    replaceEmojiImagesForExport(&temp,true);
     return collapseBlankRuns(restoreCodeFences(temp.toMarkdown()));
 }
 
@@ -926,6 +1050,162 @@ void convertCodeBlocksToText(QTextDocument* document, bool suppressUndo=true)
  * @param suppressUndo See convertCodeBlocksToText() -- true for the whole-document loads, false
  *  on the paste path, where disabling undo would clear the stack.
  */
+/** @brief Make emoji in a freshly IMPORTED document displayable and consistent.
+ *
+ * Two jobs, both of which have to happen for every route markdown/HTML takes into a WYSIWYG
+ * document (loadText() and the mode switch):
+ *
+ * 1. **Re-apply size and re-register the resource for every emoji image.** QTextDocument::
+ *    setMarkdown() restores neither: Qt's markdown importer builds a fresh QTextImageFormat
+ *    carrying only name/alt/title, and nothing ever re-populates the document's resource table.
+ *    Without this pass every Wysiwyg->Markdown->Wysiwyg switch fills the editor with Qt's 16px
+ *    broken-file icon. Exactly the class of bug normalizeImportedTables() exists for.
+ *
+ * 2. **Convert literal default-pack emoji CHARACTERS into images.** An emoji typed with the OS
+ *    picker, or authored in Markdown mode and then switched to WYSIWYG, would otherwise render in
+ *    the system font right beside a gallery-inserted one rendered as pack art -- the same emoji,
+ *    two different pictures, in one composer. Converting costs nothing on export, because
+ *    replaceEmojiImagesForExport() turns default-pack images straight back into characters.
+ *
+ * @param font Font whose metrics decide the inline size, i.e. the text edit's own.
+ * @param dpr Device pixel ratio the pixmaps are rasterized at, i.e. the text edit's own.
+ *
+ * Runs BACK TO FRONT, like every other pass here that changes text lengths.
+ */
+void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dpr,
+                            bool suppressUndo=true)
+{
+    const auto px=MessageEditor::emojiInlineSizeForFont(font);
+    const auto devicePx=qRound(px*dpr);
+
+    struct Insert
+    {
+        int position;
+        int length;
+        QString reactionId;
+        QTextCharFormat baseFormat;
+    };
+    std::vector<Insert> inserts;
+
+    auto defaultPack=ReactionIconPacks::instance().defaultPack();
+
+    for (auto block=document->begin(); block.isValid(); block=block.next())
+    {
+        // Never inside a code block: an emoji character there is content, and turning it into an
+        // image would corrupt the code the user is looking at.
+        if (block.blockFormat().hasProperty(QTextFormat::BlockCodeLanguage)
+            || block.blockFormat().nonBreakableLines())
+        {
+            continue;
+        }
+
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+            auto charFormat=fragment.charFormat();
+
+            if (charFormat.isImageFormat())
+            {
+                const auto reactionId=emojiReactionId(charFormat.toImageFormat().name());
+                if (!reactionId.isEmpty())
+                {
+                    inserts.push_back({fragment.position(),fragment.length(),reactionId,charFormat});
+                }
+                continue;
+            }
+
+            if (charFormat.fontFixedPitch() || !defaultPack)
+            {
+                // Inline code -- same reasoning as the code-block skip above.
+                continue;
+            }
+
+            // Scan by CODE POINT, not by QChar: every supplementary-plane emoji is a surrogate
+            // pair, and every one this pack ships is supplementary or a BMP symbol.
+            const auto text=fragment.text();
+            const auto ucs4=text.toUcs4();
+            int offset=0;
+            for (qsizetype i=0; i<ucs4.size(); ++i)
+            {
+                const char32_t cp=ucs4[i];
+                const auto chars=QString::fromUcs4(&cp,1);
+
+                const auto* info=defaultPack->findByCode(chars);
+                // A following ZWJ means this code point opens a multi-person/compound sequence
+                // (e.g. a family emoji): substituting just its first member would render one
+                // person followed by orphan glyphs, so leave the whole grapheme as text.
+                const bool zwjFollows=(i+1<ucs4.size()) && ucs4[i+1]==0x200D;
+
+                if (info!=nullptr && info->icon && !zwjFollows)
+                {
+                    auto length=static_cast<int>(chars.size());
+                    // Swallow a trailing variation selector: real text writes the heart as
+                    // U+2764 U+FE0F, while the pack's codes are bare code points. Leaving the
+                    // selector behind would strand an invisible character next to the image.
+                    if (i+1<ucs4.size() && (ucs4[i+1]==0xFE0F || ucs4[i+1]==0xFE0E))
+                    {
+                        const char32_t vs=ucs4[i+1];
+                        length+=static_cast<int>(QString::fromUcs4(&vs,1).size());
+                        ++i;
+                    }
+                    inserts.push_back({fragment.position()+offset,length,
+                                       ChatReactionId::make(info->iconId,defaultPack->uri()),
+                                       charFormat});
+                    offset+=length;
+                    continue;
+                }
+                offset+=static_cast<int>(chars.size());
+            }
+        }
+    }
+
+    if (inserts.empty())
+    {
+        return;
+    }
+
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(false);
+    }
+
+    for (auto it=inserts.rbegin(); it!=inserts.rend(); ++it)
+    {
+        const auto* info=ReactionIconPacks::instance().iconInfo(it->reactionId);
+        if (info==nullptr || !info->icon)
+        {
+            continue;
+        }
+
+        const auto src=emojiSrc(it->reactionId);
+        // Registered before the image is (re)inserted -- see MessageEditor::insertEmoji() for
+        // why an unregistered src poisons its own key with Qt's broken-file placeholder.
+        document->addResource(QTextDocument::ImageResource,QUrl(src),
+                              info->icon->pixmap(QSize(devicePx,devicePx)));
+
+        QTextImageFormat imgFmt;
+        imgFmt.setName(src);
+        imgFmt.setProperty(QTextFormat::ImageAltText,
+                           info->emojiCode.isEmpty() ? info->iconId : info->emojiCode);
+        imgFmt.setWidth(px);
+        imgFmt.setHeight(px);
+
+        QTextCursor cursor(document);
+        cursor.setPosition(it->position);
+        cursor.setPosition(it->position+it->length,QTextCursor::KeepAnchor);
+        cursor.insertImage(imgFmt);
+    }
+
+    if (suppressUndo)
+    {
+        document->setUndoRedoEnabled(true);
+    }
+}
+
 void stripImportedAnchorStyle(QTextDocument* document, bool suppressUndo=true)
 {
     // Collected first, mutated after -- see stripBakedRichTextFormatting() for why a format write
@@ -3033,6 +3313,41 @@ class MessageEditor_p
         EnhancedTextEdit* editor;
         IconTextButton* expandButton;
 
+        //! First member of the trailing group, mirroring expandButton's place in the leading one.
+        IconTextButton* emojiButton;
+
+        //! The floating emoji picker, created lazily on first open and then KEPT (closed, not
+        //! destroyed) -- reopening is the common case, and rebuilding the gallery would re-rasterize
+        //! the whole pack every time.
+        QPointer<FloatingEmojiGalleryDialog> emojiDialog;
+
+        //! Authoritative "is the picker open" -- see MessageEditor::isEmojiGalleryOpen().
+        bool emojiDialogOpen=false;
+
+        //! Whether an open picker was opened by a CLICK (pinned) rather than by hovering. Only a
+        //! pinned one checks the emoji button, and only an unpinned one closes itself when the
+        //! pointer wanders off -- see MessageEditor::isEmojiGalleryPinned().
+        bool emojiDialogPinned=false;
+
+        //! Armed by a pointer entering the emoji button, disarmed by it leaving or by a click.
+        QTimer* emojiHoverOpenTimer=nullptr;
+
+        //! Runs only while an UNPINNED gallery is open; closes it once the pointer has been away
+        //! from both it and the button for EmojiHoverCloseDelayMs.
+        QTimer* emojiHoverCloseTimer=nullptr;
+
+        //! Consecutive emojiHoverCloseTimer ticks with the pointer over neither.
+        int emojiAwayTicks=0;
+
+        //! The pack currently handed to the gallery, and the editing mode it was built for.
+        //! Cached because which pack is correct depends ONLY on the mode, while
+        //! emojiPackForCurrentMode() allocates a fresh filtered view every call -- without this,
+        //! every hover would push a "new" pack at the gallery and make it rebuild its whole grid
+        //! for nothing.
+        std::shared_ptr<AbstractReactionIconPack> emojiPack;
+        MessageEditingMode emojiPackMode=MessageEditingMode::Wysiwyg;
+        bool emojiPackValid=false;
+
         //! The placeholder the HOST asked for, which is not always the one the text edit currently
         //! carries -- see MessageEditor::updatePlaceHolderText(), which suppresses it while the
         //! empty block has block formatting of its own to show.
@@ -3129,6 +3444,97 @@ MessageEditor::MessageEditor(QWidget* parent)
     pimpl->editorRow->addWidget(pimpl->editor,1);
 
     makeSideFrame(QStringLiteral("trailingWidgets"),pimpl->trailingFrame,pimpl->trailingLayout);
+
+    // --- emoji button: the trailing group's counterpart of the expand button, built hidden for
+    // the same reason (see AbstractMessageEditor::emojiButtonVisible).
+    //
+    // Index 0, so it is the group's FIRST member: nearest the text area in the row, and -- because
+    // the trailing group stacks TopToBottom (see applyArrangement()) -- ABOVE the host's own
+    // buttons in the column. That is what leaves Send, added after it, in the bottom corner in
+    // both arrangements.
+    pimpl->emojiButton=new IconTextButton(
+        Style::instance().svgIconLocator().icon(QStringLiteral("MessageEditor::emoji"),this),
+        this,
+        IconTextButton::IconPosition::BeforeText
+    );
+    pimpl->emojiButton->setObjectName("emojiButton");
+    pimpl->emojiButton->setText(QString());
+    pimpl->emojiButton->setCursor(Qt::PointingHandCursor);
+    // Mandatory, not cosmetic: the picker inserts AT THE CARET and replaces the selection, so a
+    // click that moved focus out of the text edit would collapse the very selection the user is
+    // about to replace. Same rule every MessageEditorToolbar button follows.
+    pimpl->emojiButton->setFocusPolicy(Qt::NoFocus);
+    pimpl->emojiButton->setToolTip(tr("Insert emoji"));
+    pimpl->emojiButton->setCheckable(true);
+    pimpl->emojiButton->setVisible(false);
+    pimpl->trailingLayout->insertWidget(0,pimpl->emojiButton);
+
+    // Hover-to-open: the pointer has to REST on the button, see EmojiHoverOpenDelayMs.
+    pimpl->emojiHoverOpenTimer=new QTimer(this);
+    pimpl->emojiHoverOpenTimer->setSingleShot(true);
+    pimpl->emojiHoverOpenTimer->setInterval(EmojiHoverOpenDelayMs);
+    connect(pimpl->emojiHoverOpenTimer,&QTimer::timeout,this,
+        [this]()
+        {
+            // Re-check rather than trust the timer: the pointer may have left, the button may
+            // have been hidden by a mode switch, or a click may have pinned the gallery already
+            // during the delay.
+            if (pimpl->emojiDialogOpen || !pimpl->emojiButton->isVisible()
+                || !isCursorOverEmojiUi())
+            {
+                return;
+            }
+            openEmojiGallery(false);
+        }
+    );
+
+    pimpl->emojiHoverCloseTimer=new QTimer(this);
+    pimpl->emojiHoverCloseTimer->setInterval(EmojiHoverPollMs);
+    connect(pimpl->emojiHoverCloseTimer,&QTimer::timeout,this,&MessageEditor::onEmojiHoverPoll);
+
+    pimpl->emojiButton->installEventFilter(this);
+
+    connect(pimpl->emojiButton,&IconTextButton::clicked,this,
+        [this]()
+        {
+            // A click is always decisive, so it never waits for (or races) the hover delay.
+            pimpl->emojiHoverOpenTimer->stop();
+
+            if (pimpl->emojiDialogOpen && !pimpl->emojiDialogPinned)
+            {
+                // Clicking a gallery that is merely hovered into view PINS it. Closing it here
+                // instead would be the natural-looking implementation and the wrong behaviour:
+                // the user's gesture was "keep this", and the gallery is under their pointer.
+                pinEmojiGallery();
+            }
+            else if (pimpl->emojiDialogOpen)
+            {
+                closeEmojiGallery();
+            }
+            else
+            {
+                openEmojiGallery();
+            }
+            // Deliberately NO restoreEditorFocus() here. Unlike every other button in this
+            // editor, this one opens a picker that STAYS OPEN and has a search box of its own --
+            // pulling focus back to the text edit now would take it straight out from under a
+            // user about to type a search. Focus returns when the picker closes, from the
+            // FloatingDialogFrame::closed() handler in openEmojiGallery().
+        }
+    );
+    // Same always-toggles trap as expandButton above: click() unconditionally toggle()s right
+    // after emitting clicked(), so the button's own checked state is never authoritative --
+    // re-assert it from emojiDialogOpen, which is. Terminates because setChecked() re-emits
+    // toggled() only on an actual change.
+    connect(pimpl->emojiButton,&IconTextButton::toggled,this,
+        [this](bool checked)
+        {
+            if (checked!=isEmojiGalleryPinned())
+            {
+                syncEmojiButtonChecked();
+            }
+        }
+    );
 
     connect(pimpl->expandButton,&IconTextButton::clicked,this,
         [this]()
@@ -3413,6 +3819,8 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
                     stripImportedAnchorStyle(pimpl->editor->document());
                     normalizeImportedTables(pimpl->editor->document(),0,
                                             pimpl->editor->document()->characterCount());
+                    normalizeImportedEmoji(pimpl->editor->document(),pimpl->editor->font(),
+                                           pimpl->editor->devicePixelRatioF());
                     break;
                 }
 
@@ -3430,6 +3838,8 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
                     stripImportedAnchorStyle(pimpl->editor->document());
                     normalizeImportedTables(pimpl->editor->document(),0,
                                             pimpl->editor->document()->characterCount());
+                    normalizeImportedEmoji(pimpl->editor->document(),pimpl->editor->font(),
+                                           pimpl->editor->devicePixelRatioF());
                     break;
                 }
             }
@@ -3485,7 +3895,11 @@ QString MessageEditor::text(TextFormat format) const
             switch (format)
             {
                 case (TextFormat::Markdown): return wysiwygMarkdown(pimpl->editor->document());
-                case (TextFormat::Plain): return plainTextKeepingIndent(pimpl->editor->document());
+                // plainTextWithEmoji(), not plainTextKeepingIndent(): only WYSIWYG can hold an
+                // emoji IMAGE, and toRawText() renders one as U+FFFC -- so the plain leg has to
+                // resolve them back to characters or silently drop them. The other two modes
+                // hold literal characters already and need no such pass.
+                case (TextFormat::Plain): return plainTextWithEmoji(pimpl->editor->document());
                 case (TextFormat::Html): return pimpl->editor->toHtml();
             }
             break;
@@ -3533,7 +3947,8 @@ QString MessageEditor::selectedText(TextFormat format) const
             switch (format)
             {
                 case (TextFormat::Markdown): return wysiwygMarkdown(fragment);
-                case (TextFormat::Plain): return plainTextKeepingIndent(cursor);
+                //! @see MessageEditor::text()'s own Plain row -- same emoji-image reason.
+                case (TextFormat::Plain): return plainTextWithEmoji(cursor);
                 case (TextFormat::Html): return fragment.toHtml();
             }
             break;
@@ -3802,8 +4217,53 @@ void MessageEditor::addTrailingWidget(QWidget* widget)
     {
         return;
     }
-    // Before the stretch (last) only -- the expand button belongs to the leading group.
-    pimpl->trailingLayout->insertWidget(qMax(0,pimpl->trailingLayout->count()-1),widget);
+    // Positioned relative to the STRETCH rather than at a fixed index: unlike the leading group's,
+    // this layout's stretch moves to the front in the stacked arrangement (see applyArrangement()),
+    // so a hard-coded count()-1 would drop a widget added while stacked into the wrong place.
+    // Ordinary hosts add their buttons at construction time, when the group is still a row, but
+    // FileUploadWidget-style late additions must land correctly too.
+    //
+    // The emoji button is the group's FIRST member and stays there, so host widgets follow it in
+    // the row and sit BELOW it in the column -- which is what puts Send at the bottom corner.
+    const auto stretch=stretchIndex(pimpl->trailingLayout);
+    const auto index=(stretch==0) ? pimpl->trailingLayout->count()
+                                  : qMax(0,pimpl->trailingLayout->count()-1);
+    pimpl->trailingLayout->insertWidget(index,widget);
+}
+
+//--------------------------------------------------------------------------
+
+int MessageEditor::stretchIndex(QBoxLayout* layout)
+{
+    for (int i=0; i<layout->count(); ++i)
+    {
+        if (layout->itemAt(i)->spacerItem()!=nullptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::moveStretch(QBoxLayout* layout, bool toFront)
+{
+    const auto from=stretchIndex(layout);
+    if (from<0)
+    {
+        return;
+    }
+    const auto target=toFront ? 0 : layout->count()-1;
+    if (from==target)
+    {
+        return;
+    }
+
+    // takeAt() detaches the item without deleting it; count() has already dropped by one by the
+    // time insertItem() runs, so appending is insertItem(count()), not count()-1.
+    auto* item=layout->takeAt(from);
+    layout->insertItem(toFront ? 0 : layout->count(),item);
 }
 
 //--------------------------------------------------------------------------
@@ -3816,13 +4276,24 @@ void MessageEditor::applyArrangement()
     // direction of each frame's OWN layout changes, so no widget is ever reparented or moved
     // between layouts and the two orders cannot drift apart.
     //
-    // BottomToTop rather than TopToBottom because it is what "the left widget becomes the bottom
-    // widget" means: the group's first member, leftmost in the row, ends up lowest in the column
-    // -- nearest the text area's bottom edge, where it already was. It also puts each layout's
-    // trailing stretch at the TOP, which is what packs the buttons downward.
-    const auto direction=stacked ? QBoxLayout::BottomToTop : QBoxLayout::LeftToRight;
-    pimpl->leadingLayout->setDirection(direction);
-    pimpl->trailingLayout->setDirection(direction);
+    // The two groups map their row order onto the column in OPPOSITE directions, because "keep
+    // each button where it already was" means opposite things on the two sides:
+    //
+    //  - LEADING (BottomToTop): the group's first member, LEFTMOST in the row, ends up lowest in
+    //    the column -- nearest the text area's bottom edge, where it already was. The layout's
+    //    trailing stretch lands at the TOP, which is what packs the buttons downward.
+    //
+    //  - TRAILING (TopToBottom): reversed, so the group's LAST member -- the one furthest from
+    //    the text area, which for a chat composer is Send -- ends up at the BOTTOM of the column
+    //    rather than the top. Send is the action the user reaches for constantly and it belongs
+    //    at the bottom corner in both arrangements; leaving this BottomToTop put it above the
+    //    emoji button instead. Because this direction puts the stretch at the bottom, it has to
+    //    be moved to the front to keep the group packed downward -- see moveStretch().
+    pimpl->leadingLayout->setDirection(stacked ? QBoxLayout::BottomToTop
+                                              : QBoxLayout::LeftToRight);
+    pimpl->trailingLayout->setDirection(stacked ? QBoxLayout::TopToBottom
+                                                : QBoxLayout::LeftToRight);
+    moveStretch(pimpl->trailingLayout,stacked);
 
     // As a row the frames pin to the text area's bottom edge; as a column they have to span its
     // full height instead, or there would be no vertical room for the buttons to spread into.
@@ -4015,6 +4486,13 @@ void MessageEditor::updateMessageEditingMode()
             // paints nothing at all.
             normalizeImportedTables(pimpl->editor->document(),0,
                                     pimpl->editor->document()->characterCount());
+            // Same class of bug as the tables above, and the more visible one: setMarkdown()
+            // restores neither an image's size nor its document resource, so without this every
+            // emoji comes back as Qt's 16px broken-file icon. This also turns literal emoji
+            // characters into pack images, so one typed in Markdown mode looks the same here as
+            // one picked from the gallery.
+            normalizeImportedEmoji(pimpl->editor->document(),pimpl->editor->font(),
+                                   pimpl->editor->devicePixelRatioF());
             break;
         }
 
@@ -4044,6 +4522,23 @@ void MessageEditor::updateMessageEditingMode()
     // messageeditortoolbar.cpp) because it stays useful in Markdown mode too -- only Plaintext,
     // which carries no markup meaning at all, disables it.
     pimpl->toolbar->setButtonEnabled(MessageEditorToolbarButton::Link,to!=MessageEditingMode::Plaintext);
+
+    applyEmojiButtonVisibility();
+    if (to==MessageEditingMode::Plaintext)
+    {
+        // Never leave a picker open over a mode whose insert would be refused.
+        closeEmojiGallery();
+    }
+    else
+    {
+        // Wysiwyg <-> Markdown: which icons are offerable just changed (Markdown can only insert
+        // a literal emojiCode). Re-hand the gallery the right pack whether it is open or merely
+        // warmed up, so a later hover never shows the previous mode's icon set for an instant.
+        applyEmojiPackForCurrentMode();
+    }
+    // The emoji button may have just appeared in or vanished from the trailing group.
+    Layout::activateUpward(this);
+
     syncToolbarState();
 }
 
@@ -4259,6 +4754,28 @@ MessageEditorFormatState MessageEditor::currentFormatState() const
     }
 
     return state;
+}
+
+//--------------------------------------------------------------------------
+
+int MessageEditor::emojiInlineSizeForFont(const QFont& font)
+{
+    QFontMetrics metrics(font);
+
+    // Ascent, not height(): Qt puts an inline image's BOTTOM on the baseline, so the ascent is
+    // exactly the room a glyph occupies above it. Sizing to the full height (ascent+descent)
+    // would make every line containing an emoji taller than its neighbours.
+    auto size=metrics.ascent();
+    if (size<=0)
+    {
+        size=metrics.height();
+    }
+
+    // Round UP to the quantum -- see EmojiSizeQuantum. Rounding down could reach 0 for a tiny
+    // font, which would make the image vanish rather than merely look wrong.
+    const auto quantum=EmojiSizeQuantum;
+    size=((size+quantum-1)/quantum)*quantum;
+    return std::max(size,quantum);
 }
 
 //--------------------------------------------------------------------------
@@ -5603,6 +6120,509 @@ void MessageEditor::insertMentionText(const QString& username)
     pimpl->editor->setCurrentCharFormat(format);
 
     finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+IconTextButton* MessageEditor::emojiButton() const
+{
+    return pimpl->emojiButton;
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isEmojiGalleryOpen() const noexcept
+{
+    return pimpl->emojiDialogOpen;
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isEmojiGalleryPinned() const noexcept
+{
+    return pimpl->emojiDialogOpen && pimpl->emojiDialogPinned;
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isCursorOverEmojiUi() const
+{
+    const auto pos=QCursor::pos();
+
+    if (pimpl->emojiButton->isVisible()
+        && pimpl->emojiButton->rect().contains(pimpl->emojiButton->mapFromGlobal(pos)))
+    {
+        return true;
+    }
+
+    if (!pimpl->emojiDialog.isNull() && pimpl->emojiDialog->isVisible()
+        && pimpl->emojiDialog->frameGeometry().contains(pos))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::startEmojiHoverPoll()
+{
+    pimpl->emojiAwayTicks=0;
+    pimpl->emojiHoverCloseTimer->start();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::stopEmojiHoverPoll()
+{
+    pimpl->emojiHoverCloseTimer->stop();
+    pimpl->emojiAwayTicks=0;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onEmojiHoverPoll()
+{
+    if (!pimpl->emojiDialogOpen || pimpl->emojiDialogPinned)
+    {
+        stopEmojiHoverPoll();
+        return;
+    }
+
+    if (isCursorOverEmojiUi())
+    {
+        pimpl->emojiAwayTicks=0;
+        return;
+    }
+
+    // Counted in ticks rather than measured against a clock: the poll is the only thing that can
+    // observe "away" at all, so ticks ARE the available resolution.
+    ++pimpl->emojiAwayTicks;
+    const auto graceTicks=(EmojiHoverCloseDelayMs+EmojiHoverPollMs-1)/EmojiHoverPollMs;
+    if (pimpl->emojiAwayTicks>=graceTicks)
+    {
+        closeEmojiGallery();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::pinEmojiGallery()
+{
+    if (!pimpl->emojiDialogOpen || pimpl->emojiDialogPinned)
+    {
+        return;
+    }
+    pimpl->emojiDialogPinned=true;
+    stopEmojiHoverPoll();
+    syncEmojiButtonChecked();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==pimpl->emojiButton)
+    {
+        switch (event->type())
+        {
+            case QEvent::Enter:
+            {
+                // Only when the button is UNCHECKED, per the feature's own rule -- an already
+                // pinned gallery is not re-opened, and a hovered one simply stays up (the poll
+                // sees the pointer over the button and keeps resetting its away count).
+                if (!pimpl->emojiDialogOpen && pimpl->emojiButton->isVisible())
+                {
+                    pimpl->emojiHoverOpenTimer->start();
+                }
+                break;
+            }
+
+            case QEvent::Leave:
+            {
+                // Leaving before the delay elapses cancels the open outright: the hover was a
+                // pass-through, not an intent.
+                pimpl->emojiHoverOpenTimer->stop();
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+    // Never consumed -- this filter only observes.
+    return AbstractMessageEditor::eventFilter(watched,event);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applyEmojiButtonVisibility()
+{
+    // Plaintext has no way to express an emoji at all -- neither an image (no markup) nor, by the
+    // same token, any reason to offer a picker whose insert would be refused. See insertEmoji().
+    const auto modeAllows=messageEditingMode()!=MessageEditingMode::Plaintext;
+    pimpl->emojiButton->setVisible(isEmojiButtonVisible() && modeAllows);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::updateEmojiButtonVisible()
+{
+    applyEmojiButtonVisibility();
+    if (isEmojiButtonVisible())
+    {
+        // Opting in is the signal that this composer will actually use the picker -- build it now,
+        // off the hover path, so the first hover shows an already-constructed dialog.
+        warmEmojiGallery();
+    }
+    else
+    {
+        // Hiding the button must not strand an open picker with nothing to toggle it shut. Also
+        // cancels any hover-open still counting down -- the button is going away.
+        closeEmojiGallery();
+    }
+    Layout::activateUpward(this);
+}
+
+//--------------------------------------------------------------------------
+
+std::shared_ptr<AbstractReactionIconPack> MessageEditor::emojiPackForCurrentMode() const
+{
+    auto pack=ReactionIconPacks::instance().defaultPack();
+    if (!pack)
+    {
+        return pack;
+    }
+
+    // Markdown mode can only insert the literal emojiCode, so an icon that has none is an icon
+    // whose click would silently do nothing -- filter those out rather than offer them. Wysiwyg
+    // inserts an image and can carry any icon in the pack, so it takes the pack whole.
+    if (messageEditingMode()==MessageEditingMode::Markdown)
+    {
+        return std::make_shared<EmojiCodeReactionIconPack>(std::move(pack));
+    }
+    return pack;
+}
+
+//--------------------------------------------------------------------------
+
+FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
+{
+    if (messageEditingMode()==MessageEditingMode::Plaintext)
+    {
+        return nullptr;
+    }
+
+    if (!pimpl->emojiDialog.isNull())
+    {
+        return pimpl->emojiDialog.data();
+    }
+
+    auto* frame=new FloatingEmojiGalleryDialog(this);
+    pimpl->emojiDialog=frame;
+
+    // destroyOnClose=false: reopening a picker is the normal case, and rebuilding the gallery
+    // would re-rasterize the whole pack each time. show=false because the dialog has to be
+    // filled and measured before it can be anchored -- see openEmojiGallery().
+    frame->openDialog(false,false);
+
+    if (frame->dialog().isNull())
+    {
+        return nullptr;
+    }
+
+    connect(frame->dialog(),&AbstractEmojiGalleryDialog::emojiPicked,this,
+        [this](const QString& reactionId)
+        {
+            // Picking PINS a gallery that was only hovered into view: reaching for a second
+            // emoji necessarily moves the pointer, and a picker that dissolved mid-reach
+            // would be unusable. From here on it closes only on an explicit dismissal.
+            pinEmojiGallery();
+            insertEmoji(reactionId);
+        }
+    );
+
+    // The single place the button goes back up, so every close path -- the title-bar X,
+    // Escape, an outside dismissal, the hover poll, closeEmojiGallery() -- lands here and
+    // nowhere else.
+    connect(frame,&FloatingDialogFrame::closed,this,
+        [this]()
+        {
+            pimpl->emojiDialogOpen=false;
+            pimpl->emojiDialogPinned=false;
+            stopEmojiHoverPoll();
+            syncEmojiButtonChecked();
+            // The one place focus returns to the text edit; see the emoji button's own
+            // clicked() handler for why it deliberately does not do this itself.
+            restoreEditorFocus();
+        }
+    );
+
+    // Build the grid NOW rather than on the first popup: this is the expensive part (a cell and a
+    // rasterized SVG per pack entry), and paying it here is the whole point of warming up.
+    pimpl->emojiPackValid=false;
+    applyEmojiPackForCurrentMode();
+
+    return frame;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applyEmojiPackForCurrentMode()
+{
+    if (pimpl->emojiDialog.isNull() || pimpl->emojiDialog->dialog().isNull())
+    {
+        return;
+    }
+
+    const auto mode=messageEditingMode();
+    if (pimpl->emojiPackValid && pimpl->emojiPackMode==mode)
+    {
+        // Nothing about which icons are offerable has changed, and setPack() would rebuild the
+        // entire grid. The per-open search reset (EmojiGalleryDialog::prepareToShow()) rebuilds
+        // it once anyway, which is all an open actually needs.
+        return;
+    }
+
+    pimpl->emojiPack=emojiPackForCurrentMode();
+    pimpl->emojiPackMode=mode;
+    pimpl->emojiPackValid=true;
+    pimpl->emojiDialog->dialog()->setPack(pimpl->emojiPack);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::warmEmojiGallery()
+{
+    if (!pimpl->emojiDialog.isNull() || !isEmojiButtonVisible())
+    {
+        return;
+    }
+    // Deferred by one event-loop turn, never inline: this runs from the visibility update, which
+    // is itself reached from a QSS property write during polish -- building a whole second widget
+    // tree from inside that would re-enter the style engine on a widget it is still polishing.
+    // Same deferral rule, and the same reason, as restoreEditorFocus().
+    QPointer<MessageEditor> self=this;
+    QTimer::singleShot(0,this,
+        [self]()
+        {
+            if (!self.isNull() && self->isEmojiButtonVisible())
+            {
+                self->ensureEmojiGallery();
+            }
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::openEmojiGallery(bool pinned)
+{
+    if (messageEditingMode()==MessageEditingMode::Plaintext)
+    {
+        return;
+    }
+
+    if (pimpl->emojiDialogOpen)
+    {
+        // Already up: a click on a hovered gallery pins it rather than reopening it.
+        if (pinned)
+        {
+            pinEmojiGallery();
+        }
+        return;
+    }
+
+    auto* frame=ensureEmojiGallery();
+    if (frame==nullptr || frame->dialog().isNull())
+    {
+        return;
+    }
+
+    // A no-op unless the editing mode changed since the gallery was last filled. The search box
+    // is cleared, and the grid rebuilt, by EmojiGalleryDialog::prepareToShow() -- which popupAt()
+    // invokes after polishing and before measuring, the only moment at which the grid can be
+    // rebuilt against its final, QSS-applied cell size.
+    applyEmojiPackForCurrentMode();
+
+    // Bottom-left corner of the frame onto the top-left corner of the button: the dialog
+    // therefore unfolds UPWARD and to the RIGHT. The two-argument popupAt() also keeps the whole
+    // frame on screen, which is what a popup anchored to a control the user just clicked wants --
+    // and it applies the corner offset AFTER its own adjustSize(), which is the only point at
+    // which the frame's height is actually known.
+    const auto anchor=pimpl->emojiButton->mapToGlobal(pimpl->emojiButton->rect().topLeft())
+                      -QPoint(0,EmojiGalleryGap);
+    frame->popupAt(anchor,Qt::BottomLeftCorner);
+
+    pimpl->emojiDialogOpen=true;
+    pimpl->emojiDialogPinned=pinned;
+    syncEmojiButtonChecked();
+
+    if (!pinned)
+    {
+        startEmojiHoverPoll();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::closeEmojiGallery()
+{
+    // A close request also cancels a hover-open that has not fired yet, or the gallery would
+    // reappear a moment after being dismissed.
+    pimpl->emojiHoverOpenTimer->stop();
+    stopEmojiHoverPoll();
+
+    if (pimpl->emojiDialog.isNull())
+    {
+        // Still re-assert the button: it may have been left checked by its own unconditional
+        // toggle() with no dialog ever created (e.g. a click while already in Plaintext).
+        syncEmojiButtonChecked();
+        return;
+    }
+    // close() drives FloatingDialogFrame::closed(), which clears the open/pinned state and
+    // re-asserts the button -- so this method deliberately does not touch either itself.
+    pimpl->emojiDialog->close(false);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::syncEmojiButtonChecked()
+{
+    // PINNED, not merely open: a hover-opened gallery deliberately leaves the button unchecked,
+    // which is what makes "hovering an unchecked button shows the gallery" a stable rule rather
+    // than one that disables itself the instant it fires. See isEmojiGalleryPinned().
+    const auto checked=isEmojiGalleryPinned();
+    if (pimpl->emojiButton->isChecked()!=checked)
+    {
+        pimpl->emojiButton->setChecked(checked);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::hideEvent(QHideEvent* event)
+{
+    closeEmojiGallery();
+    AbstractMessageEditor::hideEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertEmoji(const QString& reactionId)
+{
+    const auto mode=messageEditingMode();
+    if (mode==MessageEditingMode::Plaintext)
+    {
+        // No markup to carry an image, and writing the bare character instead would contradict
+        // the button being hidden in this mode. See AbstractMessageEditor::insertEmoji().
+        return;
+    }
+
+    const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+    if (info==nullptr)
+    {
+        return;
+    }
+
+    auto cursor=pimpl->editor->textCursor();
+
+    if (mode==MessageEditingMode::Markdown)
+    {
+        if (info->emojiCode.isEmpty())
+        {
+            return;
+        }
+
+        // The document IS markdown source here, so this is a plain text insert with no escaping
+        // -- an emoji character carries no markdown meaning. No fenced-code guard either: in this
+        // mode a fence is ordinary literal text (see convertCodeBlocksToText()), and an emoji
+        // inside one is simply a character. Same shape as insertMentionText() above.
+        auto format=cursor.charFormat();
+        format.clearProperty(QTextFormat::IsAnchor);
+        format.clearProperty(QTextFormat::AnchorHref);
+        format.clearProperty(QTextFormat::AnchorName);
+        cursor.insertText(info->emojiCode,format);
+
+        pimpl->editor->setTextCursor(cursor);
+        pimpl->editor->setCurrentCharFormat(format);
+    }
+    else
+    {
+        if (!info->icon)
+        {
+            return;
+        }
+
+        const auto state=currentFormatState();
+        // Same two refusals as insertLink(): a markdown image is not backslash-escaped the way
+        // fence content is, so restoreCodeFences() could not safely unescape it; and inserting
+        // into a mention would split one run into two halves sharing an href.
+        if (state.codeBlock || state.insideMention)
+        {
+            return;
+        }
+
+        const auto src=emojiSrc(reactionId);
+        const auto px=emojiInlineSizeForFont(pimpl->editor->font());
+        const auto dpr=pimpl->editor->devicePixelRatioF();
+
+        // MUST precede insertImage(). With no resource registered under this URL, Qt's image
+        // handler falls back to its own broken-file placeholder AND caches that placeholder under
+        // our URL via an addResource() call of its own -- after which the key is poisoned for the
+        // document's whole life and a later registration is simply ignored.
+        //
+        // The pixmap is requested in DEVICE pixels (px*dpr) and comes back tagged with that
+        // ratio, so it is crisp on a high-DPI screen; the logical size stays px, set on the format
+        // below. Note SvgIcon always rasterizes at the PRIMARY screen's ratio, so a window living
+        // on a differently-scaled secondary screen is a known, pre-existing rough edge.
+        const auto devicePx=qRound(px*dpr);
+        pimpl->editor->document()->addResource(
+            QTextDocument::ImageResource,
+            QUrl(src),
+            info->icon->pixmap(QSize(devicePx,devicePx))
+        );
+
+        QTextImageFormat imgFmt;
+        imgFmt.setName(src);
+        // NEVER left empty: Qt's markdown writer substitutes the literal word "image" for an
+        // empty ImageAltText, so an unset alt would export as "![image](whitem-emoji:...)" --
+        // visible junk in any client that does not know the scheme. The emoji character is also
+        // the right thing for such a client to show, and is what markdownToHtml() falls back to
+        // when the icon is not locally available.
+        imgFmt.setProperty(QTextFormat::ImageAltText,
+                           info->emojiCode.isEmpty() ? info->iconId : info->emojiCode);
+        imgFmt.setWidth(px);
+        imgFmt.setHeight(px);
+        imgFmt.clearProperty(QTextFormat::IsAnchor);
+        imgFmt.clearProperty(QTextFormat::AnchorHref);
+        imgFmt.clearProperty(QTextFormat::AnchorName);
+
+        // Captured BEFORE the insert, not derived after it: once insertImage() has run, the
+        // cursor's char format IS the image format (ObjectType, ImageName, width, height), and
+        // the next character typed would inherit every bit of it. Restoring the pre-insert format
+        // is both shorter and harder to get wrong than clearing all of that back off by hand.
+        auto continuation=cursor.charFormat();
+        continuation.clearProperty(QTextFormat::IsAnchor);
+        continuation.clearProperty(QTextFormat::AnchorHref);
+        continuation.clearProperty(QTextFormat::AnchorName);
+
+        // insertImage() on a cursor with a selection replaces it, exactly like insertText().
+        cursor.insertImage(imgFmt);
+        cursor.setCharFormat(continuation);
+
+        pimpl->editor->setTextCursor(cursor);
+        pimpl->editor->setCurrentCharFormat(continuation);
+    }
+
+    // Deliberately NOT finishFormatAction(): that ends in restoreEditorFocus(), and the emoji
+    // picker -- unlike every dropdown this editor opens -- stays open across a pick, quite
+    // possibly with a half-typed search in its box. Stealing focus back on every insert would
+    // make searching and inserting mutually exclusive. Everything else finishFormatAction() does
+    // is still wanted, so it is spelled out here instead.
+    syncToolbarState();
+    updatePlaceHolderText();
 }
 
 //--------------------------------------------------------------------------

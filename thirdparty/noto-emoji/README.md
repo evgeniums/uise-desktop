@@ -1,11 +1,13 @@
 # Noto Emoji (subset)
 
-50 emoji SVGs vendored from [googlefonts/noto-emoji](https://github.com/googlefonts/noto-emoji),
+54 emoji SVGs vendored from [googlefonts/noto-emoji](https://github.com/googlefonts/noto-emoji),
 used as the default embedded reaction icon pack (`ChatReactionPack` alias context, see
-`resources/style/chatreactions.json`).
+`resources/style/chatreactions.json`). 54 is deliberate: it is exactly the emoji picker's 9x6 grid
+(`uise--EmojiGalleryDialog #emojiGallery` in `resources/style/chatreactions.qss`), so the last row
+has no empty cells.
 
 * Source: https://github.com/googlefonts/noto-emoji
-* Commit: `8998f5dd683424a73e2314a8c1f1e359c19e8742`
+* Tag: `v2.042`
 * Path in upstream repo: `svg/emoji_u<codepoint>.svg`
 * License: **Apache License, Version 2.0** — see `LICENSE` in this directory, copied verbatim from
   the upstream `svg/LICENSE` (the repository-root `LICENSE` is SIL OFL 1.1 and applies to the font
@@ -19,6 +21,24 @@ renaming the files.
 Multicolor art: these SVGs must **not** be passed through the `currentColor` recoloring path (see
 `resources/style/light/chatreactions.json` / `dark/chatreactions.json` — the `ChatReactionPack`
 context deliberately declares no `modes` block).
+
+## Why v2.042 and not a later revision
+
+**Do not bump this past `v2.042` without render-testing every file through `QSvgRenderer`.**
+
+Upstream redesigned the hand emoji after `v2.042` (Illustrator 26.3.1 exports). The new art paints
+through `<defs><path id="SVGID_1_"/></defs>` + `<clipPath>` + `<use xlink:href>`, and Qt's SVG
+module does not resolve that `<use>` reference — every affected icon renders as a **solid black
+silhouette with a thin yellow rim** instead of a yellow hand. There is no warning: `QSvgRenderer`
+reports the file as valid and paints it wrong.
+
+All ten hands (`thumbsup`, `thumbsdown`, `clap`, `raised-hands`, `ok-hand`, `victory`, `handshake`,
+`muscle`, `pray`, `crossed-fingers`) are affected at `v2.047`. `v2.042` is the last tag whose art
+Qt renders correctly, and its hands are the familiar flat-yellow design that matches the faces.
+
+A quick check, if this is ever revisited: render each file to a QImage and measure the fraction of
+opaque pixels that are near-black. A broken hand sits around 45-72%; a correct one is 0%. Only
+`sunglasses` (U+1F60E) is legitimately dark, at ~33%.
 
 ## Codepoints
 
@@ -34,7 +54,7 @@ context deliberately declares no `modes` block).
 | emoji_u1f64f.svg | U+1F64F | pray | 🙏 |
 | emoji_u1f525.svg | U+1F525 | fire | 🔥 |
 
-### 43 common
+### 47 common
 
 | File | Codepoint | Semantic id |
 |---|---|---|
@@ -81,3 +101,7 @@ context deliberately declares no `modes` block).
 | emoji_u1f4a9.svg | U+1F4A9 | poop |
 | emoji_u1f680.svg | U+1F680 | rocket |
 | emoji_u1f60f.svg | U+1F60F | smirk |
+| emoji_u1f644.svg | U+1F644 | roll-eyes |
+| emoji_u1f62c.svg | U+1F62C | grimacing |
+| emoji_u2728.svg | U+2728 | sparkles |
+| emoji_u1f91e.svg | U+1F91E | crossed-fingers |

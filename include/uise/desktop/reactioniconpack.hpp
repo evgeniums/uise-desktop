@@ -178,6 +178,67 @@ class UISE_DESKTOP_EXPORT DefaultReactionIconPack : public AbstractReactionIconP
 };
 
 /**
+ * @brief Filtering VIEW over another pack, exposing only entries whose
+ *  ReactionIconInfo::emojiCode is non-empty.
+ *
+ * What MessageEditingMode::Markdown needs: that mode's document is markdown SOURCE, so the only
+ * thing an emoji pick can insert there is the literal Unicode character -- an icon carrying no
+ * code has simply nothing to insert, and offering it in the gallery would produce a click that
+ * silently does nothing.
+ *
+ * Implemented as a decorator rather than as a flag on ChatReactionGallery deliberately.
+ * search() is documented to return indices into at(), and the gallery relies on exactly that
+ * (search() then at(index)); a flag would have to filter the RETURNED index vector while still
+ * indexing the UNFILTERED at(), putting "which indices are legal" in two classes at once.
+ * Filtering the pack instead keeps that invariant true by construction, and covers the gallery's
+ * three independent pack readers (the grid, the "recently used" bar, and the quick bar, which
+ * goes through basicIconIds()+find() rather than search()) in one place.
+ *
+ * Against the shipped DefaultReactionIconPack this is currently an identity view -- all 50 icons
+ * carry a code. It exists because ReactionIconPacks::setDefaultPackUri() lets a host REPLACE the
+ * default pack, and a replacement is free to ship codeless icons.
+ */
+class UISE_DESKTOP_EXPORT EmojiCodeReactionIconPack : public AbstractReactionIconPack
+{
+    public:
+
+        /**
+         * @brief Constructor.
+         * @param source Pack to filter. Held by shared_ptr, so entry pointers returned by at()/
+         *  find()/findByCode() (which point into the SOURCE's own storage) stay valid.
+         */
+        explicit EmojiCodeReactionIconPack(std::shared_ptr<AbstractReactionIconPack> source);
+
+        ~EmojiCodeReactionIconPack() override;
+
+        EmojiCodeReactionIconPack(const EmojiCodeReactionIconPack&) = delete;
+        EmojiCodeReactionIconPack(EmojiCodeReactionIconPack&&) = delete;
+        EmojiCodeReactionIconPack& operator=(const EmojiCodeReactionIconPack&) = delete;
+        EmojiCodeReactionIconPack& operator=(EmojiCodeReactionIconPack&&) = delete;
+
+        //! The SOURCE's uri -- a filtered view is still the same pack, and a reaction id built
+        //! from an icon picked here must resolve through ReactionIconPacks exactly as one
+        //! picked from the unfiltered pack does.
+        QString uri() const override;
+
+        size_t count() const override;
+        const ReactionIconInfo* at(size_t index) const override;
+        const ReactionIconInfo* find(const QString& iconId) const override;
+        const ReactionIconInfo* findByCode(const QString& emojiCode) const override;
+        std::vector<size_t> search(const QString& prefix) const override;
+        std::vector<QString> basicIconIds() const override;
+        void retranslate() override;
+
+        //! The pack being filtered.
+        std::shared_ptr<AbstractReactionIconPack> source() const;
+
+    private:
+
+        class Pimpl;
+        std::unique_ptr<Pimpl> pimpl;
+};
+
+/**
  * @brief Process-wide registry of reaction icon packs, resolving a ChatReaction's icon when the
  *  reaction itself does not carry one (see ChatReaction::icon()).
  *
@@ -209,6 +270,20 @@ class UISE_DESKTOP_EXPORT ReactionIconPacks
         //! Change which registered pack's uri() is treated as "the default" by defaultPack().
         //! The pack itself must already be registered under this uri() via registerPack().
         void setDefaultPackUri(const QString& uri);
+
+        /**
+         * @brief Resolve a reaction id to its full pack entry.
+         * @param reactionId "<icon id>@<pack URI>" (or a bare icon id -- see ChatReactionId).
+         * @return The matching entry, or nullptr if the pack or the icon id within it is not
+         *  registered/found. The pointer is owned by the pack and stays valid as long as the
+         *  pack is registered and not retranslate()d.
+         *
+         * icon() below is a thin wrapper over this. Inline emoji rendering needs the whole entry
+         * rather than just the icon -- emojiCode in particular, both to write an <img>'s alt text
+         * and to substitute a default-pack image back to a plain character on export (see
+         * emojiUrlScheme() in markdownrenderer.hpp).
+         */
+        const ReactionIconInfo* iconInfo(const QString& reactionId) const;
 
         /**
          * @brief Resolve a reaction id's icon.

@@ -62,7 +62,12 @@
                 "clown" : "${uise-svg-icons-4}/emoji_u1f921",
                 "poop" : "${uise-svg-icons-4}/emoji_u1f4a9",
                 "rocket" : "${uise-svg-icons-4}/emoji_u1f680",
-                "smirk" : "${uise-svg-icons-4}/emoji_u1f60f"
+                "smirk" : "${uise-svg-icons-4}/emoji_u1f60f",
+
+                "roll-eyes" : "${uise-svg-icons-4}/emoji_u1f644",
+                "grimacing" : "${uise-svg-icons-4}/emoji_u1f62c",
+                "sparkles" : "${uise-svg-icons-4}/emoji_u2728",
+                "crossed-fingers" : "${uise-svg-icons-4}/emoji_u1f91e"
             }
         }
     ]

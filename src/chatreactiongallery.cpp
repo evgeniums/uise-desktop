@@ -306,7 +306,67 @@ void ChatReactionGallery::rebuildGrid(const QString& searchPrefix)
         m_gridLayout->addWidget(m_emptyLabel,0,0);
     }
 
+    applyVisibleRowsHeight();
+
     Q_EMIT sizeChanged();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatReactionGallery::applyVisibleRowsHeight()
+{
+    // galleryVisibleRows used to be stored and never read by anything: the scroll area had no
+    // height limit at all, so the gallery was as tall as its whole pack (50 icons -> 7 rows) and
+    // grew without bound with a bigger one. chatreactions.qss has always documented this
+    // property as sizing the viewport; this is what finally makes that true.
+    //
+    // Measured from a live cell rather than from a QSS number: the cell's own size hint already
+    // carries whatever icon size and padding the current theme gives it, so the clamp tracks the
+    // theme instead of duplicating its numbers here.
+    if (m_galleryVisibleRows<=0 || m_gridCells.empty())
+    {
+        m_galleryScroll->setMaximumHeight(QWIDGETSIZE_MAX);
+        return;
+    }
+
+    const auto cellHeight=m_gridCells.front()->sizeHint().height();
+    if (cellHeight<=0)
+    {
+        m_galleryScroll->setMaximumHeight(QWIDGETSIZE_MAX);
+        return;
+    }
+
+    const auto spacing=m_gridLayout->verticalSpacing()>0 ? m_gridLayout->verticalSpacing() : 0;
+    auto margins=m_gridLayout->contentsMargins();
+    const auto frame=2*m_galleryScroll->frameWidth()+margins.top()+margins.bottom();
+
+    m_galleryScroll->setMaximumHeight(
+        m_galleryVisibleRows*cellHeight+(m_galleryVisibleRows-1)*spacing+frame
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void ChatReactionGallery::setSearchPlaceholderText(const QString& text)
+{
+    m_searchPlaceholderText=text;
+    m_searchEdit->setPlaceholderText(text.isEmpty() ? tr("Search reactions") : text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatReactionGallery::setEmptyText(const QString& text)
+{
+    m_emptyText=text;
+    m_emptyLabel->setText(text.isEmpty() ? tr("No matching reactions") : text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatReactionGallery::setRecentTitleText(const QString& text)
+{
+    m_recentTitleText=text;
+    m_recentTitle->setText(text.isEmpty() ? tr("Recently used") : text);
 }
 
 //--------------------------------------------------------------------------
@@ -322,7 +382,10 @@ void ChatReactionGallery::setGalleryColumns(int value)
 
 void ChatReactionGallery::setGalleryVisibleRows(int value)
 {
+    if (m_galleryVisibleRows==value) return;
     m_galleryVisibleRows=value;
+    applyVisibleRowsHeight();
+    Q_EMIT sizeChanged();
 }
 
 //--------------------------------------------------------------------------
@@ -332,9 +395,13 @@ void ChatReactionGallery::changeEvent(QEvent* event)
     Frame::changeEvent(event);
     if (event->type()==QEvent::LanguageChange)
     {
-        m_recentTitle->setText(tr("Recently used"));
-        m_searchEdit->setPlaceholderText(tr("Search reactions"));
-        m_emptyLabel->setText(tr("No matching reactions"));
+        // Through the setters, not straight to the widgets: a host that supplied its own wording
+        // (an emoji picker says "Search emoji", not "Search reactions") must not have it silently
+        // reverted to the reaction defaults by a language switch. Re-translating the override
+        // itself is the host's job, from its own changeEvent -- see EmojiGalleryDialog.
+        setRecentTitleText(m_recentTitleText);
+        setSearchPlaceholderText(m_searchPlaceholderText);
+        setEmptyText(m_emptyText);
         if (m_pack)
         {
             m_pack->retranslate();
