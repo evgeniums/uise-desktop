@@ -1,0 +1,14 @@
+{
+    "contexts" : [
+        {
+            "name" : "ChatMessageInvitationMenu",
+            "aliases" : {
+                "menu" : "${uise-svg-icons-1}/dots-vertical",
+                "addContact" : "${uise-svg-icons-1}/user-plus",
+                "qrcode" : "${uise-svg-icons-1}/qrcode",
+                "copy" : "${uise-svg-icons-1}/copy",
+                "save" : "${uise-svg-icons-1}/cloud-download"
+            }
+        }
+    ]
+}

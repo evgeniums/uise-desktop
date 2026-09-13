@@ -147,6 +147,9 @@
         <file>style/light/chatmessagefiles.json</file>
         <file>style/dark/chatmessagefiles.qss</file>
         <file>style/light/chatmessagefiles.qss</file>
+        <file>style/chatmessageinvitation.json</file>
+        <file>style/dark/chatmessageinvitation.json</file>
+        <file>style/light/chatmessageinvitation.json</file>
         <file>style/filedropoverlay.json</file>
         <file>style/filedropoverlay.qss</file>
         <file>style/dark/filedropoverlay.json</file>

@@ -51,6 +51,7 @@ enum class ReplyMessageKind : uint8_t
     File,
     Call,
     Deleted,
+    Invitation,
     Unknown
 };
 
