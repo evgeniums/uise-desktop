@@ -87,8 +87,8 @@ qproperty-rippleRadiusScaleY: 1.0;
 
 /* No horizontal margin on the LEADING buttons: the 6px padding above already separates them from
    each other and from the composer's edge, and stacking a margin on top of it only pushes the
-   group inward without making it any easier to hit. The vertical half is left to the shared rule.
-   The trailing group keeps its inset -- see below. */
+   group inward without making it any easier to hit. The vertical half is left to the shared rule
+   (which is already 0). The trailing group is zeroed the same way -- see below. */
 uise--MessageEditor #leadingWidgets uise--IconTextButton {
 margin-left: 0px;
 margin-right: 0px;
@@ -109,17 +109,24 @@ margin-left: 0px;
 /* Insets the trailing GROUP from the composer's outer edge, rather than adding per-button margins
    that would also open gaps between adjacent buttons. */
 uise--MessageEditor #trailingWidgets {
-margin-right: 8px;
+/*margin-right: 8px;*/
 }
 
-/* The emoji button is the FIRST trailing item, so it sits nearest the text area -- the mirror of
-   where the expand button sits on the leading side. Its left margin is therefore the same kind of
-   gap #expandButton's right margin is: separation from the TEXT, not spacing between buttons. The
-   bottom margin matches #expandButton's, so the two line up across the row. Two ids keep this
-   ahead of the group-wide icon-sizing rule above, the same specificity concern documented for
-   #leadingWidgets #expandButton. */
-uise--MessageEditor #trailingWidgets #emojiButton {
-margin: 0 0 2px 4px;
+/* No margin at all on the TRAILING buttons (#emojiButton, and a host's own -- whitemdesktop's
+   #sendButton), exactly like the leading pair above: the shared 6px padding is the whole spacing
+   budget, so both groups read identically across the row -- attach/typography on the left,
+   emoji/send on the right.
+
+   Same selector as the shared `margin: 0 1px` rule further up (2 elements + 1 id = 258), so it
+   wins purely on being LATER in the file -- source order breaks a specificity tie. Written as the
+   shorthand rather than the leading side's margin-left/margin-right longhands because it also has
+   to zero the BOTTOM margin: #emojiButton used to carry a 2px one to "line up with
+   #expandButton", which never lined up with anything -- that same shared rule (258) out-specifies
+   #expandButton's own `margin: 0 4px 2px 0` shorthand (1 element + 1 id = 257) and zeroes its
+   bottom margin too, leaving #leadingWidgets #expandButton's margin-right as the only per-button
+   margin anywhere in either group. */
+uise--MessageEditor #trailingWidgets uise--IconTextButton {
+margin: 0px;
 }
 
 /* light/reset.qss and dark/reset.qss both sort AFTER this file in the cascade (root-dir files

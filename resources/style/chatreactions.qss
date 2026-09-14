@@ -195,3 +195,15 @@ padding:0;
 qproperty-galleryColumns: 9;
 qproperty-galleryVisibleRows: 6;
 }
+
+/* SearchLineEdit carries no padding of its own (lineedit.qss only styles its embedded action
+   button icons), so #searchEdit's height came entirely from Qt's platform-style default -- fine
+   for the compact reactions popup, cramped next to this dialog's larger 9x6 grid above. Vertical
+   only: horizontal space is already spoken for by the built-in search/cancel action icons
+   (SearchLineEdit's own addAction() calls), and widening it is not what was asked. Scoped to the
+   emoji dialog only, same reasoning as the grid-sizing rule above -- the shipped reactions popup
+   (uise--ChatReactionGallery #searchEdit) keeps its own compact height untouched. */
+uise--EmojiGalleryDialog #emojiGallery #searchEdit {
+padding-top:8px;
+padding-bottom:8px;
+}

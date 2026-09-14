@@ -5068,6 +5068,56 @@ BOOST_AUTO_TEST_CASE(TestTypedEmojiCharacterBecomesImageInWysiwyg)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestHasEmojiIsFalseForOrdinaryText)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(!editor.hasEmoji());   // empty
+
+            editor.loadText(QStringLiteral("just some plain text"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasEmoji());
+
+            editor.clear();
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.loadText(QStringLiteral("**bold** _formatting_ typed by hand"),TextFormat::Markdown);
+            UISE_TEST_CHECK(!editor.hasEmoji());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHasEmojiIsTrueForGalleryInsertedImage)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            UISE_TEST_CHECK(hasEmojiImage(editor));
+            UISE_TEST_CHECK(editor.hasEmoji());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHasEmojiIsTrueForLiteralCharacterInMarkdownMode)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            // insertEmoji() in Markdown mode writes the literal character -- see
+            // TestInsertEmojiMarkdownModeInsertsCharacter -- so this also covers a character typed
+            // with the OS picker, which lands in the document the same way.
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            UISE_TEST_CHECK(editor.hasEmoji());
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestEmojiButtonVisibilityFollowsModeAndOptIn)
 {
     TestThread::instance()->execGuiThread(

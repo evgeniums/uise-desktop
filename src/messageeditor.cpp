@@ -1027,6 +1027,64 @@ void convertCodeBlocksToText(QTextDocument* document, bool suppressUndo=true)
     }
 }
 
+//! One matched emoji occurrence within a fragment's text, expressed in UTF-16 code units so the
+//! caller can slice QString/QTextCursor positions directly.
+struct EmojiCodePointMatch
+{
+    int offset;
+    int length;
+    QString reactionId;
+};
+
+/** @brief Scan `text` by CODE POINT for every character `pack` resolves to a default-pack icon.
+ *
+ * Never by QChar: every supplementary-plane emoji is a surrogate pair. Shared by
+ * normalizeImportedEmoji() (which turns each match into an image) and MessageEditor::hasEmoji()
+ * (which only needs to know whether the result is non-empty), so the two can never disagree about
+ * what counts as "this text has an emoji".
+ *
+ * A following ZERO WIDTH JOINER suppresses a match: a family emoji opens with a code point the
+ * pack may carry alone, and substituting just that one would render one person plus orphan
+ * glyphs. A following variation selector (U+FE0F/FE0E) is swallowed into the match's length so it
+ * is never left stranded next to a substituted image.
+ */
+std::vector<EmojiCodePointMatch> matchEmojiCodePoints(const QString& text,
+                                                      const AbstractReactionIconPack* pack)
+{
+    std::vector<EmojiCodePointMatch> matches;
+    if (pack==nullptr)
+    {
+        return matches;
+    }
+
+    const auto ucs4=text.toUcs4();
+    int offset=0;
+    for (qsizetype i=0; i<ucs4.size(); ++i)
+    {
+        const char32_t cp=ucs4[i];
+        const auto chars=QString::fromUcs4(&cp,1);
+
+        const auto* info=pack->findByCode(chars);
+        const bool zwjFollows=(i+1<ucs4.size()) && ucs4[i+1]==0x200D;
+
+        if (info!=nullptr && info->icon && !zwjFollows)
+        {
+            auto length=static_cast<int>(chars.size());
+            if (i+1<ucs4.size() && (ucs4[i+1]==0xFE0F || ucs4[i+1]==0xFE0E))
+            {
+                const char32_t vs=ucs4[i+1];
+                length+=static_cast<int>(QString::fromUcs4(&vs,1).size());
+                ++i;
+            }
+            matches.push_back({offset,length,ChatReactionId::make(info->iconId,pack->uri())});
+            offset+=length;
+            continue;
+        }
+        offset+=static_cast<int>(chars.size());
+    }
+    return matches;
+}
+
 /** @brief Drop the presentation Qt's own importers bake onto every anchor they read.
  *
  * `setMarkdown()`/`setHtml()` do not merely record an anchor's href -- they also write
@@ -1124,41 +1182,11 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
                 continue;
             }
 
-            // Scan by CODE POINT, not by QChar: every supplementary-plane emoji is a surrogate
-            // pair, and every one this pack ships is supplementary or a BMP symbol.
-            const auto text=fragment.text();
-            const auto ucs4=text.toUcs4();
-            int offset=0;
-            for (qsizetype i=0; i<ucs4.size(); ++i)
+            const auto matches=matchEmojiCodePoints(fragment.text(),defaultPack.get());
+            for (const auto& match : matches)
             {
-                const char32_t cp=ucs4[i];
-                const auto chars=QString::fromUcs4(&cp,1);
-
-                const auto* info=defaultPack->findByCode(chars);
-                // A following ZWJ means this code point opens a multi-person/compound sequence
-                // (e.g. a family emoji): substituting just its first member would render one
-                // person followed by orphan glyphs, so leave the whole grapheme as text.
-                const bool zwjFollows=(i+1<ucs4.size()) && ucs4[i+1]==0x200D;
-
-                if (info!=nullptr && info->icon && !zwjFollows)
-                {
-                    auto length=static_cast<int>(chars.size());
-                    // Swallow a trailing variation selector: real text writes the heart as
-                    // U+2764 U+FE0F, while the pack's codes are bare code points. Leaving the
-                    // selector behind would strand an invisible character next to the image.
-                    if (i+1<ucs4.size() && (ucs4[i+1]==0xFE0F || ucs4[i+1]==0xFE0E))
-                    {
-                        const char32_t vs=ucs4[i+1];
-                        length+=static_cast<int>(QString::fromUcs4(&vs,1).size());
-                        ++i;
-                    }
-                    inserts.push_back({fragment.position()+offset,length,
-                                       ChatReactionId::make(info->iconId,defaultPack->uri()),
-                                       charFormat});
-                    offset+=length;
-                    continue;
-                }
-                offset+=static_cast<int>(chars.size());
+                inserts.push_back({fragment.position()+match.offset,match.length,
+                                   match.reactionId,charFormat});
             }
         }
     }
@@ -3324,9 +3352,11 @@ class MessageEditor_p
         //! Authoritative "is the picker open" -- see MessageEditor::isEmojiGalleryOpen().
         bool emojiDialogOpen=false;
 
-        //! Whether an open picker was opened by a CLICK (pinned) rather than by hovering. Only a
-        //! pinned one checks the emoji button, and only an unpinned one closes itself when the
-        //! pointer wanders off -- see MessageEditor::isEmojiGalleryPinned().
+        //! Whether an open picker was opened (or promoted) by a CLICK rather than by hovering.
+        //! ONLY a click ever sets this -- picking an emoji deliberately does not, see
+        //! ensureEmojiGallery()'s emojiPicked handler. Only a pinned one checks the emoji button,
+        //! and only an unpinned one closes itself when the pointer wanders off -- see
+        //! MessageEditor::isEmojiGalleryPinned().
         bool emojiDialogPinned=false;
 
         //! Armed by a pointer entering the emoji button, disarmed by it leaving or by a click.
@@ -4173,6 +4203,60 @@ bool MessageEditor::hasFormatting() const
     // maxSourceChars raised from markdownToPlainText()'s own preview-sized default: truncation
     // here would make a long plain message differ from itself and be labelled markdown.
     return markdownToPlainText(plain,std::numeric_limits<int>::max()).trimmed()!=plain.trimmed();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::hasEmoji() const
+{
+    auto* doc=pimpl->editor->document();
+    if (doc==nullptr || doc->isEmpty())
+    {
+        return false;
+    }
+
+    auto defaultPack=ReactionIconPacks::instance().defaultPack();
+
+    for (auto block=doc->begin(); block.isValid(); block=block.next())
+    {
+        // Same skip normalizeImportedEmoji() applies -- a code block's content is never
+        // substituted, so it cannot make this true either.
+        if (block.blockFormat().hasProperty(QTextFormat::BlockCodeLanguage)
+            || block.blockFormat().nonBreakableLines())
+        {
+            continue;
+        }
+
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+            const auto charFormat=fragment.charFormat();
+
+            if (charFormat.isImageFormat())
+            {
+                if (!emojiReactionId(charFormat.toImageFormat().name()).isEmpty())
+                {
+                    return true;
+                }
+                continue;
+            }
+
+            if (charFormat.fontFixedPitch() || !defaultPack)
+            {
+                continue;
+            }
+
+            if (!matchEmojiCodePoints(fragment.text(),defaultPack.get()).empty())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 //--------------------------------------------------------------------------
@@ -6335,10 +6419,15 @@ FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
     connect(frame->dialog(),&AbstractEmojiGalleryDialog::emojiPicked,this,
         [this](const QString& reactionId)
         {
-            // Picking PINS a gallery that was only hovered into view: reaching for a second
-            // emoji necessarily moves the pointer, and a picker that dissolved mid-reach
-            // would be unusable. From here on it closes only on an explicit dismissal.
-            pinEmojiGallery();
+            // Deliberately does NOT pin: a hover-opened gallery stays hover-opened through any
+            // number of picks, and only an explicit click on the emoji button ever pins (and so
+            // checks the button). Picking is aimed at the GALLERY, not at the button.
+            //
+            // Nothing is lost by not pinning: reaching for a second emoji keeps the pointer OVER
+            // the gallery, and onEmojiHoverPoll()/isCursorOverEmojiUi() test the dialog's whole
+            // frameGeometry() as well as the button -- so the away counter keeps resetting and
+            // the picker cannot dissolve mid-reach. It closes once the pointer has actually left
+            // both, which is exactly what "opened on hover" should mean.
             insertEmoji(reactionId);
         }
     );
@@ -6492,7 +6581,8 @@ void MessageEditor::syncEmojiButtonChecked()
 {
     // PINNED, not merely open: a hover-opened gallery deliberately leaves the button unchecked,
     // which is what makes "hovering an unchecked button shows the gallery" a stable rule rather
-    // than one that disables itself the instant it fires. See isEmojiGalleryPinned().
+    // than one that disables itself the instant it fires -- and it stays unchecked through any
+    // number of picks, because picking does not pin either. See isEmojiGalleryPinned().
     const auto checked=isEmojiGalleryPinned();
     if (pimpl->emojiButton->isChecked()!=checked)
     {

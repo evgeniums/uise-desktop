@@ -649,6 +649,27 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
             return true;
         }
 
+        /**
+         * @brief Whether the content carries an emoji -- either an image inserted via
+         *  insertEmoji()/the gallery, or a literal emoji CHARACTER the default pack resolves
+         *  (typed with the OS picker, or Markdown mode's own insertEmoji() output).
+         *
+         * A host that renders Plain-format bubbles through a path other than markdownToHtml()
+         * (i.e. one that never sets MarkdownRenderOptions::emojiEnabled for Plain content) needs
+         * this to decide whether a message must be promoted to Markdown before sending, so the
+         * emoji reaches the reader as pack art rather than a bare system-font glyph -- see
+         * whitemdesktop's ChatPageBottom::textMessageFormat().
+         *
+         * Defaults to FALSE, unlike hasFormatting()/hasAppliedFormatting() above: guessing TRUE
+         * here would push every message of an out-of-tree implementation onto the Markdown path
+         * for no reason, where guessing TRUE for the formatting queries merely keeps today's
+         * behaviour.
+         */
+        virtual bool hasEmoji() const
+        {
+            return false;
+        }
+
         virtual bool canPasteFromClipboard() const =0;
 
         /**

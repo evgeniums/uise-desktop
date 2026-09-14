@@ -4,378 +4,305 @@
 <context>
     <name>AbstractChatMessageCall</name>
     <message>
-        <location filename="../src/abstractchatmessagecall.cpp" line="+75"/>
         <source>Missed incoming call</source>
-        <translation type="unfinished">Пропущенный входящий звонок</translation>
+        <translation type="obsolete">Пропущенный входящий звонок</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Unanswered outgoing call</source>
-        <translation type="unfinished">Неотвеченный исходящий звонок</translation>
+        <translation type="obsolete">Неотвеченный исходящий звонок</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Incoming call %1</source>
-        <translation type="unfinished">Входящий звонок %1</translation>
+        <translation type="obsolete">Входящий звонок %1</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Outgoing call %1</source>
-        <translation type="unfinished">Исходящий звонок %1</translation>
+        <translation type="obsolete">Исходящий звонок %1</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Declined incoming call</source>
-        <translation type="unfinished">Отклонённый входящий звонок</translation>
+        <translation type="obsolete">Отклонённый входящий звонок</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Declined outgoing call</source>
-        <translation type="unfinished">Отклонённый исходящий звонок</translation>
+        <translation type="obsolete">Отклонённый исходящий звонок</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Failed incoming call</source>
-        <translation type="unfinished">Сбой входящего звонка</translation>
+        <translation type="obsolete">Сбой входящего звонка</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Failed outgoing call</source>
-        <translation type="unfinished">Сбой исходящего звонка</translation>
+        <translation type="obsolete">Сбой исходящего звонка</translation>
     </message>
     <message>
-        <location line="+18"/>
-        <location line="+32"/>
         <source>s</source>
         <extracomment>Abbreviation appended directly after a number of seconds in a call duration (e.g. &quot;42s&quot;), no separator. Keep as short as the source in every language.
 ----------
 Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extracomment>
-        <translation type="unfinished">с</translation>
+        <translation type="obsolete">с</translation>
     </message>
     <message>
-        <location line="-6"/>
         <source>d</source>
         <extracomment>Abbreviation appended directly after a number of days in a call duration (e.g. &quot;2d 3h&quot;), no separator. Keep as short as the source in every language.</extracomment>
-        <translation type="unfinished">д</translation>
+        <translation type="obsolete">д</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>h</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for hours (e.g. &quot;3h 5m&quot;).</extracomment>
-        <translation type="unfinished">ч</translation>
+        <translation type="obsolete">ч</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>m</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for minutes -- NOT months (e.g. &quot;5m 12s&quot;).</extracomment>
-        <translation type="unfinished">м</translation>
+        <translation type="obsolete">м</translation>
     </message>
 </context>
 <context>
     <name>AbstractChatMessageError</name>
     <message>
-        <location filename="../src/abstractchatmessageerror.cpp" line="+74"/>
         <source>Unsupported message type</source>
-        <translation type="unfinished">Неподдерживаемый тип сообщения</translation>
+        <translation type="obsolete">Неподдерживаемый тип сообщения</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>This message needs a newer version</source>
-        <translation type="unfinished">Нужна более новая версия приложения</translation>
+        <translation type="obsolete">Нужна более новая версия приложения</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Message is too large</source>
-        <translation type="unfinished">Сообщение слишком большое</translation>
+        <translation type="obsolete">Сообщение слишком большое</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>This message could not be read</source>
-        <translation type="unfinished">Не удалось прочитать сообщение</translation>
+        <translation type="obsolete">Не удалось прочитать сообщение</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Update the application to see this message.</source>
-        <translation type="unfinished">Обновите приложение, чтобы увидеть это сообщение.</translation>
+        <translation type="obsolete">Обновите приложение, чтобы увидеть это сообщение.</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Ask the sender to send shorter messages.</source>
-        <translation type="unfinished">Попросите отправителя писать короче.</translation>
+        <translation type="obsolete">Попросите отправителя писать короче.</translation>
     </message>
 </context>
 <context>
     <name>AbstractChatMessageInvitation</name>
     <message>
-        <location filename="../src/abstractchatmessageinvitation.cpp" line="+82"/>
         <source>Password required</source>
-        <translation type="unfinished">Требуется пароль</translation>
+        <translation type="obsolete">Требуется пароль</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Expired</source>
-        <translation type="unfinished">Истёк</translation>
+        <translation type="obsolete">Истёк</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Already in contacts</source>
-        <translation type="unfinished">Уже в контактах</translation>
+        <translation type="obsolete">Уже в контактах</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Update the application to open this invitation</source>
-        <translation type="unfinished">Обновите приложение, чтобы открыть это приглашение</translation>
+        <translation type="obsolete">Обновите приложение, чтобы открыть это приглашение</translation>
     </message>
     <message>
-        <location line="+48"/>
         <source>Show QR code</source>
-        <translation type="unfinished">Показать QR-код</translation>
+        <translation type="obsolete">Показать QR-код</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Copy username</source>
-        <translation type="unfinished">Скопировать никнейм</translation>
+        <translation type="obsolete">Скопировать никнейм</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Copy temporary code</source>
-        <translation type="unfinished">Скопировать временный код</translation>
+        <translation type="obsolete">Скопировать временный код</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Save as file</source>
-        <translation type="unfinished">Сохранить в файл</translation>
+        <translation type="obsolete">Сохранить в файл</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Contact invitation</source>
-        <translation type="unfinished">Приглашение в контакты</translation>
+        <translation type="obsolete">Приглашение в контакты</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Group chat invitation</source>
-        <translation type="unfinished">Приглашение в групповой чат</translation>
+        <translation type="obsolete">Приглашение в групповой чат</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Invitation</source>
-        <translation type="unfinished">Приглашение</translation>
+        <translation type="obsolete">Приглашение</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Add contact</source>
-        <translation type="unfinished">Добавить контакт</translation>
+        <translation type="obsolete">Добавить контакт</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Join chat</source>
-        <translation type="unfinished">Войти в чат</translation>
+        <translation type="obsolete">Войти в чат</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Open</source>
-        <translation type="unfinished">Открыть</translation>
+        <translation type="obsolete">Открыть</translation>
     </message>
 </context>
 <context>
     <name>AbstractDialog</name>
     <message>
-        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation type="unfinished">Закрыть</translation>
+        <translation type="obsolete">Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/abstractdialog.cpp" line="+66"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation type="obsolete">Закрыть</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Accept</source>
-        <translation type="unfinished">Принять</translation>
+        <translation type="obsolete">Принять</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Apply</source>
-        <translation type="unfinished">Применить</translation>
+        <translation type="obsolete">Применить</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Ignore</source>
-        <translation type="unfinished">Игнорировать</translation>
+        <translation type="obsolete">Игнорировать</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>OK</source>
-        <translation type="unfinished">ОК</translation>
+        <translation type="obsolete">ОК</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Yes</source>
-        <translation type="unfinished">Да</translation>
+        <translation type="obsolete">Да</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>No</source>
-        <translation type="unfinished">Нет</translation>
+        <translation type="obsolete">Нет</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Skip</source>
-        <translation type="unfinished">Пропустить</translation>
+        <translation type="obsolete">Пропустить</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Retry</source>
-        <translation type="unfinished">Повторить</translation>
+        <translation type="obsolete">Повторить</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Next</source>
-        <translation type="unfinished">Далее</translation>
+        <translation type="obsolete">Далее</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Back</source>
-        <translation type="unfinished">Назад</translation>
+        <translation type="obsolete">Назад</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Start</source>
-        <translation type="unfinished">Старт</translation>
+        <translation type="obsolete">Старт</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Finish</source>
-        <translation type="unfinished">Завершить</translation>
+        <translation type="obsolete">Завершить</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Complete</source>
-        <translation type="unfinished">Завершено</translation>
+        <translation type="obsolete">Завершено</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Done</source>
-        <translation type="unfinished">Готово</translation>
+        <translation type="obsolete">Готово</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Unknown</source>
-        <translation type="unfinished">Неизвестно</translation>
+        <translation type="obsolete">Неизвестно</translation>
     </message>
 </context>
 <context>
     <name>AbstractForwardDialog</name>
     <message>
-        <location filename="../src/abstractforwarddialog.cpp" line="+55"/>
         <source>Change recipient</source>
-        <translation type="unfinished">Изменить получателя</translation>
+        <translation type="obsolete">Изменить получателя</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Show in chat</source>
-        <translation type="unfinished">Показать в чате</translation>
+        <translation type="obsolete">Показать в чате</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Do not forward</source>
-        <translation type="unfinished">Не пересылать</translation>
+        <translation type="obsolete">Не пересылать</translation>
     </message>
 </context>
 <context>
     <name>AbstractNewPasswordWizard</name>
     <message>
-        <location filename="../src/newpasswordwizard.cpp" line="+45"/>
         <source>Entered passwords do not match</source>
-        <translation type="unfinished">Введённые пароли не совпадают</translation>
+        <translation type="obsolete">Введённые пароли не совпадают</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Password cannot be empty</source>
-        <translation type="unfinished">Пароль не может быть пустым</translation>
+        <translation type="obsolete">Пароль не может быть пустым</translation>
     </message>
 </context>
 <context>
     <name>AbstractReplyDialog</name>
     <message>
-        <location filename="../src/abstractreplydialog.cpp" line="+55"/>
         <source>Show in chat</source>
-        <translation type="unfinished">Показать в чате</translation>
+        <translation type="obsolete">Показать в чате</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Do not reply</source>
-        <translation type="unfinished">Не отвечать</translation>
+        <translation type="obsolete">Не отвечать</translation>
     </message>
 </context>
 <context>
     <name>AudioDeviceSetting</name>
     <message>
-        <location filename="../src/audiodevicesetting.cpp" line="+129"/>
-        <location line="+10"/>
         <source>Test</source>
-        <translation type="unfinished">Проверить</translation>
+        <translation type="obsolete">Проверить</translation>
     </message>
     <message>
-        <location line="+0"/>
-        <source>Stop</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+184"/>
         <source>Default</source>
-        <translation type="unfinished">По умолчанию</translation>
+        <translation type="obsolete">По умолчанию</translation>
     </message>
 </context>
 <context>
     <name>Calendar</name>
     <message numerus="yes">
-        <location filename="../src/calendar.cpp" line="+758"/>
         <source>Selected %n day(s)</source>
-        <translation type="unfinished">
+        <translation type="obsolete">
             <numerusform>Выбран %n день</numerusform>
             <numerusform>Выбрано %n дня</numerusform>
             <numerusform>Выбрано %n дней</numerusform>
         </translation>
     </message>
     <message>
-        <location line="+490"/>
         <source>Select day</source>
-        <translation type="unfinished">Выберите день</translation>
+        <translation type="obsolete">Выберите день</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+8"/>
         <source>Select days</source>
-        <translation type="unfinished">Выберите дни</translation>
+        <translation type="obsolete">Выберите дни</translation>
     </message>
 </context>
 <context>
     <name>CalendarDialog</name>
     <message>
-        <location filename="../src/calendardialog.cpp" line="+120"/>
         <source>Select date</source>
-        <translation type="unfinished">Выберите дату</translation>
+        <translation type="obsolete">Выберите дату</translation>
     </message>
 </context>
 <context>
     <name>CalendarInput</name>
     <message>
-        <location filename="../src/calendarinput.cpp" line="+438"/>
         <source>Select date</source>
-        <translation type="unfinished">Выберите дату</translation>
+        <translation type="obsolete">Выберите дату</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Select dates</source>
-        <translation type="unfinished">Выберите даты</translation>
+        <translation type="obsolete">Выберите даты</translation>
     </message>
 </context>
 <context>
@@ -464,244 +391,165 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatImageViewerControls</name>
     <message>
-        <location filename="../src/chatimageviewercontrols.cpp" line="+168"/>
-        <location line="+55"/>
         <source>Save as</source>
-        <translation type="unfinished">Сохранить как</translation>
+        <translation type="obsolete">Сохранить как</translation>
     </message>
     <message>
-        <location line="-48"/>
         <source>Rotate counterclockwise</source>
-        <translation type="unfinished">Повернуть против часовой стрелки</translation>
+        <translation type="obsolete">Повернуть против часовой стрелки</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Zoom in</source>
-        <translation type="unfinished">Увеличить</translation>
+        <translation type="obsolete">Увеличить</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Zoom out</source>
-        <translation type="unfinished">Уменьшить</translation>
+        <translation type="obsolete">Уменьшить</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Play/pause</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+19"/>
         <source>Go to message</source>
-        <translation type="unfinished">Перейти к сообщению</translation>
+        <translation type="obsolete">Перейти к сообщению</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Forward</source>
-        <translation type="unfinished">Переслать</translation>
+        <translation type="obsolete">Переслать</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Delete message</source>
-        <translation type="unfinished">Удалить сообщение</translation>
+        <translation type="obsolete">Удалить сообщение</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>%1 of %2</source>
-        <translation type="unfinished">%1 из %2</translation>
+        <translation type="obsolete">%1 из %2</translation>
     </message>
 </context>
 <context>
     <name>ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1727"/>
         <source>Created: %1</source>
-        <translation type="unfinished">Создано: %1</translation>
+        <translation type="obsolete">Создано: %1</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Edited: %1</source>
-        <translation type="unfinished">Изменено: %1</translation>
+        <translation type="obsolete">Изменено: %1</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>edited</source>
-        <translation type="unfinished">изменено</translation>
+        <translation type="obsolete">изменено</translation>
     </message>
 </context>
 <context>
     <name>ChatMessageForwardHeader</name>
     <message>
-        <location filename="../src/chatmessageforwardheader.cpp" line="+79"/>
         <source>Forwarded from %1</source>
-        <translation type="unfinished">Переслано от %1</translation>
+        <translation type="obsolete">Переслано от %1</translation>
     </message>
 </context>
 <context>
     <name>ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+1994"/>
         <source>Copied</source>
-        <translation type="unfinished">Скопировано</translation>
+        <translation type="obsolete">Скопировано</translation>
     </message>
     <message>
-        <location line="+38"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Copy table</source>
-        <translation type="unfinished">Копировать таблицу</translation>
+        <translation type="obsolete">Копировать таблицу</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Select all</source>
-        <translation type="unfinished">Выделить всё</translation>
+        <translation type="obsolete">Выделить всё</translation>
     </message>
 </context>
 <context>
     <name>ChatMessageTextBrowser</name>
     <message>
-        <location line="-1289"/>
         <source>Copied</source>
-        <translation type="unfinished">Скопировано</translation>
+        <translation type="obsolete">Скопировано</translation>
     </message>
     <message>
-        <location line="+71"/>
-        <location line="+1422"/>
         <source>Copy code</source>
-        <translation type="unfinished">Копировать код</translation>
+        <translation type="obsolete">Копировать код</translation>
     </message>
     <message>
-        <location line="-1398"/>
         <source>Open code in a larger window</source>
-        <translation type="unfinished">Открыть код в большом окне</translation>
+        <translation type="obsolete">Открыть код в большом окне</translation>
     </message>
     <message>
-        <location line="+893"/>
         <source>Show the full table</source>
-        <translation type="unfinished">Показать таблицу целиком</translation>
+        <translation type="obsolete">Показать таблицу целиком</translation>
     </message>
     <message>
-        <location line="+369"/>
-        <location line="+36"/>
-        <location line="+96"/>
-        <location line="+39"/>
         <source>Full screen</source>
-        <translation type="unfinished">Во весь экран</translation>
+        <translation type="obsolete">Во весь экран</translation>
     </message>
     <message>
-        <location line="-167"/>
         <source>Copy table</source>
-        <translation type="unfinished">Копировать таблицу</translation>
+        <translation type="obsolete">Копировать таблицу</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <location line="+143"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation type="obsolete">Закрыть</translation>
     </message>
     <message>
-        <location line="-111"/>
-        <location line="+135"/>
         <source>Exit full screen</source>
-        <translation type="unfinished">Обычный размер</translation>
+        <translation type="obsolete">Обычный размер</translation>
     </message>
     <message>
-        <location line="+199"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Select All</source>
-        <translation type="unfinished">Выделить всё</translation>
-    </message>
-</context>
-<context>
-    <name>ChatReactionGallery</name>
-    <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+154"/>
-        <location line="+215"/>
-        <source>Recently used</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="-201"/>
-        <location line="+185"/>
-        <source>Search reactions</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="-172"/>
-        <location line="+180"/>
-        <source>No matching reactions</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">Выделить всё</translation>
     </message>
 </context>
 <context>
     <name>DirectoryImagesViewer</name>
     <message>
-        <location filename="../src/directoryimagesviewer.cpp" line="+92"/>
-        <source>Browse...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+39"/>
         <source>Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)</source>
-        <translation type="unfinished">Изображения (*.png *.jpg *.jpeg *.bmp);;Все файлы (*.*)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>Select image file</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">Изображения (*.png *.jpg *.jpeg *.bmp);;Все файлы (*.*)</translation>
     </message>
 </context>
 <context>
     <name>EditBar</name>
     <message>
-        <location filename="../src/editbar.cpp" line="+76"/>
         <source>Go to message</source>
-        <translation type="unfinished">Перейти к сообщению</translation>
+        <translation type="obsolete">Перейти к сообщению</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Edit message, %2</source>
-        <translation type="unfinished">Изменить сообщение, %2</translation>
+        <translation type="obsolete">Изменить сообщение, %2</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>Cancel editing</source>
-        <translation type="unfinished">Отменить редактирование</translation>
+        <translation type="obsolete">Отменить редактирование</translation>
     </message>
 </context>
 <context>
     <name>EditableLabel</name>
     <message>
-        <location filename="../src/editablelabel.cpp" line="+89"/>
-        <location line="+98"/>
         <source>Edit</source>
-        <translation type="unfinished">Изменить</translation>
+        <translation type="obsolete">Изменить</translation>
     </message>
     <message>
-        <location line="-91"/>
         <source>Apply</source>
-        <translation type="unfinished">Применить</translation>
+        <translation type="obsolete">Применить</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
     <message>
-        <location line="+87"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
 </context>
 <context>
@@ -720,203 +568,159 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>EditablePanel</name>
     <message>
-        <location filename="../src/editablepanel.cpp" line="+103"/>
         <source>Edit</source>
-        <translation type="unfinished">Изменить</translation>
+        <translation type="obsolete">Изменить</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <location line="+42"/>
         <source>Apply</source>
-        <translation type="unfinished">Применить</translation>
+        <translation type="obsolete">Применить</translation>
     </message>
     <message>
-        <location line="-39"/>
-        <location line="+42"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
 </context>
 <context>
     <name>EmojiGalleryDialog</name>
     <message>
-        <location filename="../src/emojigallerydialog.cpp" line="+73"/>
-        <location line="+83"/>
         <source>Search emoji</source>
-        <translation type="unfinished">Поиск эмодзи</translation>
+        <translation type="obsolete">Поиск эмодзи</translation>
     </message>
     <message>
-        <location line="-82"/>
-        <location line="+83"/>
         <source>No matching emoji</source>
-        <translation type="unfinished">Ничего не найдено</translation>
+        <translation type="obsolete">Ничего не найдено</translation>
     </message>
     <message>
-        <location line="-68"/>
-        <location line="+61"/>
         <source>Emoji</source>
-        <translation type="unfinished">Эмодзи</translation>
+        <translation type="obsolete">Эмодзи</translation>
     </message>
 </context>
 <context>
     <name>FileDropOverlay</name>
     <message>
-        <location filename="../src/filedropoverlay.cpp" line="+156"/>
         <source>Drop files here to send as documents</source>
-        <translation type="unfinished">Перетащите файлы сюда, чтобы отправить как документы</translation>
+        <translation type="obsolete">Перетащите файлы сюда, чтобы отправить как документы</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Send as documents</source>
-        <translation type="unfinished">Отправить как документы</translation>
+        <translation type="obsolete">Отправить как документы</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Original files, no compression</source>
-        <translation type="unfinished">Исходные файлы, без сжатия</translation>
+        <translation type="obsolete">Исходные файлы, без сжатия</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <location line="+2"/>
         <source>Send as images</source>
-        <translation type="unfinished">Отправить как изображения</translation>
+        <translation type="obsolete">Отправить как изображения</translation>
     </message>
     <message>
-        <location line="-1"/>
         <source>Full quality, larger size</source>
-        <translation type="unfinished">Полное качество, больший размер</translation>
+        <translation type="obsolete">Полное качество, больший размер</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <location line="+2"/>
         <source>Adaptive quality, faster delivery</source>
-        <translation type="unfinished">Адаптивное качество, быстрее доставка</translation>
+        <translation type="obsolete">Адаптивное качество, быстрее доставка</translation>
     </message>
     <message>
-        <location line="-1"/>
         <source>Send as photos</source>
-        <translation type="unfinished">Отправить как фото</translation>
+        <translation type="obsolete">Отправить как фото</translation>
     </message>
 </context>
 <context>
     <name>FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+376"/>
         <source>Edit image</source>
-        <translation type="unfinished">Изменить изображение</translation>
+        <translation type="obsolete">Изменить изображение</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Rename file</source>
-        <translation type="unfinished">Переименовать файл</translation>
+        <translation type="obsolete">Переименовать файл</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Remove</source>
-        <translation type="unfinished">Удалить</translation>
+        <translation type="obsolete">Удалить</translation>
     </message>
 </context>
 <context>
     <name>FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
         <source>Full quality</source>
-        <translation type="unfinished">Полное качество</translation>
+        <translation type="obsolete">Полное качество</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <location line="+53"/>
         <source>Send as documents</source>
-        <translation type="unfinished">Отправить как документы</translation>
+        <translation type="obsolete">Отправить как документы</translation>
     </message>
     <message>
-        <location line="-52"/>
-        <location line="+46"/>
         <source>Group items</source>
-        <translation type="unfinished">Группировать элементы</translation>
+        <translation type="obsolete">Группировать элементы</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Remember this choice</source>
-        <translation type="unfinished">Запомнить выбор</translation>
+        <translation type="obsolete">Запомнить выбор</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Comments</source>
-        <translation type="unfinished">Комментарии</translation>
+        <translation type="obsolete">Комментарии</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Add a comment...</source>
-        <translation type="unfinished">Добавить комментарий…</translation>
+        <translation type="obsolete">Добавить комментарий…</translation>
     </message>
     <message>
-        <location line="+51"/>
         <source>Add</source>
-        <translation type="unfinished">Добавить</translation>
+        <translation type="obsolete">Добавить</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Send</source>
-        <translation type="unfinished">Отправить</translation>
+        <translation type="obsolete">Отправить</translation>
     </message>
     <message>
-        <location line="+301"/>
         <source>Send files</source>
-        <translation type="unfinished">Отправить файлы</translation>
+        <translation type="obsolete">Отправить файлы</translation>
     </message>
     <message>
-        <location line="+15"/>
         <source>Send an image</source>
-        <translation type="unfinished">Отправить изображение</translation>
+        <translation type="obsolete">Отправить изображение</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Send as a file</source>
-        <translation type="unfinished">Отправить как файл</translation>
+        <translation type="obsolete">Отправить как файл</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>%1 images selected</source>
-        <translation type="unfinished">Выбрано изображений: %1</translation>
+        <translation type="obsolete">Выбрано изображений: %1</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>%1 files selected</source>
-        <translation type="unfinished">Выбрано файлов: %1</translation>
+        <translation type="obsolete">Выбрано файлов: %1</translation>
     </message>
     <message>
-        <location line="+702"/>
         <source>Add files</source>
-        <translation type="unfinished">Добавить файлы</translation>
+        <translation type="obsolete">Добавить файлы</translation>
     </message>
 </context>
 <context>
     <name>ForwardBar</name>
     <message>
-        <location filename="../src/forwardbar.cpp" line="+72"/>
         <source>Configure forward</source>
-        <translation type="unfinished">Настроить пересылку</translation>
+        <translation type="obsolete">Настроить пересылку</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Forwarded from %1</source>
-        <translation type="unfinished">Переслано от %1</translation>
+        <translation type="obsolete">Переслано от %1</translation>
     </message>
     <message>
-        <location line="+17"/>
         <source>Cancel forward</source>
-        <translation type="unfinished">Отменить пересылку</translation>
+        <translation type="obsolete">Отменить пересылку</translation>
     </message>
     <message numerus="yes">
-        <location line="+133"/>
         <source>%n messages to forward</source>
-        <translation type="unfinished">
+        <translation type="obsolete">
             <numerusform>%n сообщение для пересылки</numerusform>
             <numerusform>%n сообщения для пересылки</numerusform>
             <numerusform>%n сообщений для пересылки</numerusform>
@@ -926,35 +730,28 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ForwardDialog</name>
     <message>
-        <location filename="../src/forwarddialog.cpp" line="+108"/>
         <source>You can select a part of the text to quote only that part.</source>
-        <translation type="unfinished">Можно выделить часть текста, чтобы процитировать только её.</translation>
+        <translation type="obsolete">Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Forward message</source>
-        <translation type="unfinished">Переслать сообщение</translation>
+        <translation type="obsolete">Переслать сообщение</translation>
     </message>
     <message>
-        <location line="+39"/>
         <source>Hide sender name</source>
-        <translation type="unfinished">Скрыть имя отправителя</translation>
+        <translation type="obsolete">Скрыть имя отправителя</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <location line="+220"/>
         <source>Send</source>
-        <translation type="unfinished">Отправить</translation>
+        <translation type="obsolete">Отправить</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Quote selected</source>
-        <translation type="unfinished">Цитировать выделенное</translation>
+        <translation type="obsolete">Цитировать выделенное</translation>
     </message>
     <message numerus="yes">
-        <location line="+103"/>
         <source>%n messages to forward</source>
-        <translation type="unfinished">
+        <translation type="obsolete">
             <numerusform>%n сообщение для пересылки</numerusform>
             <numerusform>%n сообщения для пересылки</numerusform>
             <numerusform>%n сообщений для пересылки</numerusform>
@@ -964,137 +761,110 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>FrameWithModalStatus</name>
     <message>
-        <location filename="../src/framewithmodalstatus.cpp" line="+195"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
 </context>
 <context>
     <name>HTreeNodeTitleBar</name>
     <message>
-        <location filename="../src/htreenode.cpp" line="+105"/>
         <source>Close this section with all subsequent sections</source>
-        <translation type="unfinished">Закрыть этот раздел со всеми последующими</translation>
+        <translation type="obsolete">Закрыть этот раздел со всеми последующими</translation>
     </message>
     <message>
-        <location line="+12"/>
         <source>Hide section</source>
-        <translation type="unfinished">Скрыть раздел</translation>
+        <translation type="obsolete">Скрыть раздел</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Maximize section</source>
-        <translation type="unfinished">Развернуть раздел</translation>
+        <translation type="obsolete">Развернуть раздел</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Refresh</source>
-        <translation type="unfinished">Обновить</translation>
+        <translation type="obsolete">Обновить</translation>
     </message>
 </context>
 <context>
     <name>HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+671"/>
         <source>Collapse</source>
-        <translation type="unfinished">Свернуть</translation>
+        <translation type="obsolete">Свернуть</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Expand</source>
-        <translation type="unfinished">Развернуть</translation>
+        <translation type="obsolete">Развернуть</translation>
     </message>
 </context>
 <context>
     <name>HTreeTabBarItem</name>
     <message>
-        <location filename="../src/htreetabbar.cpp" line="+113"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation type="obsolete">Закрыть</translation>
     </message>
 </context>
 <context>
     <name>HyperlinkDialog</name>
     <message>
-        <location filename="../src/hyperlinkdialog.cpp" line="+77"/>
         <source>URL</source>
-        <translation type="unfinished">Ссылка</translation>
+        <translation type="obsolete">Ссылка</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>https://example.com</source>
-        <translation type="unfinished">https://example.com</translation>
+        <translation type="obsolete">https://example.com</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>Title (optional)</source>
-        <translation type="unfinished">Название (необязательно)</translation>
+        <translation type="obsolete">Название (необязательно)</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Link text</source>
-        <translation type="unfinished">Текст ссылки</translation>
+        <translation type="obsolete">Текст ссылки</translation>
     </message>
     <message>
-        <location line="+15"/>
         <source>Insert link</source>
-        <translation type="unfinished">Вставить ссылку</translation>
+        <translation type="obsolete">Вставить ссылку</translation>
     </message>
     <message>
-        <location line="+33"/>
         <source>Enter a URL.</source>
-        <translation type="unfinished">Введите ссылку.</translation>
+        <translation type="obsolete">Введите ссылку.</translation>
     </message>
 </context>
 <context>
     <name>ImageViewerWidget</name>
     <message>
-        <location filename="../src/imageviewer.cpp" line="+210"/>
         <source>Rotate</source>
-        <translation type="unfinished">Повернуть</translation>
+        <translation type="obsolete">Повернуть</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Rotate clockwise</source>
-        <translation type="unfinished">Повернуть по часовой</translation>
+        <translation type="obsolete">Повернуть по часовой</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Flip horizontally</source>
-        <translation type="unfinished">Отразить по горизонтали</translation>
+        <translation type="obsolete">Отразить по горизонтали</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Flip vertically</source>
-        <translation type="unfinished">Отразить по вертикали</translation>
+        <translation type="obsolete">Отразить по вертикали</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Zoom in</source>
-        <translation type="unfinished">Увеличить</translation>
+        <translation type="obsolete">Увеличить</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Zoom out</source>
-        <translation type="unfinished">Уменьшить</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>Play/pause</source>
-        <translation type="unfinished"></translation>
+        <translation type="obsolete">Уменьшить</translation>
     </message>
 </context>
 <context>
     <name>Label</name>
     <message>
-        <location filename="../src/label.cpp" line="+78"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Select All</source>
-        <translation type="unfinished">Выделить всё</translation>
+        <translation type="obsolete">Выделить всё</translation>
     </message>
 </context>
 <context>
@@ -1133,509 +903,393 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+3435"/>
         <source>Show formatting toolbar</source>
-        <translation type="unfinished">Показать панель форматирования</translation>
+        <translation type="obsolete">Показать панель форматирования</translation>
     </message>
     <message>
-        <location line="+32"/>
         <source>Insert emoji</source>
-        <translation type="unfinished">Вставить эмодзи</translation>
+        <translation type="obsolete">Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1551"/>
         <source>code here</source>
-        <translation type="unfinished">код</translation>
+        <translation type="obsolete">код</translation>
     </message>
     <message>
-        <location line="+1775"/>
-        <source>No suggestions</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Add to dictionary</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Ignore word</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>Check spelling</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+9"/>
         <source>Cut</source>
-        <translation type="unfinished">Вырезать</translation>
+        <translation type="obsolete">Вырезать</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Paste</source>
-        <translation type="unfinished">Вставить</translation>
+        <translation type="obsolete">Вставить</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Mention someone</source>
-        <translation type="unfinished">Упомянуть</translation>
+        <translation type="obsolete">Упомянуть</translation>
     </message>
     <message>
-        <location line="+21"/>
         <source>Bold</source>
-        <translation type="unfinished">Полужирный</translation>
+        <translation type="obsolete">Полужирный</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Italic</source>
-        <translation type="unfinished">Курсив</translation>
+        <translation type="obsolete">Курсив</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Underline</source>
-        <translation type="unfinished">Подчёркнутый</translation>
+        <translation type="obsolete">Подчёркнутый</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Strikethrough</source>
-        <translation type="unfinished">Зачёркнутый</translation>
+        <translation type="obsolete">Зачёркнутый</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Inline code</source>
-        <translation type="unfinished">Код в строке</translation>
+        <translation type="obsolete">Код в строке</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Heading 1</source>
-        <translation type="unfinished">Заголовок 1</translation>
+        <translation type="obsolete">Заголовок 1</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Heading 2</source>
-        <translation type="unfinished">Заголовок 2</translation>
+        <translation type="obsolete">Заголовок 2</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Heading 3</source>
-        <translation type="unfinished">Заголовок 3</translation>
+        <translation type="obsolete">Заголовок 3</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Normal text</source>
-        <translation type="unfinished">Обычный текст</translation>
+        <translation type="obsolete">Обычный текст</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Bulleted list</source>
-        <translation type="unfinished">Маркированный список</translation>
+        <translation type="obsolete">Маркированный список</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Numbered list</source>
-        <translation type="unfinished">Нумерованный список</translation>
+        <translation type="obsolete">Нумерованный список</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Blockquote</source>
-        <translation type="unfinished">Цитата</translation>
+        <translation type="obsolete">Цитата</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Code block</source>
-        <translation type="unfinished">Блок кода</translation>
+        <translation type="obsolete">Блок кода</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Table</source>
-        <translation type="unfinished">Таблица</translation>
+        <translation type="obsolete">Таблица</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Horizontal rule</source>
-        <translation type="unfinished">Разделитель</translation>
+        <translation type="obsolete">Разделитель</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Insert link</source>
-        <translation type="unfinished">Вставить ссылку</translation>
+        <translation type="obsolete">Вставить ссылку</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Remove link</source>
-        <translation type="unfinished">Удалить ссылку</translation>
+        <translation type="obsolete">Удалить ссылку</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Clear formatting</source>
-        <translation type="unfinished">Очистить форматирование</translation>
+        <translation type="obsolete">Очистить форматирование</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Formatting</source>
-        <translation type="unfinished">Форматирование</translation>
+        <translation type="obsolete">Форматирование</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Select all</source>
-        <translation type="unfinished">Выделить всё</translation>
+        <translation type="obsolete">Выделить всё</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Clear</source>
-        <translation type="unfinished">Очистить</translation>
+        <translation type="obsolete">Очистить</translation>
     </message>
 </context>
 <context>
     <name>MessageEditorToolbar</name>
     <message>
-        <location filename="../src/messageeditortoolbar.cpp" line="+99"/>
         <source>Insert row above</source>
-        <translation type="unfinished">Вставить строку выше</translation>
+        <translation type="obsolete">Вставить строку выше</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Insert row below</source>
-        <translation type="unfinished">Вставить строку ниже</translation>
+        <translation type="obsolete">Вставить строку ниже</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Insert column left</source>
-        <translation type="unfinished">Вставить столбец слева</translation>
+        <translation type="obsolete">Вставить столбец слева</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Insert column right</source>
-        <translation type="unfinished">Вставить столбец справа</translation>
+        <translation type="obsolete">Вставить столбец справа</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Delete row</source>
-        <translation type="unfinished">Удалить строку</translation>
+        <translation type="obsolete">Удалить строку</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Delete column</source>
-        <translation type="unfinished">Удалить столбец</translation>
+        <translation type="obsolete">Удалить столбец</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Delete table</source>
-        <translation type="unfinished">Удалить таблицу</translation>
+        <translation type="obsolete">Удалить таблицу</translation>
     </message>
     <message>
-        <location line="+134"/>
         <source>Editing mode</source>
-        <translation type="unfinished">Режим редактирования</translation>
+        <translation type="obsolete">Режим редактирования</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Formatted text</source>
-        <translation type="unfinished">Форматированный текст</translation>
+        <translation type="obsolete">Форматированный текст</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Markdown source</source>
-        <translation type="unfinished">Исходный Markdown</translation>
+        <translation type="obsolete">Исходный Markdown</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Plain text</source>
-        <translation type="unfinished">Простой текст</translation>
+        <translation type="obsolete">Простой текст</translation>
     </message>
     <message>
-        <location line="+31"/>
         <source>Undo</source>
-        <translation type="unfinished">Отменить</translation>
+        <translation type="obsolete">Отменить</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Redo</source>
-        <translation type="unfinished">Повторить</translation>
+        <translation type="obsolete">Повторить</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Bold</source>
-        <translation type="unfinished">Полужирный</translation>
+        <translation type="obsolete">Полужирный</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Italic</source>
-        <translation type="unfinished">Курсив</translation>
+        <translation type="obsolete">Курсив</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Underline</source>
-        <translation type="unfinished">Подчёркнутый</translation>
+        <translation type="obsolete">Подчёркнутый</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Strikethrough</source>
-        <translation type="unfinished">Зачёркнутый</translation>
+        <translation type="obsolete">Зачёркнутый</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Inline code</source>
-        <translation type="unfinished">Код в строке</translation>
+        <translation type="obsolete">Код в строке</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Heading</source>
-        <translation type="unfinished">Заголовок</translation>
+        <translation type="obsolete">Заголовок</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Heading 1</source>
-        <translation type="unfinished">Заголовок 1</translation>
+        <translation type="obsolete">Заголовок 1</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Heading 2</source>
-        <translation type="unfinished">Заголовок 2</translation>
+        <translation type="obsolete">Заголовок 2</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Heading 3</source>
-        <translation type="unfinished">Заголовок 3</translation>
+        <translation type="obsolete">Заголовок 3</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Normal text</source>
-        <translation type="unfinished">Обычный текст</translation>
+        <translation type="obsolete">Обычный текст</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Bulleted list</source>
-        <translation type="unfinished">Маркированный список</translation>
+        <translation type="obsolete">Маркированный список</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Numbered list</source>
-        <translation type="unfinished">Нумерованный список</translation>
+        <translation type="obsolete">Нумерованный список</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Increase indent (Tab)</source>
-        <translation type="unfinished">Увеличить отступ (Tab)</translation>
+        <translation type="obsolete">Увеличить отступ (Tab)</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Decrease indent (Shift+Tab)</source>
-        <translation type="unfinished">Уменьшить отступ (Shift+Tab)</translation>
+        <translation type="obsolete">Уменьшить отступ (Shift+Tab)</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Blockquote</source>
-        <translation type="unfinished">Цитата</translation>
+        <translation type="obsolete">Цитата</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Code block</source>
-        <translation type="unfinished">Блок кода</translation>
+        <translation type="obsolete">Блок кода</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Insert table (Tab moves between cells)</source>
-        <translation type="unfinished">Вставить таблицу (Tab — переход между ячейками)</translation>
+        <translation type="obsolete">Вставить таблицу (Tab — переход между ячейками)</translation>
     </message>
     <message>
-        <location line="+15"/>
         <source>%1 × %2</source>
-        <translation type="unfinished">%1 × %2</translation>
+        <translation type="obsolete">%1 × %2</translation>
     </message>
     <message>
-        <location line="+53"/>
         <source>Insert horizontal rule</source>
-        <translation type="unfinished">Вставить разделитель</translation>
+        <translation type="obsolete">Вставить разделитель</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Insert link</source>
-        <translation type="unfinished">Вставить ссылку</translation>
+        <translation type="obsolete">Вставить ссылку</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Remove link</source>
-        <translation type="unfinished">Удалить ссылку</translation>
+        <translation type="obsolete">Удалить ссылку</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Mention someone</source>
-        <translation type="unfinished">Упомянуть</translation>
+        <translation type="obsolete">Упомянуть</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <source>Check spelling</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+8"/>
         <source>Clear formatting</source>
-        <translation type="unfinished">Очистить форматирование</translation>
+        <translation type="obsolete">Очистить форматирование</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Close</source>
-        <translation type="unfinished">Закрыть</translation>
+        <translation type="obsolete">Закрыть</translation>
     </message>
 </context>
 <context>
     <name>MessageSelectionPanelUi</name>
     <message>
-        <location filename="../src/messageselectionpanel.cpp" line="+60"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Forward</source>
-        <translation type="unfinished">Переслать</translation>
+        <translation type="obsolete">Переслать</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Delete</source>
-        <translation type="unfinished">Удалить</translation>
+        <translation type="obsolete">Удалить</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Cancel</source>
-        <translation type="unfinished">Отмена</translation>
+        <translation type="obsolete">Отмена</translation>
     </message>
 </context>
 <context>
     <name>NavigationBarItem</name>
     <message>
-        <location filename="../src/navigationbar.cpp" line="+178"/>
         <source>Open in new tab</source>
         <comment>NavigationBarItem</comment>
-        <translation type="unfinished">Открыть в новой вкладке</translation>
+        <translation type="obsolete">Открыть в новой вкладке</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Open in new window</source>
         <comment>NavigationBarItem</comment>
-        <translation type="unfinished">Открыть в новом окне</translation>
+        <translation type="obsolete">Открыть в новом окне</translation>
     </message>
 </context>
 <context>
     <name>NewPasswordDialog</name>
     <message>
-        <location filename="../src/newpassworddialog.cpp" line="+78"/>
         <source>Current password</source>
-        <translation type="unfinished">Текущий пароль</translation>
+        <translation type="obsolete">Текущий пароль</translation>
     </message>
     <message>
-        <location line="+67"/>
         <source>Set new password</source>
-        <translation type="unfinished">Установить новый пароль</translation>
+        <translation type="obsolete">Установить новый пароль</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Change password</source>
-        <translation type="unfinished">Изменить пароль</translation>
+        <translation type="obsolete">Изменить пароль</translation>
     </message>
 </context>
 <context>
     <name>NewPasswordPanel</name>
     <message>
-        <location filename="../src/newpasswordpanel.cpp" line="+158"/>
         <source>Generate</source>
-        <translation type="unfinished">Создать</translation>
+        <translation type="obsolete">Создать</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Copy</source>
-        <translation type="unfinished">Копировать</translation>
+        <translation type="obsolete">Копировать</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Clear</source>
-        <translation type="unfinished">Очистить</translation>
+        <translation type="obsolete">Очистить</translation>
     </message>
     <message>
-        <location line="+75"/>
         <source>Copied to clipboard</source>
-        <translation type="unfinished">Скопировано в буфер обмена</translation>
+        <translation type="obsolete">Скопировано в буфер обмена</translation>
     </message>
     <message>
-        <location line="+56"/>
         <source>Enter password</source>
-        <translation type="unfinished">Введите пароль</translation>
+        <translation type="obsolete">Введите пароль</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Repeat password</source>
-        <translation type="unfinished">Повторите пароль</translation>
+        <translation type="obsolete">Повторите пароль</translation>
     </message>
     <message>
-        <location line="+128"/>
-        <location line="+17"/>
         <source>Values do not match</source>
-        <translation type="unfinished">Значения не совпадают</translation>
+        <translation type="obsolete">Значения не совпадают</translation>
     </message>
 </context>
 <context>
     <name>NewPasswordWizard</name>
     <message>
-        <location filename="../src/newpasswordwizard.cpp" line="+50"/>
         <source>Create a password</source>
-        <translation type="unfinished">Создайте пароль</translation>
+        <translation type="obsolete">Создайте пароль</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>&lt;h3&gt;Choose a strong password&lt;/h3&gt;&lt;p&gt;Your password should be hard to guess. It should not contain personal information like your birth date or phone number. Long passwords are stronger, so make your password at least 12 characters long.&lt;/p&gt;&lt;p&gt;These tips can help you create longer passwords that are easier to remember. Try to use:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;A lyric from a song or poem&lt;/li&gt;&lt;li&gt;A meaningful quote from a movie or speech&lt;/li&gt;&lt;li&gt;A passage from a book&lt;/li&gt;&lt;li&gt;A series of words that are meaningful to you&lt;/li&gt;&lt;li&gt;An abbreviation: Make a password from the first letter of each word in a sentence&lt;/li&gt;&lt;/ul&gt;</source>
-        <translation type="unfinished">&lt;h3&gt;Выберите надёжный пароль&lt;/h3&gt;&lt;p&gt;Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона. Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.&lt;/p&gt;&lt;p&gt;Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Строку из песни или стихотворения&lt;/li&gt;&lt;li&gt;Значимую цитату из фильма или речи&lt;/li&gt;&lt;li&gt;Отрывок из книги&lt;/li&gt;&lt;li&gt;Последовательность слов, значимых для вас&lt;/li&gt;&lt;li&gt;Аббревиатуру: составьте пароль из первых букв каждого слова в предложении&lt;/li&gt;&lt;/ul&gt;</translation>
+        <translation type="obsolete">&lt;h3&gt;Выберите надёжный пароль&lt;/h3&gt;&lt;p&gt;Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона. Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.&lt;/p&gt;&lt;p&gt;Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Строку из песни или стихотворения&lt;/li&gt;&lt;li&gt;Значимую цитату из фильма или речи&lt;/li&gt;&lt;li&gt;Отрывок из книги&lt;/li&gt;&lt;li&gt;Последовательность слов, значимых для вас&lt;/li&gt;&lt;li&gt;Аббревиатуру: составьте пароль из первых букв каждого слова в предложении&lt;/li&gt;&lt;/ul&gt;</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Enter new password</source>
-        <translation type="unfinished">Введите новый пароль</translation>
+        <translation type="obsolete">Введите новый пароль</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Repeat password</source>
-        <translation type="unfinished">Повторите пароль</translation>
+        <translation type="obsolete">Повторите пароль</translation>
     </message>
 </context>
 <context>
     <name>PasswordDialog</name>
     <message>
-        <location filename="../src/passworddialog.cpp" line="+114"/>
         <source>Enter password</source>
-        <translation type="unfinished">Введите пароль</translation>
+        <translation type="obsolete">Введите пароль</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Password required</source>
-        <translation type="unfinished">Требуется пароль</translation>
+        <translation type="obsolete">Требуется пароль</translation>
     </message>
 </context>
 <context>
     <name>PasswordInput</name>
     <message>
-        <location filename="../src/passwordinput.cpp" line="+86"/>
         <source>Show symbols</source>
-        <translation type="unfinished">Показать символы</translation>
+        <translation type="obsolete">Показать символы</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Hide symbols</source>
-        <translation type="unfinished">Скрыть символы</translation>
+        <translation type="obsolete">Скрыть символы</translation>
     </message>
 </context>
 <context>
     <name>PasswordPanel</name>
     <message>
-        <location filename="../src/passwordpanel.cpp" line="+106"/>
         <source>Enter password</source>
-        <translation type="unfinished">Введите пароль</translation>
+        <translation type="obsolete">Введите пароль</translation>
     </message>
 </context>
 <context>
@@ -1671,7 +1325,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Открыть в новом окне</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+193"/>
+        <location filename="../src/htreenode.cpp" line="+316"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Развернуть</translation>
@@ -1796,26 +1450,16 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>QrCodeScanner</name>
     <message>
-        <location filename="../src/qrcodescanner.cpp" line="+143"/>
         <source>Start</source>
-        <translation type="unfinished">Старт</translation>
+        <translation type="obsolete">Старт</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Stop</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+75"/>
-        <location line="+7"/>
-        <location line="+30"/>
         <source>Camera permission is not granted!</source>
-        <translation type="unfinished">Нет разрешения на использование камеры!</translation>
+        <translation type="obsolete">Нет разрешения на использование камеры!</translation>
     </message>
     <message>
-        <location line="+116"/>
         <source>Camera error: %1</source>
-        <translation type="unfinished">Ошибка камеры: %1</translation>
+        <translation type="obsolete">Ошибка камеры: %1</translation>
     </message>
 </context>
 <context>
@@ -2490,347 +2134,334 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReplyBar</name>
     <message>
-        <location filename="../src/replybar.cpp" line="+66"/>
         <source>Configure reply</source>
-        <translation type="unfinished">Настроить ответ</translation>
+        <translation type="obsolete">Настроить ответ</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Cancel reply</source>
-        <translation type="unfinished">Отменить ответ</translation>
+        <translation type="obsolete">Отменить ответ</translation>
     </message>
 </context>
 <context>
     <name>ReplyDialog</name>
     <message>
-        <location filename="../src/replydialog.cpp" line="+100"/>
         <source>You can select a part of the text to quote only that part.</source>
-        <translation type="unfinished">Можно выделить часть текста, чтобы процитировать только её.</translation>
+        <translation type="obsolete">Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Reply to message</source>
-        <translation type="unfinished">Ответить на сообщение</translation>
+        <translation type="obsolete">Ответить на сообщение</translation>
     </message>
     <message>
-        <location line="+53"/>
-        <location line="+182"/>
         <source>Save</source>
-        <translation type="unfinished">Сохранить</translation>
+        <translation type="obsolete">Сохранить</translation>
     </message>
     <message>
-        <location line="+0"/>
         <source>Quote selected</source>
-        <translation type="unfinished">Цитировать выделенное</translation>
+        <translation type="obsolete">Цитировать выделенное</translation>
     </message>
 </context>
 <context>
     <name>ReplyPreview</name>
     <message>
-        <location filename="../src/replypreview.cpp" line="+112"/>
         <source>Reply to %1, %2</source>
-        <translation type="unfinished">Ответ %1, %2</translation>
+        <translation type="obsolete">Ответ %1, %2</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Deleted message</source>
-        <translation type="unfinished">Удалённое сообщение</translation>
+        <translation type="obsolete">Удалённое сообщение</translation>
     </message>
 </context>
 <context>
     <name>SearchLineEdit</name>
     <message>
-        <location filename="../src/searchlineedit.cpp" line="+86"/>
         <source>Search</source>
-        <translation type="unfinished">Поиск</translation>
+        <translation type="obsolete">Поиск</translation>
     </message>
 </context>
 <context>
     <name>SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+166"/>
         <source>Rotate</source>
-        <translation type="unfinished">Повернуть</translation>
+        <translation type="obsolete">Повернуть</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Rotate clockwise</source>
-        <translation type="unfinished">Повернуть по часовой</translation>
+        <translation type="obsolete">Повернуть по часовой</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Flip horizontally</source>
-        <translation type="unfinished">Отразить по горизонтали</translation>
+        <translation type="obsolete">Отразить по горизонтали</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Flip vertically</source>
-        <translation type="unfinished">Отразить по вертикали</translation>
+        <translation type="obsolete">Отразить по вертикали</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Zoom in</source>
-        <translation type="unfinished">Увеличить</translation>
+        <translation type="obsolete">Увеличить</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Zoom out</source>
-        <translation type="unfinished">Уменьшить</translation>
+        <translation type="obsolete">Уменьшить</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Cropping</source>
-        <translation type="unfinished">Обрезка</translation>
+        <translation type="obsolete">Обрезка</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Cropping off</source>
-        <translation type="unfinished">Без обрезки</translation>
+        <translation type="obsolete">Без обрезки</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Square cropping</source>
-        <translation type="unfinished">Квадратная обрезка</translation>
+        <translation type="obsolete">Квадратная обрезка</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Rectangular cropping</source>
-        <translation type="unfinished">Прямоугольная обрезка</translation>
+        <translation type="obsolete">Прямоугольная обрезка</translation>
     </message>
     <message>
-        <location line="+31"/>
         <source>Freehand draw</source>
-        <translation type="unfinished">Свободное рисование</translation>
+        <translation type="obsolete">Свободное рисование</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Accept freehand drawing</source>
-        <translation type="unfinished">Применить рисунок</translation>
+        <translation type="obsolete">Применить рисунок</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Cancel freehand drawing</source>
-        <translation type="unfinished">Отменить рисунок</translation>
+        <translation type="obsolete">Отменить рисунок</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Undo</source>
-        <translation type="unfinished">Отменить</translation>
+        <translation type="obsolete">Отменить</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Redo</source>
-        <translation type="unfinished">Повторить</translation>
+        <translation type="obsolete">Повторить</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Pen color</source>
-        <translation type="unfinished">Цвет пера</translation>
+        <translation type="obsolete">Цвет пера</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Pen width</source>
-        <translation type="unfinished">Толщина пера</translation>
+        <translation type="obsolete">Толщина пера</translation>
     </message>
     <message>
-        <location line="+23"/>
-        <location line="+24"/>
-        <source>Select image file</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="-20"/>
-        <source>Browse...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+19"/>
         <source>Images (*.png *.jpg *.jpeg *.xpm *.bmp);;All files (*.*)</source>
-        <translation type="unfinished">Изображения (*.png *.jpg *.jpeg *.xpm *.bmp);;Все файлы (*.*)</translation>
+        <translation type="obsolete">Изображения (*.png *.jpg *.jpeg *.xpm *.bmp);;Все файлы (*.*)</translation>
     </message>
 </context>
 <context>
     <name>StatusDialog</name>
     <message>
-        <location filename="../src/statusdialog.cpp" line="+154"/>
         <source>Error</source>
-        <translation type="unfinished">Ошибка</translation>
+        <translation type="obsolete">Ошибка</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Warning</source>
-        <translation type="unfinished">Предупреждение</translation>
+        <translation type="obsolete">Предупреждение</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Information</source>
-        <translation type="unfinished">Информация</translation>
+        <translation type="obsolete">Информация</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Question</source>
-        <translation type="unfinished">Вопрос</translation>
+        <translation type="obsolete">Вопрос</translation>
     </message>
     <message>
-        <location line="+16"/>
         <source>Attention</source>
-        <translation type="unfinished">Внимание</translation>
+        <translation type="obsolete">Внимание</translation>
     </message>
     <message>
-        <location line="+19"/>
         <source>Notice</source>
-        <translation type="unfinished">Уведомление</translation>
+        <translation type="obsolete">Уведомление</translation>
     </message>
 </context>
 <context>
     <name>ValidatedInput</name>
     <message>
-        <location filename="../src/validatedinput.cpp" line="+57"/>
         <source>Apply</source>
-        <translation type="unfinished">Применить</translation>
+        <translation type="obsolete">Применить</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractChatMessageCall</name>
     <message>
+        <location filename="../src/abstractchatmessagecall.cpp" line="+75"/>
         <source>Missed incoming call</source>
-        <translation type="vanished">Пропущенный входящий звонок</translation>
+        <translation>Пропущенный входящий звонок</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Unanswered outgoing call</source>
-        <translation type="vanished">Неотвеченный исходящий звонок</translation>
+        <translation>Неотвеченный исходящий звонок</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Incoming call %1</source>
-        <translation type="vanished">Входящий звонок %1</translation>
+        <translation>Входящий звонок %1</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Outgoing call %1</source>
-        <translation type="vanished">Исходящий звонок %1</translation>
+        <translation>Исходящий звонок %1</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Declined incoming call</source>
-        <translation type="vanished">Отклонённый входящий звонок</translation>
+        <translation>Отклонённый входящий звонок</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Declined outgoing call</source>
-        <translation type="vanished">Отклонённый исходящий звонок</translation>
+        <translation>Отклонённый исходящий звонок</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Failed incoming call</source>
-        <translation type="vanished">Сбой входящего звонка</translation>
+        <translation>Сбой входящего звонка</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Failed outgoing call</source>
-        <translation type="vanished">Сбой исходящего звонка</translation>
+        <translation>Сбой исходящего звонка</translation>
     </message>
     <message>
+        <location line="+18"/>
+        <location line="+32"/>
         <source>s</source>
         <extracomment>Abbreviation appended directly after a number of seconds in a call duration (e.g. &quot;42s&quot;), no separator. Keep as short as the source in every language.
 ----------
 Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extracomment>
-        <translation type="vanished">с</translation>
+        <translation>с</translation>
     </message>
     <message>
+        <location line="-6"/>
         <source>d</source>
         <extracomment>Abbreviation appended directly after a number of days in a call duration (e.g. &quot;2d 3h&quot;), no separator. Keep as short as the source in every language.</extracomment>
-        <translation type="vanished">д</translation>
+        <translation>д</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>h</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for hours (e.g. &quot;3h 5m&quot;).</extracomment>
-        <translation type="vanished">ч</translation>
+        <translation>ч</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>m</source>
         <extracomment>Same idiom as &quot;d&quot; above, but for minutes -- NOT months (e.g. &quot;5m 12s&quot;).</extracomment>
-        <translation type="vanished">м</translation>
+        <translation>м</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractChatMessageError</name>
     <message>
+        <location filename="../src/abstractchatmessageerror.cpp" line="+74"/>
         <source>Unsupported message type</source>
-        <translation type="vanished">Неподдерживаемый тип сообщения</translation>
+        <translation>Неподдерживаемый тип сообщения</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>This message needs a newer version</source>
-        <translation type="vanished">Нужна более новая версия приложения</translation>
+        <translation>Нужна более новая версия приложения</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Message is too large</source>
-        <translation type="vanished">Сообщение слишком большое</translation>
+        <translation>Сообщение слишком большое</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>This message could not be read</source>
-        <translation type="vanished">Не удалось прочитать сообщение</translation>
+        <translation>Не удалось прочитать сообщение</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Update the application to see this message.</source>
-        <translation type="vanished">Обновите приложение, чтобы увидеть это сообщение.</translation>
+        <translation>Обновите приложение, чтобы увидеть это сообщение.</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Ask the sender to send shorter messages.</source>
-        <translation type="vanished">Попросите отправителя писать короче.</translation>
+        <translation>Попросите отправителя писать короче.</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractChatMessageInvitation</name>
     <message>
+        <location filename="../src/abstractchatmessageinvitation.cpp" line="+82"/>
         <source>Password required</source>
-        <translation type="vanished">Требуется пароль</translation>
+        <translation>Требуется пароль</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Expired</source>
-        <translation type="vanished">Истёк</translation>
+        <translation>Истёк</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Already in contacts</source>
-        <translation type="vanished">Уже в контактах</translation>
+        <translation>Уже в контактах</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Update the application to open this invitation</source>
-        <translation type="vanished">Обновите приложение, чтобы открыть это приглашение</translation>
+        <translation>Обновите приложение, чтобы открыть это приглашение</translation>
     </message>
     <message>
+        <location line="+48"/>
         <source>Show QR code</source>
-        <translation type="vanished">Показать QR-код</translation>
+        <translation>Показать QR-код</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Copy username</source>
-        <translation type="vanished">Скопировать никнейм</translation>
+        <translation>Скопировать никнейм</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Copy temporary code</source>
-        <translation type="vanished">Скопировать временный код</translation>
+        <translation>Скопировать временный код</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Save as file</source>
-        <translation type="vanished">Сохранить в файл</translation>
+        <translation>Сохранить в файл</translation>
     </message>
     <message>
+        <location line="+20"/>
         <source>Contact invitation</source>
-        <translation type="vanished">Приглашение в контакты</translation>
+        <translation>Приглашение в контакты</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Group chat invitation</source>
-        <translation type="vanished">Приглашение в групповой чат</translation>
+        <translation>Приглашение в групповой чат</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Invitation</source>
-        <translation type="vanished">Приглашение</translation>
+        <translation>Приглашение</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>Add contact</source>
-        <translation type="vanished">Добавить контакт</translation>
+        <translation>Добавить контакт</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Join chat</source>
-        <translation type="vanished">Войти в чат</translation>
+        <translation>Войти в чат</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Open</source>
-        <translation type="vanished">Открыть</translation>
+        <translation>Открыть</translation>
     </message>
 </context>
 <context>
@@ -2844,485 +2475,647 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractDialog</name>
     <message>
+        <location filename="../src/abstractdialog.cpp" line="+66"/>
         <source>Close</source>
-        <translation type="vanished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Accept</source>
-        <translation type="vanished">Принять</translation>
+        <translation>Принять</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Apply</source>
-        <translation type="vanished">Применить</translation>
+        <translation>Применить</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Ignore</source>
-        <translation type="vanished">Игнорировать</translation>
+        <translation>Игнорировать</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>OK</source>
-        <translation type="vanished">ОК</translation>
+        <translation>ОК</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Yes</source>
-        <translation type="vanished">Да</translation>
+        <translation>Да</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>No</source>
-        <translation type="vanished">Нет</translation>
+        <translation>Нет</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Skip</source>
-        <translation type="vanished">Пропустить</translation>
+        <translation>Пропустить</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Retry</source>
-        <translation type="vanished">Повторить</translation>
+        <translation>Повторить</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Next</source>
-        <translation type="vanished">Далее</translation>
+        <translation>Далее</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Back</source>
-        <translation type="vanished">Назад</translation>
+        <translation>Назад</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Start</source>
-        <translation type="vanished">Старт</translation>
+        <translation>Старт</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Finish</source>
-        <translation type="vanished">Завершить</translation>
+        <translation>Завершить</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Complete</source>
-        <translation type="vanished">Завершено</translation>
+        <translation>Завершено</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Done</source>
-        <translation type="vanished">Готово</translation>
+        <translation>Готово</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Unknown</source>
-        <translation type="vanished">Неизвестно</translation>
+        <translation>Неизвестно</translation>
     </message>
     <message>
+        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation type="vanished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractForwardDialog</name>
     <message>
+        <location filename="../src/abstractforwarddialog.cpp" line="+55"/>
         <source>Change recipient</source>
-        <translation type="vanished">Изменить получателя</translation>
+        <translation>Изменить получателя</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Show in chat</source>
-        <translation type="vanished">Показать в чате</translation>
+        <translation>Показать в чате</translation>
     </message>
     <message>
+        <location line="+14"/>
         <source>Do not forward</source>
-        <translation type="vanished">Не пересылать</translation>
+        <translation>Не пересылать</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractNewPasswordWizard</name>
     <message>
+        <location filename="../src/newpasswordwizard.cpp" line="+45"/>
         <source>Entered passwords do not match</source>
-        <translation type="vanished">Введённые пароли не совпадают</translation>
+        <translation>Введённые пароли не совпадают</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Password cannot be empty</source>
-        <translation type="vanished">Пароль не может быть пустым</translation>
+        <translation>Пароль не может быть пустым</translation>
     </message>
 </context>
 <context>
     <name>uise::AbstractReplyDialog</name>
     <message>
+        <location filename="../src/abstractreplydialog.cpp" line="+55"/>
         <source>Show in chat</source>
-        <translation type="vanished">Показать в чате</translation>
+        <translation>Показать в чате</translation>
     </message>
     <message>
+        <location line="+14"/>
         <source>Do not reply</source>
-        <translation type="vanished">Не отвечать</translation>
+        <translation>Не отвечать</translation>
     </message>
 </context>
 <context>
     <name>uise::AudioDeviceSetting</name>
     <message>
+        <location filename="../src/audiodevicesetting.cpp" line="+129"/>
+        <location line="+10"/>
         <source>Test</source>
-        <translation type="vanished">Проверить</translation>
+        <translation>Проверить</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Stop</source>
-        <translation type="vanished">Остановить</translation>
+        <translation>Остановить</translation>
     </message>
     <message>
+        <location line="+184"/>
         <source>Default</source>
-        <translation type="vanished">По умолчанию</translation>
+        <translation>По умолчанию</translation>
     </message>
 </context>
 <context>
     <name>uise::Calendar</name>
     <message numerus="yes">
+        <location filename="../src/calendar.cpp" line="+758"/>
         <source>Selected %n day(s)</source>
-        <translation type="vanished">
+        <translation>
             <numerusform>Выбран %n день</numerusform>
             <numerusform>Выбрано %n дня</numerusform>
             <numerusform>Выбрано %n дней</numerusform>
         </translation>
     </message>
     <message>
+        <location line="+490"/>
         <source>Select day</source>
-        <translation type="vanished">Выберите день</translation>
+        <translation>Выберите день</translation>
     </message>
     <message>
+        <location line="+6"/>
+        <location line="+8"/>
         <source>Select days</source>
-        <translation type="vanished">Выберите дни</translation>
+        <translation>Выберите дни</translation>
     </message>
 </context>
 <context>
     <name>uise::CalendarDialog</name>
     <message>
+        <location filename="../src/calendardialog.cpp" line="+120"/>
         <source>Select date</source>
-        <translation type="vanished">Выберите дату</translation>
+        <translation>Выберите дату</translation>
     </message>
 </context>
 <context>
     <name>uise::CalendarInput</name>
     <message>
+        <location filename="../src/calendarinput.cpp" line="+438"/>
         <source>Select date</source>
-        <translation type="vanished">Выберите дату</translation>
+        <translation>Выберите дату</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Select dates</source>
-        <translation type="vanished">Выберите даты</translation>
+        <translation>Выберите даты</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatImageViewerControls</name>
     <message>
+        <location filename="../src/chatimageviewercontrols.cpp" line="+168"/>
+        <location line="+55"/>
         <source>Save as</source>
-        <translation type="vanished">Сохранить как</translation>
+        <translation>Сохранить как</translation>
     </message>
     <message>
+        <location line="-48"/>
         <source>Rotate counterclockwise</source>
-        <translation type="vanished">Повернуть против часовой стрелки</translation>
+        <translation>Повернуть против часовой стрелки</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Zoom in</source>
-        <translation type="vanished">Увеличить</translation>
+        <translation>Увеличить</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Zoom out</source>
-        <translation type="vanished">Уменьшить</translation>
+        <translation>Уменьшить</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Play/pause</source>
-        <translation type="vanished">Воспроизвести/пауза</translation>
+        <translation>Воспроизвести/пауза</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>Go to message</source>
-        <translation type="vanished">Перейти к сообщению</translation>
+        <translation>Перейти к сообщению</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Forward</source>
-        <translation type="vanished">Переслать</translation>
+        <translation>Переслать</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Delete message</source>
-        <translation type="vanished">Удалить сообщение</translation>
+        <translation>Удалить сообщение</translation>
     </message>
     <message>
+        <location line="+20"/>
         <source>%1 of %2</source>
-        <translation type="vanished">%1 из %2</translation>
+        <translation>%1 из %2</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatMessage</name>
     <message>
+        <location filename="../src/chatmessage.cpp" line="+1727"/>
         <source>Created: %1</source>
-        <translation type="vanished">Создано: %1</translation>
+        <translation>Создано: %1</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Edited: %1</source>
-        <translation type="vanished">Изменено: %1</translation>
+        <translation>Изменено: %1</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>edited</source>
-        <translation type="vanished">изменено</translation>
+        <translation>изменено</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatMessageForwardHeader</name>
     <message>
+        <location filename="../src/chatmessageforwardheader.cpp" line="+79"/>
         <source>Forwarded from %1</source>
-        <translation type="vanished">Переслано от %1</translation>
+        <translation>Переслано от %1</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
+        <location filename="../src/chatmessagetext.cpp" line="+1994"/>
         <source>Copied</source>
-        <translation type="vanished">Скопировано</translation>
+        <translation>Скопировано</translation>
     </message>
     <message>
+        <location line="+38"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Copy table</source>
-        <translation type="vanished">Копировать таблицу</translation>
+        <translation>Копировать таблицу</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Select all</source>
-        <translation type="vanished">Выделить всё</translation>
+        <translation>Выделить всё</translation>
     </message>
 </context>
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
+        <location line="-1289"/>
         <source>Copied</source>
-        <translation type="vanished">Скопировано</translation>
+        <translation>Скопировано</translation>
     </message>
     <message>
+        <location line="+71"/>
+        <location line="+1422"/>
         <source>Copy code</source>
-        <translation type="vanished">Копировать код</translation>
+        <translation>Копировать код</translation>
     </message>
     <message>
+        <location line="-1398"/>
         <source>Open code in a larger window</source>
-        <translation type="vanished">Открыть код в большом окне</translation>
+        <translation>Открыть код в большом окне</translation>
     </message>
     <message>
+        <location line="+893"/>
         <source>Show the full table</source>
-        <translation type="vanished">Показать таблицу целиком</translation>
+        <translation>Показать таблицу целиком</translation>
     </message>
     <message>
+        <location line="+369"/>
+        <location line="+36"/>
+        <location line="+96"/>
+        <location line="+39"/>
         <source>Full screen</source>
-        <translation type="vanished">Во весь экран</translation>
+        <translation>Во весь экран</translation>
     </message>
     <message>
+        <location line="-167"/>
         <source>Copy table</source>
-        <translation type="vanished">Копировать таблицу</translation>
+        <translation>Копировать таблицу</translation>
     </message>
     <message>
+        <location line="+5"/>
+        <location line="+143"/>
         <source>Close</source>
-        <translation type="vanished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
     <message>
+        <location line="-111"/>
+        <location line="+135"/>
         <source>Exit full screen</source>
-        <translation type="vanished">Обычный размер</translation>
+        <translation>Обычный размер</translation>
     </message>
     <message>
+        <location line="+199"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Select All</source>
-        <translation type="vanished">Выделить всё</translation>
+        <translation>Выделить всё</translation>
+    </message>
+</context>
+<context>
+    <name>uise::ChatReactionGallery</name>
+    <message>
+        <location filename="../src/chatreactiongallery.cpp" line="+159"/>
+        <location line="+215"/>
+        <source>Recently used</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-201"/>
+        <location line="+185"/>
+        <source>Search reactions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-172"/>
+        <location line="+180"/>
+        <source>No matching reactions</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>uise::DirectoryImagesViewer</name>
     <message>
+        <location filename="../src/directoryimagesviewer.cpp" line="+92"/>
         <source>Browse...</source>
-        <translation type="vanished">Обзор…</translation>
+        <translation>Обзор…</translation>
     </message>
     <message>
+        <location line="+39"/>
         <source>Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)</source>
-        <translation type="vanished">Изображения (*.png *.jpg *.jpeg *.bmp);;Все файлы (*.*)</translation>
+        <translation>Изображения (*.png *.jpg *.jpeg *.bmp);;Все файлы (*.*)</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Select image file</source>
-        <translation type="vanished">Выберите файл изображения</translation>
+        <translation>Выберите файл изображения</translation>
     </message>
 </context>
 <context>
     <name>uise::EditBar</name>
     <message>
+        <location filename="../src/editbar.cpp" line="+76"/>
         <source>Go to message</source>
-        <translation type="vanished">Перейти к сообщению</translation>
+        <translation>Перейти к сообщению</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Edit message, %2</source>
-        <translation type="vanished">Изменить сообщение, %2</translation>
+        <translation>Изменить сообщение, %2</translation>
     </message>
     <message>
+        <location line="+13"/>
         <source>Cancel editing</source>
-        <translation type="vanished">Отменить редактирование</translation>
+        <translation>Отменить редактирование</translation>
     </message>
 </context>
 <context>
     <name>uise::EditableLabel</name>
     <message>
+        <location filename="../src/editablelabel.cpp" line="+89"/>
+        <location line="+98"/>
         <source>Edit</source>
-        <translation type="vanished">Изменить</translation>
+        <translation>Изменить</translation>
     </message>
     <message>
+        <location line="-91"/>
         <source>Apply</source>
-        <translation type="vanished">Применить</translation>
+        <translation>Применить</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
     </message>
     <message>
+        <location line="+87"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
 </context>
 <context>
     <name>uise::EditablePanel</name>
     <message>
+        <location filename="../src/editablepanel.cpp" line="+103"/>
         <source>Edit</source>
-        <translation type="vanished">Изменить</translation>
+        <translation>Изменить</translation>
     </message>
     <message>
+        <location line="+3"/>
+        <location line="+42"/>
         <source>Apply</source>
-        <translation type="vanished">Применить</translation>
+        <translation>Применить</translation>
     </message>
     <message>
+        <location line="-39"/>
+        <location line="+42"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>uise::EmojiGalleryDialog</name>
+    <message>
+        <location filename="../src/emojigallerydialog.cpp" line="+73"/>
+        <location line="+83"/>
+        <source>Search emoji</source>
+        <translation type="unfinished">Поиск эмодзи</translation>
+    </message>
+    <message>
+        <location line="-82"/>
+        <location line="+83"/>
+        <source>No matching emoji</source>
+        <translation type="unfinished">Ничего не найдено</translation>
+    </message>
+    <message>
+        <location line="-68"/>
+        <location line="+61"/>
+        <source>Emoji</source>
+        <translation type="unfinished">Эмодзи</translation>
     </message>
 </context>
 <context>
     <name>uise::FileDropOverlay</name>
     <message>
+        <location filename="../src/filedropoverlay.cpp" line="+156"/>
         <source>Drop files here to send as documents</source>
-        <translation type="vanished">Перетащите файлы сюда, чтобы отправить как документы</translation>
+        <translation>Перетащите файлы сюда, чтобы отправить как документы</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Send as documents</source>
-        <translation type="vanished">Отправить как документы</translation>
+        <translation>Отправить как документы</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Original files, no compression</source>
-        <translation type="vanished">Исходные файлы, без сжатия</translation>
+        <translation>Исходные файлы, без сжатия</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <location line="+2"/>
         <source>Send as images</source>
-        <translation type="vanished">Отправить как изображения</translation>
+        <translation>Отправить как изображения</translation>
     </message>
     <message>
+        <location line="-1"/>
         <source>Full quality, larger size</source>
-        <translation type="vanished">Полное качество, больший размер</translation>
+        <translation>Полное качество, больший размер</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <location line="+2"/>
         <source>Adaptive quality, faster delivery</source>
-        <translation type="vanished">Адаптивное качество, быстрее доставка</translation>
+        <translation>Адаптивное качество, быстрее доставка</translation>
     </message>
     <message>
+        <location line="-1"/>
         <source>Send as photos</source>
-        <translation type="vanished">Отправить как фото</translation>
+        <translation>Отправить как фото</translation>
     </message>
 </context>
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
+        <location filename="../src/fileuploadlistitem.cpp" line="+376"/>
         <source>Edit image</source>
-        <translation type="vanished">Изменить изображение</translation>
+        <translation>Изменить изображение</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Rename file</source>
-        <translation type="vanished">Переименовать файл</translation>
+        <translation>Переименовать файл</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Remove</source>
-        <translation type="vanished">Удалить</translation>
+        <translation>Удалить</translation>
     </message>
 </context>
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
+        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
         <source>Full quality</source>
-        <translation type="vanished">Полное качество</translation>
+        <translation>Полное качество</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <location line="+53"/>
         <source>Send as documents</source>
-        <translation type="vanished">Отправить как документы</translation>
+        <translation>Отправить как документы</translation>
     </message>
     <message>
+        <location line="-52"/>
+        <location line="+46"/>
         <source>Group items</source>
-        <translation type="vanished">Группировать элементы</translation>
+        <translation>Группировать элементы</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>Remember this choice</source>
-        <translation type="vanished">Запомнить выбор</translation>
+        <translation>Запомнить выбор</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Comments</source>
-        <translation type="vanished">Комментарии</translation>
+        <translation>Комментарии</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Add a comment...</source>
-        <translation type="vanished">Добавить комментарий…</translation>
+        <translation>Добавить комментарий…</translation>
     </message>
     <message>
+        <location line="+51"/>
         <source>Add</source>
-        <translation type="vanished">Добавить</translation>
+        <translation>Добавить</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Send</source>
-        <translation type="vanished">Отправить</translation>
+        <translation>Отправить</translation>
     </message>
     <message>
+        <location line="+301"/>
         <source>Send files</source>
-        <translation type="vanished">Отправить файлы</translation>
+        <translation>Отправить файлы</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Send an image</source>
-        <translation type="vanished">Отправить изображение</translation>
+        <translation>Отправить изображение</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Send as a file</source>
-        <translation type="vanished">Отправить как файл</translation>
+        <translation>Отправить как файл</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>%1 images selected</source>
-        <translation type="vanished">Выбрано изображений: %1</translation>
+        <translation>Выбрано изображений: %1</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>%1 files selected</source>
-        <translation type="vanished">Выбрано файлов: %1</translation>
+        <translation>Выбрано файлов: %1</translation>
     </message>
     <message>
+        <location line="+702"/>
         <source>Add files</source>
-        <translation type="vanished">Добавить файлы</translation>
+        <translation>Добавить файлы</translation>
     </message>
 </context>
 <context>
     <name>uise::ForwardBar</name>
     <message>
+        <location filename="../src/forwardbar.cpp" line="+72"/>
         <source>Configure forward</source>
-        <translation type="vanished">Настроить пересылку</translation>
+        <translation>Настроить пересылку</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Forwarded from %1</source>
-        <translation type="vanished">Переслано от %1</translation>
+        <translation>Переслано от %1</translation>
     </message>
     <message>
+        <location line="+17"/>
         <source>Cancel forward</source>
-        <translation type="vanished">Отменить пересылку</translation>
+        <translation>Отменить пересылку</translation>
     </message>
     <message numerus="yes">
+        <location line="+133"/>
         <source>%n messages to forward</source>
-        <translation type="vanished">
+        <translation>
             <numerusform>%n сообщение для пересылки</numerusform>
             <numerusform>%n сообщения для пересылки</numerusform>
             <numerusform>%n сообщений для пересылки</numerusform>
@@ -3332,28 +3125,35 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ForwardDialog</name>
     <message>
+        <location filename="../src/forwarddialog.cpp" line="+108"/>
         <source>You can select a part of the text to quote only that part.</source>
-        <translation type="vanished">Можно выделить часть текста, чтобы процитировать только её.</translation>
+        <translation>Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Forward message</source>
-        <translation type="vanished">Переслать сообщение</translation>
+        <translation>Переслать сообщение</translation>
     </message>
     <message>
+        <location line="+39"/>
         <source>Hide sender name</source>
-        <translation type="vanished">Скрыть имя отправителя</translation>
+        <translation>Скрыть имя отправителя</translation>
     </message>
     <message>
+        <location line="+34"/>
+        <location line="+220"/>
         <source>Send</source>
-        <translation type="vanished">Отправить</translation>
+        <translation>Отправить</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Quote selected</source>
-        <translation type="vanished">Цитировать выделенное</translation>
+        <translation>Цитировать выделенное</translation>
     </message>
     <message numerus="yes">
+        <location line="+103"/>
         <source>%n messages to forward</source>
-        <translation type="vanished">
+        <translation>
             <numerusform>%n сообщение для пересылки</numerusform>
             <numerusform>%n сообщения для пересылки</numerusform>
             <numerusform>%n сообщений для пересылки</numerusform>
@@ -3363,686 +3163,873 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FrameWithModalStatus</name>
     <message>
+        <location filename="../src/framewithmodalstatus.cpp" line="+195"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
     <name>uise::HTreeNodeTitleBar</name>
     <message>
+        <location filename="../src/htreenode.cpp" line="-211"/>
         <source>Close this section with all subsequent sections</source>
-        <translation type="vanished">Закрыть этот раздел со всеми последующими</translation>
+        <translation>Закрыть этот раздел со всеми последующими</translation>
     </message>
     <message>
+        <location line="+12"/>
         <source>Hide section</source>
-        <translation type="vanished">Скрыть раздел</translation>
+        <translation>Скрыть раздел</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Maximize section</source>
-        <translation type="vanished">Развернуть раздел</translation>
+        <translation>Развернуть раздел</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Refresh</source>
-        <translation type="vanished">Обновить</translation>
+        <translation>Обновить</translation>
     </message>
 </context>
 <context>
     <name>uise::HTreeTab</name>
     <message>
+        <location filename="../src/htreetab.cpp" line="+671"/>
         <source>Collapse</source>
-        <translation type="vanished">Свернуть</translation>
+        <translation>Свернуть</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Expand</source>
-        <translation type="vanished">Развернуть</translation>
+        <translation>Развернуть</translation>
     </message>
 </context>
 <context>
     <name>uise::HTreeTabBarItem</name>
     <message>
+        <location filename="../src/htreetabbar.cpp" line="+113"/>
         <source>Close</source>
-        <translation type="vanished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
 </context>
 <context>
     <name>uise::HyperlinkDialog</name>
     <message>
+        <location filename="../src/hyperlinkdialog.cpp" line="+77"/>
         <source>URL</source>
-        <translation type="vanished">Ссылка</translation>
+        <translation>Ссылка</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>https://example.com</source>
-        <translation type="vanished">https://example.com</translation>
+        <translation>https://example.com</translation>
     </message>
     <message>
+        <location line="+13"/>
         <source>Title (optional)</source>
-        <translation type="vanished">Название (необязательно)</translation>
+        <translation>Название (необязательно)</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Link text</source>
-        <translation type="vanished">Текст ссылки</translation>
+        <translation>Текст ссылки</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>Insert link</source>
-        <translation type="vanished">Вставить ссылку</translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
+        <location line="+33"/>
         <source>Enter a URL.</source>
-        <translation type="vanished">Введите ссылку.</translation>
+        <translation>Введите ссылку.</translation>
     </message>
 </context>
 <context>
     <name>uise::ImageViewerWidget</name>
     <message>
+        <location filename="../src/imageviewer.cpp" line="+210"/>
         <source>Rotate</source>
-        <translation type="vanished">Повернуть</translation>
+        <translation>Повернуть</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Rotate clockwise</source>
-        <translation type="vanished">Повернуть по часовой</translation>
+        <translation>Повернуть по часовой</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Flip horizontally</source>
-        <translation type="vanished">Отразить по горизонтали</translation>
+        <translation>Отразить по горизонтали</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Flip vertically</source>
-        <translation type="vanished">Отразить по вертикали</translation>
+        <translation>Отразить по вертикали</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Zoom in</source>
-        <translation type="vanished">Увеличить</translation>
+        <translation>Увеличить</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Zoom out</source>
-        <translation type="vanished">Уменьшить</translation>
+        <translation>Уменьшить</translation>
     </message>
     <message>
+        <location line="+13"/>
         <source>Play/pause</source>
-        <translation type="vanished">Пуск/пауза</translation>
+        <translation>Пуск/пауза</translation>
     </message>
 </context>
 <context>
     <name>uise::Label</name>
     <message>
+        <location filename="../src/label.cpp" line="+78"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Select All</source>
-        <translation type="vanished">Выделить всё</translation>
+        <translation>Выделить всё</translation>
     </message>
 </context>
 <context>
     <name>uise::MessageEditor</name>
     <message>
+        <location filename="../src/messageeditor.cpp" line="+3465"/>
         <source>Show formatting toolbar</source>
-        <translation type="vanished">Показать панель форматирования</translation>
+        <translation>Показать панель форматирования</translation>
     </message>
     <message>
+        <location line="+32"/>
+        <source>Insert emoji</source>
+        <translation type="unfinished">Вставить эмодзи</translation>
+    </message>
+    <message>
+        <location line="+1605"/>
         <source>code here</source>
-        <translation type="vanished">код</translation>
+        <translation>код</translation>
     </message>
     <message>
+        <location line="+1781"/>
+        <source>No suggestions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Add to dictionary</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Ignore word</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Check spelling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Cut</source>
-        <translation type="vanished">Вырезать</translation>
+        <translation>Вырезать</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Paste</source>
-        <translation type="vanished">Вставить</translation>
+        <translation>Вставить</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Mention someone</source>
-        <translation type="vanished">Упомянуть</translation>
+        <translation>Упомянуть</translation>
     </message>
     <message>
+        <location line="+21"/>
         <source>Bold</source>
-        <translation type="vanished">Полужирный</translation>
+        <translation>Полужирный</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Italic</source>
-        <translation type="vanished">Курсив</translation>
+        <translation>Курсив</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Underline</source>
-        <translation type="vanished">Подчёркнутый</translation>
+        <translation>Подчёркнутый</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Strikethrough</source>
-        <translation type="vanished">Зачёркнутый</translation>
+        <translation>Зачёркнутый</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Inline code</source>
-        <translation type="vanished">Код в строке</translation>
+        <translation>Код в строке</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Heading 1</source>
-        <translation type="vanished">Заголовок 1</translation>
+        <translation>Заголовок 1</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Heading 2</source>
-        <translation type="vanished">Заголовок 2</translation>
+        <translation>Заголовок 2</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Heading 3</source>
-        <translation type="vanished">Заголовок 3</translation>
+        <translation>Заголовок 3</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Normal text</source>
-        <translation type="vanished">Обычный текст</translation>
+        <translation>Обычный текст</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Bulleted list</source>
-        <translation type="vanished">Маркированный список</translation>
+        <translation>Маркированный список</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Numbered list</source>
-        <translation type="vanished">Нумерованный список</translation>
+        <translation>Нумерованный список</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Blockquote</source>
-        <translation type="vanished">Цитата</translation>
+        <translation>Цитата</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Code block</source>
-        <translation type="vanished">Блок кода</translation>
+        <translation>Блок кода</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Table</source>
-        <translation type="vanished">Таблица</translation>
+        <translation>Таблица</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Horizontal rule</source>
-        <translation type="vanished">Разделитель</translation>
+        <translation>Разделитель</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Insert link</source>
-        <translation type="vanished">Вставить ссылку</translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Remove link</source>
-        <translation type="vanished">Удалить ссылку</translation>
+        <translation>Удалить ссылку</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Clear formatting</source>
-        <translation type="vanished">Очистить форматирование</translation>
+        <translation>Очистить форматирование</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Formatting</source>
-        <translation type="vanished">Форматирование</translation>
+        <translation>Форматирование</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Select all</source>
-        <translation type="vanished">Выделить всё</translation>
+        <translation>Выделить всё</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Clear</source>
-        <translation type="vanished">Очистить</translation>
+        <translation>Очистить</translation>
     </message>
 </context>
 <context>
     <name>uise::MessageEditorToolbar</name>
     <message>
+        <location filename="../src/messageeditortoolbar.cpp" line="+99"/>
         <source>Insert row above</source>
-        <translation type="vanished">Вставить строку выше</translation>
+        <translation>Вставить строку выше</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Insert row below</source>
-        <translation type="vanished">Вставить строку ниже</translation>
+        <translation>Вставить строку ниже</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Insert column left</source>
-        <translation type="vanished">Вставить столбец слева</translation>
+        <translation>Вставить столбец слева</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Insert column right</source>
-        <translation type="vanished">Вставить столбец справа</translation>
+        <translation>Вставить столбец справа</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Delete row</source>
-        <translation type="vanished">Удалить строку</translation>
+        <translation>Удалить строку</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Delete column</source>
-        <translation type="vanished">Удалить столбец</translation>
+        <translation>Удалить столбец</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Delete table</source>
-        <translation type="vanished">Удалить таблицу</translation>
+        <translation>Удалить таблицу</translation>
     </message>
     <message>
+        <location line="+134"/>
         <source>Editing mode</source>
-        <translation type="vanished">Режим редактирования</translation>
+        <translation>Режим редактирования</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Formatted text</source>
-        <translation type="vanished">Форматированный текст</translation>
+        <translation>Форматированный текст</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Markdown source</source>
-        <translation type="vanished">Исходный Markdown</translation>
+        <translation>Исходный Markdown</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Plain text</source>
-        <translation type="vanished">Простой текст</translation>
+        <translation>Простой текст</translation>
     </message>
     <message>
+        <location line="+31"/>
         <source>Undo</source>
-        <translation type="vanished">Отменить</translation>
+        <translation>Отменить</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Redo</source>
-        <translation type="vanished">Повторить</translation>
+        <translation>Повторить</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Bold</source>
-        <translation type="vanished">Полужирный</translation>
+        <translation>Полужирный</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Italic</source>
-        <translation type="vanished">Курсив</translation>
+        <translation>Курсив</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Underline</source>
-        <translation type="vanished">Подчёркнутый</translation>
+        <translation>Подчёркнутый</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Strikethrough</source>
-        <translation type="vanished">Зачёркнутый</translation>
+        <translation>Зачёркнутый</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Inline code</source>
-        <translation type="vanished">Код в строке</translation>
+        <translation>Код в строке</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>Heading</source>
-        <translation type="vanished">Заголовок</translation>
+        <translation>Заголовок</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Heading 1</source>
-        <translation type="vanished">Заголовок 1</translation>
+        <translation>Заголовок 1</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Heading 2</source>
-        <translation type="vanished">Заголовок 2</translation>
+        <translation>Заголовок 2</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Heading 3</source>
-        <translation type="vanished">Заголовок 3</translation>
+        <translation>Заголовок 3</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Normal text</source>
-        <translation type="vanished">Обычный текст</translation>
+        <translation>Обычный текст</translation>
     </message>
     <message>
+        <location line="+20"/>
         <source>Bulleted list</source>
-        <translation type="vanished">Маркированный список</translation>
+        <translation>Маркированный список</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Numbered list</source>
-        <translation type="vanished">Нумерованный список</translation>
+        <translation>Нумерованный список</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>Increase indent (Tab)</source>
-        <translation type="vanished">Увеличить отступ (Tab)</translation>
+        <translation>Увеличить отступ (Tab)</translation>
     </message>
     <message>
+        <location line="+7"/>
         <source>Decrease indent (Shift+Tab)</source>
-        <translation type="vanished">Уменьшить отступ (Shift+Tab)</translation>
+        <translation>Уменьшить отступ (Shift+Tab)</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Blockquote</source>
-        <translation type="vanished">Цитата</translation>
+        <translation>Цитата</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Code block</source>
-        <translation type="vanished">Блок кода</translation>
+        <translation>Блок кода</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Insert table (Tab moves between cells)</source>
-        <translation type="vanished">Вставить таблицу (Tab — переход между ячейками)</translation>
+        <translation>Вставить таблицу (Tab — переход между ячейками)</translation>
     </message>
     <message>
+        <location line="+15"/>
         <source>%1 × %2</source>
-        <translation type="vanished">%1 × %2</translation>
+        <translation>%1 × %2</translation>
     </message>
     <message>
+        <location line="+53"/>
         <source>Insert horizontal rule</source>
-        <translation type="vanished">Вставить разделитель</translation>
+        <translation>Вставить разделитель</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Insert link</source>
-        <translation type="vanished">Вставить ссылку</translation>
+        <translation>Вставить ссылку</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Remove link</source>
-        <translation type="vanished">Удалить ссылку</translation>
+        <translation>Удалить ссылку</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Mention someone</source>
-        <translation type="vanished">Упомянуть</translation>
+        <translation>Упомянуть</translation>
     </message>
     <message>
+        <location line="+12"/>
+        <source>Check spelling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Clear formatting</source>
-        <translation type="vanished">Очистить форматирование</translation>
+        <translation>Очистить форматирование</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Close</source>
-        <translation type="vanished">Закрыть</translation>
+        <translation>Закрыть</translation>
     </message>
 </context>
 <context>
     <name>uise::MessageSelectionPanelUi</name>
     <message>
+        <location filename="../src/messageselectionpanel.cpp" line="+60"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Forward</source>
-        <translation type="vanished">Переслать</translation>
+        <translation>Переслать</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Delete</source>
-        <translation type="vanished">Удалить</translation>
+        <translation>Удалить</translation>
     </message>
     <message>
+        <location line="+8"/>
         <source>Cancel</source>
-        <translation type="vanished">Отмена</translation>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
     <name>uise::NavigationBarItem</name>
     <message>
+        <location filename="../src/navigationbar.cpp" line="+178"/>
         <source>Open in new tab</source>
         <comment>NavigationBarItem</comment>
-        <translation type="vanished">Открыть в новой вкладке</translation>
+        <translation>Открыть в новой вкладке</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Open in new window</source>
         <comment>NavigationBarItem</comment>
-        <translation type="vanished">Открыть в новом окне</translation>
+        <translation>Открыть в новом окне</translation>
     </message>
 </context>
 <context>
     <name>uise::NewPasswordDialog</name>
     <message>
+        <location filename="../src/newpassworddialog.cpp" line="+78"/>
         <source>Current password</source>
-        <translation type="vanished">Текущий пароль</translation>
+        <translation>Текущий пароль</translation>
     </message>
     <message>
+        <location line="+67"/>
         <source>Set new password</source>
-        <translation type="vanished">Установить новый пароль</translation>
+        <translation>Установить новый пароль</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Change password</source>
-        <translation type="vanished">Изменить пароль</translation>
+        <translation>Изменить пароль</translation>
     </message>
 </context>
 <context>
     <name>uise::NewPasswordPanel</name>
     <message>
+        <location filename="../src/newpasswordpanel.cpp" line="+158"/>
         <source>Generate</source>
-        <translation type="vanished">Создать</translation>
+        <translation>Создать</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Copy</source>
-        <translation type="vanished">Копировать</translation>
+        <translation>Копировать</translation>
     </message>
     <message>
+        <location line="+4"/>
         <source>Clear</source>
-        <translation type="vanished">Очистить</translation>
+        <translation>Очистить</translation>
     </message>
     <message>
+        <location line="+75"/>
         <source>Copied to clipboard</source>
-        <translation type="vanished">Скопировано в буфер обмена</translation>
+        <translation>Скопировано в буфер обмена</translation>
     </message>
     <message>
+        <location line="+56"/>
         <source>Enter password</source>
-        <translation type="vanished">Введите пароль</translation>
+        <translation>Введите пароль</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Repeat password</source>
-        <translation type="vanished">Повторите пароль</translation>
+        <translation>Повторите пароль</translation>
     </message>
     <message>
+        <location line="+128"/>
+        <location line="+17"/>
         <source>Values do not match</source>
-        <translation type="vanished">Значения не совпадают</translation>
+        <translation>Значения не совпадают</translation>
     </message>
 </context>
 <context>
     <name>uise::NewPasswordWizard</name>
     <message>
+        <location filename="../src/newpasswordwizard.cpp" line="+50"/>
         <source>Create a password</source>
-        <translation type="vanished">Создайте пароль</translation>
+        <translation>Создайте пароль</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>&lt;h3&gt;Choose a strong password&lt;/h3&gt;&lt;p&gt;Your password should be hard to guess. It should not contain personal information like your birth date or phone number. Long passwords are stronger, so make your password at least 12 characters long.&lt;/p&gt;&lt;p&gt;These tips can help you create longer passwords that are easier to remember. Try to use:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;A lyric from a song or poem&lt;/li&gt;&lt;li&gt;A meaningful quote from a movie or speech&lt;/li&gt;&lt;li&gt;A passage from a book&lt;/li&gt;&lt;li&gt;A series of words that are meaningful to you&lt;/li&gt;&lt;li&gt;An abbreviation: Make a password from the first letter of each word in a sentence&lt;/li&gt;&lt;/ul&gt;</source>
-        <translation type="vanished">&lt;h3&gt;Выберите надёжный пароль&lt;/h3&gt;&lt;p&gt;Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона. Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.&lt;/p&gt;&lt;p&gt;Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Строку из песни или стихотворения&lt;/li&gt;&lt;li&gt;Значимую цитату из фильма или речи&lt;/li&gt;&lt;li&gt;Отрывок из книги&lt;/li&gt;&lt;li&gt;Последовательность слов, значимых для вас&lt;/li&gt;&lt;li&gt;Аббревиатуру: составьте пароль из первых букв каждого слова в предложении&lt;/li&gt;&lt;/ul&gt;</translation>
+        <translation>&lt;h3&gt;Выберите надёжный пароль&lt;/h3&gt;&lt;p&gt;Ваш пароль должен быть трудно угадываемым. Он не должен содержать личную информацию, например дату рождения или номер телефона. Длинные пароли надёжнее, поэтому сделайте пароль длиной не менее 12 символов.&lt;/p&gt;&lt;p&gt;Эти советы помогут создать длинные пароли, которые легко запомнить. Попробуйте использовать:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Строку из песни или стихотворения&lt;/li&gt;&lt;li&gt;Значимую цитату из фильма или речи&lt;/li&gt;&lt;li&gt;Отрывок из книги&lt;/li&gt;&lt;li&gt;Последовательность слов, значимых для вас&lt;/li&gt;&lt;li&gt;Аббревиатуру: составьте пароль из первых букв каждого слова в предложении&lt;/li&gt;&lt;/ul&gt;</translation>
     </message>
     <message>
+        <location line="+18"/>
         <source>Enter new password</source>
-        <translation type="vanished">Введите новый пароль</translation>
+        <translation>Введите новый пароль</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Repeat password</source>
-        <translation type="vanished">Повторите пароль</translation>
+        <translation>Повторите пароль</translation>
     </message>
 </context>
 <context>
     <name>uise::PasswordDialog</name>
     <message>
+        <location filename="../src/passworddialog.cpp" line="+114"/>
         <source>Enter password</source>
-        <translation type="vanished">Введите пароль</translation>
+        <translation>Введите пароль</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Password required</source>
-        <translation type="vanished">Требуется пароль</translation>
+        <translation>Требуется пароль</translation>
     </message>
 </context>
 <context>
     <name>uise::PasswordInput</name>
     <message>
+        <location filename="../src/passwordinput.cpp" line="+86"/>
         <source>Show symbols</source>
-        <translation type="vanished">Показать символы</translation>
+        <translation>Показать символы</translation>
     </message>
     <message>
+        <location line="+14"/>
         <source>Hide symbols</source>
-        <translation type="vanished">Скрыть символы</translation>
+        <translation>Скрыть символы</translation>
     </message>
 </context>
 <context>
     <name>uise::PasswordPanel</name>
     <message>
+        <location filename="../src/passwordpanel.cpp" line="+106"/>
         <source>Enter password</source>
-        <translation type="vanished">Введите пароль</translation>
+        <translation>Введите пароль</translation>
     </message>
 </context>
 <context>
     <name>uise::QrCodeScanner</name>
     <message>
+        <location filename="../src/qrcodescanner.cpp" line="+143"/>
         <source>Start</source>
-        <translation type="vanished">Старт</translation>
+        <translation>Старт</translation>
     </message>
     <message>
+        <location line="+3"/>
         <source>Stop</source>
-        <translation type="vanished">Стоп</translation>
+        <translation>Стоп</translation>
     </message>
     <message>
+        <location line="+75"/>
+        <location line="+7"/>
+        <location line="+30"/>
         <source>Camera permission is not granted!</source>
-        <translation type="vanished">Нет разрешения на использование камеры!</translation>
+        <translation>Нет разрешения на использование камеры!</translation>
     </message>
     <message>
+        <location line="+116"/>
         <source>Camera error: %1</source>
-        <translation type="vanished">Ошибка камеры: %1</translation>
+        <translation>Ошибка камеры: %1</translation>
     </message>
 </context>
 <context>
     <name>uise::ReplyBar</name>
     <message>
+        <location filename="../src/replybar.cpp" line="+66"/>
         <source>Configure reply</source>
-        <translation type="vanished">Настроить ответ</translation>
+        <translation>Настроить ответ</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Cancel reply</source>
-        <translation type="vanished">Отменить ответ</translation>
+        <translation>Отменить ответ</translation>
     </message>
 </context>
 <context>
     <name>uise::ReplyDialog</name>
     <message>
+        <location filename="../src/replydialog.cpp" line="+100"/>
         <source>You can select a part of the text to quote only that part.</source>
-        <translation type="vanished">Можно выделить часть текста, чтобы процитировать только её.</translation>
+        <translation>Можно выделить часть текста, чтобы процитировать только её.</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Reply to message</source>
-        <translation type="vanished">Ответить на сообщение</translation>
+        <translation>Ответить на сообщение</translation>
     </message>
     <message>
+        <location line="+53"/>
+        <location line="+182"/>
         <source>Save</source>
-        <translation type="vanished">Сохранить</translation>
+        <translation>Сохранить</translation>
     </message>
     <message>
+        <location line="+0"/>
         <source>Quote selected</source>
-        <translation type="vanished">Цитировать выделенное</translation>
+        <translation>Цитировать выделенное</translation>
     </message>
 </context>
 <context>
     <name>uise::ReplyPreview</name>
     <message>
+        <location filename="../src/replypreview.cpp" line="+112"/>
         <source>Reply to %1, %2</source>
-        <translation type="vanished">Ответ %1, %2</translation>
+        <translation>Ответ %1, %2</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Deleted message</source>
-        <translation type="vanished">Удалённое сообщение</translation>
+        <translation>Удалённое сообщение</translation>
     </message>
 </context>
 <context>
     <name>uise::SearchLineEdit</name>
     <message>
+        <location filename="../src/searchlineedit.cpp" line="+86"/>
         <source>Search</source>
-        <translation type="vanished">Поиск</translation>
+        <translation>Поиск</translation>
     </message>
 </context>
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
+        <location filename="../src/simpleimageeditor.cpp" line="+166"/>
         <source>Rotate</source>
-        <translation type="vanished">Повернуть</translation>
+        <translation>Повернуть</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Rotate clockwise</source>
-        <translation type="vanished">Повернуть по часовой</translation>
+        <translation>Повернуть по часовой</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Flip horizontally</source>
-        <translation type="vanished">Отразить по горизонтали</translation>
+        <translation>Отразить по горизонтали</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Flip vertically</source>
-        <translation type="vanished">Отразить по вертикали</translation>
+        <translation>Отразить по вертикали</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Zoom in</source>
-        <translation type="vanished">Увеличить</translation>
+        <translation>Увеличить</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Zoom out</source>
-        <translation type="vanished">Уменьшить</translation>
+        <translation>Уменьшить</translation>
     </message>
     <message>
+        <location line="+14"/>
         <source>Cropping</source>
-        <translation type="vanished">Обрезка</translation>
+        <translation>Обрезка</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Cropping off</source>
-        <translation type="vanished">Без обрезки</translation>
+        <translation>Без обрезки</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Square cropping</source>
-        <translation type="vanished">Квадратная обрезка</translation>
+        <translation>Квадратная обрезка</translation>
     </message>
     <message>
+        <location line="+2"/>
         <source>Rectangular cropping</source>
-        <translation type="vanished">Прямоугольная обрезка</translation>
+        <translation>Прямоугольная обрезка</translation>
     </message>
     <message>
+        <location line="+31"/>
         <source>Freehand draw</source>
-        <translation type="vanished">Свободное рисование</translation>
+        <translation>Свободное рисование</translation>
     </message>
     <message>
+        <location line="+18"/>
         <source>Accept freehand drawing</source>
-        <translation type="vanished">Применить рисунок</translation>
+        <translation>Применить рисунок</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Cancel freehand drawing</source>
-        <translation type="vanished">Отменить рисунок</translation>
+        <translation>Отменить рисунок</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Undo</source>
-        <translation type="vanished">Отменить</translation>
+        <translation>Отменить</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Redo</source>
-        <translation type="vanished">Повторить</translation>
+        <translation>Повторить</translation>
     </message>
     <message>
+        <location line="+11"/>
         <source>Pen color</source>
-        <translation type="vanished">Цвет пера</translation>
+        <translation>Цвет пера</translation>
     </message>
     <message>
+        <location line="+10"/>
         <source>Pen width</source>
-        <translation type="vanished">Толщина пера</translation>
+        <translation>Толщина пера</translation>
     </message>
     <message>
+        <location line="+23"/>
+        <location line="+24"/>
         <source>Select image file</source>
-        <translation type="vanished">Выберите изображение</translation>
+        <translation>Выберите изображение</translation>
     </message>
     <message>
+        <location line="-20"/>
         <source>Browse...</source>
-        <translation type="vanished">Обзор...</translation>
+        <translation>Обзор...</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>Images (*.png *.jpg *.jpeg *.xpm *.bmp);;All files (*.*)</source>
-        <translation type="vanished">Изображения (*.png *.jpg *.jpeg *.xpm *.bmp);;Все файлы (*.*)</translation>
+        <translation>Изображения (*.png *.jpg *.jpeg *.xpm *.bmp);;Все файлы (*.*)</translation>
     </message>
 </context>
 <context>
     <name>uise::StatusDialog</name>
     <message>
+        <location filename="../src/statusdialog.cpp" line="+154"/>
         <source>Error</source>
-        <translation type="vanished">Ошибка</translation>
+        <translation>Ошибка</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Warning</source>
-        <translation type="vanished">Предупреждение</translation>
+        <translation>Предупреждение</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Information</source>
-        <translation type="vanished">Информация</translation>
+        <translation>Информация</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Question</source>
-        <translation type="vanished">Вопрос</translation>
+        <translation>Вопрос</translation>
     </message>
     <message>
+        <location line="+16"/>
         <source>Attention</source>
-        <translation type="vanished">Внимание</translation>
+        <translation>Внимание</translation>
     </message>
     <message>
+        <location line="+19"/>
         <source>Notice</source>
-        <translation type="vanished">Уведомление</translation>
+        <translation>Уведомление</translation>
     </message>
 </context>
 <context>
     <name>uise::ValidatedInput</name>
     <message>
+        <location filename="../src/validatedinput.cpp" line="+57"/>
         <source>Apply</source>
-        <translation type="vanished">Применить</translation>
+        <translation>Применить</translation>
     </message>
 </context>
 </TS>

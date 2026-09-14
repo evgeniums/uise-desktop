@@ -707,6 +707,14 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! exact document scan) on its own, without its second, rendering-based step.
         bool hasAppliedFormatting() const override;
 
+        //! See AbstractMessageEditor::hasEmoji(). Scans for either form an emoji can take in this
+        //! editor's document: an image fragment whose src is an emojiSrc() (gallery-inserted, or
+        //! re-imported by normalizeImportedEmoji()), or a literal default-pack CHARACTER (typed
+        //! with the OS picker, or Markdown mode's own insertEmoji() output). Same code-point scan
+        //! normalizeImportedEmoji() uses, factored out as matchEmojiCodePoints() so the two can
+        //! never disagree about what counts.
+        bool hasEmoji() const override;
+
         bool canPasteFromClipboard() const override;
 
         //! See AbstractMessageEditor::setMaxLength(). Forwarded to the embedded EnhancedTextEdit,
@@ -899,19 +907,20 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         bool isEmojiGalleryOpen() const noexcept;
 
         /**
-         * @brief Whether an open gallery is PINNED (opened by a click) rather than merely hovered
-         *  into view.
+         * @brief Whether an open gallery is PINNED (opened or promoted by an explicit CLICK on the
+         *  emoji button) rather than merely hovered into view.
          *
          * The distinction is what the emoji button's checked state actually shows: a hover-opened
          * gallery leaves the button UNCHECKED, because the spec's own rule -- "when the emoji
          * button is not checked, hovering it shows the gallery" -- only makes sense if hovering
-         * does not itself check the button. A hovered gallery closes itself once the pointer has
-         * been away from both it and the button for EmojiHoverCloseDelayMs; a pinned one never
-         * does.
+         * does not itself check the button.
          *
-         * Clicking the button while a hovered gallery is up PINS it rather than closing it, and
-         * so does picking an emoji from it -- both are unambiguous "I am using this", and a
-         * gallery that vanished from under a user reaching for a second emoji would be a bug.
+         * A hovered gallery stays up for as long as the pointer is over it or over the button, and
+         * closes itself once the pointer has been away from BOTH for EmojiHoverCloseDelayMs -- any
+         * number of picks in between changes nothing, since picking deliberately does not pin (the
+         * pointer is over the gallery while picking, which is what keeps it up). A pinned one never
+         * auto-closes; only an explicit dismissal -- the button, its X, Escape, an outside click,
+         * closeEmojiGallery() -- takes it down.
          */
         bool isEmojiGalleryPinned() const noexcept;
 
@@ -1078,8 +1087,9 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! becomes visible -- a composer that never opts in never pays for this.
         void warmEmojiGallery();
 
-        //! Promote a hover-opened gallery to pinned -- on a click on the button, or on a pick.
-        //! A no-op when it is closed or already pinned.
+        //! Promote a hover-opened gallery to pinned -- only ever on a CLICK on the emoji button,
+        //! never on a pick (see ensureEmojiGallery()'s emojiPicked handler). A no-op when the
+        //! gallery is closed or already pinned.
         void pinEmojiGallery();
 
         //! Start/stop the poll that closes a hover-opened gallery once the pointer has left both
