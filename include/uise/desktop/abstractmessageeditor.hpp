@@ -30,6 +30,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <tuple>
 #include <vector>
 
+#include <QStringList>
+
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/textformat.hpp>
 #include <uise/desktop/messageeditingmode.hpp>
@@ -381,6 +383,31 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         virtual void insertEmoji(const QString& reactionId)
         {
             std::ignore=reactionId;
+        }
+
+        /**
+         * @brief The "recently used" emoji the picker's top row offers, most recent FIRST.
+         *
+         * Bare icon ids (ChatReactionId::iconId()), not full reaction ids. They are PREPENDED to
+         * the picker's default row rather than replacing it, so the pack's basics stay visible and
+         * simply shift right. Empty -- the default -- leaves the row exactly as it was before this
+         * existed, so a host that never calls this sees no change.
+         *
+         * The editor MAINTAINS this list (a pick moves its emoji to the front, capped at
+         * MessageEditor::EmojiRecentsMax) but deliberately does not PERSIST it: where a usage
+         * history belongs -- a settings file, a db, nowhere at all -- is a host decision, the same
+         * division of labour setSpellChecker() and mentionRequested() already have. A host that
+         * wants recents to survive a restart seeds this at construction and writes
+         * emojiRecentIdsChanged() back to its own store.
+         */
+        virtual void setEmojiRecentIds(QStringList ids)
+        {
+            std::ignore=ids;
+        }
+
+        virtual QStringList emojiRecentIds() const
+        {
+            return {};
         }
 
         //! Close the emoji gallery if it is open, and un-check the emoji button.
@@ -874,6 +901,13 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 
         //! See the spellCheckEnabled property.
         void spellCheckEnabledChanged(bool enabled);
+
+        //! The recently-used emoji list changed because the user picked one -- see
+        //! setEmojiRecentIds(). Carries the WHOLE new list, most recent first, so a host can write
+        //! it straight to wherever it keeps it without replaying the promotion itself. Emitted
+        //! only on an actual change, never from setEmojiRecentIds() itself (which would echo a
+        //! host's own write straight back at it).
+        void emojiRecentIdsChanged(const QStringList& ids);
 
     protected:
 

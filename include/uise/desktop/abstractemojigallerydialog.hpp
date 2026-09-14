@@ -28,6 +28,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <memory>
 
+#include <QStringList>
+
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractdialog.hpp>
 
@@ -76,6 +78,13 @@ class UISE_DESKTOP_EXPORT AbstractEmojiGalleryDialog : public AbstractDialog
         //! Clear the search box and re-show the whole pack -- called on every open, so a picker
         //! reopened later never comes up still filtered by the previous session's search.
         virtual void resetSearch() =0;
+
+        //! Fill the gallery's "recently used" row -- bare icon ids, most recent FIRST. These are
+        //! PREPENDED to the pack's own basics, never a replacement for them, so the row keeps its
+        //! default icons; empty leaves it showing the basics alone. The editor re-pushes on open,
+        //! since the dialog is built once and kept; see MessageEditor::setEmojiRecentIds() for
+        //! where that list comes from and who persists it.
+        virtual void setRecentIds(QStringList ids) =0;
 
     signals:
 

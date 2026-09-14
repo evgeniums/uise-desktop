@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QLabel>
 #include <QGridLayout>
 #include <QEvent>
@@ -92,6 +94,21 @@ void ChatReactionQuickBar::setOwnReactionIds(QStringList ids)
 
 //--------------------------------------------------------------------------
 
+void ChatReactionQuickBar::setLeadingIconIds(QStringList ids)
+{
+    if (m_leadingIconIds==ids)
+    {
+        // rebuild() destroys and recreates every button, so an unchanged list must not reach it:
+        // the recents row is re-pushed on every gallery open, and rebuilding under the pointer
+        // would drop the hover state (and, with it, a click already in progress).
+        return;
+    }
+    m_leadingIconIds=std::move(ids);
+    rebuild();
+}
+
+//--------------------------------------------------------------------------
+
 void ChatReactionQuickBar::setChevronVisible(bool enable)
 {
     m_expandButton->setVisible(enable);
@@ -117,7 +134,31 @@ void ChatReactionQuickBar::rebuild()
     // are re-added below, after the fresh icon buttons.
     layout->removeWidget(m_expandButton);
 
-    for (const auto& iconId : m_pack->basicIconIds())
+    // Leading ids first, then the pack's own basics -- PREPENDED, never a replacement, so the row
+    // keeps its default icons and a single pick cannot collapse it to one button. See
+    // setLeadingIconIds(). Deduped, because a picked emoji is very often one of the basics
+    // already; capped, so the row cannot outgrow the grid below it.
+    std::vector<QString> iconIds;
+    iconIds.reserve(static_cast<size_t>(MaxRowIcons));
+    auto appendIconId=[&iconIds](const QString& id)
+    {
+        if (static_cast<int>(iconIds.size())>=MaxRowIcons
+            || std::find(iconIds.begin(),iconIds.end(),id)!=iconIds.end())
+        {
+            return;
+        }
+        iconIds.push_back(id);
+    };
+    for (const auto& id : m_leadingIconIds)
+    {
+        appendIconId(id);
+    }
+    for (const auto& id : m_pack->basicIconIds())
+    {
+        appendIconId(id);
+    }
+
+    for (const auto& iconId : iconIds)
     {
         const auto* info=m_pack->find(iconId);
         if (info==nullptr)
@@ -364,6 +405,20 @@ void ChatReactionGallery::setEmptyText(const QString& text)
 {
     m_emptyText=text;
     m_emptyLabel->setText(text.isEmpty() ? tr("No matching reactions") : text);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatReactionGallery::setRecentIds(QStringList ids)
+{
+    m_recentBar->setLeadingIconIds(std::move(ids));
+}
+
+//--------------------------------------------------------------------------
+
+QStringList ChatReactionGallery::recentIds() const
+{
+    return m_recentBar->leadingIconIds();
 }
 
 //--------------------------------------------------------------------------

@@ -884,6 +884,15 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! @copydoc AbstractMessageEditor::closeEmojiGallery()
         void closeEmojiGallery() override;
 
+        //! @copydoc AbstractMessageEditor::setEmojiRecentIds()
+        void setEmojiRecentIds(QStringList ids) override;
+        QStringList emojiRecentIds() const override;
+
+        //! How many entries the picker's recents row keeps. Matches the 7 basics the row falls
+        //! back to when no history exists, so promoting an emoji never changes the row's width --
+        //! a recents row that grew a slot on first use would shift every icon under the pointer.
+        constexpr static const int EmojiRecentsMax=7;
+
         /**
          * @brief Open the emoji gallery, anchored so it unfolds UP and to the RIGHT of the emoji
          *  button. A no-op in MessageEditingMode::Plaintext.
@@ -1086,6 +1095,16 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! click shows an already-constructed dialog. Triggered when the emoji button first
         //! becomes visible -- a composer that never opts in never pays for this.
         void warmEmojiGallery();
+
+        //! Push the current recents list at the gallery, if one has been built. A no-op otherwise
+        //! -- openEmojiGallery() re-pushes on every open, so a list set before the dialog exists
+        //! reaches it on first show.
+        void applyEmojiRecentIds();
+
+        //! Move `iconId` to the front of the recents list (capped at EmojiRecentsMax), push the
+        //! result at an open gallery and emit emojiRecentIdsChanged(). A no-op when the id is
+        //! already first, so re-picking the same emoji does not churn the host's store.
+        void promoteEmojiRecent(const QString& iconId);
 
         //! Promote a hover-opened gallery to pinned -- only ever on a CLICK on the emoji button,
         //! never on a pick (see ensureEmojiGallery()'s emojiPicked handler). A no-op when the

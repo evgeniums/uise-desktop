@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <boost/test/unit_test.hpp>
 
+#include <QRegularExpression>
 #include <QTextDocument>
 #include <QTextBlock>
 #include <QTextFormat>
@@ -791,7 +792,18 @@ BOOST_AUTO_TEST_CASE(TestVariationSelectorIsSwallowed)
     auto html=renderMd(heartVs,emojiOptions());
     UISE_TEST_CHECK(html.contains(QStringLiteral("<p class=\"emoji-only\">")));
     UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),1);
-    UISE_TEST_CHECK(!html.contains(QString::fromUcs4(U"\U0000FE0F")));
+
+    // The selector must not survive as TEXT beside the image -- that is the swallowing this test
+    // exists for. It IS expected inside the <img> itself: the alt carries
+    // ReactionIconInfo::emojiText, i.e. the colour-presentation form, so a reader whose renderer
+    // cannot resolve the resource sees a red heart rather than a monochrome one. So strip the
+    // element before looking, instead of asserting over the whole document.
+    auto outsideImg=html;
+    outsideImg.remove(QRegularExpression(QStringLiteral("<img[^>]*/>")));
+    UISE_TEST_CHECK(!outsideImg.contains(QString::fromUcs4(U"\U0000FE0F")));
+
+    // ...and the alt really is the presentation form, not the bare code point.
+    UISE_TEST_CHECK(html.contains(QStringLiteral("alt=\"")+heartVs+QStringLiteral("\"")));
 }
 
 BOOST_AUTO_TEST_CASE(TestZwjSequenceIsNotSubstituted)

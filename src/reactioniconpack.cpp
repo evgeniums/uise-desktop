@@ -125,6 +125,27 @@ const RawIconEntry rawIcons[]={
 
 constexpr size_t rawIconCount=sizeof(rawIcons)/sizeof(rawIcons[0]);
 
+/** @brief Whether this code point needs a trailing U+FE0F to render as a colour emoji.
+ *
+ * True for the code points Unicode gives Emoji_Presentation=No -- they are "text by default", so
+ * a system font draws a small monochrome glyph ("♥", "✌") unless VARIATION SELECTOR-16 follows.
+ * See ReactionIconInfo::emojiText, which is the only thing that reads this.
+ *
+ * Enumerated rather than derived: the full Emoji_Presentation property is a Unicode data table
+ * this library has no business embedding for a 54-icon pack, and the answer for a FIXED pack is a
+ * two-entry list. Every other icon here is either supplementary-plane (U+1F300 and up, all
+ * Emoji_Presentation=Yes) or one of the BMP symbols that is already Yes on its own -- U+2705,
+ * U+274C, U+2B50, U+2728 -- so adding a selector to those would be bytes with no effect.
+ *
+ * KEEP IN SYNC with rawIcons above: a new entry below U+1F000 must be checked against Unicode's
+ * emoji-data.txt (look for "Emoji_Presentation") and added here if it is No.
+ */
+bool needsVariationSelector(char32_t codepoint)
+{
+    return codepoint==0x2764   // HEAVY BLACK HEART
+        || codepoint==0x270C;  // VICTORY HAND
+}
+
 //! Splits on whitespace and inserts the folded key alongside the icon's index, so a multi-word
 //! keyword like "red heart" is also found by a prefix of just "heart" (see
 //! AbstractReactionIconPack::search()'s own doc comment).
@@ -171,6 +192,10 @@ class DefaultReactionIconPack::Pimpl
                     info.keywords << QCoreApplication::translate("ReactionIconPack",keyword);
                 }
                 info.emojiCode=QString::fromUcs4(&raw.codepoint,1);
+                info.emojiText=info.emojiCode
+                               +(needsVariationSelector(raw.codepoint)
+                                     ? QString(QChar(0xFE0F))
+                                     : QString());
 
                 idToIndex.emplace(info.iconId,icons.size());
                 // emplace, not operator[] -- a duplicate code (none among the current 50) leaves

@@ -67,6 +67,27 @@ struct UISE_DESKTOP_EXPORT ReactionIconInfo
      * provides that exact scheme) -- uise-desktop does not implement that rendering itself yet.
      */
     QString emojiCode;
+
+    /**
+     * @brief emojiCode in the form to WRITE INTO TEXT -- the same character plus U+FE0F VARIATION
+     *  SELECTOR-16 for the code points Unicode gives a default TEXT presentation.
+     *
+     * Empty exactly when emojiCode is. For most of the pack this is byte-identical to emojiCode:
+     * every supplementary-plane emoji (U+1F600 and friends) is Emoji_Presentation=Yes and renders
+     * in colour on its own. The exceptions are the handful of BMP symbols that are NOT --
+     * U+2764 HEAVY BLACK HEART and U+270C VICTORY HAND in the shipped pack -- which a system font
+     * renders as a small MONOCHROME glyph ("♥", "✌") unless the selector follows. That is why a
+     * pasted or exported heart looked nothing like the pack art beside it while a thumbs-up looked
+     * fine.
+     *
+     * Use this for anything a human or another client will read as text: an image's export
+     * substitution (replaceEmojiImagesForExport()), an `<img>`'s alt text, and Markdown mode's
+     * insertEmoji(). Use emojiCode -- never this -- as a LOOKUP KEY: findByCode() is keyed on the
+     * bare form, and the scanners feed it one code point at a time, so a two-code-point key could
+     * never match. A selector already present in scanned text is swallowed into the match instead
+     * (see MessageEditor's matchEmojiCodePoints()), so the round trip stays lossless either way.
+     */
+    QString emojiText;
 };
 
 /**

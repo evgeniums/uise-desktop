@@ -2841,19 +2841,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location filename="../src/chatreactiongallery.cpp" line="+159"/>
         <location line="+215"/>
         <source>Recently used</source>
-        <translation type="unfinished"></translation>
+        <translation>Недавние</translation>
     </message>
     <message>
         <location line="-201"/>
         <location line="+185"/>
         <source>Search reactions</source>
-        <translation type="unfinished"></translation>
+        <translation>Поиск реакций</translation>
     </message>
     <message>
         <location line="-172"/>
         <location line="+180"/>
         <source>No matching reactions</source>
-        <translation type="unfinished"></translation>
+        <translation>Ничего не найдено</translation>
     </message>
 </context>
 <context>
@@ -2942,19 +2942,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location filename="../src/emojigallerydialog.cpp" line="+73"/>
         <location line="+83"/>
         <source>Search emoji</source>
-        <translation type="unfinished">Поиск эмодзи</translation>
+        <translation>Поиск эмодзи</translation>
     </message>
     <message>
         <location line="-82"/>
         <location line="+83"/>
         <source>No matching emoji</source>
-        <translation type="unfinished">Ничего не найдено</translation>
+        <translation>Ничего не найдено</translation>
     </message>
     <message>
         <location line="-68"/>
         <location line="+61"/>
         <source>Emoji</source>
-        <translation type="unfinished">Эмодзи</translation>
+        <translation>Эмодзи</translation>
     </message>
 </context>
 <context>

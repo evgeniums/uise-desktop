@@ -978,7 +978,7 @@ class HtmlWriter
             }
             // The emoji character as alt text, so a reader whose renderer cannot resolve the
             // resource still sees the right glyph in their own font rather than a broken box.
-            const auto alt=info->emojiCode.isEmpty() ? info->iconId : info->emojiCode;
+            const auto alt=info->emojiCode.isEmpty() ? info->iconId : info->emojiText;
             m_html+=QStringLiteral(" alt=\"")+escapeAttribute(alt)+QStringLiteral("\"/>");
         }
 

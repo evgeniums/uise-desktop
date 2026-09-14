@@ -86,6 +86,43 @@ class UISE_DESKTOP_EXPORT ChatReactionQuickBar : public Frame
         //! expand affordance of its own) hides #expandButton entirely. Default true.
         void setChevronVisible(bool enable);
 
+        /**
+         * @brief Show these bare icon ids at the FRONT of the row, ahead of the pack's own
+         *  basicIconIds().
+         *
+         * Prepended, never a replacement: the basics stay and simply shift right, so a row that
+         * has only ever seen one pick still shows a full row instead of collapsing to that single
+         * icon. An id that is also one of the basics appears once, in its leading position --
+         * dedup is on, and matters, because the basics are the seven emoji most likely to be
+         * picked in the first place.
+         *
+         * Empty (the default) leaves the row exactly as it was before this existed: the basics
+         * alone, in pack order. That is what the collapsed quick bar wants, and what the gallery's
+         * recents row falls back to before any usage history exists.
+         *
+         * The composed row is capped at MaxRowIcons -- leading ids win the slots, so a long
+         * enough history does eventually push the last basics off the right end. An id the
+         * current pack cannot resolve is skipped, exactly as rebuild() already skips an
+         * unresolvable basic, so a list persisted by a host under one pack degrades quietly under
+         * another instead of leaving holes.
+         *
+         * Bare icon ids, NOT "iconId@packUri" reaction ids: the row resolves them through
+         * pack()->find(), which is pack-relative. A host holding full ids passes them through
+         * ChatReactionId::iconId() first.
+         */
+        void setLeadingIconIds(QStringList ids);
+
+        QStringList leadingIconIds() const noexcept
+        {
+            return m_leadingIconIds;
+        }
+
+        //! Ceiling on the WHOLE composed row (leading ids plus basics). Matches the emoji
+        //! gallery's own 9-column grid, so the recents row never outruns the grid beneath it.
+        //! The collapsed quick bar is unaffected: it sets no leading ids and its pack ships
+        //! seven basics.
+        constexpr static const int MaxRowIcons=9;
+
     Q_SIGNALS:
 
         void reactionPicked(const QString& reactionId);
@@ -97,6 +134,9 @@ class UISE_DESKTOP_EXPORT ChatReactionQuickBar : public Frame
 
         std::shared_ptr<AbstractReactionIconPack> m_pack;
         QStringList m_ownReactionIds;
+        //! Shown ahead of m_pack->basicIconIds(), not instead of them -- see
+        //! setLeadingIconIds().
+        QStringList m_leadingIconIds;
         std::vector<PushButton*> m_buttons;
         PushButton* m_expandButton;
 };
@@ -172,6 +212,24 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         //! @see setSearchPlaceholderText()
         void setRecentTitleText(const QString& text);
         QString recentTitleText() const noexcept { return m_recentTitleText; }
+
+        /**
+         * @brief Fill the "recently used" row from a host-supplied usage history.
+         *
+         * PREPENDED to the pack's basicIconIds(), never a replacement for them: the defaults stay
+         * and shift right, so one pick cannot collapse the row to a single icon. Empty (the
+         * default) leaves the row showing those basics alone, which is what it has always shown
+         * -- this widget tracks no usage of its own and deliberately still does
+         * not: it cannot know which of its picks a host actually acted on, nor where that host
+         * would want a history kept. A host that wants real recents listens for reactionPicked(),
+         * maintains its own most-recently-used list, and pushes it back here.
+         *
+         * Bare icon ids, most recent FIRST. Unresolvable ids are skipped rather than left as holes
+         * in the row -- see ChatReactionQuickBar::setLeadingIconIds(), which this forwards to.
+         * They are PREPENDED to the pack's basics, so the row keeps its default icons.
+         */
+        void setRecentIds(QStringList ids);
+        QStringList recentIds() const;
 
     Q_SIGNALS:
 

@@ -854,8 +854,12 @@ void replaceEmojiImagesForExport(QTextDocument* document, bool defaultPackOnly)
             plainFormat.clearProperty(QTextFormat::ImageWidth);
             plainFormat.clearProperty(QTextFormat::ImageHeight);
 
+            // emojiText, not emojiCode: this is the character the message is SENT as, so it has
+            // to carry the variation selector that makes a heart render in colour rather than as
+            // a monochrome "\u2764" in every reader's system font -- the chat-list preview and the
+            // notification popup included. See ReactionIconInfo::emojiText.
             replacements.push_back({fragment.position(),fragment.length(),
-                                    info->emojiCode,plainFormat});
+                                    info->emojiText,plainFormat});
         }
     }
 
@@ -1218,7 +1222,7 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
         QTextImageFormat imgFmt;
         imgFmt.setName(src);
         imgFmt.setProperty(QTextFormat::ImageAltText,
-                           info->emojiCode.isEmpty() ? info->iconId : info->emojiCode);
+                           info->emojiCode.isEmpty() ? info->iconId : info->emojiText);
         imgFmt.setWidth(px);
         imgFmt.setHeight(px);
 
@@ -3276,6 +3280,17 @@ void EnhancedTextEdit::insertFromMimeData(const QMimeData* source)
         // fragment, anchors included -- this also drops an underline a pasted link carried, so a
         // pasted link and a typed one are painted by the same linkColor/linkUnderline rule.
         stripImportedAnchorStyle(document(),false);
+        // Without this a pasted emoji CHARACTER stays a character and renders in the system font,
+        // right beside a gallery-inserted one rendered as pack art -- the same emoji, two
+        // different pictures, in one composer. Every other route into a WYSIWYG document
+        // (loadText(), the Markdown->Wysiwyg switch) already normalizes; the paste path was the
+        // one that did not.
+        //
+        // Whole-document and suppressUndo=false for exactly the reasons spelled out for
+        // convertCodeBlocksToText() above: it is idempotent on content that is already normalized
+        // (an emoji image re-registers to the same pixmap under the same key), and disabling undo
+        // around a paste would clear the whole stack instead of joining this block.
+        normalizeImportedEmoji(document(),font(),devicePixelRatioF(),false);
         // Inside the rejoined block, so a handler's own edits (normalizeBlockquoteIndent()) join
         // the paste's single undoable action too.
         emit pastedRichText();
@@ -3358,6 +3373,11 @@ class MessageEditor_p
         //! and only an unpinned one closes itself when the pointer wanders off -- see
         //! MessageEditor::isEmojiGalleryPinned().
         bool emojiDialogPinned=false;
+
+        //! Recently-used emoji, most recent first, bare icon ids -- see
+        //! AbstractMessageEditor::setEmojiRecentIds(). Empty leaves the picker's row on the pack's
+        //! own basics, which is what it showed before this existed.
+        QStringList emojiRecentIds;
 
         //! Armed by a pointer entering the emoji button, disarmed by it leaving or by a click.
         QTimer* emojiHoverOpenTimer=nullptr;
@@ -6429,6 +6449,10 @@ FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
             // the picker cannot dissolve mid-reach. It closes once the pointer has actually left
             // both, which is exactly what "opened on hover" should mean.
             insertEmoji(reactionId);
+            // iconId(), not the full reaction id: the recents row resolves what it is given
+            // against the pack itself -- see ChatReactionQuickBar::setLeadingIconIds(). Unresolvable ids
+            // are dropped inside promoteEmojiRecent() rather than guarded here.
+            promoteEmojiRecent(ChatReactionId::iconId(reactionId));
         }
     );
 
@@ -6452,6 +6476,9 @@ FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
     // rasterized SVG per pack entry), and paying it here is the whole point of warming up.
     pimpl->emojiPackValid=false;
     applyEmojiPackForCurrentMode();
+    // After the pack, never before: the recents row resolves its ids through the pack the gallery
+    // was just given, so pushing them at an unpacked gallery would drop every one of them.
+    applyEmojiRecentIds();
 
     return frame;
 }
@@ -6534,6 +6561,11 @@ void MessageEditor::openEmojiGallery(bool pinned)
     // invokes after polishing and before measuring, the only moment at which the grid can be
     // rebuilt against its final, QSS-applied cell size.
     applyEmojiPackForCurrentMode();
+    // Re-pushed on every open, not just at build time: the dialog is created once and kept, so a
+    // host that seeded or updated the list in between (see setEmojiRecentIds()) would otherwise
+    // not be reflected until the editor was rebuilt. setLeadingIconIds() ignores an unchanged list, so
+    // the common case costs nothing.
+    applyEmojiRecentIds();
 
     // Bottom-left corner of the frame onto the top-left corner of the button: the dialog
     // therefore unfolds UPWARD and to the RIGHT. The two-argument popupAt() also keeps the whole
@@ -6573,6 +6605,80 @@ void MessageEditor::closeEmojiGallery()
     // close() drives FloatingDialogFrame::closed(), which clears the open/pinned state and
     // re-asserts the button -- so this method deliberately does not touch either itself.
     pimpl->emojiDialog->close(false);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setEmojiRecentIds(QStringList ids)
+{
+    // Capped on the way IN as well as on promotion: a host restoring a longer list from an older
+    // build (or a hand-edited settings file) must not make the row wider than it can be.
+    while (ids.size()>EmojiRecentsMax)
+    {
+        ids.removeLast();
+    }
+    if (pimpl->emojiRecentIds==ids)
+    {
+        return;
+    }
+    pimpl->emojiRecentIds=std::move(ids);
+    // No emojiRecentIdsChanged() here -- this IS the host's own write, and echoing it back would
+    // have a host that persists the signal write what it just read. See the signal's doc comment.
+    applyEmojiRecentIds();
+}
+
+//--------------------------------------------------------------------------
+
+QStringList MessageEditor::emojiRecentIds() const
+{
+    return pimpl->emojiRecentIds;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applyEmojiRecentIds()
+{
+    if (pimpl->emojiDialog.isNull() || pimpl->emojiDialog->dialog().isNull())
+    {
+        // Built lazily and kept: openEmojiGallery() re-pushes on every open, so a list set before
+        // the dialog exists is not lost.
+        return;
+    }
+    pimpl->emojiDialog->dialog()->setRecentIds(pimpl->emojiRecentIds);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::promoteEmojiRecent(const QString& iconId)
+{
+    if (iconId.isEmpty())
+    {
+        return;
+    }
+    // Resolved against the pack the gallery is actually showing, so an id no pack here carries
+    // never enters the list -- it could only ever be skipped by the row and would sit in the
+    // host's store forever. This is also the only guard: the pick handler calls straight through.
+    auto pack=pimpl->emojiPack ? pimpl->emojiPack : ReactionIconPacks::instance().defaultPack();
+    if (!pack || pack->find(iconId)==nullptr)
+    {
+        return;
+    }
+
+    if (!pimpl->emojiRecentIds.isEmpty() && pimpl->emojiRecentIds.front()==iconId)
+    {
+        // Already the most recent -- nothing moves, so nothing is written back either.
+        return;
+    }
+
+    pimpl->emojiRecentIds.removeAll(iconId);
+    pimpl->emojiRecentIds.prepend(iconId);
+    while (pimpl->emojiRecentIds.size()>EmojiRecentsMax)
+    {
+        pimpl->emojiRecentIds.removeLast();
+    }
+
+    applyEmojiRecentIds();
+    emit emojiRecentIdsChanged(pimpl->emojiRecentIds);
 }
 
 //--------------------------------------------------------------------------
@@ -6633,7 +6739,9 @@ void MessageEditor::insertEmoji(const QString& reactionId)
         format.clearProperty(QTextFormat::IsAnchor);
         format.clearProperty(QTextFormat::AnchorHref);
         format.clearProperty(QTextFormat::AnchorName);
-        cursor.insertText(info->emojiCode,format);
+        // emojiText, not emojiCode -- Markdown mode's document IS the message source, so the
+        // inserted character must be the colour-presentation form. See ReactionIconInfo::emojiText.
+        cursor.insertText(info->emojiText,format);
 
         pimpl->editor->setTextCursor(cursor);
         pimpl->editor->setCurrentCharFormat(format);
@@ -6682,7 +6790,7 @@ void MessageEditor::insertEmoji(const QString& reactionId)
         // the right thing for such a client to show, and is what markdownToHtml() falls back to
         // when the icon is not locally available.
         imgFmt.setProperty(QTextFormat::ImageAltText,
-                           info->emojiCode.isEmpty() ? info->iconId : info->emojiCode);
+                           info->emojiCode.isEmpty() ? info->iconId : info->emojiText);
         imgFmt.setWidth(px);
         imgFmt.setHeight(px);
         imgFmt.clearProperty(QTextFormat::IsAnchor);

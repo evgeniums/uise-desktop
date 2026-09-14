@@ -79,6 +79,8 @@ class UISE_DESKTOP_EXPORT EmojiGalleryDialog : public Dialog<AbstractEmojiGaller
 
         void resetSearch() override;
 
+        void setRecentIds(QStringList ids) override;
+
         void construct() override;
 
         /**

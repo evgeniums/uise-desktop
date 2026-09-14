@@ -2861,19 +2861,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location filename="../src/chatreactiongallery.cpp" line="+159"/>
         <location line="+215"/>
         <source>Recently used</source>
-        <translation type="unfinished"></translation>
+        <translation>Recently used</translation>
     </message>
     <message>
         <location line="-201"/>
         <location line="+185"/>
         <source>Search reactions</source>
-        <translation type="unfinished"></translation>
+        <translation>Search reactions</translation>
     </message>
     <message>
         <location line="-172"/>
         <location line="+180"/>
         <source>No matching reactions</source>
-        <translation type="unfinished"></translation>
+        <translation>No matching reactions</translation>
     </message>
 </context>
 <context>
@@ -2966,19 +2966,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location filename="../src/emojigallerydialog.cpp" line="+73"/>
         <location line="+83"/>
         <source>Search emoji</source>
-        <translation type="unfinished">Search emoji</translation>
+        <translation>Search emoji</translation>
     </message>
     <message>
         <location line="-82"/>
         <location line="+83"/>
         <source>No matching emoji</source>
-        <translation type="unfinished">No matching emoji</translation>
+        <translation>No matching emoji</translation>
     </message>
     <message>
         <location line="-68"/>
         <location line="+61"/>
         <source>Emoji</source>
-        <translation type="unfinished">Emoji</translation>
+        <translation>Emoji</translation>
     </message>
 </context>
 <context>

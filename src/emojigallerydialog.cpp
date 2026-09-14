@@ -133,6 +133,16 @@ void EmojiGalleryDialog::resetSearch()
 
 //--------------------------------------------------------------------------
 
+void EmojiGalleryDialog::setRecentIds(QStringList ids)
+{
+    if (!pimpl->gallery.isNull())
+    {
+        pimpl->gallery->setRecentIds(std::move(ids));
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void EmojiGalleryDialog::prepareToShow()
 {
     // resetSearch() rebuilds the grid, which re-derives the viewport clamp from a live cell --

@@ -64,6 +64,21 @@ uise--ChatReactionGallery #recentTitle {
 color: #888888;
 }
 
+/* The recents block sits directly above the search box, and in this theme both were plain white
+   (the gallery's own #FFFFFF above, and QLineEdit's platform default), so the two read as one
+   undifferentiated slab with no boundary between them. Tinted with the SAME rgba(0,0,0,10) the
+   resting reaction chip and the hovered gallery button already use in this file -- a reused
+   subtle tint over whatever it sits on, not a new hue -- which reads as a distinct panel while
+   leaving the white search field standing out against it.
+
+   Scoped to the emoji dialog, matching the grid-sizing and search-padding rules in
+   chatreactions.qss: the reactions dropdown is compact and anchored to a bubble, and restyling
+   the shipped popup is not part of this. Dark theme is deliberately untouched -- #2B2B2B and the
+   dark search field already differ there. */
+uise--EmojiGalleryDialog #emojiGallery #recentFrame {
+background-color: rgba(0,0,0,10);
+}
+
 uise--ChatReactionGallery #galleryButton[hovered="true"] QPushButton {
 background-color: rgba(0,0,0,10);
 }
