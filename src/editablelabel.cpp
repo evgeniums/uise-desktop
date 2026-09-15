@@ -56,7 +56,8 @@ EditableLabel::EditableLabel(
         m_inGroup(inGroup),
         m_panel(nullptr),
         m_editable(true),
-        m_editButtonAlwaysHidden(false)
+        m_editButtonAlwaysHidden(false),
+        m_trailingWidget(nullptr)
 {
     m_mainLayout=Layout::vertical(this);
 
@@ -121,6 +122,32 @@ EditableLabel::EditableLabel(Type type, AbstractEditablePanel* panel)
     : EditableLabel(type,panel,true)
 {
     setEditablePanel(panel);
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabel::setTrailingWidget(QWidget* widget)
+{
+    if (m_trailingWidget==widget)
+    {
+        return;
+    }
+
+    if (m_trailingWidget!=nullptr)
+    {
+        m_layout->removeWidget(m_trailingWidget);
+        m_trailingWidget->deleteLater();
+    }
+
+    m_trailingWidget=widget;
+    if (m_trailingWidget!=nullptr)
+    {
+        // Appended, so it lands after m_buttonsFrame - the trailing edge of the row. Stretch 0:
+        // the label (and the editor that replaces it) keep all the slack, exactly as they do
+        // against the buttons frame. addWidget() reparents into m_layout's own widget (the inner
+        // mainFrame, not this), which is where every other row element lives too.
+        m_layout->addWidget(m_trailingWidget,0);
+    }
 }
 
 //--------------------------------------------------------------------------

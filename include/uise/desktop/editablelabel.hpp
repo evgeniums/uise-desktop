@@ -231,6 +231,30 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             m_editorLayout->addWidget(widget);
         }
 
+        /**
+         * @brief Set a widget shown at the trailing edge of the row, after the edit/apply/cancel
+         *        buttons.
+         *
+         * For row-scoped affordances that are not part of the edit cycle — a "..." menu of extra
+         * actions on this particular value, say. The label takes ownership; passing a different
+         * widget replaces (and deletes) the previous one, and passing nullptr just clears it.
+         *
+         * Deliberately NOT touched by updateControls(): unlike the edit/apply/cancel buttons, a
+         * trailing widget's visibility is the caller's business (it may well want the widget shown
+         * on a read-only label, or hidden on an editable one), so the label never shows or hides it
+         * on its own.
+         */
+        void setTrailingWidget(QWidget* widget);
+
+        /**
+         * @brief Get the trailing widget.
+         * @return Query result, nullptr if none was set.
+         */
+        QWidget* trailingWidget() const noexcept
+        {
+            return m_trailingWidget;
+        }
+
     public slots:
 
         /**
@@ -335,6 +359,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         QLabel* m_comment;
         QWidget* m_editor;
+        QWidget* m_trailingWidget;
 };
 
 /**
@@ -1064,8 +1089,12 @@ class EditableLabelTmpl : public EditableLabel
 
         /**
          * @brief Clear value of the label.
+         *
+         * Declared void rather than with a deduced return type so it actually overrides
+         * AbstractValueWidget::clear() - a deduced `auto` cannot override a concrete `void`.
+         * The effective type is unchanged, so no caller is affected.
          */
-        auto clear()
+        void clear() override
         {
             m_editor->blockSignals(true);
             helper::clear(m_editor);

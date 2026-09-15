@@ -2858,13 +2858,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+159"/>
-        <location line="+215"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+200"/>
+        <location line="+229"/>
         <source>Recently used</source>
         <translation>Recently used</translation>
     </message>
     <message>
-        <location line="-201"/>
+        <location line="-215"/>
         <location line="+185"/>
         <source>Search reactions</source>
         <translation>Search reactions</translation>
@@ -2964,19 +2964,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <name>uise::EmojiGalleryDialog</name>
     <message>
         <location filename="../src/emojigallerydialog.cpp" line="+73"/>
-        <location line="+83"/>
+        <location line="+93"/>
         <source>Search emoji</source>
         <translation>Search emoji</translation>
     </message>
     <message>
-        <location line="-82"/>
-        <location line="+83"/>
+        <location line="-92"/>
+        <location line="+93"/>
         <source>No matching emoji</source>
         <translation>No matching emoji</translation>
     </message>
     <message>
-        <location line="-68"/>
-        <location line="+61"/>
+        <location line="-78"/>
+        <location line="+71"/>
         <source>Emoji</source>
         <translation>Emoji</translation>
     </message>
@@ -3321,7 +3321,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+3465"/>
+        <location filename="../src/messageeditor.cpp" line="+3485"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3336,7 +3336,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+1781"/>
+        <location line="+1869"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
