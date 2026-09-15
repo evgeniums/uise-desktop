@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <vector>
+
 #include <QEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
@@ -30,6 +32,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPalette>
 #include <QBoxLayout>
 #include <QPointer>
+#include <QAbstractScrollArea>
+#include <QScrollBar>
 
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
@@ -37,6 +41,41 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractdialog.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+/**
+ * @brief Nearest ancestor scroll area that actually SCROLLS the given widget.
+ *
+ * The test is deliberately not "is any ancestor a QAbstractScrollArea": a scroll area is an
+ * ancestor of its scrollbars, its corner widget and of anything parented directly to it, none
+ * of which it scrolls, and clipping those to the viewport would be wrong. Only the chain that
+ * passes THROUGH viewport() is scrolled content, so the loop remembers the child it came from
+ * and accepts a scroll area only when that child is its viewport.
+ *
+ * This also keeps every scroll area that lives INSIDE a popup out of the picture, since those
+ * are descendants and are never walked: FrameWithModalPopup hosts whose popup widget is itself
+ * a ScrollArea (AddAccountNode's config panel) or whose content contains one (AddContact's info
+ * panel) must keep centring against their own rect.
+ */
+QAbstractScrollArea* ancestorScrollArea(const QWidget* widget)
+{
+    const QWidget* child=widget;
+    auto* parent=widget->parentWidget();
+    while (parent!=nullptr)
+    {
+        auto* area=qobject_cast<QAbstractScrollArea*>(parent);
+        if (area!=nullptr && area->viewport()==child)
+        {
+            return area;
+        }
+        child=parent;
+        parent=parent->parentWidget();
+    }
+    return nullptr;
+}
+
+}
 
 /**********************************ModalPopup********************************/
 
@@ -54,6 +93,19 @@ class ModalPopup_p
         bool outsideClickEnabled=true;
         bool autoDestroy=false;
         bool inUpdate=false;
+
+        //! Scrolling ancestor this popup currently follows, resolved in bindScrollTracking().
+        //! QPointer because the scroll area belongs to the host's widget tree, which can be
+        //! torn down independently of this popup (e.g. an HTree node destroying its content
+        //! while a dialog is still nominally open), and unbindScrollTracking() dereferences it
+        //! to reach viewport().
+        QPointer<QAbstractScrollArea> scrollArea;
+
+        //! Scrollbar connections made in bindScrollTracking(). Qt would drop them automatically
+        //! when either end dies, but they must also be dropped on close() -- a closed popup
+        //! must not keep repositioning a hidden widget on every scroll tick -- and re-made
+        //! against a possibly different scroll area on the next popup().
+        std::vector<QMetaObject::Connection> scrollConnections;
 };
 
 //--------------------------------------------------------------------------
@@ -115,7 +167,12 @@ ModalPopup::ModalPopup(FrameWithModalPopup* parent)
 //--------------------------------------------------------------------------
 
 ModalPopup::~ModalPopup()
-{}
+{
+    // QObject's own destructor would drop both the connections and the installed event filter,
+    // but close() is not guaranteed to have run (a host can be destroyed with its popup still
+    // up), and being explicit keeps the pairing with bindScrollTracking() obvious.
+    unbindScrollTracking();
+}
 
 //--------------------------------------------------------------------------
 
@@ -158,6 +215,20 @@ bool ModalPopup::eventFilter(QObject* watched, QEvent* event)
         // refit the popup to the new content height
         updateWidgetGeometry();
     }
+    else if (!pimpl->scrollArea.isNull()
+             && watched==pimpl->scrollArea->viewport()
+             && event->type()==QEvent::Resize
+             && isVisible())
+    {
+        // See bindScrollTracking(): a viewport resize can change the rect this dialog is sized
+        // and centred against without producing a resizeEvent here -- with
+        // setWidgetResizable(true) and content taller than the viewport, the scrolled widget
+        // keeps its content-driven height across a window resize, so this frame's own size (and
+        // thus resizeEvent()) never changes even though the visible band inside it just did.
+        // Full update rather than a bare reposition, because the maxWidthPercent/
+        // maxHeightPercent budget just changed too.
+        updateWidgetGeometry();
+    }
     return QFrame::eventFilter(watched,event);
 }
 
@@ -186,6 +257,10 @@ void ModalPopup::popup()
     {
         dialog->prepareToShow();
     }
+
+    // Resolved fresh on every open, never cached: a host can be reparented into or out of a
+    // scroll area between opens, and re-binding is just a couple of pointer walks.
+    bindScrollTracking();
 
     updateWidgetGeometry();
 
@@ -222,6 +297,10 @@ void ModalPopup::close(bool autoDestroy)
 {
     hide();
     pimpl->shortcut->setEnabled(false);
+    // A closed popup must stop following the scroll area: the connections would otherwise keep
+    // firing repositionWidget() on a hidden widget for the rest of the host's life, and they are
+    // re-made against a freshly resolved ancestor on the next popup() anyway.
+    unbindScrollTracking();
     pimpl->parent->setPopupHidden();
     if (autoDestroy)
     {
@@ -268,34 +347,23 @@ void ModalPopup::updateWidgetGeometry()
         return;
     }
 
-    auto w=width();
-    auto h=height();    
-
-    auto margins=contentsMargins();
-    w-=(margins.left()+margins.right());
-    h-=(margins.top()+margins.bottom());
-
-    auto setPos=[h,w,&margins,this](int width, int height)
-    {
-        auto x=(w-width)/2+margins.left();
-        if (x<margins.left())
-        {
-            x=margins.left();
-        }
-        auto y=(h-height)/2+margins.top()-20;
-        if (y<margins.top())
-        {
-            y=margins.top();
-        }
-        pimpl->widget->move(x,y);
-    };
+    // Everything below is computed against the VISIBLE part of this frame rather than its full
+    // rect. This frame always covers its whole host (FrameWithModalPopup::resizeEvent()), but
+    // when that host is the scrolled widget of a setWidgetResizable(true) scroll area, its
+    // height is the entire canvas: centring in it put status/confirmation dialogs far below the
+    // viewport, and a maxHeightPercent of 50 meant 50% of the canvas rather than 50% of what the
+    // user can see. visibleContentsRect() returns contentsRect() unchanged when there is no such
+    // ancestor, so unscrolled hosts are unaffected.
+    const auto vis=visibleContentsRect();
+    auto w=vis.width();
+    auto h=vis.height();
 
     auto minSize=pimpl->widget->minimumSize();
     auto maxSize=pimpl->widget->maximumSize();
     if (minSize==maxSize && minSize.isValid())
     {
         // no resize needed
-        setPos(minSize.width(),minSize.height());
+        repositionWidget();
         return;
     }
 
@@ -374,7 +442,128 @@ void ModalPopup::updateWidgetGeometry()
         l->activate();
     }
     pimpl->inUpdate=false;
-    setPos(newW,newH);
+    repositionWidget();
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::repositionWidget()
+{
+    if (pimpl->widget==nullptr)
+    {
+        return;
+    }
+
+    const auto vis=visibleContentsRect();
+    const auto size=pimpl->widget->size();
+
+    auto x=(vis.width()-size.width())/2+vis.left();
+    if (x<vis.left())
+    {
+        x=vis.left();
+    }
+    // The -20 nudges the dialog slightly above the true centre: a dialog centred on the exact
+    // geometric middle reads as sitting low, and this is the long-standing optical correction.
+    auto y=(vis.height()-size.height())/2+vis.top()-20;
+    if (y<vis.top())
+    {
+        y=vis.top();
+    }
+    pimpl->widget->move(x,y);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ModalPopup::visibleContentsRect() const
+{
+    const auto base=contentsRect();
+
+    auto* area=ancestorScrollArea(this);
+    if (area==nullptr)
+    {
+        return base;
+    }
+
+    auto* viewport=area->viewport();
+    if (viewport==nullptr)
+    {
+        return base;
+    }
+
+    // mapFrom() walks the parent chain, and ancestorScrollArea() guarantees the viewport IS an
+    // ancestor of this frame, which is exactly its precondition. The resulting origin is
+    // positive-y once the user has scrolled past the top of this frame -- i.e. the visible band
+    // slides down through this frame's coordinate system, which is the whole point.
+    const QRect visible{mapFrom(viewport,QPoint{0,0}),viewport->size()};
+
+    const auto r=base.intersected(visible);
+    if (r.isEmpty())
+    {
+        // The host is scrolled entirely out of view. Nothing sensible to centre in, and an
+        // empty rect would collapse the dialog to nothing, so fall back to the old behaviour and
+        // let the next scroll tick put it right.
+        return base;
+    }
+    return r;
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::bindScrollTracking()
+{
+    unbindScrollTracking();
+
+    auto* area=ancestorScrollArea(this);
+    if (area==nullptr)
+    {
+        return;
+    }
+    pimpl->scrollArea=area;
+
+    // Reposition ONLY. Scrolling never changes the size of the visible band this dialog is
+    // centred in, only its offset within this frame, so there is nothing to resize or relayout
+    // -- and doing either here would run a full measure pass on every scrollbar tick.
+    //
+    // Runs after the scroll area has already moved its scrolled widget: QAbstractScrollArea
+    // connects its own scrollContentsBy() handler to these signals in its constructor, long
+    // before this connection is made, and Qt delivers direct connections in connection order. So
+    // mapFrom() in visibleContentsRect() already sees the post-scroll offset.
+    auto reposition=[this]()
+    {
+        if (isVisible())
+        {
+            repositionWidget();
+        }
+    };
+    pimpl->scrollConnections.push_back(
+        connect(area->verticalScrollBar(),&QAbstractSlider::valueChanged,this,reposition)
+    );
+    pimpl->scrollConnections.push_back(
+        connect(area->horizontalScrollBar(),&QAbstractSlider::valueChanged,this,reposition)
+    );
+
+    // The viewport can change size without anything else telling us: with
+    // setWidgetResizable(true) and content taller than the viewport, the scrolled widget keeps
+    // its content-driven height when the window is resized, so this frame gets no resizeEvent
+    // and the scrollbars do not move -- yet the rect we size and centre against just changed.
+    area->viewport()->installEventFilter(this);
+}
+
+//--------------------------------------------------------------------------
+
+void ModalPopup::unbindScrollTracking()
+{
+    for (const auto& connection : pimpl->scrollConnections)
+    {
+        disconnect(connection);
+    }
+    pimpl->scrollConnections.clear();
+
+    if (!pimpl->scrollArea.isNull() && pimpl->scrollArea->viewport()!=nullptr)
+    {
+        pimpl->scrollArea->viewport()->removeEventFilter(this);
+    }
+    pimpl->scrollArea.clear();
 }
 
 //--------------------------------------------------------------------------

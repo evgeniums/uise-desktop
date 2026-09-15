@@ -92,6 +92,46 @@ class UISE_DESKTOP_EXPORT ModalPopup : public QFrame
         void updateWidgetGeometry();
 
         /**
+         * @brief Move the popup widget to the centre of the currently VISIBLE part of this
+         *  frame, at whatever size it already has.
+         *
+         *  Split out of updateWidgetGeometry() because scrolling changes only WHERE the dialog
+         *  must sit, never how big it is: the visible rect this frame is centred in keeps the
+         *  same size while the user scrolls, it just slides across this frame's own coordinate
+         *  system. Repositioning alone therefore avoids the resize()+layout()->activate()+
+         *  possible LayoutRequest refit that updateWidgetGeometry() performs, which is far too
+         *  expensive to run on every scrollbar tick.
+         */
+        void repositionWidget();
+
+        /**
+         * @brief The part of this frame's contentsRect() that the user can actually see, in
+         *  this frame's own coordinates.
+         *
+         *  This frame always exactly covers its host FrameWithModalPopup (see
+         *  FrameWithModalPopup::resizeEvent()), but that host is not necessarily fully visible:
+         *  in several places it IS the scrolled widget of a QScrollArea with
+         *  setWidgetResizable(true), so its height is the whole scrollable canvas rather than
+         *  the viewport's. Centring a dialog in the canvas then puts it well below the visible
+         *  area. When such an ancestor exists, the viewport's rect (mapped into this frame's
+         *  coordinates) is intersected with contentsRect(); otherwise contentsRect() itself is
+         *  returned, so hosts that are not scrolled behave exactly as before.
+         */
+        QRect visibleContentsRect() const;
+
+        /**
+         * @brief Resolve the scrolling ancestor and start following it, so an open dialog stays
+         *  centred in view while the user scrolls underneath it.
+         *
+         *  Re-resolved on every popup() rather than cached at construction: a host can be
+         *  reparented into or out of a scroll area over its lifetime.
+         */
+        void bindScrollTracking();
+
+        //! Undo bindScrollTracking(). Safe to call when nothing was bound.
+        void unbindScrollTracking();
+
+        /**
          * @brief ensurePolished() over the popup widget's whole subtree, so a widget that has
          *  never been shown yet is measured with real (post-QSS) geometry rather than
          *  construction defaults. Deliberately NOT Style::repolishRecursive(): unpolish+polish
