@@ -2292,8 +2292,26 @@ void ChatMessageBottom::setSelected(bool enable)
 
 void ChatMessageBottom::setSent(bool enable)
 {
-    // Same reasoning as setSelected() above -- no repolish of `this`.
+    // Same reasoning as setSelected() above -- no repolish of `this` in the ordinary case.
     setProperty("sent",enable);
+
+    // The EXCEPTION setSelected()'s comment does not cover: chat.qss's
+    // "uise--ChatMessageBottom[chip="true"][sent="true"]" rule (the chip's own background, which
+    // has to be the sent/received bubble colour it stands in for -- see light/chat.qss) keys on
+    // [sent=...] directly on THIS widget, so in chip mode the property alone is not enough, the
+    // rule has to be re-matched. Today's call order already happens to cover it -- ChatMessage::
+    // updateContent() fans setSent() out well before the first negotiation pass can turn chip
+    // mode on, so the repolish AbstractChatMessageContent::applyBubbleTransparency() does for the
+    // "chip" property itself already sees the final [sent=...] -- but the chip quietly taking a
+    // received bubble's colour on a sent message is far too easy a regression to leave resting on
+    // that. Gated on isChipMode() so the overwhelmingly common opaque bubble keeps paying nothing
+    // (and keeps setSelected()'s qproperty-narrowBodyWidth concern moot); in chip mode this bubble
+    // has already been repolished once for the same reason.
+    if (isChipMode())
+    {
+        Style::updateWidgetStyle(this);
+    }
+
     Style::setStyleProperty(pimpl->time,"sent",enable);
     Style::setStyleProperty(pimpl->edited,"sent",enable);
 }

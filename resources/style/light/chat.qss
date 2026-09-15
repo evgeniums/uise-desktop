@@ -103,11 +103,25 @@ color: #1e6091;
 }
 
 /* The small rounded background a transparent bubble's bottom row paints behind itself once
- * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules). A
- * translucent white wash, same idiom light/chat.qss already uses for the unread-separator pill
- * a few rules down -- legible over any chat wallpaper without introducing a new hue. */
+ * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules).
+ *
+ * Exactly the bubble colours at the top of this file, paired one-for-one on [sent=...] the same
+ * way the tail colours are: the chip IS the bubble's own bottom row, just shrunk to its own
+ * content and floated over the wallpaper, so a received message's chip has to read as a received
+ * bubble and a sent one as a sent bubble. It also puts the row's own label colours (below) back
+ * on exactly the backdrop they were tuned against.
+ *
+ * Opaque rather than a wash: the chip never overlaps the image/emoji it belongs to (it sits in
+ * the strip the bubble reserves beside or below it), so there is nothing for translucency to
+ * reveal -- and a translucent white over this file's own #A5C6D7 wallpaper composites to roughly
+ * #DFEBF1, i.e. all but exactly the SENT bubble colour, which made every RECEIVED message's chip
+ * look like it had been sent. */
 uise--ChatMessageBottom[chip="true"] {
-background-color: rgba(255, 255, 255, 0.65);
+background-color: #F9FAFB; /* received message */
+}
+
+uise--ChatMessageBottom[chip="true"][sent="true"] {
+background-color: #DEEFFB; /* sent message */
 }
 
 uise--ChatSeparatorSection uise--AvatarButton,

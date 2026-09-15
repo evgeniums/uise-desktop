@@ -82,11 +82,15 @@ color: #9CD5FF;
 }
 
 /* The small rounded background a transparent bubble's bottom row paints behind itself once
- * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules). Same
- * grey wash idiom as the unread-separator pill below, a touch more opaque for the row's own text
- * to stay legible over any chat wallpaper. */
+ * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules). The
+ * bubble colours at the top of this file, paired on [sent=...] -- see light/chat.qss's matching
+ * comment for why the chip takes the bubble's own colour rather than a wash of its own. */
 uise--ChatMessageBottom[chip="true"] {
-background-color: rgba(60, 60, 62, 0.75);
+background-color: #2d323b; /* received message */
+}
+
+uise--ChatMessageBottom[chip="true"][sent="true"] {
+background-color: #355872; /* sent message */
 }
 
 uise--ChatSeparatorSection uise--AvatarButton,
