@@ -140,6 +140,18 @@ class AbstractValueWidget : public QWidget
             return QVariant{};
         }
 
+        /**
+         * @brief Reset the widget to its empty/unset state.
+         *
+         * Distinct from setVariantValue(QVariant{}), which would set the widget to its value
+         * type's default (0 for a number, an invalid date, ...) rather than to whatever "nothing
+         * here" means for that particular editor - a spin box, for instance, clears to its own
+         * minimum. Implementations that have a meaningful empty state override this; the default
+         * is a no-op so a widget without one is simply left alone.
+         */
+        virtual void clear()
+        {}
+
         void setConfig(ValueWidgetConfig config)
         {
             m_config=std::move(config);
