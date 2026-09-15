@@ -38,6 +38,14 @@ class QContextMenuEvent;
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
 
+//! Inserts the platform's color emoji font right after a widget's own font family, so that
+//! plain-text Qt widgets (QLabel/Label in Qt::PlainText mode) prefer it over Qt's own ambiguous
+//! automatic fallback for BMP "dingbat" code points that exist in both the color emoji font and a
+//! plain monochrome symbol font (e.g. U+2B50 star) -- which Qt does not reliably resolve to the
+//! color glyph on its own. Call for any plain-text widget that may display remote/user text
+//! containing emoji; Label calls it automatically.
+UISE_DESKTOP_EXPORT void applyColorEmojiFallbackFont(QWidget* widget);
+
 class UISE_DESKTOP_EXPORT Label : public QLabel
 {
     Q_OBJECT

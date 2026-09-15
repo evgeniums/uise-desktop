@@ -40,6 +40,27 @@ namespace uise {
 
 //--------------------------------------------------------------------------
 
+void applyColorEmojiFallbackFont(QWidget* widget)
+{
+    auto f = widget->font();
+    auto families = f.families();
+    if (families.isEmpty())
+    {
+        families.append(f.family());
+    }
+#if defined(Q_OS_MACOS)
+    families.insert(1, QStringLiteral("Apple Color Emoji"));
+#elif defined(Q_OS_WIN)
+    families.insert(1, QStringLiteral("Segoe UI Emoji"));
+#else
+    families.insert(1, QStringLiteral("Noto Color Emoji"));
+#endif
+    f.setFamilies(families);
+    widget->setFont(f);
+}
+
+//--------------------------------------------------------------------------
+
 Label::Label(QWidget *parent, Qt::WindowFlags f) : QLabel(parent,f)
 {
     init();
@@ -59,30 +80,11 @@ void Label::init()
     setTextFormat(Qt::PlainText);
     setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    // A handful of BMP "dingbat" code points used as standalone emoji (e.g. U+2B50 star) are
-    // also present in a plain black/white system symbol font. Rich text (used for message
-    // bubbles) substitutes emoji with pack images and never hits this, but plain text -- which is
-    // all preview-style labels like ElidedLabel ever show -- goes through Qt's own fallback-font
-    // search order, which does not reliably prefer the color emoji font for such code points and
-    // can end up drawing the monochrome symbol-font glyph instead. Supplementary-plane emoji
-    // (the vast majority) are unaffected since only the color emoji font has them at all. Listing
-    // the platform color emoji font right after the label's own family makes Qt try it before
-    // falling through to that ambiguous automatic fallback.
-    auto f = font();
-    auto families = f.families();
-    if (families.isEmpty())
-    {
-        families.append(f.family());
-    }
-#if defined(Q_OS_MACOS)
-    families.insert(1, QStringLiteral("Apple Color Emoji"));
-#elif defined(Q_OS_WIN)
-    families.insert(1, QStringLiteral("Segoe UI Emoji"));
-#else
-    families.insert(1, QStringLiteral("Noto Color Emoji"));
-#endif
-    f.setFamilies(families);
-    setFont(f);
+    // Rich text (used for message bubbles) substitutes emoji with pack images and never hits
+    // Qt's ambiguous plain-text font fallback; this label mode does, so route it through the
+    // same fix every plain-text preview widget needs -- see applyColorEmojiFallbackFont()'s doc
+    // comment in label.hpp for why.
+    applyColorEmojiFallbackFont(this);
 }
 
 //--------------------------------------------------------------------------
