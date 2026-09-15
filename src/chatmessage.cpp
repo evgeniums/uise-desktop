@@ -216,6 +216,12 @@ void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
     m_lastForMaxWidth=forMaxWidthIn;
     m_everNegotiated=true;
 
+    // Before anything else this pass computes: ChatMessageBottom::bubbleWidthHint() (queried
+    // later in this SAME pass, via the section loop below) reads isBubbleTransparent() to decide
+    // whether the narrow-body widening and rowMinWidth floor apply at all, so the flag must
+    // already reflect this pass' body/header/reply/reactions/editedDatetime before that call.
+    updateBubbleTransparency();
+
     auto forMaxWidth=forMaxWidthIn-horizontalTotalMargin(this)-BubbleWidthSlack;
 
     // Populate the body-hint memo for THIS pass before querying any section -- bodyWidthHint()
@@ -303,8 +309,12 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
     }
 
     // Recorded for BOTH modes -- the row is manually placed either way, so this is the size it
-    // is actually given (see ChatMessageContent::positionBottom()).
-    m_bottomNaturalSize=b->naturalSize();
+    // is actually given (see ChatMessageContent::positionBottom()). placedSize(), not
+    // naturalSize(): while isChipMode() this grows by the chip's own padding on every side, and
+    // that padding must be reserved regardless of whether the row is CURRENTLY visible (it is
+    // shown/hidden purely on hover, see ChatMessageContent::updateBottomVisibility()) or the
+    // bubble would resize on every hover in/out.
+    m_bottomNaturalSize=b->placedSize();
 
     auto line=t->lastTextLineRect();
     if (!line.isValid())
@@ -381,6 +391,41 @@ bool AbstractChatMessageContent::renegotiateBubbleWidth()
     }
     updateBubbleWidth(m_lastForMaxWidth);
     return true;
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatMessageContent::updateBubbleTransparency()
+{
+    // body()==nullptr never happens in practice (every content type is constructed with one),
+    // but this runs before the very first real negotiation pass too (see updateBubbleWidth()'s
+    // new call to this), where body() may still be null.
+    auto hint=(body()!=nullptr) && body()->isBubbleTransparentHint();
+
+    // Every one of these is message-level state the body itself knows nothing about, and every
+    // one forces the ordinary opaque bubble back on regardless of the body's own hint:
+    //  - header() is exactly the forwarded marker (ChatMessage::buildForwardHeader() returns
+    //    nullptr for a non-forwarded message) -- "Forwarded from ..." needs a background under it.
+    //  - reply()!=nullptr: the quoted-reply block already carries its own tinted background;
+    //    floating it with nothing behind it reads oddly.
+    //  - a non-empty reactions() row -- the chips need somewhere to sit.
+    //  - editedDatetime().isValid() is how "this message was edited" is expressed (there is no
+    //    separate bool) -- see AbstractChatMessage::editedDatetime()'s own doc comment.
+    //  - isContentSelected() -- the selection tint must remain visible.
+    auto suppressed=header()!=nullptr
+                     || reply()!=nullptr
+                     || (reactions()!=nullptr && !reactions()->isEmpty())
+                     || (chatMessage()!=nullptr && chatMessage()->editedDatetime().isValid())
+                     || isContentSelected();
+
+    auto transparent=hint && !suppressed;
+    if (transparent==m_bubbleTransparent)
+    {
+        return;
+    }
+    m_bubbleTransparent=transparent;
+    applyBubbleTransparency(m_bubbleTransparent);
+    emit bubbleTransparencyUpdated(m_bubbleTransparent);
 }
 
 //--------------------------------------------------------------------------
@@ -782,33 +827,37 @@ void ChatMessageContent::updateWidgets()
     m_avatarSyncSpacer=new QSpacerItem(0,avatarSyncPad(),QSizePolicy::Minimum,QSizePolicy::Fixed);
     m_layout->addSpacerItem(m_avatarSyncSpacer);
 
+    // Qt::AlignLeft in every ordinary case -- see sectionAlignment() for the one exception (a
+    // right-aligned transparent bubble) and why it exists.
+    const auto align=sectionAlignment();
+
     // show() clears WA_WState_Hidden synchronously, so the very next sizeHint() counts this
     // section -- addWidget() alone leaves it hidden until a queued _q_showIfNotHidden when this
     // frame is already visible (e.g. setReply()/setComment() re-running this on a bubble already
     // on screen), and the bubble would be mis-measured until that queued show ran.
     if (header()!=nullptr)
     {
-        m_layout->addWidget(header(),0,Qt::AlignLeft);
+        m_layout->addWidget(header(),0,align);
         header()->show();
     }
     if (reply()!=nullptr)
     {
-        m_layout->addWidget(reply(),0,Qt::AlignLeft);
+        m_layout->addWidget(reply(),0,align);
         reply()->show();
     }
     if (body()!=nullptr)
     {
-        m_layout->addWidget(body(),0,Qt::AlignLeft);
+        m_layout->addWidget(body(),0,align);
         body()->show();
     }
     if (comment()!=nullptr)
     {
-        m_layout->addWidget(comment(),0,Qt::AlignLeft);
+        m_layout->addWidget(comment(),0,align);
         comment()->show();
     }
     if (reactions()!=nullptr)
     {
-        m_layout->addWidget(reactions(),0,Qt::AlignLeft);
+        m_layout->addWidget(reactions(),0,align);
         // setVisible(...), NOT the unconditional show() the other sections get above -- an
         // attached-but-empty reactions section (the common case, see
         // AbstractChatMessageReactions::isEmpty()'s own doc comment) must stay out of the
@@ -826,6 +875,10 @@ void ChatMessageContent::updateWidgets()
         // of what it was before this rebuild (setReply()/setComment() can re-run this on a
         // bubble that was previously in inline mode).
         m_bottomInLayout=true;
+        // The unconditional show() above must not win over an already-established transparent,
+        // not-currently-hovered bubble -- setReply()/setComment() can re-run this on a bubble
+        // that has already been negotiated once and is sitting there hidden.
+        updateBottomVisibility();
     }
     m_layout->addStretch(1);
     Style::updateWidgetStyle(this);
@@ -883,12 +936,21 @@ void ChatMessageContent::updateBottomPlacement()
     // Idempotent, so it costs nothing to reassert every pass.
     b->raise();
 
-    // Left at zero in both modes: the row's spacing is expressed as bottomY()/rowTopGap()/
+    // Zero in the ordinary case: the row's spacing is expressed as bottomY()/rowTopGap()/
     // rowBottomPadding() around a naturally-sized widget, never as margins inside it. (This is
     // also why no QSS rule may set `padding` on uise--ChatMessageBottom -- QSS padding lands on
     // this same widget's contentsMargins, and would then be double-counted against
-    // naturalSize().)
-    b->setContentsMargins(0,0,0,0);
+    // naturalSize().) While isChipMode(), chipPadding() on every side instead -- that IS the
+    // reserved space the chip's own rounded background paints into (see placedSize(), which grows
+    // bottomNaturalSize()/bubbleWidthHint() by the exact same amount, so the row is never clipped
+    // against the space this reserves).
+    auto p=b->isChipMode() ? b->chipPadding() : 0;
+    b->setContentsMargins(p,p,p,p);
+
+    // Re-derive AFTER the chip-mode margins above -- a rebuild (updateWidgets()) or a negotiation
+    // pass landing here can each change isChipMode()/isBubbleTransparent() without an intervening
+    // hover event, and the row must never be left visible (or hidden) on stale state.
+    updateBottomVisibility();
 }
 
 //--------------------------------------------------------------------------
@@ -910,12 +972,24 @@ void ChatMessageContent::positionBottom()
 
     auto cr=contentsRect();
 
-    // Right-aligned against the bubble in BOTH modes -- in row mode that reproduces exactly what
-    // the old full-width row looked like (its own internal leading stretch pushed the time to
-    // the bubble's right edge), and in inline mode it gives the common "long paragraph, short
-    // last line" case the same right-edge alignment rather than hugging the end of the text.
-    int x=cr.right()+1-sz.width();
-    if (isBottomInline())
+    // MIRRORED for a right-aligned transparent bubble: the row goes to the bubble's LEFT edge and
+    // the content to its right (sectionAlignment() does the content half). The width the bubble
+    // reserves for this row is invisible without a background behind it, so leaving it on the
+    // right would push a sent image/emoji that much off the margin every other sent message lines
+    // up against -- see sectionAlignment()'s own doc comment.
+    const bool mirrored=isBubbleTransparent() && isRightAligned();
+
+    // Otherwise right-aligned against the bubble in BOTH modes -- in row mode that reproduces
+    // exactly what the old full-width row looked like (its own internal leading stretch pushed
+    // the time to the bubble's right edge), and in inline mode it gives the common "long
+    // paragraph, short last line" case the same right-edge alignment rather than hugging the end
+    // of the text.
+    // Mirrored, the row goes hard against the bubble's left edge and needs no safety net of its
+    // own: cr.x() is both the position evaluateInlineBottom() sized the bubble for (it reserved
+    // row + gap + line, with the content right-aligned into the remainder) and the leftmost
+    // position that is not clipped by this bubble, so there is nothing a clamp could improve.
+    int x=mirrored ? cr.x() : cr.right()+1-sz.width();
+    if (isBottomInline() && !mirrored)
     {
         auto line=inlineLineRect();
         int minX=cr.x()+line.right()+1+b->inlineBottomGap();
@@ -979,6 +1053,12 @@ void ChatMessageContent::clearContentSelection()
 void ChatMessageContent::setSelected(bool enable)
 {
     rememberSelected(enable);
+    // The one state change that does not itself run through a negotiation pass (every other
+    // input to updateBubbleTransparency() -- edited/forwarded/reactions -- reaches it via
+    // renegotiateBubbleWidth(), see the top of updateBubbleWidth()) -- so it is re-derived here
+    // explicitly. AFTER rememberSelected() above, so isContentSelected() already reflects the new
+    // value.
+    updateBubbleTransparency();
     Style::setStyleProperty(this,"selected",enable);
     if (bottom())
     {
@@ -1038,6 +1118,122 @@ void ChatMessageContent::setRight(bool enable)
     // [sent=...], which now drives colour only -- see updateAlignment()/setAlignSent()), so a
     // side flip must actually re-match the stylesheet.
     Style::setStyleProperty(this,"right",enable);
+
+    // A transparent bubble mirrors BOTH its content and its bottom row on this flag -- see
+    // sectionAlignment(). No-ops for an ordinary opaque bubble (sectionAlignment() is
+    // Qt::AlignLeft either way, and positionBottom() right-aligns the row either way), so this
+    // costs nothing on the overwhelmingly common path.
+    applySectionAlignment();
+    positionBottom();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageContent::isRightAligned() const
+{
+    return chatMessage()!=nullptr && chatMessage()->isRight();
+}
+
+//--------------------------------------------------------------------------
+
+Qt::Alignment ChatMessageContent::sectionAlignment() const
+{
+    return (isBubbleTransparent() && isRightAligned()) ? Qt::AlignRight : Qt::AlignLeft;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::applySectionAlignment()
+{
+    if (m_layout==nullptr)
+    {
+        return;
+    }
+
+    const auto align=sectionAlignment();
+    for (auto* section : sections())
+    {
+        // bottom() is not a layout item in either placement mode (updateBottomPlacement() takes
+        // it out and positionBottom() places it by hand), so QLayout::setAlignment() would simply
+        // not find it -- it is mirrored separately, in positionBottom().
+        if (section==nullptr || section==static_cast<ChatMessageContentSection*>(bottom()))
+        {
+            continue;
+        }
+        // QLayout::setAlignment(QWidget*,...) invalidates the layout itself on a hit, so a change
+        // here is picked up by the very next sizeHint()/activate() -- which for the transparency
+        // path is the remainder of the negotiation pass this was called from (see
+        // AbstractChatMessageContent::updateBubbleWidth(), which calls
+        // updateBubbleTransparency() before measuring anything).
+        m_layout->setAlignment(section,align);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::applyBubbleTransparency(bool enable)
+{
+    // Repolish: chat.qss drops the background/border-radius rule for [transparent="true"] (see
+    // light/chat.qss, dark/chat.qss) -- the same qproperty-repolish idiom setSelected()/setSent()/
+    // setRight() already use above.
+    Style::setStyleProperty(this,"transparent",enable);
+
+    if (bottom()!=nullptr)
+    {
+        bottom()->setChipMode(enable);
+        // Repolish the ROW, not this bubble -- chat.qss's own small rounded chip background is a
+        // rule on uise--ChatMessageBottom[chip="true"], independent of this bubble's own
+        // [transparent="true"].
+        Style::setStyleProperty(bottom(),"chip",enable);
+    }
+
+    // On a right-aligned bubble the content and the row swap sides with transparency -- see
+    // sectionAlignment(). A no-op on a left-aligned one.
+    applySectionAlignment();
+
+    // A flip either way can change whether the row should be visible right now (going
+    // transparent while not hovered hides it; going back opaque always reveals it, regardless of
+    // hover).
+    updateBottomVisibility();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::updateBottomVisibility()
+{
+    auto* b=bottom();
+    if (b==nullptr)
+    {
+        return;
+    }
+    // Always visible for the ordinary opaque bubble; visible only on hover while transparent --
+    // see enterEvent()/leaveEvent(). Geometry is untouched either way, see this class' own
+    // updateBottomPlacement()/AbstractChatMessageBottom::placedSize() doc comments.
+    b->setVisible(!isBubbleTransparent() || m_hovered);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::enterEvent(QEnterEvent* event)
+{
+    AbstractChatMessageContent::enterEvent(event);
+    m_hovered=true;
+    if (isBubbleTransparent())
+    {
+        updateBottomVisibility();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::leaveEvent(QEvent* event)
+{
+    AbstractChatMessageContent::leaveEvent(event);
+    m_hovered=false;
+    if (isBubbleTransparent())
+    {
+        updateBottomVisibility();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1574,6 +1770,18 @@ void ChatMessage::updateContent()
         pimpl->contentFrame->setContent(content());
 
         updateAlignment();
+
+        // The tail is painted by ChatMessageAvatar, a SIBLING widget content() knows nothing
+        // about -- see ChatMessageAvatar::setBubbleTransparent()'s own doc comment for why this
+        // is a plain connected slot rather than a QSS rule. A fresh content() is never already
+        // transparent at this point (no negotiation pass has run yet), so there is no current
+        // state to sync on connect, unlike setSent() above.
+        connect(
+            content(),
+            &AbstractChatMessageContent::bubbleTransparencyUpdated,
+            pimpl->avatarFrame,
+            &ChatMessageAvatar::setBubbleTransparent
+        );
     }
 }
 
@@ -2025,7 +2233,23 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     // body()->bubbleWidthHint() here -- for a body like ChatMessageImages that call is a full
     // rebuildGrid() re-layout, not a cheap query, so this section used to pay for it twice.
     auto bodyHW=chatContent()->bodyWidthHint(forMaxWidth);
-    auto bottomW=naturalSize().width();
+
+    if (chatContent()->isBubbleTransparent())
+    {
+        // Bare content over the chat wallpaper: neither the narrow-body widening below nor the
+        // rowMinWidth floor applies -- the whole point of a transparent bubble is that it is
+        // exactly as wide as its content (the image, or the emoji row), not artificially
+        // stretched to make room for a row the pointer has to hover to even see.
+        //
+        // The one floor that does survive is this row's OWN width: it is placed by hand inside
+        // this bubble (ChatMessageContent::positionBottom()) and a child widget is clipped to its
+        // parent, so a bubble narrower than the chip would slice the timestamp in half the moment
+        // hovering reveals it. Far below rowMinWidth()/narrowBodyWidth(), and it only binds for
+        // content narrower than a timestamp -- a single emoji, or one very small thumbnail.
+        return std::min(std::max(bodyHW,placedSize().width()),forMaxWidth);
+    }
+
+    auto bottomW=placedSize().width();
 
     // A threshold below the bottom's own content width would be self-defeating -- the
     // "wide enough" branch would then hand back a bubble the time/status row itself
@@ -2188,6 +2412,21 @@ void ChatMessageAvatar::setLastInBatch(bool enable)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageAvatar::setBubbleTransparent(bool enable)
+{
+    // Same reasoning as setRight()/setLastInBatch() above: gated in C++ (paintEvent() below),
+    // not through a [transparent=...] qproperty-tailColor QSS rule -- Qt does not restore a
+    // qproperty whose rule stops matching, so a recycled row would keep a stale colour.
+    if (m_bubbleTransparent!=enable)
+    {
+        m_bubbleTransparent=enable;
+        setProperty("transparent",enable);
+        update();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageAvatar::setStyleProperty(const char* name, bool enable)
 {
     // Only `this` is a repolish target now that #mask is gone -- the tail's colour comes from
@@ -2217,7 +2456,7 @@ void ChatMessageAvatar::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     style()->drawPrimitive(QStyle::PE_Widget,&opt,&painter,this);
 
-    if (!m_last || !m_tailColor.isValid())
+    if (!m_last || !m_tailColor.isValid() || m_bubbleTransparent)
     {
         return;
     }

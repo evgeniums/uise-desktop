@@ -27,12 +27,15 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_MARKDOWN_RENDERER_HPP
 
 #include <functional>
+#include <vector>
 
 #include <QString>
 #include <QStringList>
 #include <QUrl>
 
 #include <uise/desktop/uisedesktop.hpp>
+
+class QTextDocument;
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -335,6 +338,34 @@ UISE_DESKTOP_EXPORT QString markdownToPlainText(const QString& markdown, int max
  * @return The same source with in-paragraph newlines replaced by U+2028.
  */
 UISE_DESKTOP_EXPORT QString markdownWithChatLineBreaks(const QString& markdown);
+
+/**
+ * @brief Whether `doc` is nothing but 1..maxCount emoji, and if so which.
+ *
+ * The same test markdownToHtml() applies to a freshly-parsed markdown document (see
+ * MarkdownRenderOptions::emojiOnlyMaxCount) exposed for a host that already has a QTextDocument of
+ * its own to test -- e.g. ChatMessageText::loadText(), which loads pre-rendered HTML on the
+ * whitemdesktop app path (chatTextToHtml()) and so never goes through markdownToHtml() at all.
+ *
+ * Accepts BOTH forms an emoji-only message can arrive in -- literal characters (typed, or
+ * authored in Markdown mode) and image fragments (authored in WYSIWYG and exported as
+ * "![code](whitem-emoji:id)") -- and a mix of the two, because a user editing such a message can
+ * easily produce one.
+ *
+ * Requires a single plain block: no list, heading, blockquote, code or table. Anything else is a
+ * message with structure, and structure means it is not the "just a couple of emoji" case this
+ * exists for. Every emoji must also resolve locally; a partial match falls back to ordinary
+ * inline rendering, since a row that was half large images and half text would read as a fault.
+ *
+ * @param doc Document to test.
+ * @param maxCount Upper bound on how many emoji make a document "emoji-only" -- 0 or negative
+ *  always returns false.
+ * @param reactionIds Cleared, then filled with the resolved reaction ids in document order when
+ *  this returns true. Left cleared on a false return.
+ * @return Whether `doc` qualifies as emoji-only.
+ */
+UISE_DESKTOP_EXPORT bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
+                                            std::vector<QString>& reactionIds);
 
 UISE_DESKTOP_NAMESPACE_END
 

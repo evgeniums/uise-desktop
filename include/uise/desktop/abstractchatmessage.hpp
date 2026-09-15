@@ -473,6 +473,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          */
         virtual QUuid fileItemAt(const QPoint& /*pos*/) const {return QUuid{};}
 
+        /**
+         * @brief Whether this body, ON ITS OWN, would rather be shown with no bubble background
+         *  and no minimum bubble width -- e.g. a single image (self-contained artwork already
+         *  carrying its own rounded corners) or a text body that is nothing but 1..3 emoji.
+         *
+         * False by default, so every existing body (files, call, error, invitation) keeps today's
+         * opaque bubble unchanged. A true hint is still only advisory: AbstractChatMessageContent
+         * combines it with message-level state this body knows nothing about (edited/forwarded/
+         * reacted-to/replied-to/selected) before deciding whether the bubble actually goes
+         * transparent -- see AbstractChatMessageContent::updateBubbleTransparency().
+         */
+        virtual bool isBubbleTransparentHint() const {return false;}
+
     signals:
 
         //! Never emitted by the base class -- a body with genuine text selection (e.g.
@@ -550,6 +563,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
     Q_PROPERTY(int inlineBottomYOffset READ inlineBottomYOffset WRITE setInlineBottomYOffset)
     Q_PROPERTY(int rowTopGap READ rowTopGap WRITE setRowTopGap)
     Q_PROPERTY(int rowBottomPadding READ rowBottomPadding WRITE setRowBottomPadding)
+    Q_PROPERTY(int chipPadding READ chipPadding WRITE setChipPadding)
 
     public:
 
@@ -588,6 +602,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         //! visually is slightly larger than this. Settable from QSS via
         //! qproperty-rowBottomPadding.
         constexpr static const int DefaultRowBottomPadding=4;
+        //! Padding on all four sides of this row while isChipMode() -- i.e. while the bubble it
+        //! sits on is transparent (AbstractChatMessageContent::isBubbleTransparent()) and this
+        //! row is painting its OWN small rounded background rather than relying on the bubble's.
+        //! Ignored otherwise. Settable from QSS via qproperty-chipPadding.
+        constexpr static const int DefaultChipPadding=4;
 
         using ChatMessageContentSection::ChatMessageContentSection;
 
@@ -659,6 +678,33 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
             return m_rowBottomPadding;
         }
 
+        void setChipPadding(int padding) noexcept
+        {
+            m_chipPadding=padding;
+        }
+
+        int chipPadding() const noexcept
+        {
+            return m_chipPadding;
+        }
+
+        //! Plain state, not a qproperty (unlike chipPadding): it is message state, set from
+        //! AbstractChatMessageContent::applyBubbleTransparency(), not a stylesheet knob. Records
+        //! whether this row should reserve chipPadding() on all sides (see placedSize()) and
+        //! paint its own small rounded background -- the caller is responsible for the actual
+        //! "chip" style-property repolish (chatmessage.cpp keeps every Style::setStyleProperty()
+        //! call for this section at the ChatMessageContent level, alongside "transparent"/
+        //! "hovered", rather than reaching into style.hpp from this header).
+        void setChipMode(bool enable) noexcept
+        {
+            m_chipMode=enable;
+        }
+
+        bool isChipMode() const noexcept
+        {
+            return m_chipMode;
+        }
+
         //! Natural size of the row's own CONTENT: the internal layout's own sizeHint, bypassing
         //! this class' (concrete subclass') own sizeHint() override -- which in "row" mode
         //! reports the WHOLE bubble width to right-align the row within it -- and any QSS widget
@@ -679,6 +725,24 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
             return (l!=nullptr) ? l->sizeHint() : QFrame::sizeHint();
         }
 
+        //! The size this row is actually placed/reserved at -- naturalSize() grown by
+        //! chipPadding() on every side while isChipMode(), unchanged otherwise. This, not
+        //! naturalSize(), is what AbstractChatMessageContent::evaluateInlineBottom() records as
+        //! bottomNaturalSize(): the chip's padding must be reserved space regardless of whether
+        //! the row is CURRENTLY visible, since AbstractChatMessageContent hides/reveals it purely
+        //! on hover (see updateBottomVisibility()) and the bubble must not resize when that
+        //! happens -- reserving unconditionally on isChipMode() (a per-message state, not "is the
+        //! pointer over the bubble right now") is what makes that guarantee hold.
+        QSize placedSize() const
+        {
+            auto sz=naturalSize();
+            if (m_chipMode)
+            {
+                sz+=QSize{2*m_chipPadding,2*m_chipPadding};
+            }
+            return sz;
+        }
+
     private:
 
         int m_narrowBodyWidth=DefaultNarrowBodyWidth;
@@ -687,6 +751,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         int m_inlineBottomYOffset=DefaultInlineBottomYOffset;
         int m_rowTopGap=DefaultRowTopGap;
         int m_rowBottomPadding=DefaultRowBottomPadding;
+        int m_chipPadding=DefaultChipPadding;
+        bool m_chipMode=false;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessageChild
@@ -956,9 +1022,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_inlineLineRect;
         }
 
-        //! bottom()->naturalSize() as it stood during the last evaluateInlineBottom() -- the size
+        //! bottom()->placedSize() as it stood during the last evaluateInlineBottom() -- the size
         //! the row is actually laid out at, in BOTH modes (it is manually placed either way, see
-        //! ChatMessageContent::positionBottom()).
+        //! ChatMessageContent::positionBottom()). Despite the name, NOT bottom()->naturalSize():
+        //! while the row is in chip mode this already includes its chip padding, which must be
+        //! reserved space regardless of the row's current hover visibility -- see placedSize()'s
+        //! own doc comment.
         QSize bottomNaturalSize() const noexcept
         {
             return m_bottomNaturalSize;
@@ -1046,6 +1115,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! than the bubble itself keys QSS on this, so there is nothing to fan out.
         virtual void setRight(bool /*enable*/) {}
 
+        //! Whether this bubble is CURRENTLY painted with no background/min-width, i.e. bare
+        //! content over the chat wallpaper -- see updateBubbleTransparency()'s own doc comment
+        //! for how this is decided. False for every content type whose body never reports
+        //! isBubbleTransparentHint(), so this is a pure opt-in with no effect on existing bodies.
+        bool isBubbleTransparent() const noexcept
+        {
+            return m_bubbleTransparent;
+        }
+
         void updateBubbleWidth(int forMaxWidthIn);
 
         //! Re-runs updateBubbleWidth() against the SAME forMaxWidthIn it was last called with --
@@ -1116,9 +1194,34 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         void bubbleWidthUpdated();
 
+        //! Emitted whenever updateBubbleTransparency() actually changes isBubbleTransparent() --
+        //! never on a call that leaves it unchanged. ChatMessage connects this to
+        //! ChatMessageAvatar::setBubbleTransparent(), since the tail is painted by a sibling
+        //! widget this class knows nothing about.
+        void bubbleTransparencyUpdated(bool enable);
+
     protected:
 
         virtual void updateWidgets() =0;
+
+        //! Recomputes isBubbleTransparent() from body()->isBubbleTransparentHint() combined with
+        //! message-level state the body itself knows nothing about -- see the .cpp definition for
+        //! the exact combination (edited/forwarded/replied-to/reacted-to/selected all force the
+        //! ordinary opaque bubble regardless of the body's own hint).
+        //!
+        //! Called from exactly two places: the top of updateBubbleWidth() -- every negotiation
+        //! pass already means body/header/reply/reactions/editedDatetime are all current, and
+        //! ChatMessageBottom::bubbleWidthHint() (queried later in the SAME pass) must already see
+        //! the result -- and from setSelected(), the one state change that does not itself trigger
+        //! a negotiation pass. A no-op when the value does not actually change: applyBubbleTransparency()
+        //! and bubbleTransparencyUpdated() only fire on a genuine flip.
+        void updateBubbleTransparency();
+
+        //! Apply a CHANGE in isBubbleTransparent() to this concrete content's own widgets --
+        //! typically Style::setStyleProperty(this,"transparent",enable), bottom()->setChipMode(),
+        //! and re-deriving the bottom row's hover visibility. A no-op default: a concrete content
+        //! type with no bubble-background QSS to drop has nothing to do here.
+        virtual void applyBubbleTransparency(bool /*enable*/) {}
 
         //! Flip bottom() in/out of the concrete content's own layout when isBottomInline() has
         //! actually CHANGED since the last call -- a no-op default for a content type that never
@@ -1249,6 +1352,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         bool m_selected=false;
         bool m_sent=false;
         bool m_clearingSelection=false;
+        bool m_bubbleTransparent=false;
 
         std::vector<ChatMessageContentSection*> m_sections;
         int m_maximumBubbleWidth=0;
@@ -1855,6 +1959,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
     //! QSS: qproperty-emojiOnlySize: 64; -- see setEmojiOnlySize().
     Q_PROPERTY(int emojiOnlySize READ emojiOnlySize WRITE setEmojiOnlySize)
 
+    //! QSS: qproperty-emojiOnlyMaxCount: 3; -- see setEmojiOnlyMaxCount().
+    Q_PROPERTY(int emojiOnlyMaxCount READ emojiOnlyMaxCount WRITE setEmojiOnlyMaxCount)
+
     public:
 
         constexpr static const int DefaultMaxBubbleWidth=600;
@@ -1863,6 +1970,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         //! a default text line, which is what makes such a message read as a gesture rather than
         //! as a sentence -- the convention every messenger with this feature follows.
         constexpr static const int DefaultEmojiOnlySize=64;
+
+        //! Matches MarkdownRenderOptions::emojiOnlyMaxCount's own default.
+        constexpr static const int DefaultEmojiOnlyMaxCount=3;
 
         using AbstractChatMessageBody::AbstractChatMessageBody;
 
@@ -1993,6 +2103,24 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
             return m_emojiOnlySize;
         }
 
+        //! Upper bound on how many emoji make a message "nothing but emoji" -- see
+        //! setEmojiEnabled() and MarkdownRenderOptions::emojiOnlyMaxCount, which this mirrors.
+        //! Reactive, like emojiOnlySize() above -- both feed the SAME re-render.
+        void setEmojiOnlyMaxCount(int count)
+        {
+            auto changed=(m_emojiOnlyMaxCount!=count);
+            m_emojiOnlyMaxCount=count;
+            if (changed)
+            {
+                updateEmojiEnabled();
+            }
+        }
+
+        int emojiOnlyMaxCount() const noexcept
+        {
+            return m_emojiOnlyMaxCount;
+        }
+
     protected:
 
         //! Clamp a negotiation budget by maxBubbleWidth(), pass-through when the cap is disabled.
@@ -2042,6 +2170,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         std::function<QString(const QString&)> m_extraLinkify;
         bool m_emojiEnabled=false;
         int m_emojiOnlySize=DefaultEmojiOnlySize;
+        int m_emojiOnlyMaxCount=DefaultEmojiOnlyMaxCount;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageSelector : public WidgetQFrame

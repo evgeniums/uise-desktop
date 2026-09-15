@@ -33,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMetaType>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/withpathandsize.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -44,13 +45,20 @@ class AvatarSource;
  *
  * A plain, cheaply-copyable value type -- no identity of its own, just enough to hand to
  * AvatarWidget::setAvatarSource()/setAvatarPath()/setAvatarName().
+ *
+ * path and source are independent and are both applied when set: the path is the avatar's
+ * identity (it also seeds the generated background color of the initials fallback), the source
+ * is the async fetcher that turns that path into an image. A host with an avatar source must
+ * still fill in the path, otherwise the widget has nothing to ask the source for.
  */
 struct UISE_DESKTOP_EXPORT ChatReactionAvatar
 {
     QString name;                            //!< For the initials fallback (AvatarWidget::setAvatarName()).
-    QString path;                            //!< Local/remote path, if known (AvatarWidget::setAvatarPath()).
-    std::shared_ptr<AvatarSource> source;     //!< Async provider, if the host has one; takes priority
-                                              //!< over path when both are set (AvatarWidget's own rule).
+    WithPath path;                            //!< Avatar identity, if known (AvatarWidget::setAvatarPath()).
+                                              //!< Multi-segment paths are supported, so a host whose
+                                              //!< avatar source keys on several segments can pass its
+                                              //!< own full path here unchanged.
+    std::shared_ptr<AvatarSource> source;     //!< Async provider, if the host has one.
 };
 
 /**

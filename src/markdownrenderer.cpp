@@ -518,120 +518,6 @@ std::vector<EmojiMatch> findEmojiCharacters(const QString& text)
     return matches;
 }
 
-/** @brief Whether the document is nothing but 1..maxCount emoji, and if so which.
- *
- * Accepts BOTH forms an emoji-only message can arrive in -- literal characters (typed, or
- * authored in Markdown mode) and image fragments (authored in WYSIWYG and exported as
- * "![code](whitem-emoji:id)") -- and a mix of the two, because a user editing such a message can
- * easily produce one.
- *
- * Requires a single plain block: no list, heading, blockquote, code or table. Anything else is a
- * message with structure, and structure means it is not the "just a couple of emoji" case this
- * exists for. Every emoji must also resolve locally; a partial match falls back to ordinary
- * inline rendering, since a row that was half large images and half text would read as a fault.
- */
-bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
-                       std::vector<QString>& reactionIds)
-{
-    reactionIds.clear();
-    if (maxCount<=0)
-    {
-        return false;
-    }
-
-    auto* root=doc->rootFrame();
-    for (auto it=root->begin(); !it.atEnd(); ++it)
-    {
-        // A child FRAME is a table -- structure, so not this case.
-        if (it.currentFrame()!=nullptr)
-        {
-            return false;
-        }
-    }
-
-    int blocks=0;
-    for (auto block=doc->begin(); block.isValid(); block=block.next())
-    {
-        const auto blockFormat=block.blockFormat();
-        if (blockFormat.headingLevel()>0
-            || block.textList()!=nullptr
-            || blockFormat.hasProperty(QTextFormat::BlockQuoteLevel)
-            || blockFormat.hasProperty(QTextFormat::BlockCodeLanguage)
-            || blockFormat.nonBreakableLines()
-            || blockFormat.hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth))
-        {
-            return false;
-        }
-
-        if (block.text().trimmed().isEmpty() && block.begin().atEnd())
-        {
-            // A wholly empty block (e.g. a trailing newline) neither counts nor disqualifies.
-            continue;
-        }
-
-        if (++blocks>1)
-        {
-            return false;
-        }
-
-        for (auto it=block.begin(); !it.atEnd(); ++it)
-        {
-            auto fragment=it.fragment();
-            if (!fragment.isValid())
-            {
-                continue;
-            }
-
-            auto charFormat=fragment.charFormat();
-            if (charFormat.isImageFormat())
-            {
-                const auto reactionId=emojiReactionId(charFormat.toImageFormat().name());
-                if (reactionId.isEmpty())
-                {
-                    return false;
-                }
-                const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
-                if (info==nullptr || !info->icon)
-                {
-                    return false;
-                }
-                reactionIds.push_back(reactionId);
-                if (static_cast<int>(reactionIds.size())>maxCount)
-                {
-                    return false;
-                }
-                continue;
-            }
-
-            const auto text=fragment.text();
-            const auto matches=findEmojiCharacters(text);
-
-            // Everything that is NOT one of the matches must be whitespace, or this message has
-            // text in it and is not emoji-only.
-            int cursor=0;
-            for (const auto& match : matches)
-            {
-                if (!QStringView{text}.mid(cursor,match.start-cursor).trimmed().isEmpty())
-                {
-                    return false;
-                }
-                reactionIds.push_back(match.reactionId);
-                if (static_cast<int>(reactionIds.size())>maxCount)
-                {
-                    return false;
-                }
-                cursor=match.start+match.length;
-            }
-            if (!QStringView{text}.mid(cursor).trimmed().isEmpty())
-            {
-                return false;
-            }
-        }
-    }
-
-    return !reactionIds.empty();
-}
-
 /******************************* QTextDocument -> HTML walk ******************************/
 
 //! One currently-open <ul>/<ol> in the nesting stack -- see HtmlWriter::openListItem().
@@ -1271,6 +1157,110 @@ class HtmlWriter
 };
 
 } // anonymous namespace
+
+//--------------------------------------------------------------------------
+
+bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
+                       std::vector<QString>& reactionIds)
+{
+    reactionIds.clear();
+    if (maxCount<=0)
+    {
+        return false;
+    }
+
+    auto* root=doc->rootFrame();
+    for (auto it=root->begin(); !it.atEnd(); ++it)
+    {
+        // A child FRAME is a table -- structure, so not this case.
+        if (it.currentFrame()!=nullptr)
+        {
+            return false;
+        }
+    }
+
+    int blocks=0;
+    for (auto block=doc->begin(); block.isValid(); block=block.next())
+    {
+        const auto blockFormat=block.blockFormat();
+        if (blockFormat.headingLevel()>0
+            || block.textList()!=nullptr
+            || blockFormat.hasProperty(QTextFormat::BlockQuoteLevel)
+            || blockFormat.hasProperty(QTextFormat::BlockCodeLanguage)
+            || blockFormat.nonBreakableLines()
+            || blockFormat.hasProperty(QTextFormat::BlockTrailingHorizontalRulerWidth))
+        {
+            return false;
+        }
+
+        if (block.text().trimmed().isEmpty() && block.begin().atEnd())
+        {
+            // A wholly empty block (e.g. a trailing newline) neither counts nor disqualifies.
+            continue;
+        }
+
+        if (++blocks>1)
+        {
+            return false;
+        }
+
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            auto fragment=it.fragment();
+            if (!fragment.isValid())
+            {
+                continue;
+            }
+
+            auto charFormat=fragment.charFormat();
+            if (charFormat.isImageFormat())
+            {
+                const auto reactionId=emojiReactionId(charFormat.toImageFormat().name());
+                if (reactionId.isEmpty())
+                {
+                    return false;
+                }
+                const auto* info=ReactionIconPacks::instance().iconInfo(reactionId);
+                if (info==nullptr || !info->icon)
+                {
+                    return false;
+                }
+                reactionIds.push_back(reactionId);
+                if (static_cast<int>(reactionIds.size())>maxCount)
+                {
+                    return false;
+                }
+                continue;
+            }
+
+            const auto text=fragment.text();
+            const auto matches=findEmojiCharacters(text);
+
+            // Everything that is NOT one of the matches must be whitespace, or this message has
+            // text in it and is not emoji-only.
+            int cursor=0;
+            for (const auto& match : matches)
+            {
+                if (!QStringView{text}.mid(cursor,match.start-cursor).trimmed().isEmpty())
+                {
+                    return false;
+                }
+                reactionIds.push_back(match.reactionId);
+                if (static_cast<int>(reactionIds.size())>maxCount)
+                {
+                    return false;
+                }
+                cursor=match.start+match.length;
+            }
+            if (!QStringView{text}.mid(cursor).trimmed().isEmpty())
+            {
+                return false;
+            }
+        }
+    }
+
+    return !reactionIds.empty();
+}
 
 //--------------------------------------------------------------------------
 

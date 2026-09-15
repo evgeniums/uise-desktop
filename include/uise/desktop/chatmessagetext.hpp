@@ -1041,6 +1041,8 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         QString linkAt(const QPoint& pos) const override;
 
+        bool isBubbleTransparentHint() const override;
+
     protected:
 
         void updateChatMessage() override;

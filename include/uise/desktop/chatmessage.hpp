@@ -168,6 +168,12 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         void updateChatMessage() override;
         void updateWidgets() override;
 
+        //! Reacts to a CHANGE in AbstractChatMessageContent::isBubbleTransparent(): repolishes
+        //! this bubble to [transparent=...] (chat.qss drops the background/border-radius rule for
+        //! it), puts bottom() into/out of chip mode, and re-derives the row's hover visibility --
+        //! see updateBottomVisibility().
+        void applyBubbleTransparency(bool enable) override;
+
         //! Moves bottom() in/out of m_layout when isBottomInline() actually flipped since the
         //! last call -- see AbstractChatMessageContent::updateBottomPlacement()'s own doc
         //! comment for when/why this runs.
@@ -187,6 +193,16 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         //! to `pad` px -- see AbstractChatMessageContent::applyAvatarSyncPad()'s own doc comment.
         void applyAvatarSyncPad(int pad) override;
 
+        //! Reveals bottom() while the pointer is over THIS bubble -- deliberately the bubble
+        //! itself, not the full-width message row, so hovering the empty column beside a
+        //! narrow/transparent bubble does not pop the chip. Moving from this widget onto one of
+        //! its own children (an image tile, the chip itself) does not fire leaveEvent() -- Qt
+        //! only sends Leave to a widget that stops being an ancestor of whatever is now under the
+        //! pointer -- so no extra bookkeeping is needed to keep the chip up while hovering the
+        //! content it sits over. Same idiom as ChatMessageReactionChip::enterEvent()/leaveEvent().
+        void enterEvent(QEnterEvent* event) override;
+        void leaveEvent(QEvent* event) override;
+
     private slots:
 
         void updateFirstInBatch();
@@ -194,7 +210,48 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
     private:
 
+        //! Shows/hides bottom() -- a no-op (always visible) unless isBubbleTransparent(), in
+        //! which case it is visible only while m_hovered. Geometry is untouched either way:
+        //! bottom() is never a layout item (see updateBottomPlacement()), and
+        //! AbstractChatMessageBottom::placedSize() already reserves chip padding purely from
+        //! isChipMode() -- a per-message state applyBubbleTransparency() sets once, not from
+        //! whether the row happens to be visible right now -- so revealing/hiding it here can
+        //! never shift the bubble.
+        void updateBottomVisibility();
+
+        //! Which side this bubble sits/points to -- read straight off the message rather than
+        //! cached from setRight(), whose only two callers both pass exactly this (see
+        //! updateChatMessage() and ChatMessage::updateAlignment()).
+        bool isRightAligned() const;
+
+        /**
+         * @brief Alignment every section is given inside m_layout.
+         *
+         * Qt::AlignLeft as it always was, EXCEPT for a right-aligned transparent bubble, where it
+         * is Qt::AlignRight. The bubble reserves room for the bottom row beside the content when
+         * the row goes inline (AbstractChatMessageContent::evaluateInlineBottom()), and with no
+         * background painted that reserved strip is simply invisible -- so on a right-aligned
+         * message a left-aligned content would appear to float away from the margin every other
+         * message lines up against, with a blank gap where the (hover-only) chip will be. Flipping
+         * both the content and the chip puts that gap on the INSIDE of the conversation, where it
+         * reads as ordinary spacing.
+         *
+         * Only ever affects body(): a transparent bubble by definition has no header/reply/comment
+         * and an empty, hidden reactions row (see updateBubbleTransparency()).
+         */
+        Qt::Alignment sectionAlignment() const;
+
+        //! Re-applies sectionAlignment() to every section currently in m_layout, for a change of
+        //! transparency or side after updateWidgets() built it. bottom() is skipped -- it is
+        //! never a layout item (see updateBottomPlacement()) and is placed by positionBottom().
+        void applySectionAlignment();
+
         QBoxLayout* m_layout;
+
+        //! Whether the pointer is currently over this bubble -- see enterEvent()/leaveEvent()
+        //! and updateBottomVisibility(). Meaningless (never consulted) unless
+        //! isBubbleTransparent().
+        bool m_hovered=false;
 
         //! Whether bottom() is currently a child item of m_layout (row mode) or has been taken
         //! out of it and is positioned manually instead (inline mode) -- see
@@ -334,6 +391,14 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         void setSent(bool enable);
         void setSelected(bool enable);
         void setLastInBatch(bool enable);
+
+        //! Suppresses the tail (paintEvent() returns before filling tailPath()) while the bubble
+        //! this avatar sits beside is transparent -- see AbstractChatMessageContent::
+        //! isBubbleTransparent(). Deliberately a plain C++ member, not a [transparent=...] QSS
+        //! rule on qproperty-tailColor: Qt never restores a qproperty whose rule stops matching
+        //! (the same reason m_last, not a QSS rule, already gates the tail on [last=...] -- see
+        //! this class' own doc comment above), so a recycled row would keep a stale tail colour.
+        void setBubbleTransparent(bool enable);
 
         /**
          * @brief Hide/show the avatar image because a ChatFloatingAvatar is (or is no longer)
@@ -485,6 +550,7 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         int m_avatarBottomOffset=-1;
         bool m_right=false;
         bool m_last=true;
+        bool m_bubbleTransparent=false;
 };
 
 //--------------------------------------------------------------------------

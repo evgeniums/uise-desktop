@@ -32,6 +32,17 @@ uise--AbstractChatMessageContent[selected="true"][sent="true"] {
 background-color: #AEE2FF; /* selected sent message */
 }
 
+/* Self-contained content (a single uncaptioned image, or a message that is nothing but 1-3
+ * emoji -- AbstractChatMessageBody::isBubbleTransparentHint()) painted with no bubble background
+ * at all, bare over the chat viewport's own wallpaper -- see
+ * AbstractChatMessageContent::isBubbleTransparent(). Deliberately placed AFTER [selected]/[sent]
+ * above so selecting (or editing/forwarding/reacting to/replying to) such a message wins back the
+ * ordinary opaque bubble unconditionally -- ChatMessageContent::applyBubbleTransparency() already
+ * guarantees the two states never coexist, this ordering is only a defence in depth. */
+uise--AbstractChatMessageContent[transparent="true"] {
+background-color: transparent;
+}
+
 /* Tail colours, paired one-for-one with the bubble colours above -- the tail is the bubble's own
  * corner continued outwards, so these must never drift apart. qproperty-tailColor rather than
  * background-color because ChatMessageAvatar paints the tail itself (see chat.qss's
@@ -89,6 +100,14 @@ color: #3F6FA0;
 uise--ChatMessageBottom QLabel[selected="true"],
 uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
 color: #1e6091;
+}
+
+/* The small rounded background a transparent bubble's bottom row paints behind itself once
+ * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules). A
+ * translucent white wash, same idiom light/chat.qss already uses for the unread-separator pill
+ * a few rules down -- legible over any chat wallpaper without introducing a new hue. */
+uise--ChatMessageBottom[chip="true"] {
+background-color: rgba(255, 255, 255, 0.65);
 }
 
 uise--ChatSeparatorSection uise--AvatarButton,

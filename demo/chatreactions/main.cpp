@@ -231,9 +231,9 @@ int main(int argc, char *argv[])
     avatarRowL->addWidget(clearButton);
     avatarRowL->addStretch(1);
 
-    // AvatarWidget renders its initials-circle fallback whenever setAvatarSource()/setAvatarPath()
-    // is never called -- exactly ChatReactionAvatar's own "no source, no path" default, so plain
-    // names are enough here without needing any actual image files.
+    // AvatarWidget renders its initials-circle fallback whenever it has neither an avatar source
+    // nor a path -- exactly ChatReactionAvatar's own default, so plain names are enough here
+    // without needing any actual image files.
     auto makeAvatar=[](const QString& name)
     {
         ChatReactionAvatar a;

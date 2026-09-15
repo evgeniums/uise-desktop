@@ -21,6 +21,13 @@ uise--AbstractChatMessageContent[sent="true"] {
 background-color: #355872; /* sent message */
 }
 
+/* Self-contained content (a single uncaptioned image, or a message that is nothing but 1-3
+ * emoji) painted with no bubble background at all -- see light/chat.qss's matching comment for
+ * the full rationale and the ordering-vs-[selected]/[sent] note. */
+uise--AbstractChatMessageContent[transparent="true"] {
+background-color: transparent;
+}
+
 uise--ChatMessageText uise--ChatMessageTextBrowser {
 background-color: transparent;
 border:none;
@@ -72,6 +79,14 @@ color: #7AAACE;
 uise--ChatMessageBottom QLabel[selected="true"],
 uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
 color: #9CD5FF;
+}
+
+/* The small rounded background a transparent bubble's bottom row paints behind itself once
+ * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules). Same
+ * grey wash idiom as the unread-separator pill below, a touch more opaque for the row's own text
+ * to stay legible over any chat wallpaper. */
+uise--ChatMessageBottom[chip="true"] {
+background-color: rgba(60, 60, 62, 0.75);
 }
 
 uise--ChatSeparatorSection uise--AvatarButton,

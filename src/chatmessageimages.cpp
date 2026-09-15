@@ -642,6 +642,26 @@ QUuid ChatMessageImages::fileItemAt(const QPoint& pos) const
 
 //--------------------------------------------------------------------------
 
+bool ChatMessageImages::isBubbleTransparentHint() const
+{
+    // A SINGLE image only. A multi-image album is a grid (see albumLayout()), and a grid needs
+    // the bubble behind it: the gaps between its tiles would otherwise show the chat wallpaper
+    // through the middle of what is meant to read as one group, and the group's own outer edge --
+    // ragged wherever the last row is short of a full one -- would have nothing to sit against.
+    // One tile has neither problem: it is a single rounded rectangle of artwork, complete on its
+    // own.
+    //
+    // A caption is rendered TEXT (an embedded ChatMessageText, see ensureComment()) and needs a
+    // background to stay legible over the chat wallpaper, so it rules the bare treatment out too.
+    // commentText, not comment()/pimpl->comment, is the source of truth for that: the comment
+    // widget itself is only ever built lazily on the first non-empty setComment() (see
+    // ensureComment()), so testing IT would read "no comment" for a bubble that has never yet
+    // been asked to render one even though commentText says otherwise.
+    return pimpl->items.size()==1 && pimpl->commentText.isEmpty();
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImages::setAnimationMode(ImageLabel::AnimationMode mode)
 {
     pimpl->animationMode=mode;

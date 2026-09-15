@@ -207,17 +207,13 @@ void ChatMessageReactionChip::updateAvatars()
         if (i<visibleCount)
         {
             const auto& a=avatars[i];
-            if (a.source)
-            {
-                widget->setAvatarSource(a.source);
-            }
-            else
-            {
-                // AvatarWidget::setAvatarPath() takes a WithPath -- built from std::string, not
-                // QString (ChatReactionAvatar::path's own type, for consistency with the rest of
-                // this section's Qt-facing API) -- so convert at the call site.
-                widget->setAvatarPath(a.path.toStdString());
-            }
+            // Source and path are NOT alternatives: the source is the fetcher, the path is what
+            // it is asked to fetch (and what seeds the generated fallback background color), so
+            // both are applied. Applied unconditionally, including when null/empty, because these
+            // widgets are reused across setReactions() calls -- skipping an unset field would
+            // leave the previous reactor's avatar showing under the new one's name.
+            widget->setAvatarSource(a.source);
+            widget->setAvatarPath(a.path);
             widget->setAvatarName(a.name.toStdString());
 
             auto ringX=static_cast<int>(i)*step;

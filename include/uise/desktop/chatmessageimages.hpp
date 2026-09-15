@@ -114,6 +114,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         QUuid fileItemAt(const QPoint& pos) const override;
 
+        bool isBubbleTransparentHint() const override;
+
         int bubbleWidthHint(int forMaxWidth) override;
 
         void updateMaximumBubbleWidth() override;

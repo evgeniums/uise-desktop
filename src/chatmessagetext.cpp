@@ -2522,6 +2522,15 @@ class ChatMessageText_p
         //! rendered document (Stage 5b re-render, Stage 6 mentions).
         QString sourceText;
         TextFormat sourceFormat=TextFormat::Markdown;
+
+        //! Whether the document loadText() just rendered is nothing but 1..emojiOnlyMaxCount()
+        //! emoji -- see isBubbleTransparentHint(). Recomputed at the end of every loadText() call
+        //! (both the Markdown branch, which may have already rendered the dedicated "emoji-only"
+        //! `<p>` HtmlWriter::renderEmojiOnly() produces, and the Html branch, which whitemdesktop's
+        //! own chatTextToHtml() pre-renders the exact same way) rather than only in the Markdown
+        //! branch -- testing the RENDERED document is what makes this correct on both paths, see
+        //! this class' isBubbleTransparentHint() doc comment. Cleared by clearText().
+        bool emojiOnly=false;
 };
 
 //--------------------------------------------------------------------------
@@ -2611,6 +2620,17 @@ void ChatMessageText::loadText(const QString& text, TextFormat format)
     // document's true idealWidth() (measured fresh by the next bubbleWidthHint() call) is what
     // updateMaximumBubbleWidth() must pin to instead.
     pimpl->lastHintWidth=0;
+
+    // Tested against the RENDERED document, not the source text/format -- correct on every
+    // branch above without special-casing any of them: the Markdown branch may have already gone
+    // through HtmlWriter::renderEmojiOnly() (image fragments), the Html branch is whitemdesktop's
+    // own chatTextToHtml() pre-rendering the identical "emoji-only" shape (also image fragments,
+    // bypassing this class' own emoji options entirely -- see isBubbleTransparentHint()'s doc
+    // comment), and Plain content still carries literal emoji CHARACTERS findEmojiCharacters()
+    // matches regardless of isEmojiEnabled() -- rendering as a plain OS glyph rather than a pack
+    // image does not make the character (e.g. U+1F44D, thumbs up) any less a real emoji.
+    std::vector<QString> emojiOnlyIds;
+    pimpl->emojiOnly=emojiOnlyDocument(pimpl->text->document(),emojiOnlyMaxCount(),emojiOnlyIds);
 }
 
 //--------------------------------------------------------------------------
@@ -2622,6 +2642,7 @@ void ChatMessageText::clearText()
     pimpl->lastHintWidth=0;
     pimpl->sourceText.clear();
     pimpl->sourceFormat=TextFormat::Markdown;
+    pimpl->emojiOnly=false;
 }
 
 //--------------------------------------------------------------------------
@@ -2889,6 +2910,13 @@ void ChatMessageText::selectText(const QString& text)
 QString ChatMessageText::linkAt(const QPoint& pos) const
 {
     return pimpl->text->anchorAt(pimpl->text->mapFrom(this,pos));
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageText::isBubbleTransparentHint() const
+{
+    return pimpl->emojiOnly;
 }
 
 //--------------------------------------------------------------------------

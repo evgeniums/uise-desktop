@@ -139,6 +139,9 @@ padding: 0px;
    above is what makes it 22px square, and ChatMessageTextBrowser::updateTableExpandButtons()
    calls adjustSize() so it positions from whatever that comes to. */
 
+/* border-radius/padding stay in effect even for a transparent bubble
+ * (uise--AbstractChatMessageContent[transparent="true"] in light/chat.qss, dark/chat.qss) --
+ * that rule only drops background-color, nothing here. */
 uise--AbstractChatMessageContent {
 border-radius: 16px;
 padding: 4px 4px 0 4px;
@@ -342,7 +345,15 @@ max-width: 40px;
  * uise--AbstractChatMessageContent's own bottom padding is not (it is 0 above, and inline the row
  * sits inside the trailing text's own dead space, which the bubble is trimmed to instead). The
  * gap that reads visually is a couple of px larger, since the row's own ink stops short of its
- * box edge. rowTopGap is its counterpart above the row, row mode only. */
+ * box edge. rowTopGap is its counterpart above the row, row mode only.
+ *
+ * chipPadding is unrelated to all of the above -- it only applies while this row is in "chip"
+ * mode (uise--ChatMessageBottom[chip="true"] below), i.e. sitting on a transparent bubble
+ * (AbstractChatMessageContent::isBubbleTransparent()) and painting its OWN small rounded
+ * background rather than relying on the bubble's. It pads the row on ALL FOUR sides -- both the
+ * space the chip's background is drawn into and, via AbstractChatMessageBottom::placedSize(), the
+ * extra size reserved for the row wherever bottomNaturalSize()/bubbleWidthHint() feed into the
+ * bubble's own width/height negotiation. */
 uise--AbstractChatMessageBottom {
 qproperty-rowMinWidth: 90;
 qproperty-narrowBodyWidth: 200;
@@ -350,13 +361,26 @@ qproperty-inlineBottomGap: 10;
 qproperty-inlineBottomYOffset: 1;
 qproperty-rowTopGap: 4;
 qproperty-rowBottomPadding: 4;
+qproperty-chipPadding: 4;
 }
 
 /* Do NOT add a `padding` rule for uise--ChatMessageBottom here: the row is placed explicitly
- * (ChatMessageContent::positionBottom()), sized to its own naturalSize(), so QSS padding -- which
- * lands on that same widget's contentsMargins -- would be counted twice and re-introduce exactly
- * the squeezed/clipped row this replaced. Tune qproperty-rowTopGap / qproperty-rowBottomPadding
- * above instead. */
+ * (ChatMessageContent::positionBottom()), sized to its own naturalSize()/placedSize(), so QSS
+ * padding -- which lands on that same widget's contentsMargins -- would be counted twice and
+ * re-introduce exactly the squeezed/clipped row this replaced. Tune qproperty-rowTopGap/
+ * qproperty-rowBottomPadding (ordinary bubble) or qproperty-chipPadding (chip mode) above instead
+ * -- ChatMessageContent::updateBottomPlacement() is the one place that ever sets this row's
+ * contentsMargins, from exactly those properties. */
+
+/* The small rounded chip a transparent bubble's bottom row paints behind itself once hovered --
+ * see uise--AbstractChatMessageContent[transparent="true"] (light/chat.qss, dark/chat.qss) for
+ * the bubble side of the same feature. Colour lives in light/chat.qss and dark/chat.qss, paired
+ * with that rule the same way the bubble's own [sent]/[selected] colours are paired with their
+ * tail colours. Radius is deliberately its own value, not tailHeight/border-radius above -- this
+ * is a small standalone pill, not a corner of anything. */
+uise--ChatMessageBottom[chip="true"] {
+border-radius: 9px;
+}
 
 /* Hard cap on rendered text width -- a bubble that fills a wide window produces unreadably long
  * lines. Matches ChatMessageText both as a message body and as the comment inside an image album
