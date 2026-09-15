@@ -342,6 +342,13 @@ class UISE_DESKTOP_EXPORT ChatReactionGalleryDropdown : public DropdownFrame
         void setPack(std::shared_ptr<AbstractReactionIconPack> pack);
         void setOwnReactionIds(QStringList ids);
 
+        //! Forwarded to BOTH pages, same as setPack()/setOwnReactionIds() -- to the collapsed
+        //! quick bar via ChatReactionQuickBar::setLeadingIconIds() and to the expanded gallery's
+        //! own recents row via ChatReactionGallery::setRecentIds() -- so whichever page
+        //! setExpanded() shows next already has current data instead of needing a push on every
+        //! switch. @see ChatReactionGallery::setRecentIds() for the bare-icon-id/prepend contract.
+        void setRecentIds(QStringList ids);
+
         //! Switch between the collapsed quick bar and the expanded gallery. If the frame is
         //! currently open, this re-measures immediately (DropdownFrame::remeasureKeepingTopLeft())
         //! rather than waiting for the next opening -- the quick bar's own on-screen position

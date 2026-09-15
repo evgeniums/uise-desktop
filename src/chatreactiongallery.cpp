@@ -543,6 +543,14 @@ void ChatReactionGalleryDropdown::setOwnReactionIds(QStringList ids)
 
 //--------------------------------------------------------------------------
 
+void ChatReactionGalleryDropdown::setRecentIds(QStringList ids)
+{
+    m_quickBar->setLeadingIconIds(ids);
+    m_gallery->setRecentIds(std::move(ids));
+}
+
+//--------------------------------------------------------------------------
+
 void ChatReactionGalleryDropdown::setExpanded(bool enable)
 {
     if (m_expanded==enable)
