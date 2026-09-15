@@ -555,7 +555,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>EditableLabelBool</name>
     <message>
-        <location filename="../include/uise/desktop/editablelabel.hpp" line="+922"/>
+        <location filename="../include/uise/desktop/editablelabel.hpp" line="+947"/>
         <source>On</source>
         <translation>Вкл</translation>
     </message>
@@ -2730,7 +2730,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1727"/>
+        <location filename="../src/chatmessage.cpp" line="+1935"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
@@ -2895,13 +2895,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EditableLabel</name>
     <message>
-        <location filename="../src/editablelabel.cpp" line="+89"/>
-        <location line="+98"/>
+        <location filename="../src/editablelabel.cpp" line="+90"/>
+        <location line="+124"/>
         <source>Edit</source>
         <translation>Изменить</translation>
     </message>
     <message>
-        <location line="-91"/>
+        <location line="-117"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>
@@ -2911,7 +2911,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+113"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -3286,7 +3286,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::Label</name>
     <message>
-        <location filename="../src/label.cpp" line="+78"/>
+        <location filename="../src/label.cpp" line="+106"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
