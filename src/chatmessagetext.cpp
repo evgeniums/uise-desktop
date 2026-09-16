@@ -297,6 +297,50 @@ void ChatMessageTextBrowser::setCodeBlockPadding(int padding)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageTextBrowser::setDocumentTopMargin(int margin)
+{
+    if (m_documentTopMargin==margin)
+    {
+        return;
+    }
+
+    m_documentTopMargin=margin;
+    applyDocumentTopMargin();
+    updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyDocumentTopMargin()
+{
+    if (m_documentTopMargin==UseDocumentMargin)
+    {
+        return;
+    }
+
+    auto* doc=document();
+    if (doc==nullptr || doc->rootFrame()==nullptr)
+    {
+        return;
+    }
+
+    // The root frame's margin is where QTextDocument::setDocumentMargin() actually stores that
+    // value (it does a QTextFrameFormat::setMargin(), i.e. all four sides), so overriding one side
+    // back out here is the only way to get an asymmetric document margin -- QTextDocument itself
+    // exposes no per-side accessor. Everything that reads documentMargin() still sees the
+    // unchanged uniform value, which is what keeps the horizontal inset (and the code-block slab
+    // geometry derived from it) exactly as it was.
+    auto fmt=doc->rootFrame()->frameFormat();
+    if (fmt.topMargin()==static_cast<qreal>(m_documentTopMargin))
+    {
+        return;
+    }
+    fmt.setTopMargin(m_documentTopMargin);
+    doc->rootFrame()->setFrameFormat(fmt);
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::applyCodeBlockLayout()
 {
     // Overlays are RECYCLED across passes, exactly as applyWideTableLayout() recycles its expand
@@ -1191,6 +1235,10 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     // Before setHtml(), never after -- see registerEmojiResources()'s own doc comment.
     registerEmojiResources(html);
     setHtml(html);
+    // setHtml() rebuilt the root frame with a uniform documentMargin() -- see
+    // applyDocumentTopMargin(). Runs before the two passes below so they measure the document at
+    // its final height.
+    applyDocumentTopMargin();
     // setHtml() does NOT replace the underlying QTextDocument object -- QWidgetTextControlPrivate::
     // setContent() only allocates a new one when this widget has none yet, otherwise it calls
     // doc->setHtml() on the SAME object (verified against Qt 6.9.0 source; the comment this
@@ -1221,6 +1269,7 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // someone else's message. See this method's own header doc comment.
     m_lastHtml.clear();
     setPlainText(text);
+    applyDocumentTopMargin();
     // Plain text has no code blocks -- run the pass anyway rather than clearing m_codeBlocks by
     // hand: it finds none, and its own empty path is what destroys the previous content's overlay
     // strips (a bare clear() would drop the QPointers and leave the widgets parented to viewport()
@@ -1379,6 +1428,7 @@ void ChatMessageTextBrowser::applyDocumentStyle()
         // Same rule as setHtmlContent(): resources go in before the HTML that references them.
         registerEmojiResources(m_lastHtml);
         setHtml(m_lastHtml);
+        applyDocumentTopMargin();
         // The replay rebuilt the document, discarding every per-message format derived from the
         // PREVIOUS load along with it -- both passes have to run again, exactly as they do after
         // setHtmlContent()'s own setHtml().
@@ -1473,6 +1523,7 @@ void ChatMessageTextBrowser::setWideTableScrollEnabled(bool enable)
         // tables WITHOUT pinning any of them -- expand buttons stay, they are governed
         // separately by tableExpandButton.
         setHtml(m_lastHtml);
+        applyDocumentTopMargin();
     }
 
     applyWideTableLayout();

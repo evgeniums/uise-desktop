@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
+#include <QKeyEvent>
 #include <QShortcut>
 #include <QVariantAnimation>
 #include <QPointer>
@@ -99,6 +100,7 @@ class DropdownFrame_p
         bool selfDismissEnabled=true;
         bool verticalFlipEnabled=true;
         bool restoreFocus=true;
+        bool keyboardInputEnabled=false;
 
         // QWidget::mousePressEvent ignores unhandled presses by default, which makes Qt
         // redeliver the SAME press event to the parent chain. Since the click that opens the
@@ -214,26 +216,13 @@ DropdownFrame::DropdownFrame(QWidget* parent)
     // Qt::ApplicationShortcut fires regardless of which of the app's windows is active
     pimpl->escShortcut->setContext(Qt::ApplicationShortcut);
     pimpl->escShortcut->setEnabled(false);
-    connect(
-        pimpl->escShortcut,
-        &QShortcut::activated,
-        this,
-        [this]()
-        {
-            emit closeRequested(CloseReason::Escape);
-            closeDropdown();
-        }
-    );
-    connect(
-        pimpl->escShortcut,
-        &QShortcut::activatedAmbiguously,
-        this,
-        [this]()
-        {
-            emit closeRequested(CloseReason::Escape);
-            closeDropdown();
-        }
-    );
+    auto onEscape=[this]()
+    {
+        emit closeRequested(CloseReason::Escape);
+        closeDropdown();
+    };
+    connect(pimpl->escShortcut,&QShortcut::activated,this,onEscape);
+    connect(pimpl->escShortcut,&QShortcut::activatedAmbiguously,this,onEscape);
 }
 
 //--------------------------------------------------------------------------
@@ -400,6 +389,18 @@ void DropdownFrame::setRestoreFocus(bool enable) noexcept
 bool DropdownFrame::isRestoreFocus() const noexcept
 {
     return pimpl->restoreFocus;
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::setKeyboardInputEnabled(bool enable) noexcept
+{
+    pimpl->keyboardInputEnabled=enable;
+}
+
+bool DropdownFrame::isKeyboardInputEnabled() const noexcept
+{
+    return pimpl->keyboardInputEnabled;
 }
 
 //--------------------------------------------------------------------------
@@ -1479,6 +1480,64 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
             emit closeRequested(CloseReason::OutsideClick);
             closeDropdown();
             break;
+        }
+
+        case (QEvent::KeyPress): [[fallthrough]];
+        case (QEvent::KeyRelease):
+        {
+            if (!pimpl->keyboardInputEnabled)
+            {
+                break;
+            }
+
+            // Escape belongs to the FRAME, never to its content: the frame binds it for its own
+            // dismissal, and nothing hosted in one has a use for it (ChatReactionGallery goes out
+            // of its way to turn SearchLineEdit's own cancel shortcut off for exactly that
+            // reason). Excluded on those grounds alone -- letting content swallow a frame's own
+            // dismissal key could only ever be a bug. Any further key this frame binds belongs in
+            // this test too.
+            //
+            // Note for anyone debugging Escape here: this exclusion was ALSO tried as a fix for
+            // "the first Escape press does nothing, the second dismisses the popup" and did not
+            // change that symptom, so this filter is not what swallows the first press. See
+            // todos/bug-single-escape-does-not-close-dropdown-chain.md in the consuming project
+            // before spending time here.
+            if (static_cast<QKeyEvent*>(event)->key()==Qt::Key_Escape)
+            {
+                break;
+            }
+
+            // focusWidget() is this frame's own focus CHILD, which setFocus() records regardless
+            // of window activation -- exactly the state the platform's key delivery ignores (see
+            // setKeyboardInputEnabled()). Visibility/enabled are re-checked because the focus
+            // child survives the widget being hidden: the reactions dropdown keeps its collapsed
+            // quick-bar panel and its expanded gallery panel alive at the same time, so a stale
+            // pointer to the hidden gallery's search box is a real possibility, and forwarding to
+            // it would swallow keys into nothing.
+            auto* target=focusWidget();
+            if (target==nullptr || target==this || !target->isVisible() || !target->isEnabled())
+            {
+                break;
+            }
+
+            auto* w=qobject_cast<QWidget*>(obj);
+            if (w!=nullptr && (w==this || isAncestorOf(w)))
+            {
+                // the re-entrant pass: QCoreApplication::sendEvent() below runs application event
+                // filters again, so the forwarded event comes straight back here with the target
+                // as obj. Let it through untouched, or it forwards to itself forever.
+                break;
+            }
+
+            // A copy rather than the original: sendEvent() clears the event's spontaneous flag
+            // and overwrites its accepted state, and the original still belongs to the platform
+            // dispatch that handed it to this filter.
+            auto* ke=static_cast<QKeyEvent*>(event);
+            QKeyEvent forwarded(ke->type(),ke->key(),ke->modifiers(),ke->nativeScanCode(),
+                                ke->nativeVirtualKey(),ke->nativeModifiers(),ke->text(),
+                                ke->isAutoRepeat(),static_cast<quint16>(ke->count()));
+            QApplication::sendEvent(target,&forwarded);
+            return true;
         }
 
         case (QEvent::WindowDeactivate):

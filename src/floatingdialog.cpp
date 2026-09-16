@@ -331,10 +331,20 @@ void FloatingDialogFrame::setWidget(QWidget* widget, bool autoDestroy)
     pimpl->layout->addWidget(widget);
 
     // An AbstractDialog can opt out of mouse-drag resizing (AbstractDialog::isResizable()) --
-    // SetFixedSize keeps this frame's own minimumSize()/maximumSize() continuously pinned to
-    // the layout's sizeHint() as the content's natural size changes, which is also what
-    // disables the OS-level resize affordance on a frameless top-level window; non-dialog
-    // content (no titleBar()/isResizable() to ask) keeps the ordinary default constraint.
+    // SetFixedSize keeps this frame's own minimumSize()/maximumSize() continuously pinned to the
+    // layout's sizeHint() as the content's natural size changes; non-dialog content (no
+    // titleBar()/isResizable() to ask) keeps the ordinary default constraint.
+    //
+    // KNOWN INCOMPLETE, and this comment used to claim otherwise: pinning min==max does NOT
+    // actually stop the user resizing a frameless top-level window on macOS. The frame can still
+    // be dragged larger, and because the content is held at its own size hint it stays put while
+    // the frame grows around it, leaving a band of empty space. Both the constraint itself and an
+    // attempt to establish min==max before the native window is created (on the theory that
+    // QCocoaWindow derives its resizable style-mask bit from min!=max at creation time) failed to
+    // change that. The root cause is not traced -- do not reach for a third guess here without
+    // first confirming what the platform window actually reports. Tracked as a defect in the
+    // consuming project's own deferred-work list under the name
+    // "floating dialog resize not disabled".
     auto* dialog=qobject_cast<AbstractDialog*>(widget);
     pimpl->layout->setSizeConstraint(
         (dialog!=nullptr && !dialog->isResizable()) ? QLayout::SetFixedSize

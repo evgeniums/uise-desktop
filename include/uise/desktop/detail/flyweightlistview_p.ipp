@@ -80,6 +80,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_atBegin(true),
         m_atEnd(true),
         m_firstWidgetPos(0),
+        m_lastWidgetEdge(0),
         m_firstItem(nullptr),
         m_lastItem(nullptr),
         m_singleStep(10),
@@ -197,6 +198,36 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     resizeList("setupUi");
 
     m_qobjectHelper.setListResizeHandler([this](){onListContentResized();});
+
+    // Synchronous counterpart to onListContentResized()'s deferred 0 ms path below: when an
+    // already-displayed item widget changes size in place (e.g. a reaction chip landing on a
+    // message bubble), LinkedListView::event() finds its content extent no longer matches
+    // m_llist's own size on a posted LayoutRequest/ContentsRectChange -- see that call site's
+    // comment. Resize+compensate right there, in the same turn, so the intermediate
+    // uncompensated relayout() is never painted (previously visible as a one-frame flicker of
+    // the list growing/moving the wrong way before snapping back).
+    //
+    // Deliberately does NOT call viewportUpdated() itself -- see the REVERTED-connection comment
+    // a few lines above this block: viewportUpdated()'s first action, keepCurrentConfiguration(),
+    // is synchronous and would overwrite m_atEnd/m_atBegin/m_firstWidgetPos/m_lastWidgetEdge
+    // before compensateSizeChange() (called from within resizeList() below) gets to read the
+    // correct pre-growth snapshot. onListContentResized()'s own deferred handler still runs
+    // right after this and refreshes that snapshot for the next change; its own resizeList()
+    // call becomes a cheap no-op here since the size already matches.
+    m_llist->setContentResizeHandler(
+        [this]()
+        {
+            if (m_ignoreUpdates)
+            {
+                // Inside beginUpdate()/endUpdate() -- endUpdate()'s own resizeList("endUpdate")
+                // owns resize+compensate for this batch; let LinkedListView fall back to its
+                // plain relayout() for this specific event instead of racing that call.
+                return;
+            }
+            resizeList("layoutRequest");
+            onListContentResized();
+        }
+    );
 
     if (m_llist->frameWidth()!=0)
     {
@@ -757,23 +788,50 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
         return;
     }
 
+    // Not flush at the sticking edge: anchor the viewport to whichever end it sticks to, so an
+    // in-place size change elsewhere shifts content away from that anchor instead of past it.
+    //   - m_stick==END (chat): anchor the LAST viewport item's bottom edge. A change above it
+    //     (including inside it, e.g. a reaction chip growing that same bubble) shifts the list
+    //     up, extending the grown item upward with everything at/below the anchor unmoved. A
+    //     change below the last viewport item (below the viewport) leaves the anchor unmoved,
+    //     so nothing is compensated -- correct, since the visible content didn't change.
+    //   - otherwise (HOME): the pre-existing behaviour, anchored on the FIRST viewport item's
+    //     top position -- a change pushes content below it down.
+    bool stickEnd=(m_stick==Direction::END);
+
     const ItemT* oldItem=nullptr;
 
     const auto& idx=itemIdx();
     const auto& order=itemOrder();
-    if (auto it=idx.find(m_firstViewportItemID); it!=idx.end())
+    const auto& anchorId=stickEnd?m_lastViewportItemID:m_firstViewportItemID;
+    const auto& anchorSortValue=stickEnd?m_lastViewportSortValue:m_firstViewportSortValue;
+    if (auto it=idx.find(anchorId); it!=idx.end())
     {
         oldItem=&(*it);
     }
-    else if (auto it=order.find(m_firstViewportSortValue); it!=order.end())
+    else if (auto it=order.find(anchorSortValue); it!=order.end())
     {
         oldItem=&(*it);
+    }
+    else if (stickEnd)
+    {
+        // Mirror of the HOME-branch scan below, walking from the tail: the LAST item whose sort
+        // value is still <= the remembered one, i.e. the nearest surviving neighbour on the
+        // correct side if the exact anchor item itself was removed.
+        for (auto it=order.rbegin();it!=order.rend();++it)
+        {
+            if (m_orderComparer(it->sortValue(),anchorSortValue) || itemOrdersEqual(it->sortValue(),anchorSortValue))
+            {
+                oldItem=&(*it);
+                break;
+            }
+        }
     }
     else
     {
         for (auto it=order.begin();it!=order.end();++it)
         {
-            if (m_orderComparer(m_firstViewportSortValue,it->sortValue()) || itemOrdersEqual(m_firstViewportSortValue,it->sortValue()))
+            if (m_orderComparer(anchorSortValue,it->sortValue()) || itemOrdersEqual(anchorSortValue,it->sortValue()))
             {
                 oldItem=&(*it);
                 break;
@@ -803,26 +861,28 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
         return;
     }
 
-    auto oldWidgetPos=oprop(oldWidget,OProp::pos);
-    if (oldWidgetPos!=m_firstWidgetPos)
+    auto anchorProp=stickEnd?OProp::edge:OProp::pos;
+    auto rememberedPos=stickEnd?m_lastWidgetEdge:m_firstWidgetPos;
+    auto oldWidgetPos=oprop(oldWidget,anchorProp);
+    if (oldWidgetPos!=rememberedPos)
     {
-        auto delta=m_firstWidgetPos-oldWidgetPos;
+        auto delta=rememberedPos-oldWidgetPos;
         auto pos=m_llist->pos();
         auto oldListPos=oprop(pos,OProp::pos);
         setOProp(pos,OProp::pos,oprop(pos,OProp::pos)+delta);
         if (fwlvDebugEnabled())
         {
-            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based: rememberedPos="
-                       << m_firstWidgetPos << " currentPos=" << oldWidgetPos << " delta=" << delta
-                       << " llist.pos " << oldListPos << " -> " << oprop(pos,OProp::pos)
-                       << std::endl;
+            std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based (" << (stickEnd?"end":"home")
+                       << "): rememberedPos=" << rememberedPos << " currentPos=" << oldWidgetPos
+                       << " delta=" << delta << " llist.pos " << oldListPos << " -> "
+                       << oprop(pos,OProp::pos) << std::endl;
         }
         m_llist->move(pos);
     }
     else if (fwlvDebugEnabled())
     {
-        std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based: no change, anchor "
-                      "already at remembered pos " << m_firstWidgetPos << std::endl;
+        std::cerr << "CHAT-FWLV-DEBUG: compensateSizeChange() anchor-based (" << (stickEnd?"end":"home")
+                   << "): no change, anchor already at remembered pos " << rememberedPos << std::endl;
     }
 
     m_updateStickingPositionsTimer.shot(
@@ -1773,6 +1833,20 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
     item=lastViewportItem();
     keep(item,m_lastViewportItemID,m_lastViewportSortValue);
 
+    if (item && item->widget())
+    {
+        // Mirrors m_firstWidgetPos above, for compensateSizeChange()'s stick==END branch: the
+        // last viewport item's bottom edge (within m_llist's coordinate space) is what that
+        // branch keeps fixed, so an in-place size change anywhere at or above it shifts the
+        // list up instead of pushing the tail down. See compensateSizeChange() for the branch
+        // that consumes this.
+        m_lastWidgetEdge=oprop(item->widget(),OProp::edge);
+    }
+    else
+    {
+        m_lastWidgetEdge=0;
+    }
+
     m_atBegin=isAtBegin();
     m_atEnd=isAtEnd();
 
@@ -1781,6 +1855,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
         std::cerr << "CHAT-FWLV-DEBUG: keepCurrentConfiguration() firstViewportItem="
                    << (firstFound ? "found" : "null") << " lastViewportItem="
                    << (item!=nullptr ? "found" : "null") << " m_firstWidgetPos=" << m_firstWidgetPos
+                   << " m_lastWidgetEdge=" << m_lastWidgetEdge
                    << " llist.pos=" << oprop(m_llist->pos(),OProp::pos) << " -> m_atBegin="
                    << m_atBegin << " m_atEnd=" << m_atEnd << std::endl;
     }

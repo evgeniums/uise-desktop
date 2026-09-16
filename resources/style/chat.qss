@@ -2,6 +2,16 @@ uise--ChatMessageText uise--ChatMessageTextBrowser {
 border-radius:0;
 background-color: transparent;
 border:none;
+/* Drops the TOP side of QTextDocument's own documentMargin (4px, uniform on all four sides by
+   construction) so the only space above the first line is uise--AbstractChatMessageContent's
+   padding-top below. Without this the text sits visibly low in the bubble: the space UNDER it is
+   trimmed to qproperty-rowBottomPadding by AbstractChatMessageContent::setMaximumBubbleWidth(),
+   which has no counterpart above, so the document margin lands on one side only. The left/right
+   inset is deliberately untouched -- it is what gives the text its horizontal breathing room
+   inside the bubble's own 4px padding, and the code-block slab's edges are measured from it.
+   Scoped under uise--ChatMessageText so the standalone table/code-block viewers, which are bare
+   uise--ChatMessageTextBrowser instances, keep Qt's uniform margin. */
+qproperty-documentTopMargin: 0;
 }
 
 /* Only reachable once a host opts into ChatMessageText::setCopyable(true) (see
@@ -139,11 +149,26 @@ padding: 0px;
    above is what makes it 22px square, and ChatMessageTextBrowser::updateTableExpandButtons()
    calls adjustSize() so it positions from whatever that comes to. */
 
-/* border-radius/padding stay in effect even for a transparent bubble
- * (uise--AbstractChatMessageContent[transparent="true"] in light/chat.qss, dark/chat.qss) --
- * that rule only drops background-color, nothing here. */
+/* HARD CONSTRAINT on this radius: the two corners on the SAME edge must sum to no more than the
+   bubble's own size along that edge, or Qt does not shrink them to fit -- qNormalizeRadii()
+   (qtbase/src/gui/painting/qcssutil.cpp, used by the very path that fills this background) zeroes
+   BOTH of them outright, i.e. the edge comes out perfectly square with no warning. The binding
+   edge is the vertical one on the FAR side from the tail, where this base radius applies to both
+   corners: 2*14=28 against a single-line bubble's 30px, so there is 2px of slack. The near side is
+   6px/0px (the [right=...] rules below) and never comes close.
+
+   That is why this is 14 and not 16: a single-line bubble measured 34px while the text carried a
+   top document margin, and 2*16=32 fitted by 2px; dropping that margin (qproperty-documentTopMargin
+   at the top of this file, which is what vertically centres the text) took the bubble to 30px and
+   tipped 32 over the edge -- every single-line bubble lost its far-side corners. Keep 2*radius
+   comfortably under the height of a one-line bubble when changing either this or the vertical
+   padding/margins, and check a ONE-LINE bubble specifically: a taller one cannot show the fault.
+
+   border-radius/padding here stay in effect even for a transparent bubble
+   (uise--AbstractChatMessageContent[transparent="true"] in light/chat.qss, dark/chat.qss) -- that
+   rule only drops background-color, nothing here. */
 uise--AbstractChatMessageContent {
-border-radius: 16px;
+border-radius: 14px;
 padding: 4px 4px 0 4px;
 }
 
@@ -165,8 +190,10 @@ border-top-right-radius: 6px;
 border-bottom-right-radius: 6px;
 }
 
+/* Kept equal to the base border-radius above, not an independent value -- this is "the first
+   bubble of a batch rounds its near side like its far side", so the two must move together. */
 uise--AbstractChatMessageContent[right="true"][first="true"] {
-border-top-right-radius: 16px;
+border-top-right-radius: 14px;
 }
 
 uise--AbstractChatMessageContent[right="true"][last="true"] {
@@ -179,8 +206,9 @@ border-top-left-radius: 6px;
 border-bottom-left-radius: 6px;
 }
 
+/* Mirror of the [right="true"][first="true"] rule above -- same "equal to the base radius" rule. */
 uise--AbstractChatMessageContent[right="false"][first="true"] {
-border-top-left-radius: 16px;
+border-top-left-radius: 14px;
 }
 
 uise--AbstractChatMessageContent[right="false"][last="true"] {

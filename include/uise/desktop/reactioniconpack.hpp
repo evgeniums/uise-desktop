@@ -88,6 +88,38 @@ struct UISE_DESKTOP_EXPORT ReactionIconInfo
      * (see MessageEditor's matchEmojiCodePoints()), so the round trip stays lossless either way.
      */
     QString emojiText;
+
+    /**
+     * @brief The canonical `:shortcode:` name for this icon, WITHOUT the colons, e.g. "star".
+     *
+     * This is typed INPUT (MessageEditor's shortcode auto-replace) and a cross-client convention
+     * users already know from Slack/GitHub/Discord -- so, unlike keywords, it is deliberately
+     * NEVER translated. If it were localized, retranslate() would change the shortcode index
+     * under a live document, and a ":star:" typed before a language switch would stop resolving
+     * after one; worse, a message authored in one UI language could not be re-expanded in
+     * another. Contrast with keywords, which ARE translated because they are search terms, not
+     * identifiers.
+     *
+     * Deliberately NOT derived from iconId: the two name different things and frequently
+     * disagree (in the shipped pack, "victory" is typed ":v:", "poop" is ":hankey:", "check" is
+     * ":white_check_mark:" -- 26 of the 54 shipped icons differ). Deriving one from the other
+     * would silently make the conventional shortcode fail while the internal id "worked", which
+     * is backwards from what a user typing a name they already know expects.
+     *
+     * Empty only for a pack entry that ships no shortcode at all, in which case
+     * AbstractReactionIconPack::findByShortcode() simply never resolves it.
+     */
+    QString shortcode;
+
+    /**
+     * @brief Human-readable caption for this icon, e.g. "star" for the "star" entry -- the
+     *  second line of the gallery's hover tooltip, under the ":shortcode:" line.
+     *
+     * Unlike shortcode, this IS translated (see DefaultReactionIconPack's use of
+     * QCoreApplication::translate() under the "ReactionIconPack" context, same as keywords) --
+     * it is prose for a human to read, not a token for a human to type back.
+     */
+    QString description;
 };
 
 /**
@@ -142,6 +174,23 @@ class UISE_DESKTOP_EXPORT AbstractReactionIconPack
         virtual const ReactionIconInfo* findByCode(const QString& emojiCode) const =0;
 
         /**
+         * @brief Look an icon up by its ReactionIconInfo::shortcode (or any of its aliases).
+         * @param shortcode The BARE name, e.g. "star" -- never colon-wrapped. The colons are
+         *  display/typing syntax that belongs to the caller (the gallery tooltip, the message
+         *  editor's auto-replace scanner), not to the pack.
+         * @return nullptr if not found (including for an empty shortcode). If more than one icon
+         *  happens to share the same shortcode/alias, the pack's first one (in at()'s own display
+         *  order) wins -- the same "first match wins" rule findByCode() already applies.
+         *
+         * Virtual with a DEFAULT body, not pure: this class explicitly invites out-of-tree pack
+         * implementations (see the class doc comment and retranslate()'s own default no-op), and
+         * a new pure virtual would break every one of them at compile time. The default here is
+         * an O(n) case-folded scan over at(0..count()); DefaultReactionIconPack overrides with an
+         * O(log n) map built over every alias, not just the canonical shortcode.
+         */
+        virtual const ReactionIconInfo* findByShortcode(const QString& shortcode) const;
+
+        /**
          * @brief Search icons by keyword PREFIX (see ChatReactionGallery's search box).
          * @param prefix Case-insensitive prefix, matched against each keyword's individual words
          *  (so "heart" matches the keyword "red heart") as well as the plain iconId.
@@ -155,8 +204,52 @@ class UISE_DESKTOP_EXPORT AbstractReactionIconPack
         //! the initial "recently used" row, in display order.
         virtual std::vector<QString> basicIconIds() const =0;
 
+        /**
+         * @brief One section of the gallery's category tab strip.
+         */
+        struct Category
+        {
+            QString id;             //!< Stable identifier, e.g. "common", "smileys-emotion".
+            QString title;          //!< Localized display title, e.g. tr("Most common").
+            QString sampleIconId;   //!< An iconId to draw the category tab's own icon from.
+        };
+
+        /**
+         * @brief This pack's categories, in the order they should appear in the gallery.
+         * @return Empty by default -- a pack that returns nothing here is shown as a single flat
+         *  grid, exactly as every pack was before this method existed. DefaultReactionIconPack
+         *  overrides it with ten: "Most common" followed by the nine CLDR emoji groups.
+         *
+         * Default-empty for the same non-breaking reason findByShortcode() has a default body:
+         * an out-of-tree pack that implements nothing here still works, just without sections.
+         */
+        virtual std::vector<Category> categories() const { return {}; }
+
+        /**
+         * @brief Indices into at() belonging to one category, in display order within that
+         *  category.
+         * @param categoryId One of the ids returned by categories().
+         * @return Empty for an unknown categoryId, and always empty when categories() is empty.
+         *
+         * An icon may appear in more than one category's list (DefaultReactionIconPack's "common"
+         * category and an icon's own subject category both list it) -- categoryIcons() indices
+         * are a VIEW, not a partition, and at() itself still holds each icon only once.
+         */
+        virtual std::vector<size_t> categoryIcons(const QString& categoryId) const
+        {
+            Q_UNUSED(categoryId)
+            return {};
+        }
+
         //! Rebuild any translated keyword index after a QEvent::LanguageChange. Default no-op --
         //! only meaningful for a pack whose keywords are actually localized (DefaultReactionIconPack).
+        //!
+        //! Invalidates every ReactionIconInfo* this pack has previously handed out through at()/
+        //! find()/findByCode()/findByShortcode() -- a caller that keeps one across a
+        //! QEvent::LanguageChange must re-resolve it afterwards. Safe today: ChatReactionGallery
+        //! stores only icon ids across a language change, and MessageEditor's shortcode lookups
+        //! are per-keystroke, but this is a property callers must maintain, not one the pack
+        //! enforces.
         virtual void retranslate() {}
 
     protected:
@@ -188,8 +281,11 @@ class UISE_DESKTOP_EXPORT DefaultReactionIconPack : public AbstractReactionIconP
         const ReactionIconInfo* at(size_t index) const override;
         const ReactionIconInfo* find(const QString& iconId) const override;
         const ReactionIconInfo* findByCode(const QString& emojiCode) const override;
+        const ReactionIconInfo* findByShortcode(const QString& shortcode) const override;
         std::vector<size_t> search(const QString& prefix) const override;
         std::vector<QString> basicIconIds() const override;
+        std::vector<Category> categories() const override;
+        std::vector<size_t> categoryIcons(const QString& categoryId) const override;
         void retranslate() override;
 
     private:
@@ -215,9 +311,10 @@ class UISE_DESKTOP_EXPORT DefaultReactionIconPack : public AbstractReactionIconP
  * three independent pack readers (the grid, the "recently used" bar, and the quick bar, which
  * goes through basicIconIds()+find() rather than search()) in one place.
  *
- * Against the shipped DefaultReactionIconPack this is currently an identity view -- all 50 icons
- * carry a code. It exists because ReactionIconPacks::setDefaultPackUri() lets a host REPLACE the
- * default pack, and a replacement is free to ship codeless icons.
+ * Against the shipped DefaultReactionIconPack this is currently an identity view -- every icon
+ * in the pack (curated or generated) carries a code, by construction of the selection rule
+ * gen-emoji-pack.py applies. It exists because ReactionIconPacks::setDefaultPackUri() lets a host
+ * REPLACE the default pack, and a replacement is free to ship codeless icons.
  */
 class UISE_DESKTOP_EXPORT EmojiCodeReactionIconPack : public AbstractReactionIconPack
 {
@@ -246,8 +343,25 @@ class UISE_DESKTOP_EXPORT EmojiCodeReactionIconPack : public AbstractReactionIco
         const ReactionIconInfo* at(size_t index) const override;
         const ReactionIconInfo* find(const QString& iconId) const override;
         const ReactionIconInfo* findByCode(const QString& emojiCode) const override;
+
+        //! Delegate then re-check membership -- follows find(), NOT findByCode(). findByCode()
+        //! can skip the re-check because an entry found BY a non-empty code necessarily has one;
+        //! a shortcode names a codeless icon just fine, and returning it here would hand a
+        //! Markdown-mode caller an entry with nothing to insert, which is exactly what this
+        //! decorator exists to prevent.
+        const ReactionIconInfo* findByShortcode(const QString& shortcode) const override;
+
         std::vector<size_t> search(const QString& prefix) const override;
         std::vector<QString> basicIconIds() const override;
+
+        //! Forwarded as-is: categories are a source-pack concept and carry no per-icon codeless
+        //! entries of their own.
+        std::vector<Category> categories() const override;
+
+        //! Remapped into OUR index space, same as search() -- and, same as search(), silently
+        //! drops any source index this view filtered out.
+        std::vector<size_t> categoryIcons(const QString& categoryId) const override;
+
         void retranslate() override;
 
         //! The pack being filtered.

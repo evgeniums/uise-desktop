@@ -205,6 +205,47 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         bool isRestoreFocus() const noexcept;
 
         /**
+         * @brief Let content inside this frame receive typed keys. Default false.
+         * @param enable If true, key presses are routed to this frame's own focusWidget() for
+         *  as long as the frame is open.
+         *
+         * A DropdownFrame is a top-level Qt::Tool window opened with
+         * Qt::WindowDoesNotAcceptFocus (see the constructor: a dropdown that took activation
+         * would deactivate its host and trip the eventFilter() dismissal path). The consequence
+         * is subtle and looks like a bug: a QLineEdit inside the frame accepts focus and even
+         * blinks its caret -- QWidget::isActiveWindow() is true for a Qt::Tool window whose
+         * parent window is active (QStyle::SH_Widget_ShareActivation), so setFocus() really does
+         * deliver FocusIn -- but typed characters never arrive. Key events are delivered by the
+         * platform to the window that owns them, and QWidgetWindow::focusObject() resolves them
+         * against THAT window's own focus child, which is still whatever the host had focused.
+         *
+         * Enabling this makes the already-installed application-wide event filter forward
+         * QEvent::KeyPress/KeyRelease to this frame's focusWidget() instead, and consume them,
+         * so an open frame owns the keyboard the way a modal popup would.
+         *
+         * Rejected alternative: clearing Qt::WindowDoesNotAcceptFocus so the frame becomes a
+         * real key window. That is the "correct" Qt answer for a standalone frame, but it breaks
+         * chaining -- when the frame takes activation the host emits WindowDeactivate, which
+         * every OTHER open frame in the chain sees with isActiveWindow() false, so a chained
+         * frame's parent dismisses itself (and the chain child with it) the moment the user
+         * clicks the search box. Making that safe needs a chain-wide "is any of us active"
+         * test plus explicit host re-activation on close; forwarding is contained to one
+         * eventFilter branch and changes no window flags.
+         *
+         * Only opt in on a frame that actually hosts a text input, and note the gap: this
+         * forwards key events only, not QInputMethodEvent, so a full IME composition still goes
+         * to the host. Nothing shipped in a dropdown needs one.
+         *
+         * Escape is explicitly NOT forwarded: the frame binds it for its own dismissal, and no
+         * content hosted in a dropdown has a use for it. Any further key this frame binds must be
+         * excluded the same way.
+         */
+        void setKeyboardInputEnabled(bool enable) noexcept;
+
+        bool isKeyboardInputEnabled() const noexcept;
+
+
+        /**
          * @brief Check if the frame is currently open (shown or animating open/closed).
          */
         bool isOpen() const noexcept;

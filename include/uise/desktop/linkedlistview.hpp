@@ -103,6 +103,22 @@ class UISE_DESKTOP_EXPORT LinkedListView : public QFrame
 #ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         QSize sizeHint() const override;
         QSize minimumSizeHint() const override;
+
+        /**
+         * @brief Set a handler invoked synchronously when a posted QEvent::LayoutRequest/
+         *        ContentsRectChange finds the content's main-axis extent has grown or shrunk
+         *        since the last resizeList()-driven resize (e.g. an already-displayed item
+         *        widget changed size in place, such as a reaction chip landing on a message
+         *        bubble).
+         *
+         * Without this hook, event() below can only relayout() the (unchanged-size) container
+         * around the new content extent -- items below the change visibly jump before the
+         * owner's own deferred resize+compensate catches up one event-loop turn later. The
+         * handler lets the owner (FlyweightListView_p::resizeList()) resize this view and
+         * compensate the scroll position in the same turn, before this event's relayout() is
+         * ever painted. See linkedlistview.cpp event() for the call site.
+         */
+        void setContentResizeHandler(std::function<void ()> handler);
 #endif
 
     signals:

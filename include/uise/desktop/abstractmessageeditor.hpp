@@ -214,6 +214,24 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     //! to express an emoji at all -- see insertEmoji().
     Q_PROPERTY(bool emojiButtonVisible READ isEmojiButtonVisible WRITE setEmojiButtonVisible)
 
+    //! QSS: qproperty-emojiShortcodeAutoReplaceEnabled: true; -- whether typing ":shortcode:"
+    //! (e.g. ":star:") auto-replaces it with the matching emoji, Backspace immediately after
+    //! reverting the replacement back to the literal text. Default FALSE -- stronger reasoning
+    //! than emojiButtonVisible's own opt-in default: that button changes what a CLICK does, this
+    //! changes what every keystroke matching ":name:" does while typing, which a developer- or
+    //! code-heavy chat may legitimately never want rewritten (":scope::member:" is exactly the
+    //! kind of text this could otherwise mangle -- though see EnhancedTextEdit's own shortcode
+    //! scanner for why "::" itself never triggers).
+    //!
+    //! Independent of emojiButtonVisible: a host may want the keyboard route without the button
+    //! (a power-user composer), or the button without the keyboard route (a chat where accidental
+    //! auto-replace would be worse than a slightly slower manual pick). Refused, same as
+    //! insertEmoji(), in MessageEditingMode::Plaintext -- there is no markup to carry an emoji
+    //! there at all.
+    Q_PROPERTY(bool emojiShortcodeAutoReplaceEnabled
+               READ isEmojiShortcodeAutoReplaceEnabled
+               WRITE setEmojiShortcodeAutoReplaceEnabled)
+
     //! QSS: qproperty-spellCheckButtonVisible: true; -- whether the toolbar's Check-spelling
     //! button is shown at all (task-spellcheck.md). Default FALSE, same reasoning as
     //! mentionButtonVisible above: the editor ships no dictionary and never will (see
@@ -352,6 +370,19 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool isEmojiButtonVisible() const noexcept
         {
             return m_emojiButtonVisible;
+        }
+
+        //! Turn ":shortcode:" auto-replace on/off. See the emojiShortcodeAutoReplaceEnabled
+        //! property.
+        void setEmojiShortcodeAutoReplaceEnabled(bool enable)
+        {
+            m_emojiShortcodeAutoReplaceEnabled=enable;
+            updateEmojiShortcodeAutoReplace();
+        }
+
+        bool isEmojiShortcodeAutoReplaceEnabled() const noexcept
+        {
+            return m_emojiShortcodeAutoReplaceEnabled;
         }
 
         /**
@@ -961,6 +992,12 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! Reacts to setEmojiButtonVisible().
         virtual void updateEmojiButtonVisible() {}
 
+        //! Reacts to setEmojiShortcodeAutoReplaceEnabled() AND to a message-editing-mode switch
+        //! (Plaintext must always refuse regardless of the property) -- see
+        //! MessageEditor::applyEmojiShortcodeAutoReplace()'s own doc comment for why both trigger
+        //! the same recomputation rather than being handled as two separate cases.
+        virtual void updateEmojiShortcodeAutoReplace() {}
+
         //! Reacts to setSpellCheckButtonVisible().
         virtual void updateSpellCheckButtonVisible() {}
 
@@ -984,6 +1021,7 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool m_mentionButtonVisible=false;
         bool m_mentionMenuItemVisible=false;
         bool m_emojiButtonVisible=false;
+        bool m_emojiShortcodeAutoReplaceEnabled=false;
         bool m_spellCheckButtonVisible=false;
         bool m_spellCheckMenuItemVisible=false;
         bool m_spellCheckEnabled=true;

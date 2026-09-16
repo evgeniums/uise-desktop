@@ -101,6 +101,26 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     Q_PROPERTY(bool tableExpandButtonVisibleOnHover READ isTableExpandButtonVisibleOnHover WRITE setTableExpandButtonVisibleOnHover)
 
     /**
+     * QSS: qproperty-documentTopMargin: 0; -- overrides the TOP side of
+     * QTextDocument::documentMargin() alone, in pixels. -1 (the default) leaves it at
+     * documentMargin(), i.e. Qt's own uniform behaviour.
+     *
+     * Exists because documentMargin() is uniform on all four sides while a chat bubble's vertical
+     * space is not symmetric: the room UNDER the text is governed by the bubble's own knobs
+     * (AbstractChatMessageBottom's rowTopGap/rowBottomPadding, plus the trim
+     * AbstractChatMessageContent::setMaximumBubbleWidth() applies to the trailing section's dead
+     * space), while the room ABOVE it is the bubble's padding-top PLUS this margin -- so the same
+     * documentMargin() that gives the text its left/right inset also makes every bubble read as
+     * top-heavy. Set to 0 to leave the bubble's own padding as the only space above the first
+     * line; the left/right inset is untouched, and so is everything else that reads
+     * documentMargin() (the code-block slab's own left/right edges, bubbleWidthHint()).
+     *
+     * Re-applied after every content load: QTextDocument::setHtml()/setPlainText() rebuild the
+     * root frame with a uniform documentMargin() on all four sides, discarding this.
+     */
+    Q_PROPERTY(int documentTopMargin READ documentTopMargin WRITE setDocumentTopMargin)
+
+    /**
      * QSS: qproperty-codeBlockPadding: 8; -- breathing room between a code block's text and the
      * edge of its coloured background, in pixels.
      *
@@ -194,6 +214,10 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! Corner radius of that background, matching what the `pre` rule in messagetext.css used
         //! to ask for with a `border-radius` Qt ignores.
         constexpr static const int DefaultCodeBlockRadius=4;
+
+        //! documentTopMargin's "leave it alone" value -- the top side then keeps whatever
+        //! QTextDocument::documentMargin() is, like the other three.
+        constexpr static const int UseDocumentMargin=-1;
 
         explicit ChatMessageTextBrowser(QWidget *parent = nullptr);
 
@@ -290,6 +314,14 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         int codeBlockPadding() const noexcept
         {
             return m_codeBlockPadding;
+        }
+
+        //! Top-only override of QTextDocument::documentMargin() -- see the documentTopMargin
+        //! property. UseDocumentMargin (-1) means "no override".
+        void setDocumentTopMargin(int margin);
+        int documentTopMargin() const noexcept
+        {
+            return m_documentTopMargin;
         }
 
         void setCodeBlockRadius(int radius) noexcept
@@ -641,6 +673,14 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! message that happens to load.
         void applyDocumentStyle();
 
+        //! Re-applies m_documentTopMargin to the document's root frame. Must run after EVERY
+        //! setHtml()/setPlainText() on this widget: both go through QTextDocumentPrivate::clear(),
+        //! which recreates the root frame with a uniform documentMargin() on all four sides. A
+        //! no-op while m_documentTopMargin is UseDocumentMargin, which is what keeps the standalone
+        //! table/code-block viewers (never targeted by the chat bubble's QSS rule) on Qt's own
+        //! default.
+        void applyDocumentTopMargin();
+
         /**
          * @brief Register a QPixmap for every emoji `<img>` in `html` under its own URL, so Qt's
          *  image handler resolves it out of the document's own resource table.
@@ -878,6 +918,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         std::vector<TrackedTable> m_tables;
         std::vector<TrackedCodeBlock> m_codeBlocks;
         int m_codeBlockPadding=DefaultCodeBlockPadding;
+        int m_documentTopMargin=UseDocumentMargin;
         int m_codeBlockRadius=DefaultCodeBlockRadius;
         bool m_codeBlockOverlay=true;
         bool m_codeBlockOverlayOnHover=true;

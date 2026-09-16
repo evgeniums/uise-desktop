@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATREACTIONGALLERY_HPP
 #define UISE_DESKTOP_CHATREACTIONGALLERY_HPP
 
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -37,6 +38,7 @@ You may select, at your option, one of the above-listed licenses.
 
 class QLabel;
 class QGridLayout;
+class QShowEvent;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot
 // expand a macro-opened namespace, so it records tr() calls in this file under an unqualified
@@ -49,6 +51,11 @@ class PushButton;
 class SearchLineEdit;
 class ScrollArea;
 class AbstractReactionIconPack;
+
+//! The expanded gallery's virtualized row view -- declared here only so ChatReactionGallery can
+//! hold a pointer to one; DEFINED in chatreactiongallery.cpp, together with the row widget and
+//! the FlyweightListView instantiation behind it. See ChatReactionGallery's own class doc.
+class ChatReactionGalleryGrid;
 
 /**
  * @brief Row of the pack's "7 basic" icons plus a chevron that expands to the full
@@ -128,6 +135,22 @@ class UISE_DESKTOP_EXPORT ChatReactionQuickBar : public Frame
         void reactionPicked(const QString& reactionId);
         void expandRequested();
 
+    protected:
+
+        /**
+         * @brief Re-translate the pack and rebuild on QEvent::LanguageChange, so button
+         *  tooltips (":shortcode:" + description) follow a live language switch.
+         *
+         * Calls m_pack->retranslate() itself rather than relying on a host or sibling widget to
+         * have already done so -- Qt delivers LanguageChange to every widget in an unspecified
+         * order, so a quick bar that rebuilt before the pack re-translated would be one language
+         * behind. retranslate() is idempotent (it rebuilds from whatever translation is CURRENT),
+         * so the redundant call when a sibling ChatReactionGallery ALSO retranslates the same
+         * pack costs one extra table rebuild per language switch, in exchange for not caring
+         * about delivery order.
+         */
+        void changeEvent(QEvent* event) override;
+
     private:
 
         void rebuild();
@@ -143,12 +166,27 @@ class UISE_DESKTOP_EXPORT ChatReactionQuickBar : public Frame
 
 /**
  * @brief The expanded reaction gallery -- recently-used row, keyword search box, and a
- *  multi-row scrollable grid of every icon in the pack (task-chat-message-reactions.md's
- *  "expanded" gallery state).
+ *  VIRTUALIZED view of the whole pack grouped into AbstractReactionIconPack::Category sections
+ *  (task-chat-message-reactions.md's "expanded" gallery state), or, while the search box holds a
+ *  prefix, the same view showing a flat list of matches with no section headers.
  *
- * No virtualization: FlyweightListView is strictly 1-D and cannot lay out a grid, and a pack of a
- * few dozen to a few hundred PushButtons in a plain QGridLayout is trivial for Qt to lay out --
- * do not "optimize" this into a flyweight view later without an actual measured need.
+ * VIRTUALIZED, via FlyweightListView. The original note here said the opposite ("no
+ * virtualization ... a few dozen to a few hundred PushButtons in a plain QGridLayout is trivial
+ * for Qt to lay out"), and that held while the shipped pack WAS a few dozen icons. At ~1374 it
+ * stopped holding: every icon being a live QPushButton meant Qt had to lay out the whole set on
+ * every show/remeasure, which no amount of build-once caching or ahead-of-time warm-up fixed --
+ * measured, repeatedly, as a visible delay opening the reactions dropdown and again on expanding
+ * it.
+ *
+ * FlyweightListView is strictly 1-D, which is why the icons are not its items: a ROW of up to
+ * galleryColumns() icons is. The list is therefore one-dimensional (rows), while each row lays
+ * its own icons out horizontally -- and only the rows near the viewport exist as widgets at all,
+ * the rest being built on demand from a plan of row descriptors that costs nothing to hold.
+ *
+ * Section headers are part of a ROW rather than items of their own: a row carries a title only
+ * when it is the FIRST row of its category, the same shape ChatMessagesView uses for its own
+ * date separators. That keeps one item type, one sort order, and a header that scrolls with the
+ * icons under it instead of needing separate bookkeeping.
  */
 class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
 {
@@ -178,6 +216,12 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
 
         //! Clear the search box and re-show the whole pack.
         void resetSearch();
+
+        //! Put the caret in the search box, so the gallery can be filtered without clicking it
+        //! first. Hosted in a DropdownFrame this is only half the story -- that frame must also
+        //! have DropdownFrame::setKeyboardInputEnabled(true), or typed characters go to the host
+        //! window no matter what has focus here. See that setter's doc comment.
+        void focusSearch();
 
         int galleryColumns() const noexcept { return m_galleryColumns; }
         void setGalleryColumns(int value);
@@ -247,16 +291,65 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         //! last search against it.
         void changeEvent(QEvent* event) override;
 
+        /**
+         * @brief Builds the rows that rebuildRows() deferred while this gallery was hidden.
+         *
+         * The whole point of the deferral: inside a ChatReactionGalleryDropdown this widget is
+         * setVisible(false) for as long as the dropdown shows its COLLAPSED quick bar, and a
+         * context menu opening reconfigures it (setPack()) every single time. Building rows
+         * there meant every right-click paid for a gallery the user had not asked to see and
+         * often never expanded -- hidden widgets still get constructed, parented, laid out and
+         * style-polished. Now that cost lands on the first expand, which is the gesture that
+         * actually asks for it.
+         */
+        void showEvent(QShowEvent* event) override;
+
     private:
 
         void rebuildRecent();
-        void rebuildGrid(const QString& searchPrefix);
         void onSearchTextChanged(const QString& text);
-        PushButton* ensureGridCell(size_t index);
 
-        //! Clamp the scroll viewport to galleryVisibleRows() rows, measured from a live cell's
-        //! own size hint so the clamp tracks the theme rather than duplicating its numbers.
+        /**
+         * @brief Recompute the row PLAN -- the list of "which icons, and does this row open a
+         *  category" descriptors the virtualized view builds its row widgets from -- and hand it
+         *  to the grid, which reloads whatever window of rows is actually on screen.
+         *
+         * @param searchPrefix Empty for BROWSE mode (every category in turn, each opening with a
+         *  header row), non-empty for SEARCH mode (a flat run of matches, no headers -- a prefix
+         *  ranks matches across every category at once, so per-category headers over the results
+         *  would be noise).
+         *
+         * DEFERRED while hidden: this only records what the rows SHOULD be and marks them stale;
+         * applyRows() does the work, either straight away when the gallery is on screen or from
+         * showEvent() when it next becomes so. Recomputing the plan itself is cheap (a plan entry
+         * is a handful of pack indices, no widgets, no icons); building the row WIDGETS is not,
+         * and that is what waits.
+         */
+        void rebuildRows(const QString& searchPrefix);
+
+        //! Do the work rebuildRows() recorded, if it is still outstanding. A no-op unless
+        //! m_rowsDirty -- which is what keeps setExpanded()'s setVisible(true) (this, via
+        //! showEvent()) and its resetSearch() right after from building the same rows twice.
+        void applyRows();
+
+        //! Clamp the view to galleryVisibleRows() rows, measured from a live row's own size hint
+        //! so the clamp tracks the theme rather than duplicating its numbers.
         void applyVisibleRowsHeight();
+
+        /**
+         * @brief (Re)build the category tab strip from m_pack->categories().
+         *
+         * A pack that returns no categories() (the default body every pack gets unless it
+         * overrides it -- see AbstractReactionIconPack::categories()'s own doc comment) leaves
+         * m_categoryTabButtons empty and the strip hidden, and rebuildRows() then lays the whole
+         * pack out as one unsectioned run -- which is exactly what such a pack looked like
+         * before categories existed at all.
+         */
+        void rebuildCategoryTabs();
+
+        //! Scroll the view so the given category's first row is at the top. A no-op for a
+        //! category with no rows in the CURRENT plan (nothing matched it under a search).
+        void scrollToSection(const QString& categoryId);
 
         std::shared_ptr<AbstractReactionIconPack> m_pack;
         QStringList m_ownReactionIds;
@@ -270,11 +363,35 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         ChatReactionQuickBar* m_recentBar;
 
         SearchLineEdit* m_searchEdit;
-        ScrollArea* m_galleryScroll;
-        QFrame* m_galleryGrid;
-        QGridLayout* m_gridLayout;
-        std::vector<PushButton*> m_gridCells; // pool, reused across rebuildGrid() calls
+
+        //! One row of category tabs, above the view. Hidden entirely when the pack's
+        //! categories() is empty.
+        QFrame* m_categoryTabs;
+        std::vector<PushButton*> m_categoryTabButtons; // parallel to m_pack->categories()
+
+        //! The virtualized rows themselves. Defined entirely in chatreactiongallery.cpp -- it
+        //! wraps a FlyweightListView template instantiation that nothing outside that file needs
+        //! to name, and keeping it opaque here keeps the flyweight headers (and their .ipp) out
+        //! of every translation unit that merely uses a gallery.
+        ChatReactionGalleryGrid* m_grid;
+
+        //! Shown instead of the view when the current plan has no rows at all.
         QLabel* m_emptyLabel;
+
+        //! categoryId -> index of its FIRST row in the current plan, for scrollToSection(). Only
+        //! categories that actually have rows appear, so a lookup miss means "nothing to scroll
+        //! to", not "unknown category".
+        std::map<QString,size_t> m_categoryFirstRow;
+
+        //! What the rows SHOULD be built from, and what they currently ARE built from. They differ
+        //! exactly while a rebuild is outstanding -- see rebuildRows()/applyRows().
+        QString m_pendingSearchPrefix;
+        QString m_appliedSearchPrefix;
+
+        //! Whether the built rows are stale. Set by anything that changes what the rows should
+        //! contain -- the pack, the column count, a language change, a new search prefix -- and
+        //! cleared by applyRows(). Starts true so the very first show builds.
+        bool m_rowsDirty=true;
 
         int m_galleryColumns=8;
         int m_galleryVisibleRows=5;

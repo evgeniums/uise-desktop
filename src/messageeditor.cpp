@@ -101,6 +101,15 @@ constexpr const char16_t NoBreakSpace=0x00a0;
 //! is this long, so a longer run is a paste, and a paste is not a mention gesture.
 constexpr const int MaxMentionQueryChars=64;
 
+//! Longest ":name" a shortcode auto-replace candidate can be -- see
+//! EnhancedTextEdit::shortcodeCandidateAtCursor(). Same reasoning as MaxMentionQueryChars just
+//! above (nothing a user TYPES is this long -- a longer run is a paste, which does not go
+//! through this guard at all). Measured against src/emojiicontable.inc: the longest shortcode or
+//! alias gen-emoji-pack.py's selection actually produces is 40 characters
+//! ("hand_with_index_finger_and_thumb_crossed"); this is that measurement plus headroom, not a
+//! guess -- re-check it if the generator's selection rule ever changes.
+constexpr const int MaxShortcodeChars=48;
+
 /** @brief U+200B ZERO WIDTH SPACE -- what an otherwise-empty paragraph is exported as, so the
  *  blank line it draws survives markdown at all. See fillEmptyBlocksForExport().
  *
@@ -2542,6 +2551,18 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
     // action, with no residue. That last shape is the target every branch of the guard converges
     // on -- see applyMentionAtomicityGuard()'s own doc comment for the five branches.
     //
+    // --- ":shortcode:" auto-replace, checked BEFORE mention atomicity -----------------------
+    //
+    // Ordering is free, not just safe: an emoji image is never an anchor run, so nothing
+    // applyMentionAtomicityGuard() does (all five of its branches key off isMentionFormat()) can
+    // ever apply to a shortcode replacement, and vice versa. Inert by construction whenever
+    // isEmojiShortcodeAutoReplaceEnabled() is false (the default) -- see that property's own doc
+    // comment on why it defaults off independently of the emoji BUTTON's own visibility.
+    if (applyEmojiShortcodeGuard(event))
+    {
+        return;
+    }
+
     // Inert by construction outside Wysiwyg: a Markdown/Plaintext document holds no anchors, so
     // every predicate the guard checks is false and the key falls through untouched.
     if (applyMentionAtomicityGuard(event))
@@ -2892,6 +2913,102 @@ EnhancedTextEdit::MentionQuery EnhancedTextEdit::mentionQueryAtCursor() const
 
 //--------------------------------------------------------------------------
 
+EnhancedTextEdit::ShortcodeCandidate EnhancedTextEdit::shortcodeCandidateAtCursor() const
+{
+    ShortcodeCandidate candidate;
+
+    const auto cursor=textCursor();
+    if (cursor.hasSelection())
+    {
+        // A selection means the user is not mid-typing a token.
+        return candidate;
+    }
+
+    // Same suppression insertEmoji()/normalizeImportedEmoji() already apply: a fixed-pitch
+    // (inline code) run, a fenced code block, or inside an existing mention. Tables are
+    // deliberately NOT suppressed -- insertEmoji() allows them there.
+    if (cursor.charFormat().fontFixedPitch())
+    {
+        return candidate;
+    }
+    const auto block=cursor.block();
+    const auto blockFormat=cursor.blockFormat();
+    if (block.userState()==MessageEditorHighlighter::InFence
+        || blockFormat.hasProperty(QTextFormat::BlockCodeFence))
+    {
+        return candidate;
+    }
+    if (isMentionFormat(cursor.charFormat()))
+    {
+        return candidate;
+    }
+
+    // A name character is exactly gen-emoji-pack.py's shortcode/alias charset -- see
+    // reactioniconpack.hpp's ReactionIconInfo::shortcode doc comment. ASCII only, deliberately
+    // narrower than mentionQueryAtCursor()'s own permissive "anything but whitespace/'@'" rule:
+    // a username's alphabet is the HOST's business, but a shortcode's is fixed by the pack data.
+    auto isNameChar=[](QChar c)
+    {
+        const auto u=c.unicode();
+        return (u>=u'a' && u<=u'z') || (u>=u'A' && u<=u'Z') || (u>=u'0' && u<=u'9')
+            || u==u'_' || u==u'+' || u==u'-';
+    };
+
+    const auto text=block.text();
+    const auto offset=cursor.position()-block.position();
+
+    // Back over the name characters, same walk-back shape as mentionQueryAtCursor()'s own --
+    // including relying on the SAME post-hoc length check (below) rather than an in-loop bound,
+    // since nothing a user TYPES reaches that length anyway (see MaxShortcodeChars's own
+    // comment). An inline emoji IMAGE (U+FFFC) is itself outside this charset, so the walk stops
+    // there with no special case -- which is what makes ":star::fire:" match twice in a row: the
+    // second candidate's "character before the opening ':'" is the FIRST emoji's image, not a
+    // colon.
+    auto i=offset;
+    while (i>0 && isNameChar(text.at(i-1)))
+    {
+        --i;
+    }
+    if (i==offset || i==0 || text.at(i-1)!=QLatin1Char(':'))
+    {
+        // No name characters at all, ran off the start of the block, or the character before the
+        // run is not ':' -- no candidate.
+        return candidate;
+    }
+    const auto colonPos=i-1;
+
+    // The character before the OPENING ':' must be neither ':' nor a name character. One test
+    // rejects both "foo::bar:"/"::" (":" immediately before) and "a:star:" (a name character
+    // immediately before, which reads as "a:" followed by "star:", not as a shortcode "a:star").
+    if (colonPos>0)
+    {
+        const auto before=text.at(colonPos-1);
+        if (before==QLatin1Char(':') || isNameChar(before))
+        {
+            return candidate;
+        }
+    }
+
+    const auto name=text.mid(i,offset-i);
+    if (name.isEmpty())
+    {
+        // "::" must never trigger -- it is the C++ scope operator, and this editor is used in
+        // developer chats.
+        return candidate;
+    }
+    if (name.size()>MaxShortcodeChars)
+    {
+        return candidate;
+    }
+
+    candidate.isActive=true;
+    candidate.position=block.position()+colonPos;
+    candidate.name=name;
+    return candidate;
+}
+
+//--------------------------------------------------------------------------
+
 void EnhancedTextEdit::updateMentionQuery()
 {
     auto query=mentionQueryAtCursor();
@@ -3139,6 +3256,150 @@ bool EnhancedTextEdit::applyMentionAtomicityGuard(QKeyEvent* event)
     setCurrentCharFormat(continuation);
 
     return false;
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setEmojiShortcodeAutoReplaceEnabled(bool enable)
+{
+    m_emojiShortcodeAutoReplaceEnabled=enable;
+    if (!enable)
+    {
+        // Turning the feature off strands nothing: without this, a replacement armed while it
+        // was still on would keep reverting for one more Backspace after being switched off,
+        // which is a stranger surprise than simply losing that one revert.
+        m_shortcodeReplacement=EmojiShortcodeReplacement{};
+        m_revertedShortcodePosition=-1;
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::armEmojiShortcodeRevert(int position, int length, const QString& literal,
+                                               const QTextCharFormat& format)
+{
+    m_shortcodeReplacement.armed=true;
+    m_shortcodeReplacement.position=position;
+    m_shortcodeReplacement.length=length;
+    m_shortcodeReplacement.literal=literal;
+    m_shortcodeReplacement.format=format;
+    m_shortcodeReplacement.documentRevision=document()->revision();
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::applyEmojiShortcodeGuard(QKeyEvent* event)
+{
+    if (!m_emojiShortcodeAutoReplaceEnabled)
+    {
+        return false;
+    }
+
+    const bool isBackspace=(event->key()==Qt::Key_Backspace);
+    const bool isDelete=(event->key()==Qt::Key_Delete);
+    // Same event->text() test applyMentionAtomicityGuard() uses to classify "inserts" -- here
+    // narrowed to the one character that can ever complete a candidate. Excludes a Ctrl/Meta
+    // chord (so Ctrl+Shift+; or similar never misfires) the same way that guard's own test does.
+    const bool isColon=event->text()==QLatin1String(":")
+        && !(event->modifiers() & (Qt::ControlModifier|Qt::MetaModifier));
+
+    if (!isBackspace && !isDelete && !isColon)
+    {
+        return false;
+    }
+    if (textCursor().hasSelection())
+    {
+        // Typing ':' over a selection, or Backspace/Delete-ing one, is an ordinary edit -- not a
+        // revert (there is nothing armed to revert if a selection exists) and not a completion
+        // (the candidate scan requires a collapsed cursor). Falls through untouched.
+        return false;
+    }
+
+    const auto pos=textCursor().position();
+
+    // --- REVERT: Backspace/Delete right at the edge of an armed replacement -------------------
+    if ((isBackspace || isDelete) && m_shortcodeReplacement.armed
+        && document()->revision()==m_shortcodeReplacement.documentRevision)
+    {
+        const auto start=m_shortcodeReplacement.position;
+        const auto end=start+m_shortcodeReplacement.length;
+        // Backspace reverts from AFTER the replacement (the classic autocorrect-undo gesture);
+        // Delete reverts from BEFORE it -- exact mirror of applyMentionAtomicityGuard()'s own
+        // Branch 2/Branch 3 pair. At the OTHER edge, Backspace/Delete deletes forward/backward
+        // AWAY from the replacement, which must not revert it.
+        const auto atRevertEdge=(isBackspace && pos==end) || (isDelete && pos==start);
+        if (atRevertEdge)
+        {
+            auto cursor=textCursor();
+            cursor.beginEditBlock();
+            cursor.setPosition(start);
+            cursor.setPosition(end,QTextCursor::KeepAnchor);
+            cursor.removeSelectedText();
+            cursor.insertText(m_shortcodeReplacement.literal,m_shortcodeReplacement.format);
+            cursor.endEditBlock();
+            setTextCursor(cursor);
+
+            // Latch this word so an immediate retype of the same closing ':' does not silently
+            // re-expand what the user just rejected -- see m_revertedShortcodePosition's own
+            // doc comment.
+            m_revertedShortcodePosition=start;
+            m_shortcodeReplacement=EmojiShortcodeReplacement{};
+            return true;
+        }
+        // Backspace/Delete near, but not exactly at, the revert edge falls through to the
+        // "still armed" case below, same as any other Backspace/Delete elsewhere: it disarms
+        // implicitly the next time document()->revision() no longer matches (this key, once it
+        // reaches QTextEdit, is itself an edit that will bump it).
+    }
+
+    // A Backspace/Delete that reaches here is not reverting anything -- but if the caret is
+    // clearly nowhere near the LATCHED (already-rejected) word, that latch is stale and would
+    // otherwise linger until the exact same position happened to matter again. This is an
+    // approximation of "the caret left that word" (applyMentionAtomicityGuard()'s equivalent
+    // latch is re-evaluated on every edit via updateMentionQuery()'s continuous observer; this
+    // guard, deliberately, has no such observer -- see this method's own doc comment).
+    if ((isBackspace || isDelete) && m_revertedShortcodePosition>=0)
+    {
+        const auto lo=m_revertedShortcodePosition;
+        const auto hi=m_revertedShortcodePosition+MaxShortcodeChars+2;
+        if (pos<lo || pos>hi)
+        {
+            m_revertedShortcodePosition=-1;
+        }
+    }
+
+    if (isBackspace || isDelete)
+    {
+        // Neither branch above consumed the key -- an ordinary Backspace/Delete, unrelated to
+        // this guard.
+        return false;
+    }
+
+    // --- FORWARD: does this ':' complete a candidate? -----------------------------------------
+    const auto candidate=shortcodeCandidateAtCursor();
+    if (!candidate.isActive)
+    {
+        return false;
+    }
+
+    if (candidate.position==m_revertedShortcodePosition)
+    {
+        // Latched: this exact expansion was just rejected with Backspace/Delete and the caret
+        // never left the word -- type the ':' literally rather than silently re-expanding it.
+        return false;
+    }
+    // A genuinely different word than whatever the latch remembered (or no latch at all) -- the
+    // old position is no longer relevant to anything.
+    m_revertedShortcodePosition=-1;
+
+    m_shortcodeReplacement=EmojiShortcodeReplacement{};
+    const auto length=pos-candidate.position;
+    Q_EMIT emojiShortcodeTyped(candidate.name,candidate.position,length);
+    // Consumed only if the handler called armEmojiShortcodeRevert() synchronously in response --
+    // an unconnected signal, or a lookup miss, leaves m_shortcodeReplacement exactly as reset
+    // just above, so the ':' falls through and types literally, exactly as it did before this
+    // feature existed.
+    return m_shortcodeReplacement.armed;
 }
 
 //--------------------------------------------------------------------------
@@ -3788,6 +4049,17 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::mentionCompletionRequested,
         this,
         &AbstractMessageEditor::mentionCompletionRequested
+    );
+
+    // See EnhancedTextEdit::emojiShortcodeTyped()'s own doc comment -- this connection must be
+    // DIRECT (the default for a same-thread connection, which this always is) so
+    // armEmojiShortcodeRevert() runs synchronously inside applyEmojiShortcodeGuard()'s own
+    // Q_EMIT, which is what lets that guard decide whether to consume the triggering ':'.
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::emojiShortcodeTyped,
+        this,
+        &MessageEditor::onEmojiShortcodeTyped
     );
 
     // The mechanical half of paste normalization (strip baked colour/font, fix an invisible
@@ -4628,6 +4900,7 @@ void MessageEditor::updateMessageEditingMode()
     pimpl->toolbar->setButtonEnabled(MessageEditorToolbarButton::Link,to!=MessageEditingMode::Plaintext);
 
     applyEmojiButtonVisibility();
+    applyEmojiShortcodeAutoReplace();
     if (to==MessageEditingMode::Plaintext)
     {
         // Never leave a picker open over a mode whose insert would be refused.
@@ -6371,6 +6644,27 @@ void MessageEditor::applyEmojiButtonVisibility()
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::applyEmojiShortcodeAutoReplace()
+{
+    // Same "property AND mode allows it" shape as applyEmojiButtonVisibility() just above --
+    // Plaintext refuses insertEmoji() outright, so auto-replace would either silently do nothing
+    // (confusing: the ':' still gets consumed with no visible effect) or, worse, invite a second
+    // code path that tries to insert a literal character there. Neither is wanted; the guard in
+    // EnhancedTextEdit only needs one bool to consult.
+    const auto enabled=isEmojiShortcodeAutoReplaceEnabled()
+        && messageEditingMode()!=MessageEditingMode::Plaintext;
+    pimpl->editor->setEmojiShortcodeAutoReplaceEnabled(enabled);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::updateEmojiShortcodeAutoReplace()
+{
+    applyEmojiShortcodeAutoReplace();
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::updateEmojiButtonVisible()
 {
     applyEmojiButtonVisibility();
@@ -6821,6 +7115,82 @@ void MessageEditor::insertEmoji(const QString& reactionId)
     // is still wanted, so it is spelled out here instead.
     syncToolbarState();
     updatePlaceHolderText();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onEmojiShortcodeTyped(const QString& shortcode, int position, int length)
+{
+    // Defensive, not load-bearing: applyEmojiShortcodeAutoReplace() already pushes false down to
+    // pimpl->editor in Plaintext (and whenever the property itself is off), so
+    // EnhancedTextEdit::applyEmojiShortcodeGuard() should never even emit this in either case.
+    if (!isEmojiShortcodeAutoReplaceEnabled() || messageEditingMode()==MessageEditingMode::Plaintext)
+    {
+        return;
+    }
+
+    // emojiPackForCurrentMode(), NOT ReactionIconPacks::defaultPack() or pimpl->emojiPack's own
+    // cache -- this is the single source of truth for "what can THIS mode actually insert" (in
+    // Markdown, a view that hides codeless icons), and pimpl->emojiPack may not even be valid
+    // yet if the gallery has never been warmed/opened (a host may enable auto-replace without
+    // ever setting emojiButtonVisible(true)).
+    const auto pack=emojiPackForCurrentMode();
+    if (!pack)
+    {
+        return;
+    }
+    const auto* info=pack->findByShortcode(shortcode);
+    if (info==nullptr)
+    {
+        // Unknown shortcode -- leave m_shortcodeReplacement exactly as
+        // applyEmojiShortcodeGuard() reset it right before emitting, so that guard's own
+        // post-emit check sees "not armed" and lets the ':' type literally.
+        return;
+    }
+    if (messageEditingMode()==MessageEditingMode::Wysiwyg && !info->icon)
+    {
+        // Same refusal insertEmoji() itself would apply -- do not arm a revert over a replace
+        // that cannot actually happen.
+        return;
+    }
+
+    const auto reactionId=ChatReactionId::make(info->iconId,pack->uri());
+
+    // One edit block for the whole replacement -- select-and-insert, never the closing ':'
+    // itself (the key that triggered this is still uncommitted; applyEmojiShortcodeGuard()
+    // consumes it once this returns having armed a revert). beginEditBlock()/endEditBlock() are
+    // DOCUMENT-level, not cursor-instance-level, so opening the block on this local cursor
+    // correctly wraps the inserts insertEmoji() makes through pimpl->editor's OWN cursor object
+    // just below.
+    auto cursor=pimpl->editor->textCursor();
+    cursor.beginEditBlock();
+
+    cursor.setPosition(position);
+    cursor.setPosition(position+length,QTextCursor::KeepAnchor);
+    // Captured BEFORE the replace -- same reasoning insertEmoji() already documents for its own
+    // `continuation`: once the selection is replaced with an image, the format at that position
+    // IS the image format.
+    const auto format=cursor.charFormat();
+    // Makes this the ACTIVE selection: insertEmoji() reads pimpl->editor->textCursor() itself
+    // and replaces whatever it finds selected there, exactly like QTextCursor::insertText().
+    pimpl->editor->setTextCursor(cursor);
+
+    insertEmoji(reactionId);
+
+    // Measured, never assumed to be 1: Markdown mode inserts ReactionIconInfo::emojiText, which
+    // is 1-3 UTF-16 units (a supplementary-plane surrogate pair, plus a possible VS16).
+    const auto newLength=pimpl->editor->textCursor().position()-position;
+    cursor.endEditBlock();
+
+    // Case preserved exactly as typed (":Star:" stays ":Star:") -- shortcode is the raw
+    // EnhancedTextEdit::ShortcodeCandidate::name, not case-folded (folding happens only at
+    // findByShortcode()'s own lookup).
+    const auto literal=QStringLiteral(":%1:").arg(shortcode);
+    pimpl->editor->armEmojiShortcodeRevert(position,newLength,literal,format);
+
+    // An auto-replaced emoji is a real pick -- belongs in the recents row and the host's
+    // persisted store exactly like one chosen from the gallery.
+    promoteEmojiRecent(info->iconId);
 }
 
 //--------------------------------------------------------------------------

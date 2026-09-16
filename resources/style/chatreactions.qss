@@ -120,17 +120,56 @@ uise--ChatReactionGallery #recentTitle {
 margin-bottom:4px;
 }
 
+/* SearchLineEdit carries no padding of its own (lineedit.qss only styles its embedded action
+   button icons), so without this the box's height is whatever Qt's platform style happens to give
+   a bare QLineEdit -- cramped next to a grid of 22px icon cells. Vertical only: horizontal space
+   is already spoken for by the built-in search/cancel action icons (SearchLineEdit's own
+   addAction() calls).
+
+   Applies to BOTH galleries. This used to be scoped to uise--EmojiGalleryDialog alone, on the
+   theory that the compact reactions popup wanted a tighter box than the larger composer dialog;
+   in practice the two just read as inconsistent, so there is now one shared height. */
 uise--ChatReactionGallery #searchEdit {
 margin-top:8px;
 margin-bottom:8px;
+padding-top:6px;
+padding-bottom:6px;
 }
 
-/* fixed column count the gallery packs its persistent grid cells into
-   (ChatReactionGallery::rebuildGrid(), the Calendar_p::buildGrid() idiom) and how many full
-   rows are visible before the scroll area clips -- both purely presentational, no packing math
-   depends on these beyond sizing #galleryScroll's viewport */
+/* How many icons the gallery packs into one ROW of its virtualized view
+   (ChatReactionGallery::rebuildRows() chops each run of icons into rows of this many), and how
+   many rows are visible before it scrolls. Both purely presentational, but galleryColumns is no
+   longer only cosmetic: it is what the row PLAN is built from, so changing it rebuilds the plan.
+
+   The column count is bounded by geometry this file does not own, so the reasoning matters more
+   than the number:
+
+   The panel takes its width from its widest child, which is the category tab strip -- one tab per
+   category, ten in the default pack. The grid's rows then have to fit in that width MINUS the
+   grid's own vertical scrollbar, which is subtracted from the viewport the rows lay out in. Sizing
+   the rows to the panel's full width therefore overflows the viewport by exactly that scrollbar
+   and the list grows a horizontal scrollbar underneath them, which is what 10 columns did.
+
+   The strip's slack is what the rows live in, so the count follows from the cell pitch: a cell is
+   its icon-size plus #galleryButton's padding and border, and the gap between cells is
+   ReactionCellSpacing (src/chatreactiongallery.cpp, matched to the recent row above the grid --
+   the two are read side by side).
+
+   9 is the count that fills that slack most closely. It is also close enough to the edge that it
+   was measured, not derived: the numbers involved (the platform scrollbar's width, what a polished
+   PushButton actually reports) are not all knowable from this file. If a horizontal scrollbar
+   appears under the rows, the rows have outgrown the viewport -- drop to 8 rather than trying to
+   reclaim the difference elsewhere.
+
+   Whatever the count, a band of dead space down the right of every row is the residue of all this
+   and cannot be tuned away here: making the strip narrower so the GRID drives the panel width only
+   moves the problem, since the rows would then be exactly as wide as the panel and the scrollbar
+   would overflow them again. Removing it for real means deriving the count from the panel's live
+   viewport width and rebuilding the row plan when it changes -- real machinery for a popup whose
+   width never changes after it opens. If the pack's category count, the cell pitch or the cell
+   spacing changes, redo the arithmetic above. */
 uise--ChatReactionGallery {
-qproperty-galleryColumns: 8;
+qproperty-galleryColumns: 9;
 qproperty-galleryVisibleRows: 5;
 }
 
@@ -139,6 +178,88 @@ icon-size:22px;
 padding:4px;
 border-radius:8px;
 border:1px solid transparent;
+}
+
+/* --- BROWSE mode: category tab strip + the section headers carried by the first row of each
+   category (ChatReactionGallery::rebuildRows()). The strip is shown whenever the search box is
+   empty and the pack has categories() to offer; hidden for a search (no sections to jump
+   between) and for a pack with no categories at all. --- */
+
+uise--ChatReactionGallery #categoryTabs {
+margin-top:4px;
+margin-bottom:4px;
+}
+
+/* Deliberately smaller than #galleryButton's 22px -- a tab is a jump target, not a pick target,
+   and nine of them side by side (the default pack's ten categories minus "Most common", which has
+   no tab of its own -- browsing starts there already) should read as a compact strip, not another
+   row of full-size gallery cells. */
+uise--ChatReactionGallery #categoryTab QPushButton {
+icon-size:16px;
+padding:4px;
+border-radius:6px;
+border:1px solid transparent;
+}
+
+/* Category section title, e.g. "Smileys & Emotion" -- bold/muted rather than a new colour, per
+   this project's "reuse accents" convention. It lives INSIDE the first row of its category (see
+   ChatReactionGalleryRow), so it scrolls with the icons under it. Left margin lines it up with
+   those icons (#galleryButton's 4px padding), not with the row's own edge. */
+uise--ChatReactionGallery #sectionHeader {
+font-weight:600;
+margin-top:10px;
+margin-bottom:4px;
+margin-left:4px;
+}
+
+/* The very first row's header ("Most common") sits directly under the search box/tab strip -- no
+   extra top margin needed there, unlike every section after it. A dynamic property, not a
+   structural selector: Qt Style Sheets has no :first-child (that is CSS3, not part of Qt's
+   supported pseudo-state list, which is widget STATES only -- :hover, :checked and similar).
+   ChatReactionGalleryRow sets this property on row 0's header only, matching the same
+   [property="value"] idiom this file already uses for #reactionIcon's [ellipsis="true"]. */
+uise--ChatReactionGallery #sectionHeader[firstSection="true"] {
+margin-top:0;
+}
+
+/* --- the grid's jump-to-home control (JumpEdge, shown by FlyweightListView once scrolled away
+   from the top) --- */
+
+/* Its default 44x64 (flyweightlistview.qss) is sized for a chat messages view, where it floats
+   over full-width bubbles; over a grid whose entire cells are ~30px it reads as an oversized
+   blob. Written as a descendant selector so BOTH galleries pick it up -- the composer picker's
+   content IS a ChatReactionGallery (see #emojiGallery below) -- while every other
+   FlyweightListView in the app keeps the default.
+
+   The radius is NOT a border-radius property here: JumpEdge paints its circle itself in
+   paintEvent() and takes the diameter from the widget's WIDTH, so the width below is what
+   controls it -- 32px wide means a 16px radius, down from 22px. The height is that circle plus
+   the strip JumpEdge reserves above it for an optional badge counter; a gallery never shows one,
+   so only a small strip is kept. */
+uise--ChatReactionGallery uise--JumpEdge {
+min-width:32px;
+max-width:32px;
+min-height:40px;
+max-height:40px;
+}
+
+/* Icon size, likewise not an icon-size property: paintEvent() derives the glyph width as the
+   frame width minus twice this #sample min-width, which it reads as the icon's base padding --
+   the property is reused as a plain numeric channel because JumpEdge exposes no QSS icon metric
+   of its own (see paintEvent()'s own comment on encoding its parameters this way). 6px against
+   the 32px frame above gives a 20px glyph, a little under the 22px of the gallery's own cells,
+   which is the right relative weight for an overlay control.
+
+   padding MUST be kept equal to min-width above, or the glyph stops being centred in the circle.
+   paintEvent() insets the icon by min-width on the axis it is not pointing along, and by the
+   padding on the side it points at (m.top() for an Up chevron, m.left() for a Left one), so the
+   gap on one side is the padding and the gap on the other is 2*min-width minus that padding --
+   equal only when the two values match. The base rule's own 4px/4px pair is self-consistent for
+   the same reason; raising min-width alone left the Up chevron sitting 2px low. All four sides are
+   set so the invariant holds whichever edge the control is pointing at. */
+uise--ChatReactionGallery uise--JumpEdge #sample {
+min-width:6px;
+padding:6px;
 }
 
 /* --- the dropdown frame hosting both quick-bar and gallery panels --- */
@@ -178,32 +299,24 @@ min-height:0px;
 max-height:0px;
 }
 
-/* Sized so the WHOLE default pack fits with no scrolling at all, which the reactions dropdown's
-   own 8x5 does not: 50 icons over 8 columns needs 7 rows, and only 5 are visible there.
+/* Originally sized so the WHOLE default pack (then 54 icons) fit with no scrolling at all, which
+   the reactions dropdown's own grid did not. That no-scroll property no longer holds now that the
+   default pack is ~1374 icons across ten categories (see ChatReactionGallery::rebuildRows()) --
+   BROWSE mode is expected to scroll, the same way any category-sectioned picker does.
 
-   9 columns x 6 rows is the smallest grid that closes that gap -- ceil(50/9) is exactly 6, so the
-   pack fills the viewport without leaving a half-empty spare row. One column wider and one row
-   taller (+20%) than the dropdown.
-
-   Scoped to this dialog rather than changed on uise--ChatReactionGallery itself: the reactions
-   popup is anchored to a message bubble and deliberately compact, whereas this is a dialog the
-   user opens to browse -- the two want different shapes, and widening the shipped popup is not
-   part of this. Two ids out-specify the bare-type rule that sets 8x5 above. */
+   Only the ROW COUNT is still overridden here. The column count is not: this dialog used to ask
+   for one more column than the reactions popup, for a "a dialog the user opens to browse" versus
+   "a compact popup anchored to a message bubble" distinction, but both panels take their width
+   from the same widest child -- the ten-category tab strip -- so the right count is a property of
+   that strip, not of which host is showing the gallery. Both now inherit it from
+   uise--ChatReactionGallery above; this dialog stays the roomier of the two on the axis where that
+   is actually free, showing 6 rows before it scrolls rather than 5. */
 uise--EmojiGalleryDialog #emojiGallery {
 margin:0;
 padding:0;
-qproperty-galleryColumns: 9;
 qproperty-galleryVisibleRows: 6;
 }
 
-/* SearchLineEdit carries no padding of its own (lineedit.qss only styles its embedded action
-   button icons), so #searchEdit's height came entirely from Qt's platform-style default -- fine
-   for the compact reactions popup, cramped next to this dialog's larger 9x6 grid above. Vertical
-   only: horizontal space is already spoken for by the built-in search/cancel action icons
-   (SearchLineEdit's own addAction() calls), and widening it is not what was asked. Scoped to the
-   emoji dialog only, same reasoning as the grid-sizing rule above -- the shipped reactions popup
-   (uise--ChatReactionGallery #searchEdit) keeps its own compact height untouched. */
-uise--EmojiGalleryDialog #emojiGallery #searchEdit {
-padding-top:8px;
-padding-bottom:8px;
-}
+/* The search box's own vertical padding now lives on uise--ChatReactionGallery #searchEdit, which
+   both galleries share -- it was here, scoped to this dialog, until the reactions popup was made
+   to match it. */

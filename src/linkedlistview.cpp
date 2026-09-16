@@ -186,10 +186,18 @@ class LinkedListView_p
 #ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
                 ,
                 alignment(Qt::Alignment()),
-                inRelayout(false)
+                inRelayout(false),
+                inContentResize(false)
 #endif
         {
         }
+
+#ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
+        void setContentResizeHandler(std::function<void ()> handler)
+        {
+            contentResizeHandler=std::move(handler);
+        }
+#endif
 
 #ifdef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         void setupLayout()
@@ -701,6 +709,8 @@ class LinkedListView_p
 
 #ifndef UISE_DESKTOP_LINKEDLISTVIEW_LEGACY_LAYOUT
         bool inRelayout;
+        bool inContentResize;
+        std::function<void ()> contentResizeHandler;
 #endif
 };
 
@@ -793,27 +803,55 @@ bool LinkedListView::event(QEvent *event)
         case (QEvent::LayoutRequest): [[fallthrough]];
         case (QEvent::ContentsRectChange):
         {
-            // A bare LayoutRequest/ContentsRectChange reaching here only re-runs relayout() --
-            // unlike resizeList() (FlyweightListView_p), nothing here resizes m_llist itself or
-            // calls compensateSizeChange(). If a child's sizeHint() grew between the last
-            // resizeList() and this event (e.g. a widget shown via Qt's queued auto-show after
-            // being added to an already-visible layout, see qt-layout-queued-autoshow-gotcha),
-            // relayout() will reposition everything using the new, larger content extent while
-            // this widget's own size stays whatever resizeList() last set it to -- growing the
-            // list with no compensating scroll-position shift. That is indistinguishable on
-            // screen from the view scrolling by the difference. Log whenever this event finds
-            // a content/size mismatch, which is exactly that scenario caught in the act.
-            if (llvDebugEnabled())
+            // A bare LayoutRequest/ContentsRectChange reaching here used to only re-run
+            // relayout() -- unlike resizeList() (FlyweightListView_p), nothing here resized
+            // m_llist itself or called compensateSizeChange(). If a child's sizeHint() grew
+            // between the last resizeList() and this event (e.g. a widget shown via Qt's queued
+            // auto-show after being added to an already-visible layout, see
+            // qt-layout-queued-autoshow-gotcha -- or an already-displayed item widget changing
+            // size in place, such as a reaction chip landing on a message bubble), relayout()
+            // would reposition everything using the new, larger content extent while this
+            // widget's own size stayed whatever resizeList() last set it to -- growing the list
+            // with no compensating scroll-position shift for one full painted frame, until the
+            // owner's own deferred resize+compensate caught up on the next event-loop turn. That
+            // was indistinguishable on screen from the view scrolling by the difference.
+            //
+            // contentResizeHandler lets the owner (FlyweightListView_p::resizeList(), via
+            // onListContentResized()) resize this view and compensate the scroll position
+            // synchronously, in this same turn -- before this event's relayout() is ever
+            // painted. inContentResize guards against the handler's own resizeList() posting a
+            // LayoutRequest that re-enters here (resize() already delivers a synchronous
+            // relayout() on its own, see LinkedListView::resizeEvent()).
+            auto contentMain=pimpl->oprop(pimpl->calcSizeHint(false),OProp::size);
+            auto currentMain=pimpl->oprop(size(),OProp::size);
+            bool mismatch=contentMain!=currentMain;
+            if (llvDebugEnabled() && mismatch)
             {
-                auto contentMain=pimpl->oprop(pimpl->calcSizeHint(false),OProp::size);
-                auto currentMain=pimpl->oprop(size(),OProp::size);
-                if (contentMain!=currentMain)
+                std::cerr << "CHAT-FWLV-DEBUG: LinkedListView::event(" << static_cast<int>(event->type())
+                           << ") content main-axis size is now " << contentMain
+                           << " but m_llist main-axis size is still " << currentMain
+                           << (pimpl->contentResizeHandler ?
+                                   " -- compensating synchronously via contentResizeHandler" :
+                                   " -- uncompensated relayout() about to run")
+                           << std::endl;
+            }
+            if (mismatch && pimpl->contentResizeHandler && !pimpl->inContentResize)
+            {
+                auto sizeBeforeHandler=size();
+                pimpl->inContentResize=true;
+                pimpl->contentResizeHandler();
+                pimpl->inContentResize=false;
+                if (size()!=sizeBeforeHandler)
                 {
-                    std::cerr << "CHAT-FWLV-DEBUG: LinkedListView::event(" << static_cast<int>(event->type())
-                               << ") content main-axis size is now " << contentMain
-                               << " but m_llist main-axis size is still " << currentMain
-                               << " -- uncompensated relayout() about to run" << std::endl;
+                    // The handler resized this view (FlyweightListView_p::resizeList()), which
+                    // already delivered a synchronous relayout() via resizeEvent() below -- a
+                    // second one here would be redundant (inRelayout would no-op it anyway, but
+                    // skip it explicitly for clarity).
+                    break;
                 }
+                // Handler declined to act (e.g. called mid beginUpdate()/endUpdate(), where
+                // resizeList("endUpdate") already owns this) -- fall through to the plain
+                // relayout() below so widgets are still positioned correctly for this event.
             }
             pimpl->relayout();
         }
@@ -836,6 +874,12 @@ QSize LinkedListView::sizeHint() const
 QSize LinkedListView::minimumSizeHint() const
 {
     return pimpl->calcSizeHint(true);
+}
+
+//--------------------------------------------------------------------------
+void LinkedListView::setContentResizeHandler(std::function<void ()> handler)
+{
+    pimpl->setContentResizeHandler(std::move(handler));
 }
 #endif
 

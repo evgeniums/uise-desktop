@@ -666,13 +666,21 @@ ChatSeparatorSection::~ChatSeparatorSection()
 void ChatSeparatorSection::setClickable(bool enable)
 {
     pimpl->clickable=enable;
+
+    // The cursor goes on the CHIP (pimpl->button, which is also what clickableWidget() reports
+    // and the only thing that ever emits clicked()), never on `this`: this section spans the full
+    // width of the message row, so a pointing hand set here would also follow the mouse across the
+    // empty space to the left and right of the chip -- advertising a click where nothing happens.
+    // Qt propagates a widget's cursor to children that have none of their own, so the chip's
+    // internal label/image inherit this without needing their own calls, and the section itself is
+    // left with no cursor at all, i.e. inheriting the chat view's ordinary arrow.
     if (enable)
     {
-        setCursor(Qt::PointingHandCursor);
+        pimpl->button->setCursor(Qt::PointingHandCursor);
     }
     else
     {
-        setCursor(Qt::ArrowCursor);
+        pimpl->button->unsetCursor();
     }
 }
 

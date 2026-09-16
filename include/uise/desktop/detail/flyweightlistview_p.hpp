@@ -396,6 +396,7 @@ class FlyweightListView_p : public OrientationInvariant
         bool m_atBegin;
         bool m_atEnd;
         int m_firstWidgetPos;
+        int m_lastWidgetEdge;
 
         const ItemT* m_firstItem;
         const ItemT* m_lastItem;

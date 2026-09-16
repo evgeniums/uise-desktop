@@ -2147,6 +2147,56 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>hope</source>
         <translation type="unfinished">hope</translation>
     </message>
+    <message>
+        <location line="+0"/>
+        <source>Most common</source>
+        <translation>Most common</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Smileys &amp; Emotion</source>
+        <translation>Smileys &amp; Emotion</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>People &amp; Body</source>
+        <translation>People &amp; Body</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Animals &amp; Nature</source>
+        <translation>Animals &amp; Nature</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Food &amp; Drink</source>
+        <translation>Food &amp; Drink</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Travel &amp; Places</source>
+        <translation>Travel &amp; Places</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Activities</source>
+        <translation>Activities</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Objects</source>
+        <translation>Objects</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Symbols</source>
+        <translation>Symbols</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Flags</source>
+        <translation>Flags</translation>
+    </message>
 </context>
 <context>
     <name>ReplyBar</name>
