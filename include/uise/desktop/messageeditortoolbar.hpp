@@ -165,6 +165,19 @@ struct MessageEditorFormatState
  * original brief asked for: it lines up directly above the editor's own bottom-left expand
  * button, the control that opened this toolbar, so the bar is opened and closed from the same
  * column of blank padding beside the text edit.
+ *
+ * Overflow collapse: every button here is
+ * QSizePolicy::Fixed,Fixed (IconTextButton's own default), so at its natural width the row of
+ * ~20 of them plus separators runs to roughly 790px, and NOTHING in a plain QHBoxLayout adapts
+ * when the toolbar is handed less than that -- Qt's own layout code shrinks every item
+ * proportionally BELOW its minimum instead, which reads as every icon clipped in half. This
+ * class fixes that itself, self-contained, rather than pushing the problem onto every host: as
+ * the bar narrows, buttons are demoted off the end (see DemotionOrder in the .cpp) into a
+ * trailing "more" DropdownMenu, in a fixed priority order, until what remains fits -- Close and
+ * the mode switcher never demote, so the bar's floor is always just those two plus the overflow
+ * trigger. The bar's own height never changes across this. A button can be invisible for two
+ * independent reasons now -- the HOST asked for that (setButtonVisible()) or the bar demoted it
+ * for lack of room -- and isButtonVisible() reports only the former; see its own doc comment.
  */
 class UISE_DESKTOP_EXPORT MessageEditorToolbar : public Frame
 {
@@ -180,7 +193,18 @@ class UISE_DESKTOP_EXPORT MessageEditorToolbar : public Frame
         MessageEditorToolbar& operator=(const MessageEditorToolbar&)=delete;
         MessageEditorToolbar& operator=(MessageEditorToolbar&&)=delete;
 
+        //! Sets the HOST's intent for a button, independent of whatever the bar's own overflow
+        //! collapse (see the class doc comment) is currently doing to that same button. See
+        //! isButtonVisible() for the split this creates.
         void setButtonVisible(MessageEditorToolbarButton button, bool visible);
+
+        //! Reports the HOST's own intent, set by setButtonVisible() -- NOT whether the button's
+        //! widget currently happens to be on screen. A button can also be off screen because it
+        //! was DEMOTED into the overflow menu at the current width; that is a second, independent
+        //! reason for a button to be invisible and this accessor deliberately does not see it, so
+        //! that a host reading back its own visibility choice (e.g. before deciding whether to
+        //! flip it) is never confused by a resize that happened to demote the same button. Use
+        //! button(button)->isVisible() if the widget's actual on-screen state is what is wanted.
         bool isButtonVisible(MessageEditorToolbarButton button) const;
 
         void setButtonEnabled(MessageEditorToolbarButton button, bool enable);
@@ -270,6 +294,22 @@ class UISE_DESKTOP_EXPORT MessageEditorToolbar : public Frame
         //! MessageEditor reacts to this by calling setExpanded(false).
         void closeRequested();
 
+    protected:
+
+        //! Re-evaluates the overflow collapse for the bar's new width. See relayout()'s own
+        //! doc comment in the .cpp for the algorithm.
+        void resizeEvent(QResizeEvent* event) override;
+
+        //! The bar is built hidden (a host that never expands it never pays for a layout pass)
+        //! and only ever shown by MessageEditor's own setExpanded(true), so its first REAL width
+        //! arrives here rather than at construction -- relayout() from here too.
+        void showEvent(QShowEvent* event) override;
+
+        //! Deliberately NOT the sum of every button's width -- see the class's own doc comment on
+        //! overflow collapse. Reports only what never demotes (Close, the mode switcher, the
+        //! overflow trigger itself), which is what stops the bar forcing a host layout wide.
+        QSize minimumSizeHint() const override;
+
     private:
 
         //! Wire a checkable button's clicked()/toggled() pair against one bool field of the
@@ -280,6 +320,43 @@ class UISE_DESKTOP_EXPORT MessageEditorToolbar : public Frame
             bool MessageEditorFormatState::* field,
             void (MessageEditorToolbar::*requestedSignal)(bool)
         );
+
+        //! b's effective on-screen visibility is hostVisible[b] && !demoted[b] -- see the class's
+        //! own doc comment on overflow collapse and isButtonVisible()'s doc comment for the two
+        //! independent reasons a button can be off screen.
+        void applyButtonVisibility(MessageEditorToolbarButton button);
+
+        //! Recomputes which buttons fit at the bar's CURRENT width, as a pure function of that
+        //! width alone (never incrementally patched from the live demoted set -- see the .cpp),
+        //! and commits the result: button visibility, separator visibility, the overflow menu's
+        //! contents, and the overflow trigger's own visibility. A no-op, touching nothing, when
+        //! the recomputed set matches what is already committed.
+        void relayout();
+
+        //! Hides every #separator with no visible button on one side of it, so an emptied group
+        //! never leaves an orphaned or doubled separator behind. Called by relayout() before each
+        //! width measurement -- see relayout()'s own doc comment for why the ordering matters.
+        void updateSeparators();
+
+        //! Rebuilds the overflow DropdownMenu's item list from scratch from the CURRENT demoted
+        //! set and live state (MessageEditorFormatState, mode, per-button enabled). Called by
+        //! relayout() whenever the committed demoted set actually changes -- never from the
+        //! menu's own aboutToShow()/submenuAboutToShow(), which fire too late to matter here (see
+        //! the .cpp).
+        void rebuildOverflowMenu();
+
+        //! Mirrors setFormatState()/setMode()'s pushed state onto the overflow menu's checkable
+        //! rows and submenu trigger icons. Called from inside the same `syncing` guard window
+        //! setFormatState()/setMode() already use, so it can never loop back into
+        //! onOverflowToggled().
+        void syncOverflowState();
+
+        //! Overflow menu's itemTriggered() handler -- see the .cpp for the id-range dispatch.
+        void onOverflowTriggered(int id);
+
+        //! Overflow menu's itemToggled() handler -- see the .cpp for the id-range dispatch and
+        //! wireCheckable()'s contract, which this mirrors for the menu's checkable rows.
+        void onOverflowToggled(int id, bool checked);
 
         std::unique_ptr<MessageEditorToolbar_p> pimpl;
 };
