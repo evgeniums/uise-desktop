@@ -78,6 +78,15 @@ class FloatingDialogFrame_p
 
         bool hasPosition=false;
 
+        //! The anchor the two-argument popupAt() was last called with, re-applied whenever the
+        //! frame's size changes under it (see FloatingDialogFrame::resizeEvent()). anchorValid is
+        //! cleared the moment the user drags the frame, so a position they chose themselves is
+        //! never overridden, and by the position-less popup()/popupAt(QPoint) forms, which do not
+        //! anchor to a corner at all.
+        QPoint anchorPos;
+        Qt::Corner anchorCorner=Qt::TopLeftCorner;
+        bool anchorValid=false;
+
         QPropertyAnimation* fadeAnimation=nullptr;
         int fadeDurationMs=FloatingDialogFrame::DefaultFadeDurationMs;
         int easingCurveType=static_cast<int>(QEasingCurve::OutCubic);
@@ -587,6 +596,10 @@ void FloatingDialogFrame::popup()
     preparePopup();
     adjustSize();
 
+    // Not corner-anchored to anything, so a later content resize has no anchor to re-apply --
+    // see the two-argument popupAt().
+    pimpl->anchorValid=false;
+
     if (!pimpl->hasPosition)
     {
         QPoint pos;
@@ -620,6 +633,11 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos)
     preparePopup();
     adjustSize();
 
+    // Positions the frame's TOP-left corner, so a height that grows afterwards extends downward
+    // from a point the caller picked -- there is no corner offset to re-apply, unlike the
+    // two-argument overload.
+    pimpl->anchorValid=false;
+
     auto pos=globalPos;
     clampToScreen(pos);
     move(pos);
@@ -635,21 +653,61 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos, Qt::Corner anchorCorn
     preparePopup();
     adjustSize();
 
-    auto pos=globalPos;
-    if (anchorCorner==Qt::TopRightCorner || anchorCorner==Qt::BottomRightCorner)
+    // Remembered BEFORE the first placement, so resizeEvent() can redo it: content that builds
+    // itself from its own showEvent() (ChatReactionGallery's rows, and anything else deferring
+    // work until it is actually on screen) is necessarily still empty at the adjustSize() above,
+    // so this first placement can be against a height that is about to change. See the method's
+    // own doc comment.
+    pimpl->anchorPos=globalPos;
+    pimpl->anchorCorner=anchorCorner;
+    pimpl->anchorValid=true;
+
+    applyAnchoredPosition();
+    pimpl->hasPosition=true;
+
+    showFrame(this,pimpl.get());
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::applyAnchoredPosition()
+{
+    if (!pimpl->anchorValid)
+    {
+        return;
+    }
+
+    auto pos=pimpl->anchorPos;
+    if (pimpl->anchorCorner==Qt::TopRightCorner || pimpl->anchorCorner==Qt::BottomRightCorner)
     {
         pos.setX(pos.x()-width());
     }
-    if (anchorCorner==Qt::BottomLeftCorner || anchorCorner==Qt::BottomRightCorner)
+    if (pimpl->anchorCorner==Qt::BottomLeftCorner || pimpl->anchorCorner==Qt::BottomRightCorner)
     {
         pos.setY(pos.y()-height());
     }
 
     clampFullyToScreen(pos);
     move(pos);
-    pimpl->hasPosition=true;
+}
 
-    showFrame(this,pimpl.get());
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::resizeEvent(QResizeEvent* event)
+{
+    QFrame::resizeEvent(event);
+
+    // The frame grew or shrank under a placement that was computed from its previous size -- most
+    // often because content built itself on show (see popupAt()'s own doc comment). Re-anchoring
+    // here is what keeps a bottom-anchored popup growing UPWARD from its control rather than
+    // downward off the screen. A no-op once the user has dragged the frame (the drag clears
+    // anchorValid), while it is closing, or for the popup()/popupAt(QPoint) forms, which never
+    // set an anchor.
+    if (pimpl->closing)
+    {
+        return;
+    }
+    applyAnchoredPosition();
 }
 
 //--------------------------------------------------------------------------
@@ -780,6 +838,9 @@ bool FloatingDialogFrame::eventFilter(QObject* obj, QEvent* event)
                     clampToScreen(newPos);
                     move(newPos);
                     pimpl->hasPosition=true;
+                    // The position is the user's now, not the anchor's: a later content resize
+                    // must leave it exactly where they put it. See the two-argument popupAt().
+                    pimpl->anchorValid=false;
                 }
             }
             break;

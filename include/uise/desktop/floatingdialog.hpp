@@ -219,6 +219,14 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
          * behaviour), this keeps the whole frame within the screen's available geometry when it
          * fits -- appropriate for a popup anchored to a UI control the user just clicked, which
          * should stay fully visible rather than partially run off-screen.
+         *
+         * The anchor is REMEMBERED, and re-applied whenever the frame's own size changes while it
+         * is up (see resizeEvent()) -- content that only builds itself once shown would otherwise
+         * be measured empty here, positioned against that too-small height, and then grow past
+         * the screen edge with nothing left to clamp it. ChatReactionGallery is exactly such a
+         * content widget: its rows are built from its showEvent(), which necessarily runs AFTER
+         * this method has measured and placed the frame. Dragging the frame drops the anchor, so
+         * a position the user chose themselves is never overridden.
          */
         void popupAt(const QPoint& globalPos, Qt::Corner anchorCorner);
 
@@ -238,12 +246,22 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         bool eventFilter(QObject* obj, QEvent* event) override;
         void closeEvent(QCloseEvent* event) override;
 
+        //! Re-applies the remembered corner anchor when the frame's size changes under it -- see
+        //! the two-argument popupAt().
+        void resizeEvent(QResizeEvent* event) override;
+
     private:
 
         //! close(), unless the content is an AbstractDialog that was marked non-closable:
         //! Escape and the outside click are dismissals performed on the user's behalf, and such
         //! a dialog accepts none of them (see AbstractDialog::setClosable()).
         void closeByUser();
+
+        //! Place the frame so that the remembered anchorCorner lands on the remembered anchor
+        //! point, clamped fully to the screen. Shared by the two-argument popupAt() and
+        //! resizeEvent(); a no-op when no anchor is remembered (never popped up that way, or the
+        //! user has since dragged the frame).
+        void applyAnchoredPosition();
 
         void finishClose();
 
