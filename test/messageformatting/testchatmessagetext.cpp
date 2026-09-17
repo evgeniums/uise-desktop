@@ -38,10 +38,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextCursor>
 #include <QTextDocumentFragment>
 #include <QTextLayout>
+#include <QTextFormat>
 #include <QAbstractTextDocumentLayout>
 #include <QColor>
 #include <QUrl>
 #include <QScrollBar>
+#include <QFontMetrics>
 
 #include <uise/test/uise-testthread.hpp>
 
@@ -78,6 +80,36 @@ void loadMarkdownWithMentions(ChatMessageTextBrowser& browser, const QString& ma
     browser.setHtmlContent(markdownToHtml(markdown,options));
     browser.document()->setTextWidth(width);
     (void)browser.document()->documentLayout()->documentSize();
+}
+
+//! Same as loadMarkdown(), but with emoji rendering on and emojiInlineSize measured the SAME way
+//! ChatMessageText::loadText() measures it (the browser's own font ascent) -- so these tests
+//! exercise applyImageLineHeight() against the image size the real message path actually produces,
+//! not an arbitrary constant. emojiOnlySize is left at the renderer's own default (64), so a
+//! source with emojiOnlyMaxCount or fewer emoji still takes the large emoji-only path.
+void loadMarkdownWithEmoji(ChatMessageTextBrowser& browser, const QString& markdown, int width=320)
+{
+    MarkdownRenderOptions options;
+    options.emojiEnabled=true;
+    options.emojiInlineSize=QFontMetrics(browser.font()).ascent();
+    browser.setHtmlContent(markdownToHtml(markdown,options));
+    browser.document()->setTextWidth(width);
+    (void)browser.document()->documentLayout()->documentSize();
+}
+
+//! `count` copies of U+1F44D (thumbs up -- same character testmarkdownrenderer.cpp's thumbsUp()
+//! uses), run together with NO separating space. A space is itself a text fragment and gives the
+//! line a normal ascent/descent on its own, which would mask exactly the defect these tests exist
+//! to catch (a line of nothing but images has none).
+QString thumbsUpRun(int count)
+{
+    const auto thumbsUp=QString::fromUcs4(U"\U0001F44D");
+    QString result;
+    for (int i=0; i<count; ++i)
+    {
+        result+=thumbsUp;
+    }
+    return result;
 }
 
 //! Whether the document holds any anchor fragment matching `href`.
@@ -775,6 +807,120 @@ BOOST_AUTO_TEST_CASE(TestMentionUrlReachesLinkActivated)
 
             UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
             UISE_TEST_CHECK_EQUAL_QSTR(spy.at(0).at(0).toUrl().toString(),mentionUrl.toString());
+        }
+    );
+}
+
+//! applyImageLineHeight() exists for exactly this: an inline emoji <img> is sized to the font's
+//! ASCENT (see its own doc comment), so a line of nothing but them reserves no descender space and
+//! comes out shorter than a line of text -- which is not cosmetic, it silently squares
+//! uise--AbstractChatMessageContent's far-side corners (resources/style/chat.qss's border-radius
+//! HARD CONSTRAINT). Four thumbs-up is past the default emojiOnlyMaxCount (3), so this takes the
+//! INLINE path, not the large 64px emoji-only one -- the case that actually reaches this pass.
+BOOST_AUTO_TEST_CASE(TestEmojiOnlyLineIsAsTallAsATextLine)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser emojiBrowser;
+            loadMarkdownWithEmoji(emojiBrowser,thumbsUpRun(4));
+
+            ChatMessageTextBrowser textBrowser;
+            loadMarkdown(textBrowser,QStringLiteral("hello"));
+
+            UISE_TEST_CHECK_EQUAL(emojiBrowser.document()->size().height(),
+                                  textBrowser.document()->size().height());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiOnlyBlockGetsAMinimumLineHeight)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdownWithEmoji(browser,thumbsUpRun(4));
+
+            auto block=lastRenderedBlock(browser);
+            UISE_TEST_REQUIRE(block.isValid());
+            const auto format=block.blockFormat();
+            UISE_TEST_CHECK(format.lineHeightType()==QTextBlockFormat::MinimumHeight);
+            UISE_TEST_CHECK_EQUAL(format.lineHeight(),
+                                  static_cast<qreal>(QFontMetrics(browser.font()).height()));
+        }
+    );
+}
+
+//! MinimumHeight never SHRINKS a line (QTextBlockFormat::lineHeight() is a qMax against the
+//! natural height) -- the large emoji-only path (1-3 emoji, ~64px images) must come out untouched.
+BOOST_AUTO_TEST_CASE(TestTallEmojiOnlyLineIsNotShrunk)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdownWithEmoji(browser,thumbsUpRun(1));
+
+            UISE_TEST_CHECK(browser.document()->size().height()>=64);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestTextBlockLineHeightIsUntouched)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdown(browser,QStringLiteral("hello"));
+
+            auto block=lastRenderedBlock(browser);
+            UISE_TEST_REQUIRE(block.isValid());
+            UISE_TEST_CHECK(!block.blockFormat().hasProperty(QTextFormat::LineHeightType));
+        }
+    );
+}
+
+//! Shaped like whitemdesktop's Plain-format wrapper (chattextrender.cpp's
+//! `<div style="...line-height:125%;">`) but with an image in it, so applyImageLineHeight()'s
+//! imageOnlyBlock() predicate matches -- an author-DECLARED line height must win over this pass,
+//! never be silently replaced by it (Qt's HTML parser maps CSS line-height onto the very same
+//! QTextBlockFormat properties this pass writes).
+BOOST_AUTO_TEST_CASE(TestDeclaredLineHeightSurvives)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            browser.setHtmlContent(QStringLiteral(
+                "<div style=\"white-space:pre-wrap;line-height:125%;\">"
+                "<img src=\"https://example.com/x.png\" width=\"18\" height=\"18\">"
+                "</div>"));
+
+            auto block=lastRenderedBlock(browser);
+            UISE_TEST_REQUIRE(block.isValid());
+            UISE_TEST_CHECK(block.blockFormat().lineHeightType()
+                            ==QTextBlockFormat::ProportionalHeight);
+        }
+    );
+}
+
+//! emojiOnlyDocument() (src/markdownrenderer.cpp) reads block structure (heading/list/quote/code)
+//! and fragment content -- never LineHeightType/LineHeight -- so applyImageLineHeight() running
+//! first (ChatMessageText::loadText() computes this verdict AFTER setHtmlContent()) must not
+//! change the answer.
+BOOST_AUTO_TEST_CASE(TestEmojiOnlyVerdictSurvivesTheLineHeightPass)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            ChatMessageTextBrowser browser;
+            loadMarkdownWithEmoji(browser,thumbsUpRun(3));
+
+            std::vector<QString> ids;
+            UISE_TEST_CHECK(emojiOnlyDocument(browser.document(),3,ids));
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(ids.size()),3);
         }
     );
 }

@@ -341,6 +341,110 @@ void ChatMessageTextBrowser::applyDocumentTopMargin()
 
 //--------------------------------------------------------------------------
 
+namespace {
+
+//! Whether this block's visible content is nothing but inline images -- the same rule
+//! emojiOnlyDocument() (src/markdownrenderer.cpp) applies to a whole document, narrowed to one
+//! block: image fragments, and whitespace between them, and nothing else. Several identical
+//! emoji in a row merge into ONE fragment carrying several U+FFFC characters, which is why this
+//! tests the fragment's FORMAT rather than counting characters.
+bool imageOnlyBlock(const QTextBlock& block)
+{
+    bool anyImage=false;
+    for (auto it=block.begin(); !it.atEnd(); ++it)
+    {
+        auto fragment=it.fragment();
+        if (!fragment.isValid())
+        {
+            continue;
+        }
+        if (fragment.charFormat().isImageFormat())
+        {
+            anyImage=true;
+            continue;
+        }
+        if (!fragment.text().trimmed().isEmpty())
+        {
+            return false;
+        }
+    }
+    return anyImage;
+}
+
+}
+
+void ChatMessageTextBrowser::applyImageLineHeight()
+{
+    auto* doc=document();
+    if (doc==nullptr)
+    {
+        return;
+    }
+
+    // Qt gives an inline image ascent==its height and descent==0 (QTextDocumentLayout::
+    // resizeInlineObject()), and the emoji <img> are sized to the FONT's ASCENT on purpose
+    // (loadText() below, whitemdesktop's chatTextToHtml(), MessageEditor::
+    // emojiInlineSizeForFont() -- a full-height image would make every MIXED line taller than its
+    // neighbours). A line made of nothing but those images therefore has no descent under its
+    // baseline at all and comes out ~descent px shorter than a line of text -- not a cosmetic
+    // difference: uise--AbstractChatMessageContent's border-radius is sized against a ONE-LINE
+    // bubble's height (resources/style/chat.qss's HARD CONSTRAINT comment on border-radius), and
+    // qNormalizeRadii() (qtbase/src/gui/painting/qcssutil.cpp) silently ZEROES both corners of an
+    // edge whose two radii no longer fit -- an emoji-only message lost its far-side corners
+    // outright.
+    //
+    // MinimumHeight specifically, NOT LineDistanceHeight/ProportionalHeight/a block bottomMargin:
+    // Qt puts a MinimumHeight's extra leading ABOVE the line (lineAdjustment=height-lineHeight is
+    // negative and is SUBTRACTED from the line's y, QTextDocumentLayoutPrivate::
+    // getLineHeightParams()), which is the only variant that actually makes the BUBBLE taller.
+    // Everything that adds space BELOW the last line is absorbed by design:
+    // AbstractChatMessageContent::setMaximumBubbleWidth() (src/chatmessage.cpp) measures slack as
+    // the dead space under the last line and trims m_bottomExtraHeight by exactly that much, so
+    // the bubble's own height comes out unchanged. Pushing the line down instead moves
+    // lastLineRect() down with it, slack stays the same, and the bubble grows by precisely the
+    // shortfall -- geometrically identical to a one-line text bubble, with the inline time chip
+    // still bottom-aligned to the last line.
+    //
+    // Measured against font(), the SAME expression the <img> size was derived from (loadText(),
+    // chattextrender.cpp) -- document()->defaultFont() is kept equal to it by QTextEdit itself,
+    // but naming font() here keeps the two halves of the invariant greppable from each other. Not
+    // the block's own char format font: the images are sized from one document-wide number, so a
+    // heading's font would pad a small emoji by a heading-sized minimum. If emoji sizing ever
+    // becomes per-block, this must follow it.
+    const auto minHeight=static_cast<qreal>(QFontMetrics(font()).height());
+
+    const auto undoEnabled=doc->isUndoRedoEnabled();
+    doc->setUndoRedoEnabled(false);
+
+    for (auto block=doc->begin(); block.isValid() && block!=doc->end(); block=block.next())
+    {
+        // Code keeps its own metrics (and cannot hold an image anyway); a line height DECLARED by
+        // the content wins over this one -- Qt's HTML parser maps CSS line-height onto these very
+        // properties (qtexthtmlparser.cpp), e.g. whitemdesktop's Plain branch wraps its text in
+        // <div style="line-height:125%">, and silently replacing an author's value would be a
+        // second, invisible owner of it.
+        const auto blockFormat=block.blockFormat();
+        if (blockFormat.nonBreakableLines()
+            || blockFormat.hasProperty(QTextFormat::LineHeightType)
+            || !imageOnlyBlock(block))
+        {
+            continue;
+        }
+
+        // mergeBlockFormat(), not setBlockFormat(): the LineHeight pair is the only thing this
+        // pass owns, and applyCodeBlockLayout()'s padding margins (or anything a later pass adds)
+        // must survive regardless of which of them runs first.
+        QTextBlockFormat lineHeightFormat;
+        lineHeightFormat.setLineHeight(minHeight,QTextBlockFormat::MinimumHeight);
+        QTextCursor cursor(block);
+        cursor.mergeBlockFormat(lineHeightFormat);
+    }
+
+    doc->setUndoRedoEnabled(undoEnabled);
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageTextBrowser::applyCodeBlockLayout()
 {
     // Overlays are RECYCLED across passes, exactly as applyWideTableLayout() recycles its expand
@@ -1239,6 +1343,9 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     // applyDocumentTopMargin(). Runs before the two passes below so they measure the document at
     // its final height.
     applyDocumentTopMargin();
+    // Same "before the two passes below" reasoning -- an emoji-only block needs its minimum line
+    // height in place before applyCodeBlockLayout()/applyWideTableLayout() measure the document.
+    applyImageLineHeight();
     // setHtml() does NOT replace the underlying QTextDocument object -- QWidgetTextControlPrivate::
     // setContent() only allocates a new one when this widget has none yet, otherwise it calls
     // doc->setHtml() on the SAME object (verified against Qt 6.9.0 source; the comment this
@@ -1270,6 +1377,10 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     m_lastHtml.clear();
     setPlainText(text);
     applyDocumentTopMargin();
+    // Plain text has no images -- run the pass anyway for the same "clear the previous content's
+    // state" reason applyCodeBlockLayout()/applyWideTableLayout() are run below: a stale minimum
+    // line height left on a block from the PREVIOUS (HTML) content must not survive setPlainText().
+    applyImageLineHeight();
     // Plain text has no code blocks -- run the pass anyway rather than clearing m_codeBlocks by
     // hand: it finds none, and its own empty path is what destroys the previous content's overlay
     // strips (a bare clear() would drop the QPointers and leave the widgets parented to viewport()
@@ -1429,6 +1540,8 @@ void ChatMessageTextBrowser::applyDocumentStyle()
         registerEmojiResources(m_lastHtml);
         setHtml(m_lastHtml);
         applyDocumentTopMargin();
+        // Same "before the passes below measure the document" reasoning as setHtmlContent().
+        applyImageLineHeight();
         // The replay rebuilt the document, discarding every per-message format derived from the
         // PREVIOUS load along with it -- both passes have to run again, exactly as they do after
         // setHtmlContent()'s own setHtml().
@@ -1524,6 +1637,8 @@ void ChatMessageTextBrowser::setWideTableScrollEnabled(bool enable)
         // separately by tableExpandButton.
         setHtml(m_lastHtml);
         applyDocumentTopMargin();
+        // Same "before the pass below measures the document" reasoning as setHtmlContent().
+        applyImageLineHeight();
     }
 
     applyWideTableLayout();

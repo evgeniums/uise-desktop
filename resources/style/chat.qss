@@ -164,6 +164,19 @@ padding: 0px;
    comfortably under the height of a one-line bubble when changing either this or the vertical
    padding/margins, and check a ONE-LINE bubble specifically: a taller one cannot show the fault.
 
+   The other half of this constraint is the SHORTEST bubble, not just the radius: a body that
+   renders shorter than a one-line text bubble trips the same qNormalizeRadii() zeroing at an
+   unchanged radius. That is exactly what an emoji-only message did -- inline emoji are <img> sized
+   to the font's ASCENT (deliberately, so a mixed line is no taller than its neighbours), so a line
+   of nothing but emoji has no descent under its baseline and came out ~4px short, squaring both
+   far-side corners while every text bubble kept them. Fixed at the source by
+   ChatMessageTextBrowser::applyImageLineHeight() (src/chatmessagetext.cpp), which gives an
+   image-only block a MINIMUM line height of one text line, so it is now a standing invariant that
+   the shortest possible bubble is a one-line text bubble. Anything that breaks that invariant -- a
+   new body type, a change to emojiInlineSize, dropping that pass -- puts this radius back at risk.
+   Check a ONE-LINE bubble AND an emoji-only (4+ emoji, run together) bubble when changing either
+   this or the vertical padding/margins.
+
    border-radius/padding here stay in effect even for a transparent bubble
    (uise--AbstractChatMessageContent[transparent="true"] in light/chat.qss, dark/chat.qss) -- that
    rule only drops background-color, nothing here. */

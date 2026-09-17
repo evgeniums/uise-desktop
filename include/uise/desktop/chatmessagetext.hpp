@@ -681,6 +681,16 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! default.
         void applyDocumentTopMargin();
 
+        //! Gives every block whose visible content is nothing but inline images a MINIMUM line
+        //! height of one line of text in this widget's own font, so an emoji-only message is
+        //! exactly as tall as a one-line text message -- see this method's own definition
+        //! (src/chatmessagetext.cpp) for why that matters (resources/style/chat.qss's
+        //! border-radius HARD CONSTRAINT) and why MinimumHeight is the only line-height type that
+        //! actually achieves it. Must run after EVERY setHtml()/setPlainText() on this widget, for
+        //! the same reason applyDocumentTopMargin() must: both go through
+        //! QTextDocumentPrivate::clear(), which discards every block format.
+        void applyImageLineHeight();
+
         /**
          * @brief Register a QPixmap for every emoji `<img>` in `html` under its own URL, so Qt's
          *  image handler resolves it out of the document's own resource table.
