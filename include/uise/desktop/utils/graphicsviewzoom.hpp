@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QObject>
 #include <QPoint>
+#include <QRectF>
 #include <QSizeF>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -182,6 +183,24 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         void setMinDisplayPixels(qreal value) noexcept;
         qreal minDisplayPixels() const noexcept;
 
+        //! When non-empty (viewport pixels), clampScale()'s floor is raised so fitItem() can never
+        //! be zoomed out below the scale at which it covers this rect in both dimensions -- lets a
+        //! fixed-on-screen crop frame (see CropRectItem::isFixedOnScreen()) require the image to
+        //! always cover it. Takes precedence over minZoomFactor()/minDisplayPixels() (raises the
+        //! floor above them, never below). Empty (the default) leaves clampScale() exactly as
+        //! before this was added. Setting it does not itself reclamp the current scale -- call
+        //! reapplyLimits() after.
+        void setCoverRect(const QRectF& viewportRect) noexcept;
+        QRectF coverRect() const noexcept;
+
+        //! Re-clamps the CURRENT scale into range (minZoomFactor()/maxZoomFactor()/
+        //! minDisplayPixels()/coverRect(), all relative to the live baselineScale()) without marking
+        //! the result as a deliberate user zoom, unlike zoomTo() (which always sets isUserZoomed()).
+        //! Anchored at the viewport centre. Use after a load, rotate/flip, or coverRect() change
+        //! that can leave the current scale below (or, for rotate/flip's aspect swap, above) the
+        //! floor -- e.g. this is what scales an image smaller than coverRect() up to cover it.
+        void reapplyLimits();
+
         void setPixelsPerNotch(qreal value) noexcept;
         qreal pixelsPerNotch() const noexcept;
 
@@ -232,6 +251,11 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         void beginPan(const QPoint& pos);
         void endPan();
 
+        //! Shared NoAnchor-scale-then-correct-scrollbars dance used by both zoomTo() (which then
+        //! sets m_userZoomed) and reapplyLimits() (which does not). See zoomTo()'s own comment for
+        //! why AnchorUnderMouse itself isn't used here.
+        void applyScaleAnchored(qreal factor, const QPoint& anchorViewportPos);
+
         //! fitItem()'s bounding rect mapped through the CURRENT transform and divided back out by
         //! currentScale() -- the scale-independent "natural", zoom-free on-screen size baselineScale()
         //! and the minDisplayPixels() floor both measure against. false (out left untouched) if
@@ -248,6 +272,7 @@ class UISE_DESKTOP_EXPORT GraphicsViewZoom : public QObject
         qreal m_maxZoomFactor=DefaultMaxZoomFactor;
         qreal m_pixelsPerNotch=DefaultPixelsPerNotch;
         qreal m_minDisplayPixels=DefaultMinDisplayPixels;
+        QRectF m_coverRect;
 
         bool m_panEnabled=true;
         Qt::MouseButtons m_panButtons=Qt::LeftButton;

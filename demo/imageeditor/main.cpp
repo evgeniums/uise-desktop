@@ -127,6 +127,22 @@ int main(int argc, char *argv[])
         }
     );
 
+    auto legacyCropFrame=new QCheckBox("Legacy crop frame (scale with image)",configFrame);
+    legacyCropFrame->setChecked(false);
+    cl->addWidget(legacyCropFrame);
+    QObject::connect(
+        legacyCropFrame,
+        &QCheckBox::toggled,
+        editorCtrl->qWidget(),
+        [&](bool enable)
+        {
+            editorCtrl->setCropFrameMode(
+                enable ? AbstractImageEditor::CropFrameMode::ScaleWithImage
+                       : AbstractImageEditor::CropFrameMode::FixedOnScreen
+            );
+        }
+    );
+
     auto takeImage=new QPushButton("Take image",configFrame);
     cl->addWidget(takeImage);
     QObject::connect(

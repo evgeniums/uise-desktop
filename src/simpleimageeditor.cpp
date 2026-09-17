@@ -130,6 +130,16 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->view->setScene(pimpl->scene);
     pimpl->layout->addWidget(pimpl->view,1);
 
+    // Panning is already handled entirely by GraphicsViewZoom's own drag/scrollbar-value logic, not
+    // by the user interacting with a visible scrollbar -- see imageviewer.cpp's identical setting
+    // for the reasoning this mirrors: with ScrollBarAsNeeded, a scale change can toggle a scrollbar's
+    // visibility, which resizes the viewport, which (in fixed-on-screen crop mode) re-enters
+    // FreeHandDrawView::resizeEvent() -> CropRectItem::adjustCropRect() -> frameChanged() ->
+    // GraphicsViewZoom::reapplyLimits() -> another scale change -- an infinite scale/resize
+    // feedback loop right at the cover-scale floor (the "hangs zooming out" bug this fixes).
+    pimpl->view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    pimpl->view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
     pimpl->zoom=new GraphicsViewZoom(pimpl->view,this);
     pimpl->zoom->setPanButtons(Qt::LeftButton|Qt::MiddleButton);
     pimpl->zoom->setPanFilter(
@@ -499,6 +509,32 @@ void SimpleImageEditor::updateCropButtonState()
 
 //--------------------------------------------------------------------------
 
+void SimpleImageEditor::updateCropFrameMode()
+{
+    if (m_widget->pimpl->view!=nullptr)
+    {
+        // The scroll-blit optimisation behind Qt's default MinimalViewportUpdate would otherwise
+        // smear a viewport-pinned overlay during a pan -- only the scrolled-in strip gets repainted,
+        // and the crop frame is expected to stay static in exactly the region that strip excludes.
+        m_widget->pimpl->view->setViewportUpdateMode(
+            cropFrameMode()==CropFrameMode::FixedOnScreen
+                ? QGraphicsView::FullViewportUpdate
+                : QGraphicsView::MinimalViewportUpdate
+        );
+    }
+
+    if (isCropEnabled())
+    {
+        resetCropper();
+    }
+    else
+    {
+        updateZoomLimitsForCropper();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void SimpleImageEditor::updateImageSizeLimits()
 {
     if (m_widget->pimpl->cropperItem!=nullptr)
@@ -621,7 +657,9 @@ QPixmap SimpleImageEditor::editedImage()
         m_widget->pimpl->cropperItem->setVisible(false);
     }
 
-    auto px=QPixmap{static_cast<int>(croppedRect.width()),static_cast<int>(croppedRect.height())};
+    // At extreme zoom, croppedRect (the scene-space projection of the crop frame/rect) can shrink to
+    // under a device pixel -- floor it to 1x1 rather than construct a null QPixmap.
+    auto px=QPixmap{qMax(1,static_cast<int>(croppedRect.width())),qMax(1,static_cast<int>(croppedRect.height()))};
     // A size-constructed QPixmap is uninitialised and opaque; QGraphicsScene::render() never
     // clears its target (no scene background brush is set), so without this fill every
     // transparent pixel of the source image keeps the opaque backing store -- a transparent PNG
@@ -672,9 +710,12 @@ void SimpleImageEditor::destroyCropper()
 {
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
+        m_widget->pimpl->view->setCropper(nullptr);
         m_widget->pimpl->scene->removeItem(m_widget->pimpl->cropperItem);
         delete m_widget->pimpl->cropperItem;
         m_widget->pimpl->cropperItem=nullptr;
+
+        updateZoomLimitsForCropper();
     }
 }
 
@@ -691,16 +732,102 @@ void SimpleImageEditor::resetCropper()
 
     m_widget->pimpl->cropperItem = new CropRectItem(m_widget->pimpl->view,m_widget->pimpl->imageItem);
     m_widget->pimpl->scene->addItem(m_widget->pimpl->cropperItem);
+    m_widget->pimpl->cropperItem->setFixedOnScreen(cropFrameMode()==CropFrameMode::FixedOnScreen);
     // Before any setter/init() call below that triggers adjustCropRect() -- see
     // setLimitToVisibleArea()'s own doc: while zoomed in, the crop rect must be derived from the
     // full image bounds, not intersected with whatever sliver of the image the current pan/zoom
-    // happens to have on screen.
+    // happens to have on screen. Legacy (scale-with-image) mode only -- ignored in fixed-on-screen
+    // mode, which derives its seed from the viewport instead (see CropRectItem::adjustViewportFrame()).
     m_widget->pimpl->cropperItem->setLimitToVisibleArea(!m_widget->pimpl->zoom->isZoomed());
     m_widget->pimpl->cropperItem->setKeepAspectRatio(keepAspectRatio());
     m_widget->pimpl->cropperItem->setSquare(isSquareCrop());
     m_widget->pimpl->cropperItem->setEllipse(isEllipseCropPreview());
     m_widget->pimpl->cropperItem->setMinimumImageSize(minimumImageSize());
     m_widget->pimpl->cropperItem->init();
+
+    m_widget->pimpl->view->setCropper(m_widget->pimpl->cropperItem);
+    connect(
+        m_widget->pimpl->cropperItem,
+        &CropRectItem::frameChanged,
+        this,
+        &SimpleImageEditor::updateZoomLimitsForCropper
+    );
+
+    updateZoomLimitsForCropper();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::updateZoomLimitsForCropper()
+{
+    if (m_widget->pimpl->cropperItem!=nullptr && cropFrameMode()==CropFrameMode::FixedOnScreen)
+    {
+        m_widget->pimpl->zoom->setCoverRect(m_widget->pimpl->cropperItem->viewportFrame());
+    }
+    else
+    {
+        m_widget->pimpl->zoom->setCoverRect(QRectF{});
+    }
+    m_widget->pimpl->zoom->reapplyLimits();
+    updateViewBounds();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::updateViewBounds()
+{
+    auto* view=m_widget->pimpl->view;
+    if (view==nullptr)
+    {
+        return;
+    }
+
+    auto* itemGroup=m_widget->pimpl->itemGroup;
+    auto* cropper=m_widget->pimpl->cropperItem;
+    if (cropFrameMode()!=CropFrameMode::FixedOnScreen || cropper==nullptr || itemGroup==nullptr
+        || view->viewport()==nullptr)
+    {
+        // No frame to protect (legacy mode, or crop disabled) -- fall back to the view's default of
+        // tracking the scene's own sceneRect(), same as before this feature existed.
+        view->setSceneRect(QRectF{});
+        return;
+    }
+
+    auto imageSceneRect=itemGroup->sceneBoundingRect();
+    auto frame=cropper->viewportFrame();
+    auto s=m_widget->pimpl->zoom->currentScale();
+    if (imageSceneRect.isEmpty() || frame.isEmpty() || qFuzzyIsNull(s))
+    {
+        view->setSceneRect(QRectF{});
+        return;
+    }
+
+    QRectF viewportRect(view->viewport()->rect());
+
+    // Expand the image's own scene rect outward by the (scene-unit) margin between the frame and
+    // the viewport edges, so QGraphicsView's native scrollbar clamping -- which always keeps this
+    // EXPANDED rect covering the viewport -- keeps the unexpanded image covering the frame instead.
+    auto marginLeft=(frame.left()-viewportRect.left())/s;
+    auto marginTop=(frame.top()-viewportRect.top())/s;
+    auto marginRight=(viewportRect.right()-frame.right())/s;
+    auto marginBottom=(viewportRect.bottom()-frame.bottom())/s;
+
+    view->setSceneRect(imageSceneRect.adjusted(-marginLeft,-marginTop,marginRight,marginBottom));
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::resetCropperOrKeepFrame()
+{
+    if (m_widget->pimpl->cropperItem!=nullptr && cropFrameMode()==CropFrameMode::FixedOnScreen)
+    {
+        m_widget->pimpl->cropperItem->syncToView();
+        updateZoomLimitsForCropper();
+    }
+    else
+    {
+        resetCropper();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -716,7 +843,7 @@ void SimpleImageEditor::rotate()
     m_widget->pimpl->angle-=90;
     m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
     m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
-    resetCropper();
+    resetCropperOrKeepFrame();
 }
 
 //--------------------------------------------------------------------------
@@ -731,7 +858,7 @@ void SimpleImageEditor::rotateClockwise()
     m_widget->pimpl->angle+=90;
     m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
     m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
-    resetCropper();
+    resetCropperOrKeepFrame();
 }
 
 //--------------------------------------------------------------------------
@@ -748,7 +875,7 @@ void SimpleImageEditor::flipHorizontal()
     transform.scale(-1, 1);
     transform.translate(-center.x(), -center.y());
     m_widget->pimpl->itemGroup->setTransform(transform);
-    resetCropper();
+    resetCropperOrKeepFrame();
 }
 
 //--------------------------------------------------------------------------
@@ -765,7 +892,7 @@ void SimpleImageEditor::flipVertical()
     transform.scale(1, -1);
     transform.translate(-center.x(), -center.y());
     m_widget->pimpl->itemGroup->setTransform(transform);
-    resetCropper();
+    resetCropperOrKeepFrame();
 }
 
 //--------------------------------------------------------------------------
@@ -798,15 +925,23 @@ void SimpleImageEditor::zoomOut()
 
 void SimpleImageEditor::refreshCropperForViewChange()
 {
-    // The crop rect lives in imageItem-group coordinates, so it stays glued to the image under
-    // any view-level (purely visual) zoom/pan -- CropRectItem::paint()/getHandleType() already
-    // re-derive handle/border sizes from the view's scale (see imagecropper.cpp), so a repaint is
-    // all that's needed here. resetCropper() (destroy + recreate) is deliberately NOT called --
+    // Legacy mode: the crop rect lives in imageItem-group coordinates, so it stays glued to the
+    // image under any view-level (purely visual) zoom/pan -- CropRectItem::paint()/getHandleType()
+    // already re-derive handle/border sizes from the view's scale (see imagecropper.cpp), so a
+    // repaint is all that's needed here. Fixed-on-screen mode: the frame's viewport rectangle is
+    // authoritative and unchanged by a pure zoom/pan, so syncToView() re-derives its scene-space
+    // projection from it, and updateViewBounds() re-derives the pan bounds (they depend on the
+    // current scale). Either way, resetCropper() (destroy + recreate) is deliberately NOT called --
     // that used to run on every zoomIn()/zoomOut() and threw away the user's crop selection on
     // every step, which is the bug this replaces.
     if (m_widget->pimpl->cropperItem!=nullptr)
     {
+        m_widget->pimpl->cropperItem->syncToView();
         m_widget->pimpl->cropperItem->update();
+    }
+    if (cropFrameMode()==CropFrameMode::FixedOnScreen)
+    {
+        updateViewBounds();
     }
 }
 
