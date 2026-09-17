@@ -867,8 +867,21 @@ void replaceEmojiImagesForExport(QTextDocument* document, bool defaultPackOnly)
             // to carry the variation selector that makes a heart render in colour rather than as
             // a monochrome "\u2764" in every reader's system font -- the chat-list preview and the
             // notification popup included. See ReactionIconInfo::emojiText.
+            //
+            // embeddedObjectCount(), not "1": the SAME emoji inserted twice in a row shares one
+            // char format (name/alt/width/height all equal), so Qt's own unite() merges the two
+            // insertions into a single fragment of length 2 rather than two fragments of length 1
+            // -- see embeddedObjectCount()'s own doc comment. Repeating the code that many times
+            // is what keeps a run of several identical emoji from being sent as just one.
+            QString code;
+            const auto objectCount=embeddedObjectCount(fragment.text());
+            code.reserve(info->emojiText.size()*objectCount);
+            for (int i=0; i<objectCount; ++i)
+            {
+                code+=info->emojiText;
+            }
             replacements.push_back({fragment.position(),fragment.length(),
-                                    info->emojiText,plainFormat});
+                                    code,plainFormat});
         }
     }
 
@@ -1153,6 +1166,7 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
     {
         int position;
         int length;
+        int count;
         QString reactionId;
         QTextCharFormat baseFormat;
     };
@@ -1184,7 +1198,11 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
                 const auto reactionId=emojiReactionId(charFormat.toImageFormat().name());
                 if (!reactionId.isEmpty())
                 {
-                    inserts.push_back({fragment.position(),fragment.length(),reactionId,charFormat});
+                    // embeddedObjectCount(), not "1": the same emoji inserted repeatedly can be
+                    // ONE merged fragment carrying several U+FFFC characters -- see
+                    // embeddedObjectCount()'s own doc comment.
+                    inserts.push_back({fragment.position(),fragment.length(),
+                                       embeddedObjectCount(fragment.text()),reactionId,charFormat});
                 }
                 continue;
             }
@@ -1198,7 +1216,7 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
             const auto matches=matchEmojiCodePoints(fragment.text(),defaultPack.get());
             for (const auto& match : matches)
             {
-                inserts.push_back({fragment.position()+match.offset,match.length,
+                inserts.push_back({fragment.position()+match.offset,match.length,1,
                                    match.reactionId,charFormat});
             }
         }
@@ -1239,6 +1257,13 @@ void normalizeImportedEmoji(QTextDocument* document, const QFont& font, qreal dp
         cursor.setPosition(it->position);
         cursor.setPosition(it->position+it->length,QTextCursor::KeepAnchor);
         cursor.insertImage(imgFmt);
+        // it->count-1 more: insertImage() left the selection replaced by ONE image and the
+        // cursor positioned right after it, so repeating the call keeps inserting contiguously --
+        // exactly what a merged multi-object fragment (see embeddedObjectCount()) needs restored.
+        for (int i=1; i<it->count; ++i)
+        {
+            cursor.insertImage(imgFmt);
+        }
     }
 
     if (suppressUndo)

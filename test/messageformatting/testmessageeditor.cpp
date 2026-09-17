@@ -738,6 +738,17 @@ QString thumbsUpChar()
     return QString::fromUcs4(U"\U0001F44D");
 }
 
+//! U+2764 HEAVY BLACK HEART plus U+FE0F VARIATION SELECTOR-16 -- DefaultReactionIconPack's
+//! "heart" emojiTEXT (not the bare emojiCode: U+2764 is one of the BMP symbols Unicode gives a
+//! default TEXT presentation, so ReactionIconInfo::emojiText carries the selector that makes it
+//! render in colour, and that selector form is what insertEmoji()'s export writes into text). A
+//! SECOND default-pack emoji, distinct from thumbsUpChar(), for tests that need two different
+//! ones.
+QString heartChar()
+{
+    return QString::fromUcs4(U"\U00002764\U0000FE0F");
+}
+
 //! Whether the editor's document holds at least one emoji IMAGE fragment.
 bool hasEmojiImage(MessageEditor& editor)
 {
@@ -755,6 +766,30 @@ bool hasEmojiImage(MessageEditor& editor)
         }
     }
     return false;
+}
+
+//! Total number of emoji embedded objects across the editor's document -- NOT the number of
+//! fragments, since Qt's QTextDocumentPrivate::unite() merges adjacent identical-format
+//! insertions (the same emoji picked several times in a row) into one fragment carrying several
+//! U+FFFC characters. See embeddedObjectCount()'s own doc comment in markdownrenderer.hpp.
+int emojiImageCount(MessageEditor& editor)
+{
+    int count=0;
+    auto* doc=editor.textEdit()->document();
+    for (auto block=doc->begin(); block.isValid(); block=block.next())
+    {
+        for (auto it=block.begin(); !it.atEnd(); ++it)
+        {
+            const auto fragment=it.fragment();
+            const auto format=fragment.charFormat();
+            if (format.isImageFormat()
+                && isEmojiSrc(format.toImageFormat().name()))
+            {
+                count+=embeddedObjectCount(fragment.text());
+            }
+        }
+    }
+    return count;
 }
 
 //! Put the caret in a MessageEditor's document without selecting anything.
@@ -5044,6 +5079,82 @@ BOOST_AUTO_TEST_CASE(TestEmojiSurvivesWysiwygMarkdownRoundTripAndStaysDisplayabl
             // And it still exports as the character, so the trip is stable rather than merely
             // survivable.
             UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),thumbsUpChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertSameEmojiRepeatedlyExportsAllOfThem)
+{
+    // Regression test: the SAME emoji inserted several times in a row used to collapse to one
+    // on export. Qt's QTextDocumentPrivate::unite() merges the repeated insertions -- identical
+    // QTextImageFormat, contiguous string positions -- into a single QTextFragment carrying
+    // several U+FFFC characters rather than several fragments, and replaceEmojiImagesForExport()
+    // used to replace that whole fragment with just ONE emoji character.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+
+            // Still displayed as three embedded objects, not merged away in the editor itself.
+            UISE_TEST_CHECK_EQUAL(emojiImageCount(editor),3);
+
+            const auto expected=thumbsUpChar()+thumbsUpChar()+thumbsUpChar();
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),expected);
+
+            // The TextFormat::Plain leg goes through a separate replacement pass
+            // (plainTextWithEmoji()) and must not lose any of them either, nor leave any
+            // unresolved U+FFFC behind.
+            const auto plain=editor.text(TextFormat::Plain).trimmed();
+            UISE_TEST_CHECK_EQUAL_QSTR(plain,expected);
+            UISE_TEST_CHECK(!plain.contains(QChar(0xFFFC)));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertDifferentEmojiAdjacentExportsBothSeparately)
+{
+    // Companion to TestInsertSameEmojiRepeatedlyExportsAllOfThem: two DIFFERENT emoji inserted
+    // back to back never shared a format in the first place, so they were never at risk of being
+    // merged by Qt -- this guards that the fix above did not mask the real merge condition behind
+    // a coincidence.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            editor.insertEmoji(QStringLiteral("heart"));
+
+            UISE_TEST_CHECK_EQUAL(emojiImageCount(editor),2);
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),
+                                       thumbsUpChar()+heartChar());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestRepeatedEmojiSurvivesWysiwygMarkdownRoundTrip)
+{
+    // The normalizeImportedEmoji() counterpart of TestInsertSameEmojiRepeatedlyExportsAllOfThem:
+    // a run of identical emoji IMAGES re-imported from markdown must reconstitute as that many
+    // images, not collapse to one the way a merged multi-object fragment would if
+    // normalizeImportedEmoji() only ever inserted a single replacement image per fragment.
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            editor.insertEmoji(QStringLiteral("thumbsup"));
+            UISE_TEST_CHECK_EQUAL(emojiImageCount(editor),3);
+
+            editor.setMessageEditingMode(MessageEditingMode::Markdown);
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+
+            UISE_TEST_CHECK_EQUAL(emojiImageCount(editor),3);
+            const auto expected=thumbsUpChar()+thumbsUpChar()+thumbsUpChar();
+            UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Markdown).trimmed(),expected);
         }
     );
 }

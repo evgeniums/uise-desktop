@@ -722,6 +722,19 @@ BOOST_AUTO_TEST_CASE(TestEmojiMarkdownImageBecomesImg)
     UISE_TEST_CHECK(html.contains(QStringLiteral("<img src=\"whitem-emoji:thumbsup\"")));
 }
 
+BOOST_AUTO_TEST_CASE(TestRepeatedEmojiMarkdownImageAllRendered)
+{
+    // Regression test for the image-format leg (as opposed to the character leg
+    // TestEmojiOnlyMessagesRenderLarge below already covers): three identical adjacent
+    // "![x](whitem-emoji:thumbsup)" images share one QTextImageFormat, so Qt's own
+    // QTextDocumentPrivate::unite() merges their import into a SINGLE QTextFragment carrying
+    // three U+FFFC characters rather than three fragments. Without embeddedObjectCount() in
+    // HtmlWriter::writeFragment(), only the first would ever be written out.
+    auto html=renderMd(QStringLiteral("![x](whitem-emoji:thumbsup)![x](whitem-emoji:thumbsup)")
+                       +QStringLiteral("![x](whitem-emoji:thumbsup)"),emojiOptions());
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img src=\"whitem-emoji:thumbsup\"")),3);
+}
+
 BOOST_AUTO_TEST_CASE(TestUnknownEmojiDegradesToAltTextNotImgOrAnchor)
 {
     // Not locally available -> the alt text, and specifically NOT a dead <a href="whitem-emoji:">.
@@ -761,6 +774,21 @@ BOOST_AUTO_TEST_CASE(TestFourEmojiFallBackToInline)
     // One past emojiOnlyMaxCount -- the boundary, and the reason the count is checked rather
     // than just "is everything an emoji".
     auto html=renderMd(thumbsUp()+thumbsUp()+thumbsUp()+thumbsUp(),emojiOptions());
+    UISE_TEST_CHECK(!html.contains(QStringLiteral("emoji-only")));
+    UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),4);
+    UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"18\"")));
+}
+
+BOOST_AUTO_TEST_CASE(TestFourRepeatedEmojiMarkdownImagesNotEmojiOnly)
+{
+    // The site-4 counterpart of TestFourEmojiFallBackToInline: four identical adjacent
+    // markdown-image emoji, one past emojiOnlyMaxCount, must fall back to inline exactly like
+    // four repeated CHARACTERS do. Before the fix, emojiOnlyDocument() pushed one reactionId per
+    // FRAGMENT rather than per embedded object, so a merged fragment of four undercounted as one
+    // and wrongly passed the cap.
+    auto html=renderMd(QStringLiteral("![x](whitem-emoji:thumbsup)![x](whitem-emoji:thumbsup)")
+                       +QStringLiteral("![x](whitem-emoji:thumbsup)![x](whitem-emoji:thumbsup)"),
+                       emojiOptions());
     UISE_TEST_CHECK(!html.contains(QStringLiteral("emoji-only")));
     UISE_TEST_CHECK_EQUAL(html.count(QStringLiteral("<img")),4);
     UISE_TEST_CHECK(html.contains(QStringLiteral("width=\"18\"")));

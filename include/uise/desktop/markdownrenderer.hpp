@@ -141,6 +141,35 @@ inline QString emojiReactionId(const QString& src)
 }
 
 /**
+ * @brief How many embedded objects a QTextFragment's text actually holds.
+ *
+ * QTextDocumentPrivate::unite() merges a newly inserted fragment into its predecessor whenever
+ * the two share a char-format index AND are contiguous in the document's string buffer -- which
+ * is exactly what happens when the SAME emoji (identical QTextImageFormat, so the same interned
+ * format) is inserted twice in a row. The result is not two QTextFragments but ONE fragment of
+ * length 2, carrying two U+FFFC OBJECT REPLACEMENT CHARACTERs back to back. Qt's own layout still
+ * draws both images (itemization splits at every object character), which is why the editor looks
+ * right on screen -- but any pass that walks fragments and treats "one image fragment" as "one
+ * embedded object" silently drops all but the first when it exports, re-imports, or renders.
+ *
+ * Counts U+FFFC occurrences in `fragmentText`, which for an image-format fragment is exactly the
+ * number of embedded objects it actually carries -- 1 in the overwhelmingly common case, and
+ * every caller that only ever inserts single objects can keep treating the result as 1.
+ */
+inline int embeddedObjectCount(QStringView fragmentText)
+{
+    int count=0;
+    for (auto ch : fragmentText)
+    {
+        if (ch==QChar::ObjectReplacementCharacter)
+        {
+            ++count;
+        }
+    }
+    return count>0 ? count : 1;
+}
+
+/**
  * @brief Options controlling markdownToHtml().
  *
  * A plain, cheaply-copyable value type -- no pimpl, modelled after ReplyPreviewData. Every field

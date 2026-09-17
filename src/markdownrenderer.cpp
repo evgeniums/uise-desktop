@@ -739,7 +739,18 @@ class HtmlWriter
 
             if (cfmt.isImageFormat())
             {
-                writeImage(cfmt.toImageFormat());
+                // embeddedObjectCount(), not one call: identical adjacent images (e.g. the same
+                // emoji picked several times in a row) share one char format, so Qt's own
+                // QTextDocumentPrivate::unite() merges their insertions into a SINGLE fragment
+                // carrying several U+FFFC characters rather than several fragments -- see
+                // embeddedObjectCount()'s own doc comment. Without this loop only the first of a
+                // repeated run would ever be written out.
+                const auto imgFmt=cfmt.toImageFormat();
+                const auto objectCount=embeddedObjectCount(frag.text());
+                for (int i=0; i<objectCount; ++i)
+                {
+                    writeImage(imgFmt);
+                }
                 return;
             }
 
@@ -1225,10 +1236,18 @@ bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
                 {
                     return false;
                 }
-                reactionIds.push_back(reactionId);
-                if (static_cast<int>(reactionIds.size())>maxCount)
+                // embeddedObjectCount(), not one push: several identical emoji inserted in a row
+                // merge into a single fragment carrying several U+FFFC characters -- see
+                // embeddedObjectCount()'s own doc comment. Without this, four repeated emoji would
+                // undercount as one and wrongly pass the emoji-only cap.
+                const auto objectCount=embeddedObjectCount(fragment.text());
+                for (int i=0; i<objectCount; ++i)
                 {
-                    return false;
+                    reactionIds.push_back(reactionId);
+                    if (static_cast<int>(reactionIds.size())>maxCount)
+                    {
+                        return false;
+                    }
                 }
                 continue;
             }
