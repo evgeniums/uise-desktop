@@ -3987,15 +3987,6 @@ class MessageEditor_p
         //! Consecutive emojiHoverCloseTimer ticks with the pointer over neither.
         int emojiAwayTicks=0;
 
-        //! The pack currently handed to the gallery, and the editing mode it was built for.
-        //! Cached because which pack is correct depends ONLY on the mode, while
-        //! emojiPackForCurrentMode() allocates a fresh filtered view every call -- without this,
-        //! every hover would push a "new" pack at the gallery and make it rebuild its whole grid
-        //! for nothing.
-        std::shared_ptr<AbstractReactionIconPack> emojiPack;
-        MessageEditingMode emojiPackMode=MessageEditingMode::Wysiwyg;
-        bool emojiPackValid=false;
-
         //! The placeholder the HOST asked for, which is not always the one the text edit currently
         //! carries -- see MessageEditor::updatePlaceHolderText(), which suppresses it while the
         //! empty block has block formatting of its own to show.
@@ -4046,6 +4037,18 @@ class EmojiGallerySharedState : public QObject
         //! the "is it open" bookkeeping. Null between the moment a close finishes and the next
         //! claim (there is always at most one owner, never zero once something is open).
         QPointer<MessageEditor> owner;
+
+        //! The pack currently handed to `dialog`, and the editing mode it was built for -- a
+        //! property of the DIALOG, not of whichever editor happens to own it right now: which
+        //! pack is correct depends only on the mode, the same pack serves every composer in this
+        //! window, and MessageEditor::emojiPackForCurrentMode() allocates a fresh filtered view on
+        //! every call. Living here (rather than per-editor, as before the gallery was shared)
+        //! is what lets a claim between two composers in the SAME mode skip setPack() entirely --
+        //! keeping it per-editor instead made every ordinary chat switch rebuild the whole grid
+        //! for nothing, even though nothing about the pack had actually changed.
+        std::shared_ptr<AbstractReactionIconPack> pack;
+        MessageEditingMode packMode=MessageEditingMode::Wysiwyg;
+        bool packValid=false;
 };
 
 //--------------------------------------------------------------------------
@@ -7206,11 +7209,11 @@ void MessageEditor::claimEmojiGallery(EmojiGallerySharedState* state)
         previousOwner->pimpl->emojiDialogOpen=false;
         previousOwner->syncEmojiButtonChecked();
     }
-    // The pack/recents currently shown were built for the PREVIOUS owner's mode (or for no owner
-    // at all, fresh off buildEmojiGalleryDialog()) -- force a rebuild for this one. The caller
-    // (openEmojiGallery()) makes the actual applyEmojiPackForCurrentMode()/applyEmojiRecentIds()
-    // calls right after this returns.
-    pimpl->emojiPackValid=false;
+    // Deliberately does NOT touch state->packValid: the pack is a property of the DIALOG (see
+    // EmojiGallerySharedState::pack), not of whichever editor owns it, so a claim between two
+    // composers in the SAME mode -- the ordinary case -- must NOT force applyEmojiPackForCurrentMode()
+    // to rebuild the whole grid for a pack that is already correct. A genuine mode difference is
+    // caught there anyway, by comparing against the NEW owner's messageEditingMode().
 }
 
 //--------------------------------------------------------------------------
@@ -7251,20 +7254,31 @@ void MessageEditor::applyEmojiPackForCurrentMode()
     {
         return;
     }
-
-    const auto mode=messageEditingMode();
-    if (pimpl->emojiPackValid && pimpl->emojiPackMode==mode)
+    // The cache lives on the shared state, not on this editor -- see
+    // EmojiGallerySharedState::pack's own doc comment. Absent only if the window itself somehow
+    // vanished between ensureEmojiGallery() setting pimpl->emojiDialog and this call, which never
+    // actually happens (both run back to back on the GUI thread) -- defensive, not load-bearing.
+    auto* state=emojiGallerySharedState(window(),false);
+    if (state==nullptr)
     {
-        // Nothing about which icons are offerable has changed, and setPack() would rebuild the
-        // entire grid. The per-open search reset (EmojiGalleryDialog::prepareToShow()) rebuilds
-        // it once anyway, which is all an open actually needs.
         return;
     }
 
-    pimpl->emojiPack=emojiPackForCurrentMode();
-    pimpl->emojiPackMode=mode;
-    pimpl->emojiPackValid=true;
-    pimpl->emojiDialog->dialog()->setPack(pimpl->emojiPack);
+    const auto mode=messageEditingMode();
+    if (state->packValid && state->packMode==mode)
+    {
+        // Nothing about which icons are offerable has changed, and setPack() would rebuild the
+        // entire grid -- including on an ordinary claim between two composers in the SAME mode,
+        // which is the common case. The per-open search reset
+        // (EmojiGalleryDialog::prepareToShow()) rebuilds it once anyway, which is all an open
+        // actually needs.
+        return;
+    }
+
+    state->pack=emojiPackForCurrentMode();
+    state->packMode=mode;
+    state->packValid=true;
+    pimpl->emojiDialog->dialog()->setPack(state->pack);
 }
 
 //--------------------------------------------------------------------------
@@ -7354,8 +7368,11 @@ void MessageEditor::openEmojiGallery(bool pinned)
         // Bottom-left corner of the frame onto the top-left corner of the button: the dialog
         // therefore unfolds UPWARD and to the RIGHT. The two-argument popupAt() also keeps the
         // whole frame on screen, which is what a popup anchored to a control the user just
-        // clicked wants -- and it applies the corner offset AFTER its own adjustSize(), which is
-        // the only point at which the frame's height is actually known.
+        // clicked wants -- and it REMEMBERS this anchor, re-applying it if the frame's height
+        // changes afterwards. That matters here specifically: ChatReactionGallery builds its rows
+        // from its own showEvent(), so the very first popup of a freshly built gallery is
+        // measured with an empty grid (~163px instead of ~389px) and would otherwise be placed
+        // against that height and then grow off the bottom of the screen.
         const auto anchor=pimpl->emojiButton->mapToGlobal(pimpl->emojiButton->rect().topLeft())
                           -QPoint(0,EmojiGalleryGap);
         frame->popupAt(anchor,Qt::BottomLeftCorner);
@@ -7552,7 +7569,10 @@ void MessageEditor::promoteEmojiRecent(const QString& iconId)
     // Resolved against the pack the gallery is actually showing, so an id no pack here carries
     // never enters the list -- it could only ever be skipped by the row and would sit in the
     // host's store forever. This is also the only guard: the pick handler calls straight through.
-    auto pack=pimpl->emojiPack ? pimpl->emojiPack : ReactionIconPacks::instance().defaultPack();
+    // The pack lives on the shared state now (see EmojiGallerySharedState::pack), not on this
+    // editor, so it is reachable even when the dispatched-to owner never built the pack itself.
+    auto* state=emojiGallerySharedState(window(),false);
+    auto pack=(state!=nullptr && state->pack) ? state->pack : ReactionIconPacks::instance().defaultPack();
     if (!pack || pack->find(iconId)==nullptr)
     {
         return;
@@ -7811,11 +7831,12 @@ void MessageEditor::onEmojiShortcodeTyped(const QString& shortcode, int position
         return;
     }
 
-    // emojiPackForCurrentMode(), NOT ReactionIconPacks::defaultPack() or pimpl->emojiPack's own
-    // cache -- this is the single source of truth for "what can THIS mode actually insert" (in
-    // Markdown, a view that hides codeless icons), and pimpl->emojiPack may not even be valid
-    // yet if the gallery has never been warmed/opened (a host may enable auto-replace without
-    // ever setting emojiButtonVisible(true)).
+    // emojiPackForCurrentMode(), NOT ReactionIconPacks::defaultPack() or the shared gallery
+    // state's own pack cache (EmojiGallerySharedState::pack) -- this is the single source of
+    // truth for "what can THIS mode actually insert" (in Markdown, a view that hides codeless
+    // icons), and the shared cache may not even exist yet if the gallery has never been
+    // warmed/opened in this window (a host may enable auto-replace without ever setting
+    // emojiButtonVisible(true)).
     const auto pack=emojiPackForCurrentMode();
     if (!pack)
     {
