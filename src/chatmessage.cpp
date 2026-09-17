@@ -1672,6 +1672,21 @@ void ChatMessage::updateLastInBatch()
     pimpl->avatarFrame->setLastInBatch(isLastInBatch());
     pimpl->bottomSpace->setVisible(isLastInBatch());
 
+    // Unlike updateFirstInBatch()'s "last" style property below, #bottomSpace is real row
+    // height (a QSS min/max-height frame added to pimpl->layout, see construct()), not a paint-
+    // only flag -- toggling its visibility changes this row's true sizeHint(). Without this,
+    // that change only reaches LinkedListView's cached QWidgetItemV2 hint via a later posted
+    // QEvent::LayoutRequest, which is too late for FlyweightListView_p::compensateSizeChange()
+    // to see this row's grown height while the view is still recorded as at-end (m_atEnd) --
+    // exactly the case when THIS row is also the last row in the whole list (e.g. an invitation
+    // message arriving as the final message: it settles in a single layout pass, unlike a text
+    // bubble's document rewrap or a file/image row's async thumbnail, neither of which
+    // incidentally re-enters resizeList() afterwards). The result was the view staying scrolled
+    // exactly bottomSpace's height past the true end, i.e. the last bubble flush against the
+    // viewport with no gap. updateGeometry() here makes the size change visible synchronously,
+    // in the same turn adjustMessageList() runs in.
+    updateGeometry();
+
     // Only the last message of a batch carries the avatar (it is the one with the tail), and a
     // message stops being last as soon as the same sender's next one arrives -- so this has to be
     // re-derived here too, not just when the alignment changes.

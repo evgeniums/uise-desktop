@@ -540,6 +540,18 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     );
     std::sort(messages.begin(),messages.end(),[](const auto& l, const auto& r) { return *l<*r;});
 
+    // Captured BEFORE the loop below can flip #bottomSpace's visibility on what becomes the
+    // final message (ChatMessage::updateLastInBatch(), e.g. an invitation message arriving as
+    // the new last-in-batch): that toggle grows the row's true height by chat.qss's 6px
+    // #bottomSpace, and ChatMessage::updateLastInBatch()'s own updateGeometry() call now
+    // propagates it to LinkedListView synchronously -- but FlyweightListView_p's own at-edge
+    // check (compensateSizeChange()) reads its m_atEnd snapshot from BEFORE this same pass, so a
+    // row growing while already flush at the end can still leave the view scrolled exactly
+    // bottomSpace's height past the true end (last bubble flush against the viewport, no gap
+    // above the composer). This snapshot is what lets the single-shot below tell "was already
+    // stuck to the end" apart from "the user is scrolled up and must stay there".
+    bool wasStuckToEnd=m_listView->stickMode()==Direction::END && m_listView->isScrollAtEdge(Direction::END);
+
     bool hasUnreadSep=false;
     bool prevLastInBatch=true;
     for (size_t i=0;i<messages.size();i++)
@@ -601,6 +613,32 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     // Batch boundaries (first/last-in-batch) and avatar visibility may all have just shifted --
     // covers load/insert/remove/reorder/update, every one of which funnels through here.
     scheduleFloatingAvatarUpdate();
+
+    // Belt-and-suspenders re-assertion of the end stick, only when this pass found the view
+    // already flush at the end (wasStuckToEnd, snapshotted above): a narrowly-scoped guarantee
+    // that a #bottomSpace toggle landing on the final row -- however its geometry propagates --
+    // never leaves the view over-scrolled past the true end. Deferred via QTimer::singleShot(0)
+    // rather than checked synchronously here: the geometry changes from the loop above
+    // (ui()->setLastInBatch()) are not necessarily laid out yet at this point, so
+    // isScrollAtEdge() below needs to run on the next event-loop turn, once they have settled --
+    // same reasoning as scheduleFloatingAvatarUpdate()'s own deferral a few lines up. `this` as
+    // context is the usual Qt guard against the view being destroyed before the timer fires;
+    // m_listView is re-checked for the same reason.
+    if (wasStuckToEnd)
+    {
+        QTimer::singleShot(
+            0,
+            this,
+            [this]()
+            {
+                if (m_listView!=nullptr && m_listView->stickMode()==Direction::END
+                    && !m_listView->isScrollAtEdge(Direction::END))
+                {
+                    m_listView->scrollToEdge(Direction::END);
+                }
+            }
+        );
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1322,10 +1360,13 @@ void ChatMessagesView<BaseMessageT,Traits>::keyPressEvent(QKeyEvent* event)
         else
         {
             QString selectedText;
+            // genuinelySelectedText(), not selectedText() -- a call/error/invitation body
+            // synthesizes a summary from selectedText() with nothing actually selected, which
+            // would otherwise win this scan over a real selection elsewhere in the list.
             [[maybe_unused]] bool noneSelected=m_listView->eachItem(
                 [&selectedText](const auto* item)
                 {
-                    selectedText=item->item()->ui()->selectedText();
+                    selectedText=item->item()->ui()->genuinelySelectedText();
                     return selectedText.isEmpty();
                 }
             );
