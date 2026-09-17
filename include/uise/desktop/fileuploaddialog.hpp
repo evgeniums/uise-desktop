@@ -105,6 +105,7 @@ class UISE_DESKTOP_EXPORT FileUploadDialog : public Dialog<AbstractFileUploadDia
 
         void reset() override;
         void prepareToShow() override;
+        void setDialogFocus() override;
 
         virtual void construct() override;
 

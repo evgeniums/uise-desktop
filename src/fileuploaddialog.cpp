@@ -174,6 +174,20 @@ void FileUploadDialog::prepareToShow()
 
 //--------------------------------------------------------------------------
 
+void FileUploadDialog::setDialogFocus()
+{
+    // ModalDialog::showDialog() calls this AFTER popup() (see modaldialog.hpp), i.e. after
+    // FileUploadWidget's own showEvent() has already seeded focus onto itself -- so this is the
+    // one call that actually wins, always landing focus in the comments editor (or the widget
+    // itself if comments are hidden) rather than leaving the user to click before they can type.
+    if (m_widget!=nullptr)
+    {
+        m_widget->setInitialFocus();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 template class UISE_DESKTOP_EXPORT Dialog<AbstractFileUploadDialog>;
 
 UISE_DESKTOP_NAMESPACE_END

@@ -194,6 +194,7 @@ class FileUploadWidget_p
         int minListAreaHeight=FileUploadWidget::DefaultMinListAreaHeight;
         int maxListAreaHeight=FileUploadWidget::DefaultMaxListAreaHeight;
         int maxCommentsHeight=FileUploadWidget::DefaultMaxCommentsHeight;
+        int minCommentsHeight=FileUploadWidget::DefaultMinCommentsHeight;
         int maxCommentLength=FileUploadWidget::DefaultMaxCommentLength;
 
         // Deferred safety re-runs of doUpdateListAreaHeight()/comments-area activation (see
@@ -351,6 +352,11 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     // EnhancedTextEdit::sizeHint()) and has no max-length of its own; both are capped here,
     // from outside, rather than by reaching into MessageEditor's internals
     pimpl->messageEditor->qWidget()->setMaximumHeight(pimpl->maxCommentsHeight);
+    // Floors the editor at roughly its natural single-line height so it can never collapse to a
+    // sliver -- see setMinCommentsHeight()'s own doc comment for when that would otherwise
+    // happen (a popup measured while hidden, before a preloaded comment's document has been
+    // relaid-out at its real width).
+    pimpl->messageEditor->qWidget()->setMinimumHeight(pimpl->minCommentsHeight);
     topLayout->addWidget(pimpl->messageEditor->qWidget());
     connect(
         pimpl->messageEditor,
@@ -986,6 +992,19 @@ int FileUploadWidget::maxCommentsHeight() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FileUploadWidget::setMinCommentsHeight(int height)
+{
+    pimpl->minCommentsHeight=height;
+    pimpl->messageEditor->qWidget()->setMinimumHeight(height);
+}
+
+int FileUploadWidget::minCommentsHeight() const noexcept
+{
+    return pimpl->minCommentsHeight;
+}
+
+//--------------------------------------------------------------------------
+
 void FileUploadWidget::setMaxCommentLength(int length)
 {
     pimpl->maxCommentLength=length;
@@ -1294,6 +1313,18 @@ void FileUploadWidget::settleLayout()
     // setMaximumHeight() early-return when the value does not actually change -- so leaving it
     // armed cannot cause a visible refit.
     pimpl->heightUpdateTimer->start();
+
+    // Same reasoning, for the comments editor: a comment preloaded (composer text, or a
+    // forwarded caption -- see ChatPage::takeComposerTextForUpload()/addStagedFilesWithComment())
+    // before this dialog is ever shown has never been relaid-out at its real width (the widget
+    // is still hidden, so its pending QResizeEvent has not been delivered), and without this its
+    // sizeHint()/minimumSizeHint() would answer with a stale, width-independent measurement --
+    // ONLY minCommentsHeight (set above/in the constructor) would show, i.e. the reported
+    // "squeezed comment" bug. ensurePolished() first for the same qproperty-* ordering reason as
+    // above; updateCommentsAreaHeight() itself both re-activates the layout now and arms its own
+    // coalesced safety timer, left running for the same reason as heightUpdateTimer.
+    pimpl->messageEditor->qWidget()->ensurePolished();
+    updateCommentsAreaHeight();
 }
 
 //--------------------------------------------------------------------------
@@ -1471,6 +1502,26 @@ void FileUploadWidget::showEvent(QShowEvent* event)
     {
         setFocus();
     }
+
+    // settleLayout()'s own comments-area measurement runs while this widget is still hidden
+    // (see its doc comment); by the time a real QShowEvent is delivered, a pending resize has
+    // been applied and the editor's document has relaid-out at its actual width, so a
+    // multi-line preloaded comment can now report its true (taller) sizeHint() instead of just
+    // the minCommentsHeight() floor. Re-running here is what lets that full height reach the
+    // popup, via the LayoutRequest ModalPopup::eventFilter() reacts to once isVisible().
+    updateCommentsAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadWidget::setInitialFocus()
+{
+    if (pimpl->commentsVisible && pimpl->messageEditor!=nullptr)
+    {
+        pimpl->messageEditor->setFocusIn();
+        return;
+    }
+    setFocus();
 }
 
 //--------------------------------------------------------------------------

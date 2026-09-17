@@ -64,6 +64,7 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
     Q_PROPERTY(int maxListAreaHeight READ maxListAreaHeight WRITE setMaxListAreaHeight)
     Q_PROPERTY(int minListAreaHeight READ minListAreaHeight WRITE setMinListAreaHeight)
     Q_PROPERTY(int maxCommentsHeight READ maxCommentsHeight WRITE setMaxCommentsHeight)
+    Q_PROPERTY(int minCommentsHeight READ minCommentsHeight WRITE setMinCommentsHeight)
     Q_PROPERTY(int maxCommentLength READ maxCommentLength WRITE setMaxCommentLength)
 
     public:
@@ -71,6 +72,7 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         constexpr static const int DefaultMaxListAreaHeight=360;
         constexpr static const int DefaultMinListAreaHeight=88;
         constexpr static const int DefaultMaxCommentsHeight=110;
+        constexpr static const int DefaultMinCommentsHeight=32;
         constexpr static const int DefaultMaxCommentLength=1000;
         //! Out-of-the-box extreme-aspect-ratio limit, see
         //! AbstractFileUploadWidget::setMaxImageAspectRatio(). A caller that genuinely wants no
@@ -129,6 +131,8 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         void setButtonsVisible(bool visible) override;
         void setCommentsVisible(bool visible) override;
 
+        void setInitialFocus() override;
+
         void settleLayout() override;
 
         /**
@@ -158,6 +162,15 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
          */
         void setMaxCommentsHeight(int height);
         int maxCommentsHeight() const noexcept;
+
+        /**
+         * @brief Set the shortest the comments editor is allowed to be, so it does not collapse
+         *  to a sliver -- e.g. when the popup hosting this widget is measured while still
+         *  hidden and the editor's content-driven sizeHint() has not settled yet (a preloaded,
+         *  not-yet-relaid-out comment).
+         */
+        void setMinCommentsHeight(int height);
+        int minCommentsHeight() const noexcept;
 
         /**
          * @brief Set the maximum comment length in characters, or <=0 for no limit.

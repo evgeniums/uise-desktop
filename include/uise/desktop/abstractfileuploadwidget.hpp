@@ -219,6 +219,20 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         virtual void setCommentsVisible(bool visible)=0;
 
         /**
+         * @brief Seed keyboard focus when this widget is first shown by a host that wants it
+         *  focused deliberately (see FileUploadDialog::setDialogFocus()), rather than whatever
+         *  showEvent() seeded on its own.
+         *
+         * Default focuses the whole widget, same as the standalone showEvent() fallback.
+         * FileUploadWidget overrides this to focus the comments editor instead, so a dialog
+         * opened with a preloaded comment (or opened empty) is ready to type into immediately.
+         */
+        virtual void setInitialFocus()
+        {
+            qWidget()->setFocus();
+        }
+
+        /**
          * @brief Get the current header caption ("Send as a file" / "3 images selected" / ...).
          */
         QString caption() const noexcept

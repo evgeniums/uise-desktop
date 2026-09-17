@@ -63,6 +63,7 @@ border-radius:8px;
 qproperty-minListAreaHeight: 88;
 qproperty-maxListAreaHeight: 360;
 qproperty-maxCommentsHeight: 110;
+qproperty-minCommentsHeight: 32;
 qproperty-maxCommentLength: 1000;
 }
 
