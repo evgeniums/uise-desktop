@@ -287,6 +287,15 @@ class UISE_DESKTOP_EXPORT ImageViewerWidget : public WidgetQFrame
         //! ignores hidden (e.g. faded-out) widgets.
         bool isOnControls(const QPoint& pos) const;
 
+        //! True if pos (this-widget coordinates) lands on the prev/next button's geometry,
+        //! checked by RECT rather than isOnControls()'s childAt()-based test, so it still
+        //! matches a button that navigation just hid because its direction became exhausted
+        //! (e.g. a click that just landed on the last/first image). Called both at press time
+        //! (feeding pressOnControls in ImageViewerWidget_p, a defensive duplicate covering
+        //! isOnControls()'s own childAt() blind spot) and again in handlePotentialViewerClick()
+        //! at release, which is what actually matters here since geometry() doesn't move.
+        bool isOnNavigationButton(const QPoint& pos) const;
+
         //! Shared by mouseReleaseEvent() and the viewport eventFilter() branch: emits
         //! ctrl->viewerClicked() if this was a plain left-button click (not a drag, not on the
         //! controls) ending at pos (this-widget coordinates), unless pos lands in one of the

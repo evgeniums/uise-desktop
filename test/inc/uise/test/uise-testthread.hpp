@@ -144,7 +144,7 @@ UISE_TEST_NAMESPACE_END
       UISE_MACRO_EXPAND(BOOST_REQUIRE_EQUAL(__VA_ARGS__)); }
 
 #define UISE_TEST_CHECK_EQUAL_QSTR(A, B) \
-    UISE_TEST_CHECK_EQUAL(A.toStdString(),B.toStdString())
+    UISE_TEST_CHECK_EQUAL((A).toStdString(),(B).toStdString())
 
 #define UISE_TEST_MESSAGE(...) \
     { UISE_TEST_TS \

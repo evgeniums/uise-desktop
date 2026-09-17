@@ -24,8 +24,16 @@ qproperty-mentionColor: #C9A2F5;
    systemRed -- brighter and more saturated than the light-mode value, matching how macOS itself
    shifts systemRed between appearances, and deliberately vivid rather than muted: this colour
    exists to be noticed. Theme colour, re-applied on every repolish -- see
-   EnhancedTextEdit::setSpellCheckUnderlineColor(). */
+   EnhancedTextEdit::setSpellCheckUnderlineColor(). Drawn by EnhancedTextEdit::paintEvent() now,
+   not by a QTextCharFormat underline style -- see EnhancedTextEdit::SpellCheckUnderlineProperty
+   for why. */
 qproperty-spellCheckUnderlineColor: #FF453A;
+/* Pen width of that squiggle, in device-independent pixels. Set explicitly rather than left at
+   the auto default so the value is visible and tunable here: painted by hand now instead of via
+   QTextCharFormat::SpellCheckUnderline, which drew at the font's own lineThickness() -- about one
+   pixel, faint enough on macOS's dotted rendering to read as a rendering artefact rather than a
+   mark. 0 restores "auto" (see EnhancedTextEdit::setSpellCheckUnderlineWidth()). */
+qproperty-spellCheckUnderlineWidth: 2;
 }
 
 uise--MessageEditorToolbar {

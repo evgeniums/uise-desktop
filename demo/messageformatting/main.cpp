@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QPlainTextEdit>
 #include <QScrollArea>
@@ -1142,8 +1143,11 @@ int main(int argc, char *argv[])
     msgEditor->setMaxHeightPercent(40);
     msgEditor->setFinishOnEnter(false);
     msgEditor->setPlaceHolderText(QStringLiteral("Type a message..."));
+    // "wrold" is wrapped in <u> on purpose -- task-spellcheck.md's underline-collision case: a
+    // misspelling inside underlined text used to lose its underline entirely (only the squiggle
+    // showed) until EnhancedTextEdit::SpellCheckUnderlineProperty replaced the char-format style.
     msgEditor->loadText(QStringLiteral(
-        "This line has a wrold of teh "
+        "This line has a <u>wrold</u> of teh "
         "typos to **demonstrate** *spellcheck*."
     ),TextFormat::Markdown);
     rootLayout->addWidget(msgEditor);
@@ -1222,6 +1226,24 @@ int main(int argc, char *argv[])
             spellChecker->loadDictionary();
             spellDictionaryLabel->setText(QStringLiteral("dictionary: loaded"));
             loadDictionaryButton->setEnabled(false);
+        }
+    );
+
+    // spellCheckUnderlineWidth's own knob: 0 is "auto" (see the property's doc comment for the
+    // platform-dependent values), and every other value is the exact pen width in
+    // device-independent pixels, painted by EnhancedTextEdit::paintEvent() now rather than
+    // resolved through a QTextCharFormat underline style -- see SpellCheckUnderlineProperty.
+    editorStatusLayout->addWidget(new QLabel(QStringLiteral("squiggle width:")));
+    auto* spellWidthSpinBox=new QDoubleSpinBox();
+    spellWidthSpinBox->setRange(0.0,6.0);
+    spellWidthSpinBox->setSingleStep(0.5);
+    spellWidthSpinBox->setSpecialValueText(QStringLiteral("auto"));
+    spellWidthSpinBox->setValue(0.0);
+    editorStatusLayout->addWidget(spellWidthSpinBox);
+    QObject::connect(spellWidthSpinBox,&QDoubleSpinBox::valueChanged,msgEditor,
+        [msgEditor](double value)
+        {
+            msgEditor->textEdit()->setSpellCheckUnderlineWidth(value);
         }
     );
 

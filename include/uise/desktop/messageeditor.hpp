@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_MESSAGEEDITOR_HPP
 
 #include <QTextEdit>
+#include <QTextFormat>
 #include <QPointer>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -164,17 +165,69 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
      * QSS: qproperty-spellCheckUnderlineColor: #FF3B30; -- pen colour of the squiggle drawn under
      * a word no loaded dictionary accepts (task-spellcheck.md).
      *
-     * Applied through the highlighter like blockquoteColor/linkColor/mentionColor above, on the
-     * same display-only terms: no document write, no undo step, no export leakage, and a theme
-     * switch costs one rehighlight(). Unlike linkColor, an INVALID colour does NOT disable the
-     * pass -- the squiggle's SHAPE (QTextCharFormat::SpellCheckUnderline, the platform's OWN
-     * spelling-underline style) is the marker and this colour is decoration on top of it, so a
-     * host that ships no stylesheet still gets a working spellchecker, in the platform's own
-     * default underline colour.
+     * Applied through the highlighter like blockquoteColor/linkColor/mentionColor above, in the
+     * sense that the highlighter is what MARKS the misspelled range (SpellCheckUnderlineProperty)
+     * -- but unlike those, the squiggle itself is drawn by this widget's own paintEvent(), not by
+     * a QTextCharFormat underline style. It used to be exactly that
+     * (QTextCharFormat::SpellCheckUnderline), until it was measured that a char-format underline
+     * STYLE and the user's own toolbar underline write the very same QTextFormat property, so a
+     * misspelled word inside underlined text silently lost its underline -- see
+     * SpellCheckUnderlineProperty's own doc comment for the full story.
+     *
+     * Still display-only on the same terms as before: no document write, no undo step, no export
+     * leakage, and a theme switch costs one rehighlight() (to update the colour riding on each
+     * marked range) plus a repaint. An INVALID colour does NOT disable the pass -- it falls back
+     * to this widget's own text colour at paint time, which is what a platform underline style
+     * used to inherit anyway, so a host that ships no stylesheet still gets a visible mark.
      */
     Q_PROPERTY(QColor spellCheckUnderlineColor READ spellCheckUnderlineColor WRITE setSpellCheckUnderlineColor)
 
+    /**
+     * QSS: qproperty-spellCheckUnderlineWidth: 2; -- pen width, in device-independent pixels, of
+     * the squiggle EnhancedTextEdit::paintEvent() draws under a misspelled word. 0 (the default)
+     * means "auto": see the platform-dependent values documented on the property's setter.
+     *
+     * A property at all only because the squiggle is no longer a QTextCharFormat underline
+     * style: Qt resolves QTextCharFormat::SpellCheckUnderline through QPlatformTheme at paint
+     * time and draws it at the font's own lineThickness() -- roughly one device-independent
+     * pixel, which on macOS's dotted rendering reads as barely there rather than as a mark. There
+     * is no QTextCharFormat API for a thicker one, which is half the reason this widget paints
+     * the squiggle itself now (see SpellCheckUnderlineProperty for the other half).
+     *
+     * Unlike spellCheckUnderlineColor this costs no rehighlight -- width is a paint-time decision
+     * only, nothing about which ranges are marked changes -- so the setter just repaints.
+     */
+    Q_PROPERTY(qreal spellCheckUnderlineWidth READ spellCheckUnderlineWidth WRITE setSpellCheckUnderlineWidth)
+
     public:
+
+        /**
+         * @brief Layout-format property marking a run the spell pass found misspelled.
+         *
+         * A custom QTextFormat property rather than QTextCharFormat::SpellCheckUnderline, which
+         * this editor used until the collision was measured: setUnderlineStyle() and
+         * setFontUnderline() write the SAME property (QTextFormat::TextUnderlineStyle), and
+         * setUnderlineStyle() additionally forces FontUnderline to false for every style but
+         * SingleUnderline. A QSyntaxHighlighter's format for a range is merged OVER the
+         * document's own char format at paint time, so a misspelled word inside text the user
+         * underlined from the toolbar used to lose that underline entirely -- only the squiggle
+         * showed. A property of our own collides with nothing: the document's fontUnderline
+         * survives untouched, and paintEvent() draws the squiggle below it, so both are visible
+         * at once.
+         *
+         * Set on the block LAYOUT's formats by MessageEditorHighlighter, never written into the
+         * document, so it costs no undo step and leaks into no export -- the same display-only
+         * terms as blockquoteColor/linkColor. Public so a host that also puts custom properties
+         * on this document's char formats knows which ids this widget has already claimed, and
+         * so tests can read the marker back directly.
+         */
+        constexpr static const int SpellCheckUnderlineProperty=QTextFormat::UserProperty+1;
+
+        //! Per-range squiggle colour, set alongside SpellCheckUnderlineProperty whenever
+        //! spellCheckUnderlineColor() is valid at highlight time. Read by paintEvent(); absent
+        //! means "use this widget's current text colour" -- see spellCheckUnderlineColor's own
+        //! doc comment for why that, and not underlineColor(), is the fallback.
+        constexpr static const int SpellCheckUnderlineColorProperty=QTextFormat::UserProperty+2;
 
         //! Ceiling used by effectiveMaxHeight() when no QSS "max-height" is in effect, and the
         //! floor under maxHeightPercent.
@@ -340,6 +393,22 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         QColor spellCheckUnderlineColor() const noexcept
         {
             return m_spellCheckUnderlineColor;
+        }
+
+        /**
+         * @brief See the spellCheckUnderlineWidth property.
+         *
+         * 0 (the default) resolves to an auto width at paint time, deliberately platform-
+         * dependent: on macOS the squiggle is DOTTED (the native look), and a dot drawn at the
+         * font's own line width reads as barely-there on a Retina panel at composer font sizes,
+         * so auto doubles it there; everywhere else the squiggle is a WAVE, whose amplitude
+         * already gives it presence, so auto keeps the font's own line width -- pixel-comparable
+         * with what Qt drew before this widget took over painting it.
+         */
+        void setSpellCheckUnderlineWidth(qreal width);
+        qreal spellCheckUnderlineWidth() const noexcept
+        {
+            return m_spellCheckUnderlineWidth;
         }
 
         /**
@@ -663,6 +732,21 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         void changeEvent(QEvent* event) override;
 
         /**
+         * @brief Draws the spellcheck squiggle over what QTextEdit has already painted.
+         *
+         * The squiggle is NOT a char format any more -- see SpellCheckUnderlineProperty's own
+         * doc comment. The highlighter only MARKS the misspelled ranges; the drawing happens
+         * here, after the base class has laid the text down. Two things that were impossible as
+         * a char format fall out of that split: the user's own solid underline is left alone so
+         * both marks are visible at once, and the pen width is ours to choose
+         * (spellCheckUnderlineWidth).
+         *
+         * Only blocks intersecting event->rect() (plus a little slack -- see the .cpp) are
+         * visited, so the cost is proportional to visible text, not to document length.
+         */
+        void paintEvent(QPaintEvent* event) override;
+
+        /**
          * @brief Refuse a payload mimeDataHasAttachments() recognizes as an attachment, so Qt's
          *  own drag-and-drop machinery lets the drag propagate to an ancestor (e.g. a chat page's
          *  FileDropOverlay) instead of the editor claiming it as the drop target.
@@ -755,6 +839,7 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         bool m_linkUnderline=false;
         QColor m_mentionColor;
         QColor m_spellCheckUnderlineColor;
+        qreal m_spellCheckUnderlineWidth=0.0;
         bool m_spellCheckEnabled=true;
 
         //! Not owned -- see setSpellChecker(). Nulled automatically if the checker is destroyed
