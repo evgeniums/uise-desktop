@@ -1655,6 +1655,25 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
 
         virtual QString selectedText() const {return QString{};}
 
+        //! selectedText() restricted to a selection the user actually made. ChatMessageCall,
+        //! AbstractChatMessageError and AbstractChatMessageInvitation all return a synthesized
+        //! summary from selectedText() with nothing selected (a deliberate fallback for the
+        //! per-message Copy menu item), so a whole-list scan for "who has a selection" MUST use
+        //! this instead -- see the hasSelectableText() contract at AbstractChatMessageBody.
+        QString genuinelySelectedText() const
+        {
+            auto* c=content();
+            auto* body=c!=nullptr ? c->body() : nullptr;
+            auto* comment=c!=nullptr ? c->comment() : nullptr;
+            const bool selectable=(body!=nullptr && body->hasSelectableText())
+                || (comment!=nullptr && comment->hasSelectableText());
+            if (!selectable)
+            {
+                return QString{};
+            }
+            return selectedText();
+        }
+
         bool isFirstInBatch() const
         {
             return m_firstInBatch;
