@@ -136,6 +136,10 @@ class ImageViewerWidget_p
 
         bool pressIsLeftButton=false;
         QPoint pressPos;
+        // Set at press time from isOnControls()/isOnNavigationButton() -- see
+        // ImageViewerWidget::handlePotentialViewerClick()'s own comment for why the release
+        // can't rely on those same checks any more once navigation ran in between.
+        bool pressOnControls=false;
 
         // --- edge navigation zone support ---
 
@@ -462,10 +466,12 @@ void ImageViewerWidget::mousePressEvent(QMouseEvent* event)
     {
         pimpl->pressIsLeftButton=true;
         pimpl->pressPos=event->pos();
+        pimpl->pressOnControls=isOnControls(pimpl->pressPos) || isOnNavigationButton(pimpl->pressPos);
     }
     else
     {
         pimpl->pressIsLeftButton=false;
+        pimpl->pressOnControls=false;
     }
     QFrame::mousePressEvent(event);
 }
@@ -503,6 +509,29 @@ bool ImageViewerWidget::isOnControls(const QPoint& pos) const
 
 //--------------------------------------------------------------------------
 
+bool ImageViewerWidget::isOnNavigationButton(const QPoint& pos) const
+{
+    // Same "zoomed in means the whole image area is a drag-to-pan surface" carve-out the
+    // navigation zones use -- see isInPrevNavigationZone().
+    if (pimpl->zoom!=nullptr && pimpl->zoom->isPannable())
+    {
+        return false;
+    }
+    // Only in a session that can actually navigate: a lone standalone image
+    // (ChatImageViewerController::openStandalone()) must not grow two permanently dead
+    // 44x64 spots where the buttons would otherwise sit.
+    if (pimpl->ctrl->imageCount()<=1 && !pimpl->ctrl->hasMoreBefore() && !pimpl->ctrl->hasMoreAfter())
+    {
+        return false;
+    }
+    // geometry(), deliberately not isVisible()/childAt(): the button is hidden exactly when its
+    // own direction is exhausted, which is the case this check exists for -- see
+    // handlePotentialViewerClick()'s pressOnControls comment.
+    return pimpl->prevButton->geometry().contains(pos) || pimpl->nextButton->geometry().contains(pos);
+}
+
+//--------------------------------------------------------------------------
+
 void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
 {
     if (!pimpl->pressIsLeftButton)
@@ -510,6 +539,8 @@ void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
         return;
     }
     pimpl->pressIsLeftButton=false;
+    const auto pressOnControls=pimpl->pressOnControls;
+    pimpl->pressOnControls=false;
 
     // A drag/pan that happens to end outside the controls should not read as a click.
     if ((pos-pimpl->pressPos).manhattanLength()>QApplication::startDragDistance())
@@ -517,7 +548,14 @@ void ImageViewerWidget::handlePotentialViewerClick(const QPoint& pos)
         return;
     }
 
-    if (isOnControls(pos))
+    // pressOnControls: JumpEdge emits clicked() from an event it left unaccepted (see
+    // jumpedge.cpp), so once that handler navigates and hides the now-exhausted button, the
+    // SAME release is redelivered here. isOnNavigationButton() below already covers that case on
+    // its own (it matches by geometry(), unaffected by the button's visibility) -- pressOnControls
+    // is a press-time snapshot kept as a defensive duplicate, and is what would still catch it if
+    // isOnControls()'s childAt()-based test (which DOES miss hidden widgets) were ever the one
+    // whose target got hidden by the click it was itself reacting to.
+    if (pressOnControls || isOnControls(pos) || isOnNavigationButton(pos))
     {
         return;
     }
@@ -776,10 +814,12 @@ bool ImageViewerWidget::eventFilter(QObject* watched, QEvent* event)
                 {
                     pimpl->pressIsLeftButton=true;
                     pimpl->pressPos=mapFromGlobal(mouseEvent->globalPosition().toPoint());
+                    pimpl->pressOnControls=isOnControls(pimpl->pressPos) || isOnNavigationButton(pimpl->pressPos);
                 }
                 else
                 {
                     pimpl->pressIsLeftButton=false;
+                    pimpl->pressOnControls=false;
                 }
                 break;
             }

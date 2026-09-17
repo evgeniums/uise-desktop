@@ -23,8 +23,16 @@ qproperty-mentionColor: #7A3FBF;
    systemRed, for a colour that reads as an obvious "error" the moment it appears rather than a
    muted accent -- unlike every other colour on this page, this one exists to be noticed. A theme
    colour, so being re-applied on every repolish is the point -- see
-   EnhancedTextEdit::setSpellCheckUnderlineColor(). */
+   EnhancedTextEdit::setSpellCheckUnderlineColor(). Drawn by EnhancedTextEdit::paintEvent() now,
+   not by a QTextCharFormat underline style -- see EnhancedTextEdit::SpellCheckUnderlineProperty
+   for why. */
 qproperty-spellCheckUnderlineColor: #FF3B30;
+/* Pen width of that squiggle, in device-independent pixels. Set explicitly rather than left at
+   the auto default so the value is visible and tunable here: painted by hand now instead of via
+   QTextCharFormat::SpellCheckUnderline, which drew at the font's own lineThickness() -- about one
+   pixel, faint enough on macOS's dotted rendering to read as a rendering artefact rather than a
+   mark. 0 restores "auto" (see EnhancedTextEdit::setSpellCheckUnderlineWidth()). */
+qproperty-spellCheckUnderlineWidth: 2;
 }
 
 uise--MessageEditorToolbar {

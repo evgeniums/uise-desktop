@@ -168,15 +168,21 @@ class StubSpellChecker : public AbstractSpellChecker
         QStringList m_ignored;
 };
 
-//! Whether any layout FormatRange in `block` carries the spellcheck squiggle -- the idiom
+//! Whether any layout FormatRange in `block` carries the spellcheck MARK -- the idiom
 //! testmessageeditor.cpp's link-colour cases already use for reading a highlighter's OWN
 //! (display-only) formats, at testmessageeditor.cpp:3825 and friends.
+//!
+//! Reads EnhancedTextEdit::SpellCheckUnderlineProperty, a custom QTextFormat property, rather
+//! than QTextCharFormat::SpellCheckUnderline: an underline STYLE and the user's own
+//! fontUnderline are the SAME QTextFormat property, so the two could never coexist on one run --
+//! see that property's own doc comment. The squiggle itself is painted by
+//! EnhancedTextEdit::paintEvent() from this marker, not stored as an underline style any more.
 bool hasSpellUnderline(const QTextBlock& block)
 {
     const auto formats=block.layout()->formats();
     for (const auto& range : formats)
     {
-        if (range.format.underlineStyle()==QTextCharFormat::SpellCheckUnderline)
+        if (range.format.boolProperty(EnhancedTextEdit::SpellCheckUnderlineProperty))
         {
             return true;
         }
@@ -184,28 +190,30 @@ bool hasSpellUnderline(const QTextBlock& block)
     return false;
 }
 
-//! The colour of the FIRST range carrying the squiggle, or an invalid QColor if none does.
+//! The colour of the FIRST range carrying the mark, or an invalid QColor if none does.
 QColor spellUnderlineColor(const QTextBlock& block)
 {
     const auto formats=block.layout()->formats();
     for (const auto& range : formats)
     {
-        if (range.format.underlineStyle()==QTextCharFormat::SpellCheckUnderline)
+        if (range.format.boolProperty(EnhancedTextEdit::SpellCheckUnderlineProperty))
         {
-            return range.format.underlineColor();
+            return qvariant_cast<QColor>(
+                range.format.property(EnhancedTextEdit::SpellCheckUnderlineColorProperty));
         }
     }
     return {};
 }
 
-//! Whether a range carrying BOTH `color` as foreground AND the squiggle exists -- the regression
-//! guard for highlightMisspellings() seeding its format from format(pos) rather than a blank one.
+//! Whether a range carrying BOTH `color` as foreground AND the spellcheck mark exists -- the
+//! regression guard for highlightMisspellings() seeding its format from format(pos) rather than
+//! a blank one.
 bool hasColorAndSpellUnderline(const QTextBlock& block, const QColor& color)
 {
     const auto formats=block.layout()->formats();
     for (const auto& range : formats)
     {
-        if (range.format.underlineStyle()==QTextCharFormat::SpellCheckUnderline
+        if (range.format.boolProperty(EnhancedTextEdit::SpellCheckUnderlineProperty)
             && range.format.foreground().color()==color)
         {
             return true;
@@ -287,6 +295,49 @@ BOOST_AUTO_TEST_CASE(TestSpellHighlightIsDisplayOnly)
             const auto fragment=editor.textEdit()->document()->firstBlock().begin().fragment();
             UISE_TEST_CHECK(fragment.charFormat().underlineStyle()==QTextCharFormat::NoUnderline);
             UISE_TEST_CHECK(!editor.text(TextFormat::Html).contains(QStringLiteral("#FF3B30"),Qt::CaseInsensitive));
+
+            editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! task-spellcheck.md regression: a misspelled word INSIDE text the user underlined keeps its
+//! solid underline. The spell pass used to write QTextCharFormat::SpellCheckUnderline, which is
+//! QTextFormat::TextUnderlineStyle -- the very property setFontUnderline() writes -- into the
+//! block layout's formats, and a layout format is merged OVER the document's own char format at
+//! paint time, so the toolbar's underline silently disappeared under every squiggle. See
+//! EnhancedTextEdit::SpellCheckUnderlineProperty for the fix.
+BOOST_AUTO_TEST_CASE(TestSpellUnderlineKeepsUserUnderline)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.textEdit()->setSpellCheckUnderlineColor(QColor(0xFF,0x3B,0x30));
+            editor.setSpellChecker(&checker);
+            editor.loadText(QStringLiteral("xyzzy"),TextFormat::Plain);
+
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.select(QTextCursor::Document);
+            textEdit->setTextCursor(cursor);
+            editor.toolbar()->button(MessageEditorToolbarButton::Underline)->click();
+
+            const auto block=textEdit->document()->firstBlock();
+
+            // The DOCUMENT still says underlined...
+            UISE_TEST_CHECK(block.begin().fragment().charFormat().fontUnderline());
+            // ...the misspelling is still marked...
+            UISE_TEST_CHECK(hasSpellUnderline(block));
+            // ...and, the actual guard, nothing the highlighter put on the layout touches
+            // TextUnderlineStyle any more, so nothing can override the fragment's own underline.
+            for (const auto& range : block.layout()->formats())
+            {
+                UISE_TEST_CHECK(!range.format.hasProperty(QTextFormat::TextUnderlineStyle));
+            }
 
             editor.setSpellChecker(nullptr);
         }
@@ -657,6 +708,23 @@ BOOST_AUTO_TEST_CASE(TestSuggestionAppliesAndIsSingleUndo)
             UISE_TEST_CHECK_EQUAL_QSTR(editor.text(TextFormat::Plain),QStringLiteral("xyzzy correct"));
 
             editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! spellCheckUnderlineWidth is a paint-time value with no format-level effect to assert against
+//! (see EnhancedTextEdit::paintEvent()), so this is a plain accessor round-trip: the default is
+//! "auto" (0), and an explicit width sticks.
+BOOST_AUTO_TEST_CASE(TestSpellUnderlineWidthProperty)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(qFuzzyIsNull(editor.textEdit()->spellCheckUnderlineWidth()));
+
+            editor.textEdit()->setSpellCheckUnderlineWidth(3.5);
+            UISE_TEST_CHECK(qFuzzyCompare(editor.textEdit()->spellCheckUnderlineWidth(),3.5));
         }
     );
 }

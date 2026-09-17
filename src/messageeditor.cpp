@@ -59,6 +59,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QBoxLayout>
 #include <QHash>
 #include <QStringView>
+#include <QPainter>
+#include <QPainterPath>
+#include <QScrollBar>
+#include <QAbstractTextDocumentLayout>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/mimedatautils.hpp>
@@ -1715,11 +1719,12 @@ bool spellRangeExcluded(int start, int length, const std::vector<SpellToken>& ex
  * Links and mentions are excluded on purpose, not merely as a courtesy: QSyntaxHighlighter::
  * setFormat() ASSIGNS the format it is given rather than merging it onto whatever this
  * highlighter already painted, so a spell format applied over a link range would erase the
- * link's own foreground colour -- and setFontUnderline()/setUnderlineStyle() write the very same
- * QTextCharFormat property, so a run could carry the link underline or the spell squiggle, never
- * both. Skipping anchors here removes the collision outright rather than trying to merge around
- * it, which also happens to be exactly what the task's own brief asks for ("hyperlinks and
- * usernames should pass spell checker").
+ * link's own foreground colour. (The squiggle itself no longer competes with an underline
+ * property the way it used to -- see EnhancedTextEdit::SpellCheckUnderlineProperty -- but a URL
+ * or "@handle" is still not prose, and offering one to a dictionary's check() would only ever
+ * produce noise.) Skipping anchors here removes both problems outright rather than trying to
+ * merge around them, which also happens to be exactly what the task's own brief asks for
+ * ("hyperlinks and usernames should pass spell checker").
  */
 std::vector<SpellToken> nonProseRuns(const QTextBlock& block)
 {
@@ -1858,6 +1863,173 @@ std::vector<SpellToken> spellTokens(const QString& text)
     }
 
     return tokens;
+}
+
+//! macOS shows a DOTTED spelling underline -- qcocoatheme.mm's own
+//! QPlatformTheme::SpellCheckUnderlineStyle answer, which this editor used to defer to before it
+//! started painting the squiggle itself (see EnhancedTextEdit::SpellCheckUnderlineProperty).
+//! Every other platform gets a wave, Qt's own fallback shape. Preserved verbatim here so the
+//! change of MECHANISM is not also a change of LOOK -- only the width is.
+constexpr bool isDottedSpellUnderline()
+{
+#ifdef Q_OS_MACOS
+    return true;
+#else
+    return false;
+#endif
+}
+
+//! Pen width of the spellcheck squiggle when EnhancedTextEdit::spellCheckUnderlineWidth() is 0
+//! ("auto"). Platform-dependent on purpose -- see that property's own doc comment for why.
+qreal autoSpellUnderlineWidth(const QFontMetricsF& metrics)
+{
+    if (isDottedSpellUnderline())
+    {
+        return std::max(qreal(2),metrics.lineWidth()*qreal(2));
+    }
+    return std::max(qreal(1),metrics.lineWidth());
+}
+
+//! Round dots, macOS's own spelling-underline shape -- a dash pattern whose "on" segment is
+//! effectively zero-length, so a round cap turns every dash into a circle of diameter `width`.
+//! Pattern entries are multiples of the pen width, so the spacing scales with the width and the
+//! dots never crowd as the pen grows. Antialiasing is mandatory here: without it the round caps
+//! square off and the line reads as a thin dashed rule rather than as dots.
+void drawSpellDots(QPainter& painter, qreal x1, qreal x2, qreal y, qreal width, const QColor& color)
+{
+    QPen pen(color);
+    pen.setWidthF(width);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setDashPattern(QList<qreal>{0.01,2.0});
+    painter.setPen(pen);
+    painter.drawLine(QPointF(x1,y),QPointF(x2,y));
+}
+
+//! A wave, Qt's own fallback shape for SpellCheckUnderline on every platform but macOS, built
+//! from quadratic curves at OUR pen width rather than from Qt's cached wavy pixmap, which is
+//! generated at the font's lineThickness() and cannot be widened through any QTextCharFormat API
+//! -- the whole reason this squiggle is painted by hand now.
+//!
+//! `y` is the CENTRE line of the wave; it peaks `width` above and below it, so the band is
+//! 2*width tall plus the pen itself. A quadratic Bezier peaks at HALF its control-point offset,
+//! hence the 2* on the control points below. A final half-period truncated by x2 is left as-is --
+//! Qt's own tiled pixmap does the same, and a wave that stops short of the last letter looks
+//! worse than one that overshoots by half a period.
+void drawSpellWave(QPainter& painter, qreal x1, qreal x2, qreal y, qreal width, const QColor& color)
+{
+    const auto amplitude=std::max(qreal(1),width);
+    const auto halfPeriod=std::max(qreal(2),amplitude*qreal(2));
+
+    QPainterPath path;
+    path.moveTo(x1,y);
+    auto x=x1;
+    auto direction=qreal(-1);
+    while (x<x2)
+    {
+        const auto next=std::min(x+halfPeriod,x2);
+        path.quadTo(x+(next-x)/qreal(2),y+direction*amplitude*qreal(2),next,y);
+        x=next;
+        direction=-direction;
+    }
+
+    QPen pen(color);
+    pen.setWidthF(width);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(path);
+}
+
+//! One SpellCheckUnderlineProperty range, split across however many wrapped QTextLines it spans,
+//! and drawn below wherever Qt puts the run's OWN solid underline (if any) so a misspelling
+//! inside underlined text shows both marks.
+//!
+//! `origin` is the block's layout origin in VIEWPORT coordinates -- QTextLine::y() and
+//! QTextLine::cursorToX() are both relative to it (cursorToX() already folds in the line's own x
+//! offset and the paragraph alignment).
+void drawSpellRange(QPainter& painter, const QTextBlock& block, const QPointF& origin,
+                     int start, int length, const QColor& color, qreal configuredWidth)
+{
+    auto* layout=block.layout();
+    if (layout==nullptr)
+    {
+        return;
+    }
+    const auto end=start+length;
+
+    // The word's OWN format, not its predecessor's: QTextCursor::charFormat() reports the
+    // character BEFORE the position, hence the +1. Constructed from the BLOCK, not
+    // block.document() -- that returns a const QTextDocument*, and QTextCursor has no
+    // const-document constructor; the block constructor gets at the same document without one.
+    QTextCursor probe(block);
+    probe.setPosition(block.position()+start+1);
+    const QFontMetricsF metrics(probe.charFormat().font());
+
+    const auto width=(configuredWidth>0) ? configuredWidth : autoSpellUnderlineWidth(metrics);
+
+    for (int i=0; i<layout->lineCount(); ++i)
+    {
+        const auto line=layout->lineAt(i);
+        const auto lineStart=line.textStart();
+        const auto lineEnd=lineStart+line.textLength();
+
+        const auto from=std::max(start,lineStart);
+        const auto to=std::min(end,lineEnd);
+        if (from>=to)
+        {
+            continue;
+        }
+
+        auto x1=line.cursorToX(from);
+        auto x2=line.cursorToX(to);
+        if (x2<x1)
+        {
+            // RTL: the logical start of the word is its visual RIGHT edge.
+            std::swap(x1,x2);
+        }
+        if (x2-x1<qreal(1))
+        {
+            continue;
+        }
+
+        // Where Qt puts the user's OWN solid underline (drawTextItemDecoration(), qpainter.cpp)
+        // -- reproduced rather than guessed, because the whole reason this squiggle is painted by
+        // hand is so the two can coexist, which means knowing what to stay clear of.
+        const auto baseline=origin.y()+line.y()+line.ascent();
+        auto underlineOffset=std::ceil(metrics.underlinePos())+qreal(0.5);
+        if (metrics.underlinePos()<=metrics.descent())
+        {
+            underlineOffset=std::min(underlineOffset,metrics.descent()-qreal(0.5));
+        }
+        const auto solidBottom=baseline+underlineOffset+metrics.lineWidth()/qreal(2);
+
+        // Bottom-anchored in the line's own text box (ascent+descent, leading excluded) so runs
+        // of different sizes on one line put their squiggles on one visual line, and so the gap
+        // above the word below is as large as the descent allows.
+        auto bandBottom=origin.y()+line.y()+line.ascent()+line.descent()-qreal(0.5);
+        if (bandBottom-width<solidBottom+qreal(1))
+        {
+            // Too tight to fit both inside the line's own text box (a small font with a deep
+            // underline position). Pushed below the solid line anyway and allowed to spill by a
+            // couple of pixels into the line's leading -- a squiggle drawn ON TOP of the user's
+            // underline is worse than one that reaches slightly into the gap.
+            bandBottom=solidBottom+qreal(1)+width;
+        }
+        const auto lineBottom=origin.y()+line.y()+line.height();
+        bandBottom=std::min(bandBottom,lineBottom+qreal(2));
+
+        if (isDottedSpellUnderline())
+        {
+            drawSpellDots(painter,origin.x()+x1,origin.x()+x2,
+                          bandBottom-width/qreal(2),width,color);
+        }
+        else
+        {
+            drawSpellWave(painter,origin.x()+x1,origin.x()+x2,
+                          bandBottom-width/qreal(2)-std::max(qreal(1),width),width,color);
+        }
+    }
 }
 
 }
@@ -2148,11 +2320,15 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
             }
         }
 
-        /** @brief Underline every word no active dictionary accepts (task-spellcheck.md).
+        /** @brief Mark every word no active dictionary accepts (task-spellcheck.md).
          *
          * Runs after highlightLinks() -- see that call site's own comment for why -- and skips
          * anything nonProseRuns() marks (an anchor or an inline-code run), so a link/mention/code
-         * span is never handed to check() at all, never mind painted over.
+         * span is never handed to check() at all, never mind marked.
+         *
+         * This pass only ever MARKS a range with EnhancedTextEdit::SpellCheckUnderlineProperty --
+         * it never touches underlineStyle/underlineColor any more, see that property's own doc
+         * comment for why. EnhancedTextEdit::paintEvent() is what actually draws the squiggle.
          *
          * QSyntaxHighlighter::setFormat() ASSIGNS the format it is given rather than merging it
          * onto whatever this highlighter already painted for the range (it merges only onto the
@@ -2209,18 +2385,29 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
                     continue;
                 }
 
+                // A property of our OWN rather than QTextCharFormat::SpellCheckUnderline, which
+                // this pass used until the collision was measured: setUnderlineStyle() and
+                // setFontUnderline() write the SAME QTextFormat::TextUnderlineStyle property, and
+                // a QSyntaxHighlighter format is merged OVER the document's own char format at
+                // paint time -- so a misspelled word inside text the user underlined from the
+                // toolbar lost its solid underline entirely, leaving only the squiggle. Marking
+                // instead of styling leaves the document's fontUnderline untouched, and
+                // EnhancedTextEdit::paintEvent() draws the squiggle below it, so both are visible.
+                // It is also what makes a squiggle thicker than the font's own lineThickness()
+                // possible at all -- there is no QTextCharFormat knob for that either. See
+                // EnhancedTextEdit::SpellCheckUnderlineProperty for the full story.
                 auto format=this->format(token.start);
-                // QTextCharFormat::SpellCheckUnderline -- deliberately the platform's OWN
-                // spelling-underline style rather than a style forced here: Qt resolves it
-                // through QPlatformTheme::SpellCheckUnderlineStyle at paint time (qpainter.cpp),
-                // which is exactly the "let the platform decide how misspellings look" contract
-                // this style exists for. On macOS specifically that resolves to a dotted line
-                // (qcocoatheme.mm) rather than a wavy one -- accepted as the native look there,
-                // not overridden.
-                format.setUnderlineStyle(QTextCharFormat::SpellCheckUnderline);
+                format.setProperty(EnhancedTextEdit::SpellCheckUnderlineProperty,true);
                 if (m_spellCheckUnderlineColor.isValid())
                 {
-                    format.setUnderlineColor(m_spellCheckUnderlineColor);
+                    // Deliberately NOT underlineColor(): merged over a document format that has
+                    // fontUnderline=true, that would recolour the user's OWN solid underline red
+                    // the moment the two coincide. EnhancedTextEdit::paintEvent() reads this
+                    // property to colour the squiggle it draws instead.
+                    format.setProperty(
+                        EnhancedTextEdit::SpellCheckUnderlineColorProperty,
+                        m_spellCheckUnderlineColor
+                    );
                 }
                 setFormat(token.start,token.length,format);
             }
@@ -2630,6 +2817,93 @@ void EnhancedTextEdit::changeEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
+void EnhancedTextEdit::paintEvent(QPaintEvent* event)
+{
+    // The text first: the squiggle goes ON TOP of it, which is the whole point -- the user's own
+    // solid underline is drawn by Qt from the document's fontUnderline, untouched by the spell
+    // pass (see SpellCheckUnderlineProperty), and ours lands below it.
+    QTextEdit::paintEvent(event);
+
+    if (!m_spellCheckEnabled || m_spellChecker.isNull())
+    {
+        return;
+    }
+
+    auto* doc=document();
+    auto* docLayout=doc->documentLayout();
+    if (docLayout==nullptr)
+    {
+        return;
+    }
+
+    const auto eventRect=event->rect();
+    const QPointF scroll(horizontalScrollBar()->value(),verticalScrollBar()->value());
+
+    QPainter painter(viewport());
+    painter.setRenderHint(QPainter::Antialiasing,true);
+
+    const auto fallbackColor=palette().color(foregroundRole());
+
+    // Start at the block under the top of the damaged strip rather than at the document's first
+    // block: a composer holding a long paste must not be walked end to end on every caret blink.
+    auto block=cursorForPosition(QPoint(0,eventRect.top())).block();
+    for (; block.isValid(); block=block.next())
+    {
+        auto* layout=block.layout();
+        if (layout==nullptr)
+        {
+            continue;
+        }
+
+        // Document coordinates to viewport coordinates -- the same conversion (and the same
+        // reason) as ChatMessageTextBrowser::codeBlockViewportRect(): the document's own margin
+        // is already inside blockBoundingRect()'s origin, and blockBoundingRect() moves the
+        // block's bounding rect to layout->position(), so its topLeft IS the layout origin that
+        // QTextLine::y()/cursorToX() are relative to.
+        const auto blockRect=docLayout->blockBoundingRect(block).translated(-scroll);
+        if (blockRect.top()>eventRect.bottom()+viewport()->height())
+        {
+            // Not a strict "past the bottom" break: inside a QTextTable the next block in
+            // document order can sit HIGHER than this one (the next cell of the same row), so
+            // stopping there would leave the rest of a table row unpainted. One viewport of
+            // slack is more than any single row is ever tall.
+            break;
+        }
+        if (!blockRect.intersects(QRectF(eventRect)))
+        {
+            continue;
+        }
+
+        const auto formats=layout->formats();
+        if (formats.isEmpty())
+        {
+            continue;
+        }
+
+        for (const auto& range : formats)
+        {
+            if (!range.format.boolProperty(SpellCheckUnderlineProperty))
+            {
+                continue;
+            }
+
+            auto color=qvariant_cast<QColor>(range.format.property(SpellCheckUnderlineColorProperty));
+            if (!color.isValid())
+            {
+                // What Qt's own underline used to inherit when no underlineColor was set: the
+                // pen the text itself is drawn with. Keeps a host that ships no stylesheet
+                // exactly where it was before this widget started painting the squiggle itself.
+                color=fallbackColor;
+            }
+
+            drawSpellRange(painter,block,blockRect.topLeft(),range.start,range.length,color,
+                m_spellCheckUnderlineWidth);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void EnhancedTextEdit::setBlockquoteColor(const QColor& color)
 {
     m_blockquoteColor=color;
@@ -2703,6 +2977,22 @@ void EnhancedTextEdit::setSpellCheckUnderlineColor(const QColor& color)
     {
         m_highlighter->setSpellCheckUnderlineColor(color);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::setSpellCheckUnderlineWidth(qreal width)
+{
+    if (qFuzzyCompare(m_spellCheckUnderlineWidth,width))
+    {
+        return;
+    }
+
+    m_spellCheckUnderlineWidth=width;
+
+    // No rehighlight: nothing about WHICH ranges are marked changes, only how thick the squiggle
+    // paintEvent() draws for them is -- that is read at paint time, never baked into a format.
+    viewport()->update();
 }
 
 //--------------------------------------------------------------------------
