@@ -59,6 +59,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QBoxLayout>
 #include <QHash>
 #include <QStringView>
+#include <QVariant>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/mimedatautils.hpp>
@@ -3645,20 +3646,41 @@ class MessageEditor_p
         //! First member of the trailing group, mirroring expandButton's place in the leading one.
         IconTextButton* emojiButton;
 
-        //! The floating emoji picker, created lazily on first open and then KEPT (closed, not
-        //! destroyed) -- reopening is the common case, and rebuilding the gallery would re-rasterize
-        //! the whole pack every time.
+        //! The floating emoji picker THIS editor currently has -- built lazily on first use and
+        //! then KEPT (closed, not destroyed) -- reopening is the common case, and rebuilding the
+        //! gallery would re-rasterize the whole pack every time. It is actually a shared,
+        //! per-WINDOW object (EmojiGallerySharedState, in messageeditor.cpp): current -- safe to
+        //! act on as "mine" -- exactly while this editor is that shared state's owner, which
+        //! ensureEmojiGallery() (via claimEmojiGallery()) guarantees on return. It is set once by
+        //! ensureEmojiGallery() and, deliberately, never cleared just because ownership later
+        //! moves to a different composer in the same window (see claimEmojiGallery()) -- every
+        //! call site that matters reads it before emojiDialogOpen would even be false yet (see
+        //! openEmojiGallery()), so gating on that flag instead would be both unnecessary and, in
+        //! that specific ordering, wrong.
         QPointer<FloatingEmojiGalleryDialog> emojiDialog;
 
         //! Authoritative "is the picker open" -- see MessageEditor::isEmojiGalleryOpen().
         bool emojiDialogOpen=false;
 
-        //! Whether an open picker was opened (or promoted) by a CLICK rather than by hovering.
-        //! ONLY a click ever sets this -- picking an emoji deliberately does not, see
+        //! Whether the picker was opened (or promoted) by a CLICK rather than by hovering. ONLY a
+        //! click ever sets this -- picking an emoji deliberately does not, see
         //! ensureEmojiGallery()'s emojiPicked handler. Only a pinned one checks the emoji button,
         //! and only an unpinned one closes itself when the pointer wanders off -- see
         //! MessageEditor::isEmojiGalleryPinned().
+        //!
+        //! Survives a CLOSE that was not itself a user dismissal (see emojiCloseProgrammatic
+        //! below): it is the REMEMBERED pin, seeded by a host through setEmojiGalleryPinned() and
+        //! meant to be app-wide, not merely "is the gallery on screen right now pinned" -- that
+        //! narrower question is isEmojiGalleryPinned(), which is emojiDialogOpen&&emojiDialogPinned.
         bool emojiDialogPinned=false;
+
+        //! Set for the duration of a close the USER did not ask for (the editor being hidden, a
+        //! switch to MessageEditingMode::Plaintext, the emoji button being hidden, a host's own
+        //! setEmojiGalleryPinned(false)) -- see closeEmojiGalleryInternal(). Consumed and reset by
+        //! the FloatingDialogFrame::closed handler in ensureEmojiGallery(), which is where
+        //! emojiDialogPinned is actually cleared -- close() itself is asynchronous, behind the
+        //! frame's fade, so nothing can be cleared at the call site.
+        bool emojiCloseProgrammatic=false;
 
         //! Recently-used emoji, most recent first, bare icon ids -- see
         //! AbstractMessageEditor::setEmojiRecentIds(). Empty leaves the picker's row on the pack's
@@ -3709,6 +3731,31 @@ class MessageEditor_p
         //! MessageEditor::showContextMenu(). Reset on every menu open.
         EnhancedTextEdit::SpellWord spellContextWord;
         QStringList spellSuggestions;
+};
+
+//--------------------------------------------------------------------------
+
+//! The emoji gallery dialog and its current owner, shared by every MessageEditor in one
+//! top-level WINDOW (not merely one composer) -- so a chat switch within that window hands the
+//! same dialog off rather than closing one and opening another, and anywhere the user has
+//! dragged it stays exactly where they left it. Stored as a dynamic property on the window
+//! itself (see emojiGallerySharedState()), with `this` parented to that same window -- so both
+//! this object and the dialog it points at are destroyed exactly when the window is, with no
+//! separate cleanup needed anywhere. Forward-declared in messageeditor.hpp, same as
+//! MessageEditor_p, so MessageEditor's private claimEmojiGallery()/buildEmojiGalleryDialog()/
+//! releaseEmojiGallery() can take it by pointer.
+class EmojiGallerySharedState : public QObject
+{
+    public:
+
+        using QObject::QObject;
+
+        QPointer<FloatingEmojiGalleryDialog> dialog;
+
+        //! Which composer currently receives emojiPicked()/setEmojiRecentIds() promotion and owns
+        //! the "is it open" bookkeeping. Null between the moment a close finishes and the next
+        //! claim (there is always at most one owner, never zero once something is open).
+        QPointer<MessageEditor> owner;
 };
 
 //--------------------------------------------------------------------------
@@ -3842,6 +3889,10 @@ MessageEditor::MessageEditor(QWidget* parent)
                 // instead would be the natural-looking implementation and the wrong behaviour:
                 // the user's gesture was "keep this", and the gallery is under their pointer.
                 pinEmojiGallery();
+                // A genuine user gesture -- unlike pinEmojiGallery() calls reached through
+                // openEmojiGallery(true) from showEvent() or a host's setEmojiGalleryPinned(),
+                // neither of which should echo back at the host that pushed them.
+                emit emojiGalleryPinnedChanged(true);
             }
             else if (pimpl->emojiDialogOpen)
             {
@@ -3850,6 +3901,10 @@ MessageEditor::MessageEditor(QWidget* parent)
             else
             {
                 openEmojiGallery();
+                if (isEmojiGalleryPinned())
+                {
+                    emit emojiGalleryPinnedChanged(true);
+                }
             }
             // Deliberately NO restoreEditorFocus() here. Unlike every other button in this
             // editor, this one opens a picker that STAYS OPEN and has a search box of its own --
@@ -4928,8 +4983,9 @@ void MessageEditor::updateMessageEditingMode()
     applyEmojiShortcodeAutoReplace();
     if (to==MessageEditingMode::Plaintext)
     {
-        // Never leave a picker open over a mode whose insert would be refused.
-        closeEmojiGallery();
+        // Never leave a picker open over a mode whose insert would be refused. Not a user
+        // dismissal -- the pin is remembered, and returning to Wysiwyg/Markdown re-opens it.
+        closeEmojiGalleryInternal(false);
     }
     else
     {
@@ -4937,6 +4993,14 @@ void MessageEditor::updateMessageEditingMode()
         // a literal emojiCode). Re-hand the gallery the right pack whether it is open or merely
         // warmed up, so a later hover never shows the previous mode's icon set for an instant.
         applyEmojiPackForCurrentMode();
+        if (pimpl->emojiDialogPinned && !pimpl->emojiDialogOpen && isVisible()
+            && isEmojiButtonVisible())
+        {
+            // Coming back from Plaintext (the only mode that closes a pinned gallery, just
+            // above) with the pin still remembered -- reopen it, same as showEvent() does for a
+            // composer that was hidden rather than switched.
+            openEmojiGallery(true);
+        }
     }
     // The emoji button may have just appeared in or vanished from the trailing group.
     Layout::activateUpward(this);
@@ -6533,6 +6597,40 @@ IconTextButton* MessageEditor::emojiButton() const
 
 //--------------------------------------------------------------------------
 
+constexpr const char* EmojiGallerySharedStateProperty="uiseEmojiGallerySharedState";
+
+//! Find (or, with create=true, create) the given window's shared gallery state. Returns nullptr
+//! for a null window, or when create=false and none exists yet -- callers that only ever want to
+//! LOOK, never to build one just by asking (e.g. warmEmojiGallery()'s own early-out, or a hidden
+//! composer's showEvent()), pass false. Internal linkage: nothing outside this file ever calls
+//! it, even though EmojiGallerySharedState itself (see messageeditor.hpp) is not anonymous --
+//! MessageEditor_p is not either, for the same reason: a type only forward-declared in the
+//! header, for a pimpl-style member, cannot also live in this file's anonymous namespace (that
+//! would make it a second, unrelated type of the same name, not the one the header refers to).
+static EmojiGallerySharedState* emojiGallerySharedState(QWidget* win, bool create)
+{
+    if (win==nullptr)
+    {
+        return nullptr;
+    }
+    // static_cast, not qobject_cast: EmojiGallerySharedState carries no Q_OBJECT/moc of its own
+    // (it is a plain class defined in this .cpp, not run through moc), so qobject_cast could not
+    // safely narrow from QObject* to it. Safe here because this function is the ONLY code that
+    // ever writes EmojiGallerySharedStateProperty, always with a freshly-built
+    // EmojiGallerySharedState -- the property never holds any other type.
+    auto* state=static_cast<EmojiGallerySharedState*>(
+        win->property(EmojiGallerySharedStateProperty).value<QObject*>()
+    );
+    if (state==nullptr && create)
+    {
+        state=new EmojiGallerySharedState(win);
+        win->setProperty(EmojiGallerySharedStateProperty,QVariant::fromValue<QObject*>(state));
+    }
+    return state;
+}
+
+//--------------------------------------------------------------------------
+
 bool MessageEditor::isEmojiGalleryOpen() const noexcept
 {
     return pimpl->emojiDialogOpen;
@@ -6702,8 +6800,9 @@ void MessageEditor::updateEmojiButtonVisible()
     else
     {
         // Hiding the button must not strand an open picker with nothing to toggle it shut. Also
-        // cancels any hover-open still counting down -- the button is going away.
-        closeEmojiGallery();
+        // cancels any hover-open still counting down -- the button is going away. Not a user
+        // dismissal -- the pin is remembered, in case the button reappears later.
+        closeEmojiGalleryInternal(false);
     }
     Layout::activateUpward(this);
 }
@@ -6730,34 +6829,34 @@ std::shared_ptr<AbstractReactionIconPack> MessageEditor::emojiPackForCurrentMode
 
 //--------------------------------------------------------------------------
 
-FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
+bool MessageEditor::buildEmojiGalleryDialog(EmojiGallerySharedState* state, QWidget* win)
 {
-    if (messageEditingMode()==MessageEditingMode::Plaintext)
-    {
-        return nullptr;
-    }
-
-    if (!pimpl->emojiDialog.isNull())
-    {
-        return pimpl->emojiDialog.data();
-    }
-
-    auto* frame=new FloatingEmojiGalleryDialog(this);
-    pimpl->emojiDialog=frame;
-
-    // destroyOnClose=false: reopening a picker is the normal case, and rebuilding the gallery
-    // would re-rasterize the whole pack each time. show=false because the dialog has to be
+    // Parented to the WINDOW, not this editor: the whole point of a shared gallery is that it
+    // outlives any one composer -- see task-emoji-gallery-shared-per-window.md. destroyOnClose is
+    // therefore moot (nothing ever destroys it early); show=false because the dialog has to be
     // filled and measured before it can be anchored -- see openEmojiGallery().
-    frame->openDialog(false,false);
+    auto* frame=new FloatingEmojiGalleryDialog(win);
+    state->dialog=frame;
 
+    frame->openDialog(false,false);
     if (frame->dialog().isNull())
     {
-        return nullptr;
+        state->dialog=nullptr;
+        return false;
     }
 
-    connect(frame->dialog(),&AbstractEmojiGalleryDialog::emojiPicked,this,
-        [this](const QString& reactionId)
+    // Connected to the FRAME, not to any one editor: the shared dialog outlives every editor
+    // that ever uses it, and both handlers dispatch to state->owner -- whichever editor
+    // currently has it -- rather than to a fixed capture, since ownership can change (claimed by
+    // a different composer in the same window) without the dialog itself ever being rebuilt.
+    connect(frame->dialog(),&AbstractEmojiGalleryDialog::emojiPicked,frame,
+        [frame](const QString& reactionId)
         {
+            auto* st=emojiGallerySharedState(frame->parentWidget(),false);
+            if (st==nullptr || st->owner.isNull())
+            {
+                return;
+            }
             // Deliberately does NOT pin: a hover-opened gallery stays hover-opened through any
             // number of picks, and only an explicit click on the emoji button ever pins (and so
             // checks the button). Picking is aimed at the GALLERY, not at the button.
@@ -6767,39 +6866,91 @@ FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
             // frameGeometry() as well as the button -- so the away counter keeps resetting and
             // the picker cannot dissolve mid-reach. It closes once the pointer has actually left
             // both, which is exactly what "opened on hover" should mean.
-            insertEmoji(reactionId);
+            st->owner->insertEmoji(reactionId);
             // iconId(), not the full reaction id: the recents row resolves what it is given
             // against the pack itself -- see ChatReactionQuickBar::setLeadingIconIds(). Unresolvable ids
             // are dropped inside promoteEmojiRecent() rather than guarded here.
-            promoteEmojiRecent(ChatReactionId::iconId(reactionId));
+            st->owner->promoteEmojiRecent(ChatReactionId::iconId(reactionId));
         }
     );
 
-    // The single place the button goes back up, so every close path -- the title-bar X,
-    // Escape, an outside dismissal, the hover poll, closeEmojiGallery() -- lands here and
-    // nowhere else.
-    connect(frame,&FloatingDialogFrame::closed,this,
-        [this]()
+    // The single place the CURRENT owner's button goes back up, so every close path -- the
+    // title-bar X, Escape, an outside dismissal, the hover poll, closeEmojiGallery() -- lands
+    // here and nowhere else. Also releases ownership: a claim (composer switch within the same
+    // window) never fires this at all, see claimEmojiGallery().
+    connect(frame,&FloatingDialogFrame::closed,frame,
+        [frame]()
         {
-            pimpl->emojiDialogOpen=false;
-            pimpl->emojiDialogPinned=false;
-            stopEmojiHoverPoll();
-            syncEmojiButtonChecked();
-            // The one place focus returns to the text edit; see the emoji button's own
-            // clicked() handler for why it deliberately does not do this itself.
-            restoreEditorFocus();
+            auto* st=emojiGallerySharedState(frame->parentWidget(),false);
+            if (st==nullptr)
+            {
+                return;
+            }
+            auto* owner=st->owner.data();
+            st->owner=nullptr;
+            if (owner!=nullptr)
+            {
+                owner->onEmojiGalleryClosed();
+            }
         }
     );
 
-    // Build the grid NOW rather than on the first popup: this is the expensive part (a cell and a
-    // rasterized SVG per pack entry), and paying it here is the whole point of warming up.
-    pimpl->emojiPackValid=false;
-    applyEmojiPackForCurrentMode();
-    // After the pack, never before: the recents row resolves its ids through the pack the gallery
-    // was just given, so pushing them at an unpacked gallery would drop every one of them.
-    applyEmojiRecentIds();
+    return true;
+}
 
-    return frame;
+//--------------------------------------------------------------------------
+
+void MessageEditor::claimEmojiGallery(EmojiGallerySharedState* state)
+{
+    auto* previousOwner=state->owner.data();
+    state->owner=this;
+    if (previousOwner!=nullptr && previousOwner!=this)
+    {
+        // Retargeted to a different composer in the SAME window, not closed: no fade, no
+        // repositioning, no emojiGalleryPinnedChanged() emit. The previous owner's own "is it
+        // open for ME" bookkeeping just silently ends; its remembered pin, if any, is untouched
+        // -- see emojiDialogPinned's own doc comment. Private members of another MessageEditor
+        // instance are reachable here because access control in C++ is per-CLASS, not per-object.
+        previousOwner->pimpl->emojiHoverOpenTimer->stop();
+        previousOwner->stopEmojiHoverPoll();
+        previousOwner->pimpl->emojiDialogOpen=false;
+        previousOwner->syncEmojiButtonChecked();
+    }
+    // The pack/recents currently shown were built for the PREVIOUS owner's mode (or for no owner
+    // at all, fresh off buildEmojiGalleryDialog()) -- force a rebuild for this one. The caller
+    // (openEmojiGallery()) makes the actual applyEmojiPackForCurrentMode()/applyEmojiRecentIds()
+    // calls right after this returns.
+    pimpl->emojiPackValid=false;
+}
+
+//--------------------------------------------------------------------------
+
+FloatingEmojiGalleryDialog* MessageEditor::ensureEmojiGallery()
+{
+    if (messageEditingMode()==MessageEditingMode::Plaintext)
+    {
+        return nullptr;
+    }
+
+    auto* win=window();
+    if (win==nullptr)
+    {
+        return nullptr;
+    }
+    auto* state=emojiGallerySharedState(win,true);
+
+    if (state->dialog.isNull() && !buildEmojiGalleryDialog(state,win))
+    {
+        return nullptr;
+    }
+
+    if (state->owner.data()!=this)
+    {
+        claimEmojiGallery(state);
+    }
+    pimpl->emojiDialog=state->dialog;
+
+    return pimpl->emojiDialog.data();
 }
 
 //--------------------------------------------------------------------------
@@ -6830,9 +6981,21 @@ void MessageEditor::applyEmojiPackForCurrentMode()
 
 void MessageEditor::warmEmojiGallery()
 {
-    if (!pimpl->emojiDialog.isNull() || !isEmojiButtonVisible())
+    if (!isEmojiButtonVisible())
     {
         return;
+    }
+    if (auto* win=window())
+    {
+        auto* state=emojiGallerySharedState(win,false);
+        if (state!=nullptr && !state->dialog.isNull())
+        {
+            // Already built -- by this editor or, in a window with more than one composer,
+            // possibly another. Warming has nothing left to do, and must NOT claim ownership
+            // just for having warmed up: only an actual open (hover, click, or a remembered pin
+            // reopening on show) does that, see ensureEmojiGallery().
+            return;
+        }
     }
     // Deferred by one event-loop turn, never inline: this runs from the visibility update, which
     // is itself reached from a QSS property write during polish -- building a whole second widget
@@ -6842,9 +7005,19 @@ void MessageEditor::warmEmojiGallery()
     QTimer::singleShot(0,this,
         [self]()
         {
-            if (!self.isNull() && self->isEmojiButtonVisible())
+            if (self.isNull() || !self->isEmojiButtonVisible())
             {
-                self->ensureEmojiGallery();
+                return;
+            }
+            auto* win=self->window();
+            if (win==nullptr)
+            {
+                return;
+            }
+            auto* state=emojiGallerySharedState(win,true);
+            if (state->dialog.isNull())
+            {
+                self->buildEmojiGalleryDialog(state,win);
             }
         }
     );
@@ -6886,14 +7059,21 @@ void MessageEditor::openEmojiGallery(bool pinned)
     // the common case costs nothing.
     applyEmojiRecentIds();
 
-    // Bottom-left corner of the frame onto the top-left corner of the button: the dialog
-    // therefore unfolds UPWARD and to the RIGHT. The two-argument popupAt() also keeps the whole
-    // frame on screen, which is what a popup anchored to a control the user just clicked wants --
-    // and it applies the corner offset AFTER its own adjustSize(), which is the only point at
-    // which the frame's height is actually known.
-    const auto anchor=pimpl->emojiButton->mapToGlobal(pimpl->emojiButton->rect().topLeft())
-                      -QPoint(0,EmojiGalleryGap);
-    frame->popupAt(anchor,Qt::BottomLeftCorner);
+    if (!frame->isVisible())
+    {
+        // Bottom-left corner of the frame onto the top-left corner of the button: the dialog
+        // therefore unfolds UPWARD and to the RIGHT. The two-argument popupAt() also keeps the
+        // whole frame on screen, which is what a popup anchored to a control the user just
+        // clicked wants -- and it applies the corner offset AFTER its own adjustSize(), which is
+        // the only point at which the frame's height is actually known.
+        const auto anchor=pimpl->emojiButton->mapToGlobal(pimpl->emojiButton->rect().topLeft())
+                          -QPoint(0,EmojiGalleryGap);
+        frame->popupAt(anchor,Qt::BottomLeftCorner);
+    }
+    // else: already up on screen, handed over from whichever composer in this window owned it a
+    // moment ago (ensureEmojiGallery() -> claimEmojiGallery()) -- deliberately left exactly where
+    // it is, including anywhere the user dragged it. This is the whole point of one shared dialog
+    // per window: a chat switch never moves it.
 
     pimpl->emojiDialogOpen=true;
     pimpl->emojiDialogPinned=pinned;
@@ -6909,21 +7089,126 @@ void MessageEditor::openEmojiGallery(bool pinned)
 
 void MessageEditor::closeEmojiGallery()
 {
+    // The public, AbstractMessageEditor-facing close -- always a user-equivalent dismissal (a
+    // host calls this to mean "the user is done here", e.g. the chat page itself being closed by
+    // the user), so it clears the remembered pin same as the button's own close branch.
+    closeEmojiGalleryInternal(true);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::closeEmojiGalleryInternal(bool userInitiated)
+{
     // A close request also cancels a hover-open that has not fired yet, or the gallery would
     // reappear a moment after being dismissed.
     pimpl->emojiHoverOpenTimer->stop();
     stopEmojiHoverPoll();
 
-    if (pimpl->emojiDialog.isNull())
+    if (!pimpl->emojiDialogOpen)
     {
-        // Still re-assert the button: it may have been left checked by its own unconditional
-        // toggle() with no dialog ever created (e.g. a click while already in Plaintext).
+        // Nothing open FOR THIS EDITOR -- checked on emojiDialogOpen, not on whether
+        // pimpl->emojiDialog is null, because in the shared-per-window gallery that pointer can
+        // still be valid while pointing at a dialog a DIFFERENT composer in this window now owns
+        // and is showing (see claimEmojiGallery()); closing it here would yank it out from under
+        // them. Covers both "no dialog was ever built" and "one exists but is not mine right
+        // now" uniformly. Still worth honouring a user-initiated unpin synchronously, since
+        // there is no closed() round trip coming to do it for us. Also re-asserts the button: it
+        // may have been left checked by its own unconditional toggle() with no dialog ever
+        // created (e.g. a click while already in Plaintext).
+        const auto wasPinned=pimpl->emojiDialogPinned;
+        if (userInitiated)
+        {
+            pimpl->emojiDialogPinned=false;
+        }
         syncEmojiButtonChecked();
+        if (userInitiated && wasPinned)
+        {
+            emit emojiGalleryPinnedChanged(false);
+        }
         return;
     }
-    // close() drives FloatingDialogFrame::closed(), which clears the open/pinned state and
-    // re-asserts the button -- so this method deliberately does not touch either itself.
+    // From here this editor IS the current owner of an open dialog, so pimpl->emojiDialog is
+    // current, not stale.
+    if (pimpl->emojiDialog.isNull())
+    {
+        return;
+    }
+    // close() drives FloatingDialogFrame::closed() -- asynchronous, behind the frame's fade --
+    // which clears emojiDialogOpen, re-asserts the button, and (only for a user-initiated close)
+    // clears the pin and emits emojiGalleryPinnedChanged(false). See onEmojiGalleryClosed() and
+    // emojiCloseProgrammatic just below.
+    pimpl->emojiCloseProgrammatic=!userInitiated;
     pimpl->emojiDialog->close(false);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onEmojiGalleryClosed()
+{
+    // Dispatched by the shared dialog's closed() handler (see buildEmojiGalleryDialog()) to
+    // whichever editor currently owns it -- the single place the remembered pin is actually
+    // cleared, and the single place the button goes back up, for every close path: the
+    // title-bar X, Escape, an outside dismissal, the hover poll, closeEmojiGallery(). A claim
+    // (a composer switch within the same window) never reaches here at all -- see
+    // claimEmojiGallery(), which retargets the still-open dialog without closing it.
+    const auto wasPinned=pimpl->emojiDialogPinned;
+    const auto programmatic=pimpl->emojiCloseProgrammatic;
+    pimpl->emojiCloseProgrammatic=false;
+    pimpl->emojiDialogOpen=false;
+    if (!programmatic)
+    {
+        pimpl->emojiDialogPinned=false;
+    }
+    stopEmojiHoverPoll();
+    syncEmojiButtonChecked();
+    // The one place focus returns to the text edit; see the emoji button's own clicked() handler
+    // for why it deliberately does not do this itself.
+    restoreEditorFocus();
+    if (wasPinned && !pimpl->emojiDialogPinned)
+    {
+        emit emojiGalleryPinnedChanged(false);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setEmojiGalleryPinned(bool pinned)
+{
+    if (pimpl->emojiDialogPinned==pinned)
+    {
+        return;
+    }
+    if (!pinned)
+    {
+        // Set synchronously, BEFORE closeEmojiGalleryInternal(): its own close() may be
+        // asynchronous (behind the frame's fade), and by the time the closed() handler reads
+        // emojiDialogPinned to decide whether to emit, it must already see the new value -- a
+        // host push must never re-emit emojiGalleryPinnedChanged() back at itself.
+        pimpl->emojiDialogPinned=false;
+        closeEmojiGalleryInternal(false);
+        return;
+    }
+    if (pimpl->emojiDialogOpen)
+    {
+        // Hover-opened and unpinned -- promote it exactly as a click would (sets the flag, stops
+        // the hover poll, re-asserts the button). Delegated rather than set directly here: setting
+        // the flag first would make pinEmojiGallery()'s own guard treat it as already pinned and
+        // skip stopping the poll.
+        pinEmojiGallery();
+        return;
+    }
+    pimpl->emojiDialogPinned=true;
+    // A hidden composer (e.g. a cached chat page that is not the current one) only remembers the
+    // pin -- showEvent() opens it once the page actually comes up, where the emoji button has a
+    // real screen position to anchor to.
+    if (isVisible() && isEmojiButtonVisible())
+    {
+        openEmojiGallery(true);
+    }
+    else
+    {
+        syncEmojiButtonChecked();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -7017,10 +7302,92 @@ void MessageEditor::syncEmojiButtonChecked()
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::releaseEmojiGallery()
+{
+    pimpl->emojiHoverOpenTimer->stop();
+    if (!pimpl->emojiDialogOpen)
+    {
+        return;
+    }
+    pimpl->emojiDialogOpen=false;
+    stopEmojiHoverPoll();
+    // Deliberately NOT touching the shared dialog's owner or visibility below -- see the comment
+    // on the deferred check. The remembered pin (emojiDialogPinned) is untouched either way:
+    // hiding is not a user dismissal.
+
+    auto* state=emojiGallerySharedState(window(),false);
+    if (state==nullptr || state->owner.data()!=this)
+    {
+        return;
+    }
+
+    // Still nominally "owned" by this now-hidden editor -- give another composer in the SAME
+    // window a chance to claim it right back, synchronously, from its own showEvent(), which is
+    // exactly what an ordinary chat switch does (QStackedWidget::setCurrentWidget() hides the old
+    // page and shows the new one, in either order, within the same call). Only if nothing has
+    // claimed it by the next event-loop turn -- e.g. the window itself losing focus, not a chat
+    // switch -- does the dialog actually fade out.
+    QPointer<MessageEditor> self=this;
+    QPointer<EmojiGallerySharedState> stateGuard=state;
+    QTimer::singleShot(0,this,
+        [self,stateGuard]()
+        {
+            if (self.isNull() || stateGuard.isNull() || stateGuard->owner.data()!=self.data())
+            {
+                return;
+            }
+            self->closeEmojiGalleryInternal(false);
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::hideEvent(QHideEvent* event)
 {
-    closeEmojiGallery();
+    // Not a user dismissal -- the pin is remembered, and showEvent() re-opens (or, more often,
+    // silently keeps) it. A composer being hidden is typically a chat page going into the cache,
+    // not the user closing anything.
+    releaseEmojiGallery();
     AbstractMessageEditor::hideEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::showEvent(QShowEvent* event)
+{
+    AbstractMessageEditor::showEvent(event);
+    if (!pimpl->emojiDialogPinned || pimpl->emojiDialogOpen)
+    {
+        return;
+    }
+
+    auto* state=emojiGallerySharedState(window(),false);
+    if (state!=nullptr && !state->dialog.isNull() && state->dialog->isVisible())
+    {
+        // Already up on screen -- handed over from whichever composer in this window owned it a
+        // moment ago (most often the chat page just switched away from). A synchronous claim: no
+        // anchor is computed in this case (see openEmojiGallery()), so there is no layout-timing
+        // reason to defer it, and deferring it would cost one visible frame of "not there yet".
+        openEmojiGallery(true);
+        return;
+    }
+
+    // Nothing visible to claim -- open one from scratch. Deferred one event-loop turn, never
+    // inline: openEmojiGallery() anchors on emojiButton->mapToGlobal(), and inside showEvent()
+    // the button has not necessarily been laid out at its final position yet. Same deferral rule
+    // as warmEmojiGallery() and restoreEditorFocus().
+    QPointer<MessageEditor> self=this;
+    QTimer::singleShot(0,this,
+        [self]()
+        {
+            if (!self.isNull() && self->isVisible() && self->isEmojiButtonVisible())
+            {
+                // Guards Plaintext and an already-open gallery itself.
+                self->openEmojiGallery(true);
+            }
+        }
+    );
 }
 
 //--------------------------------------------------------------------------

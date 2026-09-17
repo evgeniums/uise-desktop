@@ -441,6 +441,28 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
             return {};
         }
 
+        /**
+         * @brief Whether the emoji picker should stay open rather than close when the pointer
+         * wanders off or the composer loses focus.
+         *
+         * Same division of labour as setEmojiRecentIds(): the editor MAINTAINS the pin (a click
+         * on the emoji button pins it, another click or the gallery's own close controls unpin
+         * it -- see emojiGalleryPinnedChanged()) but deliberately does not PERSIST it or share it
+         * with any other editor instance. A host that wants the pin to be a single app-wide
+         * preference -- shared by every open composer, surviving a restart -- seeds this at
+         * construction and writes emojiGalleryPinnedChanged() back to its own store, the same way
+         * it already does for setEmojiRecentIds()/emojiRecentIdsChanged().
+         *
+         * Deliberately does NOT emit emojiGalleryPinnedChanged() itself -- a host's own write must
+         * not echo straight back at it. Pushing true opens the gallery immediately if the editor
+         * is currently visible; on a hidden editor (e.g. a cached, not-current chat page) it is
+         * only remembered, and applied the next time the editor is shown.
+         */
+        virtual void setEmojiGalleryPinned(bool pinned)
+        {
+            std::ignore=pinned;
+        }
+
         //! Close the emoji gallery if it is open, and un-check the emoji button.
         //!
         //! Exists because "the chat page became inactive" has no representation in this library:
@@ -939,6 +961,14 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! only on an actual change, never from setEmojiRecentIds() itself (which would echo a
         //! host's own write straight back at it).
         void emojiRecentIdsChanged(const QStringList& ids);
+
+        //! The emoji gallery's pin changed because of a user gesture -- a click on the emoji
+        //! button that pinned or promoted it, the gallery's own title-bar close, or Escape. See
+        //! setEmojiGalleryPinned(). Never emitted for a programmatic close (the editor being
+        //! hidden, a switch to MessageEditingMode::Plaintext, the emoji button being hidden) or
+        //! for a host's own setEmojiGalleryPinned() push -- both would echo a value the host
+        //! already knows straight back at it.
+        void emojiGalleryPinnedChanged(bool pinned);
 
     protected:
 

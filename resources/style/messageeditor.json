@@ -39,7 +39,8 @@
                 "tableRemoveColumn": "${uise-svg-icons-1}/column-remove",
                 "tableRemove": "${uise-svg-icons-1}/table-off",
                 "indentIncrease": "${uise-svg-icons-1}/indent-increase",
-                "indentDecrease": "${uise-svg-icons-1}/indent-decrease"
+                "indentDecrease": "${uise-svg-icons-1}/indent-decrease",
+                "more": "${uise-svg-icons-1}/dots"
             }
         },
         {

@@ -147,6 +147,21 @@ max-width: 1px;
 margin: 3px 6px;
 }
 
+/* Lifts the overflow trigger off whatever button is currently last on the bar before it (task-
+   composer-toolbar-clipping.md's overflow collapse) -- the same job #expandButton's own
+   margin-right does for the leading group below, not spacing BETWEEN ordinary buttons (the
+   shared "margin: 0 1px" above already is that). Everything else about the button -- the 18px
+   uise--RoundedImage rule, the shared padding/margin/border-radius rule, the square-ripple
+   block, the disabled-border rule above -- is inherited automatically because it is just another
+   uise--IconTextButton inside uise--MessageEditorToolbar; only the extra separation is new.
+   Scores 257 (one id + one element) against the shared button rule's 2 (two elements), so it
+   wins outright on specificity rather than on source order -- keep the id selector if this rule
+   ever grows, for the same reason the square-ripple block above keeps its own attribute
+   selector. */
+uise--MessageEditorToolbar #overflowButton {
+margin-left: 4px;
+}
+
 /* The expand button sits to the LEFT of the text edit, sharing its row and bottom-aligned to it
    (see MessageEditor's constructor) -- so it needs a gap on its right to separate it from the
    editor, and a small one below to lift it off the row's bottom edge rather than a top margin,

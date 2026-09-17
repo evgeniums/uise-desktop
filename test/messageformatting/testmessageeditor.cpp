@@ -5349,6 +5349,138 @@ BOOST_AUTO_TEST_CASE(TestOpeningAnAlreadyOpenGalleryOnlyPinsIt)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinSurvivesHideAndReopensOnShow)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.openEmojiGallery();
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+
+            // Hiding the composer (e.g. a chat page going into the cache) closes the picker --
+            // but is NOT a user dismissal, so the pin must survive it.
+            editor.hide();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+
+            // Showing it again re-opens the picker, deferred one event-loop turn (see
+            // MessageEditor::showEvent()).
+            editor.show();
+            QApplication::processEvents();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinnedChangedSignal)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            QSignalSpy spy(&editor,&AbstractMessageEditor::emojiGalleryPinnedChanged);
+
+            // Hover-open never pins, so never emits.
+            editor.openEmojiGallery(false);
+            UISE_TEST_CHECK(spy.isEmpty());
+
+            // A click on the emoji button promotes the hovered gallery -- a genuine user gesture.
+            editor.emojiButton()->click();
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK(spy.takeFirst().at(0).toBool());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+
+            // Clicking again closes it -- also a user gesture, and clears the pin.
+            editor.emojiButton()->click();
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK(!spy.takeFirst().at(0).toBool());
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+
+            // A host push (setEmojiGalleryPinned(), what ChatPage uses to apply the persisted
+            // app-wide setting) never echoes back -- it is the host's OWN write.
+            editor.setEmojiGalleryPinned(true);
+            UISE_TEST_CHECK(spy.isEmpty());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+
+            editor.setEmojiGalleryPinned(false);
+            UISE_TEST_CHECK(spy.isEmpty());
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestSetEmojiGalleryPinnedOnHiddenEditorOnlyRemembers)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            // Deliberately never shown -- mirrors a cached chat page's composer that is not the
+            // current one, which is exactly the case setEmojiGalleryPinned()'s own doc comment
+            // describes.
+
+            editor.setEmojiGalleryPinned(true);
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            // Nothing to claim without a window to anchor against -- isEmojiGalleryPinned() is
+            // openDialog&&pinned, so it reads false until the picker actually opens.
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+
+            editor.show();
+            QApplication::processEvents();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+        }
+    );
+}
+
+//! task-emoji-gallery-shared-per-window.md: two composers sharing one top-level window share ONE
+//! gallery dialog rather than one each, so a chat switch between them hands it off in place --
+//! no fade, no re-anchor, and any position the user dragged it to survives exactly.
+BOOST_AUTO_TEST_CASE(TestEmojiGallerySharedAcrossComposersInSameWindow)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            QWidget window;
+            auto* layout=Layout::vertical(&window);
+            auto* editorA=new MessageEditor(&window);
+            auto* editorB=new MessageEditor(&window);
+            layout->addWidget(editorA);
+            layout->addWidget(editorB);
+            editorA->setEmojiButtonVisible(true);
+            editorB->setEmojiButtonVisible(true);
+            editorB->hide();
+            window.show();
+
+            editorA->openEmojiGallery();
+            UISE_TEST_CHECK(editorA->isEmojiGalleryPinned());
+            UISE_TEST_CHECK(!editorB->isEmojiGalleryOpen());
+
+            // A's composer is hidden (e.g. its chat page was switched away from) while B's is
+            // shown -- the ordinary chat-switch sequence. Both editors share window(), so B's
+            // remembered pin claims the SAME dialog A just had, synchronously (no anchor needed,
+            // see showEvent()'s own doc comment), rather than opening a second one of its own.
+            editorB->setEmojiGalleryPinned(true);
+            editorA->hide();
+            editorB->show();
+
+            UISE_TEST_CHECK(!editorA->isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editorB->isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editorB->isEmojiGalleryPinned());
+            UISE_TEST_CHECK(editorB->emojiButton()->isChecked());
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestEmojiGalleryFitsWholeDefaultPack)
 {
     TestThread::instance()->execGuiThread(

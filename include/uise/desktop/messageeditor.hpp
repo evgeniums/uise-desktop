@@ -828,6 +828,11 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
 
 class MessageEditor_p;
 
+//! The emoji gallery dialog and its current owner, shared by every MessageEditor in one
+//! top-level window -- see messageeditor.cpp for the full explanation and claimEmojiGallery()/
+//! buildEmojiGalleryDialog()/releaseEmojiGallery() below.
+class EmojiGallerySharedState;
+
 class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
 {
     Q_OBJECT
@@ -1058,6 +1063,9 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void setEmojiRecentIds(QStringList ids) override;
         QStringList emojiRecentIds() const override;
 
+        //! @copydoc AbstractMessageEditor::setEmojiGalleryPinned()
+        void setEmojiGalleryPinned(bool pinned) override;
+
         //! How many entries the picker's recents row keeps. Matches the 7 basics the row falls
         //! back to when no history exists, so promoting an emoji never changes the row's width --
         //! a recents row that grew a slot on first use would shift every icon under the pointer.
@@ -1074,8 +1082,14 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          *  once the pointer has been away from both it and the button for EmojiHoverCloseDelayMs.
          *  See isEmojiGalleryPinned().
          *
-         * Calling this while the gallery is already open only ever PINS it -- it is never
-         * re-anchored or reloaded under a user who is already using it.
+         * Calling this while the gallery is already open FOR THIS EDITOR only ever PINS it -- it
+         * is never re-anchored or reloaded under a user who is already using it.
+         *
+         * The gallery itself is shared by every composer in this editor's top-level window (see
+         * ensureEmojiGallery()): if it is already visible -- handed over from a different
+         * composer in the same window, the ordinary chat-switch case -- it is claimed and left
+         * exactly where it is on screen (including anywhere the user dragged it) rather than
+         * re-anchored to this editor's own button.
          */
         void openEmojiGallery(bool pinned=true);
 
@@ -1200,8 +1214,14 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void updateEmojiShortcodeAutoReplace() override;
 
         //! Closes the emoji gallery when this editor is hidden -- a floating top-level picker
-        //! left over a composer that is no longer on screen would otherwise hang around.
+        //! left over a composer that is no longer on screen would otherwise hang around. Does not
+        //! unpin: see closeEmojiGalleryInternal().
         void hideEvent(QHideEvent* event) override;
+
+        //! Re-opens the emoji gallery when this editor is shown again, if the pin was left set
+        //! while it was hidden (e.g. a cached chat page becoming the current one again). See
+        //! setEmojiGalleryPinned().
+        void showEvent(QShowEvent* event) override;
 
         //! Watches the emoji button for Enter/Leave, which is what arms and disarms the
         //! hover-open timer. Never consumes anything.
@@ -1264,21 +1284,50 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void syncEmojiButtonChecked();
 
         /**
-         * @brief Build the gallery dialog (hidden) if it does not exist yet, and return it.
+         * @brief Get (creating and/or claiming as needed) THIS window's shared gallery dialog for
+         *  THIS editor to use right now, and return it.
          *
-         * Split out of openEmojiGallery() so the cost can be paid BEFORE the user is waiting on
-         * it: constructing the dialog builds a cell per pack entry and rasterizes an SVG for each
-         * one, which is by far the largest part of the delay on the FIRST open and is invisible on
-         * every one after. warmEmojiGallery() runs it off the hover path entirely.
+         * Builds it (buildEmojiGalleryDialog()) if this window has none yet; claims it
+         * (claimEmojiGallery()) if it exists but is currently owned by a different composer in
+         * this window. Constructing the dialog builds a cell per pack entry and rasterizes an SVG
+         * for each one, which is by far the largest part of the delay on the very FIRST open in a
+         * window and is invisible on every one after -- warmEmojiGallery() pays it off the hover
+         * path entirely.
          *
          * @return The frame, or nullptr in MessageEditingMode::Plaintext (which never shows a
-         *  picker) or if the dialog could not be built.
+         *  picker), if this editor has no top-level window yet, or if the dialog could not be
+         *  built.
          */
         FloatingEmojiGalleryDialog* ensureEmojiGallery();
 
+        //! Construct `state`'s dialog fresh (state->dialog must be null on entry) and wire its
+        //! emojiPicked()/closed() handlers to dispatch to whichever editor currently owns
+        //! `state` -- see EmojiGallerySharedState. Does NOT set state->owner: building is not
+        //! claiming, see warmEmojiGallery(). @return false if the dialog could not be built.
+        bool buildEmojiGalleryDialog(EmojiGallerySharedState* state, QWidget* win);
+
+        //! Make `this` the current owner of `state`'s (already-built) dialog, folding whichever
+        //! OTHER editor owned it before back to "closed" without touching the dialog itself --
+        //! no fade, no repositioning, no emojiGalleryPinnedChanged() emit. The caller
+        //! (ensureEmojiGallery()) is responsible for actually showing/anchoring it if it was not
+        //! already visible.
+        void claimEmojiGallery(EmojiGallerySharedState* state);
+
+        //! Dispatched by the shared dialog's closed() handler to whichever editor owns it -- the
+        //! single place the remembered pin is actually cleared, moved out of ensureEmojiGallery()
+        //! now that a claim (not a close) is what happens on an ordinary chat switch.
+        void onEmojiGalleryClosed();
+
+        //! Give up ownership of this window's shared gallery, IF this editor currently holds it,
+        //! without touching its visibility -- another composer in the SAME window claims it right
+        //! back, synchronously, from its own showEvent() on an ordinary chat switch. Only closes
+        //! it (deferred one event-loop turn) if nothing claims it by then. See hideEvent().
+        void releaseEmojiGallery();
+
         //! Build the gallery ahead of time, on the next event-loop turn, so a later hover or
         //! click shows an already-constructed dialog. Triggered when the emoji button first
-        //! becomes visible -- a composer that never opts in never pays for this.
+        //! becomes visible -- a composer that never opts in never pays for this. Never claims
+        //! ownership merely for having warmed up -- see buildEmojiGalleryDialog().
         void warmEmojiGallery();
 
         //! Push the current recents list at the gallery, if one has been built. A no-op otherwise
@@ -1295,6 +1344,14 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! never on a pick (see ensureEmojiGallery()'s emojiPicked handler). A no-op when the
         //! gallery is closed or already pinned.
         void pinEmojiGallery();
+
+        //! Shared body of closeEmojiGallery() (userInitiated=true) and every programmatic close
+        //! (userInitiated=false -- the editor being hidden, a switch to
+        //! MessageEditingMode::Plaintext, the emoji button being hidden, a host's own
+        //! setEmojiGalleryPinned(false)). Only a userInitiated close clears the remembered pin;
+        //! see the FloatingDialogFrame::closed handler in ensureEmojiGallery(), which is where
+        //! that actually happens -- close() itself is asynchronous, behind the frame's fade.
+        void closeEmojiGalleryInternal(bool userInitiated);
 
         //! Start/stop the poll that closes a hover-opened gallery once the pointer has left both
         //! it and the emoji button. Never runs for a pinned gallery.
