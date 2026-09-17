@@ -310,12 +310,53 @@ qreal GraphicsViewZoom::clampScale(qreal scale) const
         }
     }
 
+    if (!m_coverRect.isEmpty())
+    {
+        QSizeF natural;
+        if (naturalViewSize(natural) && natural.width()>0.0 && natural.height()>0.0)
+        {
+            // "Cover" (as in CSS background-size:cover): the larger of the two per-dimension
+            // ratios is the scale at which BOTH dimensions meet or exceed the target rect, so the
+            // tighter dimension exactly covers it and the other overflows -- exactly what lets the
+            // image be panned to fill a fixed-on-screen crop frame from any side.
+            auto coverScale=std::max(m_coverRect.width()/natural.width(),m_coverRect.height()/natural.height());
+            // Raises the floor only -- never pulls it below whatever minZoomFactor()/
+            // minDisplayPixels() already computed above.
+            minS=std::max(minS,coverScale);
+        }
+    }
+
     auto maxS=base*m_maxZoomFactor;
     if (minS>maxS)
     {
         std::swap(minS,maxS);
     }
     return qBound(minS,scale,maxS);
+}
+
+//--------------------------------------------------------------------------
+
+void GraphicsViewZoom::applyScaleAnchored(qreal factor, const QPoint& anchorViewportPos)
+{
+    // Manual scrollbar math with the anchor scoped to NoAnchor for just this call, rather than
+    // setTransformationAnchor(AnchorUnderMouse) -- that relies on QGraphicsView's own last-mouse-
+    // move scene point, which is stale for a pinch/wheel event delivered with a stationary cursor.
+    // Scoping NoAnchor here leaves rotate()/flipHorizontal()'s existing AnchorViewCenter behaviour,
+    // set by the host elsewhere, completely untouched.
+    const auto oldAnchor=m_view->transformationAnchor();
+    m_view->setTransformationAnchor(QGraphicsView::NoAnchor);
+    const auto sceneAnchor=m_view->mapToScene(anchorViewportPos);
+    m_view->scale(factor,factor);
+    const auto delta=m_view->mapFromScene(sceneAnchor)-anchorViewportPos;
+    if (m_view->horizontalScrollBar()!=nullptr)
+    {
+        m_view->horizontalScrollBar()->setValue(m_view->horizontalScrollBar()->value()+delta.x());
+    }
+    if (m_view->verticalScrollBar()!=nullptr)
+    {
+        m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value()+delta.y());
+    }
+    m_view->setTransformationAnchor(oldAnchor);
 }
 
 //--------------------------------------------------------------------------
@@ -341,25 +382,7 @@ void GraphicsViewZoom::zoomTo(qreal absoluteScale, const QPoint& anchorViewportP
         return;
     }
 
-    // Manual scrollbar math with the anchor scoped to NoAnchor for just this call, rather than
-    // setTransformationAnchor(AnchorUnderMouse) -- that relies on QGraphicsView's own last-mouse-
-    // move scene point, which is stale for a pinch/wheel event delivered with a stationary cursor.
-    // Scoping NoAnchor here leaves rotate()/flipHorizontal()'s existing AnchorViewCenter behaviour,
-    // set by the host elsewhere, completely untouched.
-    const auto oldAnchor=m_view->transformationAnchor();
-    m_view->setTransformationAnchor(QGraphicsView::NoAnchor);
-    const auto sceneAnchor=m_view->mapToScene(anchorViewportPos);
-    m_view->scale(factor,factor);
-    const auto delta=m_view->mapFromScene(sceneAnchor)-anchorViewportPos;
-    if (m_view->horizontalScrollBar()!=nullptr)
-    {
-        m_view->horizontalScrollBar()->setValue(m_view->horizontalScrollBar()->value()+delta.x());
-    }
-    if (m_view->verticalScrollBar()!=nullptr)
-    {
-        m_view->verticalScrollBar()->setValue(m_view->verticalScrollBar()->value()+delta.y());
-    }
-    m_view->setTransformationAnchor(oldAnchor);
+    applyScaleAnchored(factor,anchorViewportPos);
 
     // Reflects intent, not just position: a deliberate zoom OUT below the baseline (reachable once
     // minDisplayPixels() is set) counts as user-zoomed too, same as a zoom in -- isZoomed() alone
@@ -368,6 +391,47 @@ void GraphicsViewZoom::zoomTo(qreal absoluteScale, const QPoint& anchorViewportP
     // against the baseline already computed above (not re-derived from the transform after scale())
     // to avoid a float round-trip that could flake right at the clamp.
     m_userZoomed=!qFuzzyIsNull(base) && qAbs(clamped-base)>base*ZoomEpsilon;
+
+    emit zoomChanged(zoomFactor());
+}
+
+//--------------------------------------------------------------------------
+
+void GraphicsViewZoom::setCoverRect(const QRectF& viewportRect) noexcept
+{
+    m_coverRect=viewportRect;
+}
+
+//--------------------------------------------------------------------------
+
+QRectF GraphicsViewZoom::coverRect() const noexcept
+{
+    return m_coverRect;
+}
+
+//--------------------------------------------------------------------------
+
+void GraphicsViewZoom::reapplyLimits()
+{
+    if (m_view==nullptr || m_view->viewport()==nullptr)
+    {
+        return;
+    }
+
+    auto current=currentScale();
+    if (qFuzzyIsNull(current))
+    {
+        return;
+    }
+
+    auto clamped=clampScale(current);
+    auto factor=clamped/current;
+    if (qFuzzyCompare(factor,1.0))
+    {
+        return;
+    }
+
+    applyScaleAnchored(factor,m_view->viewport()->rect().center());
 
     emit zoomChanged(zoomFactor());
 }

@@ -51,6 +51,16 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         };
         Q_ENUM(CropMode)
 
+        //! FixedOnScreen (default): the crop frame stays pinned to the viewport -- zooming/panning
+        //! moves and scales the image behind it, Instagram-style. ScaleWithImage: the legacy
+        //! behaviour -- the crop frame is glued to the image and zooms/pans together with it.
+        enum class CropFrameMode
+        {
+            FixedOnScreen,
+            ScaleWithImage
+        };
+        Q_ENUM(CropFrameMode)
+
         using WidgetController::WidgetController;
 
         void loadImage(const QPixmap& image)
@@ -171,6 +181,17 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
 
         void setCropMode(CropMode mode);
 
+        void setCropFrameMode(CropFrameMode mode)
+        {
+            m_cropFrameMode=mode;
+            updateCropFrameMode();
+        }
+
+        CropFrameMode cropFrameMode() const noexcept
+        {
+            return m_cropFrameMode;
+        }
+
         void setCropButtonVisible(bool enable)
         {
             m_cropButtonVisible=enable;
@@ -230,6 +251,9 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         virtual void updateAspectRatio()
         {}
 
+        virtual void updateCropFrameMode()
+        {}
+
         virtual void doLoadImage()
         {}
 
@@ -256,6 +280,7 @@ class UISE_DESKTOP_EXPORT AbstractImageEditor : public WidgetController
         bool m_ellipseCropPreview=false;
         bool m_cropperEnabled=true;
         bool m_cropButtonVisible=false;
+        CropFrameMode m_cropFrameMode=CropFrameMode::FixedOnScreen;
 
         QString m_folder;
         bool m_nativeFileDialog=true;

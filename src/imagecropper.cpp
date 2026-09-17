@@ -33,12 +33,28 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+namespace {
+
+// Sub-pixel differences are noise, not a real frame move -- gates frameChanged() so a live window
+// resize (many resizeEvent()s per second, each calling adjustCropRect()) doesn't re-trigger
+// GraphicsViewZoom::reapplyLimits() (and therefore a real scale() call) on every tick when the
+// viewport-clamped frame lands back in the same place anyway.
+bool rectsNearlyEqual(const QRectF& a, const QRectF& b)
+{
+    constexpr qreal Eps=0.5;
+    return qAbs(a.left()-b.left())<Eps && qAbs(a.top()-b.top())<Eps
+           && qAbs(a.right()-b.right())<Eps && qAbs(a.bottom()-b.bottom())<Eps;
+}
+
+}
+
 /****************************** CropRectItem *****************************/
 
 //--------------------------------------------------------------------------
 
 CropRectItem::CropRectItem(QGraphicsView* view, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent)
-    : QGraphicsRectItem(imageItem->boundingRect(),parent),
+    : QObject(),
+      QGraphicsRectItem(imageItem->boundingRect(),parent),
       m_activeHandle(NoHandle),
       m_imageItem(imageItem),
       m_square(false),
@@ -117,7 +133,7 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     // calculate width of handle
     qreal handleSize = BaseHandleWidth;
     QRect portRect = m_view->viewport()->rect();
-    if ((sz.width()>portRect.width() || sz.height()>portRect.height()))
+    if (m_fixedOnScreen || sz.width()>portRect.width() || sz.height()>portRect.height())
     {
         if (scale_x>0)
         {
@@ -177,7 +193,7 @@ CropRectItem::HandleType CropRectItem::getHandleType(QPointF pos, bool forCursor
     auto transform = m_view->transform();
     auto scale_x = qSqrt(transform.m11() * transform.m11() + transform.m12() * transform.m12());
     QRect portRect = m_view->viewport()->rect();
-    if (scale_x>0 && (r.width()>portRect.width() || r.height()>portRect.height()))
+    if (scale_x>0 && (m_fixedOnScreen || r.width()>portRect.width() || r.height()>portRect.height()))
     {
         handleTolerance=handleTolerance/scale_x;
     }
@@ -284,6 +300,10 @@ void CropRectItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             )
         {
             m_cropperRect=QRectF(newX, newY, newW, newH);
+            if (m_fixedOnScreen)
+            {
+                syncViewportFrameFromCropperRect();
+            }
         }
     };
 
@@ -406,6 +426,12 @@ void CropRectItem::adjustCropRect()
         return;
     }
 
+    if (m_fixedOnScreen)
+    {
+        adjustViewportFrame();
+        return;
+    }
+
     QRectF imageBoundsScene = m_imageItem->mapToScene(m_imageItem->boundingRect()).boundingRect();
     QRectF imageBounds=mapRectFromScene(imageBoundsScene);
 
@@ -462,6 +488,180 @@ void CropRectItem::adjustCropRect()
              m_cropperRect=QRectF{newX,newY,newW,newH};
         }
     }
+}
+
+//--------------------------------------------------------------------------
+
+void CropRectItem::syncToView()
+{
+    if (!m_fixedOnScreen || m_view==nullptr || m_viewportFrame.isEmpty())
+    {
+        return;
+    }
+
+    // Pure QTransform composition, deliberately NOT QGraphicsView::mapToScene(QRect)/
+    // QGraphicsItem::mapFromScene(QRectF) -- see syncViewportFrameFromCropperRect()'s own comment
+    // for why the QPolygon(F)-returning overloads round to integer VIEWPORT pixels and must not be
+    // used on a value (m_viewportFrame) that flows back out into scene coordinates here.
+    auto sceneRect=m_view->viewportTransform().inverted().mapRect(m_viewportFrame);
+    m_cropperRect=mapRectFromScene(sceneRect);
+    update();
+}
+
+//--------------------------------------------------------------------------
+
+void CropRectItem::adjustViewportFrame()
+{
+    if (m_view==nullptr || m_view->viewport()==nullptr || m_imageItem==nullptr)
+    {
+        return;
+    }
+
+    QRectF available;
+    QPointF center;
+    if (m_viewportFrame.isEmpty())
+    {
+        // First-time seed: the full viewport, centred. Deliberately NOT intersected with the
+        // image's own (possibly tiny, pre-upscale) on-screen bounds the way the legacy body's
+        // "limit to visible area" is -- the frame defines the output window independently of
+        // whatever pixel size the source image happens to be; GraphicsViewZoom::setCoverRect()
+        // (see SimpleImageEditor::updateZoomLimitsForCropper()) is what scales a smaller image up
+        // to fill it, and seeding from the image's pre-upscale bounds would produce a frame no
+        // bigger than the un-zoomed image, defeating that.
+        available=QRectF(m_view->viewport()->rect());
+        center=available.center();
+    }
+    else
+    {
+        // Already active -- e.g. a crop-shape or aspect-ratio change while the user has the editor
+        // open. Keep the frame's own current centre and footprint as the budget instead of
+        // recentring on the image, so an in-progress crop selection is not discarded.
+        available=m_viewportFrame;
+        center=m_viewportFrame.center();
+    }
+
+    qreal w=available.width();
+    qreal h=available.height();
+    if (keepAspectRatio() && m_xyAspectRatio>0 && h>0)
+    {
+        auto ratio=w/h;
+        if (!qFuzzyCompare(ratio,m_xyAspectRatio))
+        {
+            if (ratio>m_xyAspectRatio)
+            {
+                w=h*m_xyAspectRatio;
+            }
+            else
+            {
+                h=w/m_xyAspectRatio;
+            }
+        }
+    }
+
+    QRectF frame{0,0,w,h};
+    frame.moveCenter(center);
+    frame=clampToViewport(frame);
+
+    auto changed=!rectsNearlyEqual(frame,m_viewportFrame);
+    m_viewportFrame=frame;
+
+    syncToView();
+    if (changed)
+    {
+        emit frameChanged();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void CropRectItem::syncViewportFrameFromCropperRect()
+{
+    if (m_view==nullptr || m_view->viewport()==nullptr)
+    {
+        return;
+    }
+
+    // Pure QTransform composition (mapRectToScene() + viewportTransform(), both exact QRectF <->
+    // QRectF maps), deliberately NOT QGraphicsView::mapFromScene(QPolygonF) -- that overload returns
+    // a QPolygon (INTEGER), rounding each of the 4 mapped corners to the nearest device pixel
+    // independently. The bounding rect of four independently-rounded corners can land up to 1px
+    // larger, in EITHER dimension, than the exact rect. This function reruns on every mouse-move
+    // during a drag (see updateRect() above), each time feeding its own just-rounded-up output back
+    // in as next call's input -- that compounding rounding-up bias is exactly the "frame grows while
+    // you drag it" bug this replaces, not anything in the drag math itself.
+    QRectF viewportRect=m_view->viewportTransform().mapRect(mapRectToScene(m_cropperRect));
+    viewportRect=clampToViewport(viewportRect);
+
+    auto changed=!rectsNearlyEqual(viewportRect,m_viewportFrame);
+    m_viewportFrame=viewportRect;
+
+    // Re-derive m_cropperRect from the (possibly clamped) frame rather than leaving the caller's
+    // candidate in place, so the two never drift apart.
+    m_cropperRect=mapRectFromScene(m_view->viewportTransform().inverted().mapRect(m_viewportFrame));
+
+    if (changed)
+    {
+        emit frameChanged();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QRectF CropRectItem::clampToViewport(QRectF rect) const
+{
+    if (m_view==nullptr || m_view->viewport()==nullptr)
+    {
+        return rect;
+    }
+
+    QRectF bounds{QPointF{0,0},QSizeF{m_view->viewport()->rect().size()}};
+
+    if (rect.width()>bounds.width() || rect.height()>bounds.height())
+    {
+        if (keepAspectRatio() && rect.width()>0 && rect.height()>0)
+        {
+            // Shrink both dimensions by the SAME factor -- clamping width/height independently
+            // (the plain per-axis path below) silently turns a square/aspect-locked frame into a
+            // rectangle matching whatever aspect ratio the viewport happens to shrink to, e.g. after
+            // the window is resized non-uniformly. setWidth()/setHeight() below each move only the
+            // right/bottom edge, so moveCenter() afterwards re-centres the shrunk rect on its own
+            // previous centre rather than leaving it pinned to the old top-left.
+            auto shrink=std::min(bounds.width()/rect.width(),bounds.height()/rect.height());
+            auto center=rect.center();
+            rect.setWidth(rect.width()*shrink);
+            rect.setHeight(rect.height()*shrink);
+            rect.moveCenter(center);
+        }
+        else
+        {
+            if (rect.width()>bounds.width())
+            {
+                rect.setWidth(bounds.width());
+            }
+            if (rect.height()>bounds.height())
+            {
+                rect.setHeight(bounds.height());
+            }
+        }
+    }
+
+    if (rect.left()<bounds.left())
+    {
+        rect.moveLeft(bounds.left());
+    }
+    if (rect.top()<bounds.top())
+    {
+        rect.moveTop(bounds.top());
+    }
+    if (rect.right()>bounds.right())
+    {
+        rect.moveRight(bounds.right());
+    }
+    if (rect.bottom()>bounds.bottom())
+    {
+        rect.moveBottom(bounds.bottom());
+    }
+    return rect;
 }
 
 //--------------------------------------------------------------------------

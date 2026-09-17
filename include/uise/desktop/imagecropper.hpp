@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_IMAGE_CROPPER_HPP
 #define UISE_DESKTOP_IMAGE_CROPPER_HPP
 
+#include <QObject>
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
 #include <QGraphicsPixmapItem>
@@ -35,8 +36,13 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
+//! QObject is deliberately combined with QGraphicsRectItem via multiple inheritance (rather than
+//! QGraphicsObject, which has no QGraphicsRectItem-equivalent) so this item can emit frameChanged()
+//! -- QObject must stay the first base for moc/qobject_cast to work.
+class UISE_DESKTOP_EXPORT CropRectItem : public QObject, public QGraphicsRectItem
 {
+    Q_OBJECT
+
     public:
 
         constexpr static const qreal BaseHandleWidth=1.0;
@@ -155,6 +161,33 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
             return getHandleType(mapFromScene(scenePos));
         }
 
+        //! When true (default), the crop frame is pinned to the viewport -- zooming/panning the
+        //! view moves and scales the image behind a stationary frame (Instagram-style). When
+        //! false, the frame is glued to the image and zooms/pans together with it (legacy
+        //! behaviour). Must be set before init() -- see AbstractImageEditor::CropFrameMode.
+        void setFixedOnScreen(bool value) noexcept
+        {
+            m_fixedOnScreen=value;
+        }
+
+        bool isFixedOnScreen() const noexcept
+        {
+            return m_fixedOnScreen;
+        }
+
+        //! The pinned frame's own rectangle, in viewport pixels. Empty until the first
+        //! adjustCropRect() (fixed-on-screen mode only) -- see frameChanged().
+        QRectF viewportFrame() const noexcept
+        {
+            return m_viewportFrame;
+        }
+
+        //! Re-derives the crop rect's scene-space projection from the still-pinned viewport frame
+        //! after a pure view change (zoom/pan/resize) -- the frame's own viewport rectangle is
+        //! unchanged, so this does not emit frameChanged(). No-op unless isFixedOnScreen(). Called
+        //! by the host on every scroll/zoom/resize (see FreeHandDrawView::scrollContentsBy()).
+        void syncToView();
+
     protected:
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;        
@@ -167,6 +200,14 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
 
         void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
+    signals:
+
+        //! Emitted when the viewport-pinned frame's own rectangle changes (fixed-on-screen mode
+        //! only) -- e.g. after a user resize/move drag, or after adjustCropRect() reseeds/resizes
+        //! it for a crop-shape or aspect-ratio change. NOT emitted for a pure zoom/pan -- the
+        //! frame's viewport rectangle is by definition unchanged then, see syncToView().
+        void frameChanged();
+
     private:
 
         HandleType m_activeHandle;
@@ -174,6 +215,21 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         QGraphicsPixmapItem* m_imageItem;
 
         HandleType getHandleType(QPointF pos, bool forCursor=false) const;
+
+        //! Fixed-on-screen counterpart of adjustCropRect()'s legacy body -- seeds/resizes
+        //! m_viewportFrame (centred in the full viewport on first seed; otherwise in place around
+        //! its own current centre/footprint) and re-derives m_cropperRect from it.
+        void adjustViewportFrame();
+
+        //! Fixed-on-screen counterpart of the legacy drag path -- re-derives m_viewportFrame from a
+        //! just-dragged m_cropperRect, clamped to the viewport, then re-derives m_cropperRect back
+        //! from the clamped frame so the two never drift apart.
+        void syncViewportFrameFromCropperRect();
+
+        //! Shrinks/moves rect to fit fully inside the current viewport, preserving its size unless
+        //! it is already larger than the viewport in a given dimension. Used both after a drag and
+        //! after a viewport resize, which can leave a previously in-bounds frame hanging outside.
+        QRectF clampToViewport(QRectF rect) const;
 
         void updateAspectRatio()
         {
@@ -206,6 +262,9 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QGraphicsRectItem
         QGraphicsView* m_view=nullptr;
 
         bool m_limitToVisibleArea=true;
+
+        bool m_fixedOnScreen=true;
+        QRectF m_viewportFrame;
 };
 
 UISE_DESKTOP_NAMESPACE_END

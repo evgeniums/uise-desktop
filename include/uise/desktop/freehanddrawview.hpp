@@ -38,6 +38,8 @@ You may select, at your option, one of the above-listed licenses.
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
 
+class CropRectItem;
+
 class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
 {
     Q_OBJECT
@@ -71,6 +73,20 @@ class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
             return m_group;
         }
 
+        //! Non-owning -- set by SimpleImageEditor while a CropRectItem in fixed-on-screen mode is
+        //! active, so scrollContentsBy()/resizeEvent() below can keep its viewport-pinned frame in
+        //! sync with every scroll, zoom-driven scrollbar write and viewport resize. nullptr (the
+        //! default) when there is no cropper or it is in legacy (scale-with-image) mode.
+        void setCropper(CropRectItem* cropper)
+        {
+            m_cropper=cropper;
+        }
+
+        CropRectItem* cropper() const
+        {
+            return m_cropper;
+        }
+
     public slots:
 
         void setFreeHandDrawEnabled(bool value);
@@ -95,6 +111,14 @@ class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseReleaseEvent(QMouseEvent *event) override;
 
+        //! Qt routes every scroll -- drag-pan, native two-finger scroll, keyboard, scrollbars, and
+        //! GraphicsViewZoom's own scrollbar writes during a zoom step -- through this one function,
+        //! which is what makes it a complete hook for keeping a fixed-on-screen cropper's frame
+        //! pinned to the viewport across all of them.
+        void scrollContentsBy(int dx, int dy) override;
+
+        void resizeEvent(QResizeEvent *event) override;
+
     private:
 
         QGraphicsPathItem *m_currentPathItem;
@@ -108,6 +132,8 @@ class UISE_DESKTOP_EXPORT FreeHandDrawView : public QGraphicsView
         QStack<QGraphicsPathItem*> m_redoStack;
 
         QGraphicsItemGroup* m_group;
+
+        CropRectItem* m_cropper=nullptr;
 };
 
 }

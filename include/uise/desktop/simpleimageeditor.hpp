@@ -73,6 +73,8 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
 
         void updateAspectRatio() override;
 
+        void updateCropFrameMode() override;
+
         void doLoadImage() override;
 
         void updateFilenameState() override;
@@ -85,9 +87,29 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
         void resetCropper();
         void destroyCropper();
 
+        //! Called after rotate()/rotateClockwise()/flipHorizontal()/flipVertical(). In fixed-on-
+        //! screen mode the frame must stay put through a rotate/flip (per this mode's own contract),
+        //! so this re-derives the crop rect's scene-space projection and zoom/pan limits in place
+        //! instead of calling resetCropper(), which would rebuild (and recentre) the frame. Legacy
+        //! mode is unchanged -- it still calls resetCropper(), exactly as before this feature.
+        void resetCropperOrKeepFrame();
+
         //! Repaints the crop rect (if any) in place after a view-level zoom/pan change -- see the
         //! definition's own doc for why this replaces resetCropper() on those paths.
         void refreshCropperForViewChange();
+
+        //! Reacts to CropRectItem::frameChanged() (fixed-on-screen mode) -- pushes the frame's new
+        //! viewport rectangle into GraphicsViewZoom::setCoverRect(), reclamps the current zoom
+        //! against it, and re-derives the pan bounds. Also called directly wherever the frame or
+        //! image can change without frameChanged() firing (crop enable/disable, mode switch).
+        void updateZoomLimitsForCropper();
+
+        //! Sets/clears the view's own sceneRect() override that bounds panning -- in fixed-on-screen
+        //! mode with an active cropper, expands the image's scene rect outward by the (scene-unit)
+        //! margin between the crop frame and the viewport edges, so QGraphicsView's native
+        //! scrollbar clamping keeps the image covering the frame; otherwise resets the override so
+        //! the view falls back to tracking the scene's own sceneRect(), as before this feature.
+        void updateViewBounds();
 
         SimpleImageEditorWidget* m_widget;
 };

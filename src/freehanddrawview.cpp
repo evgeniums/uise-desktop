@@ -24,11 +24,13 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QMouseEvent>
+#include <QResizeEvent>
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QGraphicsPathItem>
 
+#include <uise/desktop/imagecropper.hpp>
 #include <uise/desktop/freehanddrawview.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -175,6 +177,31 @@ void FreeHandDrawView::redoHandDraw()
             scene()->addItem(item);
         }
         m_undoStack.push(item);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FreeHandDrawView::scrollContentsBy(int dx, int dy)
+{
+    QGraphicsView::scrollContentsBy(dx,dy);
+    if (m_cropper!=nullptr)
+    {
+        m_cropper->syncToView();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FreeHandDrawView::resizeEvent(QResizeEvent *event)
+{
+    QGraphicsView::resizeEvent(event);
+    if (m_cropper!=nullptr)
+    {
+        // A shrunk viewport can leave a previously in-bounds frame hanging outside it -- reuse the
+        // same adjustCropRect() path a crop-shape change takes, which keeps the frame's current
+        // centre/footprint but re-clamps it to the (new) viewport (see adjustViewportFrame()).
+        m_cropper->adjustCropRect();
     }
 }
 
