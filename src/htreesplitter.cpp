@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QPaintEvent>
+#include <QShowEvent>
 #include <QApplication>
 #include <QScrollBar>
 #include <QDateTime>
@@ -1291,6 +1292,12 @@ class HTreeSplitter_p
         QHBoxLayout* layout=nullptr;
 
         SingleShotTimer* scrollToEndTimer;
+        SingleShotTimer* enableHScrollBarTimer;
+
+        // false until the splitter has been laid out at least once with real, on-screen
+        // geometry; while false the horizontal scrollbar policy is pinned to
+        // Qt::ScrollBarAlwaysOff (see HTreeSplitter::enableHScrollBarIfSettled())
+        bool hScrollBarEnabled=false;
 };
 
 //--------------------------------------------------------------------------
@@ -1304,6 +1311,20 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
     pimpl->scArea=new ScrollArea(this);
     pimpl->scArea->setWidgetResizable(true);
     pimpl->scArea->setObjectName("hTreeSplitterScArea");
+    // Pin the horizontal scrollbar off until this splitter has been laid out with real, on-screen
+    // geometry -- see enableHScrollBarIfSettled(), which switches to Qt::ScrollBarAsNeeded once
+    // that has happened. HTree::openPath() runs from MainWindow's constructor, so the whole tree
+    // (every section added via addWidget()) is built before the host window is ever shown; every
+    // layout pass during that build sees a fresh QScrollArea's pre-layout viewport width (~98px)
+    // while syncWrapper() below has already sized the wrapper to the content's real minimum
+    // width, which is wider. With the default ScrollBarAsNeeded, QAbstractScrollArea resolves
+    // that overflow -- and explicitly shows the bar widget -- while the window is still hidden;
+    // the bar then appears in the very first painted frame (a full-width 8px strip along the
+    // bottom edge, see QScrollBar:horizontal in reset.qss) and only disappears once the deferred
+    // re-layout timers below have run with real numbers. Same bug shape, same fix shape, as the
+    // one already worked out for NavigationBar's own ScrollArea -- see the comment on
+    // NavigationBar_p::updateScrollArea() in navigationbar.cpp.
+    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     l->addWidget(pimpl->scArea);
 
     pimpl->wrapper=new AlignedStretchingWidget(pimpl->scArea);
@@ -1332,6 +1353,7 @@ HTreeSplitter::HTreeSplitter(QWidget* parent)
     );
 
     pimpl->scrollToEndTimer=new SingleShotTimer(this);
+    pimpl->enableHScrollBarTimer=new SingleShotTimer(this);
 }
 
 //--------------------------------------------------------------------------
@@ -1447,6 +1469,45 @@ void HTreeSplitter::syncWrapper()
 
 //--------------------------------------------------------------------------
 
+void HTreeSplitter::enableHScrollBarIfSettled()
+{
+    if (pimpl->hScrollBarEnabled)
+    {
+        return;
+    }
+
+    // isVisible() is the crisp signal that the whole ancestor chain (host window, HTree's
+    // QTabWidget page, ...) has actually been shown and laid out -- nothing that runs before
+    // MainWindow::show() can satisfy it, so no pre-layout geometry can ever flip the policy.
+    if (!isVisible())
+    {
+        return;
+    }
+
+    // Reconcile the wrapper with the now-real viewport width BEFORE handing the visibility
+    // decision back to QAbstractScrollArea, so that the bar's very first evaluation is made
+    // against settled numbers rather than whatever the pre-show passes left behind.
+    syncWrapper();
+
+    pimpl->hScrollBarEnabled=true;
+    pimpl->scArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+    if (htreeDebug())
+    {
+        // setHorizontalScrollBarPolicy() re-runs QAbstractScrollArea's layout synchronously, so
+        // hbarVisible below is the honest, settled answer -- this is the proof line that the bar
+        // never became visible from pre-layout geometry.
+        qDebug().noquote() << htreeDebugTs() << "enableHScrollBar"
+            << "viewportW=" << viewPort()->width()
+            << "wrapperMinW=" << pimpl->wrapper->minimumWidth()
+            << "contentMinW=" << pimpl->content->minimumWidth()
+            << "hbarVisible=" << pimpl->scArea->horizontalScrollBar()->isVisible()
+            << "hbarMax=" << pimpl->scArea->horizontalScrollBar()->maximum();
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeSplitter::scrollToIndex(int index, int xmargin)
 {
     if (index>=pimpl->content->count())
@@ -1518,6 +1579,30 @@ void HTreeSplitter::resizeEvent(QResizeEvent* event)
     QFrame::resizeEvent(event);
 
     pimpl->content->splitterResized(event,false);
+
+    // Earliest point at which this splitter can have settled, on-screen geometry; a no-op until
+    // isVisible() is actually true (see enableHScrollBarIfSettled()).
+    enableHScrollBarIfSettled();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::showEvent(QShowEvent* event)
+{
+    QFrame::showEvent(event);
+
+    // Fallback for the case where becoming visible does not itself produce a resizeEvent here --
+    // e.g. a background HTreeTab page that QStackedLayout already sized while it was hidden.
+    // Deferred by 0ms so it runs after the layout pass this show() triggers; the
+    // hScrollBarEnabled flag in enableHScrollBarIfSettled() keeps this idempotent with the
+    // resizeEvent path above, which normally wins. Without this fallback such a tab page could
+    // keep Qt::ScrollBarAlwaysOff forever and genuinely lose horizontal scrolling.
+    pimpl->enableHScrollBarTimer->shot(0,
+        [this]()
+        {
+            enableHScrollBarIfSettled();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------

@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/htreepath.hpp>
 
 class QScrollBar;
+class QShowEvent;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -100,10 +101,13 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
     protected:
 
         void resizeEvent(QResizeEvent* event) override;
+        void showEvent(QShowEvent* event) override;
 
     private:
 
         void syncWrapper();
+
+        void enableHScrollBarIfSettled();
 
         std::unique_ptr<HTreeSplitter_p> pimpl;
 };
