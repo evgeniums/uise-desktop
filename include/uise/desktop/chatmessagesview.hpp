@@ -477,6 +477,15 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         Id lastViewportSeqId() const;
 
+        //! Counterpart to lastViewportSortValue() -- the sort value of the FIRST (topmost)
+        //! message currently visible in the viewport, not merely loaded. Together the two give
+        //! the closed range [firstViewportSortValue(),lastViewportSortValue()] of what the user
+        //! can actually see right now, as opposed to "has the user scrolled at least this far"
+        //! (which lastViewportSortValue() alone answers, and is what markRead()-style "scrolled
+        //! past counts as read" logic wants -- a caller that instead needs true on-screen
+        //! membership, e.g. whitemdesktop's unseen-reaction jump control, needs both ends).
+        SortValue firstViewportSortValue() const;
+
         void setUnreadMessageCount(const QString& count);
 
         bool eachMessage(MessageHandler handler);

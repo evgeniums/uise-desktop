@@ -1422,6 +1422,20 @@ typename ChatMessagesView<BaseMessageT,Traits>::Id ChatMessagesView<BaseMessageT
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseMessageT,Traits>::firstViewportSortValue() const
+{
+    auto firstViewportItem=m_listView->firstViewportItem();
+    if (firstViewportItem==nullptr)
+    {
+        return SortValue{};
+    }
+
+    return firstViewportItem->sortValue();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::setUnreadMessageCount(const QString& count)
 {
     auto jumpControl=m_listView->jumpEdgeControl();
