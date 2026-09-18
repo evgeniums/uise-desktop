@@ -229,10 +229,6 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         {
             m_editor=widget;
             m_editorLayout->addWidget(widget);
-            // The editor is constructed by EditableLabelTmpl's ctor after this base ctor has
-            // already run updateRowMinHeight() once with no editor present -- redo it now that
-            // m_editorFrame actually has content, so the two rows stay the same height.
-            scheduleRowMinHeightUpdate();
         }
 
         /**
@@ -270,11 +266,6 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             m_editing=m_editable && enable;
             updateControls();
             m_editorFrame->setVisible(m_editing);
-            // The mode swap changes which of m_label/m_editorFrame occupies the row; whichever
-            // one just became visible needs its ancestor layouts force-invalidated too, for the
-            // same "activated while hidden" reason updateRowMinHeight() already exists for -- see
-            // its own doc comment in editablelabel.cpp.
-            updateRowMinHeight();
             if (m_editable)
             {
                 if (!m_inGroup || config().property(ValueWidgetProperty::EditFocus).toBool())
@@ -343,20 +334,6 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
             m_applyButton->setVisible(m_editable && m_editing);
         }
 
-        //! Keeps the editor frame's minimum height matched to the value label's one-line height
-        //! (so toggling edit mode doesn't nudge the row -- QHBoxLayout ignores a hidden item's
-        //! size, and m_label/m_editorFrame are never both visible at once), and force-invalidates
-        //! every ancestor layout so that fix (and m_label's own corrected size hints -- see
-        //! ValueLabel in editablelabel.cpp) actually reaches the row's real on-screen geometry
-        //! instead of being silently dropped by QWidget::updateGeometry()'s hidden-widget no-op.
-        //! See invalidateAncestorLayouts()'s doc comment in editablelabel.cpp for the full story.
-        void updateRowMinHeight();
-
-        //! Coalesces bursts of updateRowMinHeight() calls (e.g. a light/dark theme swap fires
-        //! StyleChange, FontChange and ContentsRectChange together) into one deferred recomputation,
-        //! posted so the widget's own contentsMargins() have already settled by the time it runs.
-        void scheduleRowMinHeightUpdate();
-
         Type m_type;
         QLabel* m_label;
         QBoxLayout* m_mainLayout;
@@ -383,8 +360,6 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
         QLabel* m_comment;
         QWidget* m_editor;
         QWidget* m_trailingWidget;
-
-        bool m_rowMinHeightUpdatePending=false;
 };
 
 /**
