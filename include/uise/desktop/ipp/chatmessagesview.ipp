@@ -531,6 +531,12 @@ void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction,
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
 {
+    // Non-empty on entry means this pass is merging in a just-loaded/fetched batch
+    // (insertFetched(), loadMessagesAround()); empty means a pure re-adjust of what is already
+    // loaded (adjustCurrentMessagesList() <- insertMessage()/readjustList()/update paths). See
+    // wasStuckToEnd below for why this distinction matters.
+    const bool mergingFetchedBatch=!messages.empty();
+
     m_listView->eachItem(
         [&messages](const ChatMessageViewItemWrapper<BaseMessageT,Traits>* msgItem)
         {
@@ -550,7 +556,21 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     // bottomSpace's height past the true end (last bubble flush against the viewport, no gap
     // above the composer). This snapshot is what lets the single-shot below tell "was already
     // stuck to the end" apart from "the user is scrolled up and must stay there".
-    bool wasStuckToEnd=m_listView->stickMode()==Direction::END && m_listView->isScrollAtEdge(Direction::END);
+    //
+    // Gated on !mergingFetchedBatch and a non-empty list: a pass that is itself merging in a
+    // fetched batch is never "was already stuck to the end" in the sense this guard means --
+    // loadMessagesAround() (jump to a message) calls this right after m_listView->clear(), where
+    // isScrollAtEdge(END) is trivially true on the empty list, and insertFetched()'s append
+    // branch is exactly the prefetch traffic that must be free to land below the viewport
+    // without being yanked back down. Without this gate the two combine into a runaway loop: a
+    // jump into old history snapshots wasStuckToEnd=true on the empty list, scrollToItem() lands
+    // on the target, then the deferred re-assert below scrolls to the end of the just-loaded
+    // window, which triggers a Direction::END prefetch, which re-enters this function already
+    // genuinely at the end, which re-asserts again -- repeating until the chat's true last
+    // message is reached. The #bottomSpace case this guard was written for always arrives via
+    // insertMessage()/readjustList(), which pass an empty vector, so it still re-asserts.
+    bool wasStuckToEnd=!mergingFetchedBatch && m_listView->itemCount()>0
+                     && m_listView->stickMode()==Direction::END && m_listView->isScrollAtEdge(Direction::END);
 
     bool hasUnreadSep=false;
     bool prevLastInBatch=true;
@@ -615,15 +635,19 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     scheduleFloatingAvatarUpdate();
 
     // Belt-and-suspenders re-assertion of the end stick, only when this pass found the view
-    // already flush at the end (wasStuckToEnd, snapshotted above): a narrowly-scoped guarantee
-    // that a #bottomSpace toggle landing on the final row -- however its geometry propagates --
-    // never leaves the view over-scrolled past the true end. Deferred via QTimer::singleShot(0)
-    // rather than checked synchronously here: the geometry changes from the loop above
-    // (ui()->setLastInBatch()) are not necessarily laid out yet at this point, so
-    // isScrollAtEdge() below needs to run on the next event-loop turn, once they have settled --
-    // same reasoning as scheduleFloatingAvatarUpdate()'s own deferral a few lines up. `this` as
-    // context is the usual Qt guard against the view being destroyed before the timer fires;
-    // m_listView is re-checked for the same reason.
+    // already flush at the end on entry, was NOT merging in a fetched batch, and had a
+    // non-empty list to begin with (wasStuckToEnd, snapshotted above): a narrowly-scoped
+    // guarantee that an in-place geometry change on an already-loaded row -- such as a
+    // #bottomSpace toggle landing on the final row, however its geometry propagates -- never
+    // leaves the view over-scrolled past the true end. It must never fire for content arriving
+    // via a load/fetch/jump, only for a re-adjust of what is already on screen -- see
+    // mergingFetchedBatch above for why. Deferred via QTimer::singleShot(0) rather than checked
+    // synchronously here: the geometry changes from the loop above (ui()->setLastInBatch()) are
+    // not necessarily laid out yet at this point, so isScrollAtEdge() below needs to run on the
+    // next event-loop turn, once they have settled -- same reasoning as
+    // scheduleFloatingAvatarUpdate()'s own deferral a few lines up. `this` as context is the
+    // usual Qt guard against the view being destroyed before the timer fires; m_listView is
+    // re-checked for the same reason.
     if (wasStuckToEnd)
     {
         QTimer::singleShot(
@@ -662,7 +686,14 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
         m_listView->clear();
         adjustMessageList(messages);
 
-        // process initial loading or jump-to-end
+        adjustMessagesSizes(&messages);
+        m_listView->loadItems(messageItems);
+
+        // Must run AFTER loadItems(), not before: loadItems() calls FlyweightListView::clear()
+        // internally, which resets m_minSortValueSet/m_maxSortValueSet to false -- setting these
+        // markers before loadItems() had them silently wiped the moment it ran, leaving
+        // canFetchAfter/canFetchBefore permanently true for this freshly loaded window (see the
+        // matching comment in loadMessagesAround() below for the full consequence chain).
         m_listView->setMinSortValue({});
         if (messageItems.empty())
         {
@@ -672,9 +703,6 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
         {
             m_listView->setMaxSortValue(messageItems.back().sortValue());
         }
-
-        adjustMessagesSizes(&messages);
-        m_listView->loadItems(messageItems);
 
         if (!forLoad)
         {
@@ -797,11 +825,21 @@ void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector
     m_listView->clear();
     adjustMessageList(messages);
 
-    m_listView->setMinSortValue(minSortValue);
-    m_listView->setMaxSortValue(maxSortValue);
-
     adjustMessagesSizes(&messages);
     m_listView->loadItems(messageItems);
+
+    // Must run AFTER loadItems(), not before: FlyweightListView::loadItems() calls clear()
+    // internally, which resets m_minSortValueSet/m_maxSortValueSet to false -- setting these
+    // markers before loadItems() had them silently wiped the moment it ran. With
+    // m_maxSortValueSet left false, checkItemCount()'s canFetchAfter is unconditionally true for
+    // this mid-history window, so the scroll-driven prefetch never stops requesting newer
+    // batches; combined with each batch re-entering adjustMessageList() while genuinely at the
+    // end, that used to keep scrolling all the way to the chat's true last message after every
+    // jump into old history. Setting the markers here, before scrollToItem(), still lands them
+    // well before checkItemCount() ever reads them (that runs off endUpdate()'s deferred
+    // viewportUpdated(), not synchronously inside loadItems()).
+    m_listView->setMinSortValue(minSortValue);
+    m_listView->setMaxSortValue(maxSortValue);
 
     // valid synchronously right after loadItems(): endUpdate() (called inside loadItems()) runs
     // resizeList() inline, so the anchor's widget is already laid out.

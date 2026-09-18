@@ -2702,7 +2702,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
     // against m_minSortValue/m_maxSortValue; this used to instead test *exact* equality against
     // the *cached* m_firstItem/m_lastItem. Those two only need to disagree once -- e.g. after a
     // bulk load whose last item's sort value overshoots a stale m_maxSortValue (loadItems()/
-    // insertContinuousItems()/insertItems() never adjust it, and clear() never resets it) -- for
+    // insertContinuousItems()/insertItems() never adjust it to the new content on their own; the
+    // caller must call setMinSortValue()/setMaxSortValue() itself -- see the callers in
+    // chatmessagesview.ipp, which do this AFTER loadItems() precisely because clear() DOES reset
+    // m_minSortValueSet/m_maxSortValueSet, so setting them any earlier is silently undone) -- for
     // the jump-edge button to trigger a full reload where the scroll-driven prefetch already
     // considers the window complete.
     if (direction==Direction::END)
