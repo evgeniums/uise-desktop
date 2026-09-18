@@ -1249,13 +1249,21 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! working set to a handful of sizes. A cache-pressure guard, not an optimisation.
         constexpr static const int EmojiSizeQuantum=4;
 
+        //! Inline emoji are sized to this multiple of the font's ascent (as an exact
+        //! numerator/denominator pair, to keep emojiInlineSizeForFont() in integer arithmetic) --
+        //! deliberately larger than a 1:1 match to the surrounding glyphs so emoji read as emoji
+        //! rather than blending into the text. A line mixing text and emoji therefore comes out
+        //! taller than a pure-text line; see emojiInlineSizeForFont()'s own comment.
+        constexpr static const int EmojiInlineScaleNumerator=13;
+        constexpr static const int EmojiInlineScaleDenominator=10;
+
         /**
-         * @brief Pixel size an inline emoji image is given, so it mirrors the surrounding text.
+         * @brief Pixel size an inline emoji image is given.
          *
          * Derived from the font's ASCENT rather than its full height: Qt lays an inline image out
-         * with its bottom on the baseline, so the ascent is the room available above it -- a
-         * full-height image would push the line taller than the text around it. Rounded up to
-         * EmojiSizeQuantum.
+         * with its bottom on the baseline, so the ascent is the room available above it before
+         * scaling -- a full-height image would push the line taller still. Scaled by
+         * EmojiInlineScaleNumerator/EmojiInlineScaleDenominator and rounded up to EmojiSizeQuantum.
          */
         static int emojiInlineSizeForFont(const QFont& font);
 

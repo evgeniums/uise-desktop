@@ -5522,13 +5522,18 @@ int MessageEditor::emojiInlineSizeForFont(const QFont& font)
     QFontMetrics metrics(font);
 
     // Ascent, not height(): Qt puts an inline image's BOTTOM on the baseline, so the ascent is
-    // exactly the room a glyph occupies above it. Sizing to the full height (ascent+descent)
-    // would make every line containing an emoji taller than its neighbours.
+    // exactly the room a glyph occupies above it before scaling.
     auto size=metrics.ascent();
     if (size<=0)
     {
         size=metrics.height();
     }
+
+    // Scaled up so emoji read larger than the surrounding text -- see EmojiInlineScaleNumerator/
+    // EmojiInlineScaleDenominator's own comment. This does make a mixed text+emoji line taller
+    // than a pure-text neighbour; that is the intended look, not the ascent-matching this used to
+    // do.
+    size=(size*EmojiInlineScaleNumerator)/EmojiInlineScaleDenominator;
 
     // Round UP to the quantum -- see EmojiSizeQuantum. Rounding down could reach 0 for a tiny
     // font, which would make the image vanish rather than merely look wrong.
