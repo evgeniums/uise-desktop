@@ -107,9 +107,29 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
          */
         void setForceHovered(bool hovered);
 
+        /**
+         * @brief Override the direction-derived icon with an explicit, fully-qualified icon name
+         * ("Context::alias", the same form SvgIconLocator::icon() takes).
+         * @param fullyQualifiedIconName Icon to use instead of "JumpEdge::<up|down|left|right>";
+         * an empty string reverts to the direction-derived icon.
+         *
+         * Lets a caller repurpose this control for something other than "jump to the edge of the
+         * list" (e.g. whitemdesktop's jump-to-reaction overlay) while keeping its badge/ripple/
+         * semi-transparent-circle look for free. setDirection()/setOrientation() still drive
+         * iconDirection() and this widget's own click semantics; only the painted icon changes.
+         */
+        void setIconOverride(const QString& fullyQualifiedIconName);
+
     signals:
 
         void clicked();
+
+        /**
+         * @brief Emitted from showEvent()/hideEvent() -- lets another widget stacked relative to
+         * this one (e.g. a second floating control positioned just above it) reposition itself
+         * when this one appears or disappears.
+         */
+        void visibilityChanged(bool visible);
 
     public slots:
 
@@ -123,6 +143,8 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
         void resizeEvent(QResizeEvent* event) override;
+        void showEvent(QShowEvent* event) override;
+        void hideEvent(QHideEvent* event) override;
 
     private:
 
@@ -144,6 +166,8 @@ class UISE_DESKTOP_EXPORT JumpEdge : public QFrame
 
         QWidget* m_rippleArea=nullptr;
         RippleOverlay* m_ripple=nullptr;
+
+        QString m_iconOverride;
 };
 
 }

@@ -188,8 +188,25 @@ void JumpEdge::updateIcon()
         }
     }
 
-    m_icon=Style::instance().svgIconLocator().icon(QString("JumpEdge::%1").arg(name),this);
+    // m_iconDirection is still derived above regardless of the override -- it drives this
+    // widget's own click semantics (see JumpEdge::direction()/onJumpEdgeClicked() in the flyweight
+    // list view), independent of which icon gets painted.
+    auto iconName=m_iconOverride.isEmpty() ? QString("JumpEdge::%1").arg(name) : m_iconOverride;
+
+    m_icon=Style::instance().svgIconLocator().icon(iconName,this);
     update();
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::setIconOverride(const QString& fullyQualifiedIconName)
+{
+    if (m_iconOverride==fullyQualifiedIconName)
+    {
+        return;
+    }
+    m_iconOverride=fullyQualifiedIconName;
+    updateIcon();
 }
 
 //--------------------------------------------------------------------------
@@ -220,6 +237,22 @@ void JumpEdge::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
     updateRippleGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::showEvent(QShowEvent* event)
+{
+    QFrame::showEvent(event);
+    emit visibilityChanged(true);
+}
+
+//--------------------------------------------------------------------------
+
+void JumpEdge::hideEvent(QHideEvent* event)
+{
+    QFrame::hideEvent(event);
+    emit visibilityChanged(false);
 }
 
 //--------------------------------------------------------------------------
