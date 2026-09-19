@@ -324,9 +324,9 @@ HTreeList::HTreeList(HTreeTab* treeTab, QWidget* parent)
 
 //--------------------------------------------------------------------------
 
-QWidget* HTreeList::doCreateContentWidget()
+QWidget* HTreeList::doCreateContentWidget(QWidget* parent)
 {
-    m_widget=new HTreeListWidget(this);
+    m_widget=new HTreeListWidget(parent);
     setupContentWidget();
     auto next=nextNode();
     if (next!=nullptr)
@@ -347,9 +347,9 @@ QWidget* HTreeList::doCreateContentWidget()
 
 //--------------------------------------------------------------------------
 
-QWidget* HTreeList::createContentWidget()
+QWidget* HTreeList::createContentWidget(QWidget* parent)
 {
-    return doCreateContentWidget();
+    return doCreateContentWidget(parent);
 }
 
 //--------------------------------------------------------------------------

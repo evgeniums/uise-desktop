@@ -393,7 +393,7 @@ class TextFileBrowserNode : public HTreeNode
             : HTreeNode(treeTab,parent),
               m_fileName(filename)
         {
-            setContentWidget(doCreateContentWidget());
+            setContentWidget(doCreateContentWidget(contentParentWidget()));
 
             setNodeTooltip(m_fileName);
 
@@ -425,14 +425,14 @@ class TextFileBrowserNode : public HTreeNode
             }
         }
 
-        QWidget* createContentWidget() override
+        QWidget* createContentWidget(QWidget* parent) override
         {
-            return doCreateContentWidget();
+            return doCreateContentWidget(parent);
         }
 
-        QWidget* doCreateContentWidget()
+        QWidget* doCreateContentWidget(QWidget* parent)
         {
-            m_browser=new QTextBrowser(this);
+            m_browser=new QTextBrowser(parent);
             return m_browser;
         }
 

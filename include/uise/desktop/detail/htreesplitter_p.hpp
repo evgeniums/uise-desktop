@@ -70,6 +70,21 @@ class HTreeSplitterSection : public QFrame
         void setWidget(QWidget* widget);
         QWidget* widget() const;
 
+        /**
+         * @brief Recompute this section's minimum width from its current widget.
+         *
+         * setWidget() snapshots the widget's minimumWidth() once, which is stale whenever the
+         * widget gains its real minimum width only after being inserted -- e.g. an HTreeNode
+         * that is appended to the splitter before its content is built, whose
+         * HTreeNode::setContentWidget() then raises the node's minimum width. Without this the
+         * section keeps the content-less floor and the splitter lets the column be squeezed
+         * below the width its content needs.
+         *
+         * @return true if the minimum width actually changed, so callers can skip the geometry
+         *         passes when there is nothing to redo.
+         */
+        bool refreshMinimumWidth();
+
         bool isLineUnderMouse() const;
 
         void setExpanded(bool enable)
@@ -113,6 +128,10 @@ class HTreeSplitterSection : public QFrame
         QFrame* m_stubLine=nullptr;
         QWidget* m_widget=nullptr;
 
+        //! Section's own minimum width before the widget's and the line's are added on top of
+        //! it, kept so refreshMinimumWidth() can recompute instead of accumulating.
+        int m_baseMinWidth=0;
+
         bool m_expanded=true;
         bool m_visible=true;
 
@@ -134,6 +153,14 @@ class HTreeSplitterInternal : public QFrame
         void addWidget(QWidget* widget, int stretch=0);
         QWidget* widget(int index) const;
         void removeWidget(int index);
+
+        //! Re-read the minimum width of the section holding @a widget and re-run the geometry
+        //! passes. Call after a widget already in the splitter changes its minimum width.
+        //! @return true if anything changed and the geometry was redone.
+        //! @param force redo the geometry passes even when the minimum width is unchanged
+        //!        (needed when the widget was hidden during the previous pass, so the section's
+        //!        sizeHint() could not see it).
+        bool refreshWidgetMinWidth(QWidget* widget, bool force=false);
 
         int count() const;
 

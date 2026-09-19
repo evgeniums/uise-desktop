@@ -632,6 +632,14 @@ void HTreeNode::setContentWidget(QWidget* widget)
     setMinimumWidth(widget->minimumWidth());
     setMaximumWidth(widget->maximumWidth());
 
+    // The node is normally already in the splitter by the time its content is built (see
+    // HTreeBranch::loadNextNode()), and the section snapshotted this node's minimum width back
+    // when it was still empty -- hand it the real one now. No-op when not in a splitter yet.
+    if (pimpl->treeTab!=nullptr)
+    {
+        pimpl->treeTab->refreshNodeMinWidth(this);
+    }
+
 #ifdef Q_OS_WIN
     // On Windows Qt does not repolish widgets inserted into the tree after
     // qApp->setStyleSheet() was already called at startup, so QSS rules on the
@@ -655,6 +663,13 @@ void HTreeNode::setContentWidget(QWidget* widget)
 QWidget* HTreeNode::contentWidget() const
 {
     return pimpl->widget;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* HTreeNode::contentParentWidget() const
+{
+    return pimpl->content;
 }
 
 //--------------------------------------------------------------------------
@@ -736,12 +751,31 @@ void HTreeNode::expandNode()
 
 void HTreeNode::fillContent()
 {
-    setVisible(true);
-    pimpl->placeHolder->setVisible(false);
+    // Build the content while this node is HIDDEN, and show it only once it is complete.
+    //
+    // HTreeBranch::loadNextNode() appends the node to the splitter before calling us, and
+    // appendNode() shows the section -- so without hiding here the content below would be built
+    // into a VISIBLE widget. Qt does not lay out a newly built subtree of a visible widget on the
+    // spot, it posts a LayoutRequest, and a paint can reach the screen before that request is
+    // processed. That showed up as exactly one frame with every panel row at its minimum height,
+    // row captions clipped away and wrapped comment text cut to a sliver of its first line.
+    //
+    // Hiding avoids the race instead of trying to win it: QWidgetPrivate::show_helper() activates
+    // a widget's layout BEFORE the widget becomes visible and recurses into children, so by the
+    // time anything can paint this subtree it is already laid out. This is also exactly why the
+    // old fill-then-append order never flickered -- the node simply was not visible while its
+    // content was being built. Trying instead to force the layout after the fact (an
+    // activateUpward() on the content) did NOT fix the frame and made things worse, because it
+    // repaints every ancestor up to the window.
+    const bool buildContent=(pimpl->widget==nullptr);
 
-    if (!pimpl->widget)
+    if (buildContent)
     {
-        setContentWidget(createContentWidget());
+        setVisible(false);
+
+        // pimpl->content owns pimpl->layout, so building the content with it as parent lets
+        // setContentWidget()'s addWidget() skip the reparent. See createContentWidget()'s doc.
+        setContentWidget(createContentWidget(pimpl->content));
         pimpl->mainFrame->setVisible(true);
     }
     else
@@ -749,6 +783,18 @@ void HTreeNode::fillContent()
         pimpl->mainFrame->setVisible(true);
         setMinimumWidth(pimpl->widget->minimumWidth());
         setMaximumWidth(pimpl->widget->maximumWidth());
+    }
+
+    setVisible(true);
+    pimpl->placeHolder->setVisible(false);
+
+    if (buildContent && pimpl->treeTab!=nullptr)
+    {
+        // The splitter width pass inside setContentWidget() ran while this node was hidden, when
+        // the section's sizeHint() could not see it. Redo it now that the node is visible. Forced,
+        // because the node's minimum width has not changed since that pass, so the cheap
+        // did-anything-change check would otherwise skip the geometry work.
+        pimpl->treeTab->refreshNodeMinWidth(this,true);
     }
 
     if (isExclusivelyExpandable())

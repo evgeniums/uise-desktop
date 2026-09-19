@@ -78,7 +78,7 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
     protected:
 
-        QWidget* createContentWidget() override;
+        QWidget* createContentWidget(QWidget* parent) override;
 
         virtual void setupContentWidget() =0;
 
@@ -86,7 +86,7 @@ class UISE_DESKTOP_EXPORT HTreeList : public HTreeBranch
 
     private:
 
-        QWidget* doCreateContentWidget();
+        QWidget* doCreateContentWidget(QWidget* parent);
 
         QPointer<HTreeListWidget> m_widget;
 };

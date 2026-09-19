@@ -223,6 +223,16 @@ class UISE_DESKTOP_EXPORT HTreeTab : public QFrame
     private:
 
         void adjustWidthsAndPositions();
+
+        /**
+         * @brief Tell the splitter that @a node's minimum width changed after it was appended.
+         *
+         * Needed because HTreeBranch::loadNextNode() appends a node to the splitter before
+         * filling its content (so the reparent moves an empty node rather than a whole built
+         * subtree), which means the section's minimum width is first computed from a node that
+         * has no content yet. A no-op for a node that is not in the splitter.
+         */
+        void refreshNodeMinWidth(HTreeNode* node, bool force=false);
         void emitNodesReconfigured();
 
         friend class HTree;

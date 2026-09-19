@@ -72,6 +72,15 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
         void addWidget(QWidget* widget, int stretch=0, bool scrollTo=true);
         QWidget* widget(int index) const;
+
+        /**
+         * @brief Re-read @a widget's minimum width and redo the splitter geometry.
+         *
+         * A section snapshots its widget's minimum width when the widget is inserted. Call this
+         * when a widget already in the splitter raises that minimum afterwards, which is what
+         * an HTreeNode does when its content is built after it was appended.
+         */
+        void refreshWidgetMinWidth(QWidget* widget, bool force=false);
         void removeWidget(int index);
 
         int count() const;

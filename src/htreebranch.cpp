@@ -138,11 +138,34 @@ HTreeNode* HTreeBranch::loadNextNode(const HTreePathElement& pathElement, bool l
     nextNode=nodeResult.first;
     setNextNodeId(pathElement.uniqueId());
     setNextNode(nextNode);
+
+    // Append BEFORE filling. appendNode() hands the node to HTreeSplitterSection::setWidget(),
+    // which reparents it -- and with an app-wide stylesheet in effect QWidget::setParent()
+    // triggers QWidgetPrivate::inheritStyle(), walking the whole descendant subtree and
+    // re-running unpolish()+polish() (a full QSS rule re-match) on every already-polished
+    // widget in it. Doing that to an empty node instead of a fully built one is what makes the
+    // difference: profiling a Character Info open (Instruments, Qt 6.8) charged ~94 ms of
+    // ~348 ms to this single reparent. fillContent() then builds the content directly in its
+    // final place.
+    //
+    // Safe with respect to what appendNode() seeds from the node (name, tooltip, title icon,
+    // leading/trailing widgets): those are set by doInit()/doInitNode(), which HTreeNode::init()
+    // runs inside findOrCreateNode() above, i.e. before either order reaches this point. Values
+    // that do change later still arrive over the signals appendNode() connects, and those
+    // connections now exist before fillContent() runs rather than after it. The one thing
+    // appendNode() reads that fillContent() genuinely changes is the node's minimum width, which
+    // HTreeNode::setContentWidget() reports back via HTreeTab::refreshNodeMinWidth().
+    // Note that this makes the node VISIBLE (appendNode() -> ... -> HTreeSplitterInternal::
+    // updateWidths() shows the section) before it has any content, so fillContent() below builds
+    // into a visible parent. HTreeNode::fillContent() compensates by laying the new subtree out
+    // synchronously; without that, Qt only posts a LayoutRequest and a paint can beat it to the
+    // screen, showing one frame of half-sized rows. Measured and confirmed, see the comment there.
+    treeTab()->appendNode(nextNode);
+
     if (last || !isExclusivelyExpandable())
     {
         nextNode->fillContent();
     }
-    treeTab()->appendNode(nextNode);
 
     return nextNode;
 }

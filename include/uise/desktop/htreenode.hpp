@@ -203,6 +203,17 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setContentWidget(QWidget* widget);
         QWidget* contentWidget() const;
 
+        /**
+         * @brief Frame the content widget is laid out in, i.e. the parent a content widget
+         *        should be constructed with.
+         *
+         * This is what fillContent() hands to createContentWidget(). Code that builds or
+         * rebuilds content outside that call (e.g. straight from a node constructor, or from
+         * doReconstructContent()) should construct it with this as parent for the same reason,
+         * so setContentWidget() does not have to reparent a fully built subtree.
+         */
+        QWidget* contentParentWidget() const;
+
         bool isExpanded() const;
 
         void setNextNode(HTreeNode* node);
@@ -378,7 +389,23 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
 
     protected:
 
-        virtual QWidget* createContentWidget()=0;
+        /**
+         * @brief Build this node's content widget.
+         * @param parent Widget the content must be constructed with as its parent.
+         *
+         * Implementations MUST pass @a parent to the content widget they create instead of
+         * passing the node itself. @a parent is the frame that owns the layout the content is
+         * about to be added to, so building it there means QLayout::addChildWidget() finds the
+         * parent already correct and skips QWidget::setParent() entirely.
+         *
+         * That matters a lot with an app-wide stylesheet in effect: setParent() triggers
+         * QWidgetPrivate::inheritStyle(), which walks the whole descendant subtree and re-runs
+         * unpolish()+polish() on every already-polished widget, i.e. a full QSS rule re-match
+         * per widget. Profiling a node open (Instruments, Qt 6.8) attributed ~79 ms of ~348 ms
+         * to this single avoidable reparent. Passing the node instead of @a parent still works,
+         * it just silently pays that cost again.
+         */
+        virtual QWidget* createContentWidget(QWidget* parent)=0;
 
         virtual void doInit()
         {}

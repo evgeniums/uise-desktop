@@ -1144,6 +1144,18 @@ void HTreeTab::adjustWidthsAndPositions()
 
 //--------------------------------------------------------------------------
 
+void HTreeTab::refreshNodeMinWidth(HTreeNode* node, bool force)
+{
+    if (node==nullptr)
+    {
+        return;
+    }
+
+    pimpl->splitter->refreshWidgetMinWidth(node,force);
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeTab::nodeCloseHovered(HTreeNode* /*node*/, bool /*enable*/)
 {
 //! @todo Configure close frame display

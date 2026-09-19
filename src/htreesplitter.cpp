@@ -131,7 +131,28 @@ void HTreeSplitterSection::setWidget(QWidget* widget)
         SLOT(onWidgetDestroyed())
     );
 
-    setMinimumWidth(minimumWidth()+widget->minimumWidth()+m_line->minimumWidth());
+    m_baseMinWidth=minimumWidth();
+    setMinimumWidth(m_baseMinWidth+widget->minimumWidth()+m_line->minimumWidth());
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeSplitterSection::refreshMinimumWidth()
+{
+    if (m_widget==nullptr)
+    {
+        return false;
+    }
+
+    auto lineWidth=(m_line!=nullptr) ? m_line->minimumWidth() : 0;
+    auto newMinWidth=m_baseMinWidth+m_widget->minimumWidth()+lineWidth;
+    if (newMinWidth==minimumWidth())
+    {
+        return false;
+    }
+
+    setMinimumWidth(newMinWidth);
+    return true;
 }
 
 //--------------------------------------------------------------------------
@@ -1058,6 +1079,61 @@ QWidget* HTreeSplitterInternal::widget(int index) const
 
 //--------------------------------------------------------------------------
 
+bool HTreeSplitterInternal::refreshWidgetMinWidth(QWidget* widget, bool force)
+{
+    if (widget==nullptr)
+    {
+        return false;
+    }
+
+    HTreeSplitterSection* target=nullptr;
+    for (auto& section: m_sections)
+    {
+        if (section->destroyed)
+        {
+            continue;
+        }
+        auto* s=qobject_cast<HTreeSplitterSection*>(section->obj);
+        if (s!=nullptr && s->widget()==widget)
+        {
+            target=s;
+            break;
+        }
+    }
+    if (target==nullptr)
+    {
+        return false;
+    }
+
+    const bool changed=target->refreshMinimumWidth();
+    if (!changed && !force)
+    {
+        // Nothing changed -- skip the geometry passes rather than redo them for free.
+        return false;
+    }
+
+    // Same sequence addWidget() runs after inserting a section: recalculateWidths() re-reads
+    // every section's minimumWidth() and refreshes the cached Section::minWidth, the rest turns
+    // that into actual geometry.
+    auto viewportWidth=m_splitter->viewPort()->width();
+    auto targetWidth=width();
+    if (viewportWidth>0)
+    {
+        targetWidth=viewportWidth;
+    }
+    auto newWidth=recalculateWidths(targetWidth);
+    updateMinWidth();
+    resize(newWidth,height());
+    updatePositions();
+    updateWidths();
+
+    debugState("refreshWidgetMinWidth end");
+
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeSplitterInternal::removeWidget(int index)
 {
     if (index<0)
@@ -1378,6 +1454,16 @@ void HTreeSplitter::addWidget(QWidget* widget, int stretch, bool scrollTo)
     if (scrollTo)
     {
         scrollToIndex(count()-1);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::refreshWidgetMinWidth(QWidget* widget, bool force)
+{
+    if (pimpl->content->refreshWidgetMinWidth(widget,force))
+    {
+        syncWrapper();
     }
 }
 
