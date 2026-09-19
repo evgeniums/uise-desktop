@@ -105,4 +105,50 @@ BOOST_AUTO_TEST_CASE(TestLoadItems)
     FwlvTestContext::execAllModes(handler);
 }
 
+// Content shorter than the viewport with stick==END is the one configuration where scrollTo()
+// parks the list at a POSITIVE offset (bottom-aligned, empty space before it). viewportBegin()
+// used to name a point above the list there, so firstViewportItem() was null for the life of the
+// view and visibleItemCount() stayed 0 even though every item was on screen.
+// Non-flyweight mode on purpose: FwlvTestWidget::loadItems() sets the sort-value bounds BEFORE
+// view->loadItems(), whose internal clear() wipes them, so with flyweight on prefetch would
+// refill the view and the under-filled state would never materialise.
+BOOST_AUTO_TEST_CASE(TestLoadUnderfilledStickEnd)
+{
+    auto handler=[](FwlvTestContext* ctx)
+    {
+        constexpr size_t underfilledCount=2;
+        ctx->testWidget->initialItemCount=underfilledCount;
+        ctx->testWidget->loadItems();
+
+        QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
+        [ctx]()
+        {
+            UISE_TEST_CHECK(!ctx->view->horizontalScrollBar()->isVisible());
+            UISE_TEST_CHECK(!ctx->view->verticalScrollBar()->isVisible());
+            UISE_TEST_CHECK_EQUAL(ctx->view->itemCount(),underfilledCount);
+
+            const auto* firstItem=ctx->view->firstItem();
+            const auto* lastItem=ctx->view->lastItem();
+            const auto* firstViewportItem=ctx->view->firstViewportItem();
+            const auto* lastViewportItem=ctx->view->lastViewportItem();
+            UISE_TEST_REQUIRE(firstItem!=nullptr);
+            UISE_TEST_REQUIRE(lastItem!=nullptr);
+
+            // The regression assertion.
+            UISE_TEST_REQUIRE(firstViewportItem!=nullptr);
+            UISE_TEST_REQUIRE(lastViewportItem!=nullptr);
+
+            // Everything is on screen, so the viewport spans the whole list.
+            UISE_TEST_CHECK(firstViewportItem==firstItem);
+            UISE_TEST_CHECK(lastViewportItem==lastItem);
+            UISE_TEST_CHECK_EQUAL(ctx->view->visibleItemCount(),underfilledCount);
+
+            ctx->endTestCase();
+        });
+    };
+
+    UISE_TEST_CONTEXT("VerticalStickEndNoFlyweight") {FwlvTestContext::execSingleMode(handler,Qt::Vertical,Direction::END,false);}
+    UISE_TEST_CONTEXT("HorizontalStickEndNoFlyweight") {FwlvTestContext::execSingleMode(handler,Qt::Horizontal,Direction::END,false);}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

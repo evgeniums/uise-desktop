@@ -598,7 +598,21 @@ QPoint FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportBegin() cons
         break;
     }
 
-    setOProp(pos,OProp::pos,-oprop(m_llist,OProp::pos));
+    // Main-axis coordinate of the viewport's leading edge, in m_llist's OWN coordinate space
+    // (itemAtPos() hit-tests m_llist). m_llist->pos() is how far the list has scrolled past its
+    // own leading edge, normally <=0, so -pos lands inside the list. It is POSITIVE in exactly
+    // one configuration: stick==END with content shorter than the viewport -- scrollTo()'s
+    // minPos==maxPos==viewportSize-listSize branch, mirrored by onViewportResized()'s
+    // `!(m_stick==END && listSize<viewSize)` guard -- where the whole list is parked flush
+    // against the trailing edge with empty space before it. There the viewport's leading edge is
+    // OUTSIDE the list, -pos goes negative, and QWidget::childAt() returns nullptr for an
+    // out-of-bounds point, so firstViewportItem() was permanently null even though every item is
+    // on screen (taking visibleCount(), keepCurrentConfiguration()'s anchor and
+    // ChatMessagesView::firstViewportSortValue() down with it). Clamp to the list's own leading
+    // edge: the first item in view is then the item at list coordinate 0, which is exactly what
+    // the user sees at the top (left, when horizontal). Deliberately main-axis only -- the
+    // transverse coordinate set by the alignment switch above is already list-local and correct.
+    setOProp(pos,OProp::pos,std::max(-oprop(m_llist,OProp::pos),0));
     return pos;
 }
 
