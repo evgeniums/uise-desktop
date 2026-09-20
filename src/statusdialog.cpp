@@ -168,10 +168,10 @@ QLabel* StatusDialog::textWidget() const
 
 //--------------------------------------------------------------------------
 
-void StatusDialog::setOptionCheckBox(const QString& text)
+void StatusDialog::setOptionCheckBox(const QString& text, bool checked)
 {
     pimpl->checkBox->setText(text);
-    pimpl->checkBox->setChecked(false);
+    pimpl->checkBox->setChecked(checked);
     pimpl->checkBox->setVisible(true);
     pimpl->checkBoxRow->setVisible(true);
 }

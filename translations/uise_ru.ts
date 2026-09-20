@@ -2906,7 +2906,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1943"/>
+        <location filename="../src/chatmessage.cpp" line="+1958"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
@@ -2932,7 +2932,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2045"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2160"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
@@ -2955,23 +2955,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1296"/>
+        <location line="-1307"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
     <message>
         <location line="+71"/>
-        <location line="+1429"/>
+        <location line="+1440"/>
         <source>Copy code</source>
         <translation>Копировать код</translation>
     </message>
     <message>
-        <location line="-1405"/>
+        <location line="-1416"/>
         <source>Open code in a larger window</source>
         <translation>Открыть код в большом окне</translation>
     </message>
     <message>
-        <location line="+900"/>
+        <location line="+911"/>
         <source>Show the full table</source>
         <translation>Показать таблицу целиком</translation>
     </message>
@@ -3194,7 +3194,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+272"/>
         <source>Full quality</source>
         <translation>Полное качество</translation>
     </message>
@@ -3226,7 +3226,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Добавить комментарий…</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>Add</source>
         <translation>Добавить</translation>
     </message>
@@ -3266,7 +3266,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Выбрано файлов: %1</translation>
     </message>
     <message>
-        <location line="+702"/>
+        <location line="+727"/>
         <source>Add files</source>
         <translation>Добавить файлы</translation>
     </message>
@@ -3424,7 +3424,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ImageViewerWidget</name>
     <message>
-        <location filename="../src/imageviewer.cpp" line="+210"/>
+        <location filename="../src/imageviewer.cpp" line="+214"/>
         <source>Rotate</source>
         <translation>Повернуть</translation>
     </message>
@@ -3475,7 +3475,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+3746"/>
+        <location filename="../src/messageeditor.cpp" line="+4111"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
@@ -3485,12 +3485,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1617"/>
+        <location line="+1639"/>
         <source>code here</source>
         <translation>код</translation>
     </message>
     <message>
-        <location line="+1966"/>
+        <location line="+2287"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3638,7 +3638,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditorToolbar</name>
     <message>
-        <location filename="../src/messageeditortoolbar.cpp" line="+99"/>
+        <location filename="../src/messageeditortoolbar.cpp" line="+102"/>
         <source>Insert row above</source>
         <translation>Вставить строку выше</translation>
     </message>
@@ -3673,27 +3673,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Удалить таблицу</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+368"/>
         <source>Editing mode</source>
         <translation>Режим редактирования</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="-201"/>
         <source>Formatted text</source>
         <translation>Форматированный текст</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+1"/>
         <source>Markdown source</source>
         <translation>Исходный Markdown</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+1"/>
         <source>Plain text</source>
         <translation>Простой текст</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+234"/>
         <source>Undo</source>
         <translation>Отменить</translation>
     </message>
@@ -3733,27 +3733,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Заголовок</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="-259"/>
         <source>Heading 1</source>
         <translation>Заголовок 1</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>Heading 2</source>
         <translation>Заголовок 2</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>Heading 3</source>
         <translation>Заголовок 3</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>Normal text</source>
         <translation>Обычный текст</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+281"/>
         <source>Bulleted list</source>
         <translation>Маркированный список</translation>
     </message>
@@ -3788,32 +3788,32 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Вставить таблицу (Tab — переход между ячейками)</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="-306"/>
         <source>%1 × %2</source>
         <translation>%1 × %2</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location line="+348"/>
         <source>Insert horizontal rule</source>
         <translation>Вставить разделитель</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+16"/>
         <source>Insert link</source>
         <translation>Вставить ссылку</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Remove link</source>
         <translation>Удалить ссылку</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Mention someone</source>
         <translation>Упомянуть</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+13"/>
         <source>Check spelling</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3823,7 +3823,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить форматирование</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+13"/>
+        <source>More formatting options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
@@ -4066,7 +4071,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+166"/>
+        <location filename="../src/simpleimageeditor.cpp" line="+176"/>
         <source>Rotate</source>
         <translation>Повернуть</translation>
     </message>

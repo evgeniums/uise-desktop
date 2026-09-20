@@ -2926,7 +2926,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1943"/>
+        <location filename="../src/chatmessage.cpp" line="+1958"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -2952,7 +2952,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2045"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2160"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -2975,23 +2975,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1296"/>
+        <location line="-1307"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
     <message>
         <location line="+71"/>
-        <location line="+1429"/>
+        <location line="+1440"/>
         <source>Copy code</source>
         <translation>Copy code</translation>
     </message>
     <message>
-        <location line="-1405"/>
+        <location line="-1416"/>
         <source>Open code in a larger window</source>
         <translation>Open code in a larger window</translation>
     </message>
     <message>
-        <location line="+900"/>
+        <location line="+911"/>
         <source>Show the full table</source>
         <translation>Show the full table</translation>
     </message>
@@ -3218,7 +3218,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+271"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+272"/>
         <source>Full quality</source>
         <translation>Full quality</translation>
     </message>
@@ -3250,7 +3250,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Add a comment...</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>Add</source>
         <translation>Add</translation>
     </message>
@@ -3290,7 +3290,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>%1 files selected</translation>
     </message>
     <message>
-        <location line="+702"/>
+        <location line="+727"/>
         <source>Add files</source>
         <translation>Add files</translation>
     </message>
@@ -3446,7 +3446,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ImageViewerWidget</name>
     <message>
-        <location filename="../src/imageviewer.cpp" line="+210"/>
+        <location filename="../src/imageviewer.cpp" line="+214"/>
         <source>Rotate</source>
         <translation>Rotate</translation>
     </message>
@@ -3497,7 +3497,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+3746"/>
+        <location filename="../src/messageeditor.cpp" line="+4111"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3507,12 +3507,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Insert emoji</translation>
     </message>
     <message>
-        <location line="+1617"/>
+        <location line="+1639"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+1966"/>
+        <location line="+2287"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3660,7 +3660,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditorToolbar</name>
     <message>
-        <location filename="../src/messageeditortoolbar.cpp" line="+99"/>
+        <location filename="../src/messageeditortoolbar.cpp" line="+102"/>
         <source>Insert row above</source>
         <translation>Insert row above</translation>
     </message>
@@ -3695,27 +3695,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Delete table</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+368"/>
         <source>Editing mode</source>
         <translation>Editing mode</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="-201"/>
         <source>Formatted text</source>
         <translation>Formatted text</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+1"/>
         <source>Markdown source</source>
         <translation>Markdown source</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+1"/>
         <source>Plain text</source>
         <translation>Plain text</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+234"/>
         <source>Undo</source>
         <translation>Undo</translation>
     </message>
@@ -3755,27 +3755,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Heading</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="-259"/>
         <source>Heading 1</source>
         <translation>Heading 1</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>Heading 2</source>
         <translation>Heading 2</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>Heading 3</source>
         <translation>Heading 3</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>Normal text</source>
         <translation>Normal text</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+281"/>
         <source>Bulleted list</source>
         <translation>Bulleted list</translation>
     </message>
@@ -3810,32 +3810,32 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Insert table (Tab moves between cells)</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="-306"/>
         <source>%1 × %2</source>
         <translation>%1 × %2</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location line="+348"/>
         <source>Insert horizontal rule</source>
         <translation>Insert horizontal rule</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+16"/>
         <source>Insert link</source>
         <translation>Insert link</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Remove link</source>
         <translation>Remove link</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Mention someone</source>
         <translation>Mention someone</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+13"/>
         <source>Check spelling</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3845,7 +3845,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear formatting</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+13"/>
+        <source>More formatting options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
         <source>Close</source>
         <translation>Close</translation>
     </message>
@@ -4110,7 +4115,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+166"/>
+        <location filename="../src/simpleimageeditor.cpp" line="+176"/>
         <source>Rotate</source>
         <translation>Rotate</translation>
     </message>
