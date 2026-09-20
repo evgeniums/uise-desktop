@@ -72,6 +72,18 @@ class UISE_DESKTOP_EXPORT HTreeListWidget : public WidgetQFrame
         int defaultMaxItemWidth() const noexcept;
 
         void setLayoutFrame(QWidget* frame, QVBoxLayout* layout=nullptr);
+
+        /**
+         * @brief Get the widget that setContentWidgets() will place its widgets into.
+         *
+         * Creates the default layout frame if none was set yet. Build the list view and the
+         * top/bottom widgets with THIS as their parent: setContentWidgets() then adds them to a
+         * layout of their own parent, which Qt treats as a no-op. Building them under the list
+         * widget instead makes setContentWidgets() reparent every finished subtree, and with an
+         * app-wide stylesheet each reparent re-polishes all of its descendants.
+         */
+        QWidget* contentParentWidget();
+
         void setContentWidgets(QWidget* listView, QWidget* topWidget=nullptr, QWidget* bottomWidget=nullptr);
 
         void showError(const QString& message, const QString& title={});
