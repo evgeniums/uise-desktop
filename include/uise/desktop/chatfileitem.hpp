@@ -102,11 +102,16 @@ enum class ChatFileMenuAction
                       //!< the host side -- NotLoaded has no transfer to resume, so labelling
                       //!< it "Resume"/"Retry" would misdescribe it the same way those two
                       //!< already avoid misdescribing each other (see buildChatFileMenuItems()).
-    CopyImage=11      //!< image tiles only (imageItem==true) -- puts the item's own image bytes
+    CopyImage=11,     //!< image tiles only (imageItem==true) -- puts the item's own image bytes
                       //!< on the clipboard, same host-side pattern as an image VIEWER's own
                       //!< Copy action (ChatImageViewerControls::MenuAction::Copy). Never offered
                       //!< for a plain file row, nor for an image sent as a document -- see
                       //!< buildChatFileMenuItems()'s own imageItem gate.
+    Play=12,          //!< audio items only (ChatFileItem::isAudio()), while not playing -- the
+                      //!< audio counterpart of Open: play it in the app's own player. The default
+                      //!< policy offers it INSTEAD of Open for an audio item.
+    Stop=13           //!< audio items only, while ChatFileItem::isPlaying() -- takes Play's place
+                      //!< in the menu for as long as that item is the one playing.
 };
 
 /**
@@ -175,6 +180,16 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         bool isImage() const
         {
             return mimeType().startsWith(QStringLiteral("image/"));
+        }
+
+        /**
+         * @brief Check if this item is audio: a voice message, or anything whose mimeType() is
+         *  "audio/...". Decides whether the menu offers Play/Stop (see buildChatFileMenuItems())
+         *  and, for a plain audio file, whether the row gets a play glyph.
+         */
+        bool isAudio() const
+        {
+            return m_voice || mimeType().startsWith(QStringLiteral("audio/"));
         }
 
         qint64 size() const noexcept
@@ -295,6 +310,86 @@ class UISE_DESKTOP_EXPORT ChatFileItem
             m_animatedFormat=std::move(format);
         }
 
+        /**
+         * @brief Whether this file is a voice message rather than an ordinary attachment.
+         *
+         * Set explicitly by the host from the message's own metadata; it is NOT sniffed from the
+         * file, because a voice message is an ordinary file message with a discriminator (see
+         * task-voice-messages-plan.md, decision 3). A voice item is always isAudio().
+         *
+         * Held here, next to the image metadata above, rather than on the row: rows are rebuilt
+         * from these items on every setItems(), so anything pushed onto a row directly would be
+         * lost at the next refresh.
+         */
+        bool isVoice() const noexcept
+        {
+            return m_voice;
+        }
+
+        void setVoice(bool enable) noexcept
+        {
+            m_voice=enable;
+        }
+
+        /**
+         * @brief The voice message's waveform: one byte 0..255 per bar, 100 bytes as recorded.
+         *
+         * Comes with the message metadata, so the row can draw its shape before any audio has
+         * downloaded. Empty draws placeholder bars.
+         */
+        QByteArray voiceWaveform() const
+        {
+            return m_voiceWaveform;
+        }
+
+        void setVoiceWaveform(QByteArray waveform)
+        {
+            m_voiceWaveform=std::move(waveform);
+        }
+
+        //! The voice message's length in milliseconds, from the message metadata.
+        quint32 voiceDurationMs() const noexcept
+        {
+            return m_voiceDurationMs;
+        }
+
+        void setVoiceDurationMs(quint32 ms) noexcept
+        {
+            m_voiceDurationMs=ms;
+        }
+
+        /**
+         * @brief Whether the peer has listened to this voice message: drawn as a filled circle
+         *  to the left of the duration and size. A plain bool the host feeds; how the host learns
+         *  it is not this library's business.
+         */
+        bool isListenedByPeer() const noexcept
+        {
+            return m_listenedByPeer;
+        }
+
+        void setListenedByPeer(bool enable) noexcept
+        {
+            m_listenedByPeer=enable;
+        }
+
+        /**
+         * @brief Whether this item is the one being played right now.
+         *
+         * Only decides between Play and Stop in the menu and the row's Play/Pause glyph; the
+         * moving position goes through AbstractChatMessageFiles::setPlaybackProgress(), which
+         * does not rebuild the row.
+         */
+        bool isPlaying() const noexcept
+        {
+            return m_playing;
+        }
+
+        void setPlaying(bool enable) noexcept
+        {
+            m_playing=enable;
+        }
+
         ChatFileTransferState state() const noexcept
         {
             return m_state;
@@ -387,6 +482,11 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         ChatFileTransferState m_state=ChatFileTransferState::Ready;
         qint64 m_transferred=0;
         bool m_showInFolderAvailable=false;
+        bool m_voice=false;
+        QByteArray m_voiceWaveform;
+        quint32 m_voiceDurationMs=0;
+        bool m_listenedByPeer=false;
+        bool m_playing=false;
         std::vector<ChatFileMenuAction> m_menuActions;
 };
 
@@ -439,7 +539,12 @@ UISE_DESKTOP_EXPORT bool isChatFileLoadControlClickable(ChatFileTransferState st
  * @param context Widget the icons will be painted in (for theme/mode resolution).
  * @return Rows built from item.menuActions() if non-empty (verbatim, in that order), else the
  *  default policy -- see ChatFileItem::setMenuActions(). ChatFileMenuAction::Pause/Resume are
- *  additionally filtered by item.state() so at most one of the pair is ever included.
+ *  additionally filtered by item.state() so at most one of the pair is ever included, and
+ *  Play/Stop by item.isPlaying().
+ *
+ *  The default policy for an audio item (ChatFileItem::isAudio()) puts Play (or Stop, while it is
+ *  playing) where Open would be, and keeps "Open in system app" -- except for a voice message,
+ *  which is Ogg Opus, a format the operating system's default application rarely plays.
  */
 UISE_DESKTOP_EXPORT std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context);
 

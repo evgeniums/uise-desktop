@@ -48,6 +48,7 @@ class IconTextButton;
 class MessageEditorToolbar;
 class AbstractReactionIconPack;
 class FloatingEmojiGalleryDialog;
+class FloatingVoiceRecorderDialog;
 
 //! Paints blockquotes and code blocks without writing to the document -- defined privately in
 //! messageeditor.cpp, since nothing outside the editor has any reason to construct one. See
@@ -1004,6 +1005,12 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! hidden in the ctor, see AbstractMessageEditor::emojiButtonVisible), never nullptr.
         IconTextButton* emojiButton() const;
 
+        /**
+         * @brief The microphone button on the right of the text area -- always present (built
+         *  hidden in the ctor, see AbstractMessageEditor::micButtonVisible), never nullptr.
+         */
+        IconTextButton* micButton() const;
+
         //! The embedded EnhancedTextEdit, for host-side tweaks this interface does not expose
         //! (e.g. FileUploadWidget's own max-height clamp).
         EnhancedTextEdit* textEdit() const;
@@ -1144,6 +1151,10 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! @copydoc AbstractMessageEditor::closeEmojiGallery()
         void closeEmojiGallery() override;
 
+        bool isVoiceRecorderOpen() const override;
+        AbstractVoiceRecorderDialog* voiceRecorder() const override;
+        void closeVoiceRecorder() override;
+
         //! @copydoc AbstractMessageEditor::setEmojiRecentIds()
         void setEmojiRecentIds(QStringList ids) override;
         QStringList emojiRecentIds() const override;
@@ -1210,6 +1221,10 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! Gap in pixels between the top of the emoji button and the bottom of the gallery it
         //! opens, so the picker does not sit flush against the control that spawned it.
         constexpr static const int EmojiGalleryGap=4;
+
+        //! Gap between the top of the microphone button and the bottom of the recorder popup,
+        //! the recorder's counterpart of EmojiGalleryGap.
+        constexpr static const int VoiceRecorderGap=4;
 
         /**
          * @brief How long the pointer must REST on the emoji button before hovering opens the
@@ -1304,6 +1319,7 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         void updateExpandButtonVisible() override;
         void updateMentionButtonVisible() override;
         void updateEmojiButtonVisible() override;
+        void updateMicButton() override;
         void updateEmojiShortcodeAutoReplace() override;
 
         //! Closes the emoji gallery when this editor is hidden -- a floating top-level picker
@@ -1357,6 +1373,32 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! updateEmojiButtonVisible() and updateMessageEditingMode(), the two things that can
         //! change either half of that.
         void applyEmojiButtonVisibility();
+
+        //! The mic button is shown when the property and the run-time switch allow it AND the
+        //! document is empty -- with text in the editor Send is what the user needs. Called from
+        //! updateMicButton() and from every content change.
+        void applyMicButtonVisibility();
+
+        //! Build the recorder popup for this editor, once. Parented to the top-level window like
+        //! the emoji gallery; unlike it, not shared between editors -- what a recording is
+        //! belongs to one composer.
+        FloatingVoiceRecorderDialog* ensureVoiceRecorder();
+
+        //! The press on the mic button: pop the recorder up above it, in Held.
+        void openVoiceRecorder();
+
+        //! The popup went, for whatever reason.
+        void onVoiceRecorderClosed();
+
+        //! Handles the mouse events of the mic button, which are all taken here: the press opens
+        //! the recorder, the moves and the release are forwarded to it. Returns true if consumed.
+        bool handleMicButtonEvent(QEvent* event);
+
+        //! A small mic icon that follows the pointer while the button is held, so the user sees
+        //! what is being dragged onto the popup's areas.
+        void showMicDragProxy(const QPoint& globalPos);
+        void moveMicDragProxy(const QPoint& globalPos);
+        void hideMicDragProxy();
 
         //! isEmojiShortcodeAutoReplaceEnabled() AND a mode that can actually express an emoji --
         //! same shape as applyEmojiButtonVisibility() just above, called from both

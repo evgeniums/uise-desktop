@@ -1,0 +1,19 @@
+{
+    "contexts" : [
+        {
+            "name" : "VoiceRecorder",
+            "aliases" : {
+                "pause"  : "${uise-svg-icons-1}/player-pause",
+                "resume" : "${uise-svg-icons-1}/player-record",
+                "listen" : "${uise-svg-icons-1}/player-play",
+                "send"   : "${uise-svg-icons-1}/send"
+            }
+        },
+        {
+            "name" : "VoiceRecorderDanger",
+            "aliases" : {
+                "cancel" : "${uise-svg-icons-1}/trash"
+            }
+        }
+    ]
+}

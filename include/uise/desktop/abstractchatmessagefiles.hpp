@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_ABSTRACTCHATMESSAGEFILES_HPP
 
 #include <functional>
+#include <tuple>
 
 #include <QUuid>
 #include <QList>
@@ -118,6 +119,23 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          * A no-op if no item with this id is present.
          */
         virtual void updateItem(const QUuid& id, const ChatFileItem& item) =0;
+
+        /**
+         * @brief Show the playback position of one audio item, without rebuilding its row.
+         * @param id Id of the item that is playing (see ChatFileItem::id()).
+         * @param fraction Position as a fraction of the whole, 0..1.
+         *
+         * For a host that plays audio: it calls this on every position tick, which is far too
+         * often for updateItem() -- that refreshes the whole row. Rows that show progress (the
+         * voice message row) move their bar; the others ignore it. Whether the item is playing at
+         * all goes through updateItem() and ChatFileItem::setPlaying(). A no-op if no item with
+         * this id is present, and by default for an implementation with nothing to show.
+         */
+        virtual void setPlaybackProgress(const QUuid& id, qreal fraction)
+        {
+            std::ignore=id;
+            std::ignore=fraction;
+        }
 
         virtual void setComment(const QString& text, TextFormat format=TextFormat::Markdown) =0;
         virtual void clearComment() =0;
@@ -214,6 +232,27 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
          *  actually offers the menu row that reaches this signal.
          */
         void copyImageRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted for ChatFileMenuAction::Play, and by an audio row's own play button --
+         *  play this item in the app's player. Only ever emitted for an audio item, see
+         *  ChatFileItem::isAudio().
+         */
+        void playRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted for ChatFileMenuAction::Stop, and by an audio row's play button while
+         *  its item is playing -- stop it. Only for an item the host marked with
+         *  ChatFileItem::setPlaying().
+         */
+        void stopRequested(const QUuid& id);
+
+        /**
+         * @brief Emitted when the user let go of an audio row's seek bar (the voice message row).
+         * @param fraction Where, 0..1 of the whole. Only this body has it: an image tile has no
+         *  seek bar, so unlike playRequested() it is not declared on AbstractChatMessageImages.
+         */
+        void seekRequested(const QUuid& id, qreal fraction);
 };
 
 }

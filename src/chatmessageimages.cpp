@@ -421,6 +421,13 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                         case (ChatFileMenuAction::CopyImage):
                             emit copyImageRequested(id);
                             break;
+
+                        case (ChatFileMenuAction::Play):
+                        case (ChatFileMenuAction::Stop):
+                            // Unreachable for an image tile -- buildChatFileMenuItems()'s
+                            // imageItem gate never offers them here. Present only so this
+                            // switch stays exhaustive.
+                            break;
                     }
                 }
             );

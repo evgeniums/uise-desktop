@@ -48,9 +48,12 @@ ADD_SUBDIRECTORY(forwardpreview)
 ADD_SUBDIRECTORY(editbar)
 ADD_SUBDIRECTORY(messageformatting)
 ADD_SUBDIRECTORY(chatreactions)
+ADD_SUBDIRECTORY(waveformbar)
+ADD_SUBDIRECTORY(voicerecorder)
 
 IF (UISE_DESKTOP_MULTIMEDIA)
     ADD_SUBDIRECTORY(qrcodescanner)
+    ADD_SUBDIRECTORY(audioplayer)
 ENDIF()
 
 # Generate the compiled-in demo registry (priority|title|executable|description

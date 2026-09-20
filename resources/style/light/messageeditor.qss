@@ -54,3 +54,8 @@ uise--MessageEditor #leadingWidgets uise--IconTextButton[checked="true"],
 uise--MessageEditor #trailingWidgets uise--IconTextButton[checked="true"] {
 background-color: #DCE8F5;
 }
+
+/* held mic button -- the pale blue of the waveform and the typing indicator */
+uise--MessageEditor #micButton[checked="true"] {
+background-color: #b3d1f0;
+}

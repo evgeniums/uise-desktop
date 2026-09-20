@@ -50,6 +50,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QUrl>
 #include <QCursor>
 #include <QEvent>
+#include <QLabel>
+#include <QMouseEvent>
 #include <QRegularExpression>
 #include <QMimeData>
 #include <QApplication>
@@ -77,6 +79,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/chatreaction.hpp>
 #include <uise/desktop/reactioniconpack.hpp>
 #include <uise/desktop/emojigallerydialog.hpp>
+#include <uise/desktop/voicerecorderdialog.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
@@ -3987,6 +3991,28 @@ class MessageEditor_p
         //! Consecutive emojiHoverCloseTimer ticks with the pointer over neither.
         int emojiAwayTicks=0;
 
+        //! The microphone button, right after the emoji button in the trailing group.
+        IconTextButton* micButton=nullptr;
+
+        //! The recorder popup THIS editor has: built on the first press and then KEPT (closed, not
+        //! destroyed). Not shared between the editors of a window as the emoji gallery is -- what
+        //! a recording is belongs to one composer.
+        QPointer<FloatingVoiceRecorderDialog> voiceDialog;
+
+        //! Authoritative "is the recorder up". Stays true through the popup's fade-out, until the
+        //! frame's closed() has run -- see onVoiceRecorderClosed().
+        bool voiceOpen=false;
+
+        //! The mouse button is down on the mic button: the press opened the popup and the release
+        //! has not come yet.
+        bool micHeld=false;
+
+        //! Whether the text area was enabled when the popup came up, which disables it.
+        bool editorWasEnabled=true;
+
+        //! The icon that follows the pointer while the mic button is held.
+        QPointer<QLabel> micDragProxy;
+
         //! The placeholder the HOST asked for, which is not always the one the text edit currently
         //! carries -- see MessageEditor::updatePlaceHolderText(), which suppresses it while the
         //! empty block has block formatting of its own to show.
@@ -4145,6 +4171,33 @@ MessageEditor::MessageEditor(QWidget* parent)
     pimpl->emojiButton->setVisible(false);
     pimpl->trailingLayout->insertWidget(0,pimpl->emojiButton);
 
+    // --- microphone button: right after the emoji button, built hidden for the same reason. It
+    // is the trailing group's press-and-hold control, so all of its mouse events are taken by
+    // handleMicButtonEvent() from the event filter, and none reach IconTextButton -- which would
+    // otherwise turn the release into a click and toggle its checked state.
+    pimpl->micButton=new IconTextButton(
+        Style::instance().svgIconLocator().icon(QStringLiteral("MessageEditor::microphone"),this),
+        this,
+        IconTextButton::IconPosition::BeforeText
+    );
+    pimpl->micButton->setObjectName("micButton");
+    pimpl->micButton->setText(QString());
+    pimpl->micButton->setCursor(Qt::PointingHandCursor);
+    // Same rule as every button here: a press must not move focus out of the text edit.
+    pimpl->micButton->setFocusPolicy(Qt::NoFocus);
+    pimpl->micButton->setToolTip(tr("Hold to record a voice message"));
+    // Checked for exactly as long as it is held: that is what the stylesheet colours it by, and
+    // the icon takes its "on" mode.
+    pimpl->micButton->setCheckable(true);
+    pimpl->micButton->setVisible(false);
+    // No ripple here, being held is highlight enough.
+    if (auto* ripple=pimpl->micButton->rippleOverlay())
+    {
+        ripple->setRippleEnabled(false);
+    }
+    pimpl->micButton->installEventFilter(this);
+    pimpl->trailingLayout->insertWidget(1,pimpl->micButton);
+
     // Hover-to-open: the pointer has to REST on the button, see EmojiHoverOpenDelayMs.
     pimpl->emojiHoverOpenTimer=new QTimer(this);
     pimpl->emojiHoverOpenTimer->setSingleShot(true);
@@ -4156,7 +4209,7 @@ MessageEditor::MessageEditor(QWidget* parent)
             // have been hidden by a mode switch, or a click may have pinned the gallery already
             // during the delay.
             if (pimpl->emojiDialogOpen || !pimpl->emojiButton->isVisible()
-                || !isCursorOverEmojiUi())
+                || !pimpl->emojiButton->isEnabled() || !isCursorOverEmojiUi())
             {
                 return;
             }
@@ -4370,6 +4423,8 @@ MessageEditor::MessageEditor(QWidget* parent)
             // fires for "turn the empty block into a list item", which is precisely the case the
             // placeholder has to react to. See updatePlaceHolderText().
             updatePlaceHolderText();
+            // Send takes the mic button's place as soon as there is something to send.
+            applyMicButtonVisibility();
             emit textChanged();
         }
     );
@@ -4473,6 +4528,11 @@ MessageEditor::MessageEditor(QWidget* parent)
 
 MessageEditor::~MessageEditor()
 {
+    // parentless, so nothing else would delete it
+    if (!pimpl->micDragProxy.isNull())
+    {
+        delete pimpl->micDragProxy.data();
+    }
     if (!pimpl->contextMenu.isNull())
     {
         pimpl->contextMenu->closeDropdown(true);
@@ -7021,6 +7081,11 @@ void MessageEditor::pinEmojiGallery()
 
 bool MessageEditor::eventFilter(QObject* watched, QEvent* event)
 {
+    if (watched==pimpl->micButton && handleMicButtonEvent(event))
+    {
+        return true;
+    }
+
     if (watched==pimpl->emojiButton)
     {
         switch (event->type())
@@ -7030,7 +7095,11 @@ bool MessageEditor::eventFilter(QObject* watched, QEvent* event)
                 // Only when the button is UNCHECKED, per the feature's own rule -- an already
                 // pinned gallery is not re-opened, and a hovered one simply stays up (the poll
                 // sees the pointer over the button and keeps resetting its away count).
-                if (!pimpl->emojiDialogOpen && pimpl->emojiButton->isVisible())
+                // A disabled widget still receives Enter and Leave, so the recorder's pinned
+                // state, which disables this button, has to be checked here or a hover would
+                // open the gallery over the recorder.
+                if (!pimpl->emojiDialogOpen && pimpl->emojiButton->isVisible()
+                    && pimpl->emojiButton->isEnabled())
                 {
                     pimpl->emojiHoverOpenTimer->start();
                 }
@@ -7337,6 +7406,13 @@ void MessageEditor::warmEmojiGallery()
 void MessageEditor::openEmojiGallery(bool pinned)
 {
     if (messageEditingMode()==MessageEditingMode::Plaintext)
+    {
+        return;
+    }
+
+    // Not while the recorder is up: two floating windows over one composer arm two Escape
+    // shortcuts, and the emoji button is disabled for the recorder's pinned state anyway.
+    if (pimpl->voiceOpen)
     {
         return;
     }
@@ -7658,12 +7734,375 @@ void MessageEditor::releaseEmojiGallery()
 
 //--------------------------------------------------------------------------
 
+IconTextButton* MessageEditor::micButton() const
+{
+    return pimpl->micButton;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applyMicButtonVisibility()
+{
+    const auto allowed=isMicButtonVisible()
+                       && isVoiceMessageEnabled()
+                       && pimpl->editor->document()->isEmpty();
+
+    // The document is empty for as long as the recorder is up (the text area is disabled), so
+    // this cannot take the button from under the finger that is holding it -- but be explicit
+    // about it, a hidden widget stops receiving the release that ends the gesture.
+    pimpl->micButton->setVisible(allowed || pimpl->micHeld);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::updateMicButton()
+{
+    applyMicButtonVisibility();
+    if (!isMicButtonVisible() || !isVoiceMessageEnabled())
+    {
+        // Turning voice messages off must not strand a popup with nothing left to have opened it.
+        closeVoiceRecorder();
+    }
+    Layout::activateUpward(this);
+}
+
+//--------------------------------------------------------------------------
+
+FloatingVoiceRecorderDialog* MessageEditor::ensureVoiceRecorder()
+{
+    if (!pimpl->voiceDialog.isNull())
+    {
+        return pimpl->voiceDialog.data();
+    }
+
+    // Built at the press, not ahead of it: only then is this editor certainly in its real window,
+    // which is what the popup is parented to. It is a top-level itself, so the parent is only
+    // Qt ownership and the window it centres on.
+    auto* win=window();
+    if (win==nullptr)
+    {
+        return nullptr;
+    }
+
+    auto* frame=new FloatingVoiceRecorderDialog(win);
+    frame->openDialog(false,false);
+    if (frame->dialog().isNull())
+    {
+        frame->deleteLater();
+        return nullptr;
+    }
+    pimpl->voiceDialog=frame;
+
+    // Send and Cancel end the recording, so the popup goes with them. But not before the host has
+    // heard of it: the host connected its own slots to these two signals after this one, when
+    // voiceRecorderOpened() was emitted, and it must see sendRequested() BEFORE the closed()
+    // that follows, or it would take a sent message for an abandoned one. Hence the extra turn of
+    // the event loop.
+    QPointer<MessageEditor> self=this;
+    auto closeLater=[self]()
+    {
+        QTimer::singleShot(0,self.data(),
+            [self]()
+            {
+                if (!self.isNull())
+                {
+                    self->closeVoiceRecorder();
+                }
+            }
+        );
+    };
+    // Once pinned the recording no longer depends on the mouse being held, so the buttons that
+    // open something over the composer must not do it: pressing the mic again would start a second
+    // recording over the first, and the emoji gallery would be a second floating window. Both stay
+    // disabled until the popup closes, through Paused and Listening too -- see onVoiceRecorderClosed().
+    connect(frame->dialog(),&AbstractVoiceRecorderDialog::pinned,this,
+        [this]()
+        {
+            pimpl->micButton->setEnabled(false);
+            pimpl->emojiButton->setEnabled(false);
+        }
+    );
+    connect(frame->dialog(),&AbstractVoiceRecorderDialog::sendRequested,this,closeLater);
+    connect(frame->dialog(),&AbstractVoiceRecorderDialog::cancelRequested,this,closeLater);
+
+    // Every way the popup goes ends here: Send, Cancel, Escape and the title bar's close in
+    // Paused, closeVoiceRecorder(), the editor being hidden.
+    connect(frame,&FloatingDialogFrame::closed,this,&MessageEditor::onVoiceRecorderClosed);
+
+    return frame;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::openVoiceRecorder()
+{
+    if (pimpl->voiceOpen)
+    {
+        return;
+    }
+
+    auto* frame=ensureVoiceRecorder();
+    if (frame==nullptr || frame->dialog().isNull())
+    {
+        return;
+    }
+
+    // Two floating windows over one composer would arm two Escape shortcuts in the same window,
+    // and Escape would then close neither -- see FloatingDialogFrame. Not a dismissal the user
+    // asked for, so the emoji gallery's pin is remembered.
+    closeEmojiGalleryInternal(false);
+
+    auto dialog=frame->dialog();
+
+    // The popup is kept between recordings, so it starts from scratch
+    dialog->setState(AbstractVoiceRecorderDialog::State::Held);
+    dialog->setElapsedMs(0);
+    dialog->setPlaybackMs(0);
+    dialog->setWaveform(QByteArray());
+    dialog->setCropRange(0.0,1.0);
+    dialog->setComment(QString());
+
+    // Bottom-right corner of the popup onto the top-right corner of the button, so it unfolds
+    // upward and to the LEFT. The mic button sits at the right edge of the composer, so growing to
+    // the left keeps the popup over the composer rather than hanging off the window, and its right
+    // edge stays lined up with the button as it grows from Held to Paused. The two-argument popupAt()
+    // keeps it on the screen and re-applies the anchor whenever the popup resizes.
+    //
+    // QRect::topRight() is the last pixel column, one short of the button's right edge, hence the width.
+    const auto anchor=pimpl->micButton->mapToGlobal(QPoint(pimpl->micButton->width(),0))
+                      -QPoint(0,VoiceRecorderGap);
+    frame->popupAt(anchor,Qt::BottomRightCorner);
+
+    pimpl->voiceOpen=true;
+
+    // The composer is not for typing while a message is being recorded. Held, the pointer is on
+    // the mic button anyway, but Pinned it is free to wander onto the text area.
+    pimpl->editorWasEnabled=pimpl->editor->isEnabled();
+    pimpl->editor->setEnabled(false);
+
+    emit voiceRecorderOpened(dialog.data());
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onVoiceRecorderClosed()
+{
+    const auto wasOpen=pimpl->voiceOpen;
+    pimpl->voiceOpen=false;
+
+    // A popup that went while the button was still down (closeVoiceRecorder(), a hide) ends the
+    // gesture too: the release that is still to come has nothing to act on.
+    pimpl->micHeld=false;
+    pimpl->micButton->setChecked(false);
+    hideMicDragProxy();
+
+    // the pinned state disabled both, see ensureVoiceRecorder()
+    pimpl->micButton->setEnabled(true);
+    pimpl->emojiButton->setEnabled(true);
+
+    if (!wasOpen)
+    {
+        return;
+    }
+
+    pimpl->editor->setEnabled(pimpl->editorWasEnabled);
+    applyMicButtonVisibility();
+    restoreEditorFocus();
+
+    emit voiceRecorderClosed();
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isVoiceRecorderOpen() const
+{
+    return pimpl->voiceOpen;
+}
+
+//--------------------------------------------------------------------------
+
+AbstractVoiceRecorderDialog* MessageEditor::voiceRecorder() const
+{
+    if (!pimpl->voiceOpen || pimpl->voiceDialog.isNull())
+    {
+        return nullptr;
+    }
+    return pimpl->voiceDialog->dialog().data();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::closeVoiceRecorder()
+{
+    if (!pimpl->voiceOpen || pimpl->voiceDialog.isNull())
+    {
+        return;
+    }
+
+    // A programmatic close: FloatingDialogFrame refuses only what it does on the user's behalf
+    // (Escape, the outside click), so this works on a dialog that is not closable while recording.
+    // It is asynchronous behind the frame's fade; onVoiceRecorderClosed() finishes the job.
+    pimpl->voiceDialog->close(false);
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::handleMicButtonEvent(QEvent* event)
+{
+    switch (event->type())
+    {
+        case (QEvent::MouseButtonPress):
+        case (QEvent::MouseButtonDblClick):
+        {
+            auto* mouseEvent=static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button()!=Qt::LeftButton)
+            {
+                return false;
+            }
+
+            // Taken even when there is nothing to do, so a disabled feature does not fall through
+            // to IconTextButton and become a click on a button that is not there to be clicked.
+            if (!isVoiceMessageEnabled() || pimpl->micHeld)
+            {
+                return true;
+            }
+
+            pimpl->micHeld=true;
+            pimpl->micButton->setChecked(true);
+            openVoiceRecorder();
+            if (!pimpl->voiceOpen)
+            {
+                pimpl->micHeld=false;
+                pimpl->micButton->setChecked(false);
+                return true;
+            }
+            showMicDragProxy(mouseEvent->globalPosition().toPoint());
+            return true;
+        }
+
+        case (QEvent::MouseMove):
+        {
+            if (!pimpl->micHeld)
+            {
+                return false;
+            }
+
+            // The button keeps the mouse for the whole gesture, so the popup never sees the
+            // pointer and is told where it is.
+            auto* mouseEvent=static_cast<QMouseEvent*>(event);
+            const auto pos=mouseEvent->globalPosition().toPoint();
+            moveMicDragProxy(pos);
+            if (auto* dialog=voiceRecorder())
+            {
+                dialog->pointerMoved(pos);
+            }
+            return true;
+        }
+
+        case (QEvent::MouseButtonRelease):
+        {
+            auto* mouseEvent=static_cast<QMouseEvent*>(event);
+            if (!pimpl->micHeld || mouseEvent->button()!=Qt::LeftButton)
+            {
+                return pimpl->micHeld;
+            }
+
+            pimpl->micHeld=false;
+            pimpl->micButton->setChecked(false);
+            hideMicDragProxy();
+
+            // Over "continue" the popup pins itself, over "cancel" it cancels, anywhere else it
+            // sends. What it decided, it reports through its own signals.
+            const auto releasePos=mouseEvent->globalPosition().toPoint();
+            if (auto* dialog=voiceRecorder())
+            {
+                dialog->pointerReleased(releasePos);
+            }
+
+            // The button had the mouse grabbed, so when it is let go over the popup -- another
+            // top-level window -- the button is never sent the Leave for the pointer having gone:
+            // Qt delivers it only once the pointer is next seen in the button's own window.
+            // IconTextButton clears its hovered look only in leaveEvent(), so it would stay lit.
+            // Send it by hand, and drop WA_UnderMouse, which the :hover pseudo-state reads.
+            if (!pimpl->micButton->rect().contains(pimpl->micButton->mapFromGlobal(releasePos)))
+            {
+                pimpl->micButton->setAttribute(Qt::WA_UnderMouse,false);
+                QEvent leave(QEvent::Leave);
+                QCoreApplication::sendEvent(pimpl->micButton,&leave);
+            }
+
+            applyMicButtonVisibility();
+            return true;
+        }
+
+        default:
+            break;
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::showMicDragProxy(const QPoint& globalPos)
+{
+    if (pimpl->micDragProxy.isNull())
+    {
+        // A top-level of its own, so it can follow the pointer over the recorder popup, which is
+        // another top-level. Transparent for input, or it would take the release from the button.
+        auto* proxy=new QLabel(nullptr,Qt::ToolTip | Qt::FramelessWindowHint
+                                       | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
+        proxy->setObjectName("micDragProxy");
+        proxy->setAttribute(Qt::WA_TranslucentBackground,true);
+        proxy->setAttribute(Qt::WA_ShowWithoutActivating,true);
+        pimpl->micDragProxy=proxy;
+    }
+
+    // the button as it looks now: held, so highlighted
+    pimpl->micDragProxy->setPixmap(pimpl->micButton->grab());
+    pimpl->micDragProxy->adjustSize();
+    moveMicDragProxy(globalPos);
+    pimpl->micDragProxy->show();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::moveMicDragProxy(const QPoint& globalPos)
+{
+    if (pimpl->micDragProxy.isNull())
+    {
+        return;
+    }
+    const auto size=pimpl->micDragProxy->size();
+    pimpl->micDragProxy->move(globalPos-QPoint(size.width()/2,size.height()/2));
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::hideMicDragProxy()
+{
+    if (pimpl->micDragProxy.isNull())
+    {
+        return;
+    }
+    pimpl->micDragProxy->hide();
+    // built afresh for the next press, it is small
+    pimpl->micDragProxy->deleteLater();
+    pimpl->micDragProxy=nullptr;
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::hideEvent(QHideEvent* event)
 {
     // Not a user dismissal -- the pin is remembered, and showEvent() re-opens (or, more often,
     // silently keeps) it. A composer being hidden is typically a chat page going into the cache,
     // not the user closing anything.
     releaseEmojiGallery();
+
+    // Unlike the emoji gallery nothing is remembered: a recording of a composer that has gone is
+    // not something to come back to. The host is told, and discards it.
+    closeVoiceRecorder();
+
     AbstractMessageEditor::hideEvent(event);
 }
 

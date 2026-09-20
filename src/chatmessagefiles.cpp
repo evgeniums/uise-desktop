@@ -153,6 +153,25 @@ void ChatMessageFiles::updateItem(const QUuid& id, const ChatFileItem& item)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageFiles::setPlaybackProgress(const QUuid& id, qreal fraction)
+{
+    // Same linear scan, and the same items/rows-only-in-step-after-rebuildList() guard, as
+    // updateItem() above.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        if (pimpl->items[i].id()==id)
+        {
+            if (i<pimpl->rows.size())
+            {
+                pimpl->rows[i]->setPlaybackProgress(fraction);
+            }
+            return;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFiles::rebuildList()
 {
     for (auto* row : pimpl->rows)
@@ -236,11 +255,23 @@ void ChatMessageFiles::rebuildList()
                         // imageItem gate never offers this action here. Present only so this
                         // switch stays exhaustive, same as ChatMessageImages' own relay below.
                         break;
+
+                    case (ChatFileMenuAction::Play):
+                        emit playRequested(id);
+                        break;
+
+                    case (ChatFileMenuAction::Stop):
+                        emit stopRequested(id);
+                        break;
                 }
             }
         );
         connect(row,&ChatMessageFileItem::pauseRequested,this,[this,id](){emit pauseRequested(id);});
         connect(row,&ChatMessageFileItem::cancelRequested,this,[this,id](){emit cancelRequested(id);});
+        // an audio row's own controls, fanned into the same signals as the menu's Play/Stop
+        connect(row,&ChatMessageFileItem::playRequested,this,[this,id](){emit playRequested(id);});
+        connect(row,&ChatMessageFileItem::stopRequested,this,[this,id](){emit stopRequested(id);});
+        connect(row,&ChatMessageFileItem::seekRequested,this,[this,id](qreal fraction){emit seekRequested(id,fraction);});
 
         pimpl->contentsLayout->addWidget(row);
         pimpl->rows.push_back(row);

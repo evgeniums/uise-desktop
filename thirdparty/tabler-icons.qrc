@@ -223,5 +223,7 @@
         <file>tabler-icons/outline/table.svg</file>
         <file>tabler-icons/outline/typography.svg</file>
         <file>tabler-icons/outline/underline.svg</file>
+        <file>tabler-icons/outline/player-record.svg</file>
+        <file>tabler-icons/outline/volume-off.svg</file>
     </qresource>
 </RCC>

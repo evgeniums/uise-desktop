@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(TestLoadUnderfilledStickEnd)
         ctx->testWidget->loadItems();
 
         QTimer::singleShot(FwlvTestContext::PlayStepPeriod,ctx->mainWindow,
-        [ctx]()
+        [ctx,underfilledCount]()
         {
             UISE_TEST_CHECK(!ctx->view->horizontalScrollBar()->isVisible());
             UISE_TEST_CHECK(!ctx->view->verticalScrollBar()->isVisible());

@@ -1,0 +1,77 @@
+/*
+ * AudioPlayerWidget -- layout and metrics (theme-neutral).
+ * Colours live in light/audioplayer.qss and dark/audioplayer.qss, icon colours in the
+ * light|dark audioplayer.json files.
+ */
+
+uise--AudioPlayerWidget {
+    padding: 6px 8px;
+}
+
+uise--AudioPlayerWidget #bottomRow {
+    margin-top: 4px;
+}
+
+uise--AudioPlayerWidget uise--IconTextButton uise--RoundedImage {
+    min-width: 20px;
+    max-width: 20px;
+    min-height: 20px;
+    max-height: 20px;
+}
+
+uise--AudioPlayerWidget #playButton uise--RoundedImage {
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    max-height: 26px;
+}
+
+uise--AudioPlayerWidget #topRow uise--IconTextButton {
+    margin-left: 4px;
+}
+
+uise--AudioPlayerWidget #bottomRow uise--IconTextButton {
+    margin-right: 4px;
+}
+
+uise--AudioPlayerWidget #speedButton {
+    padding: 0 4px;
+}
+
+uise--AudioPlayerWidget #positionLabel,
+uise--AudioPlayerWidget #durationLabel {
+    margin: 0 8px;
+    min-width: 32px;
+}
+
+/* the volume popup is a top-level frame, so it is reached by its own names */
+uise--DropdownFrame#volumeDropdown {
+    padding: 6px;
+    border: 1px solid;
+    border-radius: 6px;
+}
+
+#volumePopup {
+    padding: 4px 0;
+}
+
+#volumePopup #volumeSlider {
+    min-height: 88px;
+    min-width: 20px;
+}
+
+#volumePopup #volumeSlider::groove:vertical {
+    width: 4px;
+    border-radius: 2px;
+}
+
+#volumePopup #volumeSlider::sub-page:vertical {
+    border-radius: 2px;
+}
+
+#volumePopup #volumeSlider::handle:vertical {
+    height: 12px;
+    width: 12px;
+    margin: 0 -4px;
+    border-radius: 6px;
+}

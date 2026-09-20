@@ -66,6 +66,8 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
         const ChatFileItems& items() const override;
         void updateItem(const QUuid& id, const ChatFileItem& item) override;
 
+        void setPlaybackProgress(const QUuid& id, qreal fraction) override;
+
         void setComment(const QString& text, TextFormat format=TextFormat::Markdown) override;
         void clearComment() override;
         QString comment() const override;

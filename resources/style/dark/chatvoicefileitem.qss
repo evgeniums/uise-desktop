@@ -1,0 +1,13 @@
+/* ChatVoiceFileItem -- dark theme colours. The blues of the waveform and the typing indicator. */
+
+uise--ChatVoiceFileItem #playOverlay {
+    background-color: #3a6ea5;
+}
+
+uise--ChatVoiceFileItem #playOverlay:hover {
+    border-color: #8ec5ff;
+}
+
+uise--ChatVoiceFileItem #listenedDot {
+    background-color: #8ec5ff;
+}

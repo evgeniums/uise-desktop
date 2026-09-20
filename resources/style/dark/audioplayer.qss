@@ -1,0 +1,39 @@
+/* AudioPlayerWidget -- dark theme colours. Same blues as the typing indicator and the waveform. */
+
+uise--AudioPlayerWidget #titleLabel QLabel {
+    color: #CCCCCC;
+}
+
+uise--AudioPlayerWidget #titleLabel[clickable="true"] QLabel {
+    color: #8ec5ff;
+}
+
+uise--AudioPlayerWidget #positionLabel,
+uise--AudioPlayerWidget #durationLabel {
+    color: #CCCCCC;
+}
+
+uise--AudioPlayerWidget #speedButton #text {
+    color: #CCCCCC;
+}
+
+uise--AudioPlayerWidget #speedButton #text[hovered="true"] {
+    color: #8ec5ff;
+}
+
+uise--DropdownFrame#volumeDropdown {
+    background-color: #2B2B2B;
+    border-color: #444444;
+}
+
+#volumePopup #volumeSlider::groove:vertical {
+    background-color: #3a6ea5;
+}
+
+#volumePopup #volumeSlider::sub-page:vertical {
+    background-color: #8ec5ff;
+}
+
+#volumePopup #volumeSlider::handle:vertical {
+    background-color: #8ec5ff;
+}

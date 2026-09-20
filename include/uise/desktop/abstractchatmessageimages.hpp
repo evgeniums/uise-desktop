@@ -150,6 +150,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
          *  for why this is declared on both abstract bases.
          */
         void copyImageRequested(const QUuid& id);
+
+        /**
+         * @brief Declared for the same reason as copyImageRequested()'s twin on
+         *  AbstractChatMessageFiles: so one connect template serves both bodies. An image tile
+         *  never offers Play or Stop, so nothing emits this.
+         */
+        void playRequested(const QUuid& id);
+
+        //! See playRequested().
+        void stopRequested(const QUuid& id);
 };
 
 }

@@ -37,6 +37,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/messageeditingmode.hpp>
 #include <uise/desktop/frame.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/abstractvoicerecorderdialog.hpp>
 
 class QMimeData;
 
@@ -231,6 +232,16 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     Q_PROPERTY(bool emojiShortcodeAutoReplaceEnabled
                READ isEmojiShortcodeAutoReplaceEnabled
                WRITE setEmojiShortcodeAutoReplaceEnabled)
+
+    //! QSS: qproperty-micButtonVisible: true; -- whether the composer OFFERS a microphone button
+    //! for voice messages at all, on the right of the text area next to the emoji button. Default
+    //! FALSE, for the reason emojiButtonVisible is: an existing composer must render exactly as
+    //! it did before this property existed until it opts in.
+    //!
+    //! Even when true the button is shown only while the document is EMPTY -- once there is text,
+    //! the host's Send button is what the user needs -- and only while voice messages are enabled,
+    //! see setVoiceMessageEnabled(). The button is press-and-hold: see voiceRecorderOpened().
+    Q_PROPERTY(bool micButtonVisible READ isMicButtonVisible WRITE setMicButtonVisible)
 
     //! QSS: qproperty-spellCheckButtonVisible: true; -- whether the toolbar's Check-spelling
     //! button is shown at all (task-spellcheck.md). Default FALSE, same reasoning as
@@ -474,6 +485,63 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! own only for the things it can see itself: being hidden, and a switch to
         //! MessageEditingMode::Plaintext.
         virtual void closeEmojiGallery() {}
+
+        //! Offer (or stop offering) the microphone button. See the micButtonVisible property.
+        void setMicButtonVisible(bool enable)
+        {
+            m_micButtonVisible=enable;
+            updateMicButton();
+        }
+
+        bool isMicButtonVisible() const noexcept
+        {
+            return m_micButtonVisible;
+        }
+
+        /**
+         * @brief Switch voice messages on or off at run time. Default true.
+         *
+         * micButtonVisible says whether this composer is a place for voice messages; this says
+         * whether they can be recorded right now. A host turns it off while the account cannot
+         * record (no microphone permission, offline, an edit in progress) without touching the
+         * stylesheet-driven property. The button is shown only while both are true and the
+         * document is empty.
+         */
+        void setVoiceMessageEnabled(bool enable)
+        {
+            m_voiceMessageEnabled=enable;
+            updateMicButton();
+        }
+
+        bool isVoiceMessageEnabled() const noexcept
+        {
+            return m_voiceMessageEnabled;
+        }
+
+        //! Whether the voice recorder popup is up.
+        virtual bool isVoiceRecorderOpen() const
+        {
+            return false;
+        }
+
+        /**
+         * @brief The recorder popup while it is up, else nullptr.
+         *
+         * Also handed out by voiceRecorderOpened(). The host connects to its signals to learn what
+         * the user asks for, and feeds it the length, the waveform and the playback position.
+         */
+        virtual AbstractVoiceRecorderDialog* voiceRecorder() const
+        {
+            return nullptr;
+        }
+
+        /**
+         * @brief Close the recorder popup if it is up.
+         *
+         * Like closeEmojiGallery(), for what the editor cannot see itself: a chat page going
+         * inactive. It closes the popup on its own when it is hidden. Emits voiceRecorderClosed().
+         */
+        virtual void closeVoiceRecorder() {}
 
         //! Show/hide the context menu's "Mention someone" row. See the mentionMenuItemVisible
         //! property. A plain setter with no update hook, unlike setMentionButtonVisible() above:
@@ -970,6 +1038,30 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! already knows straight back at it.
         void emojiGalleryPinnedChanged(bool pinned);
 
+        /**
+         * @brief The user pressed the microphone button and the recorder popup came up.
+         * @param dialog The popup, valid until voiceRecorderClosed(). It is KEPT between recordings
+         *  and handed out again by every press, so a host that connects to it here must
+         *  disconnect in voiceRecorderClosed() (or connect only the first time it sees the pointer),
+         *  or the second recording connects everything a second time.
+         *
+         * The host's cue to start recording and to connect to `dialog`. The editor has already put
+         * the dialog in AbstractVoiceRecorderDialog::State::Held, disabled its own text area, and
+         * closes the popup itself on the dialog's sendRequested() and cancelRequested(), after
+         * the host's slots for them have run.
+         */
+        void voiceRecorderOpened(UISE_DESKTOP_NAMESPACE::AbstractVoiceRecorderDialog* dialog);
+
+        /**
+         * @brief The recorder popup has gone, for whatever reason: after Send or Cancel, by
+         *  Escape or the title bar's close in Paused, or because the editor was hidden or
+         *  closeVoiceRecorder() was called.
+         *
+         * The host tells a send from a cancel by the dialog's own signal, which came first; this
+         * one always follows. Whatever is still being recorded at this point is to be discarded.
+         */
+        void voiceRecorderClosed();
+
     protected:
 
         //! Called by the implementation when the content crosses the one-line boundary (or
@@ -1028,6 +1120,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! the same recomputation rather than being handled as two separate cases.
         virtual void updateEmojiShortcodeAutoReplace() {}
 
+        //! Reacts to setMicButtonVisible() and setVoiceMessageEnabled().
+        virtual void updateMicButton() {}
+
         //! Reacts to setSpellCheckButtonVisible().
         virtual void updateSpellCheckButtonVisible() {}
 
@@ -1052,6 +1147,8 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool m_mentionMenuItemVisible=false;
         bool m_emojiButtonVisible=false;
         bool m_emojiShortcodeAutoReplaceEnabled=false;
+        bool m_micButtonVisible=false;
+        bool m_voiceMessageEnabled=true;
         bool m_spellCheckButtonVisible=false;
         bool m_spellCheckMenuItemVisible=false;
         bool m_spellCheckEnabled=true;

@@ -63,6 +63,7 @@ SET (HEADERS
     include/uise/desktop/utils/datetime.hpp
     include/uise/desktop/utils/filesizeformat.hpp
     include/uise/desktop/utils/filetypeicon.hpp
+    include/uise/desktop/utils/audiotime.hpp
     include/uise/desktop/utils/pixmapscale.hpp
     include/uise/desktop/utils/albumlayout.hpp
     include/uise/desktop/utils/flowpack.hpp
@@ -153,6 +154,15 @@ SET (HEADERS
     include/uise/desktop/pushbutton.hpp
 
     include/uise/desktop/audiodevicesetting.hpp
+    include/uise/desktop/waveformbar.hpp
+    include/uise/desktop/audioplaybackengine.hpp
+    include/uise/desktop/abstractaudioplayer.hpp
+    include/uise/desktop/audioplayer.hpp
+    include/uise/desktop/abstractaudioplayerdialog.hpp
+    include/uise/desktop/audioplayerdialog.hpp
+    include/uise/desktop/chataudiofileitems.hpp
+    include/uise/desktop/abstractvoicerecorderdialog.hpp
+    include/uise/desktop/voicerecorderdialog.hpp
     include/uise/desktop/editablepanel.hpp
     include/uise/desktop/editablepanelgrid.hpp
     include/uise/desktop/editablepanels.hpp
@@ -369,6 +379,12 @@ SET (SOURCES
     src/pushbutton.cpp
 
     src/audiodevicesetting.cpp
+    src/waveformbar.cpp
+    src/abstractaudioplayer.cpp
+    src/audioplayer.cpp
+    src/audioplayerdialog.cpp
+    src/chataudiofileitems.cpp
+    src/voicerecorderdialog.cpp
     src/editablepanel.cpp
     src/editablepanelgrid.cpp
     src/editablepanels.cpp
@@ -504,11 +520,13 @@ IF (UISE_DESKTOP_MULTIMEDIA)
     LIST (APPEND HEADERS
         include/uise/desktop/qrcodefromvideo.hpp
         include/uise/desktop/qrcodescanner.hpp
+        include/uise/desktop/qtaudioplaybackengine.hpp
     )
 
     LIST (APPEND SOURCES
         src/qrcodefromvideo.cpp
         src/qrcodescanner.cpp
+        src/qtaudioplaybackengine.cpp
     )
 
 ENDIF()

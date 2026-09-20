@@ -17,7 +17,11 @@
                 "resume" : "${uise-svg-icons-1}/player-play",
                 "retry" : "${uise-svg-icons-1}/refresh",
                 "cancel" : "${uise-svg-icons-1}/x",
-                "download" : "${uise-svg-icons-1}/arrow-big-down"
+                "download" : "${uise-svg-icons-1}/arrow-big-down",
+                "play" : "${uise-svg-icons-1}/player-play",
+                "stop" : "${uise-svg-icons-1}/player-stop",
+                "audioFile" : "${uise-svg-icons-1}/player-play",
+                "voiceMessage" : "${uise-svg-icons-1}/microphone"
             }
         }
     ]

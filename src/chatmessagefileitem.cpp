@@ -309,6 +309,35 @@ IconTextButton* ChatMessageFileItem::menuButton() const
 
 //--------------------------------------------------------------------------
 
+QFrame* ChatMessageFileItem::iconSlot() const
+{
+    return pimpl->iconSlot;
+}
+
+//--------------------------------------------------------------------------
+
+QBoxLayout* ChatMessageFileItem::textColumnLayout() const
+{
+    return pimpl->textColumnLayout;
+}
+
+//--------------------------------------------------------------------------
+
+QLabel* ChatMessageFileItem::infoLabel() const
+{
+    return pimpl->infoLabel;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::setPlaybackProgress(qreal fraction)
+{
+    // Nothing to show on an ordinary row -- see the declaration.
+    Q_UNUSED(fraction)
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFileItem::setTextVerticalAlignment(Qt::Alignment alignment)
 {
     auto vAlign=alignment & Qt::AlignVertical_Mask;

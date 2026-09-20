@@ -1,0 +1,19 @@
+/*
+ * WaveformBar – seekable, croppable waveform or line progress.
+ * Neutral geometry and qproperty defaults (theme-agnostic).
+ * Colour overrides live in light/waveformbar.qss and dark/waveformbar.qss.
+ *
+ * qproperty-barWidth       – width of one waveform bar in pixels (default 3)
+ * qproperty-barSpacing     – gap between adjacent bars in pixels (default 2)
+ * qproperty-minBarHeight   – height of the shortest bar, so silence stays visible (default 3)
+ * qproperty-handleWidth    – width of a crop handle in pixels (default 6)
+ * qproperty-outsideOpacity – opacity of what lies outside the crop range, 0..1 (default 0.35)
+ */
+
+uise--WaveformBar {
+    qproperty-barWidth:       3;
+    qproperty-barSpacing:     2;
+    qproperty-minBarHeight:   3;
+    qproperty-handleWidth:    6;
+    qproperty-outsideOpacity: 0.35;
+}

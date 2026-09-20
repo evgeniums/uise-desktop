@@ -169,3 +169,9 @@ margin-left: 4px;
 uise--MessageEditor #expandButton {
 margin: 0 4px 2px 0;
 }
+
+/* The microphone button: press-and-hold, so it is "checked" for as long as it is held. The colour
+   of that is in light/dark messageeditor.qss, the icon's own in messageeditor.json's checked mode. */
+uise--MessageEditor #micButton {
+border-radius: 6px;
+}

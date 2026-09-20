@@ -390,6 +390,14 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Copy image</source>
         <translation>Copy image</translation>
     </message>
+    <message>
+        <source>Play</source>
+        <translation>Play</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Stop</translation>
+    </message>
 </context>
 <context>
     <name>ChatImageViewerControls</name>
@@ -3656,6 +3664,10 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Clear</source>
         <translation>Clear</translation>
     </message>
+    <message>
+        <source>Hold to record a voice message</source>
+        <translation>Hold to record a voice message</translation>
+    </message>
 </context>
 <context>
     <name>uise::MessageEditorToolbar</name>
@@ -4254,6 +4266,110 @@ These tips can help you create longer passwords that are easier to remember. Try
         <location filename="../src/validatedinput.cpp" line="+57"/>
         <source>Apply</source>
         <translation>Apply</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AudioPlayerWidget</name>
+    <message>
+        <source>Stop</source>
+        <translation>Stop</translation>
+    </message>
+    <message>
+        <source>Playback speed</source>
+        <translation>Playback speed</translation>
+    </message>
+    <message>
+        <source>%1×</source>
+        <translation>%1×</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Unmute</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Mute</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pause</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Play</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AudioPlayerDialog</name>
+    <message>
+        <source>Audio player</source>
+        <translation>Audio player</translation>
+    </message>
+</context>
+<context>
+    <name>uise::VoiceRecorderDialog</name>
+    <message>
+        <source>Voice message</source>
+        <translation>Voice message</translation>
+    </message>
+    <message>
+        <source>Drag here to keep recording</source>
+        <translation>Drag here to keep recording</translation>
+    </message>
+    <message>
+        <source>Drag here to cancel</source>
+        <translation>Drag here to cancel</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
+    </message>
+    <message>
+        <source>Add a comment</source>
+        <translation>Add a comment</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>Resume</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pause</translation>
+    </message>
+    <message>
+        <source>Listen</source>
+        <translation>Listen</translation>
+    </message>
+    <message>
+        <source>%1 / %2</source>
+        <translation>%1 / %2</translation>
+    </message>
+</context>
+<context>
+    <name>uise::ChatVoiceFileItem</name>
+    <message>
+        <source>Voice message</source>
+        <translation>Voice message</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pause</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Play</translation>
+    </message>
+    <message>
+        <source>Listened</source>
+        <translation>Listened</translation>
     </message>
 </context>
 </TS>

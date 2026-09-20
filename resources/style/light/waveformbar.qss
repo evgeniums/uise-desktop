@@ -1,0 +1,13 @@
+/*
+ * WaveformBar – light theme colours.
+ *
+ * qproperty-barColor      – bars (or track) not yet played (pale blue)
+ * qproperty-progressColor – bars (or track) already played, playhead and knob (deep blue)
+ * qproperty-cropColor     – crop handles
+ */
+
+uise--WaveformBar {
+    qproperty-barColor:      #b3d1f0;
+    qproperty-progressColor: #1a6bc4;
+    qproperty-cropColor:     #1a6bc4;
+}

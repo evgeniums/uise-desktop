@@ -165,6 +165,25 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
     {
         actions=item.menuActions();
     }
+    else if (item.isAudio() && !imageItem)
+    {
+        // Audio is played in the app: Play stands where Open would, and the gate below turns it
+        // into Stop while this item is the one playing. "Open in system app" is still offered for
+        // an ordinary audio file, but not for a voice message: that is Ogg Opus, which the OS's
+        // default application rarely knows what to do with.
+        actions.push_back(ChatFileMenuAction::Play);
+        actions.push_back(ChatFileMenuAction::Stop);
+        actions.push_back(ChatFileMenuAction::SaveAs);
+        actions.push_back(ChatFileMenuAction::Forward);
+        if (!item.isVoice())
+        {
+            actions.push_back(ChatFileMenuAction::OpenWith);
+        }
+        if (item.isShowInFolderAvailable())
+        {
+            actions.push_back(ChatFileMenuAction::ShowInFolder);
+        }
+    }
     else
     {
         actions.push_back(ChatFileMenuAction::Open);
@@ -205,6 +224,17 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
         // host must never be able to offer "Copy image" on a plain file row just because its
         // caller passed a stale/mismatched action list.
         if (action==ChatFileMenuAction::CopyImage && !imageItem)
+        {
+            continue;
+        }
+        // Play and Stop are one control in two states, like Pause/Resume above: an item that is
+        // playing offers Stop, one that is not offers Play, and never both. Neither means
+        // anything for something that is not audio, whoever listed it.
+        if (action==ChatFileMenuAction::Play && (imageItem || !item.isAudio() || item.isPlaying()))
+        {
+            continue;
+        }
+        if (action==ChatFileMenuAction::Stop && (imageItem || !item.isAudio() || !item.isPlaying()))
         {
             continue;
         }
@@ -296,6 +326,16 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
             case (ChatFileMenuAction::CopyImage):
                 text=QCoreApplication::translate("ChatFileItem","Copy image");
                 alias=QStringLiteral("copyImage");
+                break;
+
+            case (ChatFileMenuAction::Play):
+                text=QCoreApplication::translate("ChatFileItem","Play");
+                alias=QStringLiteral("play");
+                break;
+
+            case (ChatFileMenuAction::Stop):
+                text=QCoreApplication::translate("ChatFileItem","Stop");
+                alias=QStringLiteral("stop");
                 break;
         }
 

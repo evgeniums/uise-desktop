@@ -1,0 +1,52 @@
+/*
+ * VoiceRecorderDialog -- light theme colours.
+ * Blue: the accent of the waveform and the typing indicator. Red: the destructive colour of the
+ * forward dialog's "do not forward".
+ */
+
+uise--VoiceRecorderDialog #recordDot {
+    background-color: #999999;
+}
+
+uise--VoiceRecorderDialog #recordDot[recording="true"] {
+    background-color: #C0392B;
+}
+
+uise--VoiceRecorderDialog #recordDot[recording="true"][dim="true"] {
+    background-color: rgba(192,57,43,60);
+}
+
+uise--VoiceRecorderDialog #durationLabel {
+    color: #444444;
+}
+
+uise--VoiceRecorderDialog #continueArea {
+    color: #1a6bc4;
+    border-color: #1a6bc4;
+}
+
+uise--VoiceRecorderDialog #continueArea[hot="true"] {
+    background-color: #b3d1f0;
+}
+
+uise--VoiceRecorderDialog #cancelArea {
+    color: #C0392B;
+    border-color: #C0392B;
+}
+
+uise--VoiceRecorderDialog #cancelArea[hot="true"] {
+    background-color: rgba(192,57,43,40);
+}
+
+uise--VoiceRecorderDialog #cancelButton #text {
+    color: #C0392B;
+}
+
+uise--VoiceRecorderDialog #cancelButton #text[hovered="true"] {
+    color: #962D22;
+}
+
+uise--VoiceRecorderDialog #commentEdit {
+    background-color: #FFFFFF;
+    border-color: #D0D0D0;
+}

@@ -387,6 +387,14 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Copy image</source>
         <translation>Копировать изображение</translation>
     </message>
+    <message>
+        <source>Play</source>
+        <translation>Воспроизвести</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Остановить</translation>
+    </message>
 </context>
 <context>
     <name>ChatImageViewerControls</name>
@@ -3634,6 +3642,10 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Clear</source>
         <translation>Очистить</translation>
     </message>
+    <message>
+        <source>Hold to record a voice message</source>
+        <translation>Удерживайте, чтобы записать голосовое сообщение</translation>
+    </message>
 </context>
 <context>
     <name>uise::MessageEditorToolbar</name>
@@ -4206,6 +4218,110 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location filename="../src/validatedinput.cpp" line="+57"/>
         <source>Apply</source>
         <translation>Применить</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AudioPlayerWidget</name>
+    <message>
+        <source>Stop</source>
+        <translation>Остановить</translation>
+    </message>
+    <message>
+        <source>Playback speed</source>
+        <translation>Скорость воспроизведения</translation>
+    </message>
+    <message>
+        <source>%1×</source>
+        <translation>%1×</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Включить звук</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Выключить звук</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Пауза</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Воспроизвести</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AudioPlayerDialog</name>
+    <message>
+        <source>Audio player</source>
+        <translation>Аудиоплеер</translation>
+    </message>
+</context>
+<context>
+    <name>uise::VoiceRecorderDialog</name>
+    <message>
+        <source>Voice message</source>
+        <translation>Голосовое сообщение</translation>
+    </message>
+    <message>
+        <source>Drag here to keep recording</source>
+        <translation>Перетащите сюда, чтобы продолжить запись</translation>
+    </message>
+    <message>
+        <source>Drag here to cancel</source>
+        <translation>Перетащите сюда для отмены</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Отправить</translation>
+    </message>
+    <message>
+        <source>Add a comment</source>
+        <translation>Добавьте комментарий</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>Продолжить</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Пауза</translation>
+    </message>
+    <message>
+        <source>Listen</source>
+        <translation>Прослушать</translation>
+    </message>
+    <message>
+        <source>%1 / %2</source>
+        <translation>%1 / %2</translation>
+    </message>
+</context>
+<context>
+    <name>uise::ChatVoiceFileItem</name>
+    <message>
+        <source>Voice message</source>
+        <translation>Голосовое сообщение</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Пауза</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Воспроизвести</translation>
+    </message>
+    <message>
+        <source>Listened</source>
+        <translation>Прослушано</translation>
     </message>
 </context>
 </TS>

@@ -47,7 +47,8 @@
             "name": "MessageEditor",
             "aliases": {
                 "expand": "${uise-svg-icons-1}/typography",
-                "emoji": "${uise-svg-icons-1}/mood-smile"
+                "emoji": "${uise-svg-icons-1}/mood-smile",
+                "microphone": "${uise-svg-icons-1}/microphone"
             }
         }
     ]

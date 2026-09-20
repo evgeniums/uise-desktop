@@ -1,0 +1,21 @@
+{
+    "theme" : "dark",
+    "contexts" : [
+        {
+            "name" : "AudioPlayer",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#CCCCCC" },
+                    "on"  : { "currentColor" : "#CCCCCC" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#8ec5ff" },
+                    "on"  : { "currentColor" : "#8ec5ff" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#666666" }
+                }
+            }
+        }
+    ]
+}

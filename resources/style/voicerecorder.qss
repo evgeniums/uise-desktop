@@ -1,0 +1,74 @@
+/*
+ * VoiceRecorderDialog -- layout and metrics (theme-neutral).
+ * Colours live in light/voicerecorder.qss and dark/voicerecorder.qss, icon colours in the
+ * light|dark voicerecorder.json files.
+ */
+
+uise--VoiceRecorderDialog #recorderContent {
+    padding: 8px 12px;
+    min-width: 280px;
+}
+
+uise--VoiceRecorderDialog #recordDot {
+    min-width: 12px;
+    max-width: 12px;
+    min-height: 12px;
+    max-height: 12px;
+    border-radius: 6px;
+    margin-right: 8px;
+}
+
+uise--VoiceRecorderDialog #durationLabel {
+    font-size: 16px;
+}
+
+/* Held: the two areas the pointer is dragged onto */
+uise--VoiceRecorderDialog #targetsRow {
+    margin-top: 10px;
+}
+
+uise--VoiceRecorderDialog #continueArea,
+uise--VoiceRecorderDialog #cancelArea {
+    margin: 0 4px;
+    padding: 10px 8px;
+    min-height: 36px;
+    border: 1px solid;
+    border-radius: 8px;
+}
+
+/* Pinned and after: Pause, Cancel, Send, icon above the text */
+uise--VoiceRecorderDialog #buttonsRow {
+    margin-top: 10px;
+}
+
+uise--VoiceRecorderDialog #buttonsRow uise--IconTextButton {
+    margin: 0 4px;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+uise--VoiceRecorderDialog uise--IconTextButton uise--RoundedImage {
+    min-width: 22px;
+    max-width: 22px;
+    min-height: 22px;
+    max-height: 22px;
+}
+
+/* Paused and Listening: the player row and the comment */
+uise--VoiceRecorderDialog #playerRow {
+    margin-top: 10px;
+}
+
+uise--VoiceRecorderDialog #listenButton {
+    margin-right: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+uise--VoiceRecorderDialog #commentEdit {
+    margin-top: 10px;
+    padding: 4px 6px;
+    max-height: 64px;
+    border: 1px solid;
+    border-radius: 6px;
+}

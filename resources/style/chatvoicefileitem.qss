@@ -1,0 +1,38 @@
+/*
+ * ChatVoiceFileItem -- the voice message row. Layout and metrics (theme-neutral); colours are in
+ * light/chatvoicefileitem.qss and dark/chatvoicefileitem.qss.
+ *
+ * It is a ChatMessageFileItem, so the rules of chatmessagefiles.qss apply to it too. The play tile
+ * has to undo two of them: the padding and radius every IconTextButton in a file row gets, and the
+ * small icon size. Its selector has an id, which outranks them.
+ */
+
+/* the tile lies over the file icon of the base row, so it has the same corner radius */
+uise--ChatVoiceFileItem #playOverlay {
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+
+uise--ChatVoiceFileItem #playOverlay uise--IconTextButton {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+uise--ChatVoiceFileItem #playOverlay uise--IconTextButton uise--RoundedImage {
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+}
+
+/* the "listened by peer" dot, left of the duration and size */
+uise--ChatVoiceFileItem #listenedDot {
+    min-width: 8px;
+    max-width: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    border-radius: 4px;
+    margin-right: 5px;
+}

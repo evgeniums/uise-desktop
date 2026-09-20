@@ -35,6 +35,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/chatfileitem.hpp>
 
+class QBoxLayout;
+class QLabel;
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -125,6 +128,15 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         Qt::Alignment textVerticalAlignment() const noexcept;
 
         /**
+         * @brief Show the playback position of an audio row, 0..1.
+         *
+         * Does nothing here. A row that shows progress (the voice message row) overrides it to move
+         * its bar. Called by ChatMessageFiles::setPlaybackProgress(), on every position tick of the
+         * playing item, so an override must be cheap and must not rebuild anything.
+         */
+        virtual void setPlaybackProgress(qreal fraction);
+
+        /**
          * @brief Cap this row's overall width by shrinking the file-name label's budget.
          * @param totalWidth Target width for the WHOLE row (icon slot + name/size column + menu
          *  button), not just the name label. Everything else in the row has a width independent
@@ -213,6 +225,21 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         void pauseRequested();
         void cancelRequested();
 
+        /**
+         * @brief Emitted by an audio row (the voice message row) when the user asks to play or
+         *  stop its item, from the row's own play button. The owner fans them into the
+         *  AbstractChatMessageFiles signals of the same names, next to the drop-down menu's Play
+         *  and Stop entries. The base row never emits them.
+         */
+        void playRequested();
+        void stopRequested();
+
+        /**
+         * @brief Emitted by an audio row when the user let go of its seek bar; `fraction` is where,
+         *  0..1. The base row never emits it.
+         */
+        void seekRequested(qreal fraction);
+
     protected:
 
         /**
@@ -243,6 +270,29 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          * static icon over a live progress control by accident).
          */
         void setTypeIcon(std::shared_ptr<SvgIcon> icon);
+
+        /**
+         * @brief The fixed-size slot at the left of the row, in which the file icon, the image
+         *  preview and the load control are stacked at the same geometry.
+         *
+         * For a specialised row that puts its own control on top of them (the voice row's play
+         * button). The children are placed by geometry, not by a layout, and the load control and
+         * the icon are shown and hidden by refresh(), so an overlay has to follow suit: show it
+         * from refresh() only for the states in which the file icon is what the slot shows.
+         */
+        QFrame* iconSlot() const;
+
+        /**
+         * @brief The vertical layout of the column next to the icon slot: a stretch, the file
+         *  name, a spacer, the info line, a stretch.
+         *
+         * For a specialised row that inserts something into the column (the voice row's waveform).
+         * Use indexOf() on the layout with infoLabel() to find a place, not a fixed index.
+         */
+        QBoxLayout* textColumnLayout() const;
+
+        //! The second line of the text column, rewritten by refresh() -- see setInfoText().
+        QLabel* infoLabel() const;
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 
