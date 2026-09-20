@@ -82,6 +82,9 @@ class UISE_DESKTOP_EXPORT ElidedLabel : public QFrame
 
         int widthHint() const;
 
+        //! Height of the full text, independent of setIgnoreSizeHint() (sizeHint() is invalid then).
+        int heightHint() const;
+
     signals:
 
         void textUpdated();
