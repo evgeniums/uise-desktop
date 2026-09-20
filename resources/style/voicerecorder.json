@@ -5,8 +5,13 @@
             "aliases" : {
                 "pause"  : "${uise-svg-icons-1}/player-pause",
                 "resume" : "${uise-svg-icons-1}/player-record",
-                "listen" : "${uise-svg-icons-1}/player-play",
-                "send"   : "${uise-svg-icons-1}/send"
+                "listen" : "${uise-svg-icons-1}/player-play"
+            }
+        },
+        {
+            "name" : "VoiceRecorderAccent",
+            "aliases" : {
+                "send" : "${uise-svg-icons-1}/send"
             }
         },
         {

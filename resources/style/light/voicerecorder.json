@@ -18,6 +18,22 @@
             }
         },
         {
+            "name" : "VoiceRecorderAccent",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#0099b8" },
+                    "on"  : { "currentColor" : "#0099b8" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#00b4d8" },
+                    "on"  : { "currentColor" : "#00b4d8" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                }
+            }
+        },
+        {
             "name" : "VoiceRecorderDanger",
             "modes" : {
                 "normal" : {

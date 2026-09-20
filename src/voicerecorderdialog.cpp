@@ -55,9 +55,18 @@ constexpr int BlinkHalfPeriodMs=500;
 
 std::shared_ptr<SvgIcon> recorderIcon(const QString& alias, QWidget* context)
 {
-    // Cancel is destructive and drawn in the red palette, which is a colour context of its own:
-    // the colours of an icon belong to its context, not to the alias.
-    const auto* contextName=(alias==QLatin1String("cancel"))?"VoiceRecorderDanger":"VoiceRecorder";
+    // Cancel is destructive and drawn in the red palette, Send is the action and drawn in the accent of the
+    // composer's active Send button; each is a colour context of its own: the colours of an icon belong to
+    // its context, not to the alias.
+    const char* contextName="VoiceRecorder";
+    if (alias==QLatin1String("cancel"))
+    {
+        contextName="VoiceRecorderDanger";
+    }
+    else if (alias==QLatin1String("send"))
+    {
+        contextName="VoiceRecorderAccent";
+    }
     return Style::instance().svgIconLocator().icon(QString("%1::%2").arg(QLatin1String(contextName),alias),context);
 }
 
@@ -267,7 +276,13 @@ void VoiceRecorderDialog::construct()
         }
     );
     connect(pimpl->bar,&WaveformBar::seekFinished,this,[this](qreal fraction){emit seekRequested(fraction);});
-    connect(pimpl->bar,&WaveformBar::cropChanged,this,[this](qreal start, qreal end){emit cropChanged(start,end);});
+    connect(pimpl->bar,&WaveformBar::cropChanged,this,
+        [this](qreal start, qreal end)
+        {
+            updateDuration();
+            emit cropChanged(start,end);
+        }
+    );
 
     setWidget(content);
 
@@ -324,6 +339,8 @@ void VoiceRecorderDialog::applyState()
         pimpl->pauseButton->setSvgIcon(recorderIcon("pause",this));
     }
     pimpl->pauseButton->setEnabled(state!=State::Listening);
+    // a disabled button is not to look clickable: IconTextButton keeps the hand of its constructor otherwise
+    pimpl->pauseButton->setCursor(state!=State::Listening ? Qt::PointingHandCursor : Qt::ArrowCursor);
 
     // Listen and Pause of the pre-listen, likewise
     if (state==State::Listening)
@@ -379,13 +396,26 @@ void VoiceRecorderDialog::applyState()
 
 void VoiceRecorderDialog::updateDuration()
 {
+    // What is recorded while recording. Paused and Listening show what is KEPT, the part between the crop
+    // handles, since that is the length of the message that Send makes; and while listening the position
+    // counts from the start of that part, as listening is limited to it.
+    qint64 startMs=0;
+    qint64 endMs=pimpl->elapsedMs;
+    if (pimpl->state==State::Paused || pimpl->state==State::Listening)
+    {
+        startMs=qRound64(pimpl->bar->cropStart()*static_cast<qreal>(pimpl->elapsedMs));
+        endMs=qRound64(pimpl->bar->cropEnd()*static_cast<qreal>(pimpl->elapsedMs));
+    }
+    const auto keptMs=std::max<qint64>(0,endMs-startMs);
+
     if (pimpl->state==State::Listening)
     {
-        pimpl->durationLabel->setText(tr("%1 / %2").arg(formatAudioTime(pimpl->playbackMs),formatAudioTime(pimpl->elapsedMs)));
+        const auto positionMs=std::clamp<qint64>(pimpl->playbackMs-startMs,0,keptMs);
+        pimpl->durationLabel->setText(tr("%1 / %2").arg(formatAudioTimeTenths(positionMs),formatAudioTimeTenths(keptMs)));
     }
     else
     {
-        pimpl->durationLabel->setText(formatAudioTime(pimpl->elapsedMs));
+        pimpl->durationLabel->setText(formatAudioTimeTenths(keptMs));
     }
 }
 
@@ -429,6 +459,7 @@ void VoiceRecorderDialog::setWaveform(const QByteArray& waveform)
 void VoiceRecorderDialog::setCropRange(qreal start, qreal end)
 {
     pimpl->bar->setCropRange(start,end);
+    updateDuration();
 }
 
 //--------------------------------------------------------------------------

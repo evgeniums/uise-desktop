@@ -19,13 +19,6 @@ uise--AudioPlayerWidget uise--IconTextButton uise--RoundedImage {
     max-height: 20px;
 }
 
-uise--AudioPlayerWidget #playButton uise--RoundedImage {
-    min-width: 26px;
-    max-width: 26px;
-    min-height: 26px;
-    max-height: 26px;
-}
-
 uise--AudioPlayerWidget #topRow uise--IconTextButton {
     margin-left: 4px;
 }
@@ -34,8 +27,38 @@ uise--AudioPlayerWidget #bottomRow uise--IconTextButton {
     margin-right: 4px;
 }
 
+/*
+ * A QSS margin is part of the widget's own rect in Qt, and the ripple overlay covers that rect, so the halo would
+ * be centred on the button and its margin band and not on the icon (see the rippleInset note in ripple.qss).
+ * The insets are the margins above: keep them in step. The speed button is handled in code, by
+ * AudioPlayerWidget::centerRippleOnText(), which sets both insets itself.
+ */
+uise--AudioPlayerWidget #topRow uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleInsetLeft: 4;
+}
+
+uise--AudioPlayerWidget #bottomRow uise--IconTextButton uise--RippleOverlay {
+    qproperty-rippleInsetRight: 4;
+}
+
+/*
+ * The speed button shows text, so the general rule for buttons with text (ripple.qss) gives it a flat ellipse.
+ * Its ripple is a circle instead, the size of the halo of the 20 px icon buttons beside it, hence the height
+ * of the button. A circle needs a square to grow in and a button as wide as its text is not one, so the
+ * ripple is a capsule with equal scales on a square cut out of the overlay, and that is done in
+ * AudioPlayerWidget (centerRippleOnText()): it sets rippleInsetLeft/Right from where the text really is.
+ * Nothing here may set those two, the code would be fighting the style sheet.
+ */
 uise--AudioPlayerWidget #speedButton {
     padding: 0 4px;
+    min-height: 20px;
+    max-height: 20px;
+}
+
+uise--AudioPlayerWidget #speedButton uise--RippleOverlay {
+    qproperty-rippleClip: "capsule";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
 }
 
 uise--AudioPlayerWidget #positionLabel,
@@ -65,7 +88,8 @@ uise--DropdownFrame#volumeDropdown {
     border-radius: 2px;
 }
 
-#volumePopup #volumeSlider::sub-page:vertical {
+#volumePopup #volumeSlider::sub-page:vertical,
+#volumePopup #volumeSlider::add-page:vertical {
     border-radius: 2px;
 }
 

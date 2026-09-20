@@ -38,12 +38,26 @@ uise--VoiceRecorderDialog #cancelArea[hot="true"] {
     background-color: rgba(255,107,107,40);
 }
 
+/* Send: the accent colour of the composer's active Send button, for the icon (voicerecorder.json) and the text */
+uise--VoiceRecorderDialog #sendButton #text {
+    color: #0099b8;
+}
+
+uise--VoiceRecorderDialog #sendButton #text[hovered="true"] {
+    color: #00b4d8;
+}
+
 uise--VoiceRecorderDialog #cancelButton #text {
     color: #FF6B6B;
 }
 
 uise--VoiceRecorderDialog #cancelButton #text[hovered="true"] {
     color: #FF8F8F;
+}
+
+/* Pause/Resume while the message plays: the text is as grey as the icon (disabled colour of light|dark/voicerecorder.json) */
+uise--VoiceRecorderDialog #pauseButton #text:disabled {
+    color: #666666;
 }
 
 uise--VoiceRecorderDialog #commentEdit {

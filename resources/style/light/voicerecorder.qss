@@ -38,12 +38,36 @@ uise--VoiceRecorderDialog #cancelArea[hot="true"] {
     background-color: rgba(192,57,43,40);
 }
 
+/* Send: the accent colour of the composer's active Send button, for the icon (voicerecorder.json) and the text */
+uise--VoiceRecorderDialog #sendButton #text {
+    color: #0099b8;
+}
+
+uise--VoiceRecorderDialog #sendButton #text[hovered="true"] {
+    color: #00b4d8;
+}
+
 uise--VoiceRecorderDialog #cancelButton #text {
     color: #C0392B;
 }
 
 uise--VoiceRecorderDialog #cancelButton #text[hovered="true"] {
     color: #962D22;
+}
+
+/*
+ * Pause/Resume and Listen: the text takes the colour of the icon when the pointer is on the button, the hovered
+ * colour of the VoiceRecorder context in light/voicerecorder.json. :enabled, because Pause is disabled while the
+ * message plays, and IconTextButton lights its hover whether it is enabled or not.
+ */
+uise--VoiceRecorderDialog #pauseButton #text[hovered="true"]:enabled,
+uise--VoiceRecorderDialog #listenButton #text[hovered="true"]:enabled {
+    color: #1a6bc4;
+}
+
+/* Pause/Resume while the message plays: the text is as grey as the icon (disabled colour of light|dark/voicerecorder.json) */
+uise--VoiceRecorderDialog #pauseButton #text:disabled {
+    color: #AAAAAA;
 }
 
 uise--VoiceRecorderDialog #commentEdit {

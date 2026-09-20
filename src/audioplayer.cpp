@@ -26,7 +26,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <algorithm>
 #include <vector>
 
+#include <QCoreApplication>
 #include <QCursor>
+#include <QEnterEvent>
 #include <QEvent>
 #include <QHideEvent>
 #include <QLabel>
@@ -41,6 +43,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/utils/audiotime.hpp>
@@ -67,6 +70,63 @@ constexpr int VolumeSliderMax=100;
 
 //! Exclusive group of the speed menu's checkable items.
 constexpr int SpeedMenuGroup=0;
+
+/**
+ * The ripple of a button that shows text is a circle, the side of which is the height of the button, on the
+ * middle of the text. The overlay covers the whole button and its insets are what cuts a square out of that,
+ * so they are set from where the text really is, and not from what the style sheet believes about the box.
+ */
+void centerRippleOnText(IconTextButton* button)
+{
+    auto* ripple=button->rippleOverlay();
+    auto* text=button->findChild<QLabel*>(QStringLiteral("text"));
+    if (ripple==nullptr || text==nullptr || !text->isVisible() || button->width()<=0)
+    {
+        return;
+    }
+
+    const auto side=button->height();
+    const auto center=text->geometry().center().x();
+    auto left=std::max(0,center-side/2);
+    const auto right=std::max(0,button->width()-(left+side));
+    // a text so far to the right that the square would leave the button is moved in, not cut
+    left=std::max(0,std::min(left,button->width()-side));
+
+    ripple->setRippleInsetLeft(left);
+    ripple->setRippleInsetRight(right);
+}
+
+//! Keep a button lit for as long as the dropdown that it opens is on screen.
+void keepLitWhileOpen(IconTextButton* button, DropdownFrame* frame)
+{
+    // While the button is told that its parent is hovered it takes no Enter and no Leave for the hover, so the
+    // pointer can go into the dropdown without the button going dark.
+    QObject::connect(frame,&DropdownFrame::aboutToShow,button,
+        [button]()
+        {
+            button->setParentHovered(true);
+        }
+    );
+
+    // aboutToHide() comes from the hide event, so it is there whichever way the dropdown went, and after the
+    // fade, not before it.
+    QObject::connect(frame,&DropdownFrame::aboutToHide,button,
+        [button]()
+        {
+            button->setParentHovered(false);
+
+            // A pointer that is still on the button has had its Enter long ago, and the button has just gone
+            // dark: light it again by an Enter of its own.
+            const auto global=QCursor::pos();
+            const auto local=button->mapFromGlobal(global);
+            if (button->isVisible() && button->rect().contains(local))
+            {
+                QEnterEvent enter(local,local,global);
+                QCoreApplication::sendEvent(button,&enter);
+            }
+        }
+    );
+}
 
 std::shared_ptr<SvgIcon> playerIcon(const QString& alias, QWidget* context)
 {
@@ -96,6 +156,9 @@ class AudioPlayerWidget_p
         //! not taken for the user.
         bool applyingVolume=false;
         bool applyingSpeed=false;
+
+        //! A centering of the speed button's ripple is already queued.
+        bool speedRipplePending=false;
 
         QFrame* topRow=nullptr;
         QFrame* bottomRow=nullptr;
@@ -143,7 +206,7 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     pimpl->titleLabel->installEventFilter(this);
     topLayout->addWidget(pimpl->titleLabel,1);
 
-    pimpl->volumeButton=new IconTextButton(playerIcon("volume2",this),pimpl->topRow);
+    pimpl->volumeButton=new IconTextButton(playerIcon("volumeHigh",this),pimpl->topRow);
     pimpl->volumeButton->setObjectName("volumeButton");
     pimpl->volumeButton->setText(QString());
     pimpl->volumeButton->setCursor(Qt::PointingHandCursor);
@@ -155,6 +218,7 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     pimpl->speedButton->setObjectName("speedButton");
     pimpl->speedButton->setCursor(Qt::PointingHandCursor);
     pimpl->speedButton->setFocusPolicy(Qt::NoFocus);
+    pimpl->speedButton->installEventFilter(this);
     topLayout->addWidget(pimpl->speedButton);
 
     // ---- row 2: stop, play/pause, position, progress, duration -----------------------------
@@ -212,6 +276,7 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     // popup that only ever lives while the pointer is over it, which is one more Escape consumer
     // for the window to be ambiguous about.
     pimpl->volumeFrame->setSelfDismissEnabled(false);
+    keepLitWhileOpen(pimpl->volumeButton,pimpl->volumeFrame.data());
 
     pimpl->hoverOpenTimer=new QTimer(this);
     pimpl->hoverOpenTimer->setSingleShot(true);
@@ -281,6 +346,7 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     pimpl->speedMenu->setItems(std::move(items));
     pimpl->speedMenu->setCloseOnCheckableActivation(true);
     pimpl->speedMenu->attachTo(pimpl->speedButton);
+    keepLitWhileOpen(pimpl->speedButton,pimpl->speedMenu.data());
     connect(pimpl->speedMenu,&DropdownMenu::itemToggled,this,
         [this](int id, bool checked)
         {
@@ -498,14 +564,16 @@ void AudioPlayerWidget::updateVolumeButton()
 {
     const auto silent=pimpl->muted || pimpl->volume<=0.0;
 
-    QString alias("volume2");
+    // Two arcs, one arc, crossed out: the icon loses a step as the level goes down. The names are of what is
+    // drawn, not of the tabler files: tabler's "volume" has two arcs and its "volume-2" has one.
+    QString alias("volumeHigh");
     if (silent)
     {
         alias="volumeOff";
     }
     else if (pimpl->volume<0.5)
     {
-        alias="volume";
+        alias="volumeLow";
     }
     pimpl->volumeButton->setSvgIcon(playerIcon(alias,this));
     pimpl->volumeButton->setToolTip(pimpl->muted?tr("Unmute"):tr("Mute"));
@@ -516,6 +584,25 @@ void AudioPlayerWidget::updateVolumeButton()
 void AudioPlayerWidget::updateSpeedButton()
 {
     pimpl->speedButton->setText(tr("%1×").arg(QString::number(pimpl->speed)));
+    scheduleSpeedRippleCentering();
+}
+
+//--------------------------------------------------------------------------
+
+void AudioPlayerWidget::scheduleSpeedRippleCentering()
+{
+    if (pimpl->speedRipplePending)
+    {
+        return;
+    }
+    pimpl->speedRipplePending=true;
+    QTimer::singleShot(0,this,
+        [this]()
+        {
+            pimpl->speedRipplePending=false;
+            centerRippleOnText(pimpl->speedButton);
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -622,6 +709,24 @@ bool AudioPlayerWidget::eventFilter(QObject* watched, QEvent* event)
             {
                 // passing through is not asking for the slider
                 pimpl->hoverOpenTimer->stop();
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+    else if (watched==pimpl->speedButton)
+    {
+        switch (event->type())
+        {
+            // the text moves with a change of the layout, a new text or a new style, and the layout is not done yet when this comes
+            case (QEvent::Resize):
+            case (QEvent::Show):
+            case (QEvent::LayoutRequest):
+            case (QEvent::StyleChange):
+            {
+                scheduleSpeedRippleCentering();
                 break;
             }
 

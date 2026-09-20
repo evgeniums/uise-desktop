@@ -49,6 +49,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTextImageFormat>
 #include <QUrl>
 #include <QCursor>
+#include <QEnterEvent>
 #include <QEvent>
 #include <QLabel>
 #include <QMouseEvent>
@@ -7768,6 +7769,42 @@ void MessageEditor::updateMicButton()
 
 //--------------------------------------------------------------------------
 
+//! Take a composer button out of the mouse's reach while the voice recorder is open, or give it back.
+static void lockVoiceButton(IconTextButton* button, bool lock)
+{
+    // Disabled alone is not enough: IconTextButton shows its hover in enterEvent() whether it is enabled or
+    // not. With the mouse events off it gets no hover, no ripple, no press and no toggle at all, and the
+    // events go on to the widget behind it.
+    button->setEnabled(!lock);
+    button->setAttribute(Qt::WA_TransparentForMouseEvents,lock);
+    if (lock)
+    {
+        // A widget that stops receiving mouse events is never sent the Leave for a pointer that is on it, and
+        // IconTextButton clears its hovered look only in leaveEvent(): send it, and drop WA_UnderMouse,
+        // which the :hover pseudo-state reads.
+        button->setAttribute(Qt::WA_UnderMouse,false);
+        QEvent leave(QEvent::Leave);
+        QCoreApplication::sendEvent(button,&leave);
+        return;
+    }
+
+    // Given back. A short click leaves the pointer resting on the button, and nothing then moves it: Qt still
+    // takes the pointer for being in the button, so no Enter is coming, not even when it moves inside, and the
+    // button that was put out above would stay dark. Light it by an Enter of our own, but only if the pointer
+    // is over the button and nothing else (the popup may still be fading over part of it).
+    const auto global=QCursor::pos();
+    auto* under=QApplication::widgetAt(global);
+    if (button->isVisible() && under!=nullptr && (under==button || button->isAncestorOf(under)))
+    {
+        button->setAttribute(Qt::WA_UnderMouse,true);
+        const auto local=button->mapFromGlobal(global);
+        QEnterEvent enter(local,local,global);
+        QCoreApplication::sendEvent(button,&enter);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 FloatingVoiceRecorderDialog* MessageEditor::ensureVoiceRecorder()
 {
     if (!pimpl->voiceDialog.isNull())
@@ -7814,12 +7851,12 @@ FloatingVoiceRecorderDialog* MessageEditor::ensureVoiceRecorder()
     // Once pinned the recording no longer depends on the mouse being held, so the buttons that
     // open something over the composer must not do it: pressing the mic again would start a second
     // recording over the first, and the emoji gallery would be a second floating window. Both stay
-    // disabled until the popup closes, through Paused and Listening too -- see onVoiceRecorderClosed().
+    // locked until the popup closes, through Paused and Listening too -- see onVoiceRecorderClosed().
     connect(frame->dialog(),&AbstractVoiceRecorderDialog::pinned,this,
         [this]()
         {
-            pimpl->micButton->setEnabled(false);
-            pimpl->emojiButton->setEnabled(false);
+            lockVoiceButton(pimpl->micButton,true);
+            lockVoiceButton(pimpl->emojiButton,true);
         }
     );
     connect(frame->dialog(),&AbstractVoiceRecorderDialog::sendRequested,this,closeLater);
@@ -7875,6 +7912,10 @@ void MessageEditor::openVoiceRecorder()
 
     pimpl->voiceOpen=true;
 
+    // The emoji button is out of reach from the moment the popup is there. The mic button is the one that
+    // is held, and its gesture needs the mouse: it is locked when the gesture ends, or at pinned().
+    lockVoiceButton(pimpl->emojiButton,true);
+
     // The composer is not for typing while a message is being recorded. Held, the pointer is on
     // the mic button anyway, but Pinned it is free to wander onto the text area.
     pimpl->editorWasEnabled=pimpl->editor->isEnabled();
@@ -7896,9 +7937,9 @@ void MessageEditor::onVoiceRecorderClosed()
     pimpl->micButton->setChecked(false);
     hideMicDragProxy();
 
-    // the pinned state disabled both, see ensureVoiceRecorder()
-    pimpl->micButton->setEnabled(true);
-    pimpl->emojiButton->setEnabled(true);
+    // both were locked while the popup was open, see ensureVoiceRecorder() and openVoiceRecorder()
+    lockVoiceButton(pimpl->micButton,false);
+    lockVoiceButton(pimpl->emojiButton,false);
 
     if (!wasOpen)
     {
@@ -8029,6 +8070,13 @@ bool MessageEditor::handleMicButtonEvent(QEvent* event)
                 pimpl->micButton->setAttribute(Qt::WA_UnderMouse,false);
                 QEvent leave(QEvent::Leave);
                 QCoreApplication::sendEvent(pimpl->micButton,&leave);
+            }
+
+            // The gesture is over. Until the popup is gone, however it ends, the button is not to be pressed
+            // again: that is what its fade is, too.
+            if (pimpl->voiceOpen)
+            {
+                lockVoiceButton(pimpl->micButton,true);
             }
 
             applyMicButtonVisibility();

@@ -121,6 +121,9 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
         void retranslate();
         void updateVolumeButton();
         void updateSpeedButton();
+
+        //! Put the ripple of the speed button, a circle, on the middle of its text, once the layout has settled.
+        void scheduleSpeedRippleCentering();
         void updatePlayButton();
         void updateTimeLabels();
         void updateProgress();

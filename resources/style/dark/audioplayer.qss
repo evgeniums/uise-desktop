@@ -30,8 +30,17 @@ uise--DropdownFrame#volumeDropdown {
     background-color: #3a6ea5;
 }
 
-#volumePopup #volumeSlider::sub-page:vertical {
+/*
+ * The colours of WaveformBar: the selected level is drawn like the played part of a track (progress colour),
+ * the rest like the part that is not played yet. The level is the part below the handle. It is add-page here
+ * and sub-page in the first version of this sheet, which showed the two colours the wrong way round.
+ */
+#volumePopup #volumeSlider::add-page:vertical {
     background-color: #8ec5ff;
+}
+
+#volumePopup #volumeSlider::sub-page:vertical {
+    background-color: #3a6ea5;
 }
 
 #volumePopup #volumeSlider::handle:vertical {

@@ -6,9 +6,9 @@
                 "play"      : "${uise-svg-icons-1}/player-play",
                 "pause"     : "${uise-svg-icons-1}/player-pause",
                 "stop"      : "${uise-svg-icons-1}/player-stop",
-                "volume"    : "${uise-svg-icons-1}/volume",
-                "volume2"   : "${uise-svg-icons-1}/volume-2",
-                "volumeOff" : "${uise-svg-icons-1}/volume-off"
+                "volumeHigh" : "${uise-svg-icons-1}/volume",
+                "volumeLow"  : "${uise-svg-icons-1}/volume-2",
+                "volumeOff"  : "${uise-svg-icons-1}/volume-off"
             }
         }
     ]

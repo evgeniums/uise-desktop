@@ -61,6 +61,22 @@ inline QString formatAudioTime(qint64 ms)
     return QStringLiteral("%1:%2").arg(minutes).arg(seconds,2,10,QLatin1Char('0'));
 }
 
+/**
+ * @brief Format milliseconds as "m:ss.t", or "h:mm:ss.t" from one hour up, t being tenths of a second.
+ * @param ms Time in milliseconds; negative values are shown as zero.
+ *
+ * Tenths are cut off, not rounded, so that the clock never shows a time that has not come yet.
+ * For a clock that moves ten times a second, see the recorder dialog.
+ */
+inline QString formatAudioTimeTenths(qint64 ms)
+{
+    if (ms<0)
+    {
+        ms=0;
+    }
+    return QStringLiteral("%1.%2").arg(formatAudioTime(ms)).arg((ms/100)%10);
+}
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_AUDIOTIME_HPP
