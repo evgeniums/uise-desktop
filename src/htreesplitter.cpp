@@ -72,9 +72,24 @@ HTreeSplitterLine::HTreeSplitterLine(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+void HTreeSplitterLine::setResizeEnabled(bool enable)
+{
+    m_resizeEnabled=enable;
+    if (!enable)
+    {
+        // the pointer may already be over the line when the flag flips
+        setCursor(Qt::CursorShape::ArrowCursor);
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeSplitterLine::enterEvent(QEnterEvent* event)
 {
-    setCursor(Qt::CursorShape::SplitHCursor);
+    if (m_resizeEnabled)
+    {
+        setCursor(Qt::CursorShape::SplitHCursor);
+    }
     QFrame::enterEvent(event);
 }
 
@@ -179,6 +194,16 @@ bool HTreeSplitterSection::isLineUnderMouse() const
     }
 
     return m_line->underMouse();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitterSection::setLineResizeEnabled(bool enable)
+{
+    if (m_line!=nullptr)
+    {
+        m_line->setResizeEnabled(enable);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -396,6 +421,12 @@ QSize HTreeSplitterInternal::sizeHint() const
 
 void HTreeSplitterInternal::mouseMoveEvent(QMouseEvent* event)
 {
+    if (!m_splitter->isSectionResizeEnabled())
+    {
+        QFrame::mouseMoveEvent(event);
+        return;
+    }
+
     if (event->buttons()&Qt::LeftButton)
     {
         auto newPos=event->pos();
@@ -1023,6 +1054,7 @@ void HTreeSplitterInternal::addWidget(QWidget* widget, int stretch)
 
     auto section=new HTreeSplitterSection(this);
     section->setWidget(widget);
+    section->setLineResizeEnabled(m_splitter->isSectionResizeEnabled());
     auto s=std::make_unique<Section>(section,widget->width(),section->minimumWidth(),stretch);
     section->setLineVisible(false);
     section->installEventFilter(this);
@@ -1374,6 +1406,9 @@ class HTreeSplitter_p
         // geometry; while false the horizontal scrollbar policy is pinned to
         // Qt::ScrollBarAlwaysOff (see HTreeSplitter::enableHScrollBarIfSettled())
         bool hScrollBarEnabled=false;
+
+        // whether the user may resize sections by dragging the lines between them
+        bool sectionResizeEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -1525,6 +1560,34 @@ void HTreeSplitter::adjustWidthsAndPositions()
     pimpl->content->updatePositions();
     pimpl->content->updateWidths();
     syncWrapper();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeSplitter::setSectionResizeEnabled(bool enable)
+{
+    pimpl->sectionResizeEnabled=enable;
+
+    // sections that already exist keep their own copy of the flag for cursor feedback
+    for (auto& it: pimpl->content->m_sections)
+    {
+        if (it->destroyed)
+        {
+            continue;
+        }
+        auto* section=qobject_cast<HTreeSplitterSection*>(it->obj);
+        if (section!=nullptr)
+        {
+            section->setLineResizeEnabled(enable);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeSplitter::isSectionResizeEnabled() const noexcept
+{
+    return pimpl->sectionResizeEnabled;
 }
 
 //--------------------------------------------------------------------------

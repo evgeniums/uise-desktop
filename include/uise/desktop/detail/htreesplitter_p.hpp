@@ -51,10 +51,16 @@ class HTreeSplitterLine : public QFrame
 
         HTreeSplitterLine(QWidget* parent=nullptr);
 
+        void setResizeEnabled(bool enable);
+
     protected:
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
+
+    private:
+
+        bool m_resizeEnabled=true;
 };
 
 class HTreeSplitterSection : public QFrame
@@ -86,6 +92,9 @@ class HTreeSplitterSection : public QFrame
         bool refreshMinimumWidth();
 
         bool isLineUnderMouse() const;
+
+        //! Forward the splitter's manual-resize flag to this section's line (cursor feedback).
+        void setLineResizeEnabled(bool enable);
 
         void setExpanded(bool enable)
         {

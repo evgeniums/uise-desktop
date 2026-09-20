@@ -125,6 +125,12 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         void setNavbarSingleVisibleMode(bool enable);
         bool isNavbarSingleVisibleMode() const noexcept;
 
+        //! Whether the user may resize columns by dragging the lines between them. On by
+        //! default. Read when each tab is created, so set it before the first openPath().
+        //! Disabling keeps the separator lines visible; only dragging and the split cursor go.
+        void setSectionResizeEnabled(bool enable) noexcept;
+        bool isSectionResizeEnabled() const noexcept;
+
         //! Install a builder that gives every tab its own composite tab-bar widget (see
         //! HTreeTabBar/HTreeTabBarItem) in place of the plain QTabBar label/icon. Existing
         //! tabs are fitted with an item immediately; every later tab gets one as it is
