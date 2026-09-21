@@ -99,6 +99,8 @@ class HTree_p
         int expandLastDepthOnOpen=0;
 
         bool navbarSingleVisibleMode=false;
+
+        bool sectionResizeEnabled=true;
 };
 
 //--------------------------------------------------------------------------
@@ -774,6 +776,20 @@ void HTree::setNavbarSingleVisibleMode(bool enable)
 bool HTree::isNavbarSingleVisibleMode() const noexcept
 {
     return pimpl->navbarSingleVisibleMode;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setSectionResizeEnabled(bool enable) noexcept
+{
+    pimpl->sectionResizeEnabled=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTree::isSectionResizeEnabled() const noexcept
+{
+    return pimpl->sectionResizeEnabled;
 }
 
 //--------------------------------------------------------------------------

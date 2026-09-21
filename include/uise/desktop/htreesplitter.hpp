@@ -96,6 +96,17 @@ class UISE_DESKTOP_EXPORT HTreeSplitter : public QFrame
 
         void adjustWidthsAndPositions();
 
+        /**
+         * @brief Enable or disable resizing of sections by dragging the lines between them.
+         *
+         * Enabled by default. Disabling removes only the drag handling and the split cursor:
+         * the separator lines stay visible and all automatic layout (stretching, expand/collapse,
+         * viewport resize) works as before.
+         */
+        void setSectionResizeEnabled(bool enable);
+
+        bool isSectionResizeEnabled() const noexcept;
+
     public slots:
 
         void scrollToEnd();

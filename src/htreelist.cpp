@@ -170,13 +170,21 @@ void HTreeListWidget::setLayoutFrame(QWidget* frame, QVBoxLayout* layout)
 
 //--------------------------------------------------------------------------
 
-void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, QWidget* bottomWidget)
+QWidget* HTreeListWidget::contentParentWidget()
 {
     if (!pimpl->layoutFrame)
     {
         pimpl->statusFrame=makeWidget<FrameWithModalStatus>(this);
         setLayoutFrame(pimpl->statusFrame);
     }
+    return pimpl->layoutFrame;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeListWidget::setContentWidgets(QWidget* listView, QWidget* topWidget, QWidget* bottomWidget)
+{
+    contentParentWidget();
 
     int minWidth=0;
 

@@ -785,8 +785,15 @@ void HTreeNode::fillContent()
         setMaximumWidth(pimpl->widget->maximumWidth());
     }
 
-    setVisible(true);
+    // Hide the collapse placeholder strip BEFORE showing the node, not after. The strip is
+    // visible by default and is ~10px wide (htree.qss: 8px + 1px padding each side), so with the
+    // old order show_helper()'s synchronous layout placed the whole content 10px too far right,
+    // and hiding the strip afterwards only posted a LayoutRequest. Whenever a paint beat that
+    // request to the screen -- seen on application start -- the content was drawn shifted and
+    // then jumped left by 10px (a chats column and its pseudo-page visibly changed width).
+    // Hidden first, the layout show_helper() runs is already the final one.
     pimpl->placeHolder->setVisible(false);
+    setVisible(true);
 
     if (buildContent && pimpl->treeTab!=nullptr)
     {

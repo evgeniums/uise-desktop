@@ -137,6 +137,18 @@ int ElidedLabel::widthHint() const
 
 //--------------------------------------------------------------------------
 
+int ElidedLabel::heightHint() const
+{
+    auto sz=m_hiddenLabel->sizeHint();
+    if (sz.isValid())
+    {
+        return sz.height();
+    }
+    return 0;
+}
+
+//--------------------------------------------------------------------------
+
 void ElidedLabel::resizeEvent(QResizeEvent *event)
 {
     m_laidOut=true;

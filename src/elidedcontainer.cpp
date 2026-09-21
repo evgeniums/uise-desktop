@@ -215,16 +215,19 @@ QSize ElidedContainer::sizeHint() const
             continue;
         }
 
-        auto sz=w.widget->sizeHint();
         if (w.label!=nullptr)
         {
-            width+=w.label->widthHint();
+            // A label that ignores its size hint must not demand its full text width: otherwise a
+            // long text widens the container's owner (e.g. a list) past the viewport and never elides.
+            width+=w.label->isIgnoreSizeHint() ? w.label->minimumWidth() : w.label->widthHint();
+            height=std::max(height,w.label->heightHint());
         }
         else
         {
+            auto sz=w.widget->sizeHint();
             width+=sz.width();
+            height=std::max(height,sz.height());
         }
-        height=std::max(height,sz.height());
     }
 
     return QSize{width,height};
@@ -241,7 +244,7 @@ void ElidedContainer::updateMinimumHeight()
         {
             continue;
         }
-        min=std::max(min,w.widget->sizeHint().height());
+        min=std::max(min,w.label ? w.label->heightHint() : w.widget->sizeHint().height());
     }
     setMinimumHeight(min);
 }
