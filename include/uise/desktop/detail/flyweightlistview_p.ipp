@@ -1325,6 +1325,31 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
     // accident, while replacing (2)'s "arriving at an edge" test with the same identity check so
     // it only fires for an item that is genuinely, newly the extreme -- never for one merely
     // moving around inside the already-loaded window.
+    //
+    //  3) Identity alone is not enough to decide to DROP a row that newly becomes the first/last one.
+    //     Dropping is only right when there may be unfetched rows between the loaded window's edge
+    //     and the item's new position -- checkItemCount() then re-fetches it in place via
+    //     canFetchBefore/canFetchAfter. When the loaded window already reaches the edge of the data
+    //     (the owner pinned the marker there: !canFetchBefore/!canFetchAfter) there is no gap, nothing
+    //     would ever fetch the row back, and dropping it just loses it until the view is reloaded --
+    //     that is how a chat whose last message was deleted (its sort key moves back, to the bottom
+    //     of a fully loaded chat list) used to vanish. So in that case keep the row and extend the
+    //     marker to it. Only an already-set marker is ever extended: creating one would falsely close
+    //     an open edge and stop the prefetch.
+    //
+    //     "Edge loaded" is exactly the negation of checkItemCount()'s canFetchBefore/canFetchAfter and
+    //     must stay in lockstep with it. It is evaluated HERE, against the markers as the owner left
+    //     them: the adjustMinMax block below moves a marker onto the item's own new value, after which
+    //     the marker no longer says whether the window ever reached the previous edge of the data.
+    const auto* prevFirst=firstItem();
+    const auto* prevLast=lastItem();
+    const bool wasFirst=(prevFirst==&item);
+    const bool wasLast=(prevLast==&item);
+    const bool endLoaded=m_maxSortValueSet && prevLast!=nullptr &&
+                           !m_orderComparer(prevLast->sortValue(),m_maxSortValue);
+    const bool beginLoaded=m_minSortValueSet && prevFirst!=nullptr &&
+                             !m_orderComparer(m_minSortValue,prevFirst->sortValue());
+
     if (adjustMinMax)
     {
         if (!m_minSortValueSet || m_orderComparer(item.sortValue(),m_minSortValue))
@@ -1339,23 +1364,34 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
         }
     }
 
-    const bool wasFirst=(firstItem()==&item);
-    const bool wasLast=(lastItem()==&item);
-
     auto afterWidget=insertItemToContainer(item,true);
 
     const bool isLast=(lastItem()==&item);
     if (isLast && !wasLast && !(m_stick==Direction::END && isAtEnd()))
     {
-        removeItem(item.id());
-        return;
+        if (!endLoaded)
+        {
+            removeItem(item.id());
+            return;
+        }
+        if (m_orderComparer(m_maxSortValue,item.sortValue()))
+        {
+            m_maxSortValue=item.sortValue();
+        }
     }
 
     const bool isFirst=(firstItem()==&item);
     if (isFirst && !wasFirst && !(m_stick==Direction::HOME && isAtBegin()))
     {
-        removeItem(item.id());
-        return;
+        if (!beginLoaded)
+        {
+            removeItem(item.id());
+            return;
+        }
+        if (m_orderComparer(item.sortValue(),m_minSortValue))
+        {
+            m_minSortValue=item.sortValue();
+        }
     }
 
     m_llist->insertWidgetAfter(item.widget(),afterWidget);
