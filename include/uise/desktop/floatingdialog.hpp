@@ -260,6 +260,25 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void moveToAnchor(const QPoint& globalPos, Qt::Corner anchorCorner, bool animated=true);
 
         /**
+         * @brief Hand an ALREADY-VISIBLE frame over to another window, keeping it open.
+         * @param parent Any widget in the window the frame is to belong to from now on.
+         *
+         * The frame is a top level, but its Qt parent decides which window it stays stacked above
+         * and whose destruction takes it down; a host that outlives one window -- a recording that
+         * goes on while the user works in a second window -- needs to move that parent. Changing
+         * the parent of a top level destroys and recreates its native window, so the frame is
+         * necessarily hidden and shown again: what this adds over a bare setParent() is keeping
+         * the flags, the translucency, the host-visibility tracking and the on-screen geometry,
+         * and NOT re-running the popup sequence (no fade restart, no focus, no activateWindow() --
+         * the frame must not take activation away from the window the user just moved to).
+         *
+         * The content widget is untouched, so nothing the dialog is doing is interrupted. Call
+         * moveToAnchor() afterwards to place it within its new window. A no-op while the frame is
+         * hidden or closing, or when it is already in that window.
+         */
+        void moveToWindow(QWidget* parent);
+
+        /**
          * @brief Close the frame.
          * @param autoDestroy Destroy the content widget set with autoDestroy=true.
          *

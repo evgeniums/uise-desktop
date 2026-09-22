@@ -804,6 +804,53 @@ void FloatingDialogFrame::moveToAnchor(const QPoint& globalPos, Qt::Corner ancho
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::moveToWindow(QWidget* parent)
+{
+    if (parent==nullptr || !isVisible() || pimpl->closing)
+    {
+        return;
+    }
+
+    auto* newWindow=parent->window();
+    auto* oldWindow=parentWidget()!=nullptr ? parentWidget()->window() : nullptr;
+    if (newWindow==nullptr || newWindow==this || newWindow==oldWindow)
+    {
+        return;
+    }
+
+    // A slide in flight was aimed at a position on the old window and would fight the new anchor
+    // the caller is about to set.
+    if (pimpl->moveAnimation!=nullptr)
+    {
+        pimpl->moveAnimation->stop();
+    }
+
+    const auto geo=geometry();
+
+    // setParent() on a top level drops the native window and hides the widget. The flags have to
+    // be passed back explicitly -- the single-argument overload would turn the frame into an
+    // ordinary child widget -- and the translucency is re-asserted because what comes back is a
+    // freshly created native window, not the one the attribute was first applied to.
+    setParent(newWindow,windowFlags());
+    setAttribute(Qt::WA_TranslucentBackground);
+
+    // The frame follows ITS OWN host window's visibility; that host is now a different window.
+    updateHostWindowTracking(this,pimpl.get());
+    pimpl->hiddenByHost=false;
+
+    // Put back where it was on screen, so the caller's own moveToAnchor() animates from where the
+    // user last saw it instead of from wherever a recreated window lands.
+    setGeometry(geo);
+    setWindowOpacity(1.0);
+
+    // show()+raise() but deliberately no activateWindow(): this runs BECAUSE the user just moved
+    // to another window, and taking activation back from it would undo what they did.
+    show();
+    raise();
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
