@@ -543,6 +543,47 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          */
         virtual void closeVoiceRecorder() {}
 
+        /**
+         * @brief Where this composer would anchor its voice recorder popup right now.
+         * @param corner Set to the corner of the popup that lands on the returned point.
+         * @return The global anchor point, or a null QPoint (QPoint::isNull()) when this composer
+         *  has nothing to anchor to (no microphone button, or the button is not visible/on screen).
+         *
+         * Exactly the pair a call to openVoiceRecorder() would use. A host that owns the recorder
+         * beyond the life of one composer (one recording surviving a page switch) uses this to put
+         * the popup back on whichever composer is current, rather than re-deriving that composer's
+         * own button layout.
+         */
+        virtual QPoint voiceRecorderAnchor(Qt::Corner& corner) const
+        {
+            corner=Qt::BottomRightCorner;
+            return QPoint();
+        }
+
+        /**
+         * @brief Tell this composer that a voice recording it does not itself own is in progress.
+         *
+         * For a host that owns the recorder beyond the life of one composer: the composer the
+         * recording actually belongs to is told so a page later rebuilt for that same chat does
+         * not offer a second recorder over the first. While set:
+         *  - this composer being hidden must NOT close the recorder popup (see hideEvent()), nor
+         *    does turning voice messages off (see updateMicButton());
+         *  - if this composer does not itself have the popup open, its microphone and emoji
+         *    buttons are put out of the mouse's reach and its text area is disabled, exactly as if
+         *    its own popup were up.
+         * Clearing it restores the composer, unless its own popup is (by then) the one that is up.
+         * Default no-op, like closeVoiceRecorder() and the rest of this family.
+         */
+        virtual void setVoiceRecordingHeldByHost(bool enable)
+        {
+            std::ignore=enable;
+        }
+
+        virtual bool isVoiceRecordingHeldByHost() const noexcept
+        {
+            return false;
+        }
+
         //! Show/hide the context menu's "Mention someone" row. See the mentionMenuItemVisible
         //! property. A plain setter with no update hook, unlike setMentionButtonVisible() above:
         //! the menu is rebuilt from scratch on every right-click
@@ -1061,6 +1102,25 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          * one always follows. Whatever is still being recorded at this point is to be discarded.
          */
         void voiceRecorderClosed();
+
+        /**
+         * @brief This composer was hidden, or shown again.
+         *
+         * Emitted synchronously from the editor's own hideEvent()/showEvent() -- i.e. from exactly
+         * the place that, absent setVoiceRecordingHeldByHost(true), decides whether the recorder
+         * popup closes. A host that owns the recorder beyond one composer's lifetime learns of the
+         * two at the same instant this way, with no dependence on the order Qt delivers hide/show
+         * events to a widget and to its descendants.
+         *
+         * A hide is not always "this page went to the background": minimising or closing the
+         * window hides every composer in it too. A host that reacts to this by relocating
+         * something of its own must check the window itself if that distinction matters --
+         * FloatingDialogFrame already follows its own host window's visibility without help.
+         */
+        void editorHidden();
+
+        //! @sa editorHidden()
+        void editorShown();
 
     protected:
 

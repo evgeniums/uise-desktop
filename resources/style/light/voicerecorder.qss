@@ -20,6 +20,10 @@ uise--VoiceRecorderDialog #durationLabel {
     color: #444444;
 }
 
+uise--VoiceRecorderDialog #positionLabel {
+    color: #444444;
+}
+
 uise--VoiceRecorderDialog #continueArea {
     color: #1a6bc4;
     border-color: #1a6bc4;
@@ -70,7 +74,15 @@ uise--VoiceRecorderDialog #pauseButton #text:disabled {
     color: #AAAAAA;
 }
 
+/* The text colour is spelled out here, not inherited: #commentEdit is a QPlainTextEdit, which is a
+   sibling of QTextEdit (both derive from QAbstractScrollArea), NOT a subclass -- so the theme's own
+   `QLineEdit, QTextEdit { color: ... }` and `placeholder-text-color` rules (reset.qss, global.qss)
+   do not match it, and without these two lines it draws in the SYSTEM palette's text colour: white
+   on this explicitly white background whenever the app is in the light theme while the desktop is
+   in dark mode. Same values the theme gives a QTextEdit. */
 uise--VoiceRecorderDialog #commentEdit {
     background-color: #FFFFFF;
     border-color: #D0D0D0;
+    color: #000000;
+    placeholder-text-color: #888888;
 }

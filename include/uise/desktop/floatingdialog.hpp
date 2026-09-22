@@ -68,6 +68,7 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
 
     Q_PROPERTY(int fadeDurationMs READ fadeDurationMs WRITE setFadeDurationMs)
     Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
+    Q_PROPERTY(int moveDurationMs READ moveDurationMs WRITE setMoveDurationMs)
 
     public:
 
@@ -76,6 +77,9 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
 
         //! Default fade duration in milliseconds; 0 disables the animation entirely.
         constexpr static const int DefaultFadeDurationMs=150;
+
+        //! Default duration of the animated move played by moveToAnchor(); 0 disables it.
+        constexpr static const int DefaultMoveDurationMs=180;
 
         /**
          * @brief Constructor.
@@ -186,6 +190,13 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void setEasingCurveType(int val) noexcept;
         int easingCurveType() const noexcept;
 
+        /**
+         * @brief Set the duration of the animated move played by moveToAnchor().
+         * @param val Duration in milliseconds; 0 disables the animation (an instant move).
+         */
+        void setMoveDurationMs(int val) noexcept;
+        int moveDurationMs() const noexcept;
+
     signals:
 
         void moved(const QPoint& globalPos);
@@ -231,6 +242,24 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         void popupAt(const QPoint& globalPos, Qt::Corner anchorCorner);
 
         /**
+         * @brief Move an ALREADY-VISIBLE frame to a new corner anchor.
+         * @param globalPos Global position that anchorCorner of the frame is placed at.
+         * @param anchorCorner Which corner of the frame lands on globalPos.
+         * @param animated Slide there over moveDurationMs(), rather than jumping there at once.
+         *
+         * The same placement rule as the two-argument popupAt() -- including remembering the
+         * anchor, so a later content resize re-applies it (see resizeEvent()) -- but WITHOUT
+         * show/raise/activate and without restarting the fade: a frame the host is relocating
+         * while it stays open must not steal focus back from the window the user is working in,
+         * and must not blink. A no-op while the frame is hidden or while it is closing.
+         *
+         * The anchor is remembered IMMEDIATELY, before the animation runs, so a resize arriving
+         * mid-slide retargets the slide in flight rather than teleporting the frame to where it
+         * would otherwise have landed.
+         */
+        void moveToAnchor(const QPoint& globalPos, Qt::Corner anchorCorner, bool animated=true);
+
+        /**
          * @brief Close the frame.
          * @param autoDestroy Destroy the content widget set with autoDestroy=true.
          *
@@ -262,6 +291,15 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         //! resizeEvent(); a no-op when no anchor is remembered (never popped up that way, or the
         //! user has since dragged the frame).
         void applyAnchoredPosition();
+
+        //! The top-left the remembered anchor resolves to, clamped fully to the screen. The
+        //! computation applyAnchoredPosition() used to do in place -- factored out so
+        //! moveToAnchor() can animate towards it instead of jumping. Undefined (an unclamped
+        //! (0,0)-relative point) when no anchor is remembered; callers check anchorValid first.
+        QPoint anchoredPosition() const;
+
+        //! Build pimpl's move animation on first use.
+        void ensureMoveAnimation();
 
         void finishClose();
 

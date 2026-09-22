@@ -4278,6 +4278,12 @@ class MessageEditor_p
         //! frame's closed() has run -- see onVoiceRecorderClosed().
         bool voiceOpen=false;
 
+        //! A recording that does not belong to THIS editor is in progress and a host has claimed
+        //! this composer for it -- see AbstractMessageEditor::setVoiceRecordingHeldByHost(). Never
+        //! true at the same time voiceOpen is true for a reason this editor caused itself (this
+        //! editor's own press sets voiceOpen, not this).
+        bool voiceHeldByHost=false;
+
         //! The mouse button is down on the mic button: the press opened the popup and the release
         //! has not come yet.
         bool micHeld=false;
@@ -8033,9 +8039,13 @@ void MessageEditor::applyMicButtonVisibility()
 void MessageEditor::updateMicButton()
 {
     applyMicButtonVisibility();
-    if (!isMicButtonVisible() || !isVoiceMessageEnabled())
+    if ((!isMicButtonVisible() || !isVoiceMessageEnabled()) && !pimpl->voiceHeldByHost)
     {
         // Turning voice messages off must not strand a popup with nothing left to have opened it.
+        // Not while a host has claimed this composer for a recording that is not this editor's
+        // own (setVoiceRecordingHeldByHost()): that recording is the host's to end, not this
+        // composer's -- voiceOpen is false in that case anyway, so this would be a no-op, but the
+        // guard says so rather than relying on that being true.
         closeVoiceRecorder();
     }
     Layout::activateUpward(this);
@@ -8145,6 +8155,26 @@ FloatingVoiceRecorderDialog* MessageEditor::ensureVoiceRecorder()
 
 //--------------------------------------------------------------------------
 
+QPoint MessageEditor::voiceRecorderAnchor(Qt::Corner& corner) const
+{
+    corner=Qt::BottomRightCorner;
+
+    // Bottom-right corner of the popup onto the top-right corner of the button, so it unfolds
+    // upward and to the LEFT. The mic button sits at the right edge of the composer, so growing to
+    // the left keeps the popup over the composer rather than hanging off the window, and its right
+    // edge stays lined up with the button as it grows from Held to Paused.
+    //
+    // QRect::topRight() is the last pixel column, one short of the button's right edge, hence the width.
+    if (pimpl->micButton==nullptr || !pimpl->micButton->isVisible())
+    {
+        return QPoint();
+    }
+    return pimpl->micButton->mapToGlobal(QPoint(pimpl->micButton->width(),0))
+          -QPoint(0,VoiceRecorderGap);
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::openVoiceRecorder()
 {
     if (pimpl->voiceOpen)
@@ -8173,16 +8203,11 @@ void MessageEditor::openVoiceRecorder()
     dialog->setCropRange(0.0,1.0);
     dialog->setComment(QString());
 
-    // Bottom-right corner of the popup onto the top-right corner of the button, so it unfolds
-    // upward and to the LEFT. The mic button sits at the right edge of the composer, so growing to
-    // the left keeps the popup over the composer rather than hanging off the window, and its right
-    // edge stays lined up with the button as it grows from Held to Paused. The two-argument popupAt()
-    // keeps it on the screen and re-applies the anchor whenever the popup resizes.
-    //
-    // QRect::topRight() is the last pixel column, one short of the button's right edge, hence the width.
-    const auto anchor=pimpl->micButton->mapToGlobal(QPoint(pimpl->micButton->width(),0))
-                      -QPoint(0,VoiceRecorderGap);
-    frame->popupAt(anchor,Qt::BottomRightCorner);
+    // The two-argument popupAt() keeps it on the screen and re-applies the anchor whenever the
+    // popup resizes. See voiceRecorderAnchor() for what the anchor is and why.
+    Qt::Corner corner;
+    const auto anchor=voiceRecorderAnchor(corner);
+    frame->popupAt(anchor,corner);
 
     pimpl->voiceOpen=true;
 
@@ -8212,15 +8237,23 @@ void MessageEditor::onVoiceRecorderClosed()
     hideMicDragProxy();
 
     // both were locked while the popup was open, see ensureVoiceRecorder() and openVoiceRecorder()
-    lockVoiceButton(pimpl->micButton,false);
-    lockVoiceButton(pimpl->emojiButton,false);
+    // -- but not if a host has claimed this composer for a DIFFERENT recording in the meantime
+    // (setVoiceRecordingHeldByHost()): that claim's own locks must survive this popup's close.
+    if (!pimpl->voiceHeldByHost)
+    {
+        lockVoiceButton(pimpl->micButton,false);
+        lockVoiceButton(pimpl->emojiButton,false);
+    }
 
     if (!wasOpen)
     {
         return;
     }
 
-    pimpl->editor->setEnabled(pimpl->editorWasEnabled);
+    if (!pimpl->voiceHeldByHost)
+    {
+        pimpl->editor->setEnabled(pimpl->editorWasEnabled);
+    }
     applyMicButtonVisibility();
     restoreEditorFocus();
 
@@ -8258,6 +8291,46 @@ void MessageEditor::closeVoiceRecorder()
     // (Escape, the outside click), so this works on a dialog that is not closable while recording.
     // It is asynchronous behind the frame's fade; onVoiceRecorderClosed() finishes the job.
     pimpl->voiceDialog->close(false);
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setVoiceRecordingHeldByHost(bool enable)
+{
+    if (pimpl->voiceHeldByHost==enable)
+    {
+        return;
+    }
+    pimpl->voiceHeldByHost=enable;
+
+    // While THIS editor's own popup is up, its own state machine (openVoiceRecorder(), the
+    // pinned() lock above, onVoiceRecorderClosed()) already governs these locks. Touching them
+    // here too would fight the press-and-hold gesture, which needs the mic button UNLOCKED to
+    // receive the mouse events the gesture is built from in the first place.
+    if (pimpl->voiceOpen)
+    {
+        return;
+    }
+
+    lockVoiceButton(pimpl->micButton,enable);
+    lockVoiceButton(pimpl->emojiButton,enable);
+    if (enable)
+    {
+        pimpl->editorWasEnabled=pimpl->editor->isEnabled();
+        pimpl->editor->setEnabled(false);
+    }
+    else
+    {
+        pimpl->editor->setEnabled(pimpl->editorWasEnabled);
+        applyMicButtonVisibility();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isVoiceRecordingHeldByHost() const noexcept
+{
+    return pimpl->voiceHeldByHost;
 }
 
 //--------------------------------------------------------------------------
@@ -8422,10 +8495,17 @@ void MessageEditor::hideEvent(QHideEvent* event)
     releaseEmojiGallery();
 
     // Unlike the emoji gallery nothing is remembered: a recording of a composer that has gone is
-    // not something to come back to. The host is told, and discards it.
-    closeVoiceRecorder();
+    // not something to come back to, and the host is told, and discards it -- UNLESS a host has
+    // claimed this popup as its own (setVoiceRecordingHeldByHost()), in which case the recording
+    // is the host's to keep going regardless of what this composer is doing.
+    if (!pimpl->voiceHeldByHost)
+    {
+        closeVoiceRecorder();
+    }
 
     AbstractMessageEditor::hideEvent(event);
+
+    emit editorHidden();
 }
 
 //--------------------------------------------------------------------------
@@ -8433,6 +8513,11 @@ void MessageEditor::hideEvent(QHideEvent* event)
 void MessageEditor::showEvent(QShowEvent* event)
 {
     AbstractMessageEditor::showEvent(event);
+
+    // Emitted here, ahead of the emoji-gallery handling below (which has its own early returns),
+    // so it fires for every show regardless of that logic's outcome.
+    emit editorShown();
+
     if (!pimpl->emojiDialogPinned || pimpl->emojiDialogOpen)
     {
         return;

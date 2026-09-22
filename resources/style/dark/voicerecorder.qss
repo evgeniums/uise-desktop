@@ -20,6 +20,10 @@ uise--VoiceRecorderDialog #durationLabel {
     color: #CCCCCC;
 }
 
+uise--VoiceRecorderDialog #positionLabel {
+    color: #CCCCCC;
+}
+
 uise--VoiceRecorderDialog #continueArea {
     color: #8ec5ff;
     border-color: #8ec5ff;
@@ -60,7 +64,11 @@ uise--VoiceRecorderDialog #pauseButton #text:disabled {
     color: #666666;
 }
 
+/* Spelled out for the same reason as in light/voicerecorder.qss: QPlainTextEdit is not a
+   QTextEdit, so the theme's own text/placeholder colours never reach it. */
 uise--VoiceRecorderDialog #commentEdit {
     background-color: #2B2B2B;
     border-color: #444444;
+    color: #FFFFFF;
+    placeholder-text-color: #888888;
 }

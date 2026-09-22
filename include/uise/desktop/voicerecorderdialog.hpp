@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/abstractvoicerecorderdialog.hpp>
 
+class QLabel;
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -95,6 +97,11 @@ class UISE_DESKTOP_EXPORT VoiceRecorderDialog : public Dialog<AbstractVoiceRecor
         void pointerReleased(const QPoint& globalPos) override;
         Target targetAt(const QPoint& globalPos) const override;
 
+        void setContextWidget(QWidget* widget) override;
+        QWidget* contextWidget() const override;
+        void setContextVisible(bool enable) override;
+        bool isContextVisible() const override;
+
         //! Its content has a natural size only.
         bool isResizable() const override
         {
@@ -111,6 +118,43 @@ class UISE_DESKTOP_EXPORT VoiceRecorderDialog : public Dialog<AbstractVoiceRecor
         void updateDuration();
         void setHot(Target target);
         void retranslate();
+
+        /**
+         * @brief Reserve enough width for every word Pause<->Resume and Listen<->Pause can be, so
+         *  clicking either never shrinks or grows the frame's own natural width.
+         *
+         * The frame tracks its content's size hint exactly (isResizable()==false pins
+         * FloatingDialogFrame's layout to QLayout::SetFixedSize, see its own doc comment), so
+         * WITHOUT this, every Pause/Resume/Listen click reflows the whole popup a few pixels
+         * narrower or wider as the button's text changes, which reads as the window flickering in
+         * place. Called once from construct() and again from retranslate() (translated words are
+         * a different length). See updateTimeLabelWidth() for the ticking CLOCK labels' own,
+         * per-tick version of the same problem.
+         */
+        void reserveWidths();
+
+        //! Ticking-clock counterpart of reserveWidths(), applied once per tick rather than once
+        //! per translation -- see its own doc comment (voicerecorderdialog.cpp) for why a label
+        //! needs this at all and why it takes the caller's own mask cache. \p sample is the EXACT
+        //! text the caller is about to display (not just a raw digit count): durationLabel shows
+        //! two different WRAPPINGS of the same value depending on state (plain "M:SS.T", or
+        //! " / M:SS.T" beside positionLabel while Listening), and each needs its own mask.
+        void updateTimeLabelWidth(QLabel* label, QString& mask, const QString& sample);
+
+        /**
+         * @brief Reserve THIS dialog's own overall width to the widest content it can ever show.
+         * @param reset Recompute from scratch (retranslate()/construct(): the text set just
+         *  changed, so a previous reservation may now be too wide). Default false: only ever
+         *  GROWS the reservation (setContextWidget(): attaching a context widget while parked
+         *  must not shrink it back down the moment it is detached on the very next un-park,
+         *  which would be a width flicker of its own).
+         *
+         * Covers every state (Held's targetsRow, Pinned's buttonsRow, Paused/Listening's
+         * playerRow+commentEdit) and the header row both with and without a context widget, so
+         * only HEIGHT changes as the state/park-status does, never width. See its own doc comment
+         * (voicerecorderdialog.cpp) for why a whole-dialog fixed width is what actually stops it.
+         */
+        void reserveContentWidth(bool reset=false);
 
         std::unique_ptr<VoiceRecorderDialog_p> pimpl;
 };

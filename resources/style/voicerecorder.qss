@@ -22,6 +22,16 @@ uise--VoiceRecorderDialog #durationLabel {
     font-size: 16px;
 }
 
+/* task-voice-messages-plan.md (S4c): the ticking position, shown only while Listening, split out
+   of durationLabel (see VoiceRecorderDialog::updateDuration()) -- same size as the label it sits
+   beside. No margin here: the gap on BOTH sides of the slash is a leading/trailing space baked
+   into durationLabel's OWN " / M:SS.T" text instead (updateDuration()), the same glyph in the
+   same label on both sides, so a QSS margin on this widget could not make them equal even if it
+   happened to match on one side. */
+uise--VoiceRecorderDialog #positionLabel {
+    font-size: 16px;
+}
+
 /* Held: the two areas the pointer is dragged onto */
 uise--VoiceRecorderDialog #targetsRow {
     margin-top: 10px;
@@ -63,6 +73,26 @@ uise--VoiceRecorderDialog #listenButton {
     margin-right: 8px;
     padding: 4px 8px;
     border-radius: 6px;
+}
+
+/* task-voice-messages-plan.md (S4c): #listenButton is constructed with EMPTY text
+ * (IconTextButton::IconPosition::BeforeText) and given "Listen"/"Pause" only later, from
+ * applyState() -- both calls happen before this dialog is ever shown (construct() itself calls
+ * applyState() once). IconTextButton::setText() does flip its "iconOnly" dynamic property and
+ * ask Style::updateWidgetStyle() to repolish, but that helper is a deliberate no-op on a widget
+ * that has never been polished yet (Qt has not run WA_WState_Polished on it -- see its own doc
+ * comment, style.cpp), so the ripple's FIRST real polish, on this popup's first show, can end up
+ * reading a stale match. Pinned here by object name -- higher specificity than
+ * ripple.qss's own [iconOnly="..."] rules regardless of which one the property actually landed
+ * on -- to the exact values ripple.qss's base (non-icon-only, horizontal BeforeText/AfterText)
+ * rule already uses: a flat, rounded sweep, not the icon-only capsule this button visibly always
+ * has text and so should never be styled as.
+ */
+uise--VoiceRecorderDialog #listenButton uise--RippleOverlay {
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleCornerRadius: 4;
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 0.35;
 }
 
 uise--VoiceRecorderDialog #commentEdit {

@@ -141,35 +141,8 @@ std::shared_ptr<SvgIcon> playerDangerIcon(const QString& alias, QWidget* context
     return Style::instance().svgIconLocator().icon(QString("AudioPlayerDanger::%1").arg(alias),context);
 }
 
-/**
- * The clock string with every digit replaced by the widest digit of the font: "1:11" is narrower
- * than "0:00" in a proportional font, so the width that has to fit is the one of the widest
- * digits, not the one of the text that happens to be shown.
- */
-QString widestDigitsOf(const QString& text, const QFontMetrics& metrics)
-{
-    auto widest=QLatin1Char('0');
-    int widestAdvance=-1;
-    for (char digit='0';digit<='9';digit++)
-    {
-        const auto advance=metrics.horizontalAdvance(QLatin1Char(digit));
-        if (advance>widestAdvance)
-        {
-            widestAdvance=advance;
-            widest=QLatin1Char(digit);
-        }
-    }
-
-    auto mask=text;
-    for (auto& ch: mask)
-    {
-        if (ch.isDigit())
-        {
-            ch=widest;
-        }
-    }
-    return mask;
-}
+// widestDigitsOf() moved to uise/desktop/utils/audiotime.hpp -- VoiceRecorderDialog's own
+// duration/position labels need the identical technique (task-voice-messages-plan.md, S4c).
 
 }
 

@@ -1217,6 +1217,9 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         bool isVoiceRecorderOpen() const override;
         AbstractVoiceRecorderDialog* voiceRecorder() const override;
         void closeVoiceRecorder() override;
+        QPoint voiceRecorderAnchor(Qt::Corner& corner) const override;
+        void setVoiceRecordingHeldByHost(bool enable) override;
+        bool isVoiceRecordingHeldByHost() const noexcept override;
 
         //! @copydoc AbstractMessageEditor::setEmojiRecentIds()
         void setEmojiRecentIds(QStringList ids) override;

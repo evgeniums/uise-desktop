@@ -26,12 +26,16 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_ABSTRACTVOICERECORDERDIALOG_HPP
 #define UISE_DESKTOP_ABSTRACTVOICERECORDERDIALOG_HPP
 
+#include <tuple>
+
 #include <QByteArray>
 #include <QPoint>
 #include <QString>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractdialog.hpp>
+
+class QWidget;
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -64,8 +68,10 @@ namespace uise {
  * The dialog moves itself along these edges when the user asks -- so the interface answers at once
  * -- and tells the host with the signals; the host may still overrule it with setState().
  *
- * While the message is being recorded (Held, Pinned) the dialog is not closable, so Escape and the
- * outside click cannot throw a recording away; Cancel is the way out. See AbstractDialog::setClosable().
+ * Closable in every state (user's decision, 2026-09-22): Escape, an outside click, and the title
+ * bar's own close button all discard whatever is being recorded or reviewed, in Held/Pinned
+ * exactly as they already did in Paused/Listening -- see AbstractDialog::setClosable(), never
+ * turned off by this dialog. Cancel is the same discard, just explicit rather than incidental.
  *
  * Because a press that starts on the microphone button keeps the mouse grabbed there, the dialog
  * never sees the pointer during Held. The editor that owns the button forwards it with
@@ -136,6 +142,38 @@ class UISE_DESKTOP_EXPORT AbstractVoiceRecorderDialog : public AbstractDialog
 
         //! Which area a global position is over, for a host that wants to know.
         virtual Target targetAt(const QPoint& globalPos) const=0;
+
+        /**
+         * @brief Put a host-supplied widget into the header, beside the clock, or take it out.
+         * @param widget The widget to show, reparented into the dialog. nullptr takes out whatever
+         *  is there WITHOUT destroying it -- the host keeps ownership of what it built.
+         *
+         * The dialog knows nothing about what the widget shows or does: a host whose recorder
+         * outlives the page that started it uses this to say WHICH chat is being recorded for, and
+         * connects to the widget's own signals (e.g. a button's clicked()) itself -- there is no
+         * signal here for that. Hidden by default; see setContextVisible(). Virtual-with-default,
+         * not pure: most hosts never need it.
+         */
+        virtual void setContextWidget(QWidget* widget)
+        {
+            std::ignore=widget;
+        }
+
+        virtual QWidget* contextWidget() const
+        {
+            return nullptr;
+        }
+
+        //! Show or hide the context widget without taking it out. A no-op while none is set.
+        virtual void setContextVisible(bool enable)
+        {
+            std::ignore=enable;
+        }
+
+        virtual bool isContextVisible() const
+        {
+            return false;
+        }
 
     signals:
 

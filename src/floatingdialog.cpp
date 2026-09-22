@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStyleOption>
 #include <QStyle>
 #include <QPropertyAnimation>
+#include <QVariantAnimation>
 #include <QLayout>
 #include <QPointer>
 #include <QTimer>
@@ -92,6 +93,10 @@ class FloatingDialogFrame_p
         int easingCurveType=static_cast<int>(QEasingCurve::OutCubic);
         bool closing=false;             // a close is in flight (fade running) or mid-finishClose()
         bool pendingAutoDestroy=false;
+
+        //! Built lazily by ensureMoveAnimation(); reused by every moveToAnchor() call.
+        QVariantAnimation* moveAnimation=nullptr;
+        int moveDurationMs=FloatingDialogFrame::DefaultMoveDurationMs;
 };
 
 //--------------------------------------------------------------------------
@@ -565,6 +570,20 @@ int FloatingDialogFrame::easingCurveType() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FloatingDialogFrame::setMoveDurationMs(int val) noexcept
+{
+    pimpl->moveDurationMs=val;
+}
+
+//--------------------------------------------------------------------------
+
+int FloatingDialogFrame::moveDurationMs() const noexcept
+{
+    return pimpl->moveDurationMs;
+}
+
+//--------------------------------------------------------------------------
+
 void FloatingDialogFrame::preparePopup()
 {
     if (pimpl->content.isNull())
@@ -670,13 +689,8 @@ void FloatingDialogFrame::popupAt(const QPoint& globalPos, Qt::Corner anchorCorn
 
 //--------------------------------------------------------------------------
 
-void FloatingDialogFrame::applyAnchoredPosition()
+QPoint FloatingDialogFrame::anchoredPosition() const
 {
-    if (!pimpl->anchorValid)
-    {
-        return;
-    }
-
     auto pos=pimpl->anchorPos;
     if (pimpl->anchorCorner==Qt::TopRightCorner || pimpl->anchorCorner==Qt::BottomRightCorner)
     {
@@ -688,7 +702,104 @@ void FloatingDialogFrame::applyAnchoredPosition()
     }
 
     clampFullyToScreen(pos);
+    return pos;
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::applyAnchoredPosition()
+{
+    if (!pimpl->anchorValid)
+    {
+        return;
+    }
+
+    const auto pos=anchoredPosition();
+
+    // A moveToAnchor() slide is in flight and this is a resize arriving under it (see
+    // moveToAnchor()'s own doc comment and VoiceRecorderDialog::applyState(), which resizes the
+    // frame it is in on every state change): retarget the animation instead of jumping the frame
+    // straight to the new position, which would otherwise fight the slide every frame.
+    if (pimpl->moveAnimation!=nullptr && pimpl->moveAnimation->state()==QAbstractAnimation::Running)
+    {
+        pimpl->moveAnimation->setEndValue(pos);
+        return;
+    }
+
     move(pos);
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::ensureMoveAnimation()
+{
+    if (pimpl->moveAnimation!=nullptr)
+    {
+        return;
+    }
+
+    // A QVariantAnimation, not a QPropertyAnimation(this,"pos") -- the same idiom the rest of the
+    // library uses for a geometric animation (DropdownFrame, Drawer): applying the interpolated
+    // value by hand in valueChanged() is what lets applyAnchoredPosition() retarget it mid-flight
+    // with a plain setEndValue(), which a bound Qt property animation supports just as well, but
+    // this keeps every geometric animation in the codebase built the same way.
+    pimpl->moveAnimation=new QVariantAnimation(this);
+    connect(
+        pimpl->moveAnimation,
+        &QVariantAnimation::valueChanged,
+        this,
+        [this](const QVariant& value)
+        {
+            move(value.toPoint());
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::moveToAnchor(const QPoint& globalPos, Qt::Corner anchorCorner, bool animated)
+{
+    // Relocating an open popup, not opening or closing one: unlike popupAt(), this must not show,
+    // raise or activate the frame (it would steal focus back from whatever window the user is
+    // actually working in), and must not restart the fade -- see the method's own doc comment.
+    if (!isVisible() || pimpl->closing)
+    {
+        return;
+    }
+
+    // Remembered immediately, like the two-argument popupAt(): a resize arriving mid-slide must
+    // retarget towards the new anchor, not the one the slide started towards.
+    pimpl->anchorPos=globalPos;
+    pimpl->anchorCorner=anchorCorner;
+    pimpl->anchorValid=true;
+    pimpl->hasPosition=true;
+
+    const auto target=anchoredPosition();
+
+    if (!animated || pimpl->moveDurationMs<=0)
+    {
+        if (pimpl->moveAnimation!=nullptr)
+        {
+            pimpl->moveAnimation->stop();
+        }
+        move(target);
+        return;
+    }
+
+    if (target==pos())
+    {
+        // Already there (a re-park onto the same corner, say): nothing to animate, and starting a
+        // zero-length QVariantAnimation is its own small trap.
+        return;
+    }
+
+    ensureMoveAnimation();
+    pimpl->moveAnimation->stop();
+    pimpl->moveAnimation->setDuration(pimpl->moveDurationMs);
+    pimpl->moveAnimation->setEasingCurve(static_cast<QEasingCurve::Type>(pimpl->easingCurveType));
+    pimpl->moveAnimation->setStartValue(pos());
+    pimpl->moveAnimation->setEndValue(target);
+    pimpl->moveAnimation->start();
 }
 
 //--------------------------------------------------------------------------
@@ -735,6 +846,13 @@ void FloatingDialogFrame::close(bool autoDestroy)
     if (pimpl->closing || !isVisible())
     {
         return;
+    }
+
+    // A slide in flight has nowhere useful to finish: the frame is about to hide (or be
+    // destroyed) regardless of where it lands.
+    if (pimpl->moveAnimation!=nullptr)
+    {
+        pimpl->moveAnimation->stop();
     }
 
     pimpl->escShortcut->setEnabled(false);

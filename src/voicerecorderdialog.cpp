@@ -95,7 +95,24 @@ class VoiceRecorderDialog_p
 
         QFrame* header=nullptr;
         QLabel* dot=nullptr;
+
+        //! The ticking value: elapsed/kept time outside Listening, playback position while
+        //! Listening (task-voice-messages-plan.md, S4c). Split out of durationLabel below so the
+        //! label that changes on every tick is a separate, individually width-reserved widget --
+        //! see updateDuration() and updateTimeLabelWidth()'s own doc comment.
+        QLabel* positionLabel=nullptr;
+        QString positionMask;
+
+        //! The kept/total duration -- shown alone outside Listening, or as "/ M:SS.T" beside
+        //! positionLabel while Listening. Ticks itself only outside Listening (there is nothing
+        //! else on screen then), hence its own mask tracked separately from positionLabel's.
         QLabel* durationLabel=nullptr;
+        QString durationMask;
+
+        //! Host-supplied, see setContextWidget(). Not owned: taken out, never destroyed, by
+        //! setContextWidget(nullptr).
+        QPointer<QWidget> context;
+        bool contextVisible=false;
 
         QFrame* targets=nullptr;
         QLabel* continueArea=nullptr;
@@ -114,6 +131,10 @@ class VoiceRecorderDialog_p
 
         QTimer* blinkTimer=nullptr;
         bool dim=false;
+
+        //! The widest THIS dialog's own width has ever been reserved to -- see
+        //! reserveContentWidth()'s own doc comment on why it only ever grows outside a reset.
+        int reservedContentWidth=0;
 };
 
 //--------------------------------------------------------------------------
@@ -149,6 +170,13 @@ void VoiceRecorderDialog::construct()
     pimpl->dot=new QLabel(pimpl->header);
     pimpl->dot->setObjectName("recordDot");
     headerLayout->addWidget(pimpl->dot,0,Qt::AlignVCenter);
+
+    // Hidden outside Listening (see updateDuration()); its own reserved width, when shown, is
+    // absorbed by the stretch below rather than shifting durationLabel/context, which sit after it.
+    pimpl->positionLabel=new QLabel(pimpl->header);
+    pimpl->positionLabel->setObjectName("positionLabel");
+    pimpl->positionLabel->setVisible(false);
+    headerLayout->addWidget(pimpl->positionLabel);
 
     pimpl->durationLabel=new QLabel(pimpl->header);
     pimpl->durationLabel->setObjectName("durationLabel");
@@ -223,6 +251,18 @@ void VoiceRecorderDialog::construct()
     pimpl->commentEdit->setTabChangesFocus(true);
     layout->addWidget(pimpl->commentEdit);
 
+    // Absorbs slack, so nothing ABOVE it ever does. Without this, collapsing (Paused/Listening's
+    // playerRow+commentEdit hiding, applyState()) has a visible in-between frame: the FRAME has
+    // not shrunk yet (adjustSize() is deferred one event-loop turn, applyState()'s own comment
+    // explains why), and with no stretch to claim the now-empty space, QVBoxLayout hands it to
+    // whichever visible item's own QSizePolicy::Preferred allows it to grow (every widget here,
+    // by default) -- reading as the just-revealed #buttonsRow stretching down to fill the old,
+    // still-tall frame before it catches up and shrinks. A trailing stretch is exactly what it
+    // sounds like it should be: BELOW everything, so every row above stays pinned to its own
+    // natural size at the TOP, and the empty gap moves to the bottom, where it is invisible
+    // either way -- gone once the deferred adjustSize() actually runs, and unnoticeable before it.
+    layout->addStretch(1);
+
     // ---- the blinking dot ------------------------------------------------------------------
 
     pimpl->blinkTimer=new QTimer(this);
@@ -292,6 +332,10 @@ void VoiceRecorderDialog::construct()
 
     retranslate();
     applyState();
+    // After applyState(): reserveContentWidth() measures durationLabel/positionLabel's OWN
+    // reserved widths (set by updateDuration(), called from applyState()), not their pre-tick
+    // defaults -- see its own doc comment.
+    reserveContentWidth();
 }
 
 //--------------------------------------------------------------------------
@@ -372,8 +416,22 @@ void VoiceRecorderDialog::applyState()
         setStyleProperty(pimpl->dot,"dim",false);
     }
 
-    // Escape and a click outside must not throw a live recording away; Cancel is the way out
-    setClosable(!recording);
+    // Closable in every state, including Held/Pinned (user's decision, 2026-09-22): the title
+    // bar's X button unconditionally discards on click, exactly like it already did while Paused/
+    // Listening (onVoiceRecorderClosed() treats any close that is not mid-send as a cancel) --
+    // hiding it only while recording, so it could not be clicked THERE, was the inconsistency:
+    // if closing is accepted as a way to discard once Paused, there is no principled reason it
+    // should be blocked while still recording. Left at AbstractDialog's own default (true) by
+    // simply never calling setClosable(false) here at all.
+
+    // Defensive: nothing above is supposed to touch the host's context widget, but a state
+    // change (task-voice-messages-plan.md, S4c: Pause/Resume specifically) was reported to lose
+    // it -- reasserted here rather than left dependent on nothing else ever clearing it, since
+    // reading through every call this function makes did not turn up what does.
+    if (!pimpl->context.isNull())
+    {
+        pimpl->context->setVisible(pimpl->contextVisible);
+    }
 
     updateDuration();
 
@@ -387,9 +445,55 @@ void VoiceRecorderDialog::applyState()
             if (!top.isNull() && top->isVisible())
             {
                 top->adjustSize();
+                // adjustSize() alone leaves the newly exposed/shrunk area to Qt's ordinary
+                // (queued) repaint, which on a WA_TranslucentBackground top-level can show one
+                // frame of the raw, unpainted backing store -- black, since nothing has drawn
+                // the QSS background there yet -- before the queued paint event catches up.
+                // repaint() forces that paint synchronously, in the same tick as the resize.
+                top->repaint();
             }
         }
     );
+}
+
+//--------------------------------------------------------------------------
+
+/**
+ * Reserves \p label's minimum width for the widest string its OWN font can render of the same
+ * digit pattern as \p valueMs's formatted text -- see widestDigitsOf()'s own doc comment
+ * (uise/desktop/utils/audiotime.hpp) for why a proportional-font clock needs this at all:
+ * without it, the label (and the recorder popup that sizes itself exactly to its content) shifts
+ * a pixel or two on every tick, which reads as a flicker.
+ *
+ * \p mask is the caller's own per-label cache of the last-applied mask, so a tick that keeps the
+ * same digit PATTERN (the overwhelmingly common case -- the pattern only changes when the digit
+ * COUNT does, e.g. crossing 9:59.9 to 10:00.0) recomputes nothing at all.
+ */
+void VoiceRecorderDialog::updateTimeLabelWidth(QLabel* label, QString& mask, const QString& sample)
+{
+    const auto newMask=widestDigitsOf(sample,label->fontMetrics());
+    if (newMask==mask)
+    {
+        return;
+    }
+    mask=newMask;
+
+    // FIXED, not a floor: AudioPlayerWidget's own version of this (which this otherwise mirrors)
+    // reserves only a minimum width, on the reasoning that Qt's layout gives an item exactly its
+    // sizeHint() -- itself already clamped up to minimumWidth() -- whenever there is slack space
+    // to spare (an Expanding stretch item right next to it, here as there). That reasoning left
+    // this label's LEFT NEIGHBOUR (durationLabel, immediately adjacent, not spanned by a stretch
+    // the way AudioPlayerWidget's positionLabel/durationLabel are) visibly shifting anyway, so a
+    // floor is not enough here -- fixing minimum AND maximum to the mask's own size hint removes
+    // any dependency on exactly how the layout treats slack space: this label's occupied width is
+    // then a hard constant, never merely a lower bound.
+    const auto text=label->text();
+    label->setMinimumWidth(0);
+    label->setMaximumWidth(QWIDGETSIZE_MAX);
+    label->setText(mask);
+    const auto width=label->sizeHint().width();
+    label->setText(text);
+    label->setFixedWidth(width);
 }
 
 //--------------------------------------------------------------------------
@@ -408,14 +512,33 @@ void VoiceRecorderDialog::updateDuration()
     }
     const auto keptMs=std::max<qint64>(0,endMs-startMs);
 
-    if (pimpl->state==State::Listening)
+    const auto listening=(pimpl->state==State::Listening);
+    pimpl->positionLabel->setVisible(listening);
+
+    if (listening)
     {
+        // positionLabel is the one ticking here (once or twice per playback frame); durationLabel
+        // shows the fixed "total" beside it, wrapped as " / M:SS.T" -- a DIFFERENT text pattern
+        // than the plain "M:SS.T" the else branch below shows, and so a mask of its own: reusing
+        // the plain one here previously left the wrapped text too wide for what had been reserved
+        // for the plain one, clipping it on the right. A leading AND trailing space around the
+        // slash, both the SAME glyph in the SAME label, keeps the gap on both sides identical --
+        // relying on a QSS margin for one side and this text for the other could not guarantee that.
         const auto positionMs=std::clamp<qint64>(pimpl->playbackMs-startMs,0,keptMs);
-        pimpl->durationLabel->setText(tr("%1 / %2").arg(formatAudioTimeTenths(positionMs),formatAudioTimeTenths(keptMs)));
+        const auto durationText=tr(" / %1").arg(formatAudioTimeTenths(keptMs));
+        updateTimeLabelWidth(pimpl->positionLabel,pimpl->positionMask,formatAudioTimeTenths(keptMs));
+        updateTimeLabelWidth(pimpl->durationLabel,pimpl->durationMask,durationText);
+        pimpl->positionLabel->setText(formatAudioTimeTenths(positionMs));
+        pimpl->durationLabel->setText(durationText);
     }
     else
     {
-        pimpl->durationLabel->setText(formatAudioTimeTenths(keptMs));
+        // Recording/Paused: durationLabel is the only number shown, and while actually recording
+        // (Held/Pinned) it is the one ticking -- same mask treatment, applied to whichever label
+        // is doing the ticking rather than to a fixed one.
+        const auto durationText=formatAudioTimeTenths(keptMs);
+        updateTimeLabelWidth(pimpl->durationLabel,pimpl->durationMask,durationText);
+        pimpl->durationLabel->setText(durationText);
     }
 }
 
@@ -525,6 +648,78 @@ VoiceRecorderDialog::Target VoiceRecorderDialog::targetAt(const QPoint& globalPo
 
 //--------------------------------------------------------------------------
 
+void VoiceRecorderDialog::setContextWidget(QWidget* widget)
+{
+    if (pimpl->context.data()==widget)
+    {
+        return;
+    }
+
+    if (!pimpl->context.isNull())
+    {
+        // Taken out, not destroyed: ownership of whatever the host built stays with the host.
+        pimpl->header->layout()->removeWidget(pimpl->context);
+        pimpl->context->setParent(nullptr);
+    }
+
+    pimpl->context=widget;
+
+    if (widget!=nullptr)
+    {
+        widget->setParent(pimpl->header);
+        static_cast<QBoxLayout*>(pimpl->header->layout())->addWidget(widget,0,Qt::AlignVCenter);
+        widget->setVisible(pimpl->contextVisible);
+    }
+
+    // Grow-only (reset=false): a context widget attached while parked must not shrink this
+    // dialog's own width back down the moment it is detached on the very next un-park, which
+    // would itself be the same width flicker this exists to stop.
+    reserveContentWidth();
+
+    // The header may have widened or narrowed. Same deferred re-anchor -- and the same
+    // repaint() to avoid one frame of unpainted black on a WA_TranslucentBackground top-level --
+    // applyState() uses for its own visibility changes.
+    Layout::activateUpward(this);
+    QPointer<QWidget> top=window();
+    QTimer::singleShot(0,this,
+        [top]()
+        {
+            if (!top.isNull() && top->isVisible())
+            {
+                top->adjustSize();
+                top->repaint();
+            }
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* VoiceRecorderDialog::contextWidget() const
+{
+    return pimpl->context.data();
+}
+
+//--------------------------------------------------------------------------
+
+void VoiceRecorderDialog::setContextVisible(bool enable)
+{
+    pimpl->contextVisible=enable;
+    if (!pimpl->context.isNull())
+    {
+        pimpl->context->setVisible(enable);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool VoiceRecorderDialog::isContextVisible() const
+{
+    return pimpl->contextVisible;
+}
+
+//--------------------------------------------------------------------------
+
 void VoiceRecorderDialog::pointerMoved(const QPoint& globalPos)
 {
     if (pimpl->state!=State::Held)
@@ -580,6 +775,111 @@ void VoiceRecorderDialog::retranslate()
     pimpl->cancelButton->setText(tr("Cancel"));
     pimpl->sendButton->setText(tr("Send"));
     pimpl->commentEdit->setPlaceholderText(tr("Add a comment"));
+
+    // Translated words are a different length in a different language -- redone here so a
+    // language change (changeEvent() below) keeps the reservation in step, not just the
+    // construct()-time call this same method makes.
+    reserveWidths();
+}
+
+//--------------------------------------------------------------------------
+
+void VoiceRecorderDialog::reserveWidths()
+{
+    // The duration/position clock reserves its OWN width per tick instead, see
+    // updateTimeLabelWidth() and updateDuration() -- a translation change does not need to redo
+    // that here, since neither label's text is ever a translated word (digits and punctuation
+    // only, see formatAudioTimeTenths()).
+
+    // Pause<->Resume and Listen<->Pause (applyState()) are two different words, not two lengths
+    // of the same one -- measured through the button's own sizeHint() (icon, padding and all)
+    // rather than raw font metrics, so nothing here has to guess at IconTextButton's own layout.
+    auto reserveButton=[](IconTextButton* button, const QString& textA, const QString& textB)
+    {
+        const auto original=button->text();
+        button->setText(textA);
+        const auto widthA=button->sizeHint().width();
+        button->setText(textB);
+        const auto widthB=button->sizeHint().width();
+        button->setMinimumWidth(std::max(widthA,widthB));
+        button->setText(original);
+    };
+    reserveButton(pimpl->pauseButton,tr("Pause"),tr("Resume"));
+    reserveButton(pimpl->listenButton,tr("Listen"),tr("Pause"));
+}
+
+//--------------------------------------------------------------------------
+
+/**
+ * Held's #targetsRow, Pinned's #buttonsRow and Paused/Listening's #playerRow+#commentEdit each
+ * have their own natural width, and so does the header row with or without a host-supplied
+ * context widget (setContextWidget()) -- #recorderContent's own width (a QVBoxLayout's width is
+ * the MAX of its visible children's) therefore changes with the state and with park status even
+ * though every individual ticking label's OWN width is already stable (reserveWidths(),
+ * updateTimeLabelWidth()). FloatingDialogFrame tracks this dialog's size hint exactly
+ * (isResizable()==false), so that showed as the whole popup's WIDTH shifting a few pixels on
+ * every Pause/Resume, on Held->Pinned, and on park/un-park.
+ *
+ * The fix: show every row and the context widget AT ONCE (bypassing whatever the current state
+ * actually wants visible), measure this dialog's own natural width in that "everything visible"
+ * configuration -- the widest it can ever be -- and pin THIS dialog's own width to exactly that,
+ * fixed, so FloatingDialogFrame's tracked size hint never changes on the width axis again, only on
+ * height (which still grows/shrinks with the state, as intended). Fixed on this dialog rather than
+ * on #recorderContent itself: that QFrame has its own QSS min-width (voicerecorder.qss), and a
+ * later re-polish (a theme switch) would silently overwrite a C++-set minimum width on the SAME
+ * widget with that rule's 280px again.
+ */
+void VoiceRecorderDialog::reserveContentWidth(bool reset)
+{
+    // isHidden(), NOT isVisible(): isVisible() answers "is this actually on screen right now",
+    // which is false for EVERY child whenever the top-level itself has never been shown yet --
+    // exactly the case the very first call here runs under (construct() calls this right after
+    // applyState(), before the popup is ever popped up). Read that way, every "was" below comes
+    // back false regardless of what applyState() just set, and the restore at the end of this
+    // function then HIDES whatever should have stayed visible (Held's own #targetsRow, the very
+    // first time this runs) -- isHidden() reports this widget's own explicit flag instead,
+    // independent of whether any ancestor is currently on screen.
+    const auto wasTargets=!pimpl->targets->isHidden();
+    const auto wasButtons=!pimpl->buttons->isHidden();
+    const auto wasPlayer=!pimpl->playerRow->isHidden();
+    const auto wasComment=!pimpl->commentEdit->isHidden();
+    const auto wasPosition=!pimpl->positionLabel->isHidden();
+    const auto wasContext=!pimpl->context.isNull() && !pimpl->context->isHidden();
+
+    pimpl->targets->setVisible(true);
+    pimpl->buttons->setVisible(true);
+    pimpl->playerRow->setVisible(true);
+    pimpl->commentEdit->setVisible(true);
+    pimpl->positionLabel->setVisible(true);
+    if (!pimpl->context.isNull())
+    {
+        pimpl->context->setVisible(true);
+    }
+
+    // sizeHint() for a widget with a layout is the layout's OWN size hint -- purely a function of
+    // its children's current preferred sizes, unaffected by this widget's own prior
+    // setFixedWidth() -- so no need to clear that first before re-measuring.
+    if (layout()!=nullptr)
+    {
+        layout()->activate();
+    }
+    auto width=sizeHint().width();
+    if (!reset)
+    {
+        width=std::max(width,pimpl->reservedContentWidth);
+    }
+    pimpl->reservedContentWidth=width;
+    setFixedWidth(width);
+
+    pimpl->targets->setVisible(wasTargets);
+    pimpl->buttons->setVisible(wasButtons);
+    pimpl->playerRow->setVisible(wasPlayer);
+    pimpl->commentEdit->setVisible(wasComment);
+    pimpl->positionLabel->setVisible(wasPosition);
+    if (!pimpl->context.isNull())
+    {
+        pimpl->context->setVisible(wasContext);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -592,6 +892,9 @@ void VoiceRecorderDialog::changeEvent(QEvent* event)
         retranslate();
         // the texts that depend on the state
         applyState();
+        // reset=true: the previous language's reservation may now be too wide (or too narrow),
+        // and nothing about a NEW language should be held down to the OLD one's width.
+        reserveContentWidth(true);
     }
 }
 

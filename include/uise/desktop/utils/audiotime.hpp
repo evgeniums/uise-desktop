@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QChar>
 #include <QString>
 #include <QtGlobal>
+#include <QFontMetrics>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -75,6 +76,42 @@ inline QString formatAudioTimeTenths(qint64 ms)
         ms=0;
     }
     return QStringLiteral("%1.%2").arg(formatAudioTime(ms)).arg((ms/100)%10);
+}
+
+/**
+ * @brief Replace every digit of \p text with the widest digit of \p metrics's font.
+ *
+ * A clock is drawn in a proportional font, where "0:01" and "0:02" are not the same number of
+ * pixels -- a label showing one after the other has its size hint change on every tick, which (if
+ * nothing reserves a stable width for it) reads as the label, and whatever is laid out beside it,
+ * flickering in place. Reserving the SIZE HINT OF THIS MASK as the label's minimum width (see
+ * AudioPlayerWidget::updateTimeLabelWidth() / VoiceRecorderDialog's own equivalent for the two
+ * callers) fixes that: every digit is already at its widest, so no later value of the same digit
+ * pattern can be wider.
+ */
+inline QString widestDigitsOf(const QString& text, const QFontMetrics& metrics)
+{
+    auto widest=QLatin1Char('0');
+    int widestAdvance=-1;
+    for (char digit='0';digit<='9';digit++)
+    {
+        const auto advance=metrics.horizontalAdvance(QLatin1Char(digit));
+        if (advance>widestAdvance)
+        {
+            widestAdvance=advance;
+            widest=QLatin1Char(digit);
+        }
+    }
+
+    auto mask=text;
+    for (auto& ch: mask)
+    {
+        if (ch.isDigit())
+        {
+            ch=widest;
+        }
+    }
+    return mask;
 }
 
 UISE_DESKTOP_NAMESPACE_END
