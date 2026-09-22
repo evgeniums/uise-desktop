@@ -4276,6 +4276,10 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::AudioPlayerWidget</name>
     <message>
+        <source>Stop and close</source>
+        <translation>Stop and close</translation>
+    </message>
+    <message>
         <source>Stop</source>
         <translation>Stop</translation>
     </message>

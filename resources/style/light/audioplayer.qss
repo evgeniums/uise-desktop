@@ -8,6 +8,16 @@ uise--AudioPlayerWidget #titleLabel[clickable="true"] QLabel {
     color: #1a6bc4;
 }
 
+/* A clickable title under the pointer: deeper, the step an accent-blue text takes on hover in this
+   theme (light/forwardpreview.qss's #actions text), plus the underline the calendar's own link
+   button uses (light/calendar.qss) -- so a text that goes somewhere when clicked reads as a link
+   everywhere. The state is a dynamic property and not :hover -- it belongs to the whole
+   ElidedLabel frame, padding included, while :hover would only match the inner label. */
+uise--AudioPlayerWidget #titleLabel[clickable="true"][hovered="true"] QLabel {
+    color: #2a5da0;
+    text-decoration: underline;
+}
+
 uise--AudioPlayerWidget #positionLabel,
 uise--AudioPlayerWidget #durationLabel {
     color: #555555;

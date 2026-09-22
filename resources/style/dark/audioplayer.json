@@ -16,6 +16,22 @@
                     "off" : { "currentColor" : "#666666" }
                 }
             }
+        },
+        {
+            "name" : "AudioPlayerDanger",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#FF6B6B" },
+                    "on"  : { "currentColor" : "#FF6B6B" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#FF8F8F" },
+                    "on"  : { "currentColor" : "#FF8F8F" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#666666" }
+                }
+            }
         }
     ]
 }

@@ -51,16 +51,17 @@ class AudioPlayerWidget_p;
  *
  * Row 1 is the title (a button with elided text), then the volume and speed buttons. The volume
  * button opens a vertical slider when hovered and mutes or unmutes when clicked; the speed button
- * opens a menu of ratios. Row 2 is Stop (panel mode only), Play/Pause, the current time, the
- * progress bar and the duration.
+ * opens a menu of ratios. Row 2 is Stop-and-close (dialog mode only), Stop (panel mode only),
+ * Play/Pause, the current time, the progress bar and the duration.
  *
  * It is a plain widget with setters and signals; AudioPlayer is what makes it an
  * AbstractAudioPlayer. Setters never emit, signals are for user input only.
  *
  * QSS: uise--AudioPlayerWidget, children by object name: #topRow, #bottomRow, #titleLabel,
- * #volumeButton, #speedButton, #stopButton, #playButton, #positionLabel, #progressBar,
- * #durationLabel; the volume popup is #volumePopup with #volumeSlider. Icons are the
- * "AudioPlayer" context of audioplayer.json.
+ * #volumeButton, #speedButton, #stopCloseButton, #stopButton, #playButton, #positionLabel,
+ * #progressBar, #durationLabel; the volume popup is #volumePopup with #volumeSlider. Icons are
+ * the "AudioPlayer" context of audioplayer.json, and the "AudioPlayerDanger" context for the red
+ * glyph of the stop-and-close button.
  */
 class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
 {
@@ -79,7 +80,7 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
         //! The playback speeds the speed menu offers.
         static QList<qreal> speeds();
 
-        //! Panel mode shows the Stop button, dialog mode does not.
+        //! Panel mode shows the plain Stop button, dialog mode the red stop-and-close one.
         void setPanelMode(bool panel);
 
         void setTitle(const QString& title);
@@ -104,6 +105,9 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
         void playRequested();
         void pauseRequested();
         void stopRequested();
+
+        //! The red button of dialog mode: stop the playback and close the player.
+        void stopAndCloseRequested();
         void seekRequested(qint64 ms);
         void volumeChanged(qreal volume);
         void mutedChanged(bool muted);
@@ -119,6 +123,9 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
     private:
 
         void retranslate();
+
+        //! Light the title, or put it out. A title that is not clickable never lights.
+        void updateTitleHover(bool hovered);
         void updateVolumeButton();
         void updateSpeedButton();
 
@@ -126,6 +133,10 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
         void scheduleSpeedRippleCentering();
         void updatePlayButton();
         void updateTimeLabels();
+
+        //! Pin the position label to the widest the clock can get at the current duration, so
+        //! counting up never resizes the player. See the definition for the full reasoning.
+        void updateTimeLabelWidth();
         void updateProgress();
 
         void openVolumePopup();

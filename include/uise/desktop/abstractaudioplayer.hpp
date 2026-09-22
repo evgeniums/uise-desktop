@@ -69,8 +69,8 @@ class UISE_DESKTOP_EXPORT AbstractAudioPlayer : public WidgetController
 
     public:
 
-        //! How the player is presented. Only decides whether a Stop button is shown: a player
-        //! in a dialog is stopped by closing the dialog.
+        //! How the player is presented. Only decides which Stop button is shown: a player in a
+        //! dialog is stopped by closing the dialog, and its own Stop button does both.
         enum class Mode
         {
             Panel,
@@ -247,8 +247,18 @@ class UISE_DESKTOP_EXPORT AbstractAudioPlayer : public WidgetController
         void playRequested();
         void pauseRequested();
 
-        //! Only in Mode::Panel, there is no Stop button in a dialog.
+        //! Only in Mode::Panel, a dialog's own Stop button also closes it -- see
+        //! stopAndCloseRequested().
         void stopRequested();
+
+        /**
+         * @brief The user asked for the playback to stop and the player to go away.
+         *
+         * Only in Mode::Dialog, from the red stop button beside Play. The host closes the
+         * dialog; stopping the playback is the closing's own business (AudioPlayerDialog emits
+         * stopRequested() from aboutToClose()), so an engine is not stopped twice.
+         */
+        void stopAndCloseRequested();
 
         //! The user let go of the progress bar; `ms` is where. Not sent while dragging.
         void seekRequested(qint64 ms);

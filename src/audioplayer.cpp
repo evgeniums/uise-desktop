@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QCursor>
 #include <QEnterEvent>
 #include <QEvent>
+#include <QFontMetrics>
 #include <QHideEvent>
 #include <QLabel>
 #include <QMouseEvent>
@@ -133,6 +134,43 @@ std::shared_ptr<SvgIcon> playerIcon(const QString& alias, QWidget* context)
     return Style::instance().svgIconLocator().icon(QString("AudioPlayer::%1").arg(alias),context);
 }
 
+//! The glyph of a button that is drawn in a colour of its own, so it needs an icon context of its
+//! own: a colour map is per context, never per alias (see svgiconlocator.cpp).
+std::shared_ptr<SvgIcon> playerDangerIcon(const QString& alias, QWidget* context)
+{
+    return Style::instance().svgIconLocator().icon(QString("AudioPlayerDanger::%1").arg(alias),context);
+}
+
+/**
+ * The clock string with every digit replaced by the widest digit of the font: "1:11" is narrower
+ * than "0:00" in a proportional font, so the width that has to fit is the one of the widest
+ * digits, not the one of the text that happens to be shown.
+ */
+QString widestDigitsOf(const QString& text, const QFontMetrics& metrics)
+{
+    auto widest=QLatin1Char('0');
+    int widestAdvance=-1;
+    for (char digit='0';digit<='9';digit++)
+    {
+        const auto advance=metrics.horizontalAdvance(QLatin1Char(digit));
+        if (advance>widestAdvance)
+        {
+            widestAdvance=advance;
+            widest=QLatin1Char(digit);
+        }
+    }
+
+    auto mask=text;
+    for (auto& ch: mask)
+    {
+        if (ch.isDigit())
+        {
+            ch=widest;
+        }
+    }
+    return mask;
+}
+
 }
 
 //==========================================================================
@@ -146,6 +184,10 @@ class AudioPlayerWidget_p
         bool panelMode=true;
         bool playing=false;
         bool titleClickable=true;
+
+        //! The pointer is on the title AND the title is clickable -- the state the "hovered"
+        //! property of #titleLabel carries.
+        bool titleHovered=false;
         bool muted=false;
         qreal volume=1.0;
         qreal speed=1.0;
@@ -165,11 +207,19 @@ class AudioPlayerWidget_p
         ElidedLabel* titleLabel=nullptr;
         IconTextButton* volumeButton=nullptr;
         IconTextButton* speedButton=nullptr;
+        IconTextButton* stopCloseButton=nullptr;
         IconTextButton* stopButton=nullptr;
         IconTextButton* playButton=nullptr;
         QLabel* positionLabel=nullptr;
         WaveformBar* bar=nullptr;
         QLabel* durationLabel=nullptr;
+
+        //! The mask the position label was last measured with, so the measuring is not redone for
+        //! every tick of the clock. Empty forces the next updateTimeLabelWidth() to measure again.
+        QString timeMask;
+
+        //! A re-measuring of the position label is already queued.
+        bool timeWidthPending=false;
 
         //! Both are parentless top-level frames, destroyed by the widget's destructor.
         QPointer<DropdownFrame> volumeFrame;
@@ -221,12 +271,22 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     pimpl->speedButton->installEventFilter(this);
     topLayout->addWidget(pimpl->speedButton);
 
-    // ---- row 2: stop, play/pause, position, progress, duration -----------------------------
+    // ---- row 2: stop and close, stop, play/pause, position, progress, duration --------------
 
     pimpl->bottomRow=new QFrame(this);
     pimpl->bottomRow->setObjectName("bottomRow");
     auto bottomLayout=Layout::horizontal(pimpl->bottomRow);
     layout->addWidget(pimpl->bottomRow);
+
+    // Dialog mode only, where closing the player is what stops it: a red button that does both at
+    // once, so the user is not left hunting for the title bar's close button to stop a track. The
+    // solid square of the filled icon set, and its own icon context for the red.
+    pimpl->stopCloseButton=new IconTextButton(playerDangerIcon("stop",this),pimpl->bottomRow);
+    pimpl->stopCloseButton->setObjectName("stopCloseButton");
+    pimpl->stopCloseButton->setText(QString());
+    pimpl->stopCloseButton->setCursor(Qt::PointingHandCursor);
+    pimpl->stopCloseButton->setFocusPolicy(Qt::NoFocus);
+    bottomLayout->addWidget(pimpl->stopCloseButton);
 
     pimpl->stopButton=new IconTextButton(playerIcon("stop",this),pimpl->bottomRow);
     pimpl->stopButton->setObjectName("stopButton");
@@ -364,6 +424,7 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
 
     // ---- transport and seeking -----------------------------------------------------------
 
+    connect(pimpl->stopCloseButton,&IconTextButton::clicked,this,[this](){emit stopAndCloseRequested();});
     connect(pimpl->stopButton,&IconTextButton::clicked,this,[this](){emit stopRequested();});
     connect(pimpl->playButton,&IconTextButton::clicked,this,
         [this]()
@@ -397,6 +458,8 @@ AudioPlayerWidget::AudioPlayerWidget(QWidget* parent)
     );
 
     retranslate();
+    // the two stop buttons exclude each other, and nothing has told us the mode yet
+    setPanelMode(pimpl->panelMode);
     updateVolumeButton();
     updatePlayButton();
     updateTimeLabels();
@@ -429,6 +492,8 @@ void AudioPlayerWidget::setPanelMode(bool panel)
 {
     pimpl->panelMode=panel;
     pimpl->stopButton->setVisible(panel);
+    // never both: a panel is stopped without being closed, a dialog is closed by being stopped
+    pimpl->stopCloseButton->setVisible(!panel);
 }
 
 //--------------------------------------------------------------------------
@@ -446,7 +511,32 @@ void AudioPlayerWidget::setTitleClickable(bool enable)
     pimpl->titleClickable=enable;
     pimpl->titleLabel->setCursor(enable?Qt::PointingHandCursor:Qt::ArrowCursor);
     pimpl->titleLabel->setProperty("clickable",enable);
-    Style::updateWidgetStyle(pimpl->titleLabel);
+    if (!enable)
+    {
+        // a title that is no longer a link is not lit, wherever the pointer happens to be
+        pimpl->titleHovered=false;
+    }
+    pimpl->titleLabel->setProperty("hovered",pimpl->titleHovered);
+
+    // Recursive, not updateWidgetStyle(): both properties live on the ElidedLabel frame while the
+    // colour they pick is on the QLabel INSIDE it, and a descendant selector is only re-resolved
+    // when that child is repolished too.
+    Style::repolishRecursive(pimpl->titleLabel);
+}
+
+//--------------------------------------------------------------------------
+
+void AudioPlayerWidget::updateTitleHover(bool hovered)
+{
+    // a title with nowhere to go does not light up, and its Enter is not worth a repolish
+    const auto lit=hovered && pimpl->titleClickable;
+    if (lit==pimpl->titleHovered)
+    {
+        return;
+    }
+    pimpl->titleHovered=lit;
+    pimpl->titleLabel->setProperty("hovered",lit);
+    Style::repolishRecursive(pimpl->titleLabel);
 }
 
 //--------------------------------------------------------------------------
@@ -544,6 +634,7 @@ WaveformBar* AudioPlayerWidget::waveformBar() const noexcept
 
 void AudioPlayerWidget::retranslate()
 {
+    pimpl->stopCloseButton->setToolTip(tr("Stop and close"));
     pimpl->stopButton->setToolTip(tr("Stop"));
     pimpl->speedButton->setToolTip(tr("Playback speed"));
 
@@ -617,8 +708,49 @@ void AudioPlayerWidget::updatePlayButton()
 
 void AudioPlayerWidget::updateTimeLabels()
 {
+    // before the texts, so the label is already wide enough for the one it is about to show
+    updateTimeLabelWidth();
     pimpl->positionLabel->setText(formatAudioTime(pimpl->position));
     pimpl->durationLabel->setText(formatAudioTime(pimpl->duration));
+}
+
+//--------------------------------------------------------------------------
+
+/**
+ * The clock is drawn in a proportional font, where "0:01" and "0:02" are not the same number of
+ * pixels: the position label's size hint changed with nearly every tick, and with it the row, the
+ * player and -- the player being a dialog of its natural size -- the dialog's own window, which
+ * kept shifting while a track played. The label is given a floor instead, the width of the widest
+ * string the clock can reach here: the position does not pass the duration, so the duration's own
+ * formatting is what has to fit, with every digit taken at its widest (see widestDigitsOf()). A
+ * duration that is not known yet (a stream) is no bound at all, hence the position as well -- the
+ * step at "9:59" to "10:00" is then the one width change left, once per track.
+ *
+ * A floor and not a fixed width: no string of this track is wider than the mask, so the floor IS
+ * the width the label settles at, and there is no cap to clip a string that turns out longer.
+ *
+ * The width is the label's OWN size hint for the mask rather than a font-metrics sum, so whatever
+ * the style sheet puts around the text (see the #positionLabel rule in audioplayer.qss) counts the
+ * same way it does for any other text the label shows.
+ */
+void AudioPlayerWidget::updateTimeLabelWidth()
+{
+    const auto longest=std::max(pimpl->duration,pimpl->position);
+    const auto mask=widestDigitsOf(formatAudioTime(longest),pimpl->positionLabel->fontMetrics());
+    if (mask==pimpl->timeMask)
+    {
+        return;
+    }
+    pimpl->timeMask=mask;
+
+    // measured with no floor of its own: the one left by an earlier, longer mask would otherwise
+    // be the answer, and a shorter track would keep the wider label
+    const auto text=pimpl->positionLabel->text();
+    pimpl->positionLabel->setMinimumWidth(0);
+    pimpl->positionLabel->setText(mask);
+    const auto width=pimpl->positionLabel->sizeHint().width();
+    pimpl->positionLabel->setText(text);
+    pimpl->positionLabel->setMinimumWidth(width);
 }
 
 //--------------------------------------------------------------------------
@@ -736,14 +868,45 @@ bool AudioPlayerWidget::eventFilter(QObject* watched, QEvent* event)
     }
     else if (watched==pimpl->titleLabel)
     {
-        if (event->type()==QEvent::MouseButtonRelease && pimpl->titleClickable)
+        switch (event->type())
         {
-            auto* mouseEvent=static_cast<QMouseEvent*>(event);
-            if (mouseEvent->button()==Qt::LeftButton
-                && pimpl->titleLabel->rect().contains(mouseEvent->position().toPoint()))
+            /*
+             * The pointer is really over the QLabel inside the ElidedLabel, but Qt sends Enter and
+             * Leave to every widget between the old and the new position's common ancestor
+             * (QApplicationPrivate::dispatchEnterLeave()), so the frame hears about its own child
+             * -- and hears nothing when the pointer only moves between the child and the frame's
+             * own padding, which is what "the pointer is on the title" should mean.
+             */
+            case (QEvent::Enter):
             {
-                emit titleClicked();
+                updateTitleHover(true);
+                break;
             }
+
+            case (QEvent::Leave):
+            {
+                updateTitleHover(false);
+                break;
+            }
+
+            // The inner QLabel takes no text interaction, so it ignores the button events and
+            // QApplication::notify() walks them up to this frame, remapped to its coordinates.
+            case (QEvent::MouseButtonRelease):
+            {
+                if (pimpl->titleClickable)
+                {
+                    auto* mouseEvent=static_cast<QMouseEvent*>(event);
+                    if (mouseEvent->button()==Qt::LeftButton
+                        && pimpl->titleLabel->rect().contains(mouseEvent->position().toPoint()))
+                    {
+                        emit titleClicked();
+                    }
+                }
+                break;
+            }
+
+            default:
+                break;
         }
     }
 
@@ -756,9 +919,44 @@ bool AudioPlayerWidget::eventFilter(QObject* watched, QEvent* event)
 void AudioPlayerWidget::changeEvent(QEvent* event)
 {
     WidgetQFrame::changeEvent(event);
-    if (event->type()==QEvent::LanguageChange)
+    switch (event->type())
     {
-        retranslate();
+        case (QEvent::LanguageChange):
+        {
+            retranslate();
+            break;
+        }
+
+        /*
+         * The width of the mask is a width in THIS font under THIS style sheet, and the first
+         * measuring happens in the constructor, before either has been applied.
+         *
+         * Queued rather than done here: a style sheet's own "min-width" reaches the label as a
+         * setMinimumWidth() of its own (QStyleSheetStyle::setGeometry()), which is the very floor
+         * this method writes, and the polish that does it is not ordered against this event. By
+         * the next turn of the event loop it has happened, whichever way round the two came.
+         */
+        case (QEvent::FontChange):
+        case (QEvent::StyleChange):
+        {
+            // one of these may reach a widget whose children are not all built yet
+            if (pimpl->positionLabel!=nullptr && !pimpl->timeWidthPending)
+            {
+                pimpl->timeWidthPending=true;
+                QTimer::singleShot(0,this,
+                    [this]()
+                    {
+                        pimpl->timeWidthPending=false;
+                        pimpl->timeMask.clear();
+                        updateTimeLabelWidth();
+                    }
+                );
+            }
+            break;
+        }
+
+        default:
+            break;
     }
 }
 
@@ -786,6 +984,7 @@ Widget* AudioPlayer::doCreateActualWidget(QWidget* parent)
     connect(widget,&AudioPlayerWidget::playRequested,this,&AbstractAudioPlayer::playRequested);
     connect(widget,&AudioPlayerWidget::pauseRequested,this,&AbstractAudioPlayer::pauseRequested);
     connect(widget,&AudioPlayerWidget::stopRequested,this,&AbstractAudioPlayer::stopRequested);
+    connect(widget,&AudioPlayerWidget::stopAndCloseRequested,this,&AbstractAudioPlayer::stopAndCloseRequested);
     connect(widget,&AudioPlayerWidget::seekRequested,this,&AbstractAudioPlayer::seekRequested);
     connect(widget,&AudioPlayerWidget::titleClicked,this,&AbstractAudioPlayer::titleClicked);
     // these three also have to be remembered, so the getters and a later setEngine() see them

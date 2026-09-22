@@ -10,6 +10,12 @@
                 "volumeLow"  : "${uise-svg-icons-1}/volume-2",
                 "volumeOff"  : "${uise-svg-icons-1}/volume-off"
             }
+        },
+        {
+            "name" : "AudioPlayerDanger",
+            "aliases" : {
+                "stop"      : "${uise-svg-icons-2}/player-stop"
+            }
         }
     ]
 }

@@ -251,6 +251,17 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void addTrailingWidget(QWidget* widget);
 
         /**
+         * @brief The frames the leading and the trailing widgets are put in, for a caller that
+         *  has to measure them.
+         *
+         * Never null. They are of fixed size, so their width is the width of the widgets in them
+         * -- which is what a floating window opened at a corner of the bar's own window needs in
+         * order to keep clear of those widgets.
+         */
+        QFrame* leadingFrame() const noexcept;
+        QFrame* trailingFrame() const noexcept;
+
+        /**
          * @brief Add item to the bar.
          * @param name Item name.
          * @param tooltip Item tooltip.

@@ -76,8 +76,8 @@ void AudioPlayerDialog::construct()
     pimpl->player=makeWidget<AbstractAudioPlayer,AudioPlayer>(this);
     pimpl->player->setMode(AbstractAudioPlayer::Mode::Dialog);
 
-    // Closing the dialog is what stops the playback here, there is no Stop button. It is sent
-    // before the dialog goes so a host that mirrors it into an engine still has one.
+    // Closing the dialog is what stops the playback here. It is sent before the dialog goes so a
+    // host that mirrors it into an engine still has one.
     connect(this,&AbstractDialog::aboutToClose,this,
         [this]()
         {
@@ -87,6 +87,11 @@ void AudioPlayerDialog::construct()
             }
         }
     );
+
+    // The player's own Stop button: closing is the whole of it, the stop above comes with the
+    // close. closeDialog() is the same path Escape and the title bar's close button take.
+    connect(pimpl->player.data(),&AbstractAudioPlayer::stopAndCloseRequested,this,
+        &AbstractDialog::closeDialog);
 
     setWidget(pimpl->player->qWidget());
     setTitle(tr("Audio player"));

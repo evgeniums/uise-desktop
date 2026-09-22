@@ -4228,6 +4228,10 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AudioPlayerWidget</name>
     <message>
+        <source>Stop and close</source>
+        <translation>Остановить и закрыть</translation>
+    </message>
+    <message>
         <source>Stop</source>
         <translation>Остановить</translation>
     </message>

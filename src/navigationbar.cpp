@@ -949,6 +949,20 @@ void NavigationBar::addTrailingWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+QFrame* NavigationBar::leadingFrame() const noexcept
+{
+    return pimpl->leftFrame;
+}
+
+//--------------------------------------------------------------------------
+
+QFrame* NavigationBar::trailingFrame() const noexcept
+{
+    return pimpl->rightFrame;
+}
+
+//--------------------------------------------------------------------------
+
 bool NavigationBar::isSingleVisibleMode() const
 {
     return pimpl->singleItemVisibleMode;
