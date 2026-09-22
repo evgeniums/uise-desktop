@@ -308,7 +308,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatFileItem</name>
     <message>
-        <location filename="../src/chatfileitem.cpp" line="+218"/>
+        <location filename="../src/chatfileitem.cpp" line="+248"/>
         <source>Open</source>
         <translation>Открыть</translation>
     </message>
@@ -388,10 +388,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Копировать изображение</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Play</source>
         <translation>Воспроизвести</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Stop</source>
         <translation>Остановить</translation>
     </message>
@@ -2814,6 +2816,59 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>uise::AudioPlayerDialog</name>
+    <message>
+        <location filename="../src/audioplayerdialog.cpp" line="+97"/>
+        <location line="+14"/>
+        <source>Audio player</source>
+        <translation>Аудиоплеер</translation>
+    </message>
+</context>
+<context>
+    <name>uise::AudioPlayerWidget</name>
+    <message>
+        <location filename="../src/audioplayer.cpp" line="+610"/>
+        <source>Stop and close</source>
+        <translation>Остановить и закрыть</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Stop</source>
+        <translation>Остановить</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Playback speed</source>
+        <translation>Скорость воспроизведения</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+33"/>
+        <source>%1×</source>
+        <translation>%1×</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>Unmute</source>
+        <translation>Включить звук</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Mute</source>
+        <translation>Выключить звук</translation>
+    </message>
+    <message>
+        <location line="+34"/>
+        <source>Pause</source>
+        <translation>Пауза</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Play</source>
+        <translation>Воспроизвести</translation>
+    </message>
+</context>
+<context>
     <name>uise::Calendar</name>
     <message numerus="yes">
         <location filename="../src/calendar.cpp" line="+758"/>
@@ -3038,6 +3093,35 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+294"/>
         <source>No matching reactions</source>
         <translation>Ничего не найдено</translation>
+    </message>
+</context>
+<context>
+    <name>uise::ChatVoiceFileItem</name>
+    <message>
+        <location filename="../src/chataudiofileitems.cpp" line="+154"/>
+        <location line="+51"/>
+        <source>Voice message</source>
+        <translation>Голосовое сообщение</translation>
+    </message>
+    <message>
+        <location line="-39"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Pause</source>
+        <translation>Пауза</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Play</source>
+        <translation>Воспроизвести</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Listened</source>
+        <translation>Прослушано</translation>
     </message>
 </context>
 <context>
@@ -3378,7 +3462,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+671"/>
+        <location filename="../src/htreetab.cpp" line="+672"/>
         <source>Collapse</source>
         <translation>Свернуть</translation>
     </message>
@@ -3483,7 +3567,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4111"/>
+        <location filename="../src/messageeditor.cpp" line="+4418"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
@@ -3493,12 +3577,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1639"/>
+        <location line="+1673"/>
         <source>code here</source>
         <translation>код</translation>
     </message>
     <message>
-        <location line="+2287"/>
+        <location line="+2819"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3643,6 +3727,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
+        <location line="-4636"/>
         <source>Hold to record a voice message</source>
         <translation>Удерживайте, чтобы записать голосовое сообщение</translation>
     </message>
@@ -4226,111 +4311,65 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
-    <name>uise::AudioPlayerWidget</name>
-    <message>
-        <source>Stop and close</source>
-        <translation>Остановить и закрыть</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation>Остановить</translation>
-    </message>
-    <message>
-        <source>Playback speed</source>
-        <translation>Скорость воспроизведения</translation>
-    </message>
-    <message>
-        <source>%1×</source>
-        <translation>%1×</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Включить звук</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Выключить звук</translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation>Пауза</translation>
-    </message>
-    <message>
-        <source>Play</source>
-        <translation>Воспроизвести</translation>
-    </message>
-</context>
-<context>
-    <name>uise::AudioPlayerDialog</name>
-    <message>
-        <source>Audio player</source>
-        <translation>Аудиоплеер</translation>
-    </message>
-</context>
-<context>
     <name>uise::VoiceRecorderDialog</name>
     <message>
+        <location filename="../src/voicerecorderdialog.cpp" line="+528"/>
+        <source> / %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+244"/>
         <source>Voice message</source>
         <translation>Голосовое сообщение</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Drag here to keep recording</source>
         <translation>Перетащите сюда, чтобы продолжить запись</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Drag here to cancel</source>
         <translation>Перетащите сюда для отмены</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Send</source>
         <translation>Отправить</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>Add a comment</source>
         <translation>Добавьте комментарий</translation>
     </message>
     <message>
+        <location line="-400"/>
+        <location line="+430"/>
         <source>Resume</source>
         <translation>Продолжить</translation>
     </message>
     <message>
+        <location line="-425"/>
+        <location line="+10"/>
+        <location line="+415"/>
+        <location line="+1"/>
         <source>Pause</source>
         <translation>Пауза</translation>
     </message>
     <message>
+        <location line="-411"/>
+        <location line="+411"/>
         <source>Listen</source>
         <translation>Прослушать</translation>
     </message>
     <message>
         <source>%1 / %2</source>
-        <translation>%1 / %2</translation>
-    </message>
-</context>
-<context>
-    <name>uise::ChatVoiceFileItem</name>
-    <message>
-        <source>Voice message</source>
-        <translation>Голосовое сообщение</translation>
-    </message>
-    <message>
-        <source>%1 · %2</source>
-        <translation>%1 · %2</translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation>Пауза</translation>
-    </message>
-    <message>
-        <source>Play</source>
-        <translation>Воспроизвести</translation>
-    </message>
-    <message>
-        <source>Listened</source>
-        <translation>Прослушано</translation>
+        <translation type="vanished">%1 / %2</translation>
     </message>
 </context>
 </TS>
