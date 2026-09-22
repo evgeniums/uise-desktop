@@ -1,4 +1,11 @@
-/* ChatVoiceFileItem -- dark theme colours. The blues of the waveform and the typing indicator. */
+/*
+ * ChatVoiceFileItem -- dark theme colours.
+ *
+ * #playOverlay deliberately keeps the ORIGINAL waveform dim blue (#3a6ea5), not waveformbar.qss's
+ * own barColor: that one was lightened for contrast against the played bars (task-voice-messages-
+ * plan.md S4f item 2), which a solid tile does not need. Do not resync them. The hover border and
+ * #listenedDot stay the bright "played"/typing-indicator blue.
+ */
 
 uise--ChatVoiceFileItem #playOverlay {
     background-color: #3a6ea5;

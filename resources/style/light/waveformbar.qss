@@ -1,13 +1,15 @@
 /*
  * WaveformBar – light theme colours.
  *
- * qproperty-barColor      – bars (or track) not yet played (pale blue)
+ * qproperty-barColor      – bars (or track) not yet played (medium blue -- task-voice-messages-
+ *                            plan.md S4f item 2: darkened from the original pale #b3d1f0 for more
+ *                            contrast against the bubble background, still below progressColor)
  * qproperty-progressColor – bars (or track) already played, playhead and knob (deep blue)
  * qproperty-cropColor     – crop handles
  */
 
 uise--WaveformBar {
-    qproperty-barColor:      #b3d1f0;
+    qproperty-barColor:      #7dade1;
     qproperty-progressColor: #1a6bc4;
     qproperty-cropColor:     #1a6bc4;
 }

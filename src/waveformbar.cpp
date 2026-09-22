@@ -85,7 +85,9 @@ class WaveformBar_p
         //! handle does not jump to the pointer on the first move.
         qreal dragOffset=0.0;
 
-        QColor barColor{0xb3,0xd1,0xf0};
+        // task-voice-messages-plan.md S4f item 2: mirrors light/waveformbar.qss's barColor, so an
+        // unstyled bar isn't stuck on the retired, lower-contrast pale blue.
+        QColor barColor{0x7d,0xad,0xe1};
         QColor progressColor{0x1a,0x6b,0xc4};
         QColor cropColor{0x1a,0x6b,0xc4};
         int barWidth=3;
