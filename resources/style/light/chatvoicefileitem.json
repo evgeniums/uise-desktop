@@ -1,0 +1,21 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ChatVoiceFileItem",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#1a6bc4" },
+                    "on"  : { "currentColor" : "#1a6bc4" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#1a6bc4" },
+                    "on"  : { "currentColor" : "#1a6bc4" }
+                },
+                "disabled" : {
+                    "off" : { "currentColor" : "#AAAAAA" }
+                }
+            }
+        }
+    ]
+}

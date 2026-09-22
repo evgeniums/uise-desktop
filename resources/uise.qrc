@@ -227,6 +227,9 @@
         <file>style/chatvoicefileitem.qss</file>
         <file>style/dark/chatvoicefileitem.qss</file>
         <file>style/light/chatvoicefileitem.qss</file>
+        <file>style/chatvoicefileitem.json</file>
+        <file>style/dark/chatvoicefileitem.json</file>
+        <file>style/light/chatvoicefileitem.json</file>
         <file>style/voicerecorder.qss</file>
         <file>style/voicerecorder.json</file>
         <file>style/dark/voicerecorder.qss</file>

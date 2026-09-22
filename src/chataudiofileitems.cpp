@@ -54,6 +54,15 @@ std::shared_ptr<SvgIcon> fileIcon(const QString& alias, QWidget* context)
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);
 }
 
+//! task-voice-messages-plan.md S4f item 6: the voice row's play/pause glyph gets its own icon
+//! context, ChatVoiceFileItem, coloured to match the waveform's played colour -- a colour map is
+//! per CONTEXT, never per alias, so it cannot share ChatMessageFiles (grey, every other file-row
+//! glyph) without recolouring those too.
+std::shared_ptr<SvgIcon> voiceIcon(const QString& alias, QWidget* context)
+{
+    return Style::instance().svgIconLocator().icon(QString("ChatVoiceFileItem::%1").arg(alias),context);
+}
+
 //! The states in which the file is there to play: the same two in which the icon slot shows the
 //! file icon rather than the load control.
 bool isPlayable(const ChatFileItem& item)
@@ -98,7 +107,7 @@ ChatVoiceFileItem::ChatVoiceFileItem(QWidget* parent)
     pimpl->overlay->installEventFilter(this);
 
     auto* overlayLayout=Layout::horizontal(pimpl->overlay);
-    pimpl->playButton=new IconTextButton(fileIcon("play",this),pimpl->overlay);
+    pimpl->playButton=new IconTextButton(voiceIcon("play",this),pimpl->overlay);
     pimpl->playButton->setObjectName("playButton");
     pimpl->playButton->setText(QString());
     pimpl->playButton->setFocusPolicy(Qt::NoFocus);
@@ -191,7 +200,7 @@ WaveformBar* ChatVoiceFileItem::waveformBar() const noexcept
 void ChatVoiceFileItem::updatePlayButton()
 {
     const auto playing=item().isPlaying();
-    pimpl->playButton->setSvgIcon(fileIcon(playing?"pause":"play",this));
+    pimpl->playButton->setSvgIcon(voiceIcon(playing?"pause":"play",this));
     pimpl->overlay->setToolTip(playing?tr("Pause"):tr("Play"));
 
     // above the file icon that the base row shows in the same place

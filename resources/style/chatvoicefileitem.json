@@ -1,0 +1,11 @@
+{
+    "contexts" : [
+        {
+            "name" : "ChatVoiceFileItem",
+            "aliases" : {
+                "play"  : "${uise-svg-icons-1}/player-play",
+                "pause" : "${uise-svg-icons-1}/player-pause"
+            }
+        }
+    ]
+}
