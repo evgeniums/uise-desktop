@@ -477,13 +477,18 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! Close the emoji gallery if it is open, and un-check the emoji button.
         //!
         //! Exists because "the chat page became inactive" has no representation in this library:
-        //! there is no page-active concept here, and the gallery is a top-level Qt::Dialog that
-        //! deliberately STAYS visible when the application itself deactivates (see
-        //! FloatingDialogFrame), so application-level deactivation is not the right trigger
-        //! either. A host owns that signal and calls this -- the same division of labour
-        //! mentionRequested() has with the user directory. The editor closes the gallery on its
-        //! own only for the things it can see itself: being hidden, and a switch to
-        //! MessageEditingMode::Plaintext.
+        //! there is no page-active concept here, so application-level deactivation is not the
+        //! right trigger either -- and it needs none, since the gallery frame is a Qt::Tool (see
+        //! FloatingEmojiGalleryDialog), which already hides itself when the application
+        //! deactivates on macOS. A host owns the "page-active" signal instead and drives the
+        //! gallery from it -- the same division of labour mentionRequested() has with the user
+        //! directory. whitemdesktop's ChatPage is one such host: it gates the persisted pin on
+        //! whether its own tree node is the tab's current node (a child node, e.g. chat info,
+        //! open on top of it counts as inactive) and pushes the result through
+        //! setEmojiGalleryPinned() -- see ChatPage::applyEmojiGalleryPin(). This method itself
+        //! remains a plain, user-dismissal-equivalent close for hosts that do not need that
+        //! distinction. The editor closes the gallery on its own only for the things it can see
+        //! itself: being hidden, and a switch to MessageEditingMode::Plaintext.
         virtual void closeEmojiGallery() {}
 
         //! Offer (or stop offering) the microphone button. See the micButtonVisible property.

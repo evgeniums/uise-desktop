@@ -7999,16 +7999,43 @@ void MessageEditor::releaseEmojiGallery()
     // page and shows the new one, in either order, within the same call). Only if nothing has
     // claimed it by the next event-loop turn -- e.g. the window itself losing focus, not a chat
     // switch -- does the dialog actually fade out.
+    //
+    // Anchored on `state` (parented to the window, so it outlives any one composer), not on
+    // `this`: an editor destroyed before this turn elapses must not cancel the close and orphan
+    // the dialog. Closes the shared dialog directly rather than going through
+    // closeEmojiGalleryInternal() -- that function's own "nothing open for THIS editor" guard
+    // reads emojiDialogOpen, already cleared above, so it would always take the early return and
+    // silently no-op every hide instead of ever closing anything.
     QPointer<MessageEditor> self=this;
     QPointer<EmojiGallerySharedState> stateGuard=state;
-    QTimer::singleShot(0,this,
+    QTimer::singleShot(0,state,
         [self,stateGuard]()
         {
-            if (self.isNull() || stateGuard.isNull() || stateGuard->owner.data()!=self.data())
+            if (stateGuard.isNull())
             {
                 return;
             }
-            self->closeEmojiGalleryInternal(false);
+            // Still unclaimed, or reclaimed by THIS same editor -- proceed. Claimed by a
+            // DIFFERENT composer in the meantime is the ordinary chat-switch hand-off this
+            // deferral exists for: leave the dialog exactly as it is. A null owner (this editor
+            // died before this turn ran, and nothing else ever claimed it) also proceeds, so a
+            // destroyed composer never strands the dialog open.
+            if (!stateGuard->owner.isNull() && stateGuard->owner.data()!=self.data())
+            {
+                return;
+            }
+            if (!self.isNull())
+            {
+                // Not a user dismissal -- FloatingDialogFrame::closed() below dispatches to
+                // whichever editor still owns the shared state, which reads this flag to keep
+                // the remembered pin and skip emojiGalleryPinnedChanged(). See
+                // onEmojiGalleryClosed().
+                self->pimpl->emojiCloseProgrammatic=true;
+            }
+            if (!stateGuard->dialog.isNull() && stateGuard->dialog->isVisible())
+            {
+                stateGuard->dialog->close(false);
+            }
         }
     );
 }

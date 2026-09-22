@@ -74,6 +74,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/hyperlinkdialog.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/reactioniconpack.hpp>
+#include <uise/desktop/emojigallerydialog.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 using namespace UISE_TEST_NAMESPACE;
@@ -5361,10 +5362,21 @@ BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinSurvivesHideAndReopensOnShow)
             editor.openEmojiGallery();
             UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
 
+            auto* dialog=editor.findChild<FloatingEmojiGalleryDialog*>();
+            UISE_TEST_REQUIRE(dialog!=nullptr);
+            UISE_TEST_CHECK(dialog->isVisible());
+
             // Hiding the composer (e.g. a chat page going into the cache) closes the picker --
             // but is NOT a user dismissal, so the pin must survive it.
             editor.hide();
             UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            // The close itself is deferred one event-loop turn (see releaseEmojiGallery()), to
+            // give another composer in the same window a chance to claim the dialog first.
+            QApplication::processEvents();
+            // The frame itself, not merely the "open for me" flag above -- this is the exact
+            // regression releaseEmojiGallery() had: emojiDialogOpen cleared eagerly while the
+            // dialog stayed on screen.
+            UISE_TEST_CHECK(!dialog->isVisible());
 
             // Showing it again re-opens the picker, deferred one event-loop turn (see
             // MessageEditor::showEvent()).
@@ -5373,6 +5385,7 @@ BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinSurvivesHideAndReopensOnShow)
             UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
             UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
             UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+            UISE_TEST_CHECK(dialog->isVisible());
         }
     );
 }
@@ -5477,6 +5490,54 @@ BOOST_AUTO_TEST_CASE(TestEmojiGallerySharedAcrossComposersInSameWindow)
             UISE_TEST_CHECK(editorB->isEmojiGalleryOpen());
             UISE_TEST_CHECK(editorB->isEmojiGalleryPinned());
             UISE_TEST_CHECK(editorB->emojiButton()->isChecked());
+
+            auto* dialog=window.findChild<FloatingEmojiGalleryDialog*>();
+            UISE_TEST_REQUIRE(dialog!=nullptr);
+            UISE_TEST_CHECK(dialog->isVisible());
+
+            // A's own hide() scheduled a deferred close (releaseEmojiGallery()) that has not run
+            // yet -- let it run now and confirm it is a no-op: the dialog was reclaimed by B
+            // (a DIFFERENT owner) before that turn arrived, so the frame must stay up.
+            QApplication::processEvents();
+            UISE_TEST_CHECK(dialog->isVisible());
+            UISE_TEST_CHECK(editorB->isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editorB->isEmojiGalleryPinned());
+        }
+    );
+}
+
+//! Part of the releaseEmojiGallery() robustness fix: the deferred close is anchored on the
+//! window-parented EmojiGallerySharedState, not on the (about to die) editor itself, so an editor
+//! destroyed between hide() and the next event-loop turn does not cancel its own pending close
+//! and strand the shared dialog floating open with no owner left to ever close it again.
+BOOST_AUTO_TEST_CASE(TestEmojiGalleryClosesWhenOwningEditorDestroyedWhileHiding)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            QWidget window;
+            auto* layout=Layout::vertical(&window);
+            auto* editor=new MessageEditor(&window);
+            layout->addWidget(editor);
+            editor->setEmojiButtonVisible(true);
+            window.show();
+
+            editor->openEmojiGallery();
+            UISE_TEST_CHECK(editor->isEmojiGalleryPinned());
+
+            auto* dialog=window.findChild<FloatingEmojiGalleryDialog*>();
+            UISE_TEST_REQUIRE(dialog!=nullptr);
+            UISE_TEST_CHECK(dialog->isVisible());
+
+            // hide() schedules the deferred close; destroying the editor right after (before
+            // that turn runs) must not cancel it -- the dialog is parented to the WINDOW, not to
+            // the editor.
+            editor->hide();
+            delete editor;
+            editor=nullptr;
+
+            QApplication::processEvents();
+            UISE_TEST_CHECK(!dialog->isVisible());
         }
     );
 }
