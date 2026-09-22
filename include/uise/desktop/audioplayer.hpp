@@ -141,6 +141,10 @@ class UISE_DESKTOP_EXPORT AudioPlayerWidget : public WidgetQFrame
 
         void openVolumePopup();
         void closeVolumePopup();
+
+        //! Restack the open slider above the player's own window, which a click on the player
+        //! brings to the front of the window level they share. See the definition.
+        void raiseVolumePopup();
         void onVolumeHoverPoll();
 
         std::unique_ptr<AudioPlayerWidget_p> pimpl;

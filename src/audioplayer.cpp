@@ -781,6 +781,29 @@ void AudioPlayerWidget::openVolumePopup()
 
 //--------------------------------------------------------------------------
 
+void AudioPlayerWidget::raiseVolumePopup()
+{
+    if (pimpl->volumeFrame.isNull() || !pimpl->volumeFrame->isOpen())
+    {
+        return;
+    }
+
+    QPointer<DropdownFrame> frame(pimpl->volumeFrame);
+    QTimer::singleShot(0,this,
+        [frame]()
+        {
+            // the popup may have closed in the meantime -- raise() on a hidden frame would
+            // order its window back on screen
+            if (!frame.isNull() && frame->isOpen())
+            {
+                frame->raise();
+            }
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
 void AudioPlayerWidget::closeVolumePopup()
 {
     pimpl->hoverOpenTimer->stop();
@@ -841,6 +864,23 @@ bool AudioPlayerWidget::eventFilter(QObject* watched, QEvent* event)
             {
                 // passing through is not asking for the slider
                 pimpl->hoverOpenTimer->stop();
+                break;
+            }
+
+            case (QEvent::MouseButtonPress):
+            {
+                /*
+                 * The slider's dropdown and a player hosted in a FloatingAudioPlayerDialog are
+                 * both Qt::Tool top-levels, so they share one window level (NSFloatingWindowLevel
+                 * on macOS) and the platform orders them by use: the press that toggles mute
+                 * brings the player's own window to the front of that level and leaves the
+                 * still-open slider -- the pointer never left the button, so nothing closed it --
+                 * stacked behind the player. Nothing in Qt reports a restack, so put the frame
+                 * back on top by hand, the same way FloatingDialogFrame re-asserts itself above
+                 * its host. Queued so it runs after the platform's own ordering for this press,
+                 * which on other platforms may only happen once the press has been dispatched.
+                 */
+                raiseVolumePopup();
                 break;
             }
 
