@@ -5,10 +5,10 @@
             "name" : "ChatMessageFiles",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#444444" }
+                    "off" : { "currentColor" : "#555555" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#000000" }
+                    "off" : { "currentColor" : "#222222" }
                 }
             }
         }

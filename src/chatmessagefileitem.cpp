@@ -48,7 +48,7 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
 
-const QSize IconSlotSize{56,56};
+const QSize IconSlotSize{36,36};
 
 // vertical gap between the file-name and size lines -- addSpacing() rather than the layout's
 // own spacing() (kept at 0 by Layout::vertical's reset) so it applies only between these two
