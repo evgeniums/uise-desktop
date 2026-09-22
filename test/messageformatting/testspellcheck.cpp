@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <boost/test/unit_test.hpp>
 
 #include <QTest>
+#include <QApplication>
+#include <QKeyEvent>
 #include <QTextCursor>
 #include <QTextBlock>
 #include <QTextLayout>
@@ -220,6 +222,25 @@ bool hasColorAndSpellUnderline(const QTextBlock& block, const QColor& color)
         }
     }
     return false;
+}
+
+/** @brief Type `text` into the editor one real key press at a time.
+ *
+ * The "word being typed" rule is deliberately gated on key input (see
+ * EnhancedTextEdit::typedSpellWord()), so loadText() -- what every other case here uses -- cannot
+ * exercise it: a document filled programmatically is checked in full, caret or no caret. Same
+ * direct-sendEvent idiom as testmessageeditor.cpp's pressKey(), which also works on a hidden
+ * widget (QTest::keyClicks() would additionally wait out its own key delay per character).
+ */
+void typeText(MessageEditor& editor, const QString& text)
+{
+    for (const auto ch : text)
+    {
+        const auto key=(ch==QLatin1Char(' ')) ? static_cast<int>(Qt::Key_Space)
+                                              : static_cast<int>(ch.toUpper().unicode());
+        QKeyEvent event(QEvent::KeyPress,key,Qt::NoModifier,QString(ch));
+        QApplication::sendEvent(editor.textEdit(),&event);
+    }
 }
 
 MenuItem* findItem(std::vector<MenuItem>& items, int id)
@@ -725,6 +746,160 @@ BOOST_AUTO_TEST_CASE(TestSpellUnderlineWidthProperty)
 
             editor.textEdit()->setSpellCheckUnderlineWidth(3.5);
             UISE_TEST_CHECK(qFuzzyCompare(editor.textEdit()->spellCheckUnderlineWidth(),3.5));
+        }
+    );
+}
+
+/** The word being typed carries no squiggle, and is not even offered to the checker, until the
+ *  caret leaves it -- "check on the word boundary, not on the keystroke". See
+ *  EnhancedTextEdit::typedSpellWord().
+ */
+BOOST_AUTO_TEST_CASE(TestTypedWordNotMarkedUntilWordBoundary)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.textEdit()->setSpellCheckUnderlineColor(QColor(0xFF,0x3B,0x30));
+            editor.setSpellChecker(&checker);
+
+            typeText(editor,QStringLiteral("xyzzy"));
+
+            UISE_TEST_CHECK(!hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            // Nothing was asked about, not even a prefix: "xy", "xyz" and "xyzz" were each the word
+            // being typed when they existed, and a one-letter token is dropped by the tokenizer.
+            // With an async checker this is also a dictionary lookup per keystroke not queued.
+            UISE_TEST_CHECK(checker.asked().isEmpty());
+
+            // The space is the word boundary the check was waiting for.
+            typeText(editor,QStringLiteral(" "));
+
+            UISE_TEST_CHECK(checker.asked().contains(QStringLiteral("xyzzy")));
+            UISE_TEST_CHECK(hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! The squiggle goes away again while the caret is back inside the word (it is being edited) and
+//! comes back when it leaves -- the caret-move path, which no document change rehighlights.
+BOOST_AUTO_TEST_CASE(TestTypedWordMarkFollowsTheCaret)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.setSpellChecker(&checker);
+            typeText(editor,QStringLiteral("xyzzy "));
+            UISE_TEST_CHECK(hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+
+            // Back at the word's last character -- where a Backspace would land.
+            cursor.setPosition(5);
+            textEdit->setTextCursor(cursor);
+            UISE_TEST_CHECK(!hasSpellUnderline(textEdit->document()->firstBlock()));
+
+            // ...and out of it again.
+            cursor.setPosition(6);
+            textEdit->setTextCursor(cursor);
+            UISE_TEST_CHECK(hasSpellUnderline(textEdit->document()->firstBlock()));
+
+            // At the word's FIRST character the word is not being typed at all: nothing of it has
+            // been touched, so it keeps its squiggle.
+            cursor.setPosition(0);
+            textEdit->setTextCursor(cursor);
+            UISE_TEST_CHECK(hasSpellUnderline(textEdit->document()->firstBlock()));
+
+            editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! A selection is not typing: selecting the word just typed marks it again, which is the state the
+//! context menu offers its suggestions in (see TestContextMenuAllowsWordActionsForExactWordSelection).
+BOOST_AUTO_TEST_CASE(TestSelectedWordIsMarkedWhileBeingTyped)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.setSpellChecker(&checker);
+            typeText(editor,QStringLiteral("xyzzy"));
+            UISE_TEST_CHECK(!hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.setPosition(0);
+            cursor.setPosition(5,QTextCursor::KeepAnchor);
+            textEdit->setTextCursor(cursor);
+
+            UISE_TEST_CHECK(hasSpellUnderline(textEdit->document()->firstBlock()));
+
+            editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! Losing focus ends the typing: a misspelling left half-typed in a composer the user clicked away
+//! from is marked like any other, rather than staying hidden for as long as the page is open.
+BOOST_AUTO_TEST_CASE(TestTypedWordMarkedWhenFocusLeaves)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.setSpellChecker(&checker);
+            typeText(editor,QStringLiteral("xyzzy"));
+            UISE_TEST_CHECK(!hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            QFocusEvent focusOut(QEvent::FocusOut,Qt::OtherFocusReason);
+            QApplication::sendEvent(editor.textEdit(),&focusOut);
+
+            UISE_TEST_CHECK(hasSpellUnderline(editor.textEdit()->document()->firstBlock()));
+
+            editor.setSpellChecker(nullptr);
+        }
+    );
+}
+
+//! The rule is gated on typing, so text that ARRIVES in the composer is checked in full even where
+//! the caret sits inside a misspelled word -- a restored draft, or a message loaded for editing.
+BOOST_AUTO_TEST_CASE(TestLoadedTextMarkedUnderTheCaret)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            StubSpellChecker checker;
+            checker.markBad(QStringLiteral("xyzzy"));
+
+            editor.setSpellChecker(&checker);
+            editor.loadText(QStringLiteral("correct xyzzy"),TextFormat::Plain);
+
+            auto* textEdit=editor.textEdit();
+            auto cursor=textEdit->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            textEdit->setTextCursor(cursor);
+
+            UISE_TEST_CHECK(hasSpellUnderline(textEdit->document()->firstBlock()));
+
+            editor.setSpellChecker(nullptr);
         }
     );
 }

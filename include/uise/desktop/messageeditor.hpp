@@ -466,6 +466,24 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         SpellWord spellWordAtCursor() const;
 
         /**
+         * @brief The word the user is in the middle of typing, which the spell pass leaves
+         *  unmarked -- "check on the word boundary, not on the keystroke".
+         *
+         * Invalid (the usual answer) unless ALL of: the user has typed into this editor and not
+         * left it since (see keyPressEvent()/focusOutEvent()), spell checking is on with a checker
+         * attached, there is no selection, and the caret is INSIDE a spell-checkable word. "Inside"
+         * excludes the caret sitting at the word's first character -- that caret has not touched
+         * the word -- and includes the caret right after its last one, which is where every
+         * keystroke of it leaves the caret.
+         *
+         * Computed from the caret on every call and never cached: the highlighter's spell pass asks
+         * for it while the document change that moved the caret is still being delivered, and any
+         * stored answer would describe the previous keystroke. Hosts can ask too, but nothing
+         * outside the editor needs to.
+         */
+        SpellWord typedSpellWord() const;
+
+        /**
          * @brief Extend `cursor` to cover `word`.
          * @return false, `cursor` left untouched, for an invalid word.
          */
@@ -728,6 +746,14 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         void keyPressEvent(QKeyEvent* event) override;
         void focusInEvent(QFocusEvent* event) override;
 
+        //! Lowers the m_spellCheckTyping latch: an unfocused composer is not being typed in, so
+        //! the word under its caret goes back to being spell-checked like any other.
+        void focusOutEvent(QFocusEvent* event) override;
+
+        //! Raises the m_spellCheckTyping latch for input that never reaches keyPressEvent() (an
+        //! IME commit, dictation, an on-screen keyboard); otherwise pure pass-through.
+        void inputMethodEvent(QInputMethodEvent* event) override;
+
         //! Re-derives the tab stop from the new font -- QSS drives fonts here, so the ctor's
         //! one-time computation would otherwise be stale from the first theme change onward.
         void changeEvent(QEvent* event) override;
@@ -793,6 +819,22 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! more than once for one dictionary-load event.
         void onSpellDictionaryChanged();
 
+        /**
+         * @brief Re-highlight what typedSpellWord() changing has just changed the marking of.
+         *
+         * The spell pass reads typedSpellWord() live, so an EDIT needs nothing from here: Qt
+         * re-runs the edited block anyway and that run already has the current answer. This exists
+         * for the other case -- the word being typed changed with no edit behind it (the caret was
+         * walked out of it, clicked out of it, or the focus left), where nothing else would ever
+         * re-run the affected blocks.
+         *
+         * Connected to QTextEdit::cursorPositionChanged, ::selectionChanged and ::textChanged: the
+         * first two are the cases that matter, and the text signal is what keeps the document
+         * revision this uses to tell those apart from an edit up to date (including for the
+         * format-only edits the highlighter's own rehighlights make).
+         */
+        void updateTypedSpellWord();
+
     private:
 
         //! DefaultTabStopSpaces space-widths of the CURRENT font, applied in the ctor and again
@@ -849,6 +891,27 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
 
         //! Lazily created in onSpellDictionaryChanged(); see that slot's own doc comment.
         QTimer* m_spellRehighlightTimer=nullptr;
+
+        /**
+         * @brief Whether the user is typing in this editor right now -- the gate on suppressing
+         *  the squiggle under the word at the caret (see typedSpellWord()).
+         *
+         * Raised by keyPressEvent()/inputMethodEvent() for input that inserts or deletes text,
+         * lowered by focusOutEvent(). Deliberately keyed off USER INPUT rather than off the caret
+         * alone: a document filled programmatically (a restored draft, a message loaded for
+         * editing) leaves the caret sitting inside its last word, and that word is not being typed
+         * -- it has to be checked like the rest of the text the moment it appears.
+         */
+        bool m_spellCheckTyping=false;
+
+        //! Last typedSpellWord() updateTypedSpellWord() acted on, in document coordinates, so a
+        //! caret move that does not change it re-highlights nothing at all (-1 for none).
+        int m_typedSpellWordPosition=-1;
+        int m_typedSpellWordLength=0;
+
+        //! QTextDocument::revision() as of the last updateTypedSpellWord() -- see that slot for
+        //! what it is compared against and why.
+        int m_typedSpellWordRevision=0;
 
         //! Last state reported through the two mention signals, so a keystroke that does not
         //! change it emits nothing at all (both signals drive a host popup).

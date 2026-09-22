@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <vector>
 
 #include <QKeyEvent>
+#include <QInputMethodEvent>
 #include <QTextEdit>
 #include <QTextDocument>
 #include <QTextDocumentFragment>
@@ -1871,6 +1872,47 @@ std::vector<SpellToken> spellTokens(const QString& text)
     return tokens;
 }
 
+/** @brief The spell-checkable token `offset` sits INSIDE -- the word a caret there is typing.
+ *
+ * Deliberately stricter than EnhancedTextEdit::spellWordAt()'s rule, which also answers for a
+ * caret sitting at the word's very first character: such a caret has not touched the word yet, so
+ * dropping its squiggle merely because the caret was clicked in front of it would be a change the
+ * user did not ask for. A caret at the word's END is the typing case proper -- that is exactly
+ * where every keystroke of it leaves the caret.
+ *
+ * @return A token of length 0 when `offset` is inside no spell-checkable word (whitespace, an
+ *  anchor/inline-code run, or a run the tokenizer drops whole -- see spellTokens()).
+ */
+SpellToken typedSpellToken(const QTextBlock& block, int offset)
+{
+    if (!block.isValid())
+    {
+        return SpellToken{};
+    }
+
+    const auto text=block.text();
+    if (offset<0 || offset>text.size())
+    {
+        return SpellToken{};
+    }
+
+    const auto excluded=nonProseRuns(block);
+    for (const auto& token : spellTokens(text))
+    {
+        if (offset<=token.start || offset>token.start+token.length)
+        {
+            continue;
+        }
+        if (spellRangeExcluded(token.start,token.length,excluded))
+        {
+            return SpellToken{};
+        }
+        return token;
+    }
+
+    return SpellToken{};
+}
+
 //! macOS shows a DOTTED spelling underline -- qcocoatheme.mm's own
 //! QPlatformTheme::SpellCheckUnderlineStyle answer, which this editor used to defer to before it
 //! started painting the squiggle itself (see EnhancedTextEdit::SpellCheckUnderlineProperty).
@@ -2059,7 +2101,16 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
 {
     public:
 
-        explicit MessageEditorHighlighter(QTextDocument* document) : QSyntaxHighlighter(document)
+        /**
+         * @param document The document to highlight, as QSyntaxHighlighter takes it.
+         * @param editor The widget that owns both -- READ ONLY, and only ever for
+         *  EnhancedTextEdit::typedSpellWord(), which highlightMisspellings() has to ask for the
+         *  caret's current whereabouts at highlight time rather than be told in advance. See
+         *  that function for why being told would always be one keystroke late.
+         */
+        explicit MessageEditorHighlighter(QTextDocument* document, EnhancedTextEdit* editor=nullptr)
+            : QSyntaxHighlighter(document),
+              m_editor(editor)
         {}
 
         //! QSyntaxHighlighter block states. Deliberately not -1, which is the "never highlighted"
@@ -2184,6 +2235,43 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
         {
             m_spellCache.clear();
             rehighlight();
+        }
+
+        /** @brief Re-run the spell pass over the blocks holding `positionA` and `positionB`
+         *  (document coordinates; -1 for "none", the same block twice counts once).
+         *
+         * What EnhancedTextEdit::updateTypedSpellWord() calls when the word being typed changes
+         * WITHOUT the document changing -- the caret walked out of it with an arrow key, a click,
+         * or the focus left the widget. A text edit needs nothing: Qt already re-runs the edited
+         * block, and highlightMisspellings() reads the caret live, so that pass has the answer
+         * already.
+         *
+         * Never rehighlight(): this runs on caret moves and a full pass is O(document).
+         */
+        void rehighlightSpellWordBlocks(int positionA, int positionB)
+        {
+            if (!m_spellCheckEnabled || m_spellChecker==nullptr)
+            {
+                return;
+            }
+
+            auto* doc=document();
+            if (doc==nullptr)
+            {
+                return;
+            }
+
+            const auto blockA=positionA>=0 ? doc->findBlock(positionA) : QTextBlock();
+            if (blockA.isValid())
+            {
+                rehighlightBlock(blockA);
+            }
+
+            const auto blockB=positionB>=0 ? doc->findBlock(positionB) : QTextBlock();
+            if (blockB.isValid() && blockB.blockNumber()!=blockA.blockNumber())
+            {
+                rehighlightBlock(blockB);
+            }
         }
 
     protected:
@@ -2351,10 +2439,49 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
                 return;
             }
 
-            const auto excluded=nonProseRuns(currentBlock());
+            const auto block=currentBlock();
+            const auto blockStart=block.position();
+            const auto excluded=nonProseRuns(block);
+
+            /* The word being typed right now, asked for LIVE rather than pushed in advance.
+             *
+             * A half-typed word is not a misspelling: squiggling every prefix of one ("h", "he",
+             * "hel", ...) as it is typed is the one thing a check-as-you-type pass must not do, so
+             * the check is deferred to the word boundary -- the moment the caret leaves the word,
+             * or typing stops (see EnhancedTextEdit::typedSpellWord() for the exact rule).
+             *
+             * Read here, inside the pass, and not stored: Qt runs this pass from
+             * QTextDocument::contentsChange, which QTextDocumentPrivate::finishEdit() emits BEFORE
+             * the cursorPositionChanged()/contentsChanged() that any push would have to ride on,
+             * while the caret itself is adjusted DURING the edit that precedes all three. So
+             * asking now is asking about the keystroke that just landed, whereas being told would
+             * always describe the one before it -- which would mark the word for one pass and
+             * unmark it in a second, and hand every prefix to check() (an async checker would
+             * queue a dictionary lookup for each) on the way.
+             *
+             * Asked only for the block the caret is actually in -- no other block can hold the word
+             * being typed -- so a full rehighlight() over a long document still tokenizes each block
+             * once rather than tokenizing the caret's block again for every block it visits.
+             */
+            const auto caretPosition=m_editor!=nullptr ? m_editor->textCursor().position() : -1;
+            const auto typed=(m_editor!=nullptr && caretPosition>=blockStart
+                              && caretPosition<=blockStart+text.size())
+                                    ? m_editor->typedSpellWord()
+                                    : EnhancedTextEdit::SpellWord{};
+
             for (const auto& token : spellTokens(text))
             {
                 if (spellRangeExcluded(token.start,token.length,excluded))
+                {
+                    continue;
+                }
+
+                // Matched by EXACT (position,length) rather than by overlap: `typed` is always a
+                // token this same tokenizer produced, so exactness costs nothing and cannot
+                // swallow a neighbouring word.
+                if (typed.isValid
+                    && blockStart+token.start==typed.position
+                    && token.length==typed.length)
                 {
                     continue;
                 }
@@ -2432,6 +2559,10 @@ class MessageEditorHighlighter : public QSyntaxHighlighter
         bool m_spellCheckEnabled=true;
         QColor m_spellCheckUnderlineColor;
 
+        //! Not owned -- the editor owns this highlighter (through the document). Read only, and
+        //! only for typedSpellWord(); see the ctor.
+        EnhancedTextEdit* m_editor=nullptr;
+
         //! true==correct. SpellCheckVerdict::Unknown is NEVER cached, so an async checker that
         //! has not answered yet converges instead of being poisoned by a stale miss.
         mutable QHash<QString,bool> m_spellCache;
@@ -2454,7 +2585,7 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
     // Attached unconditionally, but inert until a stylesheet gives it a colour (see
     // setBlockquoteColor()). Parented to the document by QSyntaxHighlighter's own constructor, so
     // it is not deleted here.
-    m_highlighter=new MessageEditorHighlighter(document());
+    m_highlighter=new MessageEditorHighlighter(document(),this);
 
     // Right-click is handled by MessageEditor's own DropdownMenu (see showContextMenu()),
     // not Qt's stock createStandardContextMenu() -- its Paste entry is driven by canPaste(),
@@ -2473,6 +2604,17 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
     // changed, so firing twice for one edit costs nothing.
     connect(this,&QTextEdit::textChanged,this,&EnhancedTextEdit::updateMentionQuery);
     connect(this,&QTextEdit::cursorPositionChanged,this,&EnhancedTextEdit::updateMentionQuery);
+
+    // The spell pass reads the word being typed itself (see typedSpellWord()), so these three are
+    // here only to notice when that word has CHANGED with no edit to provoke a rehighlight of its
+    // own: the caret was walked out of it (cursorPositionChanged), or a selection appeared over it,
+    // which stops it counting as typed at all and does NOT always move the caret -- selecting a
+    // just-typed word backwards from its end leaves the position where it was and reports only
+    // selectionChanged. textChanged carries no case of its own; it is what keeps the document
+    // revision updateTypedSpellWord() uses to tell an edit from a bare caret move up to date.
+    connect(this,&QTextEdit::textChanged,this,&EnhancedTextEdit::updateTypedSpellWord);
+    connect(this,&QTextEdit::cursorPositionChanged,this,&EnhancedTextEdit::updateTypedSpellWord);
+    connect(this,&QTextEdit::selectionChanged,this,&EnhancedTextEdit::updateTypedSpellWord);
 }
 
 //--------------------------------------------------------------------------
@@ -2662,6 +2804,19 @@ int EnhancedTextEdit::effectiveMaxHeight() const
 
 void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
 {
+    // The "the user is typing in here right now" latch the spell pass needs -- see
+    // m_spellCheckTyping and typedSpellWord(). Raised at the very top, before any guard below can
+    // consume the key: every one of those guards that does consume one still ends up editing the
+    // document, and the spell pass reads the latch DURING that edit, so raising it afterwards would
+    // be one pass too late. Keys that produce no text and delete none (arrows, modifiers, plain
+    // shortcuts) deliberately do not raise it -- they edit nothing for the pass to run over.
+    if (!event->text().isEmpty()
+        || event->key()==Qt::Key_Backspace
+        || event->key()==Qt::Key_Delete)
+    {
+        m_spellCheckTyping=true;
+    }
+
     // Up-arrow in an EMPTY editor is a free gesture: there is no line above the caret to move to,
     // so the default handling is a visible no-op and claiming the key here costs nothing. Gated
     // strictly on emptiness -- with any text present, Up must keep moving the caret, and a host
@@ -2807,6 +2962,33 @@ void EnhancedTextEdit::focusInEvent(QFocusEvent* event)
 {
     QTextEdit::focusInEvent(event);
     emit activated();
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::focusOutEvent(QFocusEvent* event)
+{
+    QTextEdit::focusOutEvent(event);
+
+    // Nobody is typing in an unfocused composer, so the word under its caret is checked like any
+    // other one: a misspelling left half-typed when the user clicked away has to be marked, not
+    // hidden indefinitely. The latch goes back up on the next keystroke here (see keyPressEvent()).
+    m_spellCheckTyping=false;
+    updateTypedSpellWord();
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::inputMethodEvent(QInputMethodEvent* event)
+{
+    // Same latch keyPressEvent() sets, for input that never reaches it: an IME commit, dictation,
+    // or a QInputMethodEvent-based on-screen keyboard.
+    if (!event->commitString().isEmpty() || !event->preeditString().isEmpty())
+    {
+        m_spellCheckTyping=true;
+    }
+
+    QTextEdit::inputMethodEvent(event);
 }
 
 //--------------------------------------------------------------------------
@@ -3038,6 +3220,10 @@ void EnhancedTextEdit::setSpellChecker(AbstractSpellChecker* checker)
     {
         m_highlighter->setSpellChecker(checker);
     }
+
+    // Attaching or detaching a checker changes typedSpellWord()'s own answer -- same bookkeeping
+    // reason as in setSpellCheckEnabled() just below.
+    updateTypedSpellWord();
 }
 
 //--------------------------------------------------------------------------
@@ -3050,6 +3236,12 @@ void EnhancedTextEdit::setSpellCheckEnabled(bool enable)
     {
         m_highlighter->setSpellCheckEnabled(enable);
     }
+
+    // Toggling this changes typedSpellWord()'s own answer, so the record updateTypedSpellWord()
+    // keeps of it has to follow -- otherwise the next caret move would compare against a word that
+    // was never the one in force and re-highlight the wrong block (or none). The highlighter's
+    // setter above has already re-run the pass itself, which is why this is not called before it.
+    updateTypedSpellWord();
 }
 
 //--------------------------------------------------------------------------
@@ -3075,6 +3267,88 @@ void EnhancedTextEdit::onSpellDictionaryChanged()
         );
     }
     m_spellRehighlightTimer->start();
+}
+
+//--------------------------------------------------------------------------
+
+EnhancedTextEdit::SpellWord EnhancedTextEdit::typedSpellWord() const
+{
+    SpellWord result;
+
+    if (!m_spellCheckTyping || !m_spellCheckEnabled || m_spellChecker.isNull())
+    {
+        return result;
+    }
+
+    const auto cursor=textCursor();
+
+    // A selection is not typing: double-clicking a misspelled word -- which is exactly how its
+    // suggestions are reached from the context menu, see MessageEditor::showContextMenu() -- must
+    // leave its squiggle alone.
+    if (cursor.hasSelection())
+    {
+        return result;
+    }
+
+    const auto block=cursor.block();
+    const auto token=typedSpellToken(block,cursor.position()-block.position());
+    if (token.length==0)
+    {
+        return result;
+    }
+
+    result.isValid=true;
+    result.position=block.position()+token.start;
+    result.length=token.length;
+    result.text=block.text().mid(token.start,token.length);
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::updateTypedSpellWord()
+{
+    if (m_highlighter==nullptr)
+    {
+        return;
+    }
+
+    // QTextDocument::revision() moves with every edit, which is what tells "the caret moved because
+    // the text changed" (Qt is rehighlighting the edited block anyway, with the live answer already
+    // in hand) apart from "the caret moved on its own" (nothing will rehighlight anything unless
+    // this does). Read on BOTH connected signals, since cursorPositionChanged() is emitted FIRST
+    // for an edit -- QTextDocumentPrivate::finishEdit() emits it before contentsChanged().
+    const auto revision=document()->revision();
+    const auto documentChanged=(revision!=m_typedSpellWordRevision);
+    m_typedSpellWordRevision=revision;
+
+    const auto word=typedSpellWord();
+    const auto position=word.isValid ? word.position : -1;
+    const auto length=word.isValid ? word.length : 0;
+    if (position==m_typedSpellWordPosition && length==m_typedSpellWordLength)
+    {
+        return;
+    }
+
+    auto previousPosition=m_typedSpellWordPosition;
+    m_typedSpellWordPosition=position;
+    m_typedSpellWordLength=length;
+
+    if (documentChanged)
+    {
+        // The edit's own pass covered the caret's block with the live answer, so only a word left
+        // behind in ANOTHER block (a programmatic edit elsewhere can move the caret out of one)
+        // still needs its squiggle putting back.
+        const auto caretBlock=textCursor().blockNumber();
+        if (previousPosition>=0 && document()->findBlock(previousPosition).blockNumber()==caretBlock)
+        {
+            previousPosition=-1;
+        }
+        m_highlighter->rehighlightSpellWordBlocks(previousPosition,-1);
+        return;
+    }
+
+    m_highlighter->rehighlightSpellWordBlocks(previousPosition,position);
 }
 
 //--------------------------------------------------------------------------
