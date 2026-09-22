@@ -338,6 +338,15 @@ void ChatMessageFileItem::setPlaybackProgress(qreal fraction)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageFileItem::setPlaybackPosition(qint64 positionMs, qint64 durationMs)
+{
+    // Nothing to show on an ordinary row -- see the declaration.
+    Q_UNUSED(positionMs)
+    Q_UNUSED(durationMs)
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFileItem::setTextVerticalAlignment(Qt::Alignment alignment)
 {
     auto vAlign=alignment & Qt::AlignVertical_Mask;

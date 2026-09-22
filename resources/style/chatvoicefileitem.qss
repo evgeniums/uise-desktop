@@ -36,3 +36,11 @@ uise--ChatVoiceFileItem #listenedDot {
     border-radius: 4px;
     margin-right: 5px;
 }
+
+/* task-voice-messages-plan.md (S4f item 3): the playing clock, shown instead of #infoLabel --
+ * same font size as it, so swapping between the two is not itself a visible size change. Colours
+ * are in light/chatvoicefileitem.qss and dark/chatvoicefileitem.qss, matching #infoLabel's own.
+ */
+uise--ChatVoiceFileItem #clockFrame QLabel {
+    font-size: 11px;
+}

@@ -172,6 +172,24 @@ void ChatMessageFiles::setPlaybackProgress(const QUuid& id, qreal fraction)
 
 //--------------------------------------------------------------------------
 
+void ChatMessageFiles::setPlaybackPosition(const QUuid& id, qint64 positionMs, qint64 durationMs)
+{
+    // Same linear scan as setPlaybackProgress() above -- its companion, pushed on the same ticks.
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        if (pimpl->items[i].id()==id)
+        {
+            if (i<pimpl->rows.size())
+            {
+                pimpl->rows[i]->setPlaybackPosition(positionMs,durationMs);
+            }
+            return;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFiles::rebuildList()
 {
     for (auto* row : pimpl->rows)

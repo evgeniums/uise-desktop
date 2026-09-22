@@ -18,3 +18,8 @@ uise--ChatVoiceFileItem #playOverlay:hover {
 uise--ChatVoiceFileItem #listenedDot {
     background-color: #8ec5ff;
 }
+
+/* the playing clock -- same grey as #infoLabel, which it stands in for */
+uise--ChatVoiceFileItem #clockFrame QLabel {
+    color: #999999;
+}

@@ -137,6 +137,16 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         virtual void setPlaybackProgress(qreal fraction);
 
         /**
+         * @brief Show the playback position of an audio row as a clock.
+         *
+         * Does nothing here. A row that shows a clock (the voice message row) overrides it. Called
+         * by ChatMessageFiles::setPlaybackPosition(), on every position tick of the playing item,
+         * so an override must be cheap and must not rebuild anything -- same contract as
+         * setPlaybackProgress() above, its companion.
+         */
+        virtual void setPlaybackPosition(qint64 positionMs, qint64 durationMs);
+
+        /**
          * @brief Cap this row's overall width by shrinking the file-name label's budget.
          * @param totalWidth Target width for the WHOLE row (icon slot + name/size column + menu
          *  button), not just the name label. Everything else in the row has a width independent

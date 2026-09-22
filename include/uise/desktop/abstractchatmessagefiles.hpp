@@ -137,6 +137,25 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
             std::ignore=fraction;
         }
 
+        /**
+         * @brief Show the playback position of one audio item as a clock, without rebuilding its row.
+         * @param id Id of the item that is playing (see ChatFileItem::id()).
+         * @param positionMs Position in milliseconds, or a NEGATIVE value for "this item is no
+         *  longer the one playing" -- which 0 cannot say, being also a perfectly good position.
+         * @param durationMs Length as the host's engine knows it, or 0 while it does not; a row
+         *  then falls back to ChatFileItem::voiceDurationMs(), the message's own metadata.
+         *
+         * The companion of setPlaybackProgress(), pushed on the same ticks: that one moves the
+         * bar, this one moves the clock. Rows with no clock (every row but the voice message one)
+         * ignore it, same default-body convention as setPlaybackProgress() above.
+         */
+        virtual void setPlaybackPosition(const QUuid& id, qint64 positionMs, qint64 durationMs)
+        {
+            std::ignore=id;
+            std::ignore=positionMs;
+            std::ignore=durationMs;
+        }
+
         virtual void setComment(const QString& text, TextFormat format=TextFormat::Markdown) =0;
         virtual void clearComment() =0;
         virtual QString comment() const =0;

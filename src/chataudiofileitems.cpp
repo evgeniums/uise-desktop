@@ -86,6 +86,31 @@ class ChatVoiceFileItem_p
         WaveformBar* bar=nullptr;
         QFrame* infoRow=nullptr;
         QLabel* dot=nullptr;
+
+        //! task-voice-messages-plan.md (S4f item 3). The playing clock -- shown INSTEAD OF
+        //! infoLabel() while showingPosition is true, never together. TWO SEPARATE labels, not one
+        //! "position / duration" string: the position digits change width every tick in a
+        //! proportional font, and if the separator and duration text shared that same string, they
+        //! would shift sideways with it. Splitting them so only positionLabel (below, floored) ever
+        //! changes text is what stops that -- the same fix already used in this codebase's other
+        //! two playback clocks (AudioPlayerWidget's positionLabel/durationLabel pair either side of
+        //! its progress bar, and the recorder popup's own clock), applied here without a bar to
+        //! lean on for the visual split, hence the still-needed explicit "/" in the second label.
+        QFrame* clockFrame=nullptr;
+        QLabel* positionLabel=nullptr;
+        //! "/ <duration>" -- static for the run of one session (the duration does not tick), so it
+        //! needs no floor of its own; positionLabel's floor alone keeps it from ever shifting.
+        QLabel* durationSuffixLabel=nullptr;
+
+        //! While true the info line is the clock; the host turns it off with a negative position
+        //! when the session ends, which 0 cannot say.
+        bool showingPosition=false;
+        qint64 positionMs=0;
+        qint64 positionDurationMs=0;
+
+        //! The widest-digit mask positionLabel's minimum width is currently reserved for -- see
+        //! reserveInfoWidth(). Empty means no floor is reserved.
+        QString timeMask;
 };
 
 //--------------------------------------------------------------------------
@@ -137,6 +162,25 @@ ChatVoiceFileItem::ChatVoiceFileItem(QWidget* parent)
     column->removeWidget(infoLabel());
     rowLayout->addWidget(infoLabel(),1);
 
+    // The playing clock: built here, alongside infoLabel(), and kept hidden until a session is
+    // current -- see the pimpl fields' own doc comment for why it is two labels, not one string.
+    pimpl->clockFrame=new QFrame(pimpl->infoRow);
+    pimpl->clockFrame->setObjectName("clockFrame");
+    pimpl->clockFrame->setVisible(false);
+    auto* clockLayout=Layout::horizontal(pimpl->clockFrame);
+    pimpl->positionLabel=new QLabel(pimpl->clockFrame);
+    pimpl->positionLabel->setObjectName("positionLabel");
+    clockLayout->addWidget(pimpl->positionLabel);
+    pimpl->durationSuffixLabel=new QLabel(pimpl->clockFrame);
+    pimpl->durationSuffixLabel->setObjectName("durationSuffixLabel");
+    clockLayout->addWidget(pimpl->durationSuffixLabel);
+    // clockFrame itself is stretched to fill the row (below, stretch 1, matching infoLabel()'s own
+    // stretch); without this, THAT leftover width has nowhere to go but into positionLabel and
+    // durationSuffixLabel themselves (neither has a maximum width), stretching a visible gap into
+    // the middle of the clock. A trailing stretch item absorbs it instead, at the row's own end.
+    clockLayout->addStretch(1);
+    rowLayout->addWidget(pimpl->clockFrame,1);
+
     // name, spacer, waveform, spacer, info row -- the info line's place is now the waveform's
     column->insertWidget(infoIndex,pimpl->bar);
     column->insertSpacing(infoIndex+1,WaveformSpacing);
@@ -172,8 +216,10 @@ void ChatVoiceFileItem::refresh()
     if (playable)
     {
         // While it transfers the base row's own progress text stays, it says more than this would.
-        setInfoText(tr("%1 · %2").arg(formatAudioTime(static_cast<qint64>(voice.voiceDurationMs())),
-                                         formatFileSize(voice.size())));
+        // updateInfoText() picks "position / duration" or "duration · size" on its own, from
+        // pimpl->showingPosition -- a row rebuilt (flyweight recycle) while its item plays must
+        // still show the clock, not stale duration text.
+        updateInfoText();
     }
 
     pimpl->overlay->setVisible(playable);
@@ -186,6 +232,30 @@ void ChatVoiceFileItem::setPlaybackProgress(qreal fraction)
 {
     // WaveformBar drops it while the user is dragging, so a position tick never fights the finger
     pimpl->bar->setProgress(fraction);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatVoiceFileItem::setPlaybackPosition(qint64 positionMs, qint64 durationMs)
+{
+    if (positionMs<0)
+    {
+        // the session ended: back to "duration · size", and the clock's width floor goes with it
+        if (!pimpl->showingPosition)
+        {
+            return;
+        }
+        pimpl->showingPosition=false;
+        pimpl->timeMask.clear();
+        pimpl->positionLabel->setMinimumWidth(0);
+        updateInfoText();
+        return;
+    }
+
+    pimpl->showingPosition=true;
+    pimpl->positionMs=positionMs;
+    pimpl->positionDurationMs=durationMs>0 ? durationMs : static_cast<qint64>(item().voiceDurationMs());
+    updateInfoText();
 }
 
 //--------------------------------------------------------------------------
@@ -205,6 +275,65 @@ void ChatVoiceFileItem::updatePlayButton()
 
     // above the file icon that the base row shows in the same place
     pimpl->overlay->raise();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatVoiceFileItem::updateInfoText()
+{
+    infoLabel()->setVisible(!pimpl->showingPosition);
+    pimpl->clockFrame->setVisible(pimpl->showingPosition);
+
+    if (pimpl->showingPosition)
+    {
+        // Digits and a colon need no translation (see formatAudioTime()'s own doc comment), and
+        // neither does a bare "/" -- same reasoning, one more universal character.
+        const auto durationText=formatAudioTime(pimpl->positionDurationMs);
+
+        // The floor is measured against the DURATION's own text: the position can read anything
+        // from "0:00" up to the duration, never past it, so the duration is the widest thing
+        // positionLabel will ever have to show.
+        reserveInfoWidth(durationText);
+
+        pimpl->positionLabel->setText(formatAudioTime(pimpl->positionMs));
+        // Static for the run of this session -- see its own field doc comment -- so it is simply
+        // set, no floor of its own needed.
+        // Leading space: clockLayout is zero-spacing (Layout::horizontal()'s own default), so the
+        // gap on both sides of the slash has to come from the text itself to read as "0:05 / 0:12"
+        // rather than "0:05/ 0:12".
+        pimpl->durationSuffixLabel->setText(QStringLiteral(" / %1").arg(durationText));
+        return;
+    }
+
+    setInfoText(tr("%1 · %2").arg(formatAudioTime(static_cast<qint64>(item().voiceDurationMs())),
+                                  formatFileSize(item().size())));
+}
+
+//--------------------------------------------------------------------------
+
+void ChatVoiceFileItem::reserveInfoWidth(const QString& longest)
+{
+    // The clock is drawn in a proportional font, where "0:01" and "0:02" are not the same number
+    // of pixels: ticking positionLabel's text directly would change ITS size hint on nearly every
+    // tick, and with it everything laid out after it -- the separator and duration text, if they
+    // shared its string (the bug this whole split avoids), or the row/bubble around it otherwise.
+    // Same fix, same helper, as AudioPlayerWidget::updateTimeLabelWidth() -- a minimum width
+    // measured from the widest string this label can reach, every digit taken at its widest.
+    auto mask=widestDigitsOf(longest,pimpl->positionLabel->fontMetrics());
+    if (mask==pimpl->timeMask)
+    {
+        return;
+    }
+    pimpl->timeMask=mask;
+
+    // measured with no floor of its own: an earlier, longer mask's floor would otherwise be the
+    // answer
+    const auto text=pimpl->positionLabel->text();
+    pimpl->positionLabel->setMinimumWidth(0);
+    pimpl->positionLabel->setText(mask);
+    const auto width=pimpl->positionLabel->sizeHint().width();
+    pimpl->positionLabel->setText(text);
+    pimpl->positionLabel->setMinimumWidth(width);
 }
 
 //--------------------------------------------------------------------------

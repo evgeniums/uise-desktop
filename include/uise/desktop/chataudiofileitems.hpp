@@ -49,8 +49,9 @@ class ChatVoiceFileItem_p;
  * A ChatMessageFileItem, so it is what a ChatFileItemBuilder returns for an item that
  * ChatFileItem::isVoice(); makeChatAudioFileItem() does that choice. Everything it shows comes from
  * the ChatFileItem -- the waveform, the duration, the listened flag, whether it is playing -- so it
- * survives the row being rebuilt. Only the position of a playing message moves without a refresh,
- * through setPlaybackProgress().
+ * survives the row being rebuilt. Only a playing message moves without a refresh: its waveform
+ * through setPlaybackProgress(), and its info line's clock (position replacing "duration · size"
+ * while it plays) through setPlaybackPosition().
  *
  * The play button sits over the icon slot and is shown only while the file is available; while it
  * is downloading the slot shows the usual load control, and the waveform, which came with the
@@ -79,6 +80,9 @@ class UISE_DESKTOP_EXPORT ChatVoiceFileItem : public ChatMessageFileItem
         //! Move the waveform's progress. Ignored while the user is dragging it.
         void setPlaybackProgress(qreal fraction) override;
 
+        //! Move the info line's clock. See AbstractChatMessageFiles::setPlaybackPosition().
+        void setPlaybackPosition(qint64 positionMs, qint64 durationMs) override;
+
         WaveformBar* waveformBar() const noexcept;
 
     protected:
@@ -92,6 +96,16 @@ class UISE_DESKTOP_EXPORT ChatVoiceFileItem : public ChatMessageFileItem
 
         void updatePlayButton();
         void retranslate();
+
+        //! The single writer of the info line: "position / duration" while playing (pimpl's
+        //! showingPosition), else "duration · size" -- refresh()'s idle case and
+        //! setPlaybackPosition()'s playing case both funnel through here.
+        void updateInfoText();
+
+        //! Reserves infoLabel()'s minimum width from the widest-digits mask of \p longest, so a
+        //! proportional font's changing digits (e.g. "0:01" vs "0:02") never resize the row on
+        //! every tick -- same technique as AudioPlayerWidget::updateTimeLabelWidth().
+        void reserveInfoWidth(const QString& longest);
 
         std::unique_ptr<ChatVoiceFileItem_p> pimpl;
 };
