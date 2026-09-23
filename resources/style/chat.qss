@@ -404,9 +404,10 @@ max-width: 40px;
  * a full-width row of its own, and QWidget::setGeometry() would otherwise clamp that manual
  * placement to a plain QSS min-width regardless of who set the geometry. rowMinWidth only floors
  * the ROW-mode width (ChatMessageBottom::bubbleWidthHint()'s own fallback branch); it has no
- * effect on the row's natural (inline) size. inlineBottomGap is the horizontal gap between the
- * last line's own right edge and the row when inline -- independent of narrowBodyWidth's gap
- * (BottomGap in chatmessage.cpp), which only applies to the full-width-row widening case.
+ * effect on the row's natural (inline) size -- ROW mode itself hugs the body (plus this floor),
+ * never widening the bubble to make room for the row beside it, since the row is placed on its
+ * own line below the body, not beside it. inlineBottomGap is the horizontal gap between the
+ * last line's own right edge and the row when inline.
  * inlineBottomYOffset nudges the inline row DOWN from its natural bottom-aligned-with-the-last-
  * line position (see ChatMessageContent::positionBottom()) -- purely bottom-aligned reads as
  * sitting slightly too high above the text's own descenders.
@@ -426,7 +427,6 @@ max-width: 40px;
  * bubble's own width/height negotiation. */
 uise--AbstractChatMessageBottom {
 qproperty-rowMinWidth: 90;
-qproperty-narrowBodyWidth: 200;
 qproperty-inlineBottomGap: 10;
 qproperty-inlineBottomYOffset: 1;
 qproperty-rowTopGap: 4;

@@ -246,14 +246,15 @@ int main(int argc, char *argv[])
         }
     );
 
-    // --- text messages, added to visually confirm the bubble-width narrow-body threshold
-    // (AbstractChatMessageBottom::narrowBodyWidth(), default 200px -- see chatmessage.cpp's
+    // --- text messages, added to visually confirm the bubble-width inline-vs-row split
+    // (AbstractChatMessageContent::evaluateInlineBottom() -- see chatmessage.cpp's
     // ChatMessageBottom::bubbleWidthHint()) alongside the file/image bodies below: a short
-    // one-word body stays under the threshold and the bubble widens to make room for the
-    // time on the same visual row, while a long paragraph is already wider than the
-    // threshold and the bubble just follows the wrapped text with no added gap. ---
+    // one-word body takes the INLINE path, seating the time beside its (only) last line so the
+    // bubble is exactly as wide as body+gap+time, while a long paragraph wraps and falls back to
+    // the ROW path, where the bubble just hugs the wrapped text with the time on its own row
+    // underneath -- neither case adds blank space to the right. ---
 
-    rootLayout->addWidget(new QLabel(QStringLiteral("Text messages (narrow-body threshold check):")));
+    rootLayout->addWidget(new QLabel(QStringLiteral("Text messages (inline vs row placement check):")));
 
     auto* textBodyShort=new ChatMessageText();
     textBodyShort->loadText(QStringLiteral("Ok"),TextFormat::Plain);
@@ -262,9 +263,9 @@ int main(int argc, char *argv[])
     auto* textBodyLong=new ChatMessageText();
     textBodyLong->loadText(
         QStringLiteral("This is a much longer message that should wrap across several lines "
-                        "and end up wider than the narrow-body threshold, so the bubble should "
-                        "hug the wrapped text with the time sitting on its own row underneath, "
-                        "not appended as extra blank space to the right."),
+                        "and end up too wide for the time to share its last line, so the bubble "
+                        "should hug the wrapped text with the time sitting on its own row "
+                        "underneath, not appended as extra blank space to the right."),
         TextFormat::Plain
     );
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Sent,textBodyLong));

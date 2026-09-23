@@ -63,10 +63,6 @@ namespace {
 //! own rounding/frame width never pushes the bubble a pixel or two past forMaxWidthIn.
 constexpr int BubbleWidthSlack=10;
 
-//! Gap left between the body and the time/status row when ChatMessageBottom::
-//! bubbleWidthHint() widens the bubble for a too-narrow body -- see DefaultNarrowBodyWidth.
-constexpr int BottomGap=10;
-
 } // anonymous namespace
 
 /***************************AbstractChatMessage******************************/
@@ -2458,33 +2454,25 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
 
     if (chatContent()->isBubbleTransparent())
     {
-        // Bare content over the chat wallpaper: neither the narrow-body widening below nor the
-        // rowMinWidth floor applies -- the whole point of a transparent bubble is that it is
-        // exactly as wide as its content (the image, or the emoji row), not artificially
-        // stretched to make room for a row the pointer has to hover to even see.
+        // Bare content over the chat wallpaper: the rowMinWidth floor below does not apply --
+        // the whole point of a transparent bubble is that it is exactly as wide as its content
+        // (the image, or the emoji row), not artificially stretched to make room for a row the
+        // pointer has to hover to even see.
         //
         // The one floor that does survive is this row's OWN width: it is placed by hand inside
         // this bubble (ChatMessageContent::positionBottom()) and a child widget is clipped to its
         // parent, so a bubble narrower than the chip would slice the timestamp in half the moment
-        // hovering reveals it. Far below rowMinWidth()/narrowBodyWidth(), and it only binds for
-        // content narrower than a timestamp -- a single emoji, or one very small thumbnail.
+        // hovering reveals it. Far below rowMinWidth(), and it only binds for content narrower
+        // than a timestamp -- a single emoji, or one very small thumbnail.
         return std::min(std::max(bodyHW,placedSize().width()),forMaxWidth);
     }
 
-    auto bottomW=placedSize().width();
-
-    // A threshold below the bottom's own content width would be self-defeating -- the
-    // "wide enough" branch would then hand back a bubble the time/status row itself
-    // can't fit into.
-    auto narrow=std::max(narrowBodyWidth(),bottomW);
-
-    auto wHint=bodyHW;
-    if (bodyHW<narrow)
-    {
-        // Body too narrow to host the time/status row on its own visual row without
-        // looking cramped -- widen the bubble to fit both side by side.
-        wHint=bodyHW+bottomW+BottomGap;
-    }
+    // ROW mode: the row is placed on its own line BELOW the body and right-aligned against the
+    // bubble (ChatMessageContent::positionBottom()), not beside it -- so the bubble needs no
+    // extra width to seat it, only enough not to clip it. placedSize(), not naturalSize(), for
+    // the same reason evaluateInlineBottom() uses it (the chip's own padding, reserved whether or
+    // not the chip is currently shown, so the bubble never resizes on hover in/out).
+    auto wHint=std::max(bodyHW,placedSize().width());
 
     if (wHint>forMaxWidth)
     {
@@ -2504,7 +2492,7 @@ void ChatMessageBottom::setSelected(bool enable)
     // No repolish of `this`: no QSS rule keys on [selected=...] directly on
     // uise--ChatMessageBottom (chat.qss's "uise--ChatMessageBottom QLabel[selected=...]" rule
     // matches the label's OWN property below), and repolishing `this` would re-apply chat.qss's
-    // qproperty-narrowBodyWidth default over any programmatic override.
+    // qproperty-rowMinWidth default over any programmatic override.
     setProperty("selected",enable);
     Style::setStyleProperty(pimpl->time,"selected",enable);
     Style::setStyleProperty(pimpl->edited,"selected",enable);
@@ -2527,7 +2515,7 @@ void ChatMessageBottom::setSent(bool enable)
     // "chip" property itself already sees the final [sent=...] -- but the chip quietly taking a
     // received bubble's colour on a sent message is far too easy a regression to leave resting on
     // that. Gated on isChipMode() so the overwhelmingly common opaque bubble keeps paying nothing
-    // (and keeps setSelected()'s qproperty-narrowBodyWidth concern moot); in chip mode this bubble
+    // (and keeps setSelected()'s qproperty-rowMinWidth concern moot); in chip mode this bubble
     // has already been repolished once for the same reason.
     if (isChipMode())
     {

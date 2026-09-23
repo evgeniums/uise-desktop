@@ -609,7 +609,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
 {
     Q_OBJECT
 
-    Q_PROPERTY(int narrowBodyWidth READ narrowBodyWidth WRITE setNarrowBodyWidth)
     Q_PROPERTY(int rowMinWidth READ rowMinWidth WRITE setRowMinWidth)
     Q_PROPERTY(int inlineBottomGap READ inlineBottomGap WRITE setInlineBottomGap)
     Q_PROPERTY(int inlineBottomYOffset READ inlineBottomYOffset WRITE setInlineBottomYOffset)
@@ -619,7 +618,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
 
     public:
 
-        constexpr static const int DefaultNarrowBodyWidth=200;
         //! Minimum width of this row when it occupies its own full-width line below the body
         //! (the "row" mode). Deliberately NOT a plain QSS min-width: that would also floor the
         //! row's NATURAL size when it is placed manually in "inline" mode (tucked into the
@@ -628,8 +626,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         //! qproperty-rowMinWidth.
         constexpr static const int DefaultRowMinWidth=90;
         //! Horizontal breathing room between the last line's right edge and the inline row, when
-        //! inline. Kept independent of the narrow-body widening's own gap so the two stay
-        //! separately tunable. Settable from QSS via qproperty-inlineBottomGap.
+        //! inline. Settable from QSS via qproperty-inlineBottomGap.
         constexpr static const int DefaultInlineBottomGap=10;
         //! Vertical nudge applied on top of the inline row's natural bottom-aligned position
         //! (which otherwise sits with its own bottom edge exactly flush with the last text
@@ -666,19 +663,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         virtual void setEdited(const QString& /*text*/, const QString& /*tooltip*/={}) {}
         virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
-
-        //! Body widths below this are considered "too narrow to host the time/status row":
-        //! for those the bubble is widened to body + bottom, otherwise the body alone
-        //! governs the bubble width. Settable from QSS via qproperty-narrowBodyWidth.
-        void setNarrowBodyWidth(int width) noexcept
-        {
-            m_narrowBodyWidth=width;
-        }
-
-        int narrowBodyWidth() const noexcept
-        {
-            return m_narrowBodyWidth;
-        }
 
         void setRowMinWidth(int width) noexcept
         {
@@ -797,7 +781,6 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
 
     private:
 
-        int m_narrowBodyWidth=DefaultNarrowBodyWidth;
         int m_rowMinWidth=DefaultRowMinWidth;
         int m_inlineBottomGap=DefaultInlineBottomGap;
         int m_inlineBottomYOffset=DefaultInlineBottomYOffset;
@@ -2150,7 +2133,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBo
         //! Hard cap on the width of rendered text, regardless of how much room the view offers --
         //! long lines are hard to read in a wide window. 0 disables the cap. Settable from QSS
         //! via qproperty-maxBubbleWidth (see chat.qss). A plain setter like
-        //! AbstractChatMessageBottom::setNarrowBodyWidth(): changing it after the first layout
+        //! AbstractChatMessageBottom::setRowMinWidth(): changing it after the first layout
         //! takes effect on the next negotiation pass, or immediately via
         //! chatContent()->renegotiateBubbleWidth().
         void setMaxBubbleWidth(int width) noexcept
