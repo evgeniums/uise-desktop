@@ -1557,6 +1557,28 @@ void ChatMessage::construct()
         &AbstractChatMessage::avatarClicked
     );
 
+    // ChatMessageAvatar owns the forced-geometry knobs (qproperty-forcedAvatarSize /
+    // -forcedAvatarMargin, plus avatarBottomOffset which is the other half of the column's
+    // height) but knows nothing about the row that has to act on them -- the column width, and
+    // the bubble's minimum height, are both this class' business -- so it announces a change
+    // instead of reaching back. Made BEFORE this method's trailing ensurePolished(), so even the
+    // very first polish is covered.
+    //
+    // QUEUED, deliberately: the emitter is a qproperty writer running inside QStyleSheetStyle::
+    // polish(), and the order in which that applies the qproperty-* of a single rule is
+    // unspecified -- a direct connection would re-derive from a half-applied rule (new
+    // forcedAvatarSize, stale avatarBottomOffset, and the two are added together to get the
+    // column height that setMinimumBubbleHeight() below keys on). Same deferral, and the same
+    // reason, as changeEvent()'s singleShot(0). No recursion: updateAvatarForced() writes
+    // avatarSize and the frame widths, never these three.
+    connect(
+        pimpl->avatarFrame,
+        &ChatMessageAvatar::forcedAvatarGeometryChanged,
+        this,
+        [this](){updateAvatarForced();},
+        Qt::QueuedConnection
+    );
+
     pimpl->avatarFramePlaceholder=new QFrame(pimpl->main);
     pimpl->avatarFramePlaceholder->setObjectName("avatarFrame");
     pimpl->avatarFramePlaceholder->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
@@ -1742,6 +1764,16 @@ void ChatMessage::updateLastInBatch()
 
 void ChatMessage::updateAvatarForced()
 {
+    // The two size inputs below (forcedAvatarSize/forcedAvatarMargin) are QSS-supplied and are
+    // only ever READ here, never written -- so unlike avatarSize (see changeEvent()) a repolish
+    // can only restore them, and the single thing that must hold is that a polish has already
+    // happened before the first read, or this would silently run on the C++ Default* fallbacks
+    // forever. construct()'s own trailing ensurePolished() already guarantees that on every path
+    // today, but that is an ordering this method has no way to check; asserting it here makes it
+    // true by construction instead, and costs nothing -- Qt guards ensurePolished() with
+    // QWidgetPrivate::polished, so every call after the first is a no-op.
+    pimpl->avatarFrame->ensurePolished();
+
     // alignSent() is checked regardless of THIS message's own direction(): ChatMessagesView::
     // makeMessage()/applyAlignSentToMessages() set it uniformly on every message, Sent or
     // Received, so it reads as "the view currently puts own messages on the left too".
@@ -1766,7 +1798,8 @@ void ChatMessage::updateAvatarForced()
 
     // Width tracks avatarsForced, NOT the per-row visibility above -- every bubble in a batch must
     // keep the same inset, including the ones whose own avatar is suppressed (mid-batch rows).
-    auto wideColumn=avatarsForced ? (ForcedAvatarSize+2*ForcedAvatarMargin)
+    auto forcedSize=pimpl->avatarFrame->forcedAvatarSize();
+    auto wideColumn=avatarsForced ? (forcedSize+2*pimpl->avatarFrame->forcedAvatarMargin())
                                   : ChatMessageAvatar::DefaultAvatarSize;
 
     // Which of the two strips is the one that can actually hold an avatar on THIS row.
@@ -1798,7 +1831,7 @@ void ChatMessage::updateAvatarForced()
     // The image itself only ever renders in the frame, and only while avatarShown -- sizing it to
     // a strip that is deliberately narrow here would be meaningless, so it follows frameWidth.
     auto avatarSize=(frameWidth==wideColumn && avatarsForced)
-                        ? ForcedAvatarSize
+                        ? forcedSize
                         : ChatMessageAvatar::DefaultAvatarSize;
 
     pimpl->avatarFrame->setAvatarSize(avatarSize);
@@ -1806,13 +1839,21 @@ void ChatMessage::updateAvatarForced()
     pimpl->avatarFramePlaceholder->setFixedWidth(placeholderWidth);
 
     // ChatMessageAvatar paints the tail at the avatar COLUMN's own bottom edge, and that column
-    // can be taller than a short bubble (e.g. a one-line message beside the 32px forced avatar
-    // image) -- ask the bubble to reserve the shortfall as blank space at its OWN top (see
+    // (forcedAvatarSize + avatarBottomOffset tall) can be taller than a short bubble -- ask the
+    // bubble to reserve the shortfall as blank space at its OWN top (see
     // AbstractChatMessageContent::setMinimumBubbleHeight()'s own doc comment) rather than
     // leaving the tail to hang below it. Only while the avatar image is actually forced visible
     // (isAvatarVisible(), just settled above) -- avatarFrame's own sizeHint() collapses once
     // its avatar child is hidden (not last-in-batch, or right-aligned), so there is nothing to
     // sync against then and this bubble's height should be purely its own again.
+    //
+    // At the values chat.qss ships this is normally a NO-OP for text bubbles, and deliberately
+    // so: the column is sized to come out no taller than a one-line bubble (see the invariants
+    // on ChatMessageAvatar::forcedAvatarSize), because any shortfall reserved here reads as a
+    // bigger gap in front of the last message of every batch, not as "this bubble is a little
+    // taller". What this call still covers is a host that retunes the column upwards --
+    // qproperty-forcedAvatarSize or -avatarBottomOffset raised, or a smaller chat font making
+    // bubbles shorter -- where the alternative is a tail hanging below the bubble it belongs to.
     if (content()!=nullptr)
     {
         auto minHeight=isAvatarVisible() ? pimpl->avatarFrame->sizeHint().height() : 0;
@@ -1837,6 +1878,14 @@ void ChatMessage::changeEvent(QEvent* event)
     // every already-built message's avatar stays stuck at the QSS default (looks "very small")
     // until the chat is closed and reopened, which rebuilds ChatMessageAvatar from scratch
     // instead.
+    //
+    // Second reason, and the one that survives even if the above is ever solved differently: a
+    // RELOADED stylesheet can carry new qproperty-forcedAvatarSize/-forcedAvatarMargin values.
+    // Those normally reach this row through ChatMessageAvatar::forcedAvatarGeometryChanged()
+    // (connected in construct()), but that signal fires only when the value actually CHANGES --
+    // a repolish re-applying the same value is silent, which is exactly the case where the
+    // avatarSize reset above still has to be undone. So both paths are needed, and neither is
+    // redundant: the signal covers a changed knob, this covers an unchanged one.
     //
     // Deferred via singleShot(0): a mass repolish walks the WHOLE widget tree, and whether this
     // row's own StyleChange fires before or after avatarFrame's own qproperty writers have run is
@@ -2496,8 +2545,8 @@ ChatMessageAvatar::ChatMessageAvatar(QWidget* parent)
     // Bottom-anchored (stretch above it, tail-clearing inset below it via updateAvatarOffset()):
     // the avatar belongs beside the LAST message of a batch, next to that bubble's tail, not at
     // the top of a tall multi-line row. Centred horizontally so the column's own margins (see
-    // ChatMessage::updateAvatarForced(), which makes this column wider than the avatar) fall
-    // evenly on both sides.
+    // ChatMessage::updateAvatarForced(), which makes this column forcedAvatarMargin() wider than
+    // the avatar on each side) fall evenly on both sides.
     l->addStretch(1);
     l->addWidget(m_avatar,0,Qt::AlignHCenter);
 

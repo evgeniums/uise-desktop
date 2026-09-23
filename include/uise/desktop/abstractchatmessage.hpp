@@ -1135,9 +1135,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! Ask this bubble to be at least `height` px tall overall, regardless of how little its
         //! own content needs. The host row (ChatMessage::updateAvatarForced()) uses this to keep
         //! a forced-visible avatar column's tail in sync with the bubble's own bottom edge: the
-        //! avatar column (e.g. 32px image + a few px bottom offset) can be taller than a single
+        //! avatar column (forcedAvatarSize + avatarBottomOffset tall) can be taller than a single
         //! one-line bubble, and ChatMessageAvatar paints the tail at the avatar column's OWN
         //! bottom edge -- so without this, a short bubble leaves the tail hanging below it.
+        //!
+        //! At the values chat.qss ships (24+6 = 30px, against a ~33px one-line bubble) this is a
+        //! no-op for text bubbles, deliberately -- see the invariants on
+        //! ChatMessageAvatar::forcedAvatarSize. It exists for hosts that retune the column
+        //! upwards, or whose chat font makes bubbles shorter.
         //!
         //! The shortfall (if any) is reserved as blank space at the TOP of the bubble -- inside
         //! its own rounded/coloured box, ahead of header/reply/body/comment, via

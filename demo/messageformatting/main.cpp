@@ -877,14 +877,20 @@ int main(int argc, char *argv[])
     htmlBody->loadText(sampleHtml(),TextFormat::Html);
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,htmlBody));
 
-    // --- Bubble-tail sync: a one-line bubble beside a FORCED avatar column. Every message in
-    // this demo already gets ChatMessage::ForcedAvatarSize (32px, plus avatarBottomOffset) --
-    // makeMessage() leaves AlignSent at its own default (Left) and isLastInBatch() defaults to
-    // true -- so the forced avatar column (32+6=38px) is routinely taller than a short one-line
-    // bubble (~34px). ChatMessageAvatar paints the tail at its OWN bottom edge, which used to
-    // leave it hanging below a bubble this short; setAlignSent()/setLastInBatch() are called
+    // --- Bubble-tail sync: a one-line bubble beside a FORCED avatar column, the tightest case
+    // for the column-vs-bubble height relationship. Every message in this demo gets a forced
+    // avatar column -- makeMessage() leaves AlignSent at its own default (Left) and
+    // isLastInBatch() defaults to true -- and setAlignSent()/setLastInBatch() are called
     // explicitly here anyway, so this stays the load-bearing case even if makeMessage()'s own
-    // defaults ever change. ---
+    // defaults ever change.
+    //
+    // At the shipped chat.qss values the column (forcedAvatarSize 24 + avatarBottomOffset 6 =
+    // 30px) is no longer taller than a one-line bubble (~33px), so what this case now guards is
+    // that it STAYS that way: the tail must sit flush with the bubble's bottom edge AND the
+    // bubble must carry no blank band at its top (avatarSyncPad()==0). Raise
+    // qproperty-forcedAvatarSize past ~27 in chat.qss and both halves should visibly reappear --
+    // the tail still flush, the bubble now padded -- which is the other half of the mechanism,
+    // AbstractChatMessageContent::setMinimumBubbleHeight(). ---
 
     rootLayout->addSpacing(8);
     rootLayout->addWidget(new QLabel(QStringLiteral("Bubble tail sync (one-line bubble beside a forced avatar):")));

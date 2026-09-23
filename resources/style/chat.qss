@@ -229,10 +229,11 @@ border-bottom-left-radius: 0;
 }
 
 
-/* uise--ChatMessageAvatar's own default width now comes from qproperty-avatarSize below (also
- * the side of the square avatar image itself, when ChatMessage::updateAlignment() forces it
- * visible) -- #avatarFrame is the plain QFrame placeholder swapped in on the OTHER side (see
- * ChatMessage::updateAlignment()), which has no such qproperty and needs its own rule to match. */
+/* #avatarFrame is the plain QFrame placeholder swapped in on the side OPPOSITE the real
+ * uise--ChatMessageAvatar column (see ChatMessage::updateAlignment()). Neither one's width comes
+ * from QSS -- ChatMessage::updateAvatarForced() gives both a setFixedWidth() every pass, derived
+ * from qproperty-forcedAvatarSize/-forcedAvatarMargin below -- so this rule is only the baseline
+ * that applies before the first such pass. */
 uise--AbstractChatMessage #avatarFrame{
 min-width: 16px;
 }
@@ -254,25 +255,52 @@ min-width: 16px;
  *   qproperty-tailShape: 1;
  *
  * tailHeight matches uise--AbstractChatMessageContent's border-radius above in both shapes, so
- * the tail continues the bubble's own corner; it (and, for the hook shape, tailWidth) must stay
- * <= avatarSize (below) or the tip is clipped. Which side the tail points to is decided in C++
- * from ChatMessageAvatar::setRight(), and its colour comes from qproperty-tailColor in
- * light/chat.qss and dark/chat.qss.
+ * the tail continues the bubble's own corner. ChatMessageAvatar::tailPath() clamps the tail to
+ * this COLUMN's own rect, so tailHeight (and, for the hook shape, tailWidth) must stay within it
+ * -- the column is forcedAvatarSize+2*forcedAvatarMargin wide and
+ * forcedAvatarSize+avatarBottomOffset tall, NOT avatarSize in either direction. Which side the
+ * tail points to is decided in C++ from ChatMessageAvatar::setRight(), and its colour comes from
+ * qproperty-tailColor in light/chat.qss and dark/chat.qss.
  *
- * avatarSize is the (square) avatar image's own side -- NOT this column's width, which
- * ChatMessage::updateAvatarForced() sets separately (the avatar plus ForcedAvatarMargin on each
- * side). Both are widened together once that method forces the avatar image on, i.e. sent and
- * received messages are sharing the same (left) side and so are otherwise indistinguishable by
- * position alone; the avatar itself is shown only on the LAST message of a batch.
+ * forcedAvatarSize is the knob for how big the avatar actually LOOKS: the (square) image's side
+ * once ChatMessage::updateAvatarForced() forces it visible, i.e. sent and received messages are
+ * sharing the same (left) side and so are otherwise indistinguishable by position alone. The
+ * avatar itself is shown only on the LAST message of a batch. forcedAvatarMargin is the
+ * breathing room on EACH side of it, so the column comes out 24+2*6 = 36px wide.
+ *
+ * avatarSize, by contrast, is NOT a useful knob here: updateAvatarForced() overwrites it on
+ * every pass (with forcedAvatarSize, or with the narrow default on a column that can never hold
+ * an avatar), so changing it below has no visible effect. It is left in place as the pre-pass
+ * baseline only.
+ *
+ * Keep these two OUT of light/chat.qss and dark/chat.qss, which carry colour only: the column
+ * width they produce is cached per view in ChatMessagesView::m_messageBubbleOuterWidth, sampled
+ * from one arbitrary row and refreshed only on an alignment/group-avatar/selection-mode change,
+ * so a width that differed between themes would leave every bubble's max width stale after a
+ * live theme switch. (The same caveat applies while hot-tuning forcedAvatarSize here: reload,
+ * then toggle one of those modes to resettle the widths.)
  *
  * avatarBottomOffset is the distance from the message's BOTTOM edge to the avatar's -- i.e. how
  * far above the tail the avatar sits. Raise it to lift the avatar, lower it to drop it towards
- * the tail; keep it >= tailHeight or the avatar starts overlapping the tail. */
+ * the tail. Note it does NOT have to clear tailHeight: the rounded tail is a concave disc carved
+ * out of the corner, so what matters is that the round avatar stays inside that disc (see the
+ * invariants on ChatMessageAvatar::forcedAvatarSize) -- 6 against a tailHeight of 20 clears it.
+ *
+ * Together with forcedAvatarSize it also sets the column's HEIGHT, and that is the number to be
+ * careful with: 24+6 = 30px here, against a one-line text bubble that measures 30px of painted
+ * box and ~33px of layout height -- i.e. sized to sit just under it, with nothing to spare.
+ * Raise either one and the column becomes taller than such a bubble, at which point
+ * AbstractChatMessageContent::setMinimumBubbleHeight() has to reserve the shortfall as blank
+ * space at the bubble's top -- which reads as a bigger gap in front of the LAST message of every
+ * batch, not as "that bubble is slightly taller". Re-check this whenever the bubble padding or
+ * border-radius above changes. */
 uise--AbstractChatMessage uise--ChatMessageAvatar {
 qproperty-tailShape: 1;
 qproperty-tailWidth: 10;
 qproperty-tailHeight: 20;
 qproperty-avatarSize: 16;
+qproperty-forcedAvatarSize: 24;
+qproperty-forcedAvatarMargin: 6;
 qproperty-avatarBottomOffset: 6;
 }
 
@@ -318,9 +346,10 @@ border: none;
  * and this one just keeps tracking smoothly. Fading it out at the handoff instead is what used to
  * flicker at a batch boundary.
  *
- * There is deliberately NO qproperty-avatarSize here, unlike uise--ChatMessageAvatar above: the
- * floating copy re-reads its size from the message it represents on every update pass instead, so
- * it can never be silently shrunk back to a stylesheet default by an app-wide restyle the way the
+ * There is deliberately NO qproperty-avatarSize (nor -forcedAvatarSize) here, unlike
+ * uise--ChatMessageAvatar above: the floating copy re-reads its size from the message it
+ * represents on every update pass instead, so it follows forcedAvatarSize automatically and can
+ * never be silently shrunk back to a stylesheet default by an app-wide restyle the way the
  * anchored avatar can (see ChatMessage::changeEvent()'s own doc comment on that trap).
  *
  * bottomOffset is the gap from the viewport's bottom edge to the avatar's, in its natural resting

@@ -360,13 +360,46 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
     Q_PROPERTY(int tailShape READ tailShape WRITE setTailShape)
     Q_PROPERTY(int tailWidth READ tailWidth WRITE setTailWidth)
     Q_PROPERTY(int tailHeight READ tailHeight WRITE setTailHeight)
-    //! Side of the (square) avatar image itself -- NOT this column's width, which
+    //! Side of the (square) avatar image CURRENTLY applied -- NOT this column's width, which
     //! ChatMessage::updateAvatarForced() sets separately (avatar plus its horizontal margins).
-    //! Kept as a genuine qproperty so QSS can supply the baseline the way tailWidth/tailHeight do.
+    //!
+    //! Deliberately NOT the knob to tune from QSS: updateAvatarForced() rewrites this on every
+    //! call with either forcedAvatarSize() (avatar forced visible) or DefaultAvatarSize (the
+    //! narrow, avatar-hidden column), so a qproperty-avatarSize in a stylesheet only survives
+    //! until the first of those runs -- which is once per message, before it is ever shown. It
+    //! stays a qproperty only so the narrow column's own baseline is styleable and so a repolish
+    //! restores a sane value; to change how big the avatar actually LOOKS, set
+    //! qproperty-forcedAvatarSize below.
     Q_PROPERTY(int avatarSize READ avatarSize WRITE setAvatarSize)
     //! Distance in px from the message's bottom edge to the avatar's bottom edge -- i.e. how far
-    //! ABOVE the tail the avatar sits. Keep it >= tailHeight or the avatar overlaps the tail.
+    //! ABOVE the tail the avatar sits. See the invariants on forcedAvatarSize below: together
+    //! with it this sets the whole column's HEIGHT, which is what decides whether a short
+    //! last-in-batch bubble gets padded at the top.
     Q_PROPERTY(int avatarBottomOffset READ avatarBottomOffset WRITE setAvatarBottomOffset)
+    //! Side of the (square) avatar image once ChatMessage::updateAvatarForced() forces it
+    //! visible -- i.e. the size actually seen in a chat, and the real QSS knob (this class reads
+    //! it and never writes it, so unlike avatarSize a repolish can only ever restore it).
+    //!
+    //! Three invariants tie it to the rest of the geometry; chat.qss ships values that satisfy
+    //! all three, and a host retuning any of them should re-check the others:
+    //!
+    //!   - forcedAvatarSize + avatarBottomOffset >= tailHeight, or tailPath() clamps the tail to
+    //!     this column's own rect and the tip is cut short.
+    //!   - forcedAvatarSize + avatarBottomOffset <= the natural height of a one-line bubble
+    //!     (~33px at the default chat font), or the column is taller than the bubble beside it
+    //!     and AbstractChatMessageContent::setMinimumBubbleHeight() reserves the shortfall as
+    //!     blank space at the bubble's top -- which reads as a bigger gap in front of the last
+    //!     message of every batch.
+    //!   - for TailShapeRounded, the round avatar must stay INSIDE the concave disc tailPath()
+    //!     carves (radius tailHeight, centred at the column's tail-side corner inset by it):
+    //!     hypot(width/2-(width-tailHeight), tailHeight-avatarBottomOffset-forcedAvatarSize/2)
+    //!     + forcedAvatarSize/2 <= tailHeight.
+    Q_PROPERTY(int forcedAvatarSize READ forcedAvatarSize WRITE setForcedAvatarSize)
+    //! Horizontal breathing room on EACH side of a forced-visible avatar: the column
+    //! updateAvatarForced() builds is forcedAvatarSize+2*forcedAvatarMargin wide, with the
+    //! avatar centred in it. Raise it together with a lowered forcedAvatarSize to shrink the
+    //! avatar without moving the bubbles beside it.
+    Q_PROPERTY(int forcedAvatarMargin READ forcedAvatarMargin WRITE setForcedAvatarMargin)
 
     public:
 
@@ -384,6 +417,18 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         //! tailPath()) plus a small gap, so the avatar sits a little ABOVE the tail rather than
         //! overlapping it. chat.qss overrides this to match the tailHeight it actually sets.
         constexpr static const int DefaultAvatarBottomOffset=DefaultTailHeight+4;
+
+        //! Fallbacks for the two forcedAvatar* qproperties, used only by a host that loads no
+        //! stylesheet rule for this class -- the shipped chat.qss supplies both.
+        //!
+        //! Note these C++ defaults alone do NOT satisfy the "column no taller than a one-line
+        //! bubble" invariant documented on forcedAvatarSize: paired with
+        //! DefaultAvatarBottomOffset (20, sized for the 16px DefaultTailHeight) the column is
+        //! 44px tall. chat.qss is what brings the offset down to 6 and the column to 30. That
+        //! pairing is deliberate: lowering DefaultAvatarBottomOffset here would clip the tail
+        //! for any host running on the C++ defaults, which is the worse failure of the two.
+        constexpr static const int DefaultForcedAvatarSize=24;
+        constexpr static const int DefaultForcedAvatarMargin=6;
 
         explicit ChatMessageAvatar(QWidget* parent=nullptr);
 
@@ -489,7 +534,10 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         }
 
         //! Sizes the (square) avatar image only -- this column's own width is the caller's
-        //! business (ChatMessage::updateAvatarForced() sets it to the avatar plus its margins).
+        //! business (ChatMessage::updateAvatarForced() sets it to forcedAvatarSize() plus
+        //! forcedAvatarMargin() on each side). Called by that same method on every pass, so a
+        //! value set from anywhere else (QSS included) does not survive -- see the avatarSize
+        //! property's own doc comment.
         void setAvatarSize(int value)
         {
             if (m_avatarSize!=value)
@@ -514,8 +562,55 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
                 m_avatarBottomOffset=value;
                 updateAvatarOffset();
                 updateGeometry();
+                emit forcedAvatarGeometryChanged();
             }
         }
+
+        int forcedAvatarSize() const noexcept
+        {
+            return m_forcedAvatarSize;
+        }
+
+        //! See the forcedAvatarSize property. Records the request only -- applying it (to the
+        //! avatar image and to this column's width) is ChatMessage::updateAvatarForced()'s job,
+        //! which the signal below asks it to redo.
+        void setForcedAvatarSize(int value)
+        {
+            if (m_forcedAvatarSize!=value)
+            {
+                m_forcedAvatarSize=value;
+                emit forcedAvatarGeometryChanged();
+            }
+        }
+
+        int forcedAvatarMargin() const noexcept
+        {
+            return m_forcedAvatarMargin;
+        }
+
+        //! See the forcedAvatarMargin property -- same record-only contract as
+        //! setForcedAvatarSize() above.
+        void setForcedAvatarMargin(int value)
+        {
+            if (m_forcedAvatarMargin!=value)
+            {
+                m_forcedAvatarMargin=value;
+                emit forcedAvatarGeometryChanged();
+            }
+        }
+
+    signals:
+
+        //! Any of the three inputs ChatMessage::updateAvatarForced() derives this column's
+        //! geometry from (forcedAvatarSize, forcedAvatarMargin, avatarBottomOffset -- the last
+        //! one because it is half of the column's height) has changed, typically because a
+        //! stylesheet supplied a new qproperty value.
+        //!
+        //! Emitted rather than applied here because this class has no back-pointer to the
+        //! ChatMessage that owns the column width and the bubble's minimum height. ChatMessage::
+        //! construct() connects it QUEUED -- see the connection's own comment for why a direct
+        //! one would read a half-applied QSS rule.
+        void forcedAvatarGeometryChanged();
 
     protected:
 
@@ -548,6 +643,14 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         //! the stored defaults must start out different from what the ctor passes.
         int m_avatarSize=0;
         int m_avatarBottomOffset=-1;
+        //! The Default* values, unlike the two above: these two are pure INPUTS -- nothing in
+        //! C++ ever writes them, only a host or a stylesheet does -- so there is no ctor call
+        //! whose no-op guard has to be dodged, and starting them anywhere else would just mean
+        //! the first read is wrong. It is also why the qproperty-avatarSize trap documented in
+        //! ChatMessage::changeEvent() cannot happen to them: a repolish that re-applies the QSS
+        //! value restores exactly what updateAvatarForced() was already using.
+        int m_forcedAvatarSize=DefaultForcedAvatarSize;
+        int m_forcedAvatarMargin=DefaultForcedAvatarMargin;
         bool m_right=false;
         bool m_last=true;
         bool m_bubbleTransparent=false;
@@ -563,14 +666,21 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
     public:
 
-        //! Avatar image side (see ChatMessageAvatar::avatarSize()) once the avatar is forced
-        //! visible -- updateAvatarForced() forces it whenever alignSent()==Left (sent and received
-        //! messages share the same side, so position alone no longer distinguishes them) on the
-        //! last message of a batch.
-        constexpr static const int ForcedAvatarSize=32;
-        //! Horizontal breathing room on EACH side of a forced-visible avatar: the column is this
-        //! much wider than ForcedAvatarSize on both sides, and the avatar is centred in it.
-        constexpr static const int ForcedAvatarMargin=6;
+        //! Compile-time DEFAULT for the avatar image's side once the avatar is forced visible --
+        //! updateAvatarForced() forces it whenever alignSent()==Left (sent and received messages
+        //! share the same side, so position alone no longer distinguishes them) on the last
+        //! message of a batch.
+        //!
+        //! The value actually used is ChatMessageAvatar::forcedAvatarSize(), i.e. whatever
+        //! qproperty-forcedAvatarSize the stylesheet supplies (chat.qss does); these two
+        //! constants are only the no-stylesheet fallback, kept here under their original names
+        //! because they are public API. See that property for the invariants they must satisfy.
+        constexpr static const int ForcedAvatarSize=ChatMessageAvatar::DefaultForcedAvatarSize;
+        //! Compile-time default for the horizontal breathing room on EACH side of a
+        //! forced-visible avatar: the column is this much wider than the avatar on both sides,
+        //! and the avatar is centred in it. Effective value:
+        //! ChatMessageAvatar::forcedAvatarMargin().
+        constexpr static const int ForcedAvatarMargin=ChatMessageAvatar::DefaultForcedAvatarMargin;
 
         explicit ChatMessage(QWidget* parent=nullptr);
 
@@ -636,9 +746,13 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! page was hidden can otherwise paint one frame too tall.
         void showEvent(QShowEvent* event) override;
 
-        //! Re-derives the avatar's forced size/visibility after a QSS repolish -- see this
-        //! method's own doc comment (chatmessage.cpp) for why chat.qss's qproperty-avatarSize
-        //! default would otherwise silently win back over updateAvatarForced()'s own value.
+        //! Re-derives the avatar's forced size/visibility after a QSS repolish, for two
+        //! reasons -- see this method's own doc comment (chatmessage.cpp): chat.qss's
+        //! qproperty-avatarSize default would otherwise silently win back over
+        //! updateAvatarForced()'s own value, and a RELOADED stylesheet's new
+        //! qproperty-forcedAvatarSize/forcedAvatarMargin has to reach this row (the avatar's own
+        //! forcedAvatarGeometryChanged() covers every other path, but its setters no-op when a
+        //! repolish re-applies an unchanged value).
         void changeEvent(QEvent* event) override;
 
         void construct() override;
@@ -661,6 +775,11 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! batch, beside the bubble that carries the tail). The COLUMN's width tracks only the
         //! former, so bubbles stay aligned across a whole batch. Called from both
         //! updateAlignment() and updateLastInBatch(), the two inputs it reads.
+        //!
+        //! Its two SIZE inputs come from the avatar column's own qproperties --
+        //! ChatMessageAvatar::forcedAvatarSize()/forcedAvatarMargin(), supplied by chat.qss --
+        //! read after an ensurePolished() so a stylesheet value is never missed; changes to them
+        //! arrive via ChatMessageAvatar::forcedAvatarGeometryChanged(), connected in construct().
         void updateAvatarForced();
 
         std::unique_ptr<ChatMessage_p> pimpl;
