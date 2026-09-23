@@ -24,6 +24,8 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+// TEMPORARY, with the CHAT-DEBUG probe in positionBottom() -- remove both together.
+#include <iostream>
 
 #include <QPointer>
 #include <QMouseEvent>
@@ -1024,8 +1026,43 @@ void ChatMessageContent::positionBottom()
     // bottomY() is measured in the same space as contentsRect()'s own origin (both start at this
     // widget's top-left plus its contents margins) -- see setMaximumBubbleWidth(), which derives
     // it from size hints alone so it is valid even before the layout has been re-activated. The
-    // clamp is a floor/ceiling only; the reserved extra height means it should never bind.
-    int y=qBound(cr.y(),bottomY(),cr.bottom()+1-sz.height());
+    // clamp is a floor/ceiling only; the reserved extra height means it should normally not bind.
+    //
+    // maxY CAN nevertheless fall below cr.y(), for a bubble transiently shorter than its own
+    // bottom row: on a first show, Qt flushes the resize queued while this widget was still
+    // hidden (QWidgetPrivate::sendPendingMoveAndResizeEvents(), from show_helper()) and that
+    // QResizeEvent reaches resizeEvent()/this function BEFORE ChatMessageContentWrapper::
+    // showEvent() has run relayoutSections() -- i.e. while the geometry still comes from a
+    // negotiation made against the bogus near-zero size hints sections report while hidden (see
+    // that showEvent()'s own doc comment for why they are bogus and what corrects them). The
+    // shorter the bubble, the likelier that pre-show height lands under the bottom row's own.
+    // qBound() asserts on an inverted range (min>max), turning that purely transient state into
+    // an abort, so it must never be handed one: pin the row to the top of the content rect and
+    // let the correcting pass that is already coming -- relayoutSections()'s
+    // renegotiateBubbleWidth(), and the resize it triggers -- place it properly a moment later.
+    const int maxY=cr.bottom()+1-sz.height();
+
+    // TEMPORARY (task-basic-group-chats-plan.md Stage 8, sender-header crash) -- remove once the
+    // transient above is confirmed to be exactly that. Fires only in the anomalous case; if it
+    // prints once or twice per bubble during startup and the bubbles then look right, the state
+    // is the self-correcting first-show one described above. If it keeps printing, or the bottom
+    // row stays mispositioned, it is NOT transient and needs a real fix rather than this clamp.
+    if (maxY<cr.y())
+    {
+        std::cerr<<"CHAT-DEBUG positionBottom inverted range"
+                 <<" crY="<<cr.y()<<" crH="<<cr.height()
+                 <<" szH="<<sz.height()
+                 <<" bottomY="<<bottomY()
+                 <<" inline="<<isBottomInline()
+                 <<" hintH="<<sizeHint().height()
+                 <<" sections: sender="<<(senderHeader()!=nullptr)
+                 <<" header="<<(header()!=nullptr)
+                 <<" comment="<<(comment()!=nullptr)
+                 <<" reactions="<<(reactions()!=nullptr)
+                 <<std::endl;
+    }
+
+    const int y=(maxY<cr.y()) ? cr.y() : qBound(cr.y(),bottomY(),maxY);
 
     b->setGeometry(x,y,sz.width(),sz.height());
 }
