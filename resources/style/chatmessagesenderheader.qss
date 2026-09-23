@@ -1,0 +1,27 @@
+/* ---- bubble header: sender's name (group chats, task-basic-group-chats-plan.md Stage 8) ---- */
+
+/* Sits ABOVE uise--ChatMessageForwardHeader in the same bubble -- see
+   AbstractChatMessageSenderHeader's own class doc comment for why the two are kept as separate
+   sections rather than one merged line. */
+
+/* Targets the CONCRETE class, not uise--AbstractChatMessageSenderHeader -- Qt type selectors
+   match subclasses, and that abstract base is shared by every future sender-header
+   implementation. */
+uise--ChatMessageSenderHeader {
+border: none;
+qproperty-maxWidthHint: 320;
+margin-bottom: 2px;
+margin-left: 4px;
+}
+
+/* Target the internal QLabel, not the ElidedLabel frame -- light/reset.qss's/dark/reset.qss's
+   global "QLabel { color: ... }" rule matches that internal QLabel DIRECTLY, which beats an
+   inherited color from a rule targeting #senderTitle itself -- same fix forwardpreview.qss's
+   own #forwardAuthor rule needed. */
+uise--ChatMessageSenderHeader #senderTitle QLabel {
+font-weight: bold;
+}
+
+uise--ChatMessageSenderHeader #senderTitle QLabel:hover {
+text-decoration: underline;
+}

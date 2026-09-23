@@ -195,6 +195,9 @@
         <file>style/light/forwardpreview.json</file>
         <file>style/dark/forwardpreview.qss</file>
         <file>style/light/forwardpreview.qss</file>
+        <file>style/chatmessagesenderheader.qss</file>
+        <file>style/dark/chatmessagesenderheader.qss</file>
+        <file>style/light/chatmessagesenderheader.qss</file>
         <file>style/editbar.json</file>
         <file>style/editbar.qss</file>
         <file>style/dark/editbar.json</file>

@@ -413,6 +413,21 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
             readjustList();
         }
     );
+
+    // Same shape as the effectiveAlignSentChanged connection above: entering/leaving group-chat
+    // mode changes every row's forced avatar geometry (ChatMessage::updateAvatarForced()), so the
+    // floating copy must be re-blocked AFTER applySenderAvatarsAlwaysToMessages() has re-derived it,
+    // for the same reason.
+    connect(
+        this,
+        &AbstractChatMessagesView::senderAvatarsAlwaysChanged,
+        this,
+        [this]()
+        {
+            applySenderAvatarsAlwaysToMessages();
+            blockFloatingAvatar();
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -1225,6 +1240,11 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
         }
     );
 
+    // Group-chat avatar mode -- set before setAlignSent() (both must land before ensurePolished()
+    // below, and updateAvatarForced() reads senderAvatarsAlways() alongside alignSent(), so their
+    // relative order between themselves does not matter, only that both precede the polish).
+    message->ui()->setSenderAvatarsAlways(senderAvatarsAlways());
+
     // Own (sent) message alignment, as currently resolved by this view (app setting + Auto-mode
     // width check, see AbstractChatMessagesView::effectiveAlignSent()). A no-op for a Received
     // message (isRight() never depends on alignSent there) and cheap to call unconditionally;
@@ -1545,6 +1565,32 @@ void ChatMessagesView<BaseMessageT,Traits>::applyAlignSentToMessages()
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::applySenderAvatarsAlwaysToMessages()
+{
+    auto enable=senderAvatarsAlways();
+    Message* anyMessage=nullptr;
+    eachMessage(
+        [enable,&anyMessage](Message* msg)
+        {
+            msg->ui()->setSenderAvatarsAlways(enable);
+            anyMessage=msg;
+            return true;
+        }
+    );
+    if (anyMessage!=nullptr)
+    {
+        // Same reasoning as applyAlignSentToMessages()'s identical refresh: entering/leaving
+        // group-chat mode changes every row's forced avatar column width
+        // (ChatMessage::updateAvatarForced()), so the cached m_messageBubbleOuterWidth sampled
+        // from the very first message ever built can now be stale.
+        m_messageBubbleOuterWidth=anyMessage->ui()->bubbleOuterWidth();
+        adjustMessagesSizes();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::onUserScrolled()
 {
     // Not gated on m_dateSubtitleEnabled -- the floating avatar has its own independent enable
@@ -1703,10 +1749,14 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     }
 
     // Requirement: the only gate is whether avatars are shown at all under the current
-    // avatar-visibility mode -- the view-level mirror of the `leftAligned` half of
+    // avatar-visibility mode -- the view-level mirror of the `avatarsForced` half of
     // ChatMessage::updateAvatarForced(), deliberately WITHOUT its isLastInBatch() half: this
-    // floats for the bottom-most visible message wherever it sits in its batch.
-    if (effectiveAlignSent()!=AbstractChatMessage::AlignSent::Left)
+    // floats for the bottom-most visible message wherever it sits in its batch. senderAvatarsAlways()
+    // (group chats) forces the column regardless of effectiveAlignSent(), exactly as
+    // updateAvatarForced()'s own avatarsForced does.
+    const bool avatarsForced=(effectiveAlignSent()==AbstractChatMessage::AlignSent::Left)
+                             || senderAvatarsAlways();
+    if (!avatarsForced)
     {
         m_floatingAvatar->setWanted(false);
         setObscuredAvatarMessage(nullptr);
@@ -1722,6 +1772,19 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
     }
     auto* bottomMsg=bottomItem->widget();
     if (bottomMsg==nullptr || bottomMsg->avatarColumnWidget()==nullptr)
+    {
+        m_floatingAvatar->setWanted(false);
+        setObscuredAvatarMessage(nullptr);
+        return;
+    }
+
+    // In senderAvatarsAlways() mode with sent messages still on the right, only INCOMING batches
+    // carry an avatar at all (ChatMessage::updateAvatarForced()'s avatarShown excludes an own
+    // message there) -- an outgoing bottom row has no avatar of its own to stand in for, and
+    // setMessage() below copies path/name off whatever row it is handed, which would otherwise
+    // float OUR OWN avatar in the left column beside right-aligned bubbles.
+    if (senderAvatarsAlways() && effectiveAlignSent()!=AbstractChatMessage::AlignSent::Left
+        && !bottomMsg->isIncoming())
     {
         m_floatingAvatar->setWanted(false);
         setObscuredAvatarMessage(nullptr);

@@ -279,6 +279,7 @@ SET (HEADERS
 
     include/uise/desktop/chatmessagecomment.hpp
     include/uise/desktop/chatmessageforwardheader.hpp
+    include/uise/desktop/chatmessagesenderheader.hpp
     include/uise/desktop/abstractforwardbar.hpp
     include/uise/desktop/forwardbar.hpp
     include/uise/desktop/abstractforwarddialog.hpp
@@ -500,6 +501,7 @@ SET (SOURCES
 
     src/chatmessagecomment.cpp
     src/chatmessageforwardheader.cpp
+    src/chatmessagesenderheader.cpp
     src/forwardbar.cpp
     src/abstractforwarddialog.cpp
     src/forwarddialog.cpp

@@ -278,9 +278,48 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
         AbstractChatMessageContent* m_content=nullptr;        
 };
 
-//! Hosts whatever sits at the very top of the bubble -- currently ChatMessageForwardHeader
-//! ("Forwarded from <author>", see chatmessageforwardheader.hpp). A later group-chat
-//! sender-name header would extend the same concrete section rather than claim a new slot.
+/**
+ * @brief Section shown above every other bubble header content, naming the message's sender
+ *  ("Alice", not "Forwarded from Alice") -- group chats only, task-basic-group-chats-plan.md
+ *  Stage 8.
+ *
+ * A genuine 7th AbstractChatMessageContent slot, attached BEFORE AbstractChatMessageHeader in
+ * both rebuildSections() and updateWidgets() so a forwarded message in a group chat shows the
+ * sender line first and "Forwarded from <original author>" below it -- two differently
+ * formatted sections, not one merged line, so a forward's chain of authorship stays
+ * unambiguous. See ChatMessageSenderHeader (chatmessagesenderheader.hpp) for the concrete
+ * implementation and its own QSS type selector, independent of ChatMessageForwardHeader's.
+ */
+class UISE_DESKTOP_EXPORT AbstractChatMessageSenderHeader : public ChatMessageContentSection
+{
+    Q_OBJECT
+
+    public:
+
+        using ChatMessageContentSection::ChatMessageContentSection;
+
+        //! Empty renders nothing (isEmpty()-style: a section with no title makes no sense to
+        //! show at all). Re-settable at any time on a live widget -- the sender's title is
+        //! typically resolved asynchronously after the bubble is already on screen, the same
+        //! late-arrival contract as AbstractChatMessage::setAvatarName().
+        virtual void setSenderTitle(QString title) =0;
+        virtual QString senderTitle() const =0;
+
+    signals:
+
+        //! The sender name was clicked -- a host typically opens that sender's character/member
+        //! info, the same affordance as AbstractChatMessage::avatarClicked().
+        void clicked();
+};
+
+//! Hosts whatever sits at the top of the bubble, below AbstractChatMessageSenderHeader --
+//! currently ChatMessageForwardHeader ("Forwarded from <author>", see
+//! chatmessageforwardheader.hpp). Deliberately kept a SEPARATE slot from
+//! AbstractChatMessageSenderHeader (task-basic-group-chats-plan.md Stage 8's decision, having
+//! weighed extending this section instead): a forwarded message's sender name and its original
+//! author are two different pieces of information, each with its own formatting, and merging
+//! them into one line would make the sender name read as if it were the original author (or
+//! vice versa) whenever both are shown at once.
 class UISE_DESKTOP_EXPORT AbstractChatMessageHeader : public ChatMessageContentSection
 {
     Q_OBJECT
@@ -764,21 +803,28 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
         /**
-         * @brief Set this bubble's up-to-6 content sections.
+         * @brief Set this bubble's up-to-7 content sections.
          * @param reply Defaulted, so every call site that predates the reply section keeps
          *  compiling unchanged.
          * @param comment Defaulted, so every call site that predates the comment section keeps
-         *  compiling unchanged. Display order is header / reply / body / comment / reactions /
-         *  bottom regardless of these parameters' position -- see
+         *  compiling unchanged. Display order is senderHeader / header / reply / body / comment /
+         *  reactions / bottom regardless of these parameters' position -- see
          *  ChatMessageContent::updateWidgets().
          * @param reactions Defaulted, so every call site that predates the reactions section
          *  keeps compiling unchanged.
+         * @param senderHeader Defaulted, so every call site that predates the sender-header
+         *  section (task-basic-group-chats-plan.md Stage 8) keeps compiling unchanged. Placed
+         *  ABOVE header() -- see AbstractChatMessageSenderHeader's own doc comment for why it is
+         *  a separate slot rather than folded into header().
          */
         void setWidgets(AbstractChatMessageBody* body, AbstractChatMessageHeader* header=nullptr,
                         AbstractChatMessageBottom* bottom=nullptr, AbstractChatMessageReply* reply=nullptr,
                         AbstractChatMessageComment* comment=nullptr,
-                        AbstractChatMessageReactions* reactions=nullptr)
+                        AbstractChatMessageReactions* reactions=nullptr,
+                        AbstractChatMessageSenderHeader* senderHeader=nullptr)
         {
+            destroyWidget(m_senderHeader);
+            m_senderHeader=senderHeader;
             destroyWidget(m_header);
             m_header=header;
             destroyWidget(m_body);
@@ -794,6 +840,37 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             rebuildSections();
             updateWidgets();
             wireSelectionExclusivity();
+        }
+
+        /**
+         * @brief Attach, replace or remove the sender-header section after construction, without
+         *  touching header()/body()/reply()/comment()/bottom().
+         * @param senderHeader New section, or nullptr to remove it -- see clearSenderHeader().
+         *  Destroys whatever sender-header section was previously set.
+         *
+         * For a sender identity resolved asynchronously after the bubble is already on screen
+         * (ChatMessages::resolveSender()'s re-stamp, task-basic-group-chats-plan.md Stage 8) --
+         * setWidgets() itself would also work, but would needlessly repeat header()/body()/
+         * reply()/comment()/bottom(). Same shape as setReply()/setComment(); no
+         * wireSelectionExclusivity() call, same reasoning as setReply() (no selectable text).
+         */
+        void setSenderHeader(AbstractChatMessageSenderHeader* senderHeader)
+        {
+            destroyWidget(m_senderHeader);
+            m_senderHeader=senderHeader;
+            rebuildSections();
+            updateWidgets();
+            // See setReply()'s identical re-application and setSelected()'s doc comment for why.
+            if (m_senderHeader!=nullptr)
+            {
+                m_senderHeader->setSelected(isContentSelected());
+                m_senderHeader->setSent(isContentSent());
+            }
+        }
+
+        void clearSenderHeader()
+        {
+            setSenderHeader(nullptr);
         }
 
         /**
@@ -884,6 +961,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         void clearReactions()
         {
             setReactions(nullptr);
+        }
+
+        AbstractChatMessageSenderHeader* senderHeader() const noexcept
+        {
+            return m_senderHeader;
         }
 
         AbstractChatMessageHeader* header() const noexcept
@@ -1337,6 +1419,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             );
         }
 
+        QPointer<AbstractChatMessageSenderHeader> m_senderHeader=nullptr;
         QPointer<AbstractChatMessageHeader> m_header=nullptr;
         QPointer<AbstractChatMessageReply> m_reply=nullptr;
         QPointer<AbstractChatMessageBody> m_body=nullptr;
@@ -1485,6 +1568,39 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             m_alignSent=alignSent;
             updateRight();
             updateAlignment();
+        }
+
+        //! Group-chat mode: an INCOMING message's avatar is forced visible on the last message of
+        //! its batch regardless of alignSent() -- a group chat must identify who sent each batch
+        //! even while "Position of my messages" puts sent and received on opposite sides, the
+        //! usual default. Pushed uniformly onto every message in a view by
+        //! AbstractChatMessagesView::setSenderAvatarsAlways() (ChatMessagesView::makeMessage() /
+        //! applySenderAvatarsAlwaysToMessages()), never set per-row by app code, exactly as
+        //! setAlignSent() itself is. False (personal chats) reproduces the historical
+        //! alignSent()-only policy bit for bit -- see ChatMessage::updateAvatarForced()'s own doc
+        //! comment for the geometry-vs-visibility split this flag drives. A plain member, never a
+        //! Q_PROPERTY: changeEvent() re-derives the forced avatar geometry after every QSS
+        //! repolish, and a QSS-backed value would be silently reset back to false by that repolish
+        //! (see setAlignSent()'s sibling concern, though this one is not itself QSS-driven -- it
+        //! would only become a problem if a future change made it one; kept a plain member so
+        //! that can never happen by accident).
+        //! No-op if unchanged. Always re-runs updateAlignment(): direction()/alignSent() are
+        //! untouched, but the forced avatar geometry (column width, avatar size) depends on this
+        //! flag too and must be recomputed even for a message whose isRight()/avatarShown() does
+        //! not itself flip.
+        void setSenderAvatarsAlways(bool enable)
+        {
+            if (m_senderAvatarsAlways==enable)
+            {
+                return;
+            }
+            m_senderAvatarsAlways=enable;
+            updateAlignment();
+        }
+
+        bool senderAvatarsAlways() const noexcept
+        {
+            return m_senderAvatarsAlways;
         }
 
         AbstractChatSeparator* topSeparator() const noexcept
@@ -1943,6 +2059,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         bool m_lastInBatch=true;
         bool m_contentVisible=true;
         bool m_avatarVisible=false;
+        bool m_senderAvatarsAlways=false;
 
         bool m_blockSelectDetection=false;
         bool m_selectorPositionLeft=true;

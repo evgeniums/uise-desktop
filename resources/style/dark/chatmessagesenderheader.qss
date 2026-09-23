@@ -1,0 +1,10 @@
+/* Reuses chat.qss's own mentionColor accent (task-message-formatting-plan.md Stage 6) -- a
+   sender's name and an @mention both name a person, so sharing the hue keeps the palette
+   subtle rather than introducing a new one. */
+uise--ChatMessageSenderHeader #senderTitle QLabel {
+color: #C9A2F5;
+}
+
+uise--ChatMessageSenderHeader #senderTitle QLabel:hover {
+color: #D9BEFF;
+}

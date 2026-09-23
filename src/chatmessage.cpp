@@ -372,6 +372,7 @@ void AbstractChatMessageContent::rebuildSections()
         m_sections.push_back(section);
     };
 
+    attach(m_senderHeader);
     attach(m_header);
     attach(m_reply);
     attach(m_body);
@@ -843,6 +844,17 @@ void ChatMessageContent::updateWidgets()
     // section -- addWidget() alone leaves it hidden until a queued _q_showIfNotHidden when this
     // frame is already visible (e.g. setReply()/setComment() re-running this on a bubble already
     // on screen), and the bubble would be mis-measured until that queued show ran.
+    //
+    // Unconditional show() here too, exactly like header() below -- a rebuild triggered by
+    // setSenderHeader()/setReply()/setComment() must NOT silently re-show a sender line the host
+    // had hidden for a non-first-of-batch message; ChatMessage::updateSenderTitleVisible() (the
+    // only place that toggles it) re-asserts the correct visibility right after any such rebuild,
+    // the same obligation setReply()'s own doc comment already places on setSelected()/setSent().
+    if (senderHeader()!=nullptr)
+    {
+        m_layout->addWidget(senderHeader(),0,align);
+        senderHeader()->show();
+    }
     if (header()!=nullptr)
     {
         m_layout->addWidget(header(),0,align);
@@ -1072,6 +1084,10 @@ void ChatMessageContent::setSelected(bool enable)
     {
         bottom()->setSelected(enable);
     }
+    if (senderHeader())
+    {
+        senderHeader()->setSelected(enable);
+    }
     if (header())
     {
         header()->setSelected(enable);
@@ -1099,6 +1115,10 @@ void ChatMessageContent::setSent(bool enable)
     if (bottom())
     {
         bottom()->setSent(enable);
+    }
+    if (senderHeader())
+    {
+        senderHeader()->setSent(enable);
     }
     if (header())
     {
@@ -1708,13 +1728,27 @@ void ChatMessage::updateAvatarForced()
     // Received, so it reads as "the view currently puts own messages on the left too".
     bool leftAligned=(alignSent()==AlignSent::Left);
 
-    setAvatarVisible(leftAligned && isLastInBatch());
+    // senderAvatarsAlways() (group chats) forces an INCOMING batch's avatar visible regardless of
+    // leftAligned -- but it must NOT by itself widen outgoing bubbles: an own message still has no
+    // avatar of its own to show in always-mode (see AbstractChatMessage::setSenderAvatarsAlways()'s
+    // own doc comment), so avatarShown below gates on isIncoming() too, deliberately split from
+    // avatarsForced. avatarsForced alone drives geometry, and must stay true/false UNIFORMLY across
+    // every message in the chat (both isRight() cases) -- ChatMessagesView::
+    // applyAlignSentToMessages()/applySenderAvatarsAlwaysToMessages() sample
+    // m_messageBubbleOuterWidth from just one arbitrary message and rely on every other message
+    // agreeing with it; if incoming and outgoing rows computed different avatarsForced values, half
+    // the chat's bubbles would use a bubble width sized for the other half's column.
+    bool avatarsForced=leftAligned || senderAvatarsAlways();
+    bool avatarShown=isLastInBatch()
+                     && (leftAligned || (senderAvatarsAlways() && isIncoming()));
 
-    // Width tracks leftAligned ALONE, not the visibility above -- every bubble in a batch must
+    setAvatarVisible(avatarShown);
+
+    // Width tracks avatarsForced ALONE, not the visibility above -- every bubble in a batch must
     // keep the same left inset, including the ones whose avatar is suppressed.
-    auto avatarSize=leftAligned ? ForcedAvatarSize : ChatMessageAvatar::DefaultAvatarSize;
-    auto columnWidth=leftAligned ? (ForcedAvatarSize+2*ForcedAvatarMargin)
-                                 : ChatMessageAvatar::DefaultAvatarSize;
+    auto avatarSize=avatarsForced ? ForcedAvatarSize : ChatMessageAvatar::DefaultAvatarSize;
+    auto columnWidth=avatarsForced ? (ForcedAvatarSize+2*ForcedAvatarMargin)
+                                   : ChatMessageAvatar::DefaultAvatarSize;
     pimpl->avatarFrame->setAvatarSize(avatarSize);
     pimpl->avatarFrame->setFixedWidth(columnWidth);
     pimpl->avatarFramePlaceholder->setFixedWidth(columnWidth);

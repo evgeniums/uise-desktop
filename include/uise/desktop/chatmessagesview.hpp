@@ -227,6 +227,29 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
             return m_batchGapMinutes;
         }
 
+        //! Group-chat mode: an incoming batch's own avatar is forced visible on its last message
+        //! regardless of effectiveAlignSent() -- see AbstractChatMessage::setSenderAvatarsAlways()'s
+        //! own doc comment for why. False (the default) reproduces the historical
+        //! effectiveAlignSent()-only avatar policy bit for bit. No-op if unchanged; otherwise emits
+        //! senderAvatarsAlwaysChanged(), which ChatMessagesView connects to a sweep over every
+        //! already-loaded message (applySenderAvatarsAlwaysToMessages()) and to blocking the
+        //! floating avatar for the duration of that sweep, exactly as batchGapMinutesChanged() and
+        //! effectiveAlignSentChanged() already do for their own sweeps.
+        void setSenderAvatarsAlways(bool enable)
+        {
+            if (m_senderAvatarsAlways==enable)
+            {
+                return;
+            }
+            m_senderAvatarsAlways=enable;
+            emit senderAvatarsAlwaysChanged();
+        }
+
+        bool senderAvatarsAlways() const noexcept
+        {
+            return m_senderAvatarsAlways;
+        }
+
         //! The side sent messages currently resolve to, given alignSentMode() and (in Auto mode)
         //! this view's own width vs. alignSentLeftWidth(). ChatMessagesView::makeMessage() reads
         //! this for every newly built message; effectiveAlignSentChanged() drives re-applying it
@@ -291,6 +314,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         //! of every already-loaded message, so a live settings change re-flows batches immediately.
         void batchGapMinutesChanged();
 
+        //! senderAvatarsAlways() changed. ChatMessagesView connects this to
+        //! applySenderAvatarsAlwaysToMessages(), the sender-avatar-mode sibling of
+        //! effectiveAlignSentChanged()'s own sweep.
+        void senderAvatarsAlwaysChanged();
+
     protected:
 
         //! True when `later` is far enough after `earlier` to start a new batch, given the current
@@ -347,6 +375,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         int m_alignSentLeftWidth=0;
         int m_maxMessageWidth=0;
         int m_batchGapMinutes=0;
+        bool m_senderAvatarsAlways=false;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -648,6 +677,12 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! Auto-mode resizeEvent() crossing alignSentLeftWidth() -- see
         //! AbstractChatMessagesView::updateEffectiveAlignSent().
         void applyAlignSentToMessages();
+
+        //! Pushes senderAvatarsAlways() onto every message already loaded. Connected (ctor) to
+        //! senderAvatarsAlwaysChanged(). Same shape and same m_messageBubbleOuterWidth-refresh
+        //! concern as applyAlignSentToMessages() -- entering/leaving group-chat mode changes the
+        //! forced avatar column width exactly as an alignment flip does.
+        void applySenderAvatarsAlwaysToMessages();
 
         void onUserScrolled();
         void updateDateSubtitleText();

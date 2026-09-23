@@ -24,6 +24,13 @@ You may select, at your option, one of the above-listed licenses.
 *  AbstractReplyPreview block already built for the reply-to-message feature -- see
 *  demo/replypreview/main.cpp, this demo's direct template.
 *
+*  Also exercises ChatMessageSenderHeader (task-basic-group-chats-plan.md Stage 8): the group-
+*  chat sender-name section, a SEPARATE slot sitting above ChatMessageForwardHeader in the same
+*  bubble -- see the "Show sender name" checkbox below, which toggles it on both forward-header
+*  bubbles (sender name + "Forwarded from ..." together) and on a third, header-less bubble
+*  (sender name alone), so all four combinations (neither / forward alone / sender alone / both)
+*  can be eyeballed in one place.
+*
 */
 
 /****************************************************************************/
@@ -51,6 +58,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/chatfileitem.hpp>
 #include <uise/desktop/abstractreplypreview.hpp>
 #include <uise/desktop/chatmessageforwardheader.hpp>
+#include <uise/desktop/chatmessagesenderheader.hpp>
 #include <uise/desktop/chatmessagecomment.hpp>
 #include <uise/desktop/forwardbar.hpp>
 #include <uise/desktop/forwarddialog.hpp>
@@ -176,14 +184,17 @@ AbstractChatMessageBody* makeBody(DemoBodyKind kind)
     }
 }
 
-// Builds a real ChatMessage/ChatMessageContent bubble around `body`, plus the two new sections
-// this demo exercises: `header` ("Forwarded from <author>") and `comment` (the forwarding
-// sender's own comments) -- same recipe as demo/replypreview/main.cpp's own makeMessage(), with
-// the reply slot dropped (not relevant here) and the header/comment slots added.
+// Builds a real ChatMessage/ChatMessageContent bubble around `body`, plus the sections this demo
+// exercises: `header` ("Forwarded from <author>"), `comment` (the forwarding sender's own
+// comments) and `senderHeader` (the group-chat sender-name section, task-basic-group-chats-
+// plan.md Stage 8, sitting ABOVE `header` in the same bubble) -- same recipe as
+// demo/replypreview/main.cpp's own makeMessage(), with the reply slot dropped (not relevant
+// here) and the header/comment/senderHeader slots added.
 AbstractChatMessage* makeMessage(QWidget* parent, AbstractChatMessage::Direction direction,
                                  AbstractChatMessageBody* body,
                                  AbstractChatMessageHeader* header=nullptr,
-                                 AbstractChatMessageComment* comment=nullptr)
+                                 AbstractChatMessageComment* comment=nullptr,
+                                 AbstractChatMessageSenderHeader* senderHeader=nullptr)
 {
     AbstractChatMessage* msg=new ChatMessage(parent);
     msg->construct();
@@ -199,7 +210,7 @@ AbstractChatMessage* makeMessage(QWidget* parent, AbstractChatMessage::Direction
     auto bottom=new ChatMessageBottom(content);
     bottom->setTimeString(QDateTime::currentDateTime().toString(QStringLiteral("hh:mm")));
 
-    content->setWidgets(body,header,bottom,nullptr,comment);
+    content->setWidgets(body,header,bottom,nullptr,comment,nullptr,senderHeader);
     msg->setContent(content);
 
     content->updateBubbleWidth(DemoBubbleWidth);
@@ -384,21 +395,57 @@ int main(int argc, char *argv[])
     auto* receivedBody=new ChatMessageText();
     receivedBody->loadText(QStringLiteral("Sure, here you go!"),TextFormat::Plain);
     auto* receivedHeader=new ChatMessageForwardHeader();
+    auto* receivedSenderHeader=new ChatMessageSenderHeader();
     auto* receivedComment=new ChatMessageComment();
     receivedComment->setComment(QStringLiteral("Thought you might find this useful."),TextFormat::Plain);
-    auto* receivedMsg=makeMessage(central,AbstractChatMessage::Direction::Received,receivedBody,receivedHeader,receivedComment);
+    auto* receivedMsg=makeMessage(central,AbstractChatMessage::Direction::Received,receivedBody,receivedHeader,receivedComment,receivedSenderHeader);
     rootLayout->addWidget(receivedMsg);
 
     auto* sentBody=new ChatMessageText();
     sentBody->loadText(QStringLiteral("Thanks, got it."),TextFormat::Plain);
     auto* sentHeader=new ChatMessageForwardHeader();
+    auto* sentSenderHeader=new ChatMessageSenderHeader();
     auto* sentComment=new ChatMessageComment();
     sentComment->setComment(QStringLiteral("Passing this along, let me know what you think."),TextFormat::Plain);
-    auto* sentMsg=makeMessage(central,AbstractChatMessage::Direction::Sent,sentBody,sentHeader,sentComment);
+    auto* sentMsg=makeMessage(central,AbstractChatMessage::Direction::Sent,sentBody,sentHeader,sentComment,sentSenderHeader);
     rootLayout->addWidget(sentMsg);
 
     QObject::connect(receivedHeader,&ChatMessageForwardHeader::authorClicked,central,[logMsg](){ logMsg(QStringLiteral("received bubble header: authorClicked")); });
     QObject::connect(sentHeader,&ChatMessageForwardHeader::authorClicked,central,[logMsg](){ logMsg(QStringLiteral("sent bubble header: authorClicked")); });
+    QObject::connect(receivedSenderHeader,&ChatMessageSenderHeader::clicked,central,[logMsg](){ logMsg(QStringLiteral("received bubble sender header: clicked")); });
+    QObject::connect(sentSenderHeader,&ChatMessageSenderHeader::clicked,central,[logMsg](){ logMsg(QStringLiteral("sent bubble sender header: clicked")); });
+
+    // --- a header-less message with ONLY a sender-name section, group-chat "no forward" case ---
+
+    rootLayout->addSpacing(8);
+    rootLayout->addWidget(new QLabel(
+        QStringLiteral("Message with a sender-name section but no forwarded-from header (an ordinary group-chat message):")
+    ));
+
+    auto* plainBody=new ChatMessageText();
+    plainBody->loadText(QStringLiteral("Anyone free to review the PR today?"),TextFormat::Plain);
+    auto* plainSenderHeader=new ChatMessageSenderHeader();
+    auto* plainMsg=makeMessage(central,AbstractChatMessage::Direction::Received,plainBody,nullptr,nullptr,plainSenderHeader);
+    rootLayout->addWidget(plainMsg);
+
+    QObject::connect(plainSenderHeader,&ChatMessageSenderHeader::clicked,central,[logMsg](){ logMsg(QStringLiteral("plain bubble sender header: clicked")); });
+
+    // --- sender-name toggle, applied to all three bubbles above ---
+
+    auto* senderCheck=new QCheckBox(QStringLiteral("Show sender name (all bubbles above)"));
+    senderCheck->setChecked(true);
+    rootLayout->addWidget(senderCheck);
+    auto applySenderNames=[receivedSenderHeader,sentSenderHeader,plainSenderHeader](bool enable)
+    {
+        // Empty title renders nothing -- see ChatMessageSenderHeader::setSenderTitle()'s own
+        // doc comment -- so unchecking demonstrates "neither" on the plain bubble and "forward
+        // header alone" on the other two, and checking demonstrates "sender alone" and "both".
+        receivedSenderHeader->setSenderTitle(enable ? QStringLiteral("Bob") : QString{});
+        sentSenderHeader->setSenderTitle(enable ? QStringLiteral("You") : QString{});
+        plainSenderHeader->setSenderTitle(enable ? QStringLiteral("Carol") : QString{});
+    };
+    QObject::connect(senderCheck,&QCheckBox::toggled,central,applySenderNames);
+    applySenderNames(true);
 
     auto applyForwardData=[forwardBar,receivedHeader,sentHeader,kindCombo]()
     {
@@ -428,13 +475,16 @@ int main(int argc, char *argv[])
     auto* toolsLayout=Layout::horizontal(toolsFrame);
     rootLayout->addWidget(toolsFrame);
 
-    auto* selectedCheck=new QCheckBox(QStringLiteral("Selected (both bubbles)"));
+    auto* selectedCheck=new QCheckBox(QStringLiteral("Selected (all bubbles)"));
     toolsLayout->addWidget(selectedCheck);
     QObject::connect(selectedCheck,&QCheckBox::toggled,central,
-        [receivedMsg,sentMsg](bool checked)
+        [receivedMsg,sentMsg,plainMsg](bool checked)
         {
             receivedMsg->setSelected(checked);
             sentMsg->setSelected(checked);
+            // Exercises ChatMessageContent::setSelected()'s new senderHeader() forwarding
+            // (task-basic-group-chats-plan.md Stage 8) on the header-less bubble too.
+            plainMsg->setSelected(checked);
         }
     );
 
