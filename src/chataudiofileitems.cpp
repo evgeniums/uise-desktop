@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QBoxLayout>
 #include <QEvent>
 #include <QFrame>
@@ -263,6 +265,30 @@ void ChatVoiceFileItem::setPlaybackPosition(qint64 positionMs, qint64 durationMs
 WaveformBar* ChatVoiceFileItem::waveformBar() const noexcept
 {
     return pimpl->bar;
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatVoiceFileItem::lastLineRect() const
+{
+    // Hint-derived, never geometry() -- see ChatMessageFileItem::lastLineRect()'s own doc comment.
+    //
+    // The column is now `stretch(1), nameLabel, spacing, bar, spacing, infoRow, stretch(1)` (see
+    // the ctor) -- both stretches still equal, so its leftover height (this row's own height being
+    // driven by whichever is taller, the 36px icon slot or this now-waveform-carrying column)
+    // splits evenly above and below the pair, exactly like the base row's name/size block, unless
+    // setTextVerticalAlignment(Qt::AlignTop) pinned it to the top instead.
+    auto columnHeight=textColumnLayout()->sizeHint().height();
+    auto inner=sizeHint().height()-contentsMargins().top()-contentsMargins().bottom();
+    auto leftover=std::max(0,inner-columnHeight);
+    auto topShare=(textVerticalAlignment()==Qt::AlignTop) ? 0 : leftover/2;
+    auto bottom=contentsMargins().top()+topShare+columnHeight;
+
+    auto infoHeight=pimpl->infoRow->sizeHint().height();
+    // x/width are never read: ChatMessageFiles::allowsInlineBottom() refuses the inline path for
+    // a caption-less voice row's line (only its bottom edge, used to measure the row's own bottom
+    // padding as dead space, is read) -- kept plausible rather than exact.
+    return QRect(0,bottom-infoHeight,pimpl->infoRow->sizeHint().width(),infoHeight);
 }
 
 //--------------------------------------------------------------------------

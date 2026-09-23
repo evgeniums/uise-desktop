@@ -329,6 +329,15 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
     // the row's own Y and reserved height from (see setMaximumBubbleWidth()).
     m_inlineLineRect=line;
 
+    if (!t->allowsInlineBottom())
+    {
+        // Measurement-only trailing line (a voice message's info line, an invitation card's
+        // description line): m_inlineLineRect stays set above so setMaximumBubbleWidth() still
+        // pulls the row up out of this section's own dead space, but the row itself keeps a line
+        // of its own rather than being overlaid on top of text that must stay fully readable.
+        return;
+    }
+
     auto sz=m_bottomNaturalSize;
     if (sz.width()<=0)
     {

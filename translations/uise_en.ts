@@ -2989,7 +2989,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+1958"/>
+        <location filename="../src/chatmessage.cpp" line="+2148"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -3118,18 +3118,18 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatVoiceFileItem</name>
     <message>
-        <location filename="../src/chataudiofileitems.cpp" line="+154"/>
-        <location line="+51"/>
+        <location filename="../src/chataudiofileitems.cpp" line="+207"/>
+        <location line="+136"/>
         <source>Voice message</source>
         <translation>Voice message</translation>
     </message>
     <message>
-        <location line="-39"/>
+        <location line="-35"/>
         <source>%1 · %2</source>
         <translation>%1 · %2</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="-34"/>
         <source>Pause</source>
         <translation>Pause</translation>
     </message>
@@ -3139,7 +3139,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Play</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+70"/>
         <source>Listened</source>
         <translation>Listened</translation>
     </message>

@@ -270,6 +270,19 @@ class UISE_DESKTOP_EXPORT ChatMessageContentSection : public AbstractChatMessage
             return std::numeric_limits<int>::max();
         }
 
+        //! Whether lastTextLineRect(), if valid, may host the bottom row INLINE (overlaid onto
+        //! its trailing blank space) when it fits -- true by default, matching how a text body's
+        //! last line has always been used. A section overriding this to false still contributes
+        //! its lastTextLineRect() as a measurement anchor (AbstractChatMessageContent::
+        //! setMaximumBubbleWidth() still reads its bottom edge to size the dead space above the
+        //! row), it only refuses to have the row overlaid ON it -- e.g. a voice/invitation card's
+        //! trailing line, which is meant to stay fully visible, not partially hidden behind the
+        //! time/status chip.
+        virtual bool allowsInlineBottom() const
+        {
+            return true;
+        }
+
         virtual void setSelected(bool /*enable*/) {}
         virtual void setSent(bool /*enable*/) {}
 

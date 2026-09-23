@@ -71,9 +71,18 @@ class UISE_DESKTOP_EXPORT ChatMessageInvitation : public AbstractChatMessageInvi
         //! base declaration's own doc comment).
         int ownWidthCeiling() const override;
 
-        //! Styled after ChatMessageFileItem's row -- no single trailing line for the bubble's
-        //! bottom row to share (default null rect => the bottom row gets its own line below),
-        //! same as ChatMessageError.
+        //! The description line's rect, hint-derived from the text column's bracketing stretches
+        //! -- NOT for the bottom row to overlay (see allowsInlineBottom() below), only so
+        //! AbstractChatMessageContent::setMaximumBubbleWidth() can measure the dead space this
+        //! card's tall icon leaves below that line and pull the row up out of it, the same way a
+        //! text bubble absorbs its own document margin.
+        QRect lastTextLineRect() const override;
+
+        //! false: the description line above is a measurement anchor only. A card whose primary
+        //! action reads from that line (and whose menu button already occupies the same visual
+        //! row) must not have it partially hidden behind the time/status chip -- unlike a text
+        //! bubble's last line, which is fine sharing its trailing space.
+        bool allowsInlineBottom() const override;
 
     protected:
 

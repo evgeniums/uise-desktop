@@ -164,6 +164,22 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         void limitWidth(int totalWidth);
 
         /**
+         * @brief Rect of this row's own trailing text line, in the ROW's own coordinates, for the
+         *  host body (ChatMessageFiles) to use as a measurement anchor when this is the LAST row
+         *  and the message has no caption -- see ChatMessageFiles::lastTextLineRect().
+         *
+         * Invalid by default: a generic file/image/invitation row has no single trailing line
+         * narrower than its own row height (the two-line name/size block is vertically centered,
+         * not anchored to the bottom), so the caption-less full-bottom-row behaviour is unchanged
+         * for it. A row that DOES have one (the voice row's duration/size info line, sitting well
+         * below its own icon-driven top padding) overrides this.
+         *
+         * Hint-derived, never geometry() -- may run mid-negotiation, before the layout has been
+         * re-activated for the current pass.
+         */
+        virtual QRect lastLineRect() const;
+
+        /**
          * @brief Close the per-item drop-down menu if open, without animation.
          *
          * Meant for a host embedding this item in a scrolling list to call whenever the list

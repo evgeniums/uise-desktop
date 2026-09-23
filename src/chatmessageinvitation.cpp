@@ -69,6 +69,11 @@ class ChatMessageInvitation_p
         QBoxLayout* layout=nullptr;
         WithRoundedImage* invitationIcon=nullptr;
 
+        //! The vertical layout of caption+description, kept here (rather than only local to the
+        //! ctor) so lastTextLineRect() can measure its sizeHint() -- same reason
+        //! ChatMessageFileItem keeps its own equivalent column layout accessible.
+        QBoxLayout* textLayout=nullptr;
+
         // ElidedLabel, NOT a word-wrapped QLabel: a QLabel with setWordWrap(true) reports a
         // deliberately compact sizeHint() (Qt picks a readable block width rather than the text's
         // full single-line width), and the default bubbleWidthHint() just forwards that -- so the
@@ -99,9 +104,10 @@ ChatMessageInvitation::ChatMessageInvitation(QWidget* parent)
     pimpl->invitationIcon->setObjectName("invitationIcon");
     pimpl->layout->addWidget(pimpl->invitationIcon);
 
-    auto textLayout=new QVBoxLayout();
-    Layout::clear(textLayout);
-    pimpl->layout->addLayout(textLayout,1);
+    pimpl->textLayout=new QVBoxLayout();
+    Layout::clear(pimpl->textLayout);
+    pimpl->layout->addLayout(pimpl->textLayout,1);
+    auto textLayout=pimpl->textLayout;
 
     // Stretches bracketing the two labels, and an explicit gap between them -- copied from
     // ChatMessageFileItem's own text column for the reason its constructor spells out: this
@@ -291,6 +297,38 @@ int ChatMessageInvitation::bubbleWidthHint(int forMaxWidth)
 int ChatMessageInvitation::ownWidthCeiling() const
 {
     return MaxBubbleWidth;
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageInvitation::lastTextLineRect() const
+{
+    // Hint-derived, never geometry() -- this can run mid-negotiation, before the layout has been
+    // re-activated for the current pass (same rule ChatMessageFiles::lastTextLineRect() follows).
+    //
+    // The text column is `stretch(1), caption, spacing(TextLineSpacing), description, stretch(1)`
+    // -- BOTH stretches at 1 -- so its leftover height (this card's own height being driven by the
+    // 56px icon, well beyond what two lines of text need) splits evenly above and below the pair,
+    // and the description line ends exactly topShare+columnH below the card's own top margin.
+    auto columnHeight=pimpl->textLayout->sizeHint().height();
+    auto inner=sizeHint().height()-contentsMargins().top()-contentsMargins().bottom();
+    auto topShare=std::max(0,inner-columnHeight)/2;
+    auto bottom=contentsMargins().top()+topShare+columnHeight;
+
+    auto descHeight=pimpl->description->sizeHint().height();
+    // x/width are never read while allowsInlineBottom() is false (only the rect's bottom edge is
+    // used, to measure the dead space above the bottom row) -- kept plausible rather than exact.
+    return QRect(contentsMargins().left(),bottom-descHeight,pimpl->description->sizeHint().width(),descHeight);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageInvitation::allowsInlineBottom() const
+{
+    // The description line is this card's primary content (identity/state text next to the menu
+    // button already on that same visual row) -- it must stay fully visible, never partially
+    // covered by the time/status chip the way a text bubble's own trailing line may be.
+    return false;
 }
 
 //--------------------------------------------------------------------------

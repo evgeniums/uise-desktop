@@ -525,29 +525,62 @@ void ChatMessageFiles::updateMaximumBubbleWidth()
 
 QRect ChatMessageFiles::lastTextLineRect() const
 {
-    if (pimpl->comment->isHidden())
+    if (!pimpl->comment->isHidden())
     {
-        // No caption -- the explicit exclusion for a caption-less file message: keep today's
-        // full-width row rather than overlaying onto anything in the file rows themselves. Same
-        // isHidden() check (not isVisible()) as ChatMessageImages' own commentShown() helper --
-        // this can run while the message's ancestors are still off-screen (a flyweight build),
-        // where isVisible() would read false even though the comment WILL show once attached.
+        auto rect=pimpl->comment->lastTextLineRect();
+        if (!rect.isValid())
+        {
+            return {};
+        }
+
+        // pimpl->comment sits in THIS body's own vertical layout, directly below
+        // pimpl->contentsFrame (the file rows) -- translate by that frame's sizeHint() height,
+        // not its possibly-stale geometry() (this can run mid-negotiation, before the layout has
+        // necessarily run for real), plus this widget's own left/top contents margins -- matching
+        // how bubbleWidthHint()/updateMaximumBubbleWidth() already treat pimpl->comment as this
+        // widget's own trailing row.
+        auto cm=contentsMargins();
+        return rect.translated(cm.left(),cm.top()+pimpl->contentsFrame->sizeHint().height());
+    }
+
+    // No caption. Still not the inline path -- allowsInlineBottom() below refuses it -- but the
+    // LAST row may have a trailing line of its own worth measuring (the voice row's duration/size
+    // info line, well above its own row's bottom edge): letting the bottom row be pulled up out of
+    // that row's own bottom padding, instead of sitting a full extra line below the whole body,
+    // same rationale as a text bubble absorbing its own document margin. Every other row kind
+    // (plain file/image/invitation-file/audio-file) returns an invalid rect from lastLineRect(),
+    // which keeps today's full-width row unchanged for them.
+    if (pimpl->rows.empty())
+    {
         return {};
     }
 
-    auto rect=pimpl->comment->lastTextLineRect();
-    if (!rect.isValid())
+    auto* lastRow=pimpl->rows.back();
+    auto rowRect=lastRow->lastLineRect();
+    if (!rowRect.isValid())
     {
         return {};
     }
 
-    // pimpl->comment sits in THIS body's own vertical layout, directly below pimpl->contentsFrame
-    // (the file rows) -- translate by that frame's sizeHint() height, not its possibly-stale
-    // geometry() (this can run mid-negotiation, before the layout has necessarily run for real),
-    // plus this widget's own left/top contents margins -- matching how bubbleWidthHint()/
-    // updateMaximumBubbleWidth() already treat pimpl->comment as this widget's own trailing row.
+    // Rows stack in pimpl->contentsLayout (zero margin/spacing, Layout::vertical's own reset), so
+    // the last row's own top, within contentsFrame, is simply what is left after every row's
+    // sizeHint() height once the frame's own bottom inset is excluded -- hint-derived, not
+    // geometry(), for the same reason as the caption branch above.
     auto cm=contentsMargins();
-    return rect.translated(cm.left(),cm.top()+pimpl->contentsFrame->sizeHint().height());
+    auto frameMargins=pimpl->contentsFrame->contentsMargins();
+    auto rowTop=cm.top()+pimpl->contentsFrame->sizeHint().height()-frameMargins.bottom()-lastRow->sizeHint().height();
+    return rowRect.translated(cm.left()+frameMargins.left(),rowTop);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageFiles::allowsInlineBottom() const
+{
+    // A caption's last line may share its own trailing space with the bottom row (inline), same
+    // as any text body. A caption-less last row's line (see lastTextLineRect() above) is reported
+    // ONLY as a measurement anchor -- the row keeps a line of its own, never overlaid on top of a
+    // voice row's duration/size line.
+    return !pimpl->comment->isHidden();
 }
 
 //--------------------------------------------------------------------------

@@ -104,6 +104,12 @@ class UISE_DESKTOP_EXPORT ChatMessageFiles : public AbstractChatMessageFiles
 
         int ownWidthCeiling() const override;
 
+        //! false whenever the message has no caption -- the bottom row must stay OFF the last
+        //! row's own trailing line (e.g. a voice row's duration/size line) even when
+        //! lastTextLineRect() above reports one as a measurement anchor; see that override's own
+        //! doc comment. A caption still takes the inline path exactly as before -- true then.
+        bool allowsInlineBottom() const override;
+
     protected:
 
         void updateChatMessage() override;

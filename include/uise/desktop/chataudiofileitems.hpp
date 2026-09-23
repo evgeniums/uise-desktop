@@ -83,6 +83,12 @@ class UISE_DESKTOP_EXPORT ChatVoiceFileItem : public ChatMessageFileItem
         //! Move the info line's clock. See AbstractChatMessageFiles::setPlaybackPosition().
         void setPlaybackPosition(qint64 positionMs, qint64 durationMs) override;
 
+        //! The info row's rect (the "duration · size" / clock line, with the listened dot) -- so
+        //! a caption-less voice message's bottom (time/status) row can be pulled up out of the
+        //! row's own bottom padding instead of sitting a full extra line below it, the same way a
+        //! text bubble absorbs its own document margin. See ChatMessageFiles::lastTextLineRect().
+        QRect lastLineRect() const override;
+
         WaveformBar* waveformBar() const noexcept;
 
     protected:

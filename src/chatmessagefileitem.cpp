@@ -407,6 +407,13 @@ void ChatMessageFileItem::limitWidth(int totalWidth)
 
 //--------------------------------------------------------------------------
 
+QRect ChatMessageFileItem::lastLineRect() const
+{
+    return QRect{};
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFileItem::closeMenu()
 {
     if (!pimpl->menu.isNull())
