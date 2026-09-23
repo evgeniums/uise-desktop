@@ -1748,29 +1748,62 @@ void ChatMessage::updateAvatarForced()
     bool leftAligned=(alignSent()==AlignSent::Left);
 
     // senderAvatarsAlways() (group chats) forces an INCOMING batch's avatar visible regardless of
-    // leftAligned -- but it must NOT by itself widen outgoing bubbles: an own message still has no
-    // avatar of its own to show in always-mode (see AbstractChatMessage::setSenderAvatarsAlways()'s
-    // own doc comment), so avatarShown below gates on isIncoming() too, deliberately split from
-    // avatarsForced. avatarsForced alone drives geometry, and must stay true/false UNIFORMLY across
-    // every message in the chat (both isRight() cases) -- ChatMessagesView::
+    // leftAligned -- but an own message has no avatar of its own to show in always-mode (see
+    // AbstractChatMessage::setSenderAvatarsAlways()'s doc comment), so avatarShown below gates on
+    // isIncoming() too, deliberately split from avatarsForced.
+    //
+    // avatarsForced drives the strips' geometry and is itself uniform across every message in the
+    // chat; how that total is SPLIT between the two strips then varies per row (see below), but
+    // their sum does not. That invariant is load-bearing: ChatMessagesView::
     // applyAlignSentToMessages()/applySenderAvatarsAlwaysToMessages() sample
-    // m_messageBubbleOuterWidth from just one arbitrary message and rely on every other message
-    // agreeing with it; if incoming and outgoing rows computed different avatarsForced values, half
-    // the chat's bubbles would use a bubble width sized for the other half's column.
+    // m_messageBubbleOuterWidth -- which bubbleOuterWidth() reports as exactly that sum -- from one
+    // arbitrary message, and rely on every other row agreeing with it.
     bool avatarsForced=leftAligned || senderAvatarsAlways();
     bool avatarShown=isLastInBatch()
                      && (leftAligned || (senderAvatarsAlways() && isIncoming()));
 
     setAvatarVisible(avatarShown);
 
-    // Width tracks avatarsForced ALONE, not the visibility above -- every bubble in a batch must
-    // keep the same left inset, including the ones whose avatar is suppressed.
-    auto avatarSize=avatarsForced ? ForcedAvatarSize : ChatMessageAvatar::DefaultAvatarSize;
-    auto columnWidth=avatarsForced ? (ForcedAvatarSize+2*ForcedAvatarMargin)
-                                   : ChatMessageAvatar::DefaultAvatarSize;
+    // Width tracks avatarsForced, NOT the per-row visibility above -- every bubble in a batch must
+    // keep the same inset, including the ones whose own avatar is suppressed (mid-batch rows).
+    auto wideColumn=avatarsForced ? (ForcedAvatarSize+2*ForcedAvatarMargin)
+                                  : ChatMessageAvatar::DefaultAvatarSize;
+
+    // Which of the two strips is the one that can actually hold an avatar on THIS row.
+    // updateAlignment() puts avatarFrame on the LEFT of a left-aligned (incoming, or
+    // everything-left) row and on the RIGHT of a right-aligned (own) one, with
+    // avatarFramePlaceholder mirroring it on the opposite side.
+    //
+    // In senderAvatarsAlways() mode with own messages still on the right, only INCOMING batches
+    // ever get an avatar (see avatarShown above) -- so on an OUTGOING row the avatarFrame, sitting
+    // against the right edge, can never hold anything, and reserving the full forced width there
+    // renders as a blank band beside every sent bubble that a personal chat does not have.
+    // Give whichever strip can never show an avatar the narrow default, and the opposite (mirror)
+    // strip the wide one, so the SUM is identical on every row: bubbleOuterWidth() reports exactly
+    // that sum, and applyAlignSentToMessages()/applySenderAvatarsAlwaysToMessages() sample
+    // m_messageBubbleOuterWidth from ONE arbitrary message on the assumption that every other row
+    // agrees with it.
+    auto frameWidth=wideColumn;
+    auto placeholderWidth=wideColumn;
+    if (senderAvatarsAlways() && !leftAligned)
+    {
+        // Only the LEFT-hand strip can ever carry an avatar in this mode, on either kind of row --
+        // so it stays wide and the right-hand one narrows, on BOTH, keeping the sum equal.
+        // isRight() is exactly "this row's avatarFrame is the right-hand strip": false for every
+        // received message, true for an own message while sent messages sit on the right.
+        frameWidth=isRight() ? ChatMessageAvatar::DefaultAvatarSize : wideColumn;
+        placeholderWidth=isRight() ? wideColumn : ChatMessageAvatar::DefaultAvatarSize;
+    }
+
+    // The image itself only ever renders in the frame, and only while avatarShown -- sizing it to
+    // a strip that is deliberately narrow here would be meaningless, so it follows frameWidth.
+    auto avatarSize=(frameWidth==wideColumn && avatarsForced)
+                        ? ForcedAvatarSize
+                        : ChatMessageAvatar::DefaultAvatarSize;
+
     pimpl->avatarFrame->setAvatarSize(avatarSize);
-    pimpl->avatarFrame->setFixedWidth(columnWidth);
-    pimpl->avatarFramePlaceholder->setFixedWidth(columnWidth);
+    pimpl->avatarFrame->setFixedWidth(frameWidth);
+    pimpl->avatarFramePlaceholder->setFixedWidth(placeholderWidth);
 
     // ChatMessageAvatar paints the tail at the avatar COLUMN's own bottom edge, and that column
     // can be taller than a short bubble (e.g. a one-line message beside the 32px forced avatar
@@ -1823,7 +1856,56 @@ void ChatMessage::updateFirstInBatch()
 {
     // Same reasoning as updateLastInBatch() above -- no repolish of `this`.
     setProperty("first",isFirstInBatch());
+
+    // The sender-name section is carried only by a batch's FIRST message, and a batch re-forms
+    // (the same sender's next message arrives, a gap opens, the batch-gap setting changes) without
+    // this widget ever being rebuilt -- so it has to be re-derived here, exactly as
+    // updateAvatarForced() is from updateLastInBatch().
+    updateSenderHeaderVisible();
+
     updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::updateSenderHeaderVisible()
+{
+    if (content()==nullptr)
+    {
+        return;
+    }
+
+    auto* senderHeader=content()->senderHeader();
+    if (senderHeader==nullptr)
+    {
+        // No sender-name section attached -- every personal chat, and every outgoing message.
+        return;
+    }
+
+    // An attached section with no title yet (the host resolves it asynchronously) must take up no
+    // room at all, not merely render an empty label: the section carries its own QSS margins, which
+    // would otherwise show up as a phantom gap above the bubble's real content.
+    const bool show=isFirstInBatch() && !senderHeader->senderTitle().isEmpty();
+
+    // isHidden(), not isVisible(): a layout excludes a child via QWidgetItem::isEmpty(), which
+    // tests isHidden() (explicitly hidden), while isVisible() is ALSO false merely because an
+    // ancestor is not shown -- which is the normal case here, since bubbles are built and measured
+    // detached. Guarded so a batch re-flow that changes nothing does not renegotiate below.
+    if (!senderHeader->isHidden()==show)
+    {
+        return;
+    }
+    senderHeader->setVisible(show);
+
+    // The section is a layout item of the bubble, so its appearing/disappearing changes the
+    // bubble's own height -- re-negotiate rather than leaving the bottom row placed against the
+    // previous one (see AbstractChatMessageContent::relayoutSections()'s own doc comment for why
+    // re-APPLYING cached placement is not enough here).
+    content()->updateGeometry();
+    if (!content()->renegotiateBubbleWidth())
+    {
+        content()->positionBottom();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1846,6 +1928,12 @@ void ChatMessage::updateContent()
         pimpl->contentFrame->setContent(content());
 
         updateAlignment();
+
+        // A freshly attached sender-name section has just been force-shown by
+        // ChatMessageContent::updateWidgets() (it show()s every attached section unconditionally),
+        // which is wrong for any message that is not its batch's first -- and it has never been
+        // told this row's batch position at all. Re-assert both here.
+        updateSenderHeaderVisible();
 
         // The tail is painted by ChatMessageAvatar, a SIBLING widget content() knows nothing
         // about -- see ChatMessageAvatar::setBubbleTransparent()'s own doc comment for why this

@@ -1603,6 +1603,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return m_senderAvatarsAlways;
         }
 
+        //! Re-derive whether this row's sender-name section (AbstractChatMessageSenderHeader, when
+        //! one is attached) should be showing: it belongs on the FIRST message of a sender's batch
+        //! only, so that a run of messages from one person is labelled once rather than on every
+        //! bubble. No-op when no such section is attached, i.e. in every personal chat.
+        //!
+        //! Called automatically whenever this row's own batch position changes
+        //! (ChatMessage::updateFirstInBatch()) and whenever its content is (re)attached
+        //! (updateContent()). A HOST must call it once more after it sets or clears the section's
+        //! title, since an empty title is rendered as "no section at all" and the host's own title
+        //! typically arrives asynchronously, long after the section was attached -- see
+        //! AbstractChatMessageSenderHeader::setSenderTitle()'s own doc comment.
+        virtual void updateSenderHeaderVisible() {}
+
         AbstractChatSeparator* topSeparator() const noexcept
         {
             return m_topSeparator;

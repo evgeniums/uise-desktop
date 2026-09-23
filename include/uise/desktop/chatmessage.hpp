@@ -621,6 +621,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         void updateContent() override;
 
+        void updateSenderHeaderVisible() override;
+
         void updateAlignment() override;
 
         void updateAvatarVisible() override;
