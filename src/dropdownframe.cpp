@@ -749,6 +749,10 @@ QSize DropdownFrame::measureContentSize(QMargins& outMargins)
         {
             hint=c->size();
         }
+        // sizeHint() ignores the content's own min/max size (e.g. QSS min-width), but
+        // setGeometry() below enforces them -- measure what the content will actually occupy,
+        // or it overflows the frame and is clipped
+        hint=hint.expandedTo(c->minimumSize()).boundedTo(c->maximumSize());
 
         if (pass>0 && hint==natural && margins==m)
         {
