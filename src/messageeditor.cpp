@@ -4694,17 +4694,6 @@ MessageEditor::MessageEditor(QWidget* parent)
         this,
         [this]()
         {
-            // Send and the mic button swap places in the same trailing layout slot, but they are
-            // toggled by two different classes off this one signal: applyMicButtonVisibility()
-            // below flips the mic button now, and the emit at the end reaches
-            // ChatPageBottom::updateSendButtonActive() (connected to AbstractMessageEditor::
-            // textChanged), which flips Send. Left unbatched, Qt can paint the moment in between --
-            // both visible at once, or neither -- as its own frame: the trailing group widens or
-            // collapses, the text area resizes to fill the gap, then everything snaps back once the
-            // second toggle lands. setUpdatesEnabled(false) suppresses painting for that whole
-            // in-between window so only the FINAL, consistent state (task-composer-trailing-
-            // flicker.md) ever reaches the screen.
-            setUpdatesEnabled(false);
             updateArrangementForContent();
             // QTextEdit::textChanged is relayed from QTextDocument::contentsChanged, which
             // QTextDocumentPrivate::finishEdit() emits for a FORMAT-only edit too -- so this also
@@ -4714,7 +4703,6 @@ MessageEditor::MessageEditor(QWidget* parent)
             // Send takes the mic button's place as soon as there is something to send.
             applyMicButtonVisibility();
             emit textChanged();
-            setUpdatesEnabled(true);
         }
     );
 
