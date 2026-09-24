@@ -506,6 +506,48 @@ BOOST_AUTO_TEST_CASE(TestHasFormattingCatchesHandTypedMarkdownSyntax)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestHasAppliedFormattingCatchesClosedCodeFence)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // A closed literal code fence IS applied formatting (the user chose a code block, via
+            // the toolbar or by typing the delimiters), even though it carries no block/char
+            // property in this editor's document (convertCodeBlocksToText()) -- unlike
+            // TestHasFormattingCatchesHandTypedMarkdownSyntax above, this must be caught by
+            // hasAppliedFormatting() itself, not only by hasFormatting()'s rendering fallback: this
+            // is exactly the case whitemdesktop's ChatPageBottom::textMessageFormat() needs, since
+            // it only asks hasAppliedFormatting() in WYSIWYG mode.
+            MessageEditor editor;
+
+            editor.loadText(QStringLiteral("```cpp\nint x = 1;\n```"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasAppliedFormatting());
+
+            // Indentation inside the fence must not matter -- the fence is what makes it a code
+            // block, not the absence of leading whitespace.
+            editor.loadText(QStringLiteral("```\n    indented line\n```"),TextFormat::Plain);
+            UISE_TEST_CHECK(editor.hasAppliedFormatting());
+
+            // An UNCLOSED fence is left as ordinary text -- nothing to promote the rest of the
+            // message to a code block against.
+            editor.loadText(QStringLiteral("```\nno closing fence"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasAppliedFormatting());
+
+            // Still false for hand-typed inline markdown syntax with no fence and nothing applied
+            // -- that is hasFormatting()'s step 2 to catch, not this one.
+            editor.loadText(QStringLiteral("**bold**"),TextFormat::Plain);
+            UISE_TEST_CHECK(!editor.hasAppliedFormatting());
+
+            // The toolbar's own "insert code block" action must be caught too.
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.loadText(QString(),TextFormat::Plain);
+            UISE_TEST_REQUIRE(!editor.hasAppliedFormatting());
+            editor.toolbar()->button(MessageEditorToolbarButton::CodeBlock)->click();
+            UISE_TEST_CHECK(editor.hasAppliedFormatting());
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestHeadingOnEmptyEditorFormatsWhatIsTypedNext)
 {
     TestThread::instance()->execGuiThread(

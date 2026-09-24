@@ -33,6 +33,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/abstractemojigallerydialog.hpp>
 
+class QKeyEvent;
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -151,6 +153,21 @@ class UISE_DESKTOP_EXPORT FloatingEmojiGalleryDialog : public FloatingEmojiGalle
     public:
 
         explicit FloatingEmojiGalleryDialog(QWidget* parent=nullptr);
+
+    signals:
+
+        //! Emitted when Return/Enter is pressed anywhere in this window -- the search box and
+        //! the cell buttons both leave it unhandled, so it always reaches keyPressEvent() below.
+        //! Carries the event's modifiers so the owning editor can apply its own Enter-vs-newline
+        //! rule, the same one it applies to keystrokes typed directly into it.
+        void returnPressed(Qt::KeyboardModifiers modifiers);
+
+    protected:
+
+        //! Catches Return/Enter that no child widget consumed and turns it into returnPressed()
+        //! instead of letting it fall on the floor -- this window has nothing of its own that
+        //! Return should do. Everything else goes to the base class unchanged.
+        void keyPressEvent(QKeyEvent* event) override;
 };
 
 #ifdef _MSC_VER

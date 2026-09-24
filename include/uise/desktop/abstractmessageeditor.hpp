@@ -823,8 +823,8 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
 
         /**
          * @brief Whether the content carries formatting the user actually APPLIED (bold, a list, a
-         *  heading, a table...), as opposed to plain text that merely CONTAINS markdown-looking
-         *  characters.
+         *  heading, a table, a closed code fence...), as opposed to plain text that merely CONTAINS
+         *  markdown-looking characters.
          *
          * This is hasFormatting()'s first step on its own. The two differ exactly where it matters
          * for a host deciding what format to STORE: hasFormatting() also answers true for text

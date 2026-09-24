@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QEvent>
+#include <QKeyEvent>
 #include <QPointer>
 
 #include <uise/desktop/emojigallerydialog.hpp>
@@ -178,6 +179,19 @@ FloatingEmojiGalleryDialog::FloatingEmojiGalleryDialog(QWidget* parent)
     // be a utility window. FramelessWindowHint is kept because the frame paints its own chrome
     // (and its content supplies the title bar it is dragged by), exactly as the base sets it.
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingEmojiGalleryDialog::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key()==Qt::Key_Return || event->key()==Qt::Key_Enter)
+    {
+        Q_EMIT returnPressed(event->modifiers());
+        event->accept();
+        return;
+    }
+    FloatingEmojiGalleryDialogType::keyPressEvent(event);
 }
 
 //--------------------------------------------------------------------------

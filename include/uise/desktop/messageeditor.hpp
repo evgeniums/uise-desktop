@@ -630,6 +630,16 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
             return m_newLineOnEnter;
         }
 
+        //! Whether Return/Enter with the given modifiers finishes editing (emits returnPressed())
+        //! rather than inserting a line break -- the same test keyPressEvent() applies to a
+        //! keystroke typed directly into this editor, exposed so a detached window (the emoji
+        //! picker) can apply an identical rule to a Return pressed while IT has focus.
+        bool isFinishKey(Qt::KeyboardModifiers modifiers) const noexcept
+        {
+            const auto ctrlOrShift=static_cast<bool>(modifiers & (Qt::ControlModifier | Qt::ShiftModifier));
+            return m_newLineOnEnter ? ctrlOrShift : !ctrlOrShift;
+        }
+
         /**
          * @brief Paste the clipboard's current content, image/file payloads included.
          *
@@ -1021,14 +1031,17 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         bool isEmpty() const override;
 
         //! See AbstractMessageEditor::hasFormatting(). Answered in two steps -- what the user
-        //! APPLIED (exact, read straight off the document) and, failing that, whether the literal
-        //! text would render as anything but plain paragraphs (which is what catches markdown
-        //! SYNTAX typed by hand, a fenced code block above all: this editor's fences are ordinary
-        //! text carrying no block properties at all, see convertCodeBlocksToText()).
+        //! APPLIED (exact, read straight off the document, including a closed literal code fence)
+        //! and, failing that, whether the literal text would render as anything but plain
+        //! paragraphs (which is what catches markdown SYNTAX typed by hand, such as "**bold**" or
+        //! "- item").
         bool hasFormatting() const override;
 
         //! See AbstractMessageEditor::hasAppliedFormatting() -- hasFormatting()'s first step (the
-        //! exact document scan) on its own, without its second, rendering-based step.
+        //! exact document scan) on its own, without its second, rendering-based step. Also counts a
+        //! CLOSED literal code fence as applied: this editor's fences are ordinary text carrying no
+        //! block properties at all (see convertCodeBlocksToText()), so they need a text-based check
+        //! alongside the property scan.
         bool hasAppliedFormatting() const override;
 
         //! See AbstractMessageEditor::hasEmoji(). Scans for either form an emoji can take in this
@@ -1518,6 +1531,14 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! single place the remembered pin is actually cleared, moved out of ensureEmojiGallery()
         //! now that a claim (not a close) is what happens on an ordinary chat switch.
         void onEmojiGalleryClosed();
+
+        //! Dispatched by the shared dialog's returnPressed() handler to whichever editor owns it.
+        //! Applies this editor's own Enter-vs-newline rule to a Return pressed while the picker
+        //! has focus: if it is not a finish key here, the picker leaves it alone, exactly as an
+        //! editor would leave a plain Enter alone while expanded. Otherwise this closes the
+        //! picker the same way Escape does (clearing any pin) and finishes editing, so the picker
+        //! never outlives the message it just helped compose.
+        void onEmojiGalleryReturnPressed(Qt::KeyboardModifiers modifiers);
 
         //! Give up ownership of this window's shared gallery, IF this editor currently holds it,
         //! without touching its visibility -- another composer in the SAME window claims it right

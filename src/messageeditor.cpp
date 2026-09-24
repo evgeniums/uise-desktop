@@ -2899,21 +2899,10 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
 
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     {
-        if (m_newLineOnEnter)
+        if (isFinishKey(event->modifiers()))
         {
-            if (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier))
-            {
-                emit returnPressed();
-                return;
-            }
-        }
-        else
-        {
-            if (!(event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)))
-            {
-                emit returnPressed();
-                return;
-            }
+            emit returnPressed();
+            return;
         }
         event->setModifiers(event->modifiers() & ~(Qt::ControlModifier | Qt::ShiftModifier));
     }
@@ -5174,7 +5163,10 @@ bool MessageEditor::hasAppliedFormatting() const
 
     // What the user APPLIED. Read straight off the document, so it is exact and says nothing
     // about the text's own characters: "2 * 3" typed with no formatting is plain here, even
-    // though exporting it as markdown would escape that asterisk.
+    // though exporting it as markdown would escape that asterisk. The one deliberate exception is
+    // a literal code fence, checked separately below: it carries no block/char property at all in
+    // this editor (convertCodeBlocksToText() strips exactly that on the way in) even though the
+    // toolbar/typing it is exactly as much an applied action as bold or a list.
     //
     // A child frame means a table, the one construct that is not a block property.
     if (!doc->rootFrame()->childFrames().isEmpty())
@@ -5196,6 +5188,32 @@ bool MessageEditor::hasAppliedFormatting() const
             }
         }
     }
+
+    // A CLOSED literal code fence. Same open/close rule restoreCodeFences() uses: a fence closes
+    // only on the same character, at least as long as the one that opened it. Requires a closed
+    // pair -- a lone stray "```" with nothing to close it is left as ordinary text rather than
+    // promoting the rest of the message to a code block. Text-based (fenceRun() on the block's own
+    // text), not block.userState()==MessageEditorHighlighter::InFence: that state is only reliable
+    // once the highlighter has actually run against a live view (see its own doc comment), and
+    // this must answer correctly even for a document nothing has shown yet.
+    QString openFence;
+    for (auto block=doc->begin(); block.isValid() && block!=doc->end(); block=block.next())
+    {
+        const auto fence=fenceRun(block.text());
+        if (fence.isEmpty())
+        {
+            continue;
+        }
+        if (openFence.isEmpty())
+        {
+            openFence=fence;
+        }
+        else if (fence.at(0)==openFence.at(0) && fence.size()>=openFence.size())
+        {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -5215,11 +5233,11 @@ bool MessageEditor::hasFormatting() const
         return true;
     }
 
-    // Step 2 -- markdown SYNTAX the user typed by hand rather than applied. Nothing above can see
-    // it: this editor's fenced code blocks are deliberately ordinary text carrying no block
-    // properties at all (convertCodeBlocksToText()), and the same goes for a hand-typed "**bold**"
-    // or "- item". Rendering is the only reliable test, so ask the renderer: if stripping markdown
-    // changes the text, the text is markdown.
+    // Step 2 -- markdown SYNTAX the user typed by hand rather than applied. A CLOSED code fence is
+    // already caught by step 1 above; this step is what catches everything else hasAppliedFormatting()
+    // cannot see, e.g. a hand-typed "**bold**" or "- item" (and an unclosed fence, still ordinary
+    // text to step 1). Rendering is the only reliable test for those, so ask the renderer: if
+    // stripping markdown changes the text, the text is markdown.
     //
     // Compared against the PLAIN serialization, never the markdown one: text(Markdown) escapes
     // specials, so comparing against that would report "2 \* 3" as formatted for a message that
@@ -7568,6 +7586,22 @@ bool MessageEditor::buildEmojiGalleryDialog(EmojiGallerySharedState* state, QWid
         }
     );
 
+    // Return/Enter pressed anywhere in the picker while it has focus -- see
+    // FloatingEmojiGalleryDialog::returnPressed(). Dispatched the same way as the two handlers
+    // above: to whichever editor is CURRENTLY the owner, not to whichever editor built the
+    // dialog.
+    connect(frame,&FloatingEmojiGalleryDialog::returnPressed,frame,
+        [frame](Qt::KeyboardModifiers modifiers)
+        {
+            auto* st=emojiGallerySharedState(frame->parentWidget(),false);
+            if (st==nullptr || st->owner.isNull())
+            {
+                return;
+            }
+            st->owner->onEmojiGalleryReturnPressed(modifiers);
+        }
+    );
+
     return true;
 }
 
@@ -7862,6 +7896,24 @@ void MessageEditor::onEmojiGalleryClosed()
     {
         emit emojiGalleryPinnedChanged(false);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::onEmojiGalleryReturnPressed(Qt::KeyboardModifiers modifiers)
+{
+    // Same rule the text edit applies to a Return typed directly into it -- see
+    // EnhancedTextEdit::isFinishKey(). A Return the editor would treat as a line break (e.g.
+    // Shift+Enter while the editor is expanded) is left alone here too: the picker has no line
+    // to insert it into, so there is nothing to do.
+    if (!pimpl->editor->isFinishKey(modifiers))
+    {
+        return;
+    }
+    // User-initiated, same as Escape: closes the picker and clears any pin rather than leaving
+    // it open behind the message that was just sent.
+    closeEmojiGalleryInternal(true);
+    finishEditing();
 }
 
 //--------------------------------------------------------------------------
