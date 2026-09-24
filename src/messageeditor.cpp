@@ -4698,6 +4698,17 @@ MessageEditor::MessageEditor(QWidget* parent)
         this,
         [this]()
         {
+            // Send and the mic button swap places in the same trailing layout slot, but they are
+            // toggled by two different classes off this one signal: applyMicButtonVisibility()
+            // below flips the mic button now, and the emit at the end reaches
+            // ChatPageBottom::updateSendButtonActive() (connected to AbstractMessageEditor::
+            // textChanged), which flips Send. Left unbatched, Qt can paint the moment in between --
+            // both visible at once, or neither -- as its own frame: the trailing group widens or
+            // collapses, the text area resizes to fill the gap, then everything snaps back once the
+            // second toggle lands. setUpdatesEnabled(false) suppresses painting for that whole
+            // in-between window so only the FINAL, consistent state (task-composer-trailing-
+            // flicker.md) ever reaches the screen.
+            setUpdatesEnabled(false);
             updateArrangementForContent();
             // QTextEdit::textChanged is relayed from QTextDocument::contentsChanged, which
             // QTextDocumentPrivate::finishEdit() emits for a FORMAT-only edit too -- so this also
@@ -4707,6 +4718,7 @@ MessageEditor::MessageEditor(QWidget* parent)
             // Send takes the mic button's place as soon as there is something to send.
             applyMicButtonVisibility();
             emit textChanged();
+            setUpdatesEnabled(true);
         }
     );
 
@@ -8886,9 +8898,11 @@ void MessageEditor::showContextMenu(const QPoint& pos)
 
     std::vector<MenuItem> items;
 
-    // task-spellcheck.md. Spelling rows FIRST, above Cut -- where macOS, Windows and GTK all put
-    // them, and the only place a suggestion list is reachable without scrolling past the standard
-    // rows below.
+    // task-spellcheck.md. Spelling rows LAST, below Clear -- Cut/Copy/Paste/Formatting/Select
+    // all/Clear are the rows reached on every right-click regardless of what's under the cursor,
+    // so they stay first; the spelling section is conditional on the click landing near a word and
+    // is appended below via `spelling` once the rest of the menu is built (see near the bottom of
+    // this function).
     //
     // The word is taken from the MOUSE position, not the caret: right-clicking a misspelling is
     // the gesture, and Qt does not move the caret on a right-press. Nothing in the document is
@@ -8896,6 +8910,7 @@ void MessageEditor::showContextMenu(const QPoint& pos)
     // destroyed by the first caret move and worse than useless, the same reasoning
     // mentionRequested()'s own doc comment records -- the range is remembered in pimpl instead and
     // selected only when a fix is actually applied (see replaceSpellWord()).
+    std::vector<MenuItem> spelling;
     pimpl->spellContextWord=EnhancedTextEdit::SpellWord{};
     pimpl->spellSuggestions.clear();
     if (isSpellCheckMenuItemVisible() && pimpl->editor->spellChecker()!=nullptr)
@@ -8927,7 +8942,7 @@ void MessageEditor::showContextMenu(const QPoint& pos)
                 const auto count=qMin(static_cast<int>(pimpl->spellSuggestions.size()),MaxSpellSuggestions);
                 for (int i=0; i<count; ++i)
                 {
-                    items.push_back(MenuItem(
+                    spelling.push_back(MenuItem(
                         static_cast<int>(MessageEditorMenuAction::SpellSuggestionFirst)+i,
                         pimpl->spellSuggestions.at(i)
                     ));
@@ -8937,39 +8952,38 @@ void MessageEditor::showContextMenu(const QPoint& pos)
                     // A section row rather than a plain one: DropdownMenu renders a
                     // section+disabled row as an inert label -- exactly an unclickable "nothing
                     // to offer" line.
-                    items.push_back(MenuItem::section(
+                    spelling.push_back(MenuItem::section(
                         static_cast<int>(MessageEditorMenuAction::SpellNoSuggestions),
                         tr("No suggestions")
                     ));
-                    items.back().isEnabled=false;
+                    spelling.back().isEnabled=false;
                 }
 
                 if (checker->canAddToDictionary())
                 {
-                    items.push_back(MenuItem(
+                    spelling.push_back(MenuItem(
                         static_cast<int>(MessageEditorMenuAction::AddToDictionary),
                         tr("Add to dictionary"),
                         menuIcon(QStringLiteral("addToDictionary"),pimpl->editor)
                     ));
                 }
-                items.push_back(MenuItem(
+                spelling.push_back(MenuItem(
                     static_cast<int>(MessageEditorMenuAction::IgnoreWord),
                     tr("Ignore word"),
                     menuIcon(QStringLiteral("ignoreWord"),pimpl->editor)
                 ));
-                items.push_back(MenuItem::separator());
+                spelling.push_back(MenuItem::separator());
             }
         }
 
         // Offered whether or not the click landed on a misspelling -- turning the feature off is
         // most wanted precisely when the underlines are wrong about correct text.
-        items.push_back(MenuItem::checkable(
+        spelling.push_back(MenuItem::checkable(
             static_cast<int>(MessageEditorMenuAction::SpellCheckEnabled),
             tr("Check spelling"),
             isSpellCheckEnabled(),
             menuIcon(QStringLiteral("spellCheck"),pimpl->editor)
         ));
-        items.push_back(MenuItem::separator());
     }
 
     items.push_back(MenuItem(
@@ -9106,6 +9120,15 @@ void MessageEditor::showContextMenu(const QPoint& pos)
         menuIcon(QStringLiteral("clear"),pimpl->editor)
     ));
     items.back().isEnabled=!isEmpty();
+
+    if (!spelling.empty())
+    {
+        items.push_back(MenuItem::separator());
+        for (auto& item : spelling)
+        {
+            items.push_back(std::move(item));
+        }
+    }
 
     if (contextMenuHandler())
     {
