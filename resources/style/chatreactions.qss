@@ -274,6 +274,25 @@ qproperty-animationDurationMs: 150;
 qproperty-easingCurveType: 6;
 }
 
+/* The frame above paints its own rounded background and border, but with padding:0 the expanded
+   gallery sits flush inside that 1px border, and its own opaque background (the
+   uise--ChatReactionGallery rules in dark/ and light/chatreactions.qss) painted a plain square
+   right over the frame's rounded corners. Transparent here rather than given a matching radius:
+   the frame already paints the same colour in both themes, so the gallery has nothing of its own
+   to add.
+
+   Keyed on the gallery's own objectName, NOT on a "uise--ChatReactionGalleryDropdown
+   uise--ChatReactionGallery" descendant selector: that form was tried and measured to have no
+   effect at runtime (rule loaded, gallery still painting its theme colour). Most likely because
+   the dropdown builds its content frame parentless and only reparents it into the frame
+   afterwards, so an ancestor-based rule cannot be relied on to match. The id is set in ChatReactionGallery's own
+   constructor and is kept only by the dropdown-hosted instance (EmojiGalleryDialog renames its
+   gallery to #emojiGallery, which is inset by the dialog's #contentFrame padding and keeps its
+   background), and an id selector outranks the one-type theme rules regardless of file order. */
+uise--ChatReactionGallery#chatReactionGallery {
+background-color: transparent;
+}
+
 /* --- the floating emoji picker (EmojiGalleryDialog) --- */
 
 /* The frame's own fade is the last of the three things between hovering the emoji button and
@@ -311,20 +330,9 @@ max-height:0px;
    that strip, not of which host is showing the gallery. Both now inherit it from
    uise--ChatReactionGallery above; this dialog stays the roomier of the two on the axis where that
    is actually free, showing 6 rows before it scrolls rather than 5. */
-/* Bottom corners: #dialogButtonsFrame above is squashed to zero height for this dialog, so unlike
-   every other uise--AbstractDialog (where a real, background-less buttons row sits between the
-   content and the dialog's own bottom edge, letting THAT edge's rounded corner show through on
-   its own) #emojiGallery's own opaque background (uise--ChatReactionGallery's background-color,
-   dark/chatreactions.qss and light/chatreactions.qss) now sits flush against the dialog's bottom
-   edge. Needs its own matching radius for the same reason #titleFrame above needs one at the top
-   -- an opaque child flush against a rounded container's edge paints its own square corner over
-   it otherwise. 7px, one less than uise--AbstractDialog's own 8px border-radius, nests inside
-   that 1px border exactly as #titleFrame's own top radius already does. */
 uise--EmojiGalleryDialog #emojiGallery {
 margin:0;
 padding:0;
-border-bottom-left-radius:7px;
-border-bottom-right-radius:7px;
 qproperty-galleryVisibleRows: 6;
 }
 
