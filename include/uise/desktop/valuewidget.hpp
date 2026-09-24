@@ -122,7 +122,7 @@ enum class ValueWidgetProperty
 
 class AbstractEditablePanel;
 
-class AbstractValueWidget : public QWidget
+class UISE_DESKTOP_EXPORT AbstractValueWidget : public QWidget
 {
     Q_OBJECT
 
