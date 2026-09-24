@@ -290,9 +290,11 @@ void ChatMessageTextBrowser::setCodeBlockPadding(int padding)
 
     // The padding is reserved as block margins by applyCodeBlockLayout(), so changing it after
     // content is loaded has to redo that pass -- repainting alone would inflate the box over text
-    // that has not made room for it.
+    // that has not made room for it. The root frame's top margin carries it for a leading block.
+    applyDocumentTopMargin();
     applyCodeBlockLayout();
     viewport()->update();
+    updateGeometry();
 }
 
 //--------------------------------------------------------------------------
@@ -313,16 +315,29 @@ void ChatMessageTextBrowser::setDocumentTopMargin(int margin)
 
 void ChatMessageTextBrowser::applyDocumentTopMargin()
 {
-    if (m_documentTopMargin==UseDocumentMargin)
-    {
-        return;
-    }
-
     auto* doc=document();
     if (doc==nullptr || doc->rootFrame()==nullptr)
     {
         return;
     }
+
+    // QTextDocumentLayout applies a block's topMargin only when the block has a predecessor in its
+    // frame (layoutFlow() passes layoutBlock() a null previousBlockFormat for the first one), so
+    // applyCodeBlockLayout()'s top padding is silently dropped for a code block that opens the
+    // message -- and the painted box and overlay strip, which inflate upwards by that padding,
+    // land above the viewport and are clipped. The room has to come from the root frame instead.
+    // nonBreakableLines() is the same marker applyCodeBlockLayout() detects code runs by.
+    const auto first=doc->begin();
+    const int leadingCodeBlock=(first.isValid() && first.blockFormat().nonBreakableLines())
+                                   ? m_codeBlockPadding : 0;
+
+    if (m_documentTopMargin==UseDocumentMargin && leadingCodeBlock==0)
+    {
+        return;
+    }
+    const int baseTop=(m_documentTopMargin==UseDocumentMargin)
+                          ? qRound(doc->documentMargin()) : m_documentTopMargin;
+    const int top=baseTop+leadingCodeBlock;
 
     // The root frame's margin is where QTextDocument::setDocumentMargin() actually stores that
     // value (it does a QTextFrameFormat::setMargin(), i.e. all four sides), so overriding one side
@@ -331,11 +346,11 @@ void ChatMessageTextBrowser::applyDocumentTopMargin()
     // unchanged uniform value, which is what keeps the horizontal inset (and the code-block slab
     // geometry derived from it) exactly as it was.
     auto fmt=doc->rootFrame()->frameFormat();
-    if (fmt.topMargin()==static_cast<qreal>(m_documentTopMargin))
+    if (fmt.topMargin()==static_cast<qreal>(top))
     {
         return;
     }
-    fmt.setTopMargin(m_documentTopMargin);
+    fmt.setTopMargin(top);
     doc->rootFrame()->setFrameFormat(fmt);
 }
 
