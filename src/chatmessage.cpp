@@ -24,6 +24,8 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <cstdlib>
+#include <iostream>
 
 #include <QPointer>
 #include <QMouseEvent>
@@ -62,6 +64,19 @@ namespace {
 //! updateBubbleWidth() before asking sections for their width hints, so a section's
 //! own rounding/frame width never pushes the bubble a pixel or two past forMaxWidthIn.
 constexpr int BubbleWidthSlack=10;
+
+//! Off by default -- same idiom as LinkedListView's own llvDebugEnabled()
+//! (src/linkedlistview.cpp), a different env var for a different subsystem. Set
+//! UISE_CHAT_BUBBLE_CHECK to log to stderr whenever AbstractChatMessageContent::
+//! setMaximumBubbleWidth()'s slack clamp or sizeHint()'s minimum-height floor actually changes
+//! the outcome -- both are pure defensive backstops against a stale cached size hint (see their
+//! own doc comments) that should never fire in a healthy negotiation pass, so a real hit is worth
+//! knowing about without paying for a check on every ordinary build.
+inline bool chatBubbleDebugEnabled() noexcept
+{
+    static const bool enabled=std::getenv("UISE_CHAT_BUBBLE_CHECK")!=nullptr;
+    return enabled;
+}
 
 } // anonymous namespace
 
@@ -534,6 +549,35 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
         auto slack=lineRect.isValid()
             ? std::max(0,t->sizeHint().height()-(lineRect.bottom()+1))
             : 0;
+
+        // Clamped against sectionsBottom itself -- t->sizeHint() and sectionsBottom both claim to
+        // describe the SAME trailing section, but they are read through two different caches (see
+        // this method's own doc comment above on why: t->sizeHint() bypasses m_layout's per-child
+        // QWidgetItemV2 cache, sectionsBottom does not), and a body with its OWN nested layout
+        // (e.g. ChatMessageFiles' file-row list plus caption) has a further cache layer inside it
+        // that nothing here refreshes. When those disagree -- t->sizeHint() stale-HIGH relative to
+        // what sectionsBottom actually reserved for it -- slack comes out inflated, lineBottom goes
+        // negative, and (bug confirmed from a user report, no live repro to pin down which cache)
+        // m_bottomExtraHeight below clamps to a large negative number, driving sizeHint() itself
+        // negative and the bubble down to Qt's own zero-size floor -- a collapsed bubble. slack can
+        // never legitimately exceed the real gap between sectionsBottom and the trailing line's own
+        // bottom -- capping it there is a no-op whenever the two reads already agree (the ordinary
+        // case) and only bites when one of them is stale.
+        if (lineRect.isValid())
+        {
+            auto cappedSlack=std::min(slack,std::max(0,sectionsBottom-(lineRect.bottom()+1)));
+            if (chatBubbleDebugEnabled() && cappedSlack!=slack)
+            {
+                std::cerr << "CHAT-BUBBLE-DEBUG: setMaximumBubbleWidth() capped inflated slack "
+                           << slack << " -> " << cappedSlack
+                           << " (sectionsBottom=" << sectionsBottom
+                           << " lineRect.bottom()=" << lineRect.bottom()
+                           << " t->sizeHint().height()=" << t->sizeHint().height() << ")"
+                           << std::endl;
+            }
+            slack=cappedSlack;
+        }
+
         auto lineBottom=sectionsBottom-slack;
 
         if (m_bottomInline)
@@ -589,8 +633,34 @@ void AbstractChatMessageContent::setMaximumBubbleWidth(int width)
 
 QSize AbstractChatMessageContent::sizeHint() const
 {
-    return QSize{m_maximumBubbleWidth+horizontalTotalMargin(this),
-                 AbstractChatMessageChild::sizeHint().height()+m_bottomExtraHeight};
+    auto height=AbstractChatMessageChild::sizeHint().height()+m_bottomExtraHeight;
+
+    // Floored at whatever this bubble's own manually-placed bottom row and forced minimum height
+    // actually require -- a defensive backstop, not a normal-path computation: setMaximumBubbleWidth()
+    // derives m_bottomExtraHeight from two independently-cached quantities (see its own doc comment
+    // on sectionsBottom/t->sizeHint()/slack) that can, if one of them is stale, drive the sum above
+    // negative -- observed as a bubble collapsing to a near-zero-height sliver (user report, no live
+    // repro to confirm which cache went stale). Whatever the real cause, this bubble can never
+    // legitimately be shorter than its own contents margins plus the bottom row it has to seat (in
+    // BOTH placement modes -- see positionBottom()) plus whatever minimumBubbleHeight() the host has
+    // asked for (setMinimumBubbleHeight(), e.g. to sync with an adjacent forced-visible avatar
+    // column) -- so this floor only ever changes the result in the already-broken case; a healthy
+    // negotiation pass' height already clears it.
+    auto minHeight=contentsMargins().top()+contentsMargins().bottom();
+    if (m_bottom!=nullptr && !m_bottomNaturalSize.isEmpty())
+    {
+        minHeight+=m_bottomNaturalSize.height()+m_bottom->rowBottomPadding();
+    }
+    minHeight=std::max(minHeight,m_minimumBubbleHeight);
+    if (chatBubbleDebugEnabled() && height<minHeight)
+    {
+        std::cerr << "CHAT-BUBBLE-DEBUG: sizeHint() floored collapsed height "
+                   << height << " -> " << minHeight
+                   << " (m_bottomExtraHeight=" << m_bottomExtraHeight << ")" << std::endl;
+    }
+    height=std::max(height,minHeight);
+
+    return QSize{m_maximumBubbleWidth+horizontalTotalMargin(this),height};
 }
 
 /***************************ChatSeparatorSection*****************************/
@@ -1505,11 +1575,13 @@ class ChatMessage_p
         //! first entered on this message. Every read must be guarded.
         AbstractChatMessageSelector* selector=nullptr;
 
-        //! Guards ChatMessage::showEvent()'s one-time geometry repair -- see that method's own
-        //! doc comment. The flyweight list destroys and rebuilds scrolled-away messages rather
-        //! than pooling them, so "this widget's first show" is exactly the per-message point that
-        //! needs repairing; re-showing an already-settled widget (e.g. switching back to a page
-        //! that never changed while hidden) must stay a no-op.
+        //! Distinguishes this widget's very FIRST show (ChatMessage::showEvent()'s geometry repair
+        //! always runs then) from every later one (repaired only on an actual mismatch) -- see
+        //! that method's own doc comment. The flyweight list destroys and rebuilds scrolled-away
+        //! messages rather than pooling them, so "this widget's first show" is exactly the
+        //! per-message point that is guaranteed to need repairing; re-showing an already-settled,
+        //! unchanged widget (e.g. switching back to a page that never changed while hidden) stays
+        //! a no-op via the mismatch check instead of via this flag.
         bool firstShowSettled=false;
 };
 
@@ -2092,12 +2164,6 @@ void ChatMessage::showEvent(QShowEvent* event)
 {
     AbstractChatMessage::showEvent(event);
 
-    if (pimpl->firstShowSettled)
-    {
-        return;
-    }
-    pimpl->firstShowSettled=true;
-
     // A message built or resized while its page was hidden (e.g. it just arrived in a chat that
     // isn't the current page of a QStackedWidget) can carry a stale ROW HEIGHT into its first
     // real show, even though every widget inside it ends up perfectly sized. Qt's own
@@ -2119,6 +2185,25 @@ void ChatMessage::showEvent(QShowEvent* event)
     // ends by calling its OWN parent widget's updateGeometry() -- activating mainLayout clears
     // #mainMessageFrame's cached QWidgetItemV2 hint inside pimpl->layout, and activating
     // pimpl->layout in turn clears this row's own cached hint in the enclosing LinkedListView.
+    //
+    // Unconditional on the very FIRST show (the transient above is guaranteed to be in play then).
+    // On every LATER show, gated on an actual mismatch rather than skipped outright: a content
+    // update landing on this row while its page was a background tab (reseedFilesBody(), a status
+    // change, ...) can leave #mainMessageFrame's cached hint stale in exactly the same way, and
+    // unlike the first-show case nothing else ever re-triggers this repair for such a row --
+    // ChatMessageContentWrapper's own per-show repair fixes the CONTENT bubble, but this row's
+    // OUTER frame/layout only ever gets told to catch up here. Re-running the repair unconditionally
+    // on every show would be needless work (and needless repaint churn) for the overwhelming common
+    // case of a row scrolled back into view that never changed -- so it stays a no-op then, exactly
+    // like before, and only pays the invalidate()/activate() cost when this row's own frame has
+    // genuinely drifted out of sync with its content.
+    bool firstShow=!pimpl->firstShowSettled;
+    pimpl->firstShowSettled=true;
+    if (!firstShow && pimpl->main->sizeHint()==pimpl->main->size())
+    {
+        return;
+    }
+
     pimpl->mainLayout->invalidate();
     pimpl->mainLayout->activate();
     pimpl->layout->invalidate();
