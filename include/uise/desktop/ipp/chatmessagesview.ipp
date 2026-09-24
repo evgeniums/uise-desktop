@@ -1330,6 +1330,15 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
 {
     QFrame::resizeEvent(event);
 
+    if (detail::fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " ChatMessagesView::resizeEvent() oldSize=" << event->oldSize().width()
+                   << "x" << event->oldSize().height()
+                   << " newSize=" << event->size().width() << "x" << event->size().height()
+                   << std::endl;
+    }
+
     // Auto mode: this view's own width just changed, so re-check whether own messages should
     // flip side. A flip emits effectiveAlignSentChanged(), which applyAlignSentToMessages() is
     // connected to (ctor) -- runs synchronously here, before adjustMessagesSizes() below.
@@ -1348,7 +1357,20 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
         qAbs(event->oldSize().height()-event->size().height()) > adjustResizeDelta
         )
     {
-        m_resizeTimer->shot(50,[this](){adjustMessagesSizes();});
+        if (detail::fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                       << " ChatMessagesView::resizeEvent() scheduling adjustMessagesSizes() 50ms"
+                       << std::endl;
+        }
+        m_resizeTimer->shot(50,[this](){
+            if (detail::fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                           << " ChatMessagesView resizeTimer firing adjustMessagesSizes()" << std::endl;
+            }
+            adjustMessagesSizes();
+        });
     }
 }
 

@@ -1475,7 +1475,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReactionIconPack</name>
     <message>
-        <location filename="../src/reactioniconpack.cpp" line="+75"/>
+        <location filename="../src/reactioniconpack.cpp" line="+76"/>
         <source>thumbs up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2969,7 +2969,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2148"/>
+        <location filename="../src/chatmessage.cpp" line="+2238"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
@@ -3077,20 +3077,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+763"/>
-        <location line="+348"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+783"/>
+        <location line="+353"/>
         <source>Recently used</source>
         <translation>Недавние</translation>
     </message>
     <message>
-        <location line="-334"/>
-        <location line="+304"/>
+        <location line="-339"/>
+        <location line="+309"/>
         <source>Search reactions</source>
         <translation>Поиск реакций</translation>
     </message>
     <message>
-        <location line="-286"/>
-        <location line="+294"/>
+        <location line="-291"/>
+        <location line="+299"/>
         <source>No matching reactions</source>
         <translation>Ничего не найдено</translation>
     </message>
@@ -3098,8 +3098,8 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatVoiceFileItem</name>
     <message>
-        <location filename="../src/chataudiofileitems.cpp" line="+207"/>
-        <location line="+136"/>
+        <location filename="../src/chataudiofileitems.cpp" line="+209"/>
+        <location line="+160"/>
         <source>Voice message</source>
         <translation>Голосовое сообщение</translation>
     </message>
@@ -3318,7 +3318,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Добавить комментарий…</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+55"/>
         <source>Add</source>
         <translation>Добавить</translation>
     </message>
@@ -3333,7 +3333,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отправить</translation>
     </message>
     <message>
-        <location line="+301"/>
+        <location line="+314"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
@@ -3577,12 +3577,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1673"/>
+        <location line="+1685"/>
         <source>code here</source>
         <translation>код</translation>
     </message>
     <message>
-        <location line="+2819"/>
+        <location line="+2822"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3602,7 +3602,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+8"/>
         <source>Cut</source>
         <translation>Вырезать</translation>
     </message>
@@ -3727,7 +3727,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
-        <location line="-4636"/>
+        <location line="-4650"/>
         <source>Hold to record a voice message</source>
         <translation>Удерживайте, чтобы записать голосовое сообщение</translation>
     </message>

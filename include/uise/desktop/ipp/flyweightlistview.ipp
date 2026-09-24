@@ -542,6 +542,14 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::eventFilter(QObject *wat
         pimpl->onViewportResized(e);
     }
 
+    // CHAT-DEBUG temporary: proves whether a frame was painted between two list moves.
+    if (watched==pimpl->m_view && event->type()==QEvent::Paint && detail::fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " FlyweightListView paint, m_llist.pos=" << pimpl->m_llist->pos().y()
+                   << std::endl;
+    }
+
     return false;
 }
 

@@ -86,6 +86,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
+// CHAT-DEBUG temporary
+#include <iostream>
+#include <uise/desktop/utils/datetime.hpp>
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -2652,6 +2656,9 @@ void EnhancedTextEdit::setAutoResizingEnabled(bool enable)
 
 void EnhancedTextEdit::updateSize()
 {
+    std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+               << " EnhancedTextEdit::updateSize() posting LayoutRequest, sizeHint.height="
+               << sizeHint().height() << std::endl;
     updateGeometry();
 
     if (m_autoResize)
@@ -5780,7 +5787,13 @@ void MessageEditor::updateExpanded()
     // fires on every keystroke and races an ancestor QScrollArea's own posted-event tracking;
     // this fires once per deliberate user gesture (or explicit host call), so the posted
     // LayoutRequest settles before the next paint regardless.
+    std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+               << " MessageEditor::updateExpanded() isExpanded=" << isExpanded()
+               << " calling activateUpward, height before=" << height() << std::endl;
     Layout::activateUpward(this);
+    std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+               << " MessageEditor::updateExpanded() activateUpward done, height after="
+               << height() << std::endl;
 }
 
 //--------------------------------------------------------------------------

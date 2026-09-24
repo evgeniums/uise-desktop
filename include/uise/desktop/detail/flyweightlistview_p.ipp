@@ -297,6 +297,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onFirstShow()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::beginUpdate()
 {
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " beginUpdate()" << std::endl;
+    }
     m_ignoreUpdates=true;
     beginItemRangeChange();
 }
@@ -308,6 +313,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
 #if 0
     qDebug() << printCurrentDateTime() << ": FlyweightListView_p::endUpdate()  " << m_obj;
 #endif
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " endUpdate() begin" << std::endl;
+    }
     resizeList("endUpdate");
     m_ignoreUpdates=false;
     endItemRangeChange();
@@ -704,6 +714,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onResized()
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QResizeEvent *event)
 {
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " onViewportResized() oldSize=" << event->oldSize().height()
+                   << " newSize=" << event->size().height()
+                   << " m_llist.pos=" << m_llist->pos().y()
+                   << std::endl;
+    }
+
     m_viewSize=event->oldSize();
     if (!m_viewSize.isValid())
     {
@@ -758,6 +777,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
 
     if (moveList)
     {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                       << " onViewportResized() moving m_llist to y=" << movePos.y()
+                       << std::endl;
+        }
         m_llist->move(movePos);
     }
 
@@ -777,10 +802,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     viewportUpdated();
 
     // update stick positions
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " onViewportResized() scheduling updateStickingPositions() 0ms"
+                   << std::endl;
+    }
     m_updateStickingPositionsTimer.shot(
         0,
         [this]()
         {
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                           << " updateStickingPositions() firing (from onViewportResized)"
+                           << std::endl;
+            }
             updateStickingPositions();
         }
     );
@@ -899,10 +936,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
                    << "): no change, anchor already at remembered pos " << rememberedPos << std::endl;
     }
 
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                   << " compensateSizeChange() scheduling updateStickingPositions() 0ms"
+                   << std::endl;
+    }
     m_updateStickingPositionsTimer.shot(
         0,
         [this]()
         {
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                           << " updateStickingPositions() firing (from compensateSizeChange)"
+                           << std::endl;
+            }
             updateStickingPositions();
         }
     );
@@ -1712,6 +1761,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::fu
     if (newCoordinate!=posCoordinate)
     {
         setOProp(pos,OProp::pos,newCoordinate);
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
+                       << " scrollTo() moving m_llist " << posCoordinate << " -> " << newCoordinate
+                       << std::endl;
+        }
         m_llist->move(pos);
         viewportUpdated();
     }
