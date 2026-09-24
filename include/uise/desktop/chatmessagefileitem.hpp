@@ -283,6 +283,9 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
          * Same contract as setNameText(). Note the base implementation rewrites this line on
          * every refresh() -- including each progress tick of a running transfer -- so an override
          * that wants its text to survive must re-apply it each time rather than setting it once.
+         * Also clears any minimum width reserved by the base Running-state handling (see
+         * chatmessagefileitem.cpp's updateInfoLabels()) -- a caller that wants its own reserve
+         * must apply it itself, after this call.
          */
         void setInfoText(const QString& text);
 

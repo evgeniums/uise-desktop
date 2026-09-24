@@ -36,6 +36,27 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+namespace {
+
+//! Widest sizeHint() among the given rows -- the same quantity bubbleWidthHint() itself takes
+//! the max of. Used before/after a row (or the whole row list) is refreshed to detect whether
+//! that refresh actually changed this section's own natural width (a progress tick growing
+//! "9 mb / 246 mb" to "21 mb / 246 mb", a state change dropping the reserved "total / total"
+//! width back to just "total", ...) so the bubble is renegotiated only then, not on every plain
+//! refresh -- same gate ChatMessageImages::setItems()/updateItem() apply to the album grid's own
+//! footprint (chatmessageimages.cpp).
+int rowsWidth(const std::vector<ChatMessageFileItem*>& rows)
+{
+    int width=0;
+    for (auto* row : rows)
+    {
+        width=std::max(width,row->sizeHint().width());
+    }
+    return width;
+}
+
+} // anonymous namespace
+
 //--------------------------------------------------------------------------
 
 class ChatMessageFiles_p
@@ -145,7 +166,15 @@ void ChatMessageFiles::updateItem(const QUuid& id, const ChatFileItem& item)
                 return;
             }
 
+            // See rowsWidth()'s doc comment -- most calls here are a plain progress tick, which
+            // must stay cheap, so the bubble is only re-measured on the calls that actually need
+            // it.
+            auto widthBefore=rowsWidth(pimpl->rows);
             pimpl->rows[i]->setItem(item,incoming);
+            if (chatContent()!=nullptr && rowsWidth(pimpl->rows)!=widthBefore)
+            {
+                chatContent()->renegotiateBubbleWidth();
+            }
             return;
         }
     }
@@ -192,6 +221,12 @@ void ChatMessageFiles::setPlaybackPosition(const QUuid& id, qint64 positionMs, q
 
 void ChatMessageFiles::rebuildList()
 {
+    // See rowsWidth()'s doc comment. Taken before the old rows are torn down -- setItems() (this
+    // function's caller) is also whitemdesktop's ChatMessage::refreshAllItems() path, reached on
+    // a message already on screen (e.g. once an async resolve re-pushes the item list), so
+    // "before" here means whatever this section showed a moment ago, not zero.
+    auto widthBefore=rowsWidth(pimpl->rows);
+
     for (auto* row : pimpl->rows)
     {
         destroyWidget(row);
@@ -328,6 +363,15 @@ void ChatMessageFiles::rebuildList()
     }
 
     updateGeometry();
+
+    // See rowsWidth()'s doc comment and widthBefore's own above. renegotiateBubbleWidth() itself
+    // no-ops before the very first negotiation (see its own doc comment), so the initial build of
+    // a fresh message (widthBefore==0, essentially always different from the real width) is safe
+    // either way.
+    if (chatContent()!=nullptr && rowsWidth(pimpl->rows)!=widthBefore)
+    {
+        chatContent()->renegotiateBubbleWidth();
+    }
 }
 
 //--------------------------------------------------------------------------

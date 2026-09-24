@@ -344,10 +344,9 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     // form (with MessageEditor as the fallback) is mandatory here
     pimpl->messageEditor=makeWidget<AbstractMessageEditor,MessageEditor>(this);
     pimpl->messageEditor->setPlaceHolderText(tr("Add a comment..."));
-    // this is a multi-line comment field, not a single-line chat box: Enter should insert a
-    // newline like any normal text editor, not submit -- there is no "submit" concept here at
-    // all, sending only ever happens via the Send button
-    pimpl->messageEditor->setFinishOnEnter(false);
+    // mirror ChatPageBottom's composer: plain Return triggers Send, Ctrl(Cmd on macOS)/Shift+Return
+    // inserts a newline -- see EnhancedTextEdit::keyPressEvent
+    pimpl->messageEditor->setFinishOnEnter(true);
     // AbstractMessageEditor's concrete editor grows unbounded with its content (see
     // EnhancedTextEdit::sizeHint()) and has no max-length of its own; both are capped here,
     // from outside, rather than by reaching into MessageEditor's internals
@@ -414,21 +413,34 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     pimpl->sendButton=new PushButton(tr("Send"),pimpl->buttonsFrame);
     pimpl->sendButton->setObjectName("sendButton");
     buttonsLayout->addWidget(pimpl->sendButton);
-    connect(
-        pimpl->sendButton,
-        &PushButton::clicked,
-        this,
-        [this]()
+
+    // shared by the Send button and Return in the comments editor (see the messageEditor
+    // ::editingFinished connect below)
+    auto doSend=[this]()
+    {
+        // a row's name field may still be in inline-editing mode if the user typed a new
+        // name but clicked Send instead of pressing Enter or the field's own apply control
+        // -- commit any such pending edit now, so items() reflects it before the host reads
+        // it in response to sendRequested below.
+        for (auto* row : pimpl->listItems)
         {
-            // a row's name field may still be in inline-editing mode if the user typed a new
-            // name but clicked Send instead of pressing Enter or the field's own apply control
-            // -- commit any such pending edit now, so items() reflects it before the host reads
-            // it in response to sendRequested below.
-            for (auto* row : pimpl->listItems)
+            row->commitPendingRename();
+        }
+        emit sendRequested();
+    };
+    connect(pimpl->sendButton,&PushButton::clicked,this,doSend);
+    connect(
+        pimpl->messageEditor,
+        &AbstractMessageEditor::editingFinished,
+        this,
+        [this,doSend]()
+        {
+            // mirror the button's own guard: Return in the comments editor is a stand-in for
+            // clicking Send, so it must not send when Send itself would be a no-op (no items)
+            if (pimpl->sendButton->isEnabled())
             {
-                row->commitPendingRename();
+                doSend();
             }
-            emit sendRequested();
         }
     );
 

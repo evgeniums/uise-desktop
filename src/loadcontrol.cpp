@@ -44,6 +44,7 @@ LoadControl::LoadControl(QWidget* parent)
     : AbstractLoadControl(parent),
       m_hovered(false),
       m_rotationPhase(0.0),
+      m_circleWidthRatio(DefaultCircleWidthRatio),
       m_circlePercent(DefaultCirclePercent),
       m_animationDuration(DefaultAnimationDuration)
 {
@@ -107,13 +108,13 @@ void LoadControl::paintEvent(QPaintEvent * /*event*/)
     // draw circle background
     //
     // The circle (and, below, the icon within it) are sized as a ratio of the control's own
-    // rect, not the rect itself minus a near-zero style-metric inset -- CircleWidthRatio/
+    // rect, not the rect itself minus a near-zero style-metric inset -- circleWidthRatio()/
     // IconRadiusRatio exist for exactly this (previously declared but never actually read
     // here, which is why the circle used to fill ~100% of the control regardless of their
     // value). borderWidth is unrelated to sizing -- it is only the pen width used to stroke
     // the circle/arc outlines below.
     int borderWidth = style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, m_sample);
-    auto circleWidth=qRound(qMin(r.width(),r.height())*CircleWidthRatio);
+    auto circleWidth=qRound(qMin(r.width(),r.height())*m_circleWidthRatio);
     auto x=r.left()+(r.width()-circleWidth)/2;
     auto y=r.top()+(r.height()-circleWidth)/2;
     QRect circleRect{x,y,circleWidth,circleWidth};

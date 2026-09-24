@@ -276,6 +276,11 @@ void ChatMessageFileItem::setNameText(const QString& text)
 
 void ChatMessageFileItem::setInfoText(const QString& text)
 {
+    // A subclass rewriting this line directly (e.g. the voice row's own position/duration text,
+    // see chataudiofileitems.cpp) owns its own width -- drop whatever reserve updateInfoLabels()
+    // left behind from an earlier state, or that stale minimum would outlive the transfer text
+    // it was sized for.
+    pimpl->infoLabel->setMinimumWidth(0);
     pimpl->infoLabel->setText(text);
 }
 
@@ -716,10 +721,25 @@ void ChatMessageFileItem::updateInfoLabels()
     if (it.state()==ChatFileTransferState::Running)
     {
         pimpl->infoLabel->setText(QStringLiteral("%1 / %2").arg(formatFileSize(it.transferred()),sizeText));
+
+        // Reserve width for the widest this line can get over the course of THIS transfer --
+        // "total / total", i.e. the transferred half grown to match the total half's own digit
+        // count, which is what it approaches as the transfer completes -- so a later refresh()
+        // that only grows the transferred number (e.g. "9 mb / 246 mb" -> "21 mb / 246 mb") never
+        // needs a wider row than the one already negotiated for the very first tick. Paired with
+        // ChatMessageFiles::updateItem()'s own width-change gate, which only renegotiates the
+        // bubble when a row's sizeHint() actually changes -- without this reserve, every growing
+        // tick would trip that gate and the bubble would keep creeping wider. ensurePolished()
+        // first: the font (chatmessagefiles.qss's #infoLabel font-size:11px) is only guaranteed
+        // applied after polish, and fontMetrics() below reads whatever font is current now.
+        pimpl->infoLabel->ensurePolished();
+        auto maxText=QStringLiteral("%1 / %2").arg(sizeText,sizeText);
+        pimpl->infoLabel->setMinimumWidth(pimpl->infoLabel->fontMetrics().horizontalAdvance(maxText));
     }
     else
     {
         pimpl->infoLabel->setText(sizeText);
+        pimpl->infoLabel->setMinimumWidth(0);
     }
 }
 
@@ -746,7 +766,10 @@ LoadControlMenu* ChatMessageFileItem::ensureLoadControl() const
         // that bug is about an ALBUM tile (ChatMessageImageItem, sized by albumLayout()) shrinking
         // below its LoadControl's fixed size -- this slot is fixed-size by construction
         // (setFixedSize(IconSlotSize) above) and never participates in album layout at all, so
-        // the control filling it exactly can never overflow here.
+        // the control filling it exactly can never overflow here. This setGeometry() only wins
+        // over chatmessagefiles.qss's #loadControl min/max-width if the two agree -- a QSS size
+        // bigger than IconSlotSize clips the control against the slot's own bounds instead
+        // (off-centre circle, clipped ripple halo), so keep the two in step.
         pimpl->loadControl->setGeometry(QRect(QPoint(0,0),IconSlotSize));
         connect(pimpl->loadControl,&LoadControlMenu::clicked,self,&ChatMessageFileItem::loadControlClicked);
         connect(pimpl->loadControl,&LoadControlMenu::pauseRequested,self,&ChatMessageFileItem::pauseRequested);

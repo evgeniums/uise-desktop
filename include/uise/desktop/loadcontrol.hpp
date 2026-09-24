@@ -48,15 +48,20 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
 {
     Q_OBJECT
 
+    Q_PROPERTY(qreal circleWidthRatio READ circleWidthRatio WRITE setCircleWidthRatio)
     Q_PROPERTY(qreal circlePercent READ circlePercent WRITE setCirclePercent)
     Q_PROPERTY(int animationDuration READ animationDuration WRITE setAnimationDuration)
     Q_PROPERTY(int easingCurveType READ easingCurveType WRITE setEasingCurveType)
 
     public:
 
-        //! Diameter of the drawn circle, as a ratio of the control's own (shorter) side.
-        constexpr static const qreal CircleWidthRatio=0.6;
-        //! Diameter of the icon, as a ratio of the circle (CircleWidthRatio), not of the
+        //! Default diameter of the drawn circle, as a ratio of the control's own (shorter) side --
+        //! see circleWidthRatio()/setCircleWidthRatio(). Settable per host from QSS via
+        //! qproperty-circleWidthRatio, so a host whose control does not fill a square QSS pin of
+        //! its own (e.g. ChatMessageFileItem's iconSlot, see chatmessagefiles.qss) can keep the
+        //! drawn circle at its usual visual size instead of shrinking along with the pin.
+        constexpr static const qreal DefaultCircleWidthRatio=0.6;
+        //! Diameter of the icon, as a ratio of the circle (circleWidthRatio()), not of the
         //! control itself -- the icon shrinks/grows along with the circle.
         constexpr static const qreal IconRadiusRatio=0.65;
 
@@ -69,6 +74,17 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
         constexpr static const QEasingCurve::Type DefaultEasingCurve=QEasingCurve::InOutSine;
 
         LoadControl(QWidget* parent=nullptr);
+
+        void setCircleWidthRatio(qreal ratio)
+        {
+            m_circleWidthRatio=ratio;
+            update();
+        }
+
+        qreal circleWidthRatio() const noexcept
+        {
+            return m_circleWidthRatio;
+        }
 
         void setCirclePercent(qreal circlePercent)
         {
@@ -151,6 +167,7 @@ class UISE_DESKTOP_EXPORT LoadControl : public AbstractLoadControl
 
         QVariantAnimation* m_anim;
         qreal m_rotationPhase;
+        qreal m_circleWidthRatio;
         qreal m_circlePercent;
         int m_animationDuration;
         bool m_pressed=false;

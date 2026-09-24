@@ -67,8 +67,17 @@ border-radius:4px;
 border:1px solid transparent;
 }
 
+/* Must match IconSlotSize in chatmessagefileitem.cpp -- the load control is a child of
+ * #iconSlot, pinned to fill it exactly (ChatMessageFileItem::ensureLoadControl()); a QSS size
+ * here bigger than the slot gets clipped by it (the circle then paints off-centre and the
+ * ripple halo below gets a flat clipped edge instead of a full circle). circleWidthRatio keeps
+ * the drawn circle at its usual visual size despite the smaller pin -- see loadcontrol.qss's
+ * own default (0.6) that this overrides for chat rows specifically. */
 uise--ChatMessageFileItem #loadControl {
-min-width:42px;min-height:42px;max-width:42px;max-height:42px;
+min-width:36px;min-height:36px;max-width:36px;max-height:36px;
+}
+uise--ChatMessageFileItem uise--LoadControl {
+qproperty-circleWidthRatio: 0.7;
 }
 
 uise--ChatMessageImageItem {
