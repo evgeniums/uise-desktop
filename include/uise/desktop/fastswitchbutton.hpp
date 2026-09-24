@@ -311,6 +311,19 @@ class UISE_DESKTOP_EXPORT FastSwitchButton : public QFrame
         virtual void setExtraWidgetHovered(QWidget* widget, bool hovered);
 
         /**
+         * @brief Whether hovering the control alone (without clicking it open) may reveal the
+         *  extra widget.
+         * @return true by default.
+         *
+         * Consulted by showExtraWidget() (and so, indirectly, by enterEvent()'s deferred/
+         * immediate paths) every time the mouse enters the control while in Normal state. Does
+         * NOT gate openDropdown()'s own forced reveal of the extra widget -- a subclass that
+         * returns false here still shows the extra widget once the control is actually clicked
+         * open, this hook only suppresses the passive hover preview.
+         */
+        virtual bool isExtraWidgetHoverEnabled() const;
+
+        /**
          * @brief Create the drop-down content widget.
          * @param parent Parent to create the widget with (the dropdown() frame).
          * @return Newly created widget.

@@ -447,6 +447,13 @@ void FastSwitchButton::setExtraWidgetHovered(QWidget* widget, bool hovered)
 
 //--------------------------------------------------------------------------
 
+bool FastSwitchButton::isExtraWidgetHoverEnabled() const
+{
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 QWidget* FastSwitchButton::createDropdownContent(QWidget* parent)
 {
     auto* w=new QFrame(parent);
@@ -524,7 +531,7 @@ void FastSwitchButton::onDropdownSelfClosed()
 
 void FastSwitchButton::showExtraWidget()
 {
-    if (pimpl->state!=State::Normal)
+    if (pimpl->state!=State::Normal || !isExtraWidgetHoverEnabled())
     {
         return;
     }
