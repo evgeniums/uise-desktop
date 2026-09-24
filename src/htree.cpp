@@ -78,6 +78,8 @@ class HTree_p
 
         HTreeNodeLocator* locator=nullptr;
 
+        HTree::NewTabHandler newTabHandler;
+
         std::pair<HTreeTab*,int> addTab(const HTreePath& path);
 
         //! The tab-bar item for \p tab, resolved fresh via indexOf() every time -- never
@@ -571,6 +573,24 @@ HTreeTab* HTree::openPath(HTreePath path, int tabIndex)
 
     t->openPath(std::move(path));
     return t;
+}
+
+//--------------------------------------------------------------------------
+
+void HTree::setNewTabHandler(NewTabHandler handler)
+{
+    pimpl->newTabHandler=std::move(handler);
+}
+
+//--------------------------------------------------------------------------
+
+HTreeTab* HTree::openPathInNewTab(HTreePath path, HTreeTab* sourceTab)
+{
+    if (pimpl->newTabHandler)
+    {
+        return pimpl->newTabHandler(path,sourceTab);
+    }
+    return openPath(std::move(path),NewTabIndex);
 }
 
 //--------------------------------------------------------------------------

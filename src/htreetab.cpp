@@ -692,7 +692,7 @@ HTreeTab::HTreeTab(HTree* tree, QWidget* parent)
             auto node=pimpl->nodes[index];
             if (node!=nullptr)
             {
-                pimpl->tree->openPath(node->path(),HTree::NewTabIndex);
+                pimpl->tree->openPathInNewTab(node->path(),this);
             }
         }
     );

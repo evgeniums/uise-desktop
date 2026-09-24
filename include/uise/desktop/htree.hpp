@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HORIZONTAL_TREE_HPP
 #define UISE_DESKTOP_HORIZONTAL_TREE_HPP
 
+#include <functional>
 #include <memory>
 
 #include <QFrame>
@@ -84,6 +85,24 @@ class UISE_DESKTOP_EXPORT HTree : public QFrame
         //! or a freshly created one -- or nullptr if no tab could be resolved. Source-compatible
         //! with the previous void return: every existing caller discards the result.
         HTreeTab* openPath(HTreePath path, int tabIndex=CurrentTabIndex);
+
+        //! Consulted by openPathInNewTab() in place of its own default openPath(path,
+        //! NewTabIndex) -- lets a consumer application intercept every "open in new tab" that
+        //! originates INSIDE uise (a list item's own new-tab click/Ctrl-click/context-menu entry,
+        //! or a navbar breadcrumb's "Open in new tab") without the consumer having to duplicate
+        //! that plumbing itself. \p sourceTab is the tab the request originated from (nullptr if
+        //! unknown). Return the tab \p path ended up in, same contract as openPath() itself.
+        using NewTabHandler=std::function<HTreeTab*(const HTreePath& path, HTreeTab* sourceTab)>;
+
+        //! Installs \p handler as described by NewTabHandler above. A null (default-constructed)
+        //! handler reverts to plain openPath(path, NewTabIndex) -- HTree's own behaviour before
+        //! this hook existed.
+        void setNewTabHandler(NewTabHandler handler);
+
+        //! Opens \p path in a new tab: calls the installed NewTabHandler if one is set,
+        //! otherwise falls back to openPath(path, NewTabIndex). \p sourceTab is passed through
+        //! to the handler; it plays no role in the fallback path.
+        HTreeTab* openPathInNewTab(HTreePath path, HTreeTab* sourceTab=nullptr);
 
         void loadPaths(const std::vector<HTreePath>& paths);
         std::vector<HTreePath> paths() const;

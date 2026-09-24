@@ -228,13 +228,13 @@ void HTreeBranch::openNextNodeInNewTab(const HTreePathElement& pathElement, cons
 {
     if (!residentPath.isNull())
     {
-        treeTab()->tree()->openPath(residentPath,HTree::NewTabIndex);
+        treeTab()->tree()->openPathInNewTab(residentPath,treeTab());
     }
     else
     {
         auto p=path();
         p.elements().push_back(pathElement);
-        treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+        treeTab()->tree()->openPathInNewTab(p,treeTab());
     }
 }
 
@@ -244,12 +244,12 @@ void HTreeBranch::openNextNodesInNewTab(const UISE_DESKTOP_NAMESPACE::HTreePath&
 {
     if (!residentPath.isNull())
     {
-        treeTab()->tree()->openPath(residentPath,HTree::NewTabIndex);
+        treeTab()->tree()->openPathInNewTab(residentPath,treeTab());
     }
     else
     {
         auto p=path().copyAppend(subPath);
-        treeTab()->tree()->openPath(p,HTree::NewTabIndex);
+        treeTab()->tree()->openPathInNewTab(p,treeTab());
     }
 }
 
