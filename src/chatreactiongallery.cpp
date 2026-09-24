@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
 
 #include <QLabel>
 #include <QBoxLayout>
@@ -332,7 +333,17 @@ class ChatReactionGalleryRow : public QFrame
                 const auto* info=(pack!=nullptr) ? pack->at(iconIndex) : nullptr;
                 if (info==nullptr)
                 {
+                    // EMOJI-DEBUG: temporary diagnostic for the intermittent blank-emoji-icon
+                    // bug -- remove once the root cause is confirmed.
+                    std::cerr << "EMOJI-DEBUG ChatReactionGalleryRow: no info for iconIndex="
+                               << iconIndex << " row=" << index
+                               << " pack=" << (pack!=nullptr ? "set" : "null") << std::endl;
                     continue;
+                }
+                if (!info->icon)
+                {
+                    std::cerr << "EMOJI-DEBUG ChatReactionGalleryRow: null icon for iconId="
+                               << info->iconId.toStdString() << " row=" << index << std::endl;
                 }
 
                 // Same objectName the gallery's cells have always used, so chatreactions.qss's
@@ -735,6 +746,15 @@ class ChatReactionGalleryGrid : public QFrame
 
         ChatReactionGalleryRowItem makeRow(size_t index)
         {
+            if (!m_pack)
+            {
+                // EMOJI-DEBUG: temporary diagnostic for the intermittent blank-emoji-icon bug --
+                // catches a row built while m_pack has been swapped out from under an in-flight
+                // prefetch request (a claim between two composers, or a mode change). Remove once
+                // the root cause is confirmed.
+                std::cerr << "EMOJI-DEBUG ChatReactionGalleryGrid::makeRow: m_pack is null, row="
+                           << index << std::endl;
+            }
             return ChatReactionGalleryRowItem(
                 new ChatReactionGalleryRow(index,m_plan[index],m_pack.get(),m_ownReactionIds,m_pick)
             );
@@ -896,6 +916,11 @@ void ChatReactionGallery::rebuildRows(const QString& searchPrefix)
 
 void ChatReactionGallery::showEvent(QShowEvent* event)
 {
+    // EMOJI-DEBUG: temporary diagnostic for the intermittent blank-emoji-icon bug -- orders this
+    // (every) show relative to DefaultReactionIconPack's ctor in the log. Remove once the root
+    // cause is confirmed.
+    std::cerr << "EMOJI-DEBUG ChatReactionGallery::showEvent objectName="
+               << objectName().toStdString() << std::endl;
     Frame::showEvent(event);
     applyRows();
 }

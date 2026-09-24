@@ -24,11 +24,16 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <filesystem>
+#include <iostream>
 
 #include <QDebug>
 #include <QFile>
 
 #include <uise/desktop/svgiconlocator.hpp>
+
+// EMOJI-DEBUG: temporary diagnostic for the intermittent blank-emoji-icon bug -- remove once the
+// root cause is confirmed. std::cerr rather than qWarning/HATN_CTX_* so it shows up regardless of
+// logger config, per this project's own debugging convention for exactly this class of bug.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -163,6 +168,8 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconPriv(const QString& name, bool auto
     if (path.isEmpty())
     {
         qWarning() << "Failed to find icon file for " << name;
+        std::cerr << "EMOJI-DEBUG iconPriv: resolvePath failed for name=" << name.toStdString()
+                   << " fallbackIcon=" << (m_fallbackIcon ? "set" : "null") << std::endl;
         return m_fallbackIcon;
     }
 
@@ -250,6 +257,8 @@ std::shared_ptr<SvgIcon> SvgIconLocator::iconForContext(const QString& name, con
     if (path.isEmpty())
     {
         qWarning() << "Failed to find icon file for " << name;
+        std::cerr << "EMOJI-DEBUG iconForContext: resolvePath failed for name=" << name.toStdString()
+                   << " fallbackIcon=" << (m_fallbackIcon ? "set" : "null") << std::endl;
         return m_fallbackIcon;
     }
 
@@ -507,6 +516,9 @@ std::shared_ptr<SvgIcon> SvgIconLocator::recreateContextIcon(size_t hash, const 
     if (path.isEmpty())
     {
         qWarning() << "Failed to find icon file for " << prevIcon.name;
+        std::cerr << "EMOJI-DEBUG recreateContextIcon: resolvePath failed for name="
+                   << prevIcon.name.toStdString()
+                   << " fallbackIcon=" << (m_fallbackIcon ? "set" : "null") << std::endl;
         return m_fallbackIcon;
     }
 

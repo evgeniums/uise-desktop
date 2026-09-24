@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <set>
 
@@ -494,6 +495,10 @@ class DefaultReactionIconPack::Pimpl
 DefaultReactionIconPack::DefaultReactionIconPack()
     : pimpl(std::make_unique<Pimpl>())
 {
+    // EMOJI-DEBUG: temporary diagnostic for the intermittent blank-emoji-icon bug -- orders this
+    // singleton's (first) construction relative to the first gallery show (see
+    // ChatReactionGallery::showEvent()) in the log. Remove once the root cause is confirmed.
+    std::cerr << "EMOJI-DEBUG DefaultReactionIconPack::ctor" << std::endl;
     pimpl->build();
 }
 
