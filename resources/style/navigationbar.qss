@@ -130,12 +130,14 @@ qproperty-rippleInsetTop: 2;
 
 uise--NavigationBarPanel uise--IconTextButton#updateButton {
 margin-left: 8px;
+margin-right: 8px;
 }
 
 /* margin-left:8px above grows this button's rect() 8px wider on the left -- rippleInsetLeft
  * compensates, keeping this in step with the margin above. */
 uise--NavigationBarPanel uise--IconTextButton#updateButton uise--RippleOverlay {
 qproperty-rippleInsetLeft: 8;
+qproperty-rippleInsetRight: 8;
 }
 
 uise--NavigationBar #leftFrame uise--FastSwitchButton {
