@@ -182,7 +182,7 @@ padding: 0px;
    rule only drops background-color, nothing here. */
 uise--AbstractChatMessageContent {
 border-radius: 14px;
-padding: 4px 4px 0 4px;
+padding: 6px 4px 2px 4px;
 }
 
 uise--AbstractChatMessage {
