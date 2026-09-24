@@ -121,7 +121,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     Q_PROPERTY(int documentTopMargin READ documentTopMargin WRITE setDocumentTopMargin)
 
     /**
-     * QSS: qproperty-codeBlockPadding: 8; -- breathing room between a code block's text and the
+     * QSS: qproperty-codeBlockPadding: 28; -- breathing room between a code block's text and the
      * edge of its coloured background, in pixels.
      *
      * Painted rather than laid out, because Qt's rich text has no way to express it: `padding` on
@@ -130,6 +130,12 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
      * and the text together, so the background keeps hugging the text to within a pixel either
      * way. The block therefore reserves the room as a margin and paintEvent() fills the rounded
      * rect back out over it -- see applyCodeBlockLayout().
+     *
+     * The TOP gap also has to fit the codeBlockOverlay strip (language/Copy/Expand), which sits
+     * inside it -- see #codeBlockOverlay in chat.qss. At ~21px tall (13px icon + 3px button
+     * padding each side + 1px frame padding each side) plus the 2px inset updateCodeBlockOverlays()
+     * places it from the box's top edge, this needs to stay >=~25px or the strip crops into the
+     * first line of code.
      */
     Q_PROPERTY(int codeBlockPadding READ codeBlockPadding WRITE setCodeBlockPadding)
 
@@ -208,8 +214,10 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     public:
 
         //! Pixels between a code block's text and the edge of its painted background -- see the
-        //! codeBlockPadding property for why this is painted rather than laid out.
-        constexpr static const int DefaultCodeBlockPadding=8;
+        //! codeBlockPadding property for why this is painted rather than laid out, and for why the
+        //! top side in particular has to be this large: it is also where the codeBlockOverlay strip
+        //! sits.
+        constexpr static const int DefaultCodeBlockPadding=28;
 
         //! Corner radius of that background, matching what the `pre` rule in messagetext.css used
         //! to ask for with a `border-radius` Qt ignores.

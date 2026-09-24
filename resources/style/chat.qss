@@ -47,7 +47,8 @@ padding: 4px;
 /* The floating language + Copy strip over a code block. Structural only -- colours are per theme,
    like every other rule here. It sits INSIDE the painted code-block box (see
    ChatMessageTextBrowser::codeBlockPadding), so it keeps its own padding small: the box's padding
-   is already providing the gap to the code. */
+   is already providing the gap to the code -- codeBlockPadding has to stay tall enough on top to
+   fit this whole strip, or it crops into the first code line. */
 uise--ChatMessageTextBrowser #codeBlockOverlay {
 border-radius: 4px;
 padding: 1px 2px;
