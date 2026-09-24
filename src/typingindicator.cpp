@@ -104,7 +104,7 @@ class DotsWidget : public QWidget
         QSize sizeHint() const override
         {
             const double maxR  = d->dotRadius * d->activeScale;
-            const int    stride = 2 * d->dotRadius + d->dotSpacing;
+            const auto   stride = 2 * d->dotRadius + d->dotSpacing;
             const int    w = static_cast<int>(std::ceil(2.0 * maxR))
                              + (d->dotCount - 1) * stride
                              + 2 * DotMargin;
@@ -119,7 +119,7 @@ class DotsWidget : public QWidget
         void paintEvent(QPaintEvent*) override
         {
             const double maxR   = d->dotRadius * d->activeScale;
-            const int    stride = 2 * d->dotRadius + d->dotSpacing;
+            const auto   stride = 2 * d->dotRadius + d->dotSpacing;
             const double firstCX = maxR + DotMargin;
             const int    centerY = height() / 2;
 
@@ -152,7 +152,7 @@ class DotsWidget : public QWidget
                 );
 
                 painter.setBrush(dotC);
-                painter.drawEllipse(QPointF(cx, centerY), r, r);
+                painter.drawEllipse(QPointF(cx, centerY - r), r, r);
             }
         }
 
@@ -302,14 +302,14 @@ QColor TypingIndicator::activeDotColor() const noexcept { return pimpl->activeDo
 // Geometry knobs
 //==========================================================================
 
-void TypingIndicator::setDotRadius(int px)
+void TypingIndicator::setDotRadius(double px)
 {
-    pimpl->dotRadius = std::max(1, px);
+    pimpl->dotRadius = std::max(1.0, px);
     pimpl->dots->updateGeometry();
     pimpl->dots->update();
 }
 
-int TypingIndicator::dotRadius() const noexcept { return pimpl->dotRadius; }
+double TypingIndicator::dotRadius() const noexcept { return pimpl->dotRadius; }
 
 void TypingIndicator::setDotSpacing(int px)
 {

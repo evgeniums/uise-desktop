@@ -7,7 +7,7 @@
  */
 
 uise--TypingIndicator {
-    qproperty-dotColor:       #b3d1f0;
+    qproperty-dotColor:       #1a6bc4;
     qproperty-activeDotColor: #1a6bc4;
 }
 

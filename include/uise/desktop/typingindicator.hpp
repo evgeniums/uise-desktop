@@ -71,7 +71,7 @@ class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
 
     Q_PROPERTY(QColor dotColor           READ dotColor           WRITE setDotColor)
     Q_PROPERTY(QColor activeDotColor     READ activeDotColor     WRITE setActiveDotColor)
-    Q_PROPERTY(int    dotRadius          READ dotRadius          WRITE setDotRadius)
+    Q_PROPERTY(double    dotRadius          READ dotRadius          WRITE setDotRadius)
     Q_PROPERTY(int    dotSpacing         READ dotSpacing         WRITE setDotSpacing)
     Q_PROPERTY(int    dotCount           READ dotCount           WRITE setDotCount)
     Q_PROPERTY(double activeScale        READ activeScale        WRITE setActiveScale)
@@ -117,8 +117,8 @@ class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
         // ---- geometry knobs ----
 
         /** @brief Base radius of each dot in pixels (default 4). */
-        void setDotRadius(int px);
-        int  dotRadius() const noexcept;
+        void setDotRadius(double px);
+        double  dotRadius() const noexcept;
 
         /** @brief Gap between adjacent dot centres minus their base diameters (default 10 px). */
         void setDotSpacing(int px);

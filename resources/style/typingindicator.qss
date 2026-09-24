@@ -12,10 +12,10 @@
  */
 
 uise--TypingIndicator {
-    qproperty-dotRadius:           2;
-    qproperty-dotSpacing:          3;
+    qproperty-dotRadius:           1.5;
+    qproperty-dotSpacing:          2;
     qproperty-dotCount:            3;
-    qproperty-activeScale:         1.6;
+    qproperty-activeScale:         1.5;
     qproperty-animationDurationMs: 1000;
     qproperty-spacing:             1;
 }
