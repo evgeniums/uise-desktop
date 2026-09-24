@@ -311,9 +311,20 @@ max-height:0px;
    that strip, not of which host is showing the gallery. Both now inherit it from
    uise--ChatReactionGallery above; this dialog stays the roomier of the two on the axis where that
    is actually free, showing 6 rows before it scrolls rather than 5. */
+/* Bottom corners: #dialogButtonsFrame above is squashed to zero height for this dialog, so unlike
+   every other uise--AbstractDialog (where a real, background-less buttons row sits between the
+   content and the dialog's own bottom edge, letting THAT edge's rounded corner show through on
+   its own) #emojiGallery's own opaque background (uise--ChatReactionGallery's background-color,
+   dark/chatreactions.qss and light/chatreactions.qss) now sits flush against the dialog's bottom
+   edge. Needs its own matching radius for the same reason #titleFrame above needs one at the top
+   -- an opaque child flush against a rounded container's edge paints its own square corner over
+   it otherwise. 7px, one less than uise--AbstractDialog's own 8px border-radius, nests inside
+   that 1px border exactly as #titleFrame's own top radius already does. */
 uise--EmojiGalleryDialog #emojiGallery {
 margin:0;
 padding:0;
+border-bottom-left-radius:7px;
+border-bottom-right-radius:7px;
 qproperty-galleryVisibleRows: 6;
 }
 
