@@ -2797,6 +2797,13 @@ QPainterPath ChatMessageAvatar::tailPath() const
 
     QPainterPath path;
 
+    // The path's straight edge along the bubble is pushed 1px past the widget's own boundary and
+    // relies on the widget's device-pixel-aligned clip to cut it back -- at a fractional device
+    // pixel ratio this guarantees the boundary column gets full paint coverage, rather than the
+    // partial-coverage antialiasing seam a path landing exactly on the boundary would leave
+    // against the bubble's opaque background starting at that same coordinate.
+    constexpr static const qreal EdgeOvershoot=1.0;
+
     if (m_tailShape==TailShapeRounded)
     {
         // The original shape this class used to fake with an opaque #mask child painted in the
@@ -2813,7 +2820,8 @@ QPainterPath ChatMessageAvatar::tailPath() const
 
         path.moveTo(w-r,h);
         path.arcTo(QRectF(w-2*r,h-2*r,2*r,2*r),270.0,90.0);
-        path.lineTo(w,h);
+        path.lineTo(w+EdgeOvershoot,h-r);
+        path.lineTo(w+EdgeOvershoot,h);
         path.closeSubpath();
     }
     else
@@ -2839,14 +2847,6 @@ QPainterPath ChatMessageAvatar::tailPath() const
         constexpr static const qreal UnderScoopX2=0.62, UnderScoopY2=0.16;
         constexpr static const qreal OuterX1=0.95,      OuterY1=0.45;
         constexpr static const qreal OuterX2=0.30,      OuterY2=0.92;
-
-        // The path's straight edge (P0-C) is pushed 1px past the widget's own boundary and
-        // relies on the widget's device-pixel-aligned clip to cut it back -- at a fractional
-        // device pixel ratio this guarantees the boundary column gets full paint coverage,
-        // rather than the partial-coverage antialiasing seam a path landing exactly on the
-        // boundary would leave against the bubble's opaque background starting at that same
-        // coordinate.
-        constexpr static const qreal EdgeOvershoot=1.0;
 
         const qreal tw=qMin(static_cast<qreal>(m_tailWidth),w);
         const qreal th=qMin(static_cast<qreal>(m_tailHeight),h);

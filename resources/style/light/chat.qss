@@ -52,7 +52,7 @@ background-color: transparent;
  * reachable combinations unconditionally, and ChatMessageAvatar::paintEvent() is what actually
  * suppresses the tail when the row isn't last. */
 uise--AbstractChatMessage uise--ChatMessageAvatar[sent="false"] {
-qproperty-tailColor: #FFFFFF /*#FDFCF8*/; /* received message */
+qproperty-tailColor: #F9FAFB /*#FFFFFF*/ /*#FDFCF8*/; /* received message */
 }
 
 uise--AbstractChatMessage uise--ChatMessageAvatar[selected="true"][sent="false"] {
