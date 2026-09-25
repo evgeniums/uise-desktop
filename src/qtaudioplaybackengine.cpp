@@ -23,7 +23,9 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <QAudioDevice>
 #include <QAudioOutput>
+#include <QMediaDevices>
 #include <QMediaPlayer>
 
 #include <uise/desktop/qtaudioplaybackengine.hpp>
@@ -185,6 +187,30 @@ qint64 QtAudioPlaybackEngine::positionMs() const
 qint64 QtAudioPlaybackEngine::durationMs() const
 {
     return pimpl->player->duration();
+}
+
+//--------------------------------------------------------------------------
+
+void QtAudioPlaybackEngine::setOutputDevice(const QByteArray& id)
+{
+    QAudioDevice device;
+    if (!id.isEmpty())
+    {
+        const auto outputs=QMediaDevices::audioOutputs();
+        for (const auto& d : outputs)
+        {
+            if (d.id()==id)
+            {
+                device=d;
+                break;
+            }
+        }
+    }
+    if (device.isNull())
+    {
+        device=QMediaDevices::defaultAudioOutput();
+    }
+    pimpl->output->setDevice(device);
 }
 
 //--------------------------------------------------------------------------

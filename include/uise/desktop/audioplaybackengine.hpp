@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_AUDIOPLAYBACKENGINE_HPP
 #define UISE_DESKTOP_AUDIOPLAYBACKENGINE_HPP
 
+#include <QByteArray>
 #include <QObject>
 #include <QString>
 
@@ -84,6 +85,18 @@ class UISE_DESKTOP_EXPORT AudioPlaybackEngine : public QObject
         virtual State state() const=0;
         virtual qint64 positionMs() const=0;
         virtual qint64 durationMs() const=0;
+
+        /**
+         * @brief Choose the output device by the id that QAudioDevice::id() reports.
+         *
+         * An empty id, or one that is not among the devices any more, means the default output.
+         * Optional: an engine that has nothing to switch (there is only ever one output) may
+         * leave this as a no-op.
+         */
+        virtual void setOutputDevice(const QByteArray& id)
+        {
+            Q_UNUSED(id)
+        }
 
     signals:
 

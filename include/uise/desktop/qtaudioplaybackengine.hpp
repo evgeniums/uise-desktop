@@ -86,6 +86,14 @@ class UISE_DESKTOP_EXPORT QtAudioPlaybackEngine : public AudioPlaybackEngine
         qint64 positionMs() const override;
         qint64 durationMs() const override;
 
+        /**
+         * @brief Choose the output device by the id that QAudioDevice::id() reports.
+         *
+         * An empty id, or one that is not among QMediaDevices::audioOutputs() any more, means the
+         * default output. Takes effect at once via QAudioOutput::setDevice().
+         */
+        void setOutputDevice(const QByteArray& id) override;
+
     private:
 
         std::unique_ptr<QtAudioPlaybackEngine_p> pimpl;
