@@ -27,9 +27,11 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QEvent>
 #include <QFrame>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPointer>
+#include <QShortcut>
 #include <QTimer>
 
 #include <uise/desktop/voicerecorderdialog.hpp>
@@ -128,6 +130,13 @@ class VoiceRecorderDialog_p
         WaveformBar* bar=nullptr;
 
         QPlainTextEdit* commentEdit=nullptr;
+
+        //! Return/Enter sends while Pinned (recording, hands-free, buttons visible but nothing
+        //! focusable to type Return into) -- sendButton itself is Qt::NoFocus like its siblings, so
+        //! this is a shortcut rather than actually focusing it. Enabled only while Pinned (see
+        //! applyState()): Held has no buttons row to send from yet, and Paused/Listening already
+        //! send on Enter through commentEdit's own key handling (eventFilter()).
+        QShortcut* sendShortcut=nullptr;
 
         QTimer* blinkTimer=nullptr;
         bool dim=false;
@@ -249,7 +258,16 @@ void VoiceRecorderDialog::construct()
     pimpl->commentEdit=new QPlainTextEdit(content);
     pimpl->commentEdit->setObjectName("commentEdit");
     pimpl->commentEdit->setTabChangesFocus(true);
+    // Enter sends, Ctrl/Cmd/Shift+Enter inserts a newline -- see eventFilter().
+    pimpl->commentEdit->installEventFilter(this);
     layout->addWidget(pimpl->commentEdit);
+
+    // Escape cancels the recording while typing a comment: handled entirely by
+    // FloatingDialogFrame's own Qt::WindowShortcut Escape (floatingdialog.cpp), which discards the
+    // recording from anywhere in this popup -- no shortcut of this dialog's own needed. See that
+    // shortcut's own comment for why it connects activatedAmbiguously() as well as activated(): a
+    // second enabled Escape shortcut in the same window (this dialog briefly had one here, on
+    // commentEdit) makes BOTH ambiguous, firing neither's activated() at all.
 
     // Absorbs slack, so nothing ABOVE it ever does. Without this, collapsing (Paused/Listening's
     // playerRow+commentEdit hiding, applyState()) has a visible in-between frame: the FRAME has
@@ -294,12 +312,21 @@ void VoiceRecorderDialog::construct()
         }
     );
     connect(pimpl->cancelButton,&IconTextButton::clicked,this,[this](){emit cancelRequested();});
-    connect(pimpl->sendButton,&IconTextButton::clicked,this,
-        [this]()
-        {
-            emit sendRequested(comment(),cropStart(),cropEnd());
-        }
-    );
+    auto sendFromDialog=[this](){emit sendRequested(comment(),cropStart(),cropEnd());};
+    connect(pimpl->sendButton,&IconTextButton::clicked,this,sendFromDialog);
+
+    // Two alternative key sequences via setKeys(), NOT QKeySequence(Qt::Key_Return,Qt::Key_Enter):
+    // that constructor builds a two-stroke CHORD (Return, then Enter), so a lone Return is only a
+    // partial match -- nothing fires, and Qt's shortcut map then swallows the next key too (e.g. an
+    // Escape) while resetting the half-matched chord. activatedAmbiguously() is paired with
+    // activated() because another enabled shortcut on the same key in this window would otherwise
+    // make Qt hand the press to one candidate at a time, cycling across presses.
+    pimpl->sendShortcut=new QShortcut(this);
+    pimpl->sendShortcut->setKeys({QKeySequence(Qt::Key_Return),QKeySequence(Qt::Key_Enter)});
+    pimpl->sendShortcut->setContext(Qt::WindowShortcut);
+    pimpl->sendShortcut->setEnabled(false);
+    connect(pimpl->sendShortcut,&QShortcut::activated,this,sendFromDialog);
+    connect(pimpl->sendShortcut,&QShortcut::activatedAmbiguously,this,sendFromDialog);
     connect(pimpl->listenButton,&IconTextButton::clicked,this,
         [this]()
         {
@@ -365,11 +392,23 @@ void VoiceRecorderDialog::applyState()
     const auto held=(state==State::Held);
     const auto recording=(state==State::Held || state==State::Pinned);
     const auto reviewing=(state==State::Paused || state==State::Listening);
+    // Every other control in this dialog is Qt::NoFocus (pauseButton/cancelButton/sendButton/
+    // listenButton), so commentEdit is the only widget here that can ever hold keyboard focus --
+    // without grabbing it here, Enter-to-send (eventFilter()) needs an extra click into the field
+    // first every time recording is paused, since becoming visible does not by itself move focus.
+    // Guarded to fire once, on the Held/Pinned->Paused transition, not on every Paused<->Listening
+    // toggle (which would otherwise yank focus back whenever Listen is clicked).
+    const auto enteringReview=reviewing && pimpl->commentEdit->isHidden();
+    pimpl->sendShortcut->setEnabled(state==State::Pinned);
 
     pimpl->targets->setVisible(held);
     pimpl->buttons->setVisible(!held);
     pimpl->playerRow->setVisible(reviewing);
     pimpl->commentEdit->setVisible(reviewing);
+    if (enteringReview)
+    {
+        pimpl->commentEdit->setFocus(Qt::OtherFocusReason);
+    }
 
     // Pause and Resume are one button; while the message plays it may not be resumed
     if (reviewing)
@@ -896,6 +935,40 @@ void VoiceRecorderDialog::changeEvent(QEvent* event)
         // and nothing about a NEW language should be held down to the OLD one's width.
         reserveContentWidth(true);
     }
+}
+
+//--------------------------------------------------------------------------
+
+/**
+ * #commentEdit is a bare QPlainTextEdit, which has no built-in Enter-to-send convention of its own
+ * (unlike the main composer's EnhancedTextEdit) -- always inserting a newline on Return/Enter
+ * regardless of modifiers. An event filter, not a QPlainTextEdit subclass, so this stays a small
+ * addition to an otherwise stock widget rather than a new Q_OBJECT class in this .cpp.
+ *
+ * Escape is NOT handled here -- see FloatingDialogFrame's own Qt::WindowShortcut Escape
+ * (floatingdialog.cpp), which owns it for this whole popup.
+ */
+bool VoiceRecorderDialog::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==pimpl->commentEdit && event->type()==QEvent::KeyPress)
+    {
+        auto* keyEvent=static_cast<QKeyEvent*>(event);
+        if (keyEvent->key()==Qt::Key_Return || keyEvent->key()==Qt::Key_Enter)
+        {
+            // Same rule as the main composer's EnhancedTextEdit::isFinishKey(): plain Enter sends,
+            // Ctrl/Cmd/Shift+Enter falls through below to insert a newline instead.
+            const auto newLine=static_cast<bool>(keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier));
+            if (!newLine)
+            {
+                emit sendRequested(comment(),cropStart(),cropEnd());
+                return true;
+            }
+            // Stripped, as EnhancedTextEdit does: QPlainTextEdit ignores Ctrl+Return (Cmd+Return on
+            // macOS) outright, so without this only Shift+Enter would insert the newline.
+            keyEvent->setModifiers(keyEvent->modifiers() & ~(Qt::ControlModifier | Qt::ShiftModifier));
+        }
+    }
+    return Base::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------

@@ -112,6 +112,12 @@ class UISE_DESKTOP_EXPORT VoiceRecorderDialog : public Dialog<AbstractVoiceRecor
 
         void changeEvent(QEvent* event) override;
 
+        //! Plain Enter in #commentEdit sends (like the main composer's EnhancedTextEdit), Ctrl/Cmd/
+        //! Shift+Enter inserts a newline instead -- see voicerecorderdialog.cpp for why an event
+        //! filter rather than a QPlainTextEdit subclass. Escape (cancel) is not handled here at
+        //! all -- FloatingDialogFrame's own Qt::WindowShortcut Escape (floatingdialog.cpp) owns it.
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
     private:
 
         void applyState();

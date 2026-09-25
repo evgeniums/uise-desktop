@@ -277,9 +277,22 @@ FloatingDialogFrame::FloatingDialogFrame(QWidget* parent)
 
     pimpl->escShortcut=new QShortcut(Qt::Key_Escape,this);
     pimpl->escShortcut->setContext(Qt::WindowShortcut);
+    // Another enabled Escape shortcut matching in this window makes Qt treat the press as
+    // ambiguous: it hands each press to ONE candidate as activatedAmbiguously(), cycling across
+    // presses, and never emits activated(). Both signals therefore go to the same handler
+    // (DropdownFrame's own pair; see modalpopup-escape-ambiguous-shortcut-gotcha in project memory).
     connect(
         pimpl->escShortcut,
         &QShortcut::activated,
+        this,
+        [this]()
+        {
+            closeByUser();
+        }
+    );
+    connect(
+        pimpl->escShortcut,
+        &QShortcut::activatedAmbiguously,
         this,
         [this]()
         {
