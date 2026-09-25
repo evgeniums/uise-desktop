@@ -496,6 +496,15 @@ class UISE_DESKTOP_EXPORT ChatReactionGalleryDropdown : public DropdownFrame
         ChatReactionQuickBar* m_quickBar;
         ChatReactionGallery* m_gallery;
         bool m_expanded=false;
+
+        //! True for the duration of setExpanded()'s own body -- lets the m_gallery::sizeChanged
+        //! handler (wired in the ctor) skip its own remeasureKeepingTopLeft() call while
+        //! setExpanded() is about to make the same call itself right after showing/hiding the
+        //! gallery. Without this, expanding measured the frame's content twice (once from
+        //! sizeChanged, fired synchronously by setVisible(true)->showEvent()->applyRows(), and
+        //! once from setExpanded() itself), each repolishing the whole popup -- see
+        //! measureContentSize()'s own doc comment for why that is expensive.
+        bool m_settingExpanded=false;
 };
 
 }

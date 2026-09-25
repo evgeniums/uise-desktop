@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QBoxLayout>
 #include <QEvent>
 #include <QShowEvent>
+#include <QElapsedTimer>
 
 #include <uise/desktop/chatreactiongallery.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -839,6 +840,17 @@ ChatReactionGallery::~ChatReactionGallery()
 
 void ChatReactionGallery::setPack(std::shared_ptr<AbstractReactionIconPack> pack)
 {
+    if (pack==m_pack)
+    {
+        // The host (ChatMessage::showMessageContextMenu()) pushes the SAME process-wide default
+        // pack on every context-menu open, not just on an actual pack change -- so without this
+        // guard, every expand tore down and rebuilt every gallery row (new PushButtons, fresh SVG
+        // icon resolution, first polish of each) for no reason. A genuine content change from
+        // switching language is unaffected: changeEvent() sets m_rowsDirty explicitly and calls
+        // rebuildRows() itself, bypassing setPack() entirely.
+        return;
+    }
+
     m_pack=std::move(pack);
     m_recentBar->setPack(m_pack);
     m_grid->setPack(m_pack);
@@ -869,12 +881,29 @@ void ChatReactionGallery::setOwnReactionIds(QStringList ids)
 
 void ChatReactionGallery::resetSearch()
 {
+    // Whether the rebuildRows(QString{}) call below will actually touch anything: it will when
+    // the search box held something different from empty (a change rebuildRows() itself detects
+    // by comparing against m_appliedSearchPrefix) or when rows were already marked stale for some
+    // other reason (a real setPack() pack change). When NEITHER is true -- the common
+    // expand-with-nothing-ever-searched case, now that setPack() (see its own comment) skips its
+    // rebuild when the host re-pushes the SAME pack on every open -- rebuildRows() below is a
+    // no-op, and without the explicit scroll below the grid would stay wherever a PREVIOUS
+    // expand's scrolling left it instead of starting from the top like every expand always used
+    // to (back when setPack()'s now-skipped rebuild reset it via
+    // ChatReactionGalleryGrid::setPlan()'s own reloadAround(0)).
+    const auto needsRebuild=(m_appliedSearchPrefix!=QString{}) || m_rowsDirty;
+
     m_searchEdit->clear();
     // Explicit, rather than relying on the clear()-triggered textChanged signal: clear() emits
     // nothing when the box was ALREADY empty (e.g. resetSearch() right after setPack(), on a
     // freshly-constructed gallery), and resetSearch() must put the browse rows on screen
     // regardless of the search box's prior state.
     rebuildRows(QString{});
+
+    if (!needsRebuild && isVisible())
+    {
+        m_grid->scrollToRow(0);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1234,6 +1263,16 @@ ChatReactionGalleryDropdown::ChatReactionGalleryDropdown(QWidget* parent)
     connect(m_gallery,&ChatReactionGallery::sizeChanged,this,
             [this,content]()
             {
+                if (m_settingExpanded)
+                {
+                    // setExpanded() is already inside its own remeasureKeepingTopLeft() call for
+                    // THIS same size change (setVisible(true) synchronously runs showEvent() ->
+                    // applyRows() -> this very signal, before setExpanded() gets back to its own
+                    // remeasure at the bottom) -- doing it again here would repolish the whole
+                    // popup twice per expand for one content change. See m_settingExpanded's own
+                    // doc comment.
+                    return;
+                }
                 content->updateGeometry();
                 // Keep the collapsed bar's own on-screen position fixed and grow/shrink the
                 // panel below it -- see setExpanded()'s identical reasoning. A search result
@@ -1284,7 +1323,18 @@ void ChatReactionGalleryDropdown::setExpanded(bool enable)
     {
         return;
     }
+
+    // REACTION-PERF: temporary diagnostic for the Windows expand-is-slow bug -- remove once the
+    // user has confirmed the improved timing there.
+    QElapsedTimer perfTimer;
+    perfTimer.start();
+
     m_expanded=enable;
+
+    // See m_settingExpanded's own doc comment: suppresses the m_gallery::sizeChanged handler's
+    // own remeasureKeepingTopLeft() call for the size change setVisible(true) below is about to
+    // trigger synchronously, so only the ONE remeasure at the bottom of this function runs.
+    m_settingExpanded=true;
 
     m_quickBar->setVisible(!m_expanded);
     m_gallery->setVisible(m_expanded);
@@ -1299,6 +1349,8 @@ void ChatReactionGalleryDropdown::setExpanded(bool enable)
         m_gallery->focusSearch();
     }
 
+    m_settingExpanded=false;
+
     content()->updateGeometry();
     // Keeps the collapsed quick bar's own on-screen position fixed and unfolds the gallery
     // downward beneath it (or folds it back away) -- see remeasureKeepingTopLeft()'s own doc
@@ -1308,6 +1360,25 @@ void ChatReactionGalleryDropdown::setExpanded(bool enable)
     // (e.g. setExpanded() called before the first popupX()); the NEXT opening measures whichever
     // page is visible at that time from scratch.
     remeasureKeepingTopLeft(false);
+
+    if (m_expanded && isVisible())
+    {
+        // The gallery is popped up from INSIDE the host context menu's own aboutToShow (see
+        // ChatMessage::showMessageContextMenu()), i.e. before that menu's animateFrame(true) has
+        // run its own show()+raise() -- so collapsed, this frame sits BELOW the menu in z-order
+        // (invisible only because the two don't overlap). Expanded, it grows downward UNDER the
+        // menu instead of over it. On macOS, clicking the quick bar's chevron button itself
+        // reorders this Qt::Tool window to the front, masking the bug; on Windows this frame is
+        // WS_EX_NOACTIVATE (Qt::WindowDoesNotAcceptFocus, see the DropdownFrame ctor), so a click
+        // never changes z-order and the menu stays on top. raise() is the same call
+        // DropdownFrame::animateFrame() already relies on to keep a freshly (re)shown frame like
+        // this one on top on Windows, without granting it activation.
+        raise();
+    }
+
+    // REACTION-PERF
+    std::cerr << "REACTION-PERF ChatReactionGalleryDropdown::setExpanded(" << enable
+               << ") ms=" << perfTimer.elapsed() << std::endl;
 }
 
 //--------------------------------------------------------------------------

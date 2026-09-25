@@ -554,7 +554,14 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
 
         void beginOpen(QWidget* host);
         void trackHost(QWidget* host);
-        QSize measureContentSize(QMargins& outMargins);
+        //! @param repolish Whether to run Style::repolishRecursive() over the whole content
+        //!  subtree before measuring -- needed the FIRST time a subtree is measured (freshly
+        //!  inserted widgets whose QSS box-model metrics have never been resolved), and
+        //!  redundant (and expensive: unpolish+polish re-runs full CSS selector matching for
+        //!  every widget in the subtree) for an ALREADY-OPEN frame being re-measured, whose
+        //!  subtree went through exactly this repolish on its own popupX() call -- see
+        //!  remeasureKeepingTopLeft()'s own call site.
+        QSize measureContentSize(QMargins& outMargins, bool repolish=true);
         void measure(QWidget* anchor);
         void measureAt(const QPoint& globalPos);
         void measureBeside(const QRect& anchorGlobalRect);

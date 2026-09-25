@@ -679,7 +679,7 @@ void DropdownFrame::trackHost(QWidget* host)
 
 //--------------------------------------------------------------------------
 
-QSize DropdownFrame::measureContentSize(QMargins& outMargins)
+QSize DropdownFrame::measureContentSize(QMargins& outMargins, bool repolish)
 {
     auto* c=pimpl->content.data();
     if (c==nullptr)
@@ -688,12 +688,15 @@ QSize DropdownFrame::measureContentSize(QMargins& outMargins)
         return QSize(1,1);
     }
 
-    // repolish this frame itself (which recurses into content and all of its descendants too,
-    // so a separate call for content is not needed): contentsMargins() (read below, from the
-    // QSS "padding" rule) belongs to `this`, freshly inserted into the tree on the very first
-    // open, and would otherwise still report its pre-QSS default margins the first time this
-    // is measured
-    Style::repolishRecursive(this);
+    if (repolish)
+    {
+        // repolish this frame itself (which recurses into content and all of its descendants too,
+        // so a separate call for content is not needed): contentsMargins() (read below, from the
+        // QSS "padding" rule) belongs to `this`, freshly inserted into the tree on the very first
+        // open, and would otherwise still report its pre-QSS default margins the first time this
+        // is measured
+        Style::repolishRecursive(this);
+    }
 
     // QWidget::ensurePolished() (the QEvent::Polish/font-resolution path) is a separate
     // mechanism from QStyle::polish() invoked by repolishRecursive() above; sizeHint() of
@@ -1414,7 +1417,15 @@ void DropdownFrame::remeasureKeepingTopLeft(bool animate)
     }
 
     QMargins m;
-    auto natural=measureContentSize(m);
+    // repolish=false: this frame is already OPEN, so its subtree already went through
+    // Style::repolishRecursive() on whichever popupX() call opened it (measureContentSize()'s own
+    // repolish param doc comment) -- findChildren() there sees hidden widgets too, so the
+    // collapsed-but-built quick bar/gallery pair was fully repolished then even though only one of
+    // the two is visible at any given time. Re-running it here on every expand/collapse and every
+    // gallery content-size change (see the sizeChanged handler above) unpolished+repolished the
+    // WHOLE popup -- rows, tab strip, recent bar, flyweight view internals -- for nothing, which is
+    // what made expanding the gallery visibly slow, especially on a Windows debug Qt build.
+    auto natural=measureContentSize(m,false);
     QSize full(natural.width()+m.left()+m.right(),natural.height()+m.top()+m.bottom());
 
     // The anchor IS the current top-left corner -- deliberately never moved to make room, unlike
