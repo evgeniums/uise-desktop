@@ -188,9 +188,9 @@ void indexKeyword(std::vector<std::pair<QString,size_t>>& index, const QString& 
 //! The alias name this pack resolves every icon's art through, e.g. "ChatReactionPack::star".
 //! Common to both the curated 54 (resolved via the existing "ChatReactionPack" JSON alias
 //! context in resources/style/chatreactions.json, which the restyling override path reads) and
-//! the generated remainder (resolved via a namePath registered directly in
-//! Pimpl::ensureNamePathsRegistered() below) -- a single naming scheme lets at()/find()/etc.
-//! resolve either kind identically, without caring which one an index happens to be.
+//! the generated remainder (resolved via a persistent namePath registered directly in
+//! Pimpl::build() below) -- a single naming scheme lets at()/find()/etc. resolve either kind
+//! identically, without caring which one an index happens to be.
 QString iconAliasName(const QString& iconId)
 {
     return QStringLiteral("ChatReactionPack::%1").arg(iconId);
@@ -382,9 +382,17 @@ class DefaultReactionIconPack::Pimpl
             // Register a direct file path for every NON-curated icon's alias name -- the curated
             // 54 keep resolving through the existing "ChatReactionPack" JSON alias context (see
             // resources/style/chatreactions.json), which the restyling override path reads and
-            // which this must not bypass. This is cheap (just a map insert, see addNamePath()'s
-            // own doc comment) and safe to redo on every build()/retranslate() -- it does NOT
-            // read or parse any SVG; that happens lazily in resolveIcon().
+            // which this must not bypass. This is cheap (just a map insert, see
+            // addPersistentNamePath()'s own doc comment) and safe to redo on every
+            // build()/retranslate() -- it does NOT read or parse any SVG; that happens lazily in
+            // resolveIcon(). MUST be addPersistentNamePath(), not addNamePath(): this pack is a
+            // process-wide singleton built once (see DefaultReactionIconPack's ctor), but
+            // Style::applyStyleSheet(true) (an appearance change, or a system light/dark switch
+            // while in Auto mode) calls SvgIconLocator::reloadIconThemes(), which wipes every
+            // plain addNamePath() entry and reloads only what the JSON theme itself declares.
+            // With plain addNamePath(), every generated icon not yet resolved at that point goes
+            // blank until app restart or a retranslate() -- see
+            // bug-emoji-gallery-icons-sometimes-blank.md.
             auto& locator=Style::instance().svgIconLocator();
             for (size_t i=0; i<generatedIconCount; ++i)
             {
@@ -405,7 +413,7 @@ class DefaultReactionIconPack::Pimpl
                 // pack (U+00A9, U+00AE).
                 const auto path=QStringLiteral(":/icons/noto-emoji/emoji_u%1.svg")
                                      .arg(static_cast<uint>(gen.codepoint),4,16,QChar('0'));
-                locator.addNamePath(iconAliasName(QString::fromUtf8(gen.shortcode)),path);
+                locator.addPersistentNamePath(iconAliasName(QString::fromUtf8(gen.shortcode)),path);
             }
 
             buildCategories();

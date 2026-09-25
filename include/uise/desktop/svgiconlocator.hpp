@@ -225,6 +225,25 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             addNamePath(this,std::move(name),std::move(path));
         }
 
+        //! Register a name->path mapping that survives reloadIconThemes(). Use this instead of
+        //! addNamePath() for paths registered in code rather than loaded from a style theme --
+        //! e.g. a pack built once at singleton construction, whose entries would otherwise be
+        //! silently dropped by the next style/appearance reload's clearBeforeReload() (which
+        //! only knows how to restore theme-sourced "paths" entries; see
+        //! bug-emoji-gallery-icons-sometimes-blank.md for the bug this fixed). A theme's own
+        //! "paths" entry for the same name still overrides this one, both now and after a
+        //! reload -- loadSvgIconContext() calls addNamePath(), which is insert_or_assign.
+        void addPersistentNamePath(
+                QString name,
+                QString path
+            )
+        {
+            m_persistentNamePaths.insert_or_assign(name,path);
+            // emplace, not insert_or_assign: an existing theme-sourced override for this exact
+            // name must not be clobbered by registering it as persistent.
+            m_namePaths.emplace(std::move(name),std::move(path));
+        }
+
         QString namePath(const QString& name) const
         {
             return namePath(this,name);
@@ -386,7 +405,10 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
             m_selectorContexts.clear();
             m_contextIconCache.clear();
             m_namesMap.clear();
-            m_namePaths.clear();
+            // Reseed from m_persistentNamePaths rather than clearing outright -- see
+            // addPersistentNamePath()'s own doc comment. The theme reload that follows this call
+            // still overrides any of these entries via loadSvgIconContext()'s insert_or_assign.
+            m_namePaths=m_persistentNamePaths;
             m_contextColorMaps.clear();
         }
 
@@ -426,6 +448,9 @@ class UISE_DESKTOP_EXPORT SvgIconLocator
 
         std::map<QString,QString> m_namesMap;
         std::map<QString,QString> m_namePaths;
+        //! Entries registered via addPersistentNamePath(), reseeded into m_namePaths on every
+        //! clearBeforeReload() -- see that method's own comment.
+        std::map<QString,QString> m_persistentNamePaths;
         std::map<QString,colorMapsT> m_contextColorMaps;
 
         colorMapsT m_defaultColorMaps;

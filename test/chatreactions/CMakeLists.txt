@@ -7,6 +7,7 @@ SET (HEADERS
 SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testreactionsearch.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatmessagereactions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testiconreload.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)
