@@ -72,7 +72,7 @@ IF NOT "%UISE_DEPLOY_SKIP_BUILD%" == "yes" (
     ) ELSE (
         call "%MSVCARGS%" %MSVC_ARCH%
         if %errorlevel% neq 0 exit /b %errorlevel%
-        cmake -A %MSVC_BUILD_ARCH% -T %MSVC_TOOLSET% -DUISE_DESKTOP_DEMO=ON -DUISE_DESKTOP_TEST=OFF -DUISE_DESKTOP_DEMO_BUNDLE=ON "%SRC_DIR%"
+        cmake -G %MSVC_NAME% -A %MSVC_BUILD_ARCH% -T %MSVC_TOOLSET% -DUISE_DESKTOP_DEMO=ON -DUISE_DESKTOP_TEST=OFF -DUISE_DESKTOP_DEMO_BUNDLE=ON "%SRC_DIR%"
         if %errorlevel% neq 0 exit /b %errorlevel%
         cmake --build . --config %BUILD_TYPE% -- /m:1 /p:UseMultiToolTask=true /p:MultiProcMaxCount=%BUILD_WORKERS%
         if %errorlevel% neq 0 exit /b %errorlevel%

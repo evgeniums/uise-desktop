@@ -39,7 +39,7 @@ if %errorlevel% neq 0 exit %errorlevel%
 call "%MSVCARGS%" %MSVC_ARCH%
 if %errorlevel% neq 0 exit %errorlevel%
 
-cmake -A %MSVC_BUILD_ARCH% -T %MSVC_TOOLSET% -DUISE_TEST_JUNIT=ON %SRC_DIR%
+cmake -G %MSVC_NAME% -A %MSVC_BUILD_ARCH% -T %MSVC_TOOLSET% -DUISE_TEST_JUNIT=ON %SRC_DIR%
 if %errorlevel% neq 0 exit %errorlevel%
 
 cmake --build . --config %BUILD_TYPE% -- /m:1 /p:UseMultiToolTask=true /p:MultiProcMaxCount=%BUILD_WORKERS% /fileLogger
