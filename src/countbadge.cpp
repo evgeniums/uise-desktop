@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPaintEvent>
 #include <QPalette>
 #include <QFontMetrics>
+#include <QFontMetricsF>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/countbadge.hpp>
@@ -211,13 +212,28 @@ void CountBadge::paintEvent(QPaintEvent* /*event*/)
     painter.setBrush(pimpl->badge->palette().color(QPalette::Base));
     painter.drawRoundedRect(QRectF(r),radius,radius);
 
-    // Text: centered by Qt against the font's own ascent/descent rather than the visible
-    // glyphs' tight bounding box, so it never drifts vertically or horizontally as the text
-    // changes -- unlike JumpEdge::renderBadgeText()'s manual bearing/baseline correction.
+    // Text: centered on the font's CAP HEIGHT band, not via Qt::AlignCenter's ascent+descent
+    // line-box centering. AlignCenter centers digits correctly only when a font's internal
+    // leading above the caps roughly matches its descent below the baseline -- true for SF on
+    // macOS, but not for Segoe UI on Windows (tall ascent, small descent), where AlignCenter
+    // visibly pushes digits toward the bottom of the badge. Centering on cap height instead
+    // keeps the offset derived purely from the font (never from the current text's glyphs, so
+    // it still doesn't wobble between "1" and "9") while landing correctly on both platforms.
     painter.setBrush(Qt::NoBrush);
     painter.setPen(pimpl->badge->palette().color(QPalette::Text));
     painter.setFont(pimpl->badge->font());
-    painter.drawText(r,Qt::AlignCenter,text);
+    QFontMetricsF fm(pimpl->badge->font());
+    auto capHeight=fm.capHeight();
+    if (capHeight<=0)
+    {
+        // font without a usable cap-height metric -- fall back to a fixed reference glyph so
+        // the offset still comes from the font, not from the text actually being drawn
+        capHeight=fm.tightBoundingRect(QStringLiteral("0")).height();
+    }
+    QRectF rf(r);
+    auto x=rf.left()+(rf.width()-fm.horizontalAdvance(text))/2.0;
+    auto baseline=rf.top()+(rf.height()+capHeight)/2.0;
+    painter.drawText(QPointF(x,baseline),text);
 }
 
 //--------------------------------------------------------------------------
