@@ -1477,794 +1477,794 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location filename="../src/reactioniconpack.cpp" line="+76"/>
         <source>thumbs up</source>
-        <translation type="unfinished"></translation>
+        <translation>палец вверх</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>like</source>
-        <translation type="unfinished"></translation>
+        <translation>нравится</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>yes</source>
-        <translation type="unfinished"></translation>
+        <translation>да</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>heart</source>
-        <translation type="unfinished"></translation>
+        <translation>сердце</translation>
     </message>
     <message>
         <location line="+0"/>
         <location line="+17"/>
         <source>love</source>
-        <translation type="unfinished"></translation>
+        <translation>любовь</translation>
     </message>
     <message>
         <location line="-17"/>
         <source>red heart</source>
-        <translation type="unfinished"></translation>
+        <translation>красное сердце</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>laugh</source>
-        <translation type="unfinished"></translation>
+        <translation>смех</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>joy</source>
-        <translation type="unfinished"></translation>
+        <translation>радость</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>tears of joy</source>
-        <translation type="unfinished"></translation>
+        <translation>слёзы радости</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>lol</source>
-        <translation type="unfinished"></translation>
+        <translation>лол</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>surprised</source>
-        <translation type="unfinished"></translation>
+        <translation>удивлён</translation>
     </message>
     <message>
         <location line="+0"/>
         <location line="+27"/>
         <source>wow</source>
-        <translation type="unfinished"></translation>
+        <translation>ого</translation>
     </message>
     <message>
         <location line="-27"/>
         <source>open mouth</source>
-        <translation type="unfinished"></translation>
+        <translation>открытый рот</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>cry</source>
-        <translation type="unfinished"></translation>
+        <translation>плач</translation>
     </message>
     <message>
         <location line="+0"/>
         <location line="+23"/>
         <location line="+18"/>
         <source>sad</source>
-        <translation type="unfinished"></translation>
+        <translation>грустно</translation>
     </message>
     <message>
         <location line="-41"/>
         <source>tears</source>
-        <translation type="unfinished"></translation>
+        <translation>слёзы</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>pray</source>
-        <translation type="unfinished"></translation>
+        <translation>молитва</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>please</source>
-        <translation type="unfinished"></translation>
+        <translation>пожалуйста</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>thanks</source>
-        <translation type="unfinished"></translation>
+        <translation>спасибо</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>fire</source>
-        <translation type="unfinished"></translation>
+        <translation>огонь</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hot</source>
-        <translation type="unfinished"></translation>
+        <translation>горячо</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>lit</source>
-        <translation type="unfinished"></translation>
+        <translation>зажигательно</translation>
     </message>
     <message>
         <location line="+3"/>
         <location line="+3"/>
         <source>grin</source>
-        <translation type="unfinished"></translation>
+        <translation>ухмылка</translation>
     </message>
     <message>
         <location line="-3"/>
         <location line="+1"/>
         <source>happy</source>
-        <translation type="unfinished"></translation>
+        <translation>счастье</translation>
     </message>
     <message>
         <location line="-1"/>
         <source>grinning face</source>
-        <translation type="unfinished"></translation>
+        <translation>улыбающееся лицо</translation>
     </message>
     <message>
         <location line="+1"/>
         <location line="+1"/>
         <location line="+5"/>
         <source>smile</source>
-        <translation type="unfinished"></translation>
+        <translation>улыбка</translation>
     </message>
     <message>
         <location line="-5"/>
         <source>smiling eyes</source>
-        <translation type="unfinished"></translation>
+        <translation>смеющиеся глаза</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>big smile</source>
-        <translation type="unfinished"></translation>
+        <translation>широкая улыбка</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>sweat</source>
-        <translation type="unfinished"></translation>
+        <translation>пот</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>nervous</source>
-        <translation type="unfinished"></translation>
+        <translation>нервно</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>phew</source>
-        <translation type="unfinished"></translation>
+        <translation>уф</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>rofl</source>
-        <translation type="unfinished"></translation>
+        <translation>ржу</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>laughing</source>
-        <translation type="unfinished"></translation>
+        <translation>смеюсь</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>rolling on the floor</source>
-        <translation type="unfinished"></translation>
+        <translation>катаюсь по полу</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>blush</source>
-        <translation type="unfinished"></translation>
+        <translation>смущение</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>shy</source>
-        <translation type="unfinished"></translation>
+        <translation>застенчиво</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>embarrassed</source>
-        <translation type="unfinished"></translation>
+        <translation>смущённо</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>slight smile</source>
-        <translation type="unfinished"></translation>
+        <translation>лёгкая улыбка</translation>
     </message>
     <message>
         <location line="+1"/>
         <location line="+3"/>
         <source>wink</source>
-        <translation type="unfinished"></translation>
+        <translation>подмигивание</translation>
     </message>
     <message>
         <location line="-3"/>
         <source>flirt</source>
-        <translation type="unfinished"></translation>
+        <translation>флирт</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>heart eyes</source>
-        <translation type="unfinished"></translation>
+        <translation>сердечки в глазах</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>in love</source>
-        <translation type="unfinished"></translation>
+        <translation>влюблён</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>kiss</source>
-        <translation type="unfinished"></translation>
+        <translation>поцелуй</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>blow a kiss</source>
-        <translation type="unfinished"></translation>
+        <translation>воздушный поцелуй</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>tongue</source>
-        <translation type="unfinished"></translation>
+        <translation>язык</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>silly</source>
-        <translation type="unfinished"></translation>
+        <translation>глупо</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>hug</source>
-        <translation type="unfinished"></translation>
+        <translation>обнимашки</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hugging</source>
-        <translation type="unfinished"></translation>
+        <translation>обнимаю</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>thinking</source>
-        <translation type="unfinished"></translation>
+        <translation>задумался</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hmm</source>
-        <translation type="unfinished"></translation>
+        <translation>хм</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>neutral</source>
-        <translation type="unfinished"></translation>
+        <translation>нейтрально</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>meh</source>
-        <translation type="unfinished"></translation>
+        <translation>так себе</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>sleeping</source>
-        <translation type="unfinished"></translation>
+        <translation>сплю</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>tired</source>
-        <translation type="unfinished"></translation>
+        <translation>устал</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>cool</source>
-        <translation type="unfinished"></translation>
+        <translation>круто</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>sunglasses</source>
-        <translation type="unfinished"></translation>
+        <translation>солнечные очки</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>party</source>
-        <translation type="unfinished"></translation>
+        <translation>вечеринка</translation>
     </message>
     <message>
         <location line="+0"/>
         <location line="+12"/>
         <source>celebrate</source>
-        <translation type="unfinished"></translation>
+        <translation>празднуем</translation>
     </message>
     <message>
         <location line="-11"/>
         <source>sob</source>
-        <translation type="unfinished"></translation>
+        <translation>рыдаю</translation>
     </message>
     <message>
         <location line="-23"/>
         <location line="+23"/>
         <source>crying</source>
-        <translation type="unfinished"></translation>
+        <translation>плачу</translation>
     </message>
     <message>
         <location line="-17"/>
         <source>smiley</source>
-        <translation type="unfinished"></translation>
+        <translation>смайлик</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>nervous sweat</source>
-        <translation type="unfinished"></translation>
+        <translation>нервный пот</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>rolling on the floor laughing</source>
-        <translation type="unfinished"></translation>
+        <translation>катаюсь по полу от смеха</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>slightly smiling face</source>
-        <translation type="unfinished"></translation>
+        <translation>слегка улыбающееся лицо</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>blowing a kiss</source>
-        <translation type="unfinished"></translation>
+        <translation>посылает поцелуй</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>winking tongue</source>
-        <translation type="unfinished"></translation>
+        <translation>подмигивает с языком</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>hugging face</source>
-        <translation type="unfinished"></translation>
+        <translation>обнимающее лицо</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>neutral face</source>
-        <translation type="unfinished"></translation>
+        <translation>нейтральное лицо</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>partying face</source>
-        <translation type="unfinished"></translation>
+        <translation>лицо с вечеринки</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>sobbing</source>
-        <translation type="unfinished"></translation>
+        <translation>рыдания</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>scream</source>
-        <translation type="unfinished"></translation>
+        <translation>крик</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>shocked</source>
-        <translation type="unfinished"></translation>
+        <translation>в шоке</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>fear</source>
-        <translation type="unfinished"></translation>
+        <translation>страх</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>screaming in fear</source>
-        <translation type="unfinished"></translation>
+        <translation>кричит от страха</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>angry</source>
-        <translation type="unfinished"></translation>
+        <translation>злой</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>rage</source>
-        <translation type="unfinished"></translation>
+        <translation>ярость</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>mad</source>
-        <translation type="unfinished"></translation>
+        <translation>бешеный</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>mind blown</source>
-        <translation type="unfinished"></translation>
+        <translation>взрыв мозга</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>thumbs down</source>
-        <translation type="unfinished"></translation>
+        <translation>палец вниз</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>dislike</source>
-        <translation type="unfinished"></translation>
+        <translation>не нравится</translation>
     </message>
     <message>
         <location line="+0"/>
         <location line="+12"/>
         <source>no</source>
-        <translation type="unfinished"></translation>
+        <translation>нет</translation>
     </message>
     <message>
         <location line="-11"/>
         <source>clap</source>
-        <translation type="unfinished"></translation>
+        <translation>аплодисменты</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>applause</source>
-        <translation type="unfinished"></translation>
+        <translation>овации</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>well done</source>
-        <translation type="unfinished"></translation>
+        <translation>молодец</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>raised hands</source>
-        <translation type="unfinished"></translation>
+        <translation>поднятые руки</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>celebration</source>
-        <translation type="unfinished"></translation>
+        <translation>празднование</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>yay</source>
-        <translation type="unfinished"></translation>
+        <translation>ура</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>raising hands</source>
-        <translation type="unfinished"></translation>
+        <translation>поднимаю руки</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>ok</source>
-        <translation type="unfinished"></translation>
+        <translation>ок</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>ok hand</source>
-        <translation type="unfinished"></translation>
+        <translation>рука ок</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>perfect</source>
-        <translation type="unfinished"></translation>
+        <translation>идеально</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>OK hand</source>
-        <translation type="unfinished"></translation>
+        <translation>рука ОК</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>victory</source>
-        <translation type="unfinished"></translation>
+        <translation>победа</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>peace</source>
-        <translation type="unfinished"></translation>
+        <translation>мир</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>victory hand</source>
-        <translation type="unfinished"></translation>
+        <translation>знак победы</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>handshake</source>
-        <translation type="unfinished"></translation>
+        <translation>рукопожатие</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>deal</source>
-        <translation type="unfinished"></translation>
+        <translation>сделка</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>agreement</source>
-        <translation type="unfinished"></translation>
+        <translation>согласие</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>muscle</source>
-        <translation type="unfinished"></translation>
+        <translation>мышца</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>strong</source>
-        <translation type="unfinished"></translation>
+        <translation>сильный</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>flex</source>
-        <translation type="unfinished"></translation>
+        <translation>напряг бицепс</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>flexed biceps</source>
-        <translation type="unfinished"></translation>
+        <translation>накачанный бицепс</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>tada</source>
-        <translation type="unfinished"></translation>
+        <translation>та-да</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>party popper</source>
-        <translation type="unfinished"></translation>
+        <translation>хлопушка</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>birthday</source>
-        <translation type="unfinished"></translation>
+        <translation>день рождения</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>cake</source>
-        <translation type="unfinished"></translation>
+        <translation>торт</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>birthday cake</source>
-        <translation type="unfinished"></translation>
+        <translation>праздничный торт</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>gift</source>
-        <translation type="unfinished"></translation>
+        <translation>подарок</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>present</source>
-        <translation type="unfinished"></translation>
+        <translation>презент</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>wrapped gift</source>
-        <translation type="unfinished"></translation>
+        <translation>упакованный подарок</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>100</source>
-        <translation type="unfinished"></translation>
+        <translation>100</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hundred</source>
-        <translation type="unfinished"></translation>
+        <translation>сто</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>perfect score</source>
-        <translation type="unfinished"></translation>
+        <translation>идеальный результат</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hundred points</source>
-        <translation type="unfinished"></translation>
+        <translation>сто баллов</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>check</source>
-        <translation type="unfinished"></translation>
+        <translation>галочка</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>done</source>
-        <translation type="unfinished"></translation>
+        <translation>готово</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>correct</source>
-        <translation type="unfinished"></translation>
+        <translation>верно</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>check mark</source>
-        <translation type="unfinished"></translation>
+        <translation>отметка</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>cross</source>
-        <translation type="unfinished"></translation>
+        <translation>крестик</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>wrong</source>
-        <translation type="unfinished"></translation>
+        <translation>неверно</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>cross mark</source>
-        <translation type="unfinished"></translation>
+        <translation>знак крестика</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>star</source>
-        <translation type="unfinished"></translation>
+        <translation>звезда</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>favorite</source>
-        <translation type="unfinished"></translation>
+        <translation>избранное</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>broken heart</source>
-        <translation type="unfinished"></translation>
+        <translation>разбитое сердце</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>heartbroken</source>
-        <translation type="unfinished"></translation>
+        <translation>сердце разбито</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>devil</source>
-        <translation type="unfinished"></translation>
+        <translation>дьявол</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>mischief</source>
-        <translation type="unfinished"></translation>
+        <translation>шалость</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>smiling face with horns</source>
-        <translation type="unfinished"></translation>
+        <translation>улыбающееся лицо с рогами</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>eyes</source>
-        <translation type="unfinished"></translation>
+        <translation>глаза</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>look</source>
-        <translation type="unfinished"></translation>
+        <translation>смотрю</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>watching</source>
-        <translation type="unfinished"></translation>
+        <translation>слежу</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>clown</source>
-        <translation type="unfinished"></translation>
+        <translation>клоун</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>joke</source>
-        <translation type="unfinished"></translation>
+        <translation>шутка</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>clown face</source>
-        <translation type="unfinished"></translation>
+        <translation>лицо клоуна</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>poop</source>
-        <translation type="unfinished"></translation>
+        <translation>какашка</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>funny</source>
-        <translation type="unfinished"></translation>
+        <translation>смешно</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>pile of poo</source>
-        <translation type="unfinished"></translation>
+        <translation>куча какашек</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>rocket</source>
-        <translation type="unfinished"></translation>
+        <translation>ракета</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>launch</source>
-        <translation type="unfinished"></translation>
+        <translation>запуск</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>fast</source>
-        <translation type="unfinished"></translation>
+        <translation>быстро</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>smirk</source>
-        <translation type="unfinished"></translation>
+        <translation>ухмылка</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>smug</source>
-        <translation type="unfinished"></translation>
+        <translation>самодовольно</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>roll eyes</source>
-        <translation type="unfinished">закатить глаза</translation>
+        <translation>закатить глаза</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>eyeroll</source>
-        <translation type="unfinished">закатить глаза</translation>
+        <translation>закатить глаза</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>whatever</source>
-        <translation type="unfinished">ну и ладно</translation>
+        <translation>ну и ладно</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>rolling eyes</source>
-        <translation type="unfinished"></translation>
+        <translation>закатывает глаза</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>grimace</source>
-        <translation type="unfinished">гримаса</translation>
+        <translation>гримаса</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>awkward</source>
-        <translation type="unfinished">неловко</translation>
+        <translation>неловко</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>yikes</source>
-        <translation type="unfinished">ой</translation>
+        <translation>ой</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>grimacing</source>
-        <translation type="unfinished"></translation>
+        <translation>гримасничает</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>sparkles</source>
-        <translation type="unfinished">искры</translation>
+        <translation>искры</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>shiny</source>
-        <translation type="unfinished">блеск</translation>
+        <translation>блеск</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>magic</source>
-        <translation type="unfinished">магия</translation>
+        <translation>магия</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>crossed fingers</source>
-        <translation type="unfinished">скрещённые пальцы</translation>
+        <translation>скрещённые пальцы</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>good luck</source>
-        <translation type="unfinished">удачи</translation>
+        <translation>удачи</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>hope</source>
-        <translation type="unfinished">надежда</translation>
+        <translation>надежда</translation>
     </message>
     <message>
         <location line="+27"/>
@@ -2995,7 +2995,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2160"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2175"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
@@ -3077,20 +3077,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+783"/>
-        <location line="+353"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+784"/>
+        <location line="+381"/>
         <source>Recently used</source>
         <translation>Недавние</translation>
     </message>
     <message>
-        <location line="-339"/>
-        <location line="+309"/>
+        <location line="-367"/>
+        <location line="+337"/>
         <source>Search reactions</source>
         <translation>Поиск реакций</translation>
     </message>
     <message>
-        <location line="-291"/>
-        <location line="+299"/>
+        <location line="-319"/>
+        <location line="+327"/>
         <source>No matching reactions</source>
         <translation>Ничего не найдено</translation>
     </message>
@@ -3207,7 +3207,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EmojiGalleryDialog</name>
     <message>
-        <location filename="../src/emojigallerydialog.cpp" line="+73"/>
+        <location filename="../src/emojigallerydialog.cpp" line="+74"/>
         <location line="+93"/>
         <source>Search emoji</source>
         <translation>Поиск эмодзи</translation>
@@ -3567,39 +3567,39 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4418"/>
+        <location filename="../src/messageeditor.cpp" line="+4414"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
     <message>
         <location line="+32"/>
         <source>Insert emoji</source>
-        <translation type="unfinished">Вставить эмодзи</translation>
+        <translation>Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1685"/>
+        <location line="+1708"/>
         <source>code here</source>
         <translation>код</translation>
     </message>
     <message>
-        <location line="+2822"/>
+        <location line="+2856"/>
         <source>No suggestions</source>
-        <translation type="unfinished"></translation>
+        <translation>Нет вариантов</translation>
     </message>
     <message>
         <location line="+9"/>
         <source>Add to dictionary</source>
-        <translation type="unfinished"></translation>
+        <translation>Добавить в словарь</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Ignore word</source>
-        <translation type="unfinished"></translation>
+        <translation>Пропустить слово</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Check spelling</source>
-        <translation type="unfinished"></translation>
+        <translation>Проверять правописание</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -3727,7 +3727,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
-        <location line="-4650"/>
+        <location line="-4707"/>
         <source>Hold to record a voice message</source>
         <translation>Удерживайте, чтобы записать голосовое сообщение</translation>
     </message>
@@ -3912,7 +3912,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+13"/>
         <source>Check spelling</source>
-        <translation type="unfinished"></translation>
+        <translation>Проверять правописание</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -3922,7 +3922,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+13"/>
         <source>More formatting options</source>
-        <translation type="unfinished"></translation>
+        <translation>Другие параметры форматирования</translation>
     </message>
     <message>
         <location line="+22"/>
@@ -4313,9 +4313,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::VoiceRecorderDialog</name>
     <message>
-        <location filename="../src/voicerecorderdialog.cpp" line="+528"/>
+        <location filename="../src/voicerecorderdialog.cpp" line="+567"/>
         <source> / %1</source>
-        <translation type="unfinished"></translation>
+        <translation> / %1</translation>
     </message>
     <message>
         <location line="+244"/>

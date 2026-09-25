@@ -3015,7 +3015,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2160"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2175"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3097,20 +3097,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+783"/>
-        <location line="+353"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+784"/>
+        <location line="+381"/>
         <source>Recently used</source>
         <translation>Recently used</translation>
     </message>
     <message>
-        <location line="-339"/>
-        <location line="+309"/>
+        <location line="-367"/>
+        <location line="+337"/>
         <source>Search reactions</source>
         <translation>Search reactions</translation>
     </message>
     <message>
-        <location line="-291"/>
-        <location line="+299"/>
+        <location line="-319"/>
+        <location line="+327"/>
         <source>No matching reactions</source>
         <translation>No matching reactions</translation>
     </message>
@@ -3231,7 +3231,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EmojiGalleryDialog</name>
     <message>
-        <location filename="../src/emojigallerydialog.cpp" line="+73"/>
+        <location filename="../src/emojigallerydialog.cpp" line="+74"/>
         <location line="+93"/>
         <source>Search emoji</source>
         <translation>Search emoji</translation>
@@ -3589,7 +3589,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4418"/>
+        <location filename="../src/messageeditor.cpp" line="+4414"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3599,12 +3599,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Insert emoji</translation>
     </message>
     <message>
-        <location line="+1685"/>
+        <location line="+1708"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+2822"/>
+        <location line="+2856"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3749,7 +3749,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="-4650"/>
+        <location line="-4707"/>
         <source>Hold to record a voice message</source>
         <translation>Hold to record a voice message</translation>
     </message>
@@ -4361,7 +4361,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::VoiceRecorderDialog</name>
     <message>
-        <location filename="../src/voicerecorderdialog.cpp" line="+528"/>
+        <location filename="../src/voicerecorderdialog.cpp" line="+567"/>
         <source> / %1</source>
         <translation type="unfinished"></translation>
     </message>
