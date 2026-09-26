@@ -327,6 +327,353 @@ QString unescapeMarkdown(const QString& line)
     return out;
 }
 
+//! One of the four inline styling markers qtextmarkdownwriter can emit. See
+//! fixEmphasisMarkerNesting() for why the four are tracked separately rather than just matched by
+//! token text.
+enum class EmphasisMarker
+{
+    Bold,       // **
+    Italic,     // *
+    Strikeout,  // ~~
+    Underline   // _
+};
+
+//! The exact token qtextmarkdownwriter writes for a marker, both opening and closing -- markdown
+//! emphasis markers are not paired tags, the same text opens and closes.
+QLatin1String emphasisToken(EmphasisMarker marker)
+{
+    switch (marker)
+    {
+        case EmphasisMarker::Bold: return QLatin1String("**");
+        case EmphasisMarker::Italic: return QLatin1String("*");
+        case EmphasisMarker::Strikeout: return QLatin1String("~~");
+        case EmphasisMarker::Underline: return QLatin1String("_");
+    }
+    return QLatin1String("");
+}
+
+//! Fix up one line's worth of marker clusters against `stack`, the markers currently open coming
+//! into this line. See fixEmphasisMarkerNesting() for the algorithm.
+QString fixEmphasisMarkerNestingInLine(const QString& line, std::vector<EmphasisMarker>& stack)
+{
+    QString out;
+    out.reserve(line.size());
+
+    int i=0;
+    const int n=line.size();
+
+    // A `*`-bulleted list item (QTextListFormat::ListCircle) is syntactically indistinguishable
+    // from a lone opening italic '*' -- both are a bare '*' followed by whitespace -- except that
+    // the bullet is always the very first thing on the line. Handled once, up front, rather than by
+    // guarding every lone '*'/'_' against a following space: that guard also matches a legitimate
+    // CLOSING marker immediately followed by a space (`*word* next`), which must still be read as a
+    // marker.
+    {
+        int k=0;
+        while (k<n && line.at(k)==QLatin1Char(' '))
+        {
+            ++k;
+        }
+        if (k<n && line.at(k)==QLatin1Char('*') && k+1<n && line.at(k+1).isSpace())
+        {
+            out+=line.left(k+1);
+            i=k+1;
+        }
+    }
+
+    while (i<n)
+    {
+        const auto c=line.at(i);
+
+        // Backslash escapes: qtextmarkdownwriter's own escaping guarantees the escaped character
+        // is never a marker qtextmarkdownwriter itself wrote.
+        if (c==QLatin1Char('\\') && i+1<n)
+        {
+            out+=c;
+            out+=line.at(i+1);
+            i+=2;
+            continue;
+        }
+
+        // Inline code spans: copied verbatim. A bare '*'/'_'/'~' inside one means nothing to
+        // markdown, so it must never be read as a marker.
+        if (c==QLatin1Char('`'))
+        {
+            auto runLen=1;
+            while (i+runLen<n && line.at(i+runLen)==QLatin1Char('`'))
+            {
+                ++runLen;
+            }
+            const QString tickRun(runLen,QLatin1Char('`'));
+            const auto closeIdx=line.indexOf(tickRun,i+runLen);
+            if (closeIdx>=0)
+            {
+                out+=line.mid(i,closeIdx+runLen-i);
+                i=closeIdx+runLen;
+                continue;
+            }
+            out+=tickRun;
+            i+=runLen;
+            continue;
+        }
+
+        // Link/image destinations: `href` reaches qtextmarkdownwriter's output unescaped (only the
+        // visible link TEXT is escaped), so a URL's own '_' must be passed through untouched rather
+        // than read as an underline toggle.
+        if (c==QLatin1Char(']') && i+1<n && line.at(i+1)==QLatin1Char('('))
+        {
+            out+=c;
+            out+=line.at(i+1);
+            i+=2;
+            int depth=1;
+            while (i<n && depth>0)
+            {
+                if (line.at(i)==QLatin1Char('('))
+                {
+                    ++depth;
+                }
+                else if (line.at(i)==QLatin1Char(')'))
+                {
+                    --depth;
+                }
+                out+=line.at(i);
+                ++i;
+            }
+            continue;
+        }
+
+        // Autolinks: same reasoning as a link destination.
+        if (c==QLatin1Char('<'))
+        {
+            const auto closeIdx=line.indexOf(QLatin1Char('>'),i+1);
+            if (closeIdx>=0 && !line.mid(i+1,closeIdx-i-1).contains(QLatin1Char(' ')))
+            {
+                out+=line.mid(i,closeIdx-i+1);
+                i=closeIdx+1;
+                continue;
+            }
+        }
+
+        if (c!=QLatin1Char('*') && c!=QLatin1Char('~') && c!=QLatin1Char('_'))
+        {
+            out+=c;
+            ++i;
+            continue;
+        }
+
+        // Collect the maximal run of marker tokens glued together with nothing in between --
+        // exactly the shape qtextmarkdownwriter produces when several styles toggle at the same
+        // fragment boundary, which is the only shape this function tries to fix.
+        std::vector<EmphasisMarker> cluster;
+        auto j=i;
+        while (j<n)
+        {
+            EmphasisMarker m{};
+            int len=0;
+            const auto cj=line.at(j);
+            if (cj==QLatin1Char('*') && j+1<n && line.at(j+1)==QLatin1Char('*'))
+            {
+                m=EmphasisMarker::Bold;
+                len=2;
+            }
+            else if (cj==QLatin1Char('~') && j+1<n && line.at(j+1)==QLatin1Char('~'))
+            {
+                m=EmphasisMarker::Strikeout;
+                len=2;
+            }
+            else if (cj==QLatin1Char('*'))
+            {
+                m=EmphasisMarker::Italic;
+                len=1;
+            }
+            else if (cj==QLatin1Char('_'))
+            {
+                m=EmphasisMarker::Underline;
+                len=1;
+            }
+            else
+            {
+                break;
+            }
+            if (std::find(cluster.begin(),cluster.end(),m)!=cluster.end())
+            {
+                // The same style twice in one glued run can't come from qtextmarkdownwriter --
+                // stop rather than guess at what produced it.
+                break;
+            }
+            cluster.push_back(m);
+            j+=len;
+        }
+
+        if (cluster.empty())
+        {
+            out+=c;
+            ++i;
+            continue;
+        }
+
+        const auto stackSize=static_cast<int>(stack.size());
+        const auto clusterSize=static_cast<int>(cluster.size());
+
+        const auto stackHasFromTop=[&](EmphasisMarker m, int topCount)
+        {
+            for (auto k=stackSize-topCount; k<stackSize; ++k)
+            {
+                if (stack[static_cast<std::size_t>(k)]==m)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        bool pureOpen=true;
+        for (const auto& m : cluster)
+        {
+            if (std::find(stack.begin(),stack.end(),m)!=stack.end())
+            {
+                pureOpen=false;
+                break;
+            }
+        }
+
+        bool pureClose=!pureOpen && clusterSize<=stackSize;
+        if (pureClose)
+        {
+            for (const auto& m : cluster)
+            {
+                if (!stackHasFromTop(m,clusterSize))
+                {
+                    pureClose=false;
+                    break;
+                }
+            }
+        }
+
+        if (pureOpen)
+        {
+            for (const auto& m : cluster)
+            {
+                stack.push_back(m);
+                out+=emphasisToken(m);
+            }
+        }
+        else if (pureClose)
+        {
+            // Re-derive the order from the stack instead of trusting qtextmarkdownwriter's own --
+            // that is the whole fix: always close in the exact reverse of how these were opened,
+            // which is always valid, regardless of what (possibly wrong) order the writer used.
+            for (auto k=0; k<clusterSize; ++k)
+            {
+                out+=emphasisToken(stack.back());
+                stack.pop_back();
+            }
+        }
+        else
+        {
+            // Neither a clean open nor a clean close of the current top of stack -- qtextmarkdownwriter
+            // doesn't produce this shape from a single fragment boundary, so it is passed through
+            // unchanged rather than risked. The stack is still kept in step so anything later on the
+            // line is judged correctly.
+            for (const auto& m : cluster)
+            {
+                auto it=std::find(stack.begin(),stack.end(),m);
+                if (it!=stack.end())
+                {
+                    stack.erase(it);
+                }
+                else
+                {
+                    stack.push_back(m);
+                }
+                out+=emphasisToken(m);
+            }
+        }
+
+        i=j;
+    }
+
+    return out;
+}
+
+/** @brief Reorder the emphasis-closing markers so a run with more than one style active at once
+ *  closes in valid, properly nested markdown, outside fenced code blocks.
+ *
+ * `qtextmarkdownwriter` tracks bold/italic/strikeout/underline independently per block and, when
+ * several of them toggle at the same fragment boundary, always writes all four in the SAME fixed
+ * order -- bold, italic, strikeout, underline -- whether that transition is an OPEN or a CLOSE
+ * happening mid-paragraph. But the closing markers it force-writes at the very END of a block use a
+ * DIFFERENT fixed order -- bold, italic, underline, strikeout (qtextmarkdownwriter.cpp: compare the
+ * order of the `fontInfo.bold()`/`italic()`/`strikeOut()`/`underline()` checks inside writeFrags()'s
+ * own loop against the unconditional `if (bold)`/`if (italic)`/`if (underline)`/`if (strikeOut)`
+ * tail it falls through to after the loop). Whenever a run's styling extends to the end of its
+ * block, the closing order fails to mirror the opening order -- underline and strikeout swap -- so
+ * bold and italic end up closing INSIDE strikeout/underline instead of outside them: a word that is
+ * bold, italic, underlined AND struck through exports as `***~~_formatted***_~~`, which no CommonMark
+ * parser reads back as four nested styles. This is a bug in Qt's writer, not in anything about the
+ * document's own formatting, so it is fixed here, once, on the way out, rather than upstream.
+ *
+ * The fix does not try to re-derive qtextmarkdownwriter's original open/close intent. It tracks its
+ * OWN stack of which markers are currently open purely from the token stream (see
+ * fixEmphasisMarkerNestingInLine()), and whenever a maximal glued run of marker tokens exactly
+ * matches either none or all of the current stack's top, it rewrites that run in the one order that
+ * is always valid -- opens in the order given, closes in the exact reverse, regardless of what
+ * (possibly wrong) order qtextmarkdownwriter used. Anything that isn't cleanly one or the other is
+ * left untouched: that shape doesn't occur from a single fragment boundary, so guessing at it would
+ * risk breaking a run that was already correct.
+ *
+ * The stack resets at every blank line: qtextmarkdownwriter's own bold/italic/underline/strikeOut
+ * booleans are local to a single block and it always force-closes whatever is left open by the time
+ * that block's text ends (the very tail case this function corrects the order of), so nothing is
+ * ever meant to stay open across a block boundary.
+ */
+QString fixEmphasisMarkerNesting(const QString& markdown)
+{
+    if (!markdown.contains(QLatin1Char('*')) && !markdown.contains(QLatin1Char('_'))
+        && !markdown.contains(QLatin1Char('~')))
+    {
+        return markdown;
+    }
+
+    const auto lines=markdown.split(QLatin1Char('\n'));
+    QStringList out;
+    out.reserve(lines.size());
+
+    QString openFence;
+    std::vector<EmphasisMarker> stack;
+
+    for (const auto& line : lines)
+    {
+        const auto fence=fenceRun(line);
+        if (!openFence.isEmpty())
+        {
+            out.append(line);
+            if (!fence.isEmpty() && fence.at(0)==openFence.at(0) && fence.size()>=openFence.size())
+            {
+                openFence.clear();
+            }
+            continue;
+        }
+        if (!fence.isEmpty())
+        {
+            openFence=fence;
+            out.append(line);
+            continue;
+        }
+
+        if (line.trimmed().isEmpty())
+        {
+            stack.clear();
+            out.append(line);
+            continue;
+        }
+
+        out.append(fixEmphasisMarkerNestingInLine(line,stack));
+    }
+
+    return out.join(QLatin1Char('\n'));
+}
+
 /** @brief Put the code fences a WYSIWYG document carries as LITERAL TEXT back the way the user
  *  typed them, on the way out to markdown.
  *
@@ -922,7 +1269,7 @@ QString wysiwygMarkdown(const QTextDocument* document)
     mergeProseBlocksForExport(clone.get());
     padEmptyTableColumnsForExport(clone->rootFrame());
     replaceEmojiImagesForExport(clone.get(),true);
-    return collapseBlankRuns(restoreCodeFences(clone->toMarkdown()));
+    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(clone->toMarkdown())));
 }
 
 /** @brief plainTextKeepingIndent() with emoji images resolved to their codes.
@@ -965,7 +1312,7 @@ QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
     mergeProseBlocksForExport(&temp);
     padEmptyTableColumnsForExport(temp.rootFrame());
     replaceEmojiImagesForExport(&temp,true);
-    return collapseBlankRuns(restoreCodeFences(temp.toMarkdown()));
+    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(temp.toMarkdown())));
 }
 
 /** @brief Turn every property-based code block in a document into the literal "```" text form.
