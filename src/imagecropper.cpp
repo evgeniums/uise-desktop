@@ -70,6 +70,15 @@ void CropRectItem::init()
 {
     m_cropperRect=m_imageItem->boundingRect();
     updateAspectRatio();
+
+    // Force a fresh first-time seed in adjustViewportFrame() below, even though
+    // SimpleImageEditor::resetCropper() may already have triggered one or more earlier seeds via
+    // setKeepAspectRatio()/setSquare() (each calls adjustCropRect() itself) before this settings are
+    // final -- an earlier seed there ran with whichever of m_square/m_keepAspectRatio that setter had
+    // not yet set, e.g. still square when the caller is about to switch to rectangular. Clearing here
+    // is safe because init() only ever runs on a newly created item (see resetCropper()), so there is
+    // no in-progress user selection to lose.
+    m_viewportFrame=QRectF{};
     adjustCropRect();
 
     // Enable hover events to change cursor shape
@@ -521,14 +530,36 @@ void CropRectItem::adjustViewportFrame()
     QPointF center;
     if (m_viewportFrame.isEmpty())
     {
-        // First-time seed: the full viewport, centred. Deliberately NOT intersected with the
-        // image's own (possibly tiny, pre-upscale) on-screen bounds the way the legacy body's
-        // "limit to visible area" is -- the frame defines the output window independently of
-        // whatever pixel size the source image happens to be; GraphicsViewZoom::setCoverRect()
-        // (see SimpleImageEditor::updateZoomLimitsForCropper()) is what scales a smaller image up
-        // to fill it, and seeding from the image's pre-upscale bounds would produce a frame no
-        // bigger than the un-zoomed image, defeating that.
-        available=QRectF(m_view->viewport()->rect());
+        if (keepAspectRatio())
+        {
+            // Square/aspect-locked crop (e.g. the circular avatar frame): seed from the full
+            // viewport, centred. Deliberately NOT intersected with the image's own (possibly tiny,
+            // pre-upscale) on-screen bounds the way the legacy body's "limit to visible area" is --
+            // the frame defines the output window independently of whatever pixel size the source
+            // image happens to be; GraphicsViewZoom::setCoverRect() (see
+            // SimpleImageEditor::updateZoomLimitsForCropper()) is what scales a smaller image up to
+            // fill it, and seeding from the image's pre-upscale bounds would produce a frame no
+            // bigger than the un-zoomed image, defeating that.
+            available=QRectF(m_view->viewport()->rect());
+        }
+        else
+        {
+            // Free rectangular crop (no locked aspect ratio, e.g. the chat-attachment editor):
+            // seed from the image's OWN current on-screen rect instead -- the host has normally
+            // already fitted the image to the viewport (see SimpleImageEditor::doLoadImage()'s
+            // fitInView() call), so this makes the frame match the fitted image exactly, and the
+            // subsequent setCoverRect()/reapplyLimits() floor becomes a no-op (cover scale ==
+            // current scale) rather than zooming in to cover the whole viewport and cropping off
+            // whichever dimension doesn't match the viewport's aspect ratio. This is the
+            // fixed-on-screen equivalent of the legacy body's "limit to visible area" for the
+            // non-aspect-locked case.
+            auto imageViewportRect=m_view->viewportTransform().mapRect(m_imageItem->sceneBoundingRect());
+            available=imageViewportRect.intersected(QRectF(m_view->viewport()->rect()));
+            if (available.isEmpty())
+            {
+                available=QRectF(m_view->viewport()->rect());
+            }
+        }
         center=available.center();
     }
     else

@@ -583,6 +583,11 @@ void SimpleImageEditor::doLoadImage()
     m_widget->pimpl->controlsFrame->setVisible(true);
 
     m_widget->pimpl->imageItem = m_widget->pimpl->scene->addPixmap(px);
+    // addPixmap() defaults to Qt::FastTransformation (nearest-neighbour); QGraphicsPixmapItem::
+    // paint() sets/clears QPainter::SmoothPixmapTransform straight from this flag, so the view's
+    // own render hints cannot override it -- without this a downscaled image (fitted below, or
+    // zoomed out) is drawn jagged. Same fix as ImageViewer's identical setTransformationMode() call.
+    m_widget->pimpl->imageItem->setTransformationMode(Qt::SmoothTransformation);
     m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
     auto viewRect=m_widget->pimpl->view->rect();
 
