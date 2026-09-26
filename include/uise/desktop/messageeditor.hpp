@@ -184,9 +184,12 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
     Q_PROPERTY(QColor spellCheckUnderlineColor READ spellCheckUnderlineColor WRITE setSpellCheckUnderlineColor)
 
     /**
-     * QSS: qproperty-spellCheckUnderlineWidth: 2; -- pen width, in device-independent pixels, of
-     * the squiggle EnhancedTextEdit::paintEvent() draws under a misspelled word. 0 (the default)
-     * means "auto": see the platform-dependent values documented on the property's setter.
+     * QSS: qproperty-spellCheckUnderlineWidth: 0; -- pen width, in device-independent pixels, of
+     * the squiggle EnhancedTextEdit::paintEvent() draws under a misspelled word. The shipped
+     * themes leave this at 0 (the default), meaning "auto": see the platform-dependent values
+     * documented on the property's setter. A non-zero value applies to EVERY platform alike --
+     * overriding the per-platform auto split -- so only set it explicitly when one specific
+     * platform's squiggle still needs tuning.
      *
      * A property at all only because the squiggle is no longer a QTextCharFormat underline
      * style: Qt resolves QTextCharFormat::SpellCheckUnderline through QPlatformTheme at paint

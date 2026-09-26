@@ -28,12 +28,15 @@ qproperty-mentionColor: #C9A2F5;
    not by a QTextCharFormat underline style -- see EnhancedTextEdit::SpellCheckUnderlineProperty
    for why. */
 qproperty-spellCheckUnderlineColor: #FF453A;
-/* Pen width of that squiggle, in device-independent pixels. Set explicitly rather than left at
-   the auto default so the value is visible and tunable here: painted by hand now instead of via
-   QTextCharFormat::SpellCheckUnderline, which drew at the font's own lineThickness() -- about one
-   pixel, faint enough on macOS's dotted rendering to read as a rendering artefact rather than a
-   mark. 0 restores "auto" (see EnhancedTextEdit::setSpellCheckUnderlineWidth()). */
-qproperty-spellCheckUnderlineWidth: 2;
+/* Pen width of that squiggle, in device-independent pixels. Left at 0 ("auto") deliberately: auto
+   is already platform-aware (EnhancedTextEdit::setSpellCheckUnderlineWidth()'s own doc comment) --
+   2px round dots on macOS, where the native dotted style drew at the font's own lineThickness()
+   (about one pixel, faint enough to read as a rendering artefact), and the font's own ~1px line
+   width for the wave everywhere else. A non-zero value here applies to EVERY platform alike, which
+   is what previously pinned this at 2 and made the Windows/Linux wave both twice as thick and
+   twice as tall (drawSpellWave() ties amplitude to pen width) -- override only if a specific
+   platform still needs tuning. */
+qproperty-spellCheckUnderlineWidth: 0;
 }
 
 uise--MessageEditorToolbar {
