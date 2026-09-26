@@ -47,9 +47,19 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QObject, public QGraphicsRectIte
 
         constexpr static const qreal BaseHandleWidth=1.0;
         constexpr static const qreal BaseHandleTolerance=15.0;
+
+        //! Dark-theme handle/border colour -- near-white reads fine against the dark viewport
+        //! background (see reset.qss's QGraphicsView rule) and dark image content.
         constexpr static const QRgb HandleColor=QRgb{0xF0F0F0};
         constexpr static const QRgb BorderColor=QRgb{0xF0F0F0};
         constexpr static const uint32_t BorderColorAlpha=30;
+
+        //! Light-theme counterpart of HandleColor/BorderColor -- the same near-white is hardly
+        //! distinguishable from the (also near-white) light viewport background and from light
+        //! image content, so light theme uses the app's own accent teal instead of a new hue --
+        //! same colour as e.g. AbstractDialog's filled accent buttons (see abstractdialog.qss).
+        constexpr static const QRgb LightThemeColor=QRgb{0x218DAE};
+        constexpr static const uint32_t LightBorderColorAlpha=200;
 
         enum HandleType
         {

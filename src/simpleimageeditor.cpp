@@ -126,6 +126,10 @@ SimpleImageEditorWidget::SimpleImageEditorWidget(SimpleImageEditor* ctrl, QWidge
     pimpl->layout=Layout::vertical(this);
 
     pimpl->view = new FreeHandDrawView(this);
+    // Distinct object name so imageeditor.qss can override just this view's background
+    // (reset.qss's generic QGraphicsView rule would otherwise apply here too, same as to
+    // ImageViewer/DirectoryImagesViewer's own views).
+    pimpl->view->setObjectName("imageEditorView");
     pimpl->scene = new QGraphicsScene(this);
     pimpl->view->setScene(pimpl->scene);
     pimpl->layout->addWidget(pimpl->view,1);

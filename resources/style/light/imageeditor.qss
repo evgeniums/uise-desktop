@@ -3,6 +3,14 @@ border: 1px solid #888888;
 background-color: #DDDDDD;
 }
 
+/* Viewport background: the generic QGraphicsView rule in reset.qss (#F0F0F0) is close enough to
+ * white that it was hard to tell apart from light image content and from the crop frame's
+ * handles/border -- same grey already used for #freeHandDrawFrame just above, reused here rather
+ * than introducing a new shade. */
+uise--SimpleImageEditorWidget #imageEditorView {
+background-color: #DDDDDD;
+}
+
 uise--SimpleImageEditorWidget #fileBrowserFrame uise--PushButton QPushButton,
 uise--DirectoryImagesViewer #fileBrowserFrame uise--PushButton QPushButton
 {color: #444444;border: 1px solid #888888; background-color: transparent;}

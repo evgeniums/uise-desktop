@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QCursor>
 #include <QGraphicsView>
 
+#include <uise/desktop/style.hpp>
 #include <uise/desktop/imagecropper.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
@@ -150,9 +151,11 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         }
     }
 
-    // draw the crop border
-    QColor borderColor{BorderColor};
-    borderColor.setAlpha(BorderColorAlpha);
+    // draw the crop border -- see LightThemeColor's own doc for why light theme doesn't reuse
+    // the dark theme's near-white colour here.
+    bool darkTheme=Style::instance().isDarkTheme();
+    QColor borderColor{darkTheme ? BorderColor : LightThemeColor};
+    borderColor.setAlpha(darkTheme ? BorderColorAlpha : LightBorderColorAlpha);
     QPen borderPen(borderColor);
     borderPen.setWidth(qRound(handleSize));
     borderPen.setStyle(Qt::DashLine);
@@ -168,7 +171,7 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         cornerHandleSize=handleSize*4;
         cornerWidth=2;
     }
-    QColor handleColor{HandleColor};
+    QColor handleColor{darkTheme ? HandleColor : LightThemeColor};
     QPen pen{handleColor};
     pen.setWidth(cornerWidth);
     painter->setPen(pen);
