@@ -589,7 +589,7 @@ class ChatMessagesView : public AbstractChatMessagesView
     private:
 
         QBoxLayout* m_layout=nullptr;
-        ChatMessagesViewWidget<BaseMessageT,Traits>* m_listView;
+        ChatMessagesViewWidget<BaseMessageT,Traits>* m_listView=nullptr;
         bool m_selectionMode=false;
 
         ChatDateSubtitle* m_dateSubtitle=nullptr;
