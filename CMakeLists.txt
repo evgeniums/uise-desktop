@@ -299,6 +299,7 @@ SET (HEADERS
     include/uise/desktop/messageeditor.hpp
     include/uise/desktop/messageselectionpanel.hpp
 
+    include/uise/desktop/scrollbarholder.hpp
     include/uise/desktop/verticalscrollbar.hpp
 )
 
@@ -516,7 +517,7 @@ SET (SOURCES
     src/messageeditortoolbar.cpp
     src/messageeditor.cpp
     src/messageselectionpanel.cpp
-    src/verticalscrollbar.cpp
+    src/scrollbarholder.cpp
 )
 
 IF (UISE_DESKTOP_MULTIMEDIA)

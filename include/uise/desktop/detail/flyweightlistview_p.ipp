@@ -64,6 +64,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         IdComparer idComparer
     ) : m_obj(view),
         m_vbarHolder(nullptr),
+        m_hbarHolder(nullptr),
         m_vbar(nullptr),
         m_hbar(nullptr),
         m_view(nullptr),
@@ -150,10 +151,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     auto middleFrame=new QFrame(m_obj);
     middleFrame->setObjectName("uiseFlyweightListViewM");
     vlayout->addWidget(middleFrame,1);
-    m_hbar=new QScrollBar(m_obj);
-    m_hbar->setOrientation(Qt::Horizontal);
-    m_hbar->setVisible(false);
-    vlayout->addWidget(m_hbar);
+    m_hbarHolder=new ScrollBarHolder(Qt::Horizontal,m_obj);
+    m_hbar=m_hbarHolder->bar();
+    m_hbarHolder->setVisible(false);
+    vlayout->addWidget(m_hbarHolder);
     auto hlayout=Layout::horizontal(middleFrame);
 
     m_view=new QFrame(middleFrame);
@@ -162,10 +163,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setupUi()
     QFrame* paddingFrame=new QFrame(middleFrame);
     paddingFrame->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
     hlayout->addWidget(paddingFrame);
-    m_vbarHolder=new VerticalScrollBar(middleFrame);
+    m_vbarHolder=new ScrollBarHolder(Qt::Vertical,middleFrame);
     m_vbar=m_vbarHolder->bar();
     m_vbarHolder->setVisible(false);
     hlayout->addWidget(m_vbarHolder);
+
+    // Fade the handle out when the mouse is elsewhere and only flash it back in on an actual
+    // user scroll -- see notifyUserScrolled() call sites in scroll()/onOtherSbarChanged()/
+    // keyPressEvent(), and ScrollBarHolder's own class doc comment for why a permanently
+    // installed QGraphicsOpacityEffect is safe on these holders specifically. m_obj (not m_view)
+    // is the hover target so hovering directly over the bars themselves also counts -- Qt
+    // delivers Enter/Leave to every ancestor whose boundary the cursor actually crossed, so
+    // entering anywhere inside m_obj (including onto a child bar at its edge) still reaches it.
+    m_vbarHolder->setHoverTarget(m_obj);
+    m_vbarHolder->setAutoHide(true);
+    m_hbarHolder->setHoverTarget(m_obj);
+    m_hbarHolder->setAutoHide(true);
 
     m_view->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     m_view->setFocusPolicy(Qt::StrongFocus);
@@ -729,7 +742,7 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onResized()
 {
     auto margins=m_obj->contentsMargins();
-    m_hbar->resize(m_obj->width()-m_vbar->width()-margins.left()-margins.right(),m_hbar->height());
+    m_hbarHolder->resize(m_obj->width()-m_vbarHolder->width()-margins.left()-margins.right(),m_hbarHolder->height());
     updateJumpEdgePosition();
 }
 
@@ -1676,9 +1689,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scroll(int delta)
 
     scrollTo(cb);
 
-    if (m_userScrolledCb && oprop(m_llist,OProp::pos)!=oldPos)
+    if (oprop(m_llist,OProp::pos)!=oldPos)
     {
-        m_userScrolledCb();
+        mainBarHolder()->notifyUserScrolled();
+
+        if (m_userScrolledCb)
+        {
+            m_userScrolledCb();
+        }
     }
 }
 
@@ -2612,15 +2630,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBars()
     switch (m_hbarPolicy)
     {
         case Qt::ScrollBarAlwaysOff:
-            m_hbar->setVisible(false);
+            m_hbarHolder->setVisible(false);
         break;
 
         case Qt::ScrollBarAlwaysOn:
-            m_hbar->setVisible(true);
+            m_hbarHolder->setVisible(true);
         break;
 
         case Qt::ScrollBarAsNeeded:
-            m_hbar->setVisible(m_view->width()<m_llist->width());
+            m_hbarHolder->setVisible(m_view->width()<m_llist->width());
         break;
 
         default:
@@ -2643,6 +2661,37 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBars()
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+ScrollBarHolder* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::mainBarHolder() const noexcept
+{
+    return isHorizontal() ? m_hbarHolder : m_vbarHolder;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+ScrollBarHolder* FlyweightListView_p<ItemT,OrderComparer,IdComparer>::otherBarHolder() const noexcept
+{
+    return isHorizontal() ? m_vbarHolder : m_hbarHolder;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setScrollBarsAutoHide(bool enable)
+{
+    m_vbarHolder->setAutoHide(enable);
+    m_hbarHolder->setAutoHide(enable);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isScrollBarsAutoHide() const
+{
+    // Both holders are always kept in sync by setScrollBarsAutoHide(), so either one reflects
+    // the current setting.
+    return m_vbarHolder->isAutoHide();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onMainSbarChanged(int value)
 {
     auto oldPos=oprop(m_llist,OProp::pos);
@@ -2657,6 +2706,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onOtherSbarChanged(int
     auto pos=m_llist->pos();
     setOProp(pos,OProp::pos,-value,true);
     m_llist->move(pos);
+
+    otherBarHolder()->notifyUserScrolled();
 }
 
 //--------------------------------------------------------------------------
@@ -2931,6 +2982,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
         direction=Direction::END;
     }
     jumpToEdge(direction);
+    mainBarHolder()->notifyUserScrolled();
 }
 
 //--------------------------------------------------------------------------

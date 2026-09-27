@@ -522,10 +522,12 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::keyPressEvent(QKeyEvent 
     else if (event->key()==Qt::Key_Home)
     {
         pimpl->jumpToEdge(Direction::HOME,false,event->modifiers());
+        pimpl->mainBarHolder()->notifyUserScrolled();
     }
     else if (event->key()==Qt::Key_End)
     {
         pimpl->jumpToEdge(Direction::END,false,event->modifiers());
+        pimpl->mainBarHolder()->notifyUserScrolled();
     }
 
     QFrame::keyPressEvent(event);
@@ -634,6 +636,20 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setHorizontalScrollBarPo
 {
     pimpl->m_hbarPolicy=policy;
     pimpl->updateScrollBars();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setScrollBarsAutoHide(bool enable)
+{
+    pimpl->setScrollBarsAutoHide(enable);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isScrollBarsAutoHide() const
+{
+    return pimpl->isScrollBarsAutoHide();
 }
 
 //--------------------------------------------------------------------------

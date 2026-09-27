@@ -45,7 +45,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/utils/orientationinvariant.hpp>
 
-#include <uise/desktop/verticalscrollbar.hpp>
+#include <uise/desktop/scrollbarholder.hpp>
 #include <uise/desktop/linkedlistview.hpp>
 #include <uise/desktop/jumpedge.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
@@ -274,6 +274,16 @@ class FlyweightListView_p : public OrientationInvariant
 
         void updateScrollBars();
 
+        void setScrollBarsAutoHide(bool enable);
+        bool isScrollBarsAutoHide() const;
+
+        //! Holder of the scrollbar for the main (scrolling) axis -- m_vbarHolder for a vertical
+        //! view, m_hbarHolder for a horizontal one.
+        ScrollBarHolder* mainBarHolder() const noexcept;
+
+        //! Holder of the scrollbar for the other axis -- the counterpart of mainBarHolder().
+        ScrollBarHolder* otherBarHolder() const noexcept;
+
         //! Clamps m_llist's OTHER-axis position back into [view-size-list-size, 0] and moves it
         //! if it fell outside -- see the call sites and the definition for why this is needed.
         void clampOtherAxisPos();
@@ -365,7 +375,8 @@ class FlyweightListView_p : public OrientationInvariant
             >;
 
         FlyweightListView<ItemT,OrderComparer,IdComparer>* m_obj;
-        VerticalScrollBar* m_vbarHolder;
+        ScrollBarHolder* m_vbarHolder;
+        ScrollBarHolder* m_hbarHolder;
         QScrollBar* m_vbar;
         QScrollBar* m_hbar;
 

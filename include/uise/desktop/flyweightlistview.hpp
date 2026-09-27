@@ -614,6 +614,26 @@ class FlyweightListView : public QFrame
         Qt::ScrollBarPolicy verticalScrollBarPolicy() const noexcept;
 
         /**
+         * @brief Enable or disable auto-hiding of the scrollbar handles (enabled by default).
+         * @param enable Mode to set.
+         *
+         * When enabled, a scrollbar that is needed (content overflows) still keeps its place in
+         * the layout, but its handle is drawn fully transparent unless the mouse is over the
+         * view or the user just scrolled (wheel, keys, dragging the handle, or clicking the jump-
+         * edge control) -- in which case it fades to opaque and, once the mouse leaves and
+         * scrolling stops, fades back out. Programmatic scrolling (e.g. scrollToItem(),
+         * scrollToEdge(), sticking to an edge on new items) does not trigger the fade-in, same as
+         * it does not trigger setUserScrolledCb()'s callback.
+         */
+        void setScrollBarsAutoHide(bool enable);
+
+        /**
+         * @brief Check if auto-hiding of the scrollbar handles is enabled.
+         * @return Query result.
+         */
+        bool isScrollBarsAutoHide() const;
+
+        /**
          * @brief Get viewport size.
          * @return Query value.
          */
