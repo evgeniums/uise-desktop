@@ -640,22 +640,18 @@ void HTreeNode::setContentWidget(QWidget* widget)
         pimpl->treeTab->refreshNodeMinWidth(this);
     }
 
-#ifdef Q_OS_WIN
-    // On Windows Qt does not repolish widgets inserted into the tree after
-    // qApp->setStyleSheet() was already called at startup, so QSS rules on the
-    // freshly inserted content (e.g. EditablePanel borders, min/max-width on
-    // uise--RoundedImage icon buttons) are not applied. Force a deferred recursive
-    // repolish so the content is styled on first paint, matching macOS behaviour.
-    QPointer<QWidget> contentWidget=widget;
-    QTimer::singleShot(0, this, [contentWidget]()
-    {
-        if (!contentWidget)
-        {
-            return;
-        }
-        Style::repolishRecursive(contentWidget);
-    });
-#endif
+    // A prior Windows-only workaround here deferred a full Style::repolishRecursive() of the
+    // whole content subtree via QTimer::singleShot(0), on the theory that Qt does not repolish
+    // widgets inserted into the tree after qApp->setStyleSheet() already ran at startup. Removed
+    // 2026-09-27: profiling (VS CPU Usage) showed it re-matching the entire ~1300-rule QSS
+    // against every already-polished widget in the node on EVERY open -- ~300 ms of the ~550 ms
+    // CPU cost of opening the CharacterInfo node, 43% of all GUI-thread CPU in the trace. The
+    // premise predates the 2026-09-19 fix that builds node content under its FINAL parent and
+    // shows it only once complete (see htree-node-open-qss-reparent-cost in project memory); that
+    // fix already gives Windows the same polish timing as macOS, so this became pure waste. If a
+    // real styling miss turns up on Windows, fix that specific widget (e.g. via changeEvent(
+    // QEvent::StyleChange), as RoundedImage already does) instead of restoring a subtree-wide
+    // repolish.
 }
 
 //--------------------------------------------------------------------------

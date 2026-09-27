@@ -554,10 +554,12 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
         /**
          * @brief Repolish a widget and all of its descendants.
          *
-         * On Windows Qt does not automatically repolish widgets that are inserted
-         * into the tree after qApp->setStyleSheet() was already called, so QSS rules
-         * (e.g. min/max-width on uise--RoundedImage, EditablePanel borders) are not
-         * applied. Calling this on a freshly inserted subtree restores them.
+         * Runs a full unpolish()+polish() (i.e. a full QSS selector re-match) on the widget and
+         * every descendant that has already been polished once. This is expensive -- profiling
+         * found it costing 43% of all GUI-thread CPU when it was run over a whole HTree node's
+         * content on every open (see htree-node-open-qss-reparent-cost in project memory) -- so
+         * prefer restyling a single widget (e.g. via changeEvent(QEvent::StyleChange), as
+         * RoundedImage does) over calling this recursively on a large subtree.
          */
         static void repolishRecursive(QWidget* widget);
 
