@@ -298,6 +298,11 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QFrame,
         void leaveEvent(QEvent* event) override;
         void changeEvent(QEvent* event) override;
 
+        //! COMPOSER-DEBUG temporary (Windows composer render glitch): traces polish/style/parent/
+        //! resize/show events of RoundedImages inside a MessageEditor to std::cerr. Remove once
+        //! the bug is found.
+        bool event(QEvent* event) override;
+
         virtual void doPaint(QPainter*)
         {}
 

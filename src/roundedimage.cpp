@@ -30,11 +30,50 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEnterEvent>
 #include <QEvent>
 
+#include <iostream>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+// COMPOSER-DEBUG temporary (Windows composer render glitch): only two groups of RoundedImages
+// are traced, to keep the output readable:
+//  - those inside a MessageEditor (the composer's attach/emoji/mic/send/expand icons, plus the
+//    formatting toolbar's);
+//  - the icon of an IconTextButton named "add" (the Add buttons beside the chats/contacts search
+//    input), which show the same unpainted-icon symptom.
+// Every other RoundedImage in the app (avatars, list icons, ...) stays silent. Returns an empty
+// string for an untraced widget, otherwise its ancestor chain as
+// "Class#objectName/Class#objectName/..." (innermost last), cut at the MessageEditor if any.
+std::string composerDebugPath(const QWidget* w)
+{
+    QStringList parts;
+    bool traced=false;
+    for (auto* p=w; p!=nullptr; p=p->parentWidget())
+    {
+        parts.prepend(QStringLiteral("%1#%2").arg(QString::fromLatin1(p->metaObject()->className()),p->objectName()));
+        if (p->inherits("uise::IconTextButton") && p->objectName()==QLatin1String("add"))
+        {
+            traced=true;
+        }
+        if (p->inherits("uise::MessageEditor"))
+        {
+            traced=true;
+            break;
+        }
+    }
+    if (!traced)
+    {
+        return std::string{};
+    }
+    return parts.join(QLatin1Char('/')).toStdString();
+}
+
+}
 
 
 /************************** RoundedImage **********************************/
@@ -96,6 +135,20 @@ void RoundedImage::setImageSize(
         const QSize& size
     )
 {
+    // COMPOSER-DEBUG temporary (Windows composer render glitch): this is where an autoSize image
+    // locks its size (setFixedSize) -- log what it locks to and what min/max it overrides.
+    {
+        auto path=composerDebugPath(this);
+        if (!path.empty())
+        {
+            std::cerr << "COMPOSER-DEBUG icon " << static_cast<const void*>(this) << " setImageSize"
+                      << " to=" << size.width() << "x" << size.height()
+                      << " minBefore=" << minimumWidth() << "x" << minimumHeight()
+                      << " maxBefore=" << maximumWidth() << "x" << maximumHeight()
+                      << " path=" << path << std::endl;
+        }
+    }
+
     const qreal pixelRatio = qApp->primaryScreen()->devicePixelRatio();
     m_size=size * pixelRatio;
     setFixedSize(size);
@@ -327,6 +380,28 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
         }
     }
 
+    // COMPOSER-DEBUG temporary (Windows composer render glitch): first paint of each traced icon,
+    // and every paint that ends up drawing nothing (null pixmap). A property rather than a member
+    // keeps this out of the class layout.
+    {
+        const bool firstPaint=!property("_composerDebugPainted").toBool();
+        if (firstPaint || px.isNull())
+        {
+            auto path=composerDebugPath(this);
+            if (!path.empty())
+            {
+                setProperty("_composerDebugPainted",true);
+                std::cerr << "COMPOSER-DEBUG icon " << static_cast<const void*>(this)
+                          << (firstPaint ? " firstPaint" : " paint")
+                          << " size=" << width() << "x" << height()
+                          << " imageSize=" << m_size.width() << "x" << m_size.height()
+                          << " pixmapNull=" << int(px.isNull())
+                          << " hasSvg=" << int(static_cast<bool>(m_svgIcon))
+                          << " path=" << path << std::endl;
+            }
+        }
+    }
+
     // draw pixmap
     if (!px.isNull() && svgIconCentered)
     {
@@ -412,6 +487,43 @@ void RoundedImage::changeEvent(QEvent* event)
     {
         createPixmapConsumer();
     }
+}
+
+//--------------------------------------------------------------------------
+
+bool RoundedImage::event(QEvent* event)
+{
+    // COMPOSER-DEBUG temporary (Windows composer render glitch). Logged AFTER the base handler,
+    // so a Polish line already shows the min/max the stylesheet applied (or failed to apply).
+    auto result=QFrame::event(event);
+
+    const char* name=nullptr;
+    switch (event->type())
+    {
+        case QEvent::Polish: name="Polish"; break;
+        case QEvent::StyleChange: name="StyleChange"; break;
+        case QEvent::ParentChange: name="ParentChange"; break;
+        case QEvent::Resize: name="Resize"; break;
+        case QEvent::Show: name="Show"; break;
+        case QEvent::Hide: name="Hide"; break;
+        default: break;
+    }
+    if (name!=nullptr)
+    {
+        auto path=composerDebugPath(this);
+        if (!path.empty())
+        {
+            std::cerr << "COMPOSER-DEBUG icon " << static_cast<const void*>(this) << " " << name
+                      << " size=" << width() << "x" << height()
+                      << " min=" << minimumWidth() << "x" << minimumHeight()
+                      << " max=" << maximumWidth() << "x" << maximumHeight()
+                      << " imageSize=" << m_size.width() << "x" << m_size.height()
+                      << " polished=" << int(testAttribute(Qt::WA_WState_Polished))
+                      << " visible=" << int(isVisible())
+                      << " path=" << path << std::endl;
+        }
+    }
+    return result;
 }
 
 //--------------------------------------------------------------------------
