@@ -643,6 +643,13 @@ QPoint FlyweightListView_p<ItemT,OrderComparer,IdComparer>::listEndInViewport() 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isAtBegin() const
 {
+    // todo-chat-first-live-message-not-shown-in-empty-chat.md: an empty list is trivially at
+    // both edges -- checked first because a stick==END empty list is NOT at pos==0 (see isAtEnd()
+    // below for why), which used to make this false too despite there being nothing to scroll to.
+    if (itemsCount()==0)
+    {
+        return true;
+    }
     return oprop(m_llist->pos(),OProp::pos)==0;
 }
 
@@ -650,6 +657,22 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isAtBegin() const
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isAtEnd() const
 {
+    // todo-chat-first-live-message-not-shown-in-empty-chat.md: for a stick==END list, scrollTo()
+    // parks a zero-size list at pos==viewportSize (its minPos==maxPos==viewportSize-listSize
+    // branch with listSize==0), one pixel past what listEndInViewport() would compute for any
+    // non-empty list (it only applies the trailing "-1" when propSize>0). That made isAtEnd()
+    // false for a brand-new, still-empty chat page -- so keepCurrentConfiguration() recorded
+    // m_atEnd=false, and the first message inserted afterwards (resizeList() growing the list
+    // 0->H) took compensateSizeChange()'s anchor branch instead of its at-edge scrollToEdge()
+    // branch. With no anchor to find (the list was empty a moment ago), that branch left the
+    // list sitting below the viewport with nothing compensated -- the bubble was inserted and
+    // indexed (mark-read, scrolling and reopening the page all proved it was there) but never
+    // scrolled into view. An empty list has nothing to scroll past, so it counts as at both
+    // edges unconditionally, same as clear() already sets m_atBegin=m_atEnd=true.
+    if (itemsCount()==0)
+    {
+        return true;
+    }
     return oprop(listEndInViewport(),OProp::pos)<=(oprop(m_view,OProp::size)-1);
 }
 
