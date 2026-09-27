@@ -821,6 +821,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     setOProp(newListSize,OProp::size,otherSize,true);
     m_llist->resize(newListSize);
 
+    // if the view widened (or the list's other-axis size shrank) past the list's stale other-axis
+    // position, snap the list back -- see clampOtherAxisPos() for why nothing else does this
+    clampOtherAxisPos();
+
     // process updated viewport
     viewportUpdated();
 
@@ -1584,6 +1588,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList(const char*
         qDebug() << printCurrentDateTime() << ": FlyweightListView_p::resizeList()  " << m_obj << " set size " << listSize;
 #endif
         m_llist->resize(listSize);
+        clampOtherAxisPos();
         compensateSizeChange();
     }
     else if (fwlvDebugEnabled())
@@ -1719,6 +1724,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent
        scrollOther=evalOffset(m_wheelOffsetAccumulatedOther,true);
    }
 
+   // Captured before m_scrollWheelHorizontal/isVertical() below can zero scrollOther, and before
+   // it gets used: this is whether the GESTURE asked to move the other axis at all, which is what
+   // decides accept()/ignore() at the end -- see there for why only the other axis is considered.
+   const bool otherRequested=scrollOther!=0;
+   const auto otherPosBefore=oprop(m_llist->pos(),OProp::pos,true);
+
    scroll(-scrollMain);
 
    if (isVertical() && !m_scrollWheelHorizontal)
@@ -1750,7 +1761,20 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent
        }
    }
 
-   event->accept();
+   // A plain main-axis wheel notch (an ordinary vertical mouse-wheel/touchpad scroll on a vertical
+   // list, or horizontal on a horizontal one -- the overwhelming majority of events) never asked
+   // to move the other axis at all, so it is always consumed exactly as before, edge of the list
+   // or not. Only when the gesture DID ask for the other axis (a diagonal/horizontal touchpad
+   // swipe) and that had no effect here -- no range, disabled, or already at that axis's bound --
+   // is it released to the parent, same chaining rule as ChatMessageTextBrowser::wheelEvent().
+   if (!otherRequested || oprop(m_llist->pos(),OProp::pos,true)!=otherPosBefore)
+   {
+       event->accept();
+   }
+   else
+   {
+       event->ignore();
+   }
 }
 
 //--------------------------------------------------------------------------
@@ -2566,6 +2590,28 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onOtherSbarChanged(int
     auto pos=m_llist->pos();
     setOProp(pos,OProp::pos,-value,true);
     m_llist->move(pos);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clampOtherAxisPos()
+{
+    // The OTHER axis's position is normally only ever changed through its scrollbar's
+    // valueChanged -> onOtherSbarChanged() above. But updateScrollBars() resets/clamps that bar
+    // with blockSignals(true) held, so when the list shrinks along the other axis (e.g. the view
+    // widens past the list's width, or the widest item is removed) nothing moves m_llist back:
+    // the bar reads a value consistent with the new size while m_llist keeps its old, now
+    // out-of-range, position. Call this right after any m_llist->resize() that can change the
+    // other-axis size while leaving its position untouched, so the two stay consistent.
+    auto pos=m_llist->pos();
+    auto otherPos=oprop(pos,OProp::pos,true);
+    auto minPos=std::min(0,oprop(m_view,OProp::size,true)-oprop(m_llist,OProp::size,true));
+    auto newPos=std::clamp(otherPos,minPos,0);
+    if (newPos!=otherPos)
+    {
+        setOProp(pos,OProp::pos,newPos,true);
+        m_llist->move(pos);
+    }
 }
 
 //--------------------------------------------------------------------------

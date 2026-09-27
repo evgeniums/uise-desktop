@@ -1047,11 +1047,17 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, Fi
     // one but not the other doesn't spuriously (or silently) skip the required reorder.
     auto oldSortValue=msg->sortValue();
 
-    replaceSelectedData(msg);
-
     m_listView->beginUpdate();
 
     msg->updateData(dbItem,fields);
+
+    // Snapshot the SELECTION's own copy only after updateData() above has replaced msg's
+    // underlying chat_msg -- msg->data() (called inside replaceSelectedData()) reads m_msg live,
+    // so calling this before updateData() would freeze a stale snapshot (e.g. still Sending) into
+    // m_selectedMessages even once the widget itself has moved on to Sent. A caller filtering the
+    // selection by send state (whitemdesktop's onForwardRequested()) would otherwise keep
+    // rejecting a message that has since actually been sent.
+    replaceSelectedData(msg);
 
     // sortValue() reads the key live from the (now replaced) DU -- see
     // insertItemToContainer()'s own @todo: a live sort-key mutation MUST be paired with

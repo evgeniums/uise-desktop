@@ -528,8 +528,10 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::keyPressEvent(QKeyEvent 
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::wheelEvent(QWheelEvent *event)
 {
+    // pimpl->wheelEvent() decides accept()/ignore() itself (whether this view actually used the
+    // event) -- do NOT also call QFrame::wheelEvent() here, since QWidget::wheelEvent() always
+    // ignore()s, which would undo that decision and send every event to the parent regardless.
     pimpl->wheelEvent(event);
-    QFrame::wheelEvent(event);
 }
 
 //--------------------------------------------------------------------------

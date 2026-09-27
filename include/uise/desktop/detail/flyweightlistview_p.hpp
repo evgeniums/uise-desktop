@@ -273,6 +273,10 @@ class FlyweightListView_p : public OrientationInvariant
 
         void updateScrollBars();
 
+        //! Clamps m_llist's OTHER-axis position back into [view-size-list-size, 0] and moves it
+        //! if it fell outside -- see the call sites and the definition for why this is needed.
+        void clampOtherAxisPos();
+
         void onMainSbarChanged(int value);
         void onOtherSbarChanged(int value);
 
