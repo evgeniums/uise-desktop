@@ -1068,6 +1068,22 @@ void DropdownFrame::applyFrame(qreal t)
     auto x=rightAnchored ? pimpl->fullRect.right()+1-w : pimpl->fullRect.left();
     auto y=bottomAnchored ? pimpl->fullRect.bottom()+1-h : pimpl->fullRect.top();
     setGeometry(x,y,w,h);
+
+    // This frame's size is entirely computed from its content by measure()/measureBeside()/
+    // measureAbove()/measureAt() -- a DropdownFrame has no concept of the user resizing it (no
+    // consumer -- menu, submenu, calendar/date-time popup, reaction gallery, load-control menu,
+    // ... -- ever wants that), yet nothing here was ever telling the platform window so: unlike
+    // FloatingDialogFrame::setWidget() (SetFixedSize keeps min==max pinned to the content's size
+    // hint via QLayout::activate() -> setFixedSize()), this frame's content is positioned by
+    // hand (see repositionContent()), not through a QLayout on `this`, so that mechanism never
+    // ran here at all -- setGeometry() alone leaves minimumSize()/maximumSize() at their
+    // defaults (0 / QWIDGETSIZE_MAX), and every non-Qt::Popup top-level (Qt::Tool included) gets
+    // NSWindowStyleMaskResizable on macOS, so the frame could be dragged larger by its edges.
+    // setFixedSize() pins min==max to the current geometry every time it changes -- during the
+    // open/close animation too, which is harmless since nothing can drag-resize a frame that
+    // isn't shown for interaction yet -- exactly mirroring what already works for
+    // FloatingDialogFrame's non-resizable content.
+    setFixedSize(w,h);
 }
 
 //--------------------------------------------------------------------------
