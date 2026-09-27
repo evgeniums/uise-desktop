@@ -9,3 +9,12 @@ uise--EditableLabel #comment
 {
 margin-right: 2px;
 }
+
+/* Same right inset for the editor that replaces #label in editing mode -- without it the editor
+ * paints 2px further right than the label it swaps with. Set on the frame rather than on the
+ * editor itself so it covers every editor type (QLineEdit, QTextEdit, spin boxes, combos, date
+ * inputs) without touching their own box styling. */
+uise--EditableLabel #labelEditorFrame
+{
+margin-right: 2px;
+}

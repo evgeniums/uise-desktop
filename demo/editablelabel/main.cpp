@@ -57,6 +57,11 @@ int main(int argc, char *argv[])
     text->setValue("Hello world Hello world Hello world");
     l->addWidget(text);
 
+    auto textEdit = new EditableLabelTextEdit(mainFrame);
+    textEdit->editorWidget()->setPlaceholderText("Type a few lines, watch it grow up to 4 lines then scroll");
+    textEdit->setValue("This editor starts at one line and grows with its content,\nup to a cap of 4 lines, then scrolls.");
+    l->addWidget(textEdit);
+
     auto integer = new EditableLabelInt(mainFrame);
     integer->editorWidget()->setMinimum(-100);
     integer->editorWidget()->setMaximum(100);

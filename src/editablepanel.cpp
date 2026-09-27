@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QLabel>
 #include <QPointer>
+#include <QApplication>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
@@ -458,8 +459,39 @@ void EditablePanel::updateState()
                              (buttonsMode()==ButtonsMode::TopOnHoverVisible && (pimpl->hovered || editing))
                           );
 
-    pimpl->topButtonsFrame->setVisible(buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible);
-    pimpl->topButtonEdit->setEnabled(topButtonsVisible);
+    const bool topFrameVisible=buttonsMode()==ButtonsMode::TopOnHoverVisible || buttonsMode()==ButtonsMode::TopAlwaysVisible;
+    const bool topEditUsable=topFrameVisible && topButtonsVisible && !editing;
+    const bool topApplyVisible=topFrameVisible && topButtonsVisible && editing && !applyVisible;
+    const bool topCancelVisible=topFrameVisible && topButtonsVisible && editing;
+
+    // Park focus on the panel itself before a focused button below is hidden or disabled (a
+    // clicked button holds focus on Windows/Linux). Otherwise Qt moves focus on via
+    // focusNextPrevChild(true), which bubbles up to any enclosing QScrollArea and makes it
+    // ensureWidgetVisible() the next widget in the tab chain -- the page jumps on edit/apply/cancel
+    // or even on hover-leave (see EditableLabel::setEditing() for the same trap).
+    auto* focused=QApplication::focusWidget();
+    auto losesFocus=[focused](QWidget* widget, bool usable)
+    {
+        return !usable && focused!=nullptr && (focused==widget || widget->isAncestorOf(focused));
+    };
+    if (losesFocus(pimpl->topButtonEdit,topEditUsable)
+        || losesFocus(pimpl->topButtonApply,topApplyVisible)
+        || losesFocus(pimpl->topButtonCancel,topCancelVisible)
+        || losesFocus(pimpl->bottomButtonApply,applyVisible)
+        || losesFocus(pimpl->bottomButtonCancel,cancelVisible))
+    {
+        setFocus(Qt::OtherFocusReason);
+    }
+
+    pimpl->topButtonsFrame->setVisible(topFrameVisible);
+    // Disable the INNER QPushButton, not the uise::PushButton wrapper: the wrapper is a QFrame, and
+    // reset.qss gives every "QFrame:disabled" a 1px transparent border. QFrame only re-reads its
+    // styled frame width on Polish/StyleChange/ParentChange, never on an enabled-state change, so
+    // a wrapper first shown while disabled (the panel not hovered) kept a 1px contents margin for
+    // good -- 126x31 around a 124x29 button, against 124x29 Apply/Cancel -- and #topButtonsFrame
+    // shrank by 2px on entering edit mode. The inner button carries the ":disabled" look
+    // (editablepanel.qss) and is what emits clicked(), so disabling it alone is enough.
+    pimpl->topButtonEdit->qPushButton()->setEnabled(topButtonsVisible);
     pimpl->topButtonEdit->setVisible(!editing);
     pimpl->topButtonApply->setVisible(topButtonsVisible && editing && !applyVisible);
     pimpl->topButtonCancel->setVisible(topButtonsVisible && editing);

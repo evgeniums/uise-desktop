@@ -79,6 +79,7 @@ SET (HEADERS
     include/uise/desktop/alignedstretchingwidget.hpp
 
     include/uise/desktop/valuewidget.hpp
+    include/uise/desktop/autoresizingtextedit.hpp
     include/uise/desktop/editablelabel.hpp
 
     include/uise/desktop/style.hpp
@@ -328,6 +329,7 @@ SET (SOURCES
     src/mimedatautils.cpp
     src/dragsource.cpp
     src/alignedstretchingwidget.cpp
+    src/autoresizingtextedit.cpp
     src/editablelabel.cpp
     src/style.cpp
     src/spinner.cpp

@@ -26,9 +26,10 @@ uise--EditablePanel uise--EditableLabel QLineEdit {
 padding: 2px;
 }
 
-uise--EditablePanel uise--EditableLabel QTextEdit {
-max-height: 50px;
-}
+/* No max-height rule here any more -- the editor (AutoResizingTextEdit) grows on its own up to
+ * its own line cap (default 4 lines, see qproperty-maxLines) and stops there by itself. A QSS
+ * max-height still overrides that cap if a narrower one is ever needed here (AutoResizingTextEdit
+ * honours an already-set QWidget::maximumHeight() the same way EnhancedTextEdit does). */
 
 uise--FrameWithModalStatus uise--EditableLabel uise--PushButton QPushButton {
 border:none;
@@ -70,7 +71,6 @@ border-radius:0;
 uise--EditablePanel #topButtonsFrame #topButtonEdit QPushButton:disabled {
 color:transparent;
 }
-
 uise--EditablePanels {
 padding-bottom: 6px;
 }

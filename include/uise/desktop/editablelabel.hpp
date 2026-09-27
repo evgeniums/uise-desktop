@@ -44,6 +44,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/datetimeinput.hpp>
+#include <uise/desktop/autoresizingtextedit.hpp>
 #include <uise/desktop/utils/datetime.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -261,19 +262,7 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
          * @brief Set editing mode.
          * @param enable If trure then show editor, potherwise show text label.
          */
-        void setEditing(bool enable)
-        {
-            m_editing=m_editable && enable;
-            updateControls();
-            m_editorFrame->setVisible(m_editing);
-            if (m_editable)
-            {
-                if (!m_inGroup || config().property(ValueWidgetProperty::EditFocus).toBool())
-                {
-                    editor()->setFocus();
-                }
-            }
-        }
+        void setEditing(bool enable);
 
         /**
          * @brief Apply editor,
@@ -471,7 +460,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::TextEdit>
 {
     using type=EditableLabelTextEdit;
-    using widgetType=QTextEdit;
+    using widgetType=AutoResizingTextEdit;
 
     static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {

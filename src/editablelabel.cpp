@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMenu>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QApplication>
 #include <QSizePolicy>
 #include <QTimer>
 
@@ -34,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/label.hpp>
+#include <uise/desktop/autoresizingtextedit.hpp>
 #include <uise/desktop/editablelabel.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -41,6 +43,33 @@ You may select, at your option, one of the above-listed licenses.
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
+
+namespace {
+
+/**
+ * @brief Whether a Return/Enter key event, delivered to this label's current editor, inserts a
+ *        newline rather than requesting apply().
+ *
+ * An AutoResizingTextEdit inserts a newline on a plain Return/Enter unless
+ * setReturnInsertsNewLine(false) was called, and always does on Shift+Return/Enter. Any other
+ * QTextEdit (a host may still install its own) keeps the previous behaviour of always inserting a
+ * newline. Everything else (QLineEdit, QSpinBox, ...) has no newline to insert.
+ *
+ * Cannot compare exact metatypes (as this used to) once the editor may be an AutoResizingTextEdit
+ * -- a Q_OBJECT subclass never compares equal to QTextEdit::staticMetaObject.metaType(), which
+ * would silently make Return always apply instead of inserting a line.
+ */
+bool editorInsertsNewLineOnReturn(QWidget* editor, const QKeyEvent* keyEvent)
+{
+    if (auto* autoResizing=qobject_cast<AutoResizingTextEdit*>(editor))
+    {
+        return autoResizing->isReturnInsertingNewLine() || (keyEvent->modifiers() & Qt::ShiftModifier);
+    }
+
+    return qobject_cast<QTextEdit*>(editor)!=nullptr;
+}
+
+}
 
 //--------------------------------------------------------------------------
 
@@ -71,6 +100,12 @@ EditableLabel::EditableLabel(
 
     m_label->installEventFilter(this);
     m_label->setWordWrap(true);
+    // No implicit indent: with indent() left at -1, a QLabel whose frameWidth() is non-zero --
+    // which any QSS border or padding makes it -- indents its text by half an 'x' width on top of
+    // that padding. None of the editors that replace the label in editing mode have an equivalent,
+    // so the text jumped ~3px left on entering edit mode. With 0 the text sits exactly at the QSS
+    // padding, the same inset the editors' own padding/margins produce.
+    m_label->setIndent(0);
 
     m_editorFrame=new QFrame(this);
     m_editorFrame->setObjectName("labelEditorFrame");
@@ -112,6 +147,8 @@ EditableLabel::EditableLabel(
     m_comment->setObjectName("comment");
     m_comment->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_comment->setWordWrap(true);
+    // Same as m_label above, so the comment text stays aligned under the label/editor text.
+    m_comment->setIndent(0);
     m_mainLayout->addWidget(m_comment);
     m_comment->setVisible(false);
 }
@@ -152,6 +189,49 @@ void EditableLabel::setTrailingWidget(QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+void EditableLabel::setEditing(bool enable)
+{
+    m_editing=m_editable && enable;
+
+    // Hand focus across explicitly, and show the incoming side BEFORE updateControls() hides the
+    // outgoing one. When a widget that holds focus is hidden, Qt moves focus on by calling its
+    // focusNextPrevChild(true) (QWidgetPrivate::hide_helper()), which bubbles up the parent chain
+    // to any enclosing QScrollArea -- and QScrollArea::focusNextPrevChild() then
+    // ensureWidgetVisible()s whatever widget is next in the tab chain, scrolling the whole page.
+    // That is what made a form jump when a double-clicked (hence focused) label was swapped for
+    // its editor, or a focused editor back for its label on apply/cancel.
+    auto* focused=QApplication::focusWidget();
+    const bool focusInside=focused!=nullptr && isAncestorOf(focused);
+    if (m_editing)
+    {
+        m_editorFrame->setVisible(true);
+        if (focusInside)
+        {
+            editor()->setFocus(Qt::OtherFocusReason);
+        }
+    }
+    else
+    {
+        m_label->setVisible(true);
+        if (focusInside)
+        {
+            m_label->setFocus(Qt::OtherFocusReason);
+        }
+    }
+
+    updateControls();
+    m_editorFrame->setVisible(m_editing);
+    if (m_editing)
+    {
+        if (!m_inGroup || config().property(ValueWidgetProperty::EditFocus).toBool())
+        {
+            editor()->setFocus();
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::KeyPress && watched == editor())
@@ -168,9 +248,9 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
                 cancel();
             }
         }
-        if (keyEvent->key()==Qt::Key_Return && !m_inGroup)
+        if ((keyEvent->key()==Qt::Key_Return || keyEvent->key()==Qt::Key_Enter) && !m_inGroup)
         {
-            if (editor()->metaObject()->metaType()!=QTextEdit::staticMetaObject.metaType())
+            if (!editorInsertsNewLineOnReturn(editor(),keyEvent))
             {
                 apply();
             }
