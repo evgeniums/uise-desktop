@@ -161,8 +161,12 @@ bool isChatFileLoadControlClickable(ChatFileTransferState state) noexcept
 std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imageItem, bool incoming, QWidget* context)
 {
     std::vector<ChatFileMenuAction> actions;
-    if (!item.menuActions().empty())
+    if (item.menuActionsSet())
     {
+        // The host made a deliberate call here, even if it came out empty (e.g. whitemdesktop's
+        // chatFileMenuActions() computing "no actions" for a message that isn't sent/forwardable
+        // yet) -- see menuActionsSet()'s own doc comment for why that must be respected rather
+        // than silently replaced by the defaults below.
         actions=item.menuActions();
     }
     else if (item.isAudio() && !imageItem)

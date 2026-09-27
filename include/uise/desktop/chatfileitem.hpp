@@ -435,27 +435,54 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         /**
          * @brief Set exactly which context-menu entries ChatMessageFileItem/ChatMessageImageItem
          *  should build for this item, and in what order.
-         * @param actions Entries to show. ChatFileMenuAction::Pause/Resume/Cancel are still
-         *  additionally filtered by state() -- see isChatFileCancellable() for Cancel's gate;
-         *  listing an action that doesn't match state() is fine, it simply won't show.
+         * @param actions Entries to show, taken verbatim and in that order -- including an empty
+         *  list, which means "no menu entries at all" (see buildChatFileMenuItems()). ChatFileMenu
+         *  Action::Pause/Resume/Cancel are still additionally filtered by state() -- see
+         *  isChatFileCancellable() for Cancel's gate; listing an action that doesn't match state()
+         *  is fine, it simply won't show.
          *
-         * An empty list (the default) means "use the library's own default policy": Open, SaveAs,
-         * Forward, plus ShowInFolder when isShowInFolderAvailable() -- i.e. today's menu, so every
-         * existing caller is unaffected. A non-empty list is taken verbatim; the host is expected
-         * to already know which entries make sense for this item -- e.g. whether an embedded
-         * viewer/editor actually exists for this item's mime is the host's own concern, not this
-         * class's, and gates whether OpenWith ("Open in system app") is listed at all. Listing
-         * ChatFileMenuAction::Cancel is also what enables ChatMessageFileItem/ChatMessageImageItem's
-         * always-visible Cancel control, not just the menu entry -- see isChatFileCancellable().
+         * The host is expected to already know which entries make sense for this item -- e.g.
+         * whether an embedded viewer/editor actually exists for this item's mime is the host's own
+         * concern, not this class's, and gates whether OpenWith ("Open in system app") is listed
+         * at all. Listing ChatFileMenuAction::Cancel is also what enables ChatMessageFileItem/
+         * ChatMessageImageItem's always-visible Cancel control, not just the menu entry -- see
+         * isChatFileCancellable().
+         *
+         * Calling this at all (even with an empty list) opts the item OUT of the library's own
+         * default policy -- see menuActionsSet()/buildChatFileMenuItems(). A host that never calls
+         * this gets the default policy (Open, SaveAs, Forward, plus ShowInFolder when
+         * isShowInFolderAvailable()) unconditionally, so an existing caller that never calls this
+         * method is unaffected.
          */
         void setMenuActions(std::vector<ChatFileMenuAction> actions)
         {
             m_menuActions=std::move(actions);
+            m_menuActionsSet=true;
         }
 
         const std::vector<ChatFileMenuAction>& menuActions() const noexcept
         {
             return m_menuActions;
+        }
+
+        /**
+         * @brief Whether setMenuActions() has ever been called on this item, even with an empty
+         *  list.
+         *
+         * Distinguishes "the host deliberately decided this item gets no menu at all" (setMenuActions
+         * ({}), menuActions().empty() but menuActionsSet()==true) from "the host never expressed an
+         * opinion" (default-constructed, menuActions().empty() and menuActionsSet()==false) -- only
+         * the latter falls back to the library's own default policy in buildChatFileMenuItems(). A
+         * host whose own decision was itself a menu-actions LIST computed from that item's state
+         * (e.g. whitemdesktop's chatFileMenuActions(), which can legitimately compute {}, for a
+         * message that isn't forwardable/sent yet, or has no cancellable/loadable content) must
+         * still have that {} respected, not silently overridden by defaults that skip the app's own
+         * gating -- see this class's own history (that override used to reintroduce Forward on a
+         * message the app had just decided not to offer it on).
+         */
+        bool menuActionsSet() const noexcept
+        {
+            return m_menuActionsSet;
         }
 
         /**
@@ -488,6 +515,7 @@ class UISE_DESKTOP_EXPORT ChatFileItem
         bool m_listenedByPeer=false;
         bool m_playing=false;
         std::vector<ChatFileMenuAction> m_menuActions;
+        bool m_menuActionsSet=false;
 };
 
 using ChatFileItems=std::vector<ChatFileItem>;
@@ -537,10 +565,10 @@ UISE_DESKTOP_EXPORT bool isChatFileLoadControlClickable(ChatFileTransferState st
  *  pause-or-cancel popup, so pairing a verb with its icon can't later be misread as a
  *  media-playback control once the app grows an inline player for audio/video messages.
  * @param context Widget the icons will be painted in (for theme/mode resolution).
- * @return Rows built from item.menuActions() if non-empty (verbatim, in that order), else the
- *  default policy -- see ChatFileItem::setMenuActions(). ChatFileMenuAction::Pause/Resume are
- *  additionally filtered by item.state() so at most one of the pair is ever included, and
- *  Play/Stop by item.isPlaying().
+ * @return Rows built from item.menuActions() (verbatim, in that order, including empty) when
+ *  item.menuActionsSet() is true, else the default policy -- see ChatFileItem::setMenuActions()/
+ *  menuActionsSet(). ChatFileMenuAction::Pause/Resume are additionally filtered by item.state()
+ *  so at most one of the pair is ever included, and Play/Stop by item.isPlaying().
  *
  *  The default policy for an audio item (ChatFileItem::isAudio()) puts Play (or Stop, while it is
  *  playing) where Open would be, and keeps "Open in system app" -- except for a voice message,
