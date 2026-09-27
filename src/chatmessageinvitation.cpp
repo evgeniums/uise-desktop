@@ -202,6 +202,7 @@ void ChatMessageInvitation::onMenuItemTriggered(int id)
 void ChatMessageInvitation::updateCaption()
 {
     pimpl->caption->setText(formatCaption());
+    refreshTextHints();
 }
 
 //--------------------------------------------------------------------------
@@ -233,6 +234,7 @@ void ChatMessageInvitation::updateIdentityText()
 {
     auto state=formatStateText();
     pimpl->description->setText(state.isEmpty() ? identityText() : state);
+    refreshTextHints();
 }
 
 //--------------------------------------------------------------------------
@@ -369,6 +371,44 @@ void ChatMessageInvitation::mouseReleaseEvent(QMouseEvent* event)
 void ChatMessageInvitation::presetIdentityText(const QString& text)
 {
     pimpl->description->setText(text);
+    refreshTextHints();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageInvitation::refreshTextHints()
+{
+    // ElidedLabel::setText() (elidedlabel.cpp) never calls updateGeometry() on itself, so the
+    // QBoxLayout per-child QWidgetItemV2 cache Qt keeps for caption/description inside textLayout
+    // stays stale after a text change -- same mechanism qt-layout-geometry-gotchas.md's
+    // "QBoxLayout per-child sizeHint cache" entry describes. textLayout is a NESTED layout
+    // (pimpl->layout->addLayout()), so invalidating pimpl->layout alone -- which
+    // Style::updateWidgetStyle()'s later repolish would eventually trigger anyway -- does not
+    // reach it either; textLayout's own aggregate hint has to be invalidated explicitly.
+    //
+    // Without this, a card built via setKind(Kind::Contact)'s default caption (updateChatMessage()
+    // runs before doInit()'s own setKind() call, see uichatmessage.cpp) then re-captioned to
+    // "Group chat invitation" via setKind(Kind::GroupChat) keeps measuring at the SHORTER
+    // "Contact invitation" width for the bubble's first negotiation pass -- the caption elides,
+    // and only widens a frame later once some unrelated relayout (e.g. ChatMessagesView::
+    // relayoutSections()'s own queued LayoutRequest) happens to clear the stale caches. That
+    // visible widening is the bug this fixes.
+    pimpl->caption->updateGeometry();
+    pimpl->description->updateGeometry();
+    pimpl->textLayout->invalidate();
+    updateGeometry();
+
+    // No-op before the bubble's first real negotiation pass (chatContent() is null until
+    // setWidgets() attaches this section, and renegotiateBubbleWidth() itself no-ops until
+    // AbstractChatMessageContent::updateBubbleWidth() has run at least once) -- the
+    // updateGeometry()/invalidate() calls above are what matter for that first pass, since the
+    // corrected hints are already in place by the time ChatMessagesView drives it. After the
+    // first pass, this re-measures the bubble against the new text -- same pattern
+    // ChatMessageFiles::updateItem()/ChatMessageBottom::refreshPlacement() already use.
+    if (chatContent()!=nullptr)
+    {
+        chatContent()->renegotiateBubbleWidth();
+    }
 }
 
 //--------------------------------------------------------------------------

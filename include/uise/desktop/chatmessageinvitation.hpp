@@ -114,6 +114,15 @@ class UISE_DESKTOP_EXPORT ChatMessageInvitation : public AbstractChatMessageInvi
         void updateIcon();
         void updateCaption();
 
+        //! Clears the stale QBoxLayout per-child sizeHint cache textLayout/caption/description
+        //! are left with after a text change (ElidedLabel::setText() does not updateGeometry()
+        //! itself), then re-negotiates the bubble if a text change lands after the first
+        //! negotiation pass. Called from updateCaption()/updateIdentityText()/
+        //! presetIdentityText() -- every place that changes what caption or description paints.
+        //! See its own definition for the flicker this fixes (a re-kinded card measuring against
+        //! its previous, shorter caption on the bubble's first negotiation pass).
+        void refreshTextHints();
+
         std::unique_ptr<ChatMessageInvitation_p> pimpl;
 };
 
