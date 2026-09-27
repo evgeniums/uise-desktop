@@ -328,6 +328,13 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::itemFitsViewport(const t
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::ensureItemVisible(const typename ItemT::IdType &id, bool centerIfHidden)
+{
+    return pimpl->ensureItemVisible(id,centerIfHidden);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView<ItemT,OrderComparer,IdComparer>::hasItem(const typename ItemT::IdType &id) const noexcept
 {
     return pimpl->hasItem(id);

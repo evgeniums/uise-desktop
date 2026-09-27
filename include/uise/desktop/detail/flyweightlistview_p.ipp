@@ -1943,6 +1943,73 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemFitsViewport(const
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::ensureItemVisible(const typename ItemT::IdType &id, bool centerIfHidden)
+{
+    const auto& idx=itemIdx();
+    auto it=idx.find(id);
+    if (it==idx.end())
+    {
+        return false;
+    }
+
+    // Same building blocks as scrollToItem()/scrollToItemEdge(): m_llist's own current position
+    // (oldPos, read fresh inside scrollTo()'s callback) plus the widget's fixed position within
+    // m_llist gives the widget's CURRENT viewport-relative extent [begin,end) -- from there we
+    // can tell whether it is already fully visible, only partially clipped, or entirely
+    // off-screen, and move only as much as each case actually needs.
+    auto cb=[centerIfHidden,&it,this](int minPos, int maxPos, int oldPos)
+    {
+        auto widget=it->widget();
+        if (!widget || widget->parent()!=m_llist)
+        {
+            return oldPos;
+        }
+
+        const auto viewSize=oprop(m_view,OProp::size);
+        if (viewSize<=0)
+        {
+            return oldPos;
+        }
+
+        const auto widgetListPos=oprop(widget->pos(),OProp::pos);
+        const auto widgetSize=oprop(widget,OProp::size);
+        const auto begin=oldPos+widgetListPos;
+        const auto end=begin+widgetSize;
+
+        if (begin>=0 && end<=viewSize)
+        {
+            // already fully visible, nothing to do
+            return oldPos;
+        }
+
+        int newPos=oldPos;
+        if (centerIfHidden && (end<=0 || begin>=viewSize) && widgetSize<viewSize)
+        {
+            // entirely off-screen and asked to center: split the leftover space evenly.
+            newPos=(viewSize-widgetSize)/2-widgetListPos;
+        }
+        else if (begin<0 || widgetSize>viewSize)
+        {
+            // clipped at (or hidden past) the top, or too tall to ever fit: align its own top
+            // with the viewport top -- same alignment scrollToItemEdge(HOME) uses.
+            newPos=-widgetListPos;
+        }
+        else
+        {
+            // clipped at (or hidden past) the bottom: align its own bottom with the viewport
+            // bottom -- same alignment scrollToItemEdge(END) uses.
+            newPos=viewSize-widgetSize-widgetListPos;
+        }
+
+        return qBound(minPos,newPos,maxPos);
+    };
+
+    scrollTo(cb);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfiguration()
 {
     m_listSize=m_llist->size();

@@ -182,6 +182,7 @@ class FlyweightListView_p : public OrientationInvariant
 
         bool scrollToItemEdge(const typename ItemT::IdType &id, Direction direction);
         bool itemFitsViewport(const typename ItemT::IdType &id) const;
+        bool ensureItemVisible(const typename ItemT::IdType &id, bool centerIfHidden);
 
         bool hasItem(const typename ItemT::IdType& id) const noexcept;
         const ItemT* item(const typename ItemT::IdType& id) const noexcept;

@@ -332,6 +332,24 @@ class FlyweightListView : public QFrame
         bool itemFitsViewport(const typename ItemT::IdType& id) const;
 
         /**
+         * @brief Scroll only as much as needed to bring an item fully into the viewport.
+         * @param id Id of the item.
+         * @param centerIfHidden If the item is currently completely outside the viewport,
+         * center it instead of aligning it with the nearer edge.
+         * @return True if item exists in the view, false otherwise. Never fetches -- the item
+         * must already be loaded.
+         *
+         * If the item is already fully visible, the view does not move. If it is only partially
+         * clipped, it is aligned with whichever edge it is clipped against -- the minimal move
+         * that makes it fully visible. If it is not visible at all, it is aligned with the
+         * nearer edge, or centered when \p centerIfHidden is true (clamped at the list's own
+         * scroll range either way, same as scrollToItem()). Meant for "reveal the selected row"
+         * style navigation, where scrollToItem()'s unconditional top-alignment would move an
+         * already-visible item unnecessarily.
+         */
+        bool ensureItemVisible(const typename ItemT::IdType& id, bool centerIfHidden=false);
+
+        /**
          * @brief Scroll to beginning or end of the view.
          * @param direction Dericetion to scroll.
          */
