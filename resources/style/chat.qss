@@ -346,7 +346,7 @@ min-width: 16px;
  * once ChatMessage::updateAvatarForced() forces it visible, i.e. sent and received messages are
  * sharing the same (left) side and so are otherwise indistinguishable by position alone. The
  * avatar itself is shown only on the LAST message of a batch. forcedAvatarMargin is the
- * breathing room on EACH side of it, so the column comes out 24+2*6 = 36px wide.
+ * breathing room on EACH side of it, so the column comes out 28+2*6 = 40px wide.
  *
  * avatarSize, by contrast, is NOT a useful knob here: updateAvatarForced() overwrites it on
  * every pass (with forcedAvatarSize, or with the narrow default on a column that can never hold
@@ -367,8 +367,8 @@ min-width: 16px;
  * invariants on ChatMessageAvatar::forcedAvatarSize) -- 6 against a tailHeight of 20 clears it.
  *
  * Together with forcedAvatarSize it also sets the column's HEIGHT, and that is the number to be
- * careful with: 24+6 = 30px here, against a one-line text bubble that measures 30px of painted
- * box and ~33px of layout height -- i.e. sized to sit just under it, with nothing to spare.
+ * careful with: 28+6 = 34px here, against a one-line text bubble that measures 34px of painted
+ * box and ~37px of layout height -- i.e. sized to sit just under it, with nothing to spare.
  * Raise either one and the column becomes taller than such a bubble, at which point
  * AbstractChatMessageContent::setMinimumBubbleHeight() has to reserve the shortfall as blank
  * space at the bubble's top -- which reads as a bigger gap in front of the LAST message of every
@@ -379,7 +379,7 @@ qproperty-tailShape: 1;
 qproperty-tailWidth: 10;
 qproperty-tailHeight: 20;
 qproperty-avatarSize: 16;
-qproperty-forcedAvatarSize: 24;
+qproperty-forcedAvatarSize: 28;
 qproperty-forcedAvatarMargin: 6;
 qproperty-avatarBottomOffset: 6;
 }

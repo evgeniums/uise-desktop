@@ -1135,7 +1135,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! one-line bubble, and ChatMessageAvatar paints the tail at the avatar column's OWN
         //! bottom edge -- so without this, a short bubble leaves the tail hanging below it.
         //!
-        //! At the values chat.qss ships (24+6 = 30px, against a ~33px one-line bubble) this is a
+        //! At the values chat.qss ships (28+6 = 34px, against a ~37px one-line bubble) this is a
         //! no-op for text bubbles, deliberately -- see the invariants on
         //! ChatMessageAvatar::forcedAvatarSize. It exists for hosts that retune the column
         //! upwards, or whose chat font makes bubbles shorter.

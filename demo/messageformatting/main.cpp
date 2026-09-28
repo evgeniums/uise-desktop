@@ -884,11 +884,11 @@ int main(int argc, char *argv[])
     // explicitly here anyway, so this stays the load-bearing case even if makeMessage()'s own
     // defaults ever change.
     //
-    // At the shipped chat.qss values the column (forcedAvatarSize 24 + avatarBottomOffset 6 =
-    // 30px) is no longer taller than a one-line bubble (~33px), so what this case now guards is
+    // At the shipped chat.qss values the column (forcedAvatarSize 28 + avatarBottomOffset 6 =
+    // 34px) is no longer taller than a one-line bubble (~37px), so what this case now guards is
     // that it STAYS that way: the tail must sit flush with the bubble's bottom edge AND the
     // bubble must carry no blank band at its top (avatarSyncPad()==0). Raise
-    // qproperty-forcedAvatarSize past ~27 in chat.qss and both halves should visibly reappear --
+    // qproperty-forcedAvatarSize past ~31 in chat.qss and both halves should visibly reappear --
     // the tail still flush, the bubble now padded -- which is the other half of the mechanism,
     // AbstractChatMessageContent::setMinimumBubbleHeight(). ---
 

@@ -386,7 +386,7 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
     //!   - forcedAvatarSize + avatarBottomOffset >= tailHeight, or tailPath() clamps the tail to
     //!     this column's own rect and the tip is cut short.
     //!   - forcedAvatarSize + avatarBottomOffset <= the natural height of a one-line bubble
-    //!     (~33px at the default chat font), or the column is taller than the bubble beside it
+    //!     (~37px at the default chat font), or the column is taller than the bubble beside it
     //!     and AbstractChatMessageContent::setMinimumBubbleHeight() reserves the shortfall as
     //!     blank space at the bubble's top -- which reads as a bigger gap in front of the last
     //!     message of every batch.
@@ -424,10 +424,10 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         //! Note these C++ defaults alone do NOT satisfy the "column no taller than a one-line
         //! bubble" invariant documented on forcedAvatarSize: paired with
         //! DefaultAvatarBottomOffset (20, sized for the 16px DefaultTailHeight) the column is
-        //! 44px tall. chat.qss is what brings the offset down to 6 and the column to 30. That
+        //! 48px tall. chat.qss is what brings the offset down to 6 and the column to 34. That
         //! pairing is deliberate: lowering DefaultAvatarBottomOffset here would clip the tail
         //! for any host running on the C++ defaults, which is the worse failure of the two.
-        constexpr static const int DefaultForcedAvatarSize=24;
+        constexpr static const int DefaultForcedAvatarSize=28;
         constexpr static const int DefaultForcedAvatarMargin=6;
 
         explicit ChatMessageAvatar(QWidget* parent=nullptr);
