@@ -139,6 +139,7 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
         bool isFileActionsVisible() const noexcept;
 
         //! Text of the checkable "Always ..." menu row, e.g. "Always open .md files in system app".
+        //! Empty removes the row (and the separator above it).
         void setAlwaysExternalText(const QString& text);
 
         //! Check state of that row. Does not emit alwaysExternalToggled().
@@ -155,12 +156,18 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
         /**
          * @brief Initial size for an expanded viewer, in window coordinates.
          *
-         * At least HALF the window `anchor` lives in, in each direction: the point of expanding
-         * is to see more than a bubble showed. `contentWidth` still wins where it is wider, and
-         * the window itself is the ceiling. Shared by every expanded viewer (this one and
-         * ChatMessageTextBrowser's table viewer).
+         * At least `scale` times HALF the window `anchor` lives in, in each direction (and `scale`
+         * times the 400px height floor): the point of expanding is to see more than a bubble
+         * showed. `contentWidth` still wins where it is wider, and the window itself is the
+         * ceiling. Shared by every expanded viewer (this one and ChatMessageTextBrowser's table
+         * viewer), which is why the scale is a parameter: 1 is the size they were given first,
+         * open() asks for TextViewer::DefaultScale.
          */
-        static QSize expandedSize(const QWidget* anchor, int contentWidth);
+        static QSize expandedSize(const QWidget* anchor, int contentWidth, qreal scale=1.0);
+
+        //! How much larger than the table viewer's size a TextViewer opens: reading a file or a
+        //! long code block wants more room than glancing at a table does.
+        constexpr static qreal DefaultScale=1.5;
 
         /**
          * @brief Pop `frame` up at `size`, then let the user shrink it again.

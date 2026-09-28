@@ -129,6 +129,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
 
         void openRequested(const QUuid& id);
         void openWithRequested(const QUuid& id);
+
+        //! ChatFileMenuAction::OpenInApp -- see AbstractChatMessageFiles::openInAppRequested().
+        void openInAppRequested(const QUuid& id);
         void saveAsRequested(const QUuid& id);
         void forwardRequested(const QUuid& id);
         void showInFolderRequested(const QUuid& id);

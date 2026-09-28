@@ -386,6 +386,10 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
                             emit openWithRequested(id);
                             break;
 
+                        case (ChatFileMenuAction::OpenInApp):
+                            emit openInAppRequested(id);
+                            break;
+
                         case (ChatFileMenuAction::SaveAs):
                             emit saveAsRequested(id);
                             break;

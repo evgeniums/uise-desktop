@@ -110,8 +110,12 @@ enum class ChatFileMenuAction
     Play=12,          //!< audio items only (ChatFileItem::isAudio()), while not playing -- the
                       //!< audio counterpart of Open: play it in the app's own player. The default
                       //!< policy offers it INSTEAD of Open for an audio item.
-    Stop=13           //!< audio items only, while ChatFileItem::isPlaying() -- takes Play's place
+    Stop=13,          //!< audio items only, while ChatFileItem::isPlaying() -- takes Play's place
                       //!< in the menu for as long as that item is the one playing.
+    OpenInApp=14      //!< labelled "Open in viewer" -- the counterpart of OpenWith: opens the item in
+                      //!< the host's own embedded viewer even when the host's policy has made a plain
+                      //!< Open go to the system application instead. Never in the default policy: only
+                      //!< a host that knows about such a preference lists it.
 };
 
 /**

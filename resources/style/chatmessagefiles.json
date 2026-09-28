@@ -11,6 +11,7 @@
                 "file" : "${uise-svg-icons-1}/file",
                 "image" : "${uise-svg-icons-1}/photo",
                 "openWith" : "${uise-svg-icons-1}/external-link",
+                "openInApp" : "${uise-svg-icons-1}/note",
                 "copyFileName" : "${uise-svg-icons-1}/copy",
                 "copyImage" : "${uise-svg-icons-1}/copy",
                 "pause" : "${uise-svg-icons-1}/player-pause",

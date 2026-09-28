@@ -263,6 +263,11 @@ std::vector<MenuItem> buildChatFileMenuItems(const ChatFileItem& item, bool imag
                 alias=QStringLiteral("openWith");
                 break;
 
+            case (ChatFileMenuAction::OpenInApp):
+                text=QCoreApplication::translate("ChatFileItem","Open in viewer");
+                alias=QStringLiteral("openInApp");
+                break;
+
             case (ChatFileMenuAction::SaveAs):
                 text=QCoreApplication::translate("ChatFileItem","Save as");
                 alias=QStringLiteral("saveAs");

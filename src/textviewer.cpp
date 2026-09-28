@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <vector>
+
 #include <QFrame>
 #include <QPointer>
 #include <QShortcut>
@@ -202,6 +204,23 @@ class TextViewer_p
             return button;
         }
 
+        //! (Re)fill the "..." menu from the state above. The "Always ..." row, and the separator
+        //! that sets it apart, exist only while it has text: a file with no extension has nothing
+        //! for it to refer to, and a per-row hide could not take the separator with it.
+        void rebuildMenu()
+        {
+            std::vector<MenuItem> items{
+                MenuItem(MenuOpenExternal,TextViewer::tr("Open in system app"),menuIcon("openExternal",q)),
+                MenuItem(MenuSaveAs,TextViewer::tr("Save as"),menuIcon("saveAs",q))
+            };
+            if (!alwaysText.isEmpty())
+            {
+                items.push_back(MenuItem::separator());
+                items.push_back(MenuItem::checkable(MenuAlwaysExternal,alwaysText,alwaysChecked));
+            }
+            menu->setItems(std::move(items));
+        }
+
         TextViewer* q;
 
         ChatMessageTextBrowser* browser=nullptr;
@@ -217,6 +236,8 @@ class TextViewer_p
         IconTextButton* menuButton=nullptr;
         IconTextButton* closeButton=nullptr;
         QPointer<DropdownMenu> menu;
+        QString alwaysText;
+        bool alwaysChecked=false;
 
         QPointer<FloatingDialogFrame> frame;
         QPointer<Toast> toast;
@@ -320,14 +341,8 @@ TextViewer::TextViewer(QWidget* parent)
     // for the one case where that never happens.
     pimpl->menu=new DropdownMenu();
     pimpl->menu->setCloseOnCheckableActivation(true);
-    pimpl->menu->setItems(
-        {
-            MenuItem(MenuOpenExternal,tr("Open in system app"),menuIcon("openExternal",this)),
-            MenuItem(MenuSaveAs,tr("Save as"),menuIcon("saveAs",this)),
-            MenuItem::separator(),
-            MenuItem::checkable(MenuAlwaysExternal,tr("Always open in system app"))
-        }
-    );
+    pimpl->alwaysText=tr("Always open in system app");
+    pimpl->rebuildMenu();
     pimpl->menu->attachTo(pimpl->menuButton);
     connect(pimpl->menu,&DropdownMenu::itemTriggered,this,
         [this](int id)
@@ -347,6 +362,8 @@ TextViewer::TextViewer(QWidget* parent)
         {
             if (id==MenuAlwaysExternal)
             {
+                // Kept in step so a later rebuildMenu() does not undo the click.
+                pimpl->alwaysChecked=checked;
                 emit alwaysExternalToggled(checked);
             }
         }
@@ -481,9 +498,10 @@ bool TextViewer::isFileActionsVisible() const noexcept
 
 void TextViewer::setAlwaysExternalText(const QString& text)
 {
+    pimpl->alwaysText=text;
     if (!pimpl->menu.isNull())
     {
-        pimpl->menu->setItemText(MenuAlwaysExternal,text);
+        pimpl->rebuildMenu();
     }
 }
 
@@ -491,6 +509,7 @@ void TextViewer::setAlwaysExternalText(const QString& text)
 
 void TextViewer::setAlwaysExternalChecked(bool checked)
 {
+    pimpl->alwaysChecked=checked;
     if (!pimpl->menu.isNull())
     {
         // Programmatic: setItemChecked() blocks the row's own signal, so no alwaysExternalToggled()
@@ -529,7 +548,7 @@ void TextViewer::toggleFullScreen()
 
 //--------------------------------------------------------------------------
 
-QSize TextViewer::expandedSize(const QWidget* anchor, int contentWidth)
+QSize TextViewer::expandedSize(const QWidget* anchor, int contentWidth, qreal scale)
 {
     const auto* win=(anchor!=nullptr) ? anchor->window() : nullptr;
     // A widget with no window yet (constructed off-screen) has nothing to take a fraction OF --
@@ -537,8 +556,8 @@ QSize TextViewer::expandedSize(const QWidget* anchor, int contentWidth)
     const QSize windowSize=(win!=nullptr && win->width()>0 && win->height()>0)
                            ? win->size() : QSize{900,400};
 
-    const int w=qMin(qMax(contentWidth,windowSize.width()/2),windowSize.width());
-    const int h=qMin(qMax(400,windowSize.height()/2),windowSize.height());
+    const int w=qMin(qMax(contentWidth,qRound(scale*windowSize.width()/2)),windowSize.width());
+    const int h=qMin(qMax(qRound(scale*400),qRound(scale*windowSize.height()/2)),windowSize.height());
     return QSize{w,h};
 }
 
@@ -568,7 +587,7 @@ FloatingDialogFrame* TextViewer::open(TextViewer* viewer, QWidget* anchor, int c
     connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
 
     // Not frame->resize(): popup() adjustSize()s over it -- see popupSized().
-    popupSized(viewer,frame,expandedSize(anchor,contentWidth));
+    popupSized(viewer,frame,expandedSize(anchor,contentWidth,DefaultScale));
     return frame;
 }
 

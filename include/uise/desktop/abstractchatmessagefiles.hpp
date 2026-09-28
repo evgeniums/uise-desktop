@@ -227,6 +227,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageFiles : public AbstractChatMessageB
 
         void openRequested(const QUuid& id);
         void openWithRequested(const QUuid& id);
+
+        //! ChatFileMenuAction::OpenInApp: open in the host's embedded viewer regardless of any
+        //! preference that sends a plain Open to the system application.
+        void openInAppRequested(const QUuid& id);
         void saveAsRequested(const QUuid& id);
         void forwardRequested(const QUuid& id);
         void showInFolderRequested(const QUuid& id);
