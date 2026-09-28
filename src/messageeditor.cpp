@@ -3358,6 +3358,24 @@ void EnhancedTextEdit::changeEvent(QEvent* event)
     if (event->type()==QEvent::FontChange)
     {
         applyTabStopDistance();
+
+        if (m_autoResize)
+        {
+            // sizeHint() follows document()->size(), but QTextEdit keeps its document's page size
+            // NULL until its first resize ("to avoid any relayouting until the textedit is
+            // shown", QTextEditPrivate::init()), and a null page size makes the document skip
+            // layout (QTextDocumentPrivate::canLayout()). A widget still waiting for its first
+            // show therefore takes the QSS font here without re-measuring: its document kept the
+            // OLD font's height (24 vs 28 for 15px), so the composer was laid out 4px short and
+            // only corrected by the resize at show time -- a visible height flicker on every
+            // newly built chat page, and before that a lasting crop.
+            //
+            // setLineWrapColumnOrWidth() with the current value changes nothing but runs
+            // QTextEditPrivate::relayoutDocument(), which sets the page size from the viewport and
+            // lays the document out with the new font now. updateSize() then re-announces it.
+            setLineWrapColumnOrWidth(lineWrapColumnOrWidth());
+            updateSize();
+        }
     }
 }
 
