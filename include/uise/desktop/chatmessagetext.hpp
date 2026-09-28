@@ -647,6 +647,17 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          */
         void codeBlockCopied(const QString& language);
 
+        /**
+         * @brief The document was rebuilt from scratch: new content loaded, or the theme-change
+         *  replay re-parsed the current one.
+         *
+         * Everything expressed as a position in the previous document -- a text search's matches,
+         * a remembered cursor -- is meaningless from here on, and a QTextEdit's own extra
+         * selections do not reliably survive it. Emitted last, after the code-block and table
+         * passes, so a listener sees the document in its final shape.
+         */
+        void documentRebuilt();
+
         //! See AbstractChatMessageBody::linkActivated() -- ChatMessageText relays this signal
         //! there. Emitted from anchorClicked(), not from a mouse-press handler, so link
         //! activation always uses Qt's own hit-testing (hyperlinks can wrap across lines, etc.).

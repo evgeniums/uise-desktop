@@ -11,6 +11,9 @@
         {
             "name" : "TextViewer",
             "aliases" : {
+                "search" : "${uise-svg-icons-1}/search",
+                "chevronDown" : "${uise-svg-icons-1}/chevron-down",
+                "chevronUp" : "${uise-svg-icons-1}/chevron-up",
                 "copy" : "${uise-svg-icons-1}/copy",
                 "wrap" : "${uise-svg-icons-1}/text-wrap",
                 "source" : "${uise-svg-icons-1}/code",

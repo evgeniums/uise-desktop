@@ -15,6 +15,9 @@
         {
             "name" : "TextViewer",
             "modes" : {
+                "disabled" : {
+                    "off" : { "currentColor" : "#888888" }
+                },
                 "normal" : {
                     "off" : { "currentColor" : "#CCCCCC" }
                 },

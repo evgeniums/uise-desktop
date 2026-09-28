@@ -130,6 +130,7 @@ font-size: 11px;
 padding: 0px 8px 0px 0px;
 }
 
+#textViewerHeader #findButton,
 #textViewerHeader #copyButton,
 #textViewerHeader #wrapButton,
 #textViewerHeader #sourceButton,
@@ -143,6 +144,34 @@ margin-left: 2px;
 
 #textViewerHeader #icon,
 #textViewerHeader uise--RoundedImage {
+min-width: 16px;
+max-width: 16px;
+min-height: 16px;
+max-height: 16px;
+margin: 0px;
+padding: 0px;
+}
+
+/* The find bar (Cmd/Ctrl+F): a second row under the header -- input, next, previous, close. Same
+   button metrics as the header's, so the two rows read as one toolbar. */
+#textViewerFindBar {
+padding: 6px 8px 6px 12px;
+}
+
+#textViewerFindBar #findEdit {
+margin-right: 6px;
+}
+
+#textViewerFindBar #findNextButton,
+#textViewerFindBar #findPreviousButton,
+#textViewerFindBar #findCloseButton {
+padding: 6px;
+border-radius: 6px;
+margin-left: 2px;
+}
+
+#textViewerFindBar #icon,
+#textViewerFindBar uise--RoundedImage {
 min-width: 16px;
 max-width: 16px;
 min-height: 16px;

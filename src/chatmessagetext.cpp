@@ -1452,6 +1452,8 @@ void ChatMessageTextBrowser::setHtmlContent(const QString& html)
     // setHtml() rebuilt the document, so any table pinned for the PREVIOUS content is gone along
     // with it -- re-measure and re-pin for this one (task-message-formatting-plan.md, Stage 4).
     applyWideTableLayout();
+
+    emit documentRebuilt();
 }
 
 //--------------------------------------------------------------------------
@@ -1477,6 +1479,8 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // Plain text has no tables -- this clears any pin/button left over from previous HTML content
     // (whose document setPlainText() has just discarded) and puts the scrollbar policy back.
     applyWideTableLayout();
+
+    emit documentRebuilt();
 }
 
 //--------------------------------------------------------------------------
@@ -1649,6 +1653,8 @@ void ChatMessageTextBrowser::applyDocumentStyle()
         {
             setAnchorUnderline(m_hoveredAnchor,true);
         }
+
+        emit documentRebuilt();
     }
     else if (m_highlighter!=nullptr)
     {

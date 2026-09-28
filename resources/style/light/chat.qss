@@ -265,19 +265,33 @@ background-color: #FFFFFF;
 border-bottom: 1px solid #EEEEEE;
 }
 
+#textViewerFindBar {
+border-bottom: 1px solid #EEEEEE;
+}
+
+/* No match for the typed text: the same red text ValidatedInput uses for an invalid value. */
+#textViewerFindBar #findEdit[noMatch="true"] {
+color: #ff6677;
+}
+
 #textViewerHeader #subtitle {
 color: #777777;
 }
 
+#textViewerHeader #findButton:hover,
 #textViewerHeader #copyButton:hover,
 #textViewerHeader #wrapButton:hover,
 #textViewerHeader #sourceButton:hover,
 #textViewerHeader #fullScreenButton:hover,
 #textViewerHeader #menuButton:hover,
-#textViewerHeader #closeButton:hover {
+#textViewerHeader #closeButton:hover,
+#textViewerFindBar #findNextButton:hover,
+#textViewerFindBar #findPreviousButton:hover,
+#textViewerFindBar #findCloseButton:hover {
 background-color: rgba(0,0,0,18);
 }
 
+#textViewerHeader #findButton[checked="true"],
 #textViewerHeader #wrapButton[checked="true"],
 #textViewerHeader #sourceButton[checked="true"],
 #textViewerHeader #menuButton[checked="true"] {

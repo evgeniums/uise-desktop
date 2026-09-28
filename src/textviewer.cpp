@@ -31,6 +31,10 @@ You may select, at your option, one of the above-listed licenses.
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QTextEdit>
+#include <QTextDocument>
+#include <QTextCursor>
+#include <QKeyEvent>
+#include <QSignalBlocker>
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgicon.hpp>
@@ -38,6 +42,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/label.hpp>
+#include <uise/desktop/lineedit.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/toast.hpp>
@@ -62,6 +67,11 @@ constexpr int ViewerMinHeight=200;
 constexpr int MenuOpenExternal=1;
 constexpr int MenuSaveAs=2;
 constexpr int MenuAlwaysExternal=3;
+
+//! Most matches painted at once. A one-letter query in a file near the size limit would otherwise
+//! build tens of thousands of selections on every keystroke. Navigation does not use the painted
+//! list -- it asks the document for the next match -- so it reaches matches past this too.
+constexpr int MaxFindHighlights=5000;
 
 //! Icon for the header buttons, in the themed "TextViewer" context.
 std::shared_ptr<SvgIcon> headerIcon(const QString& alias, QWidget* context)
@@ -204,6 +214,192 @@ class TextViewer_p
             return button;
         }
 
+        //! Show or hide the find bar. Opening focuses the input, hands Escape over from the frame to
+        //! the bar (the frame's own Escape shortcut closes the whole viewer, and a second enabled
+        //! Escape shortcut in the same window would make Qt treat every press as ambiguous), and
+        //! searches for whatever the input still holds; closing undoes all of that and removes
+        //! every highlight and the selection.
+        void setFindBarVisible(bool visible)
+        {
+            if (visible==findBarShown)
+            {
+                if (visible)
+                {
+                    // Cmd/Ctrl+F on an open bar: the usual "take me back to the input".
+                    findEdit->setFocus();
+                    findEdit->selectAll();
+                }
+                return;
+            }
+            findBarShown=visible;
+
+            // The button is only a view of this state -- its own toggled() must not come back here.
+            {
+                QSignalBlocker blocker(findButton);
+                findButton->setChecked(visible);
+            }
+            findBar->setVisible(visible);
+
+            if (visible)
+            {
+                if (!frame.isNull())
+                {
+                    // Remembered rather than assumed true: restore what was there, not what is usual.
+                    frameShortcutWasEnabled=frame->isShortcutEnabled();
+                    frame->setShortcutEnabled(false);
+                }
+                findEscape->setEnabled(true);
+                findEdit->setFocus();
+                findEdit->selectAll();
+                runFind();
+            }
+            else
+            {
+                findEscape->setEnabled(false);
+                if (!frame.isNull())
+                {
+                    frame->setShortcutEnabled(frameShortcutWasEnabled);
+                }
+                clearFind();
+            }
+        }
+
+        //! Remove every highlight and the current match's selection.
+        void clearFind()
+        {
+            browser->setExtraSelections({});
+
+            auto cursor=browser->textCursor();
+            cursor.clearSelection();
+            browser->setTextCursor(cursor);
+
+            setFindNoMatch(false);
+            setFindNavigationEnabled(false);
+        }
+
+        void setFindNoMatch(bool noMatch)
+        {
+            if (findEdit->property("noMatch").toBool()==noMatch)
+            {
+                return;
+            }
+            findEdit->setProperty("noMatch",noMatch);
+            // A dynamic property change alone does not invalidate Qt's cached style evaluation.
+            Style::updateWidgetStyle(findEdit);
+        }
+
+        void setFindNavigationEnabled(bool enable)
+        {
+            findNextButton->setEnabled(enable);
+            findPreviousButton->setEnabled(enable);
+        }
+
+        //! Make `match` (a cursor with the match selected, as QTextDocument::find() returns it) the
+        //! current one: the real selection, in the full selection colour, scrolled into view.
+        void selectFindMatch(const QTextCursor& match)
+        {
+            browser->setTextCursor(match);
+            browser->ensureCursorVisible();
+            findAnchor=match.selectionStart();
+        }
+
+        //! Search for the input's text: paint every match (a QTextEdit has one real selection, so
+        //! "all of them" can only be extra selections in a tint of the selection colour) and make
+        //! the first one at or after the previous current match the current one -- so extending the
+        //! query keeps its place instead of jumping back to the top, wrapping when nothing follows.
+        void runFind()
+        {
+            const auto query=findEdit->text();
+            auto* doc=browser->document();
+            if (query.isEmpty() || doc==nullptr)
+            {
+                clearFind();
+                return;
+            }
+
+            QTextEdit::ExtraSelection highlight;
+            auto tint=browser->palette().color(QPalette::Highlight);
+            tint.setAlpha(110);
+            highlight.format.setBackground(tint);
+
+            QList<QTextEdit::ExtraSelection> selections;
+            int from=0;
+            while (selections.size()<MaxFindHighlights)
+            {
+                auto found=doc->find(query,from);
+                if (found.isNull())
+                {
+                    break;
+                }
+                highlight.cursor=found;
+                selections.append(highlight);
+                // Past the match, so matches never overlap and the loop always advances.
+                from=found.selectionEnd();
+            }
+            browser->setExtraSelections(selections);
+
+            const int last=qMax(0,doc->characterCount()-1);
+            auto current=doc->find(query,qBound(0,findAnchor,last));
+            if (current.isNull())
+            {
+                current=doc->find(query,0);
+            }
+
+            const bool found=!current.isNull();
+            setFindNoMatch(!found);
+            setFindNavigationEnabled(found);
+            if (found)
+            {
+                selectFindMatch(current);
+            }
+            else
+            {
+                auto cursor=browser->textCursor();
+                cursor.clearSelection();
+                browser->setTextCursor(cursor);
+            }
+        }
+
+        //! Move to the next (or previous) match, wrapping at the ends. Asks the document rather than
+        //! walking the painted list, so it works past MaxFindHighlights and from wherever the
+        //! selection is now -- including a selection the user made themselves.
+        void findStep(bool forward)
+        {
+            const auto query=findEdit->text();
+            auto* doc=browser->document();
+            if (query.isEmpty() || doc==nullptr)
+            {
+                return;
+            }
+
+            const auto cursor=browser->textCursor();
+            const int last=qMax(0,doc->characterCount()-1);
+
+            QTextCursor next;
+            if (forward)
+            {
+                next=doc->find(query,cursor.hasSelection() ? cursor.selectionEnd() : cursor.position());
+                if (next.isNull())
+                {
+                    next=doc->find(query,0);
+                }
+            }
+            else
+            {
+                next=doc->find(query,cursor.hasSelection() ? cursor.selectionStart() : cursor.position(),
+                               QTextDocument::FindBackward);
+                if (next.isNull())
+                {
+                    next=doc->find(query,last,QTextDocument::FindBackward);
+                }
+            }
+
+            if (!next.isNull())
+            {
+                selectFindMatch(next);
+            }
+        }
+
         //! (Re)fill the "..." menu from the state above. The "Always ..." row, and the separator
         //! that sets it apart, exist only while it has text: a file with no extension has nothing
         //! for it to refer to, and a per-row hide could not take the separator with it.
@@ -229,12 +425,23 @@ class TextViewer_p
         ElidedLabel* title=nullptr;
         Label* subtitle=nullptr;
 
+        IconTextButton* findButton=nullptr;
         IconTextButton* copyButton=nullptr;
         IconTextButton* wrap=nullptr;
         IconTextButton* source=nullptr;
         IconTextButton* fullScreenButton=nullptr;
         IconTextButton* menuButton=nullptr;
         IconTextButton* closeButton=nullptr;
+        QFrame* findBar=nullptr;
+        LineEdit* findEdit=nullptr;
+        IconTextButton* findNextButton=nullptr;
+        IconTextButton* findPreviousButton=nullptr;
+        IconTextButton* findCloseButton=nullptr;
+        QShortcut* findEscape=nullptr;
+        bool findBarShown=false;
+        bool frameShortcutWasEnabled=true;
+        int findAnchor=0;
+
         QPointer<DropdownMenu> menu;
         QString alwaysText;
         bool alwaysChecked=false;
@@ -295,6 +502,12 @@ TextViewer::TextViewer(QWidget* parent)
     pimpl->subtitle->setObjectName(QStringLiteral("subtitle"));
     pimpl->subtitle->setVisible(false);
     tl->addWidget(pimpl->subtitle);
+
+    // Checked while the bar is open; the bar is the truth, see setFindBarVisible().
+    pimpl->findButton=pimpl->makeButton(QStringLiteral("search"),QStringLiteral("findButton"),tr("Find"),pimpl->header);
+    pimpl->findButton->setCheckable(true);
+    hl->addWidget(pimpl->findButton);
+    connect(pimpl->findButton,&IconTextButton::toggled,this,[this](bool checked){pimpl->setFindBarVisible(checked);});
 
     pimpl->copyButton=pimpl->makeButton(QStringLiteral("copy"),QStringLiteral("copyButton"),tr("Copy"),pimpl->header);
     hl->addWidget(pimpl->copyButton);
@@ -381,6 +594,56 @@ TextViewer::TextViewer(QWidget* parent)
         }
     );
 
+    // --- find bar ---
+
+    // Hidden until Find or Cmd/Ctrl+F. Same shape as the header row: input, then previous (up),
+    // next (down), close -- the order browsers and editors put them in, up before down.
+    pimpl->findBar=new QFrame(this);
+    pimpl->findBar->setObjectName(QStringLiteral("textViewerFindBar"));
+    pimpl->findBar->setVisible(false);
+    l->addWidget(pimpl->findBar);
+    auto fl=Layout::horizontal(pimpl->findBar);
+
+    pimpl->findEdit=new LineEdit(pimpl->findBar);
+    pimpl->findEdit->setObjectName(QStringLiteral("findEdit"));
+    pimpl->findEdit->setPlaceholderText(tr("Find in text"));
+    fl->addWidget(pimpl->findEdit,1);
+    // Every keystroke searches -- the matches are painted as the user types.
+    connect(pimpl->findEdit,&QLineEdit::textChanged,this,[this](const QString&){pimpl->runFind();});
+    // Enter / Shift+Enter, see eventFilter().
+    pimpl->findEdit->installEventFilter(this);
+
+    pimpl->findPreviousButton=pimpl->makeButton(QStringLiteral("chevronUp"),QStringLiteral("findPreviousButton"),tr("Previous match"),pimpl->findBar);
+    pimpl->findPreviousButton->setEnabled(false);
+    fl->addWidget(pimpl->findPreviousButton);
+    connect(pimpl->findPreviousButton,&IconTextButton::clicked,this,[this](){pimpl->findStep(false);});
+
+    pimpl->findNextButton=pimpl->makeButton(QStringLiteral("chevronDown"),QStringLiteral("findNextButton"),tr("Next match"),pimpl->findBar);
+    pimpl->findNextButton->setEnabled(false);
+    fl->addWidget(pimpl->findNextButton);
+    connect(pimpl->findNextButton,&IconTextButton::clicked,this,[this](){pimpl->findStep(true);});
+
+    pimpl->findCloseButton=pimpl->makeButton(QStringLiteral("close"),QStringLiteral("findCloseButton"),tr("Close"),pimpl->findBar);
+    fl->addWidget(pimpl->findCloseButton);
+    connect(pimpl->findCloseButton,&IconTextButton::clicked,this,[this](){pimpl->setFindBarVisible(false);});
+
+    // Cmd+F / Ctrl+F. Window-scoped: the viewer is its own top-level window, and this must work
+    // wherever focus is inside it (the browser itself takes none).
+    auto* findShortcut=new QShortcut(QKeySequence::Find,this);
+    findShortcut->setContext(Qt::WindowShortcut);
+    connect(findShortcut,&QShortcut::activated,this,[this](){pimpl->setFindBarVisible(true);});
+
+    // Escape closes the BAR, before it closes the viewer. Created disabled and only enabled while
+    // the bar is open, because the frame's own Escape shortcut is switched off for exactly that
+    // long (see setFindBarVisible()): two enabled Escape shortcuts in one window fire as
+    // "ambiguous" and never as "activated". Both signals go to the same handler, as the frame's
+    // own pair does, so a press is not lost if some other enabled Escape shortcut ever joins in.
+    pimpl->findEscape=new QShortcut(Qt::Key_Escape,this);
+    pimpl->findEscape->setContext(Qt::WindowShortcut);
+    pimpl->findEscape->setEnabled(false);
+    connect(pimpl->findEscape,&QShortcut::activated,this,[this](){pimpl->setFindBarVisible(false);});
+    connect(pimpl->findEscape,&QShortcut::activatedAmbiguously,this,[this](){pimpl->setFindBarVisible(false);});
+
     // --- content ---
 
     // The SAME widget the bubble renders through, in viewer mode -- not a second browser. That is
@@ -393,6 +656,36 @@ TextViewer::TextViewer(QWidget* parent)
     // Selectable, with the same right-click Copy the bubble offers.
     pimpl->browser->setCopyable(true);
     l->addWidget(pimpl->browser,1);
+
+    // New content and the theme-change replay both rebuild the document, which strands every
+    // position the search holds. Searching again is what keeps the bar honest.
+    connect(pimpl->browser,&ChatMessageTextBrowser::documentRebuilt,this,
+        [this]()
+        {
+            if (pimpl->findBarShown)
+            {
+                pimpl->runFind();
+            }
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+bool TextViewer::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==pimpl->findEdit && event->type()==QEvent::KeyPress)
+    {
+        const auto* keyEvent=static_cast<QKeyEvent*>(event);
+        if (keyEvent->key()==Qt::Key_Return || keyEvent->key()==Qt::Key_Enter)
+        {
+            // Swallowed, so the line edit's own returnPressed() never fires for it.
+            pimpl->findStep(!(keyEvent->modifiers() & Qt::ShiftModifier));
+            return true;
+        }
+    }
+
+    return QFrame::eventFilter(watched,event);
 }
 
 //--------------------------------------------------------------------------
@@ -412,6 +705,7 @@ TextViewer::~TextViewer()
 void TextViewer::setCode(const QString& text, const QString& language)
 {
     pimpl->text=text;
+    pimpl->findAnchor=0;
     pimpl->language=language;
     pimpl->mode=language.isEmpty() ? TextViewer_p::Mode::Plain : TextViewer_p::Mode::Code;
     pimpl->showSource=false;
@@ -427,6 +721,7 @@ void TextViewer::setCode(const QString& text, const QString& language)
 void TextViewer::setMarkdown(const QString& text)
 {
     pimpl->text=text;
+    pimpl->findAnchor=0;
     pimpl->language.clear();
     pimpl->mode=TextViewer_p::Mode::Markdown;
     pimpl->showSource=false;

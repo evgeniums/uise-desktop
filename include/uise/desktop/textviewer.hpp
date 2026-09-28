@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 #include <QString>
 #include <QSize>
+#include <QEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -50,9 +51,13 @@ class TextViewer_p;
  *  whole text / markdown / source file.
  *
  * One header bar on top -- file-type icon, an elided title (a file name, or a code block's
- * language) with an optional muted subtitle under it (a size), and a row of icon buttons: Copy,
- * Wrap lines, Markdown Source/Rendered (markdown content only), Full screen, an optional "..."
- * menu (see setFileActionsVisible()) and Close -- and the content below it.
+ * language) with an optional muted subtitle under it (a size), and a row of icon buttons: Find,
+ * Copy, Wrap lines, Markdown Source/Rendered (markdown content only), Full screen, an optional
+ * "..." menu (see setFileActionsVisible()) and Close -- and the content below it.
+ *
+ * Find (the button, or Cmd/Ctrl+F) opens a bar under the header: an input, previous, next and
+ * close. Every match is painted while typing, the current one is selected, and closing the bar
+ * (its X, the Find button, or Escape -- which closes the bar before the viewer) removes it all.
  *
  * The content is shown by the SAME ChatMessageTextBrowser a chat bubble renders through, in
  * viewer mode, so the syntax highlighting, the painted code slab and the markdown rendering are
@@ -197,6 +202,11 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
 
         //! The checkable "Always ..." row was toggled, `checked` being its new state.
         void alwaysExternalToggled(bool checked);
+
+    protected:
+
+        //! Enter / Shift+Enter in the find bar's input step to the next / previous match.
+        bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
 
