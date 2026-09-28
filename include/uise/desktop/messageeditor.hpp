@@ -775,10 +775,6 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! definition for why the polish-time announcement is lost.
         void showEvent(QShowEvent* event) override;
 
-        //! COMPOSER-DEBUG temporary (composer height flicker on chat open): traces polish/style/
-        //! font/show/resize events with heights to std::cerr. Remove once the flicker is fixed.
-        bool event(QEvent* event) override;
-
         /**
          * @brief Draws the spellcheck squiggle over what QTextEdit has already painted.
          *
@@ -888,11 +884,6 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
          * for free via updateMentionQuery(), only gets to re-evaluate it on these same few keys.
          */
         bool applyEmojiShortcodeGuard(QKeyEvent* event);
-
-        // COMPOSER-DEBUG temporary: last sizeHint() height printed, and when the last Show
-        // arrived (paints are traced only within 2s of it).
-        mutable int m_composerDebugLastHint=-1;
-        qint64 m_composerDebugShownAtMs=-1;
 
         bool m_autoResize;
         bool m_newLineOnEnter;

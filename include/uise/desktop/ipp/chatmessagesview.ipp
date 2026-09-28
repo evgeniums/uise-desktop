@@ -1350,7 +1350,15 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
     // connected to (ctor) -- runs synchronously here, before adjustMessagesSizes() below.
     updateEffectiveAlignSent();
 
-    adjustMessagesSizes();
+    // Only when the width bubbles are negotiated against actually changed -- see
+    // m_lastAdjustedContentWidth. Compared on messageContentWidth() (viewport-based, net of the
+    // avatar column), not on this widget's own width: a height change that makes the list's
+    // scrollbar appear or disappear still narrows/widens the viewport and still gets a pass, and
+    // an alignment flip above has already run its own pass and updated the memo.
+    if (messageContentWidth()!=m_lastAdjustedContentWidth)
+    {
+        adjustMessagesSizes();
+    }
 
     // The viewport's own height just changed, so the floating avatar's natural bottom-anchored Y
     // (and possibly the clamp against it) did too.
@@ -1375,7 +1383,12 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
                 std::cerr << "CHAT-DEBUG " << printCurrentDateTime().toStdString()
                            << " ChatMessagesView resizeTimer firing adjustMessagesSizes()" << std::endl;
             }
-            adjustMessagesSizes();
+            // Same width check as the immediate pass above: this follow-up exists for widths that
+            // settle late (maximize/normalize), not to redo an identical pass.
+            if (messageContentWidth()!=m_lastAdjustedContentWidth)
+            {
+                adjustMessagesSizes();
+            }
         });
     }
 }
@@ -1388,6 +1401,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Mess
     if (messages==nullptr)
     {
         auto maxWidth=messageContentWidth();
+        m_lastAdjustedContentWidth=maxWidth;
         auto handler=[maxWidth](const auto* item)
         {
             item->widget()->content()->updateBubbleWidth(maxWidth);

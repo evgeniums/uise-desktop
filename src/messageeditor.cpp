@@ -3046,21 +3046,7 @@ QSize EnhancedTextEdit::sizeHint() const
         // composer that grows without limit eventually swallows the window it lives in. Past the
         // cap the widget stops growing and scrolls instead (see updateSize(), which turns the
         // scrollbar on exactly when this clamp starts biting).
-        const auto hint=qMin(height,effectiveMaxHeight());
-
-        // COMPOSER-DEBUG temporary: report every change of the height this hands out.
-        if (hint!=m_composerDebugLastHint)
-        {
-            std::cerr << "COMPOSER-DEBUG " << printCurrentDateTime().toStdString()
-                      << " editor " << static_cast<const void*>(this) << " sizeHint "
-                      << m_composerDebugLastHint << "->" << hint
-                      << " docH=" << size.height() << " frameWidth=" << frameWidth()
-                      << " pixelSize=" << font().pixelSize()
-                      << " polished=" << int(testAttribute(Qt::WA_WState_Polished))
-                      << " hidden=" << int(isHidden()) << std::endl;
-            m_composerDebugLastHint=hint;
-        }
-        return QSize(width(), hint);
+        return QSize(width(), qMin(height,effectiveMaxHeight()));
     }
     return QTextEdit::sizeHint();
 }
@@ -3402,76 +3388,8 @@ void EnhancedTextEdit::showEvent(QShowEvent* event)
 
 //--------------------------------------------------------------------------
 
-namespace {
-
-// COMPOSER-DEBUG temporary: "self/parent/grandparent" heights, i.e. the text edit, the
-// MessageEditor and the host (ChatPageBottom for the chat composer).
-std::string composerDebugHeights(const QWidget* w)
-{
-    std::string s=std::to_string(w->height());
-    auto* p=w->parentWidget();
-    s+="/"+(p!=nullptr ? std::to_string(p->height()) : std::string("-"));
-    auto* g=p!=nullptr ? p->parentWidget() : nullptr;
-    s+="/"+(g!=nullptr ? std::to_string(g->height()) : std::string("-"));
-    return s;
-}
-
-}
-
-bool EnhancedTextEdit::event(QEvent* event)
-{
-    // COMPOSER-DEBUG temporary (composer height flicker on chat open). Logged after the base
-    // handler, so a Polish/FontChange line already shows the styled font and frame.
-    auto result=QTextEdit::event(event);
-
-    const char* name=nullptr;
-    switch (event->type())
-    {
-        case QEvent::Polish: name="Polish"; break;
-        case QEvent::FontChange: name="FontChange"; break;
-        case QEvent::StyleChange: name="StyleChange"; break;
-        case QEvent::ParentChange: name="ParentChange"; break;
-        case QEvent::Show: name="Show"; break;
-        case QEvent::Hide: name="Hide"; break;
-        case QEvent::Resize: name="Resize"; break;
-        default: break;
-    }
-    if (event->type()==QEvent::Show)
-    {
-        m_composerDebugShownAtMs=QDateTime::currentMSecsSinceEpoch();
-    }
-    if (name!=nullptr)
-    {
-        std::cerr << "COMPOSER-DEBUG " << printCurrentDateTime().toStdString()
-                  << " editor " << static_cast<const void*>(this) << " " << name
-                  << " h(self/parent/host)=" << composerDebugHeights(this)
-                  << " sizeHint=" << sizeHint().height()
-                  << " docH=" << document()->size().height()
-                  << " frameWidth=" << frameWidth()
-                  << " pixelSize=" << font().pixelSize()
-                  << " polished=" << int(testAttribute(Qt::WA_WState_Polished))
-                  << " hidden=" << int(isHidden())
-                  << " visible=" << int(isVisible())
-                  << std::endl;
-    }
-    return result;
-}
-
-//--------------------------------------------------------------------------
-
 void EnhancedTextEdit::paintEvent(QPaintEvent* event)
 {
-    // COMPOSER-DEBUG temporary: every paint within 2s of the last Show, with the heights the
-    // user actually sees -- a paint at the wrong height here IS the flicker frame.
-    if (m_composerDebugShownAtMs>=0
-        && QDateTime::currentMSecsSinceEpoch()-m_composerDebugShownAtMs<2000)
-    {
-        std::cerr << "COMPOSER-DEBUG " << printCurrentDateTime().toStdString()
-                  << " editor " << static_cast<const void*>(this) << " paint"
-                  << " h(self/parent/host)=" << composerDebugHeights(this)
-                  << " sizeHint=" << sizeHint().height() << std::endl;
-    }
-
     // The text first: the squiggle goes ON TOP of it, which is the whole point -- the user's own
     // solid underline is drawn by Qt from the document's fontUnderline, untouched by the spell
     // pass (see SpellCheckUnderlineProperty), and ours lands below it.

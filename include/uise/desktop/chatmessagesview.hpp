@@ -638,6 +638,14 @@ class ChatMessagesView : public AbstractChatMessagesView
         int m_messageMinWidth=0;
         int m_messageMaxWidth=QWIDGETSIZE_MAX;
 
+        //! messageContentWidth() the last all-messages adjustMessagesSizes() pass ran with. The
+        //! two resize-driven passes (resizeEvent() and its 50ms follow-up) skip themselves while
+        //! it still matches: a bubble pass depends on nothing but that width, and a height-only
+        //! resize (e.g. the composer's formatting-mode toggle) otherwise re-negotiated every
+        //! bubble and re-rendered every image preview on screen for nothing. -1 until the first
+        //! pass. Explicit callers (alignment/avatar setting changes) always run regardless.
+        int m_lastAdjustedContentWidth=-1;
+
         SingleShotTimer* m_resizeTimer=nullptr;
         SingleShotTimer* m_selectionModeTimer=nullptr;
 

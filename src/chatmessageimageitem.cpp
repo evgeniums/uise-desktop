@@ -173,6 +173,16 @@ class ChatMessageImageItem_p
         //! doc comment on why this is a (size,constData()) identity test, not a memcmp.
         QByteArray loadedData;
 
+        //! What the still preview currently on `preview` was rendered from -- see updatePreview()'s
+        //! still path. Only meaningful while stillValid; cleared whenever another path takes over.
+        bool stillValid=false;
+        qint64 stillCacheKey=0;
+        QSize stillPhysicalSize;
+        qreal stillDpr=0.0;
+        qreal stillMaxUpscale=0.0;
+        QSize stillPixelSize;
+        bool stillPlaceholder=false;
+
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
         //! See ChatMessageImageItem::setMaxUpscale()'s own doc comment. Matches
@@ -508,6 +518,7 @@ void ChatMessageImageItem::updatePreview()
         {
             pimpl->loadedPath=content.path;
             pimpl->loadedData=content.data;
+            pimpl->stillValid=false;
             setPlaceholderMode(false);
             return;
         }
@@ -522,11 +533,39 @@ void ChatMessageImageItem::updatePreview()
         pimpl->preview->clearImage();
         pimpl->loadedPath.clear();
         pimpl->loadedData.clear();
+        pimpl->stillValid=false;
     }
 
     auto preview=pimpl->item.preview();
     if (!preview.isNull())
     {
+        const qreal dpr=devicePixelRatioF();
+        QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
+
+        // Already showing exactly this render? Then keep it. Everything the still render below
+        // depends on is in this key: the source image (QImage::cacheKey() is shared by the
+        // implicitly shared copies item().preview() hands out, and changes with its data), the
+        // tile's physical box, the upscale allowance, the original's natural size and the
+        // placeholder flag (which together decide the crop-vs-fit framing).
+        //
+        // Without this every refresh() re-converted, smooth-scaled and re-composed the preview --
+        // and ChatMessageImages::rebuildGrid() refreshes every tile on every bubble-width pass,
+        // twice per pass (bubbleWidthHint() and updateMaximumBubbleWidth()), even when its
+        // layoutUnchanged memo keeps the geometry. Every chat-view resize, including the
+        // height-only one of the composer's formatting-mode toggle, re-rendered every image
+        // preview on screen at full HiDPI resolution: ~27% of GUI-thread CPU in a Windows profile.
+        if (pimpl->stillValid
+            && pimpl->stillCacheKey==preview.cacheKey()
+            && pimpl->stillPhysicalSize==physicalSize
+            && pimpl->stillDpr==dpr
+            && pimpl->stillMaxUpscale==pimpl->maxUpscale
+            && pimpl->stillPixelSize==pimpl->item.pixelSize()
+            && pimpl->stillPlaceholder==pimpl->item.isPreviewPlaceholder())
+        {
+            setPlaceholderMode(false);
+            return;
+        }
+
         pimpl->preview->setSvgIcon(nullptr);
 
         // Fit the image inside the tile, preserving its own aspect ratio and never cropping it --
@@ -581,8 +620,6 @@ void ChatMessageImageItem::updatePreview()
         // ORIGINAL's resolution, not the delivered rung's -- see scaledToFit()'s own doc
         // comment. A genuinely small image is unaffected up to maxUpscale(): there pixelSize()
         // equals the delivered pixmap's size, so the clamp still refuses to enlarge it further.
-        const qreal dpr=devicePixelRatioF();
-        QSize physicalSize(qRound(size().width()*dpr),qRound(size().height()*dpr));
         auto contentBox=fittedContentSize(pimpl->item.pixelSize(),physicalSize,pimpl->maxUpscale);
         auto srcPx=QPixmap::fromImage(preview);
 
@@ -620,10 +657,20 @@ void ChatMessageImageItem::updatePreview()
                 : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize(),pimpl->maxUpscale));
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);
+
+        pimpl->stillValid=true;
+        pimpl->stillCacheKey=preview.cacheKey();
+        pimpl->stillPhysicalSize=physicalSize;
+        pimpl->stillDpr=dpr;
+        pimpl->stillMaxUpscale=pimpl->maxUpscale;
+        pimpl->stillPixelSize=pimpl->item.pixelSize();
+        pimpl->stillPlaceholder=pimpl->item.isPreviewPlaceholder();
+
         setPlaceholderMode(false);
     }
     else
     {
+        pimpl->stillValid=false;
         // Nothing to show: deliberately no fallback glyph. The tile already carries a centered
         // load control and a floating menu button, and an icon behind those read as noise --
         // the tile itself becomes the placeholder instead, drawn as an empty rounded outline
