@@ -4800,6 +4800,9 @@ MessageEditor::MessageEditor(QWidget* parent)
     pimpl->expandButton->setFocusPolicy(Qt::NoFocus);
     pimpl->expandButton->setToolTip(tr("Show formatting toolbar"));
     pimpl->expandButton->setCheckable(true);
+    // Toggle the moment the button goes down: with the default act-on-release, the whole hold
+    // time (while the press ripple plays) passed before the toolbar appeared or went away.
+    pimpl->expandButton->setClickOnPress(true);
     pimpl->expandButton->setVisible(false);
     // Last member of the leading group, so it sits nearest the text area in the row and, once
     // the group turns into a column, ends up at its top (BottomToTop) -- see applyArrangement().

@@ -147,6 +147,25 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void setTextInteractionFlags(Qt::TextInteractionFlags flags);
         Qt::TextInteractionFlags textInteractionFlags() const;
 
+        /**
+         * @brief Fire click() on the left-button PRESS instead of on the release.
+         *
+         * Off by default: the usual act-on-release lets a user cancel by dragging off the button.
+         * Meant for toggles whose effect should start the instant the button goes down -- e.g.
+         * MessageEditor's formatting-mode expand button, where acting on release meant the whole
+         * hold time (while the press ripple plays) passed before anything changed. The release is
+         * still claimed (accepted) so it cannot leak to the parent, but it no longer clicks.
+         */
+        void setClickOnPress(bool enable) noexcept
+        {
+            m_clickOnPress=enable;
+        }
+
+        bool isClickOnPress() const noexcept
+        {
+            return m_clickOnPress;
+        }
+
         /** @brief The click-ripple overlay installed on this button, see RippleOverlay. */
         RippleOverlay* rippleOverlay() const noexcept
         {
@@ -208,6 +227,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_parentHovered;
         bool m_checked;
         bool m_checkable;
+        bool m_clickOnPress=false;
 
         RippleOverlay* m_ripple;
 };

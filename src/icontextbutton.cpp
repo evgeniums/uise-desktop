@@ -485,6 +485,13 @@ void IconTextButton::mousePressEvent(QMouseEvent* event)
         // ChatMessageFileItem's own menuButton) leaks its press up to the parent's
         // mousePressEvent(), which then treats it as a click on the PARENT too.
         event->accept();
+
+        // See setClickOnPress(). m_pressed stays set, so mouseReleaseEvent() still claims the
+        // matching release -- it just does not click a second time.
+        if (m_clickOnPress)
+        {
+            click();
+        }
         return;
     }
     QFrame::mousePressEvent(event);
@@ -497,7 +504,7 @@ void IconTextButton::mouseReleaseEvent(QMouseEvent* event)
     if (event->button()==Qt::LeftButton && m_pressed)
     {
         m_pressed=false;
-        if (rect().contains(event->pos()))
+        if (!m_clickOnPress && rect().contains(event->pos()))
         {
             click();
         }
