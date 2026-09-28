@@ -308,7 +308,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatFileItem</name>
     <message>
-        <location filename="../src/chatfileitem.cpp" line="+248"/>
+        <location filename="../src/chatfileitem.cpp" line="+252"/>
         <source>Open</source>
         <translation>Открыть</translation>
     </message>
@@ -316,6 +316,11 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+10"/>
         <source>Open in system app</source>
         <translation>Открыть в системном приложении</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Open in viewer</source>
+        <translation>Открыть в просмотрщике</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -565,7 +570,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>EditableLabelBool</name>
     <message>
-        <location filename="../include/uise/desktop/editablelabel.hpp" line="+947"/>
+        <location filename="../include/uise/desktop/editablelabel.hpp" line="+964"/>
         <source>On</source>
         <translation>Вкл</translation>
     </message>
@@ -2995,7 +3000,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2175"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2201"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
@@ -3018,53 +3023,48 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1307"/>
+        <location line="-1260"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
     <message>
         <location line="+71"/>
-        <location line="+1440"/>
         <source>Copy code</source>
         <translation>Копировать код</translation>
     </message>
     <message>
-        <location line="-1416"/>
+        <location line="+24"/>
         <source>Open code in a larger window</source>
         <translation>Открыть код в большом окне</translation>
     </message>
     <message>
-        <location line="+911"/>
+        <location line="+917"/>
         <source>Show the full table</source>
         <translation>Показать таблицу целиком</translation>
     </message>
     <message>
-        <location line="+369"/>
+        <location line="+316"/>
         <location line="+36"/>
-        <location line="+96"/>
-        <location line="+39"/>
         <source>Full screen</source>
         <translation>Во весь экран</translation>
     </message>
     <message>
-        <location line="-167"/>
+        <location line="-32"/>
         <source>Copy table</source>
         <translation>Копировать таблицу</translation>
     </message>
     <message>
         <location line="+5"/>
-        <location line="+143"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location line="-111"/>
-        <location line="+135"/>
+        <location line="+32"/>
         <source>Exit full screen</source>
         <translation>Обычный размер</translation>
     </message>
     <message>
-        <location line="+199"/>
+        <location line="+248"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -3163,13 +3163,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EditableLabel</name>
     <message>
-        <location filename="../src/editablelabel.cpp" line="+90"/>
-        <location line="+124"/>
+        <location filename="../src/editablelabel.cpp" line="+125"/>
+        <location line="+171"/>
         <source>Edit</source>
         <translation>Изменить</translation>
     </message>
     <message>
-        <location line="-117"/>
+        <location line="-164"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>
@@ -3179,7 +3179,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="+113"/>
+        <location line="+160"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -3187,7 +3187,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EditablePanel</name>
     <message>
-        <location filename="../src/editablepanel.cpp" line="+103"/>
+        <location filename="../src/editablepanel.cpp" line="+104"/>
         <source>Edit</source>
         <translation>Изменить</translation>
     </message>
@@ -3567,7 +3567,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4414"/>
+        <location filename="../src/messageeditor.cpp" line="+4869"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
@@ -4168,7 +4168,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+176"/>
+        <location filename="../src/simpleimageeditor.cpp" line="+180"/>
         <source>Rotate</source>
         <translation>Повернуть</translation>
     </message>
@@ -4300,6 +4300,94 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+19"/>
         <source>Notice</source>
         <translation>Уведомление</translation>
+    </message>
+</context>
+<context>
+    <name>uise::TextViewer</name>
+    <message>
+        <location filename="../src/textviewer.cpp" line="+196"/>
+        <source>Copied</source>
+        <translation>Скопировано</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Exit full screen</source>
+        <translation>Обычный размер</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+335"/>
+        <source>Full screen</source>
+        <translation>Во весь экран</translation>
+    </message>
+    <message>
+        <location line="-129"/>
+        <source>Open in system app</source>
+        <translatorcomment>i18n-lint: allow-long -- the same string and wording as ChatFileItem&apos;s menu entry; &quot;system app&quot; is one fixed term across the app and no shorter correct phrasing exists.</translatorcomment>
+        <translation>Открыть в системном приложении</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Save as</source>
+        <translation>Сохранить как</translation>
+    </message>
+    <message>
+        <location line="+97"/>
+        <source>Find</source>
+        <translation>Найти</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Copy</source>
+        <translation>Копировать</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Wrap lines</source>
+        <translation>Перенос строк</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+8"/>
+        <location line="+201"/>
+        <source>Show source</source>
+        <translation>Исходный текст</translation>
+    </message>
+    <message>
+        <location line="-201"/>
+        <source>Show rendered</source>
+        <translation>Оформленный текст</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>More</source>
+        <translation>Ещё</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Always open in system app</source>
+        <translation>Всегда в системном приложении</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <location line="+41"/>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <location line="-17"/>
+        <source>Find in text</source>
+        <translation>Найти в тексте</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Previous match</source>
+        <translation>Найти ранее</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Next match</source>
+        <translation>Найти далее</translation>
     </message>
 </context>
 <context>

@@ -114,7 +114,7 @@ class TextViewer_p
 {
     public:
 
-        enum class Mode : int
+        enum class Mode
         {
             Plain,
             Code,

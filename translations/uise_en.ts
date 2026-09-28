@@ -311,7 +311,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ChatFileItem</name>
     <message>
-        <location filename="../src/chatfileitem.cpp" line="+248"/>
+        <location filename="../src/chatfileitem.cpp" line="+252"/>
         <source>Open</source>
         <translation>Open</translation>
     </message>
@@ -319,6 +319,11 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+10"/>
         <source>Open in system app</source>
         <translation>Open in system app</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Open in viewer</source>
+        <translation>Open in viewer</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -576,7 +581,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>EditableLabelBool</name>
     <message>
-        <location filename="../include/uise/desktop/editablelabel.hpp" line="+947"/>
+        <location filename="../include/uise/desktop/editablelabel.hpp" line="+964"/>
         <source>On</source>
         <translation>On</translation>
     </message>
@@ -3015,7 +3020,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2175"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2201"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3038,53 +3043,48 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1307"/>
+        <location line="-1260"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
     <message>
         <location line="+71"/>
-        <location line="+1440"/>
         <source>Copy code</source>
         <translation>Copy code</translation>
     </message>
     <message>
-        <location line="-1416"/>
+        <location line="+24"/>
         <source>Open code in a larger window</source>
         <translation>Open code in a larger window</translation>
     </message>
     <message>
-        <location line="+911"/>
+        <location line="+917"/>
         <source>Show the full table</source>
         <translation>Show the full table</translation>
     </message>
     <message>
-        <location line="+369"/>
+        <location line="+316"/>
         <location line="+36"/>
-        <location line="+96"/>
-        <location line="+39"/>
         <source>Full screen</source>
         <translation>Full screen</translation>
     </message>
     <message>
-        <location line="-167"/>
+        <location line="-32"/>
         <source>Copy table</source>
         <translation>Copy table</translation>
     </message>
     <message>
         <location line="+5"/>
-        <location line="+143"/>
         <source>Close</source>
         <translation>Close</translation>
     </message>
     <message>
-        <location line="-111"/>
-        <location line="+135"/>
+        <location line="+32"/>
         <source>Exit full screen</source>
         <translation>Exit full screen</translation>
     </message>
     <message>
-        <location line="+199"/>
+        <location line="+248"/>
         <source>Copy</source>
         <translation>Copy</translation>
     </message>
@@ -3187,13 +3187,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EditableLabel</name>
     <message>
-        <location filename="../src/editablelabel.cpp" line="+90"/>
-        <location line="+124"/>
+        <location filename="../src/editablelabel.cpp" line="+125"/>
+        <location line="+171"/>
         <source>Edit</source>
         <translation>Edit</translation>
     </message>
     <message>
-        <location line="-117"/>
+        <location line="-164"/>
         <source>Apply</source>
         <translation>Apply</translation>
     </message>
@@ -3203,7 +3203,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Cancel</translation>
     </message>
     <message>
-        <location line="+113"/>
+        <location line="+160"/>
         <source>Copy</source>
         <translation>Copy</translation>
     </message>
@@ -3211,7 +3211,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::EditablePanel</name>
     <message>
-        <location filename="../src/editablepanel.cpp" line="+103"/>
+        <location filename="../src/editablepanel.cpp" line="+104"/>
         <source>Edit</source>
         <translation>Edit</translation>
     </message>
@@ -3589,7 +3589,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4414"/>
+        <location filename="../src/messageeditor.cpp" line="+4869"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -4212,7 +4212,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+176"/>
+        <location filename="../src/simpleimageeditor.cpp" line="+180"/>
         <source>Rotate</source>
         <translation>Rotate</translation>
     </message>
@@ -4348,6 +4348,93 @@ These tips can help you create longer passwords that are easier to remember. Try
         <location line="+19"/>
         <source>Notice</source>
         <translation>Notice</translation>
+    </message>
+</context>
+<context>
+    <name>uise::TextViewer</name>
+    <message>
+        <location filename="../src/textviewer.cpp" line="+196"/>
+        <source>Copied</source>
+        <translation>Copied</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Exit full screen</source>
+        <translation>Exit full screen</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+335"/>
+        <source>Full screen</source>
+        <translation>Full screen</translation>
+    </message>
+    <message>
+        <location line="-129"/>
+        <source>Open in system app</source>
+        <translation>Open in system app</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Save as</source>
+        <translation>Save as</translation>
+    </message>
+    <message>
+        <location line="+97"/>
+        <source>Find</source>
+        <translation>Find</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Copy</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Wrap lines</source>
+        <translation>Wrap lines</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+8"/>
+        <location line="+201"/>
+        <source>Show source</source>
+        <translation>Show source</translation>
+    </message>
+    <message>
+        <location line="-201"/>
+        <source>Show rendered</source>
+        <translation>Show rendered</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>More</source>
+        <translation>More</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Always open in system app</source>
+        <translation>Always open in system app</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <location line="+41"/>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <location line="-17"/>
+        <source>Find in text</source>
+        <translation>Find in text</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Previous match</source>
+        <translation>Previous match</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Next match</source>
+        <translation>Next match</translation>
     </message>
 </context>
 <context>
