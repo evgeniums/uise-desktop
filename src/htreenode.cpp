@@ -745,6 +745,52 @@ void HTreeNode::expandNode()
 
 //--------------------------------------------------------------------------
 
+namespace {
+
+// Polishes a freshly built, still HIDDEN subtree and invalidates its layouts, so the synchronous
+// layout pass QWidgetPrivate::show_helper() runs on show() measures every widget at its STYLED
+// size, before anything can paint.
+//
+// Why fillContent() needs it: left to show(), Qt polishes the children one by one in
+// QWidgetPrivate::show_recursive(), AFTER their parents' layouts were already activated (and
+// possibly measured even earlier, by construction-time activations). The QSS font/padding/border
+// that polish brings in changes the widget's sizeHint(), but the updateGeometry() that would
+// report it skips the parent layout while the widget is still hidden
+// (QWidgetPrivate::updateGeometry_helper()). The parent keeps the stale, pre-style size until
+// something happens to invalidate it later -- e.g. the chat composer opening 4px too short and
+// then visibly jumping to full height on the first keystroke, or one frame after showEvent().
+//
+// Explicitly hidden subtrees are skipped, so this polishes no more than show() itself would --
+// it only moves that work ahead of the layout pass. The content is built under its final parent
+// (see createContentWidget()), so container-scoped QSS matches correctly here.
+void primeHiddenSubtreeForShow(QWidget* widget)
+{
+    widget->ensurePolished();
+    if (auto* layout=widget->layout(); layout!=nullptr)
+    {
+        layout->invalidate();
+    }
+
+    const auto children=widget->children();
+    for (auto* child : children)
+    {
+        auto* w=qobject_cast<QWidget*>(child);
+        if (w==nullptr || w->isWindow())
+        {
+            continue;
+        }
+        if (w->isHidden() && w->testAttribute(Qt::WA_WState_ExplicitShowHide))
+        {
+            continue;
+        }
+        primeHiddenSubtreeForShow(w);
+    }
+}
+
+}
+
+//--------------------------------------------------------------------------
+
 void HTreeNode::fillContent()
 {
     // Build the content while this node is HIDDEN, and show it only once it is complete.
@@ -789,6 +835,10 @@ void HTreeNode::fillContent()
     // then jumped left by 10px (a chats column and its pseudo-page visibly changed width).
     // Hidden first, the layout show_helper() runs is already the final one.
     pimpl->placeHolder->setVisible(false);
+    if (buildContent && pimpl->widget!=nullptr)
+    {
+        primeHiddenSubtreeForShow(pimpl->widget);
+    }
     setVisible(true);
 
     if (buildContent && pimpl->treeTab!=nullptr)
