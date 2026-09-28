@@ -448,6 +448,8 @@ void DropdownMenu::attachTo(QWidget* trigger)
     if (auto* btn=qobject_cast<IconTextButton*>(trigger))
     {
         btn->setCheckable(true);
+        // checked (menu open) paints a rounded-rect background, the press ripple must match it
+        btn->setRectRipple(true);
 
         QPointer<IconTextButton> guarded(btn);
         connect(

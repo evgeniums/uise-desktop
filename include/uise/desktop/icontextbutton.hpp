@@ -166,6 +166,21 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
             return m_clickOnPress;
         }
 
+        /**
+         * @brief Make the press ripple a rounded rectangle instead of a circle/flat ellipse.
+         *
+         * Use it on a button whose checked (or hovered) state paints a filled rounded-rect
+         * background, so the ripple grows into the same shape as the highlight it hands over to
+         * instead of a circle followed by a square. Sets the "rectRipple" dynamic property that
+         * ripple.qss keys its roundedrect rule on; the corner radius is still the QSS
+         * rippleCornerRadius, keep it in step with the button's own border-radius.
+         *
+         * DropdownMenu::attachTo() turns this on for its trigger.
+         */
+        void setRectRipple(bool enable);
+
+        bool isRectRipple() const;
+
         /** @brief The click-ripple overlay installed on this button, see RippleOverlay. */
         RippleOverlay* rippleOverlay() const noexcept
         {

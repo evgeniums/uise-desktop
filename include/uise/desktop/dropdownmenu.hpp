@@ -246,7 +246,8 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
          *
          * Sets triggerWidget(trigger). If trigger is an IconTextButton, it is made checkable
          * and kept checked for as long as the menu is open (mirroring FastSwitchButton's own
-         * main-button handling). Any other widget exposing a clicked() signal also toggles the
+         * main-button handling), and gets a rounded-rect press ripple to match its checked
+         * background (IconTextButton::setRectRipple()). Any other widget exposing a clicked() signal also toggles the
          * menu, but without checked-state syncing.
          */
         void attachTo(QWidget* trigger);

@@ -102,3 +102,8 @@ uise--ChatMessageImageItem #menuButton {
 border-radius:6px;
 padding:4px;
 }
+
+/* ripple corner radius in step with the border-radius above (ripple.qss's default is 4) */
+uise--ChatMessageImageItem #menuButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 6;
+}

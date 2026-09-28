@@ -468,6 +468,32 @@ void IconTextButton::rebuildLayout()
 
 //--------------------------------------------------------------------------
 
+void IconTextButton::setRectRipple(bool enable)
+{
+    if (enable==isRectRipple())
+    {
+        return;
+    }
+
+    setProperty("rectRipple",enable);
+    Style::updateWidgetStyle(this);
+    // The overlay child was already polished by RippleOverlay::install() in the constructor and
+    // a property set on `this` never cascades to it -- see setText()'s identical comment.
+    if (m_ripple)
+    {
+        Style::updateWidgetStyle(m_ripple);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool IconTextButton::isRectRipple() const
+{
+    return property("rectRipple").toBool();
+}
+
+//--------------------------------------------------------------------------
+
 void IconTextButton::mousePressEvent(QMouseEvent* event)
 {
     // Matches QAbstractButton/CalendarDay: a press only marks the button down, it does not

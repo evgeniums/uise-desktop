@@ -61,6 +61,11 @@ padding: 6px;
 border-radius: 6px;
 }
 
+/* ripple corner radius in step with the border-radius above (ripple.qss's default is 4) */
+uise--ChatImageViewerControls #menuButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 6;
+}
+
 uise--ChatImageViewerControls #menuButton[checked="true"] {
 background-color: rgba(255,255,255,40);
 }

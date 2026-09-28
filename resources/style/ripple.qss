@@ -101,6 +101,30 @@ uise--IconTextButton[iconOnly="false"][verticalLayout="true"] uise--RippleOverla
     qproperty-rippleRadiusScaleY: 1.0;
 }
 
+/* Buttons whose checked state paints a filled rounded-rect background (every DropdownMenu
+ * trigger, see DropdownMenu::attachTo(), and the toggles that opt in via
+ * IconTextButton::setRectRipple()). Without this an icon-only one gets the circle from the
+ * iconOnly rule below and a text one the flattened band above, so a click shows a circle that
+ * is then replaced by a square when the button turns checked. The blob's own geometry
+ * (rippleShape) and the crop (rippleClip) are both set: "roundedrect" grows evenly into the
+ * button's edges instead of an ellipse reaching for its corners. rippleCornerRadius is left to
+ * each container's own rule (base 4, see IconTextButton above) -- keep it equal to the button's
+ * border-radius.
+ *
+ * Both attribute pairs are spelled out instead of just [rectRipple="true"]: Qt scores a
+ * selector as ids*256 + attributes*16 + type names, so this scores 34 against the 18 of the
+ * [iconOnly="..."] rules it overrides. A lone [rectRipple="true"] would score 18 and tie with
+ * them, and a tie is decided by arbitrary stylesheet concatenation order (see navigationbar.qss).
+ * iconOnly is always set by IconTextButton's constructor, so the two selectors cover every
+ * button. Ties with the verticalLayout rule above are harmless, it sets the same 1:1 scale. */
+uise--IconTextButton[rectRipple="true"][iconOnly="true"] uise--RippleOverlay,
+uise--IconTextButton[rectRipple="true"][iconOnly="false"] uise--RippleOverlay {
+    qproperty-rippleShape: "roundedrect";
+    qproperty-rippleClip: "rounded";
+    qproperty-rippleRadiusScaleX: 1.0;
+    qproperty-rippleRadiusScaleY: 1.0;
+}
+
 /* Icon-only buttons (no text -- see IconTextButton::setText()) get a circular halo instead:
  * clipped to a capsule, which -- because these buttons are typically styled square (see the
  * icon-only rules in demo/ripple/main.cpp) -- draws as a true circle, and equal X/Y radius

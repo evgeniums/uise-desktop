@@ -384,6 +384,8 @@ IconTextButton* FastSwitchButton::createMainButton()
     auto* btn=new IconTextButton(this,IconTextButton::IconPosition::BeforeText);
     btn->setObjectName("mainButton");
     btn->setCheckable(true);
+    // checked paints a rounded-rect background (see fastswitchbutton.qss), the ripple must match
+    btn->setRectRipple(true);
     btn->setText(QString());
     return btn;
 }

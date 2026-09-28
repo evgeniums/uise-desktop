@@ -506,6 +506,7 @@ TextViewer::TextViewer(QWidget* parent)
     // Checked while the bar is open; the bar is the truth, see setFindBarVisible().
     pimpl->findButton=pimpl->makeButton(QStringLiteral("search"),QStringLiteral("findButton"),tr("Find"),pimpl->header);
     pimpl->findButton->setCheckable(true);
+    pimpl->findButton->setRectRipple(true);
     hl->addWidget(pimpl->findButton);
     connect(pimpl->findButton,&IconTextButton::toggled,this,[this](bool checked){pimpl->setFindBarVisible(checked);});
 
@@ -515,12 +516,14 @@ TextViewer::TextViewer(QWidget* parent)
 
     pimpl->wrap=pimpl->makeButton(QStringLiteral("wrap"),QStringLiteral("wrapButton"),tr("Wrap lines"),pimpl->header);
     pimpl->wrap->setCheckable(true);
+    pimpl->wrap->setRectRipple(true);
     hl->addWidget(pimpl->wrap);
     connect(pimpl->wrap,&IconTextButton::toggled,this,[this](bool checked){pimpl->applyWrap(checked);});
 
     // Markdown only, see TextViewer_p::render().
     pimpl->source=pimpl->makeButton(QStringLiteral("source"),QStringLiteral("sourceButton"),tr("Show source"),pimpl->header);
     pimpl->source->setCheckable(true);
+    pimpl->source->setRectRipple(true);
     pimpl->source->setVisible(false);
     hl->addWidget(pimpl->source);
     connect(pimpl->source,&IconTextButton::toggled,this,

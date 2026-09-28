@@ -142,6 +142,17 @@ border-radius: 6px;
 margin-left: 2px;
 }
 
+/* ripple corner radius in step with the border-radius above (ripple.qss's default is 4) */
+#textViewerHeader #findButton uise--RippleOverlay,
+#textViewerHeader #copyButton uise--RippleOverlay,
+#textViewerHeader #wrapButton uise--RippleOverlay,
+#textViewerHeader #sourceButton uise--RippleOverlay,
+#textViewerHeader #fullScreenButton uise--RippleOverlay,
+#textViewerHeader #menuButton uise--RippleOverlay,
+#textViewerHeader #closeButton uise--RippleOverlay {
+qproperty-rippleCornerRadius: 6;
+}
+
 #textViewerHeader #icon,
 #textViewerHeader uise--RoundedImage {
 min-width: 16px;
