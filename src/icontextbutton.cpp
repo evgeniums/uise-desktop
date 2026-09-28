@@ -159,6 +159,17 @@ void IconTextButton::setChecked(bool enable)
         return;
     }
 
+    // Nothing to do when the state is unchanged -- the four updateWidgetStyle() calls below are
+    // each a full QSS unpolish+polish. MessageEditor::syncToolbarState() restates every toolbar
+    // button's state on each formatting-mode expand, and that alone was ~2/3 of the expand
+    // click's CPU in a Windows profile. The property check keeps the very first call working
+    // even when it restates the default (m_checked starts false but the "checked" property is
+    // unset until then, so QSS [checked="false"] rules only start matching after that call).
+    if (enable==m_checked && property("checked").isValid())
+    {
+        return;
+    }
+
     auto prevChecked=m_checked;
 
     m_checked=enable;
