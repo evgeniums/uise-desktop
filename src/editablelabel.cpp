@@ -204,7 +204,7 @@ void EditableLabel::setEditing(bool enable)
     const bool focusInside=focused!=nullptr && isAncestorOf(focused);
     if (m_editing)
     {
-        m_editorFrame->setVisible(true);
+        setChildVisible(m_editorFrame,true);
         if (focusInside)
         {
             editor()->setFocus(Qt::OtherFocusReason);
@@ -212,7 +212,9 @@ void EditableLabel::setEditing(bool enable)
     }
     else
     {
-        m_label->setVisible(true);
+        // Not a plain setVisible(true): see setChildVisible() -- this runs from
+        // setEditablePanel() while the label may still be parentless.
+        setChildVisible(m_label,true);
         if (focusInside)
         {
             m_label->setFocus(Qt::OtherFocusReason);
@@ -352,7 +354,8 @@ void EditableLabel::setEditablePanel(AbstractEditablePanel* panel)
 void EditableLabel::setComment(const QString& comment)
 {
     m_comment->setText(comment);
-    m_comment->setVisible(!comment.isEmpty());
+    // addValueWidget() calls this before addRow() places the label, see setChildVisible().
+    setChildVisible(m_comment,!comment.isEmpty());
 }
 
 QString EditableLabel::comment() const

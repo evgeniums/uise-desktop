@@ -314,13 +314,41 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
     private:
 
+        /**
+         * @brief Show or hide a child without polishing it before it is in place.
+         *
+         * QWidget::setVisible(true) polishes the widget on the spot, even while its parent is
+         * hidden (QWidgetPrivate::setVisible() -> ensurePolished()). This label is often still
+         * PARENTLESS when it first gets here -- hatnuise's ObjectPanel creates fields with no
+         * parent, and AbstractEditablePanel::addValueWidget() calls setEditablePanel() (hence
+         * setInGroup() -> setEditing() -> updateControls()) before addRow() places the widget.
+         * Polished there, the children miss every container-scoped QSS rule
+         * ("... uise--EditablePanel uise--EditableLabel QLabel": padding, background, border),
+         * which on Windows left CharacterInfo's labels unstyled for good.
+         *
+         * So "visible" only undoes an EXPLICIT hide. A child that was never explicitly hidden is
+         * shown together with its parent anyway -- same visible result, but its first polish
+         * then happens in its final place. Hiding is unchanged.
+         */
+        static void setChildVisible(QWidget* child, bool visible)
+        {
+            if (!visible)
+            {
+                child->setVisible(false);
+            }
+            else if (child->isHidden() && child->testAttribute(Qt::WA_WState_ExplicitShowHide))
+            {
+                child->setVisible(true);
+            }
+        }
+
         void updateControls()
         {
-            m_label->setVisible(!m_editable || !m_editing);
-            m_buttonsFrame->setVisible(m_editable && !m_inGroup);
-            m_editButton->setVisible(!m_editButtonAlwaysHidden && m_editable && !m_editing);
-            m_cancelButton->setVisible(m_editable && m_editing);
-            m_applyButton->setVisible(m_editable && m_editing);
+            setChildVisible(m_label,!m_editable || !m_editing);
+            setChildVisible(m_buttonsFrame,m_editable && !m_inGroup);
+            setChildVisible(m_editButton,!m_editButtonAlwaysHidden && m_editable && !m_editing);
+            setChildVisible(m_cancelButton,m_editable && m_editing);
+            setChildVisible(m_applyButton,m_editable && m_editing);
         }
 
         Type m_type;
