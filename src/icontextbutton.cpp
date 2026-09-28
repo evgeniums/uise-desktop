@@ -332,7 +332,20 @@ void IconTextButton::rebuildLayout()
         }
     }
 
-    m_icon->setVisible(true);
+    // Only undo an EXPLICIT hide (the Invisible branch below). Every child starts out with
+    // WA_WState_Hidden set, so isHidden() alone would be true for a fresh icon too -- and
+    // QWidget::setVisible(true) polishes the widget on the spot even while its parent is hidden
+    // (QWidgetPrivate::setVisible() -> ensurePolished()). Called from the constructor, that
+    // polished the icon before the button was placed in its final container, so the container-
+    // scoped QSS that alone sizes the icon (e.g. messageeditor.qss's "#leadingWidgets
+    // uise--IconTextButton uise--RoundedImage", chatlist.qss's "#addOrSearchFrame ...") never
+    // applied: the icon stayed 0x0 and never painted. Seen on Windows once the node-wide deferred
+    // repolish in HTreeNode::setContentWidget() was removed; the never-shown trailing icon, first
+    // polished in place, came out correctly sized in the same buttons.
+    if (m_icon->isHidden() && m_icon->testAttribute(Qt::WA_WState_ExplicitShowHide))
+    {
+        m_icon->setVisible(true);
+    }
 
     // Visibility of everything this rebuild re-adds is preserved across it. !isHidden(), NOT
     // isVisible(): isVisible() is also false whenever THIS button is itself hidden -- which
