@@ -54,6 +54,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEvent>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QShowEvent>
 #include <QRegularExpression>
 #include <QMimeData>
 #include <QApplication>
@@ -3343,6 +3344,27 @@ void EnhancedTextEdit::changeEvent(QEvent* event)
     if (event->type()==QEvent::FontChange)
     {
         applyTabStopDistance();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::showEvent(QShowEvent* event)
+{
+    QTextEdit::showEvent(event);
+
+    // sizeHint() follows the document size and frameWidth(), and both come from QSS (font,
+    // padding, border). A widget shown implicitly with its parent is polished in
+    // QWidgetPrivate::show_recursive() while it still has WA_WState_Hidden, and the
+    // updateGeometry() its FontChange/StyleChange/Polish would send is a no-op for a hidden widget
+    // (QWidgetPrivate::updateGeometry_helper() skips isHidden()). So the parent layout kept the
+    // height it cached before the style arrived -- 38px against a real 42px on Windows, a composer
+    // opened with its placeholder cropped until the first keystroke's updateSize() -- and nothing
+    // invalidates it on its own. By showEvent() the widget is no longer hidden, so the same call
+    // now reaches the layout.
+    if (m_autoResize && !event->spontaneous())
+    {
+        updateSize();
     }
 }
 

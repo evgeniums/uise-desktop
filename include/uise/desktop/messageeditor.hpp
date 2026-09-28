@@ -771,6 +771,10 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! one-time computation would otherwise be stale from the first theme change onward.
         void changeEvent(QEvent* event) override;
 
+        //! Re-announces the content-driven sizeHint() once actually visible -- see the
+        //! definition for why the polish-time announcement is lost.
+        void showEvent(QShowEvent* event) override;
+
         /**
          * @brief Draws the spellcheck squiggle over what QTextEdit has already painted.
          *
