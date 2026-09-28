@@ -34,6 +34,27 @@ You may select, at your option, one of the above-listed licenses.
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
+namespace {
+
+// Windows plays every ripple faster than the QSS-declared durations. Each animation frame costs
+// several times more to paint there than on macOS -- full raster background fills at a 2.5
+// device pixel ratio, measured at 5-10 ms per frame in a Windows CPU profile -- so the same
+// 150 ms grow / 50 ms fade read as sluggish and made controls feel less responsive. Applied
+// only where the animations get their durations, so QSS keeps declaring (and
+// rippleDurationMs()/rippleFadeDurationMs() keep reporting) the design values on every platform.
+#ifdef Q_OS_WIN
+constexpr qreal PlatformDurationScale=0.5;
+#else
+constexpr qreal PlatformDurationScale=1.0;
+#endif
+
+int platformDurationMs(int ms)
+{
+    return qMax(1,qRound(ms*PlatformDurationScale));
+}
+
+}
+
 //==========================================================================
 
 class RippleOverlay_p
@@ -576,7 +597,7 @@ void RippleOverlay::start(const QPoint& pos)
     pimpl->growValue=0.0;
     pimpl->fadeValue=1.0;
 
-    pimpl->growAnim->setDuration(pimpl->durationMs);
+    pimpl->growAnim->setDuration(platformDurationMs(pimpl->durationMs));
     pimpl->growAnim->setEasingCurve(pimpl->easingType);
 
     show();
@@ -632,7 +653,7 @@ void RippleOverlay::startFade()
     }
 
     pimpl->fadeAnim->stop();
-    pimpl->fadeAnim->setDuration(pimpl->fadeDurationMs);
+    pimpl->fadeAnim->setDuration(platformDurationMs(pimpl->fadeDurationMs));
     pimpl->fadeAnim->setStartValue(pimpl->fadeValue);
     pimpl->fadeAnim->setEndValue(0.0);
     pimpl->fadeAnim->start();

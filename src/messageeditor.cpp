@@ -4803,6 +4803,12 @@ MessageEditor::MessageEditor(QWidget* parent)
     // Toggle the moment the button goes down: with the default act-on-release, the whole hold
     // time (while the press ripple plays) passed before the toolbar appeared or went away.
     pimpl->expandButton->setClickOnPress(true);
+    // No ripple: the button's own checked highlight already shows the state flipping, and it now
+    // flips on press. Set in C++ rather than QSS: the overlay is polished inside IconTextButton's
+    // constructor, before this button has its "expandButton" name, so an #expandButton-keyed
+    // rule would not reliably apply -- and no QSS rule declares rippleEnabled for this overlay,
+    // so a later repolish cannot turn it back on.
+    pimpl->expandButton->rippleOverlay()->setRippleEnabled(false);
     pimpl->expandButton->setVisible(false);
     // Last member of the leading group, so it sits nearest the text area in the row and, once
     // the group turns into a column, ends up at its top (BottomToTop) -- see applyArrangement().
