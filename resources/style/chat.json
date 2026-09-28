@@ -9,6 +9,27 @@
             }
         },
         {
+            "name" : "TextViewer",
+            "aliases" : {
+                "copy" : "${uise-svg-icons-1}/copy",
+                "wrap" : "${uise-svg-icons-1}/text-wrap",
+                "source" : "${uise-svg-icons-1}/code",
+                "fullScreen" : "${uise-svg-icons-1}/maximize",
+                "menu" : "${uise-svg-icons-1}/dots",
+                "close" : "${uise-svg-icons-1}/x",
+                "fileText" : "${uise-svg-icons-1}/file-type-txt",
+                "fileMarkdown" : "${uise-svg-icons-1}/markdown",
+                "fileCode" : "${uise-svg-icons-1}/code"
+            }
+        },
+        {
+            "name" : "TextViewerMenu",
+            "aliases" : {
+                "openExternal" : "${uise-svg-icons-1}/external-link",
+                "saveAs" : "${uise-svg-icons-1}/cloud-download"
+            }
+        },
+        {
             "name" : "ChatMessageBottom",
             "aliases" : {
                 "seen" : "${uise-svg-icons-1}/eye"

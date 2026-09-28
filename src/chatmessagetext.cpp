@@ -66,12 +66,30 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/toast.hpp>
 #include <uise/desktop/chatmessagetext.hpp>
+#include <uise/desktop/textviewer.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
+
+namespace {
+
+//! Private block property left on a code block whose nonBreakableLines() was cleared by
+//! setCodeWrapEnabled(), so the block is still recognised as code -- nonBreakableLines() is the one
+//! signal a code block is detected by, and clearing it would otherwise make the next
+//! applyCodeBlockLayout() pass on the same document lose the block.
+constexpr int CodeWrappedProperty=static_cast<int>(QTextFormat::UserProperty)+0x0C0D;
+
+//! Is this block part of a fenced code block: either still unwrappable (the normal state), or made
+//! wrappable by setCodeWrapEnabled().
+bool isCodeBlockFormat(const QTextBlockFormat& format)
+{
+    return format.nonBreakableLines() || format.boolProperty(CodeWrappedProperty);
+}
+
+}
 
 /******************************EnhancedTextEdit********************************/
 
@@ -326,9 +344,9 @@ void ChatMessageTextBrowser::applyDocumentTopMargin()
     // applyCodeBlockLayout()'s top padding is silently dropped for a code block that opens the
     // message -- and the painted box and overlay strip, which inflate upwards by that padding,
     // land above the viewport and are clipped. The room has to come from the root frame instead.
-    // nonBreakableLines() is the same marker applyCodeBlockLayout() detects code runs by.
+    // isCodeBlockFormat() is the same marker applyCodeBlockLayout() detects code runs by.
     const auto first=doc->begin();
-    const int leadingCodeBlock=(first.isValid() && first.blockFormat().nonBreakableLines())
+    const int leadingCodeBlock=(first.isValid() && isCodeBlockFormat(first.blockFormat()))
                                    ? m_codeBlockPadding : 0;
 
     if (m_documentTopMargin==UseDocumentMargin && leadingCodeBlock==0)
@@ -503,7 +521,7 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
     std::vector<TrackedCodeBlock> found;
     for (auto block=doc->begin(); block.isValid() && block!=doc->end(); block=block.next())
     {
-        if (!block.blockFormat().nonBreakableLines())
+        if (!isCodeBlockFormat(block.blockFormat()))
         {
             continue;
         }
@@ -514,7 +532,7 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
         tracked.language=block.blockFormat().stringProperty(QTextFormat::BlockCodeLanguage);
 
         auto next=block.next();
-        while (next.isValid() && next!=doc->end() && next.blockFormat().nonBreakableLines())
+        while (next.isValid() && next!=doc->end() && isCodeBlockFormat(next.blockFormat()))
         {
             tracked.lastPosition=next.position()+next.length()-1;
             if (tracked.language.isEmpty())
@@ -630,7 +648,62 @@ void ChatMessageTextBrowser::applyCodeBlockLayout()
 
     m_codeBlocks=std::move(found);
 
+    // A freshly loaded document (content load, theme replay) has every code block unwrappable
+    // again -- put the viewer's wrap choice back.
+    if (m_codeWrapEnabled)
+    {
+        applyCodeWrap();
+    }
+
     applyCodeBlockOverflow();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setCodeWrapEnabled(bool enable)
+{
+    if (m_codeWrapEnabled==enable)
+    {
+        return;
+    }
+    m_codeWrapEnabled=enable;
+    applyCodeWrap();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::applyCodeWrap()
+{
+    auto* doc=document();
+    if (doc==nullptr || m_codeBlocks.empty())
+    {
+        return;
+    }
+
+    // Same undo handling as applyCodeBlockLayout(): a format write per block would otherwise land
+    // on a stack nothing reads.
+    const auto undoEnabled=doc->isUndoRedoEnabled();
+    doc->setUndoRedoEnabled(false);
+
+    for (const auto& tracked : m_codeBlocks)
+    {
+        for (auto block=doc->findBlock(tracked.firstPosition);
+             block.isValid() && block.position()<=tracked.lastPosition;
+             block=block.next())
+        {
+            QTextCursor cursor(block);
+            auto format=cursor.blockFormat();
+            // Wrappable exactly when wrapping is on. The marker keeps the block recognised as code
+            // while the flag is clear, see CodeWrappedProperty.
+            format.setNonBreakableLines(!m_codeWrapEnabled);
+            format.setProperty(CodeWrappedProperty,m_codeWrapEnabled);
+            cursor.setBlockFormat(format);
+        }
+    }
+
+    doc->setUndoRedoEnabled(undoEnabled);
+
+    viewport()->update();
 }
 
 //--------------------------------------------------------------------------
@@ -2035,59 +2108,6 @@ QString tableToTabSeparated(QTextTable* table, int selectionStart, int selection
     return out;
 }
 
-//! Floor a viewer may be shrunk to once it is open -- small enough to get out of the way, large
-//! enough to still be a viewer. See applyExpandedViewerSize().
-constexpr int ViewerMinWidth=280;
-constexpr int ViewerMinHeight=200;
-
-/**
- * @brief Initial size for an expanded viewer (table or code), in window coordinates.
- *
- * At least HALF the window it was opened from in each direction: the whole point of expanding is
- * to see more than the bubble showed, and the previous fixed 400px height plus a content-derived
- * width routinely opened a window smaller than the bubble's own content on a large display. The
- * content's own width still wins where it is wider, and the window itself is the ceiling -- a
- * viewer larger than the window it came from cannot be positioned sensibly.
- *
- * @param contentWidth The content's own preferred width, already including whatever slack the
- *  caller wants for a frame and scrollbar.
- */
-QSize expandedViewerSize(const QWidget* anchor, int contentWidth)
-{
-    const auto* win=(anchor!=nullptr) ? anchor->window() : nullptr;
-    // A widget with no window yet (constructed off-screen) has nothing to take a fraction OF --
-    // fall back to the fixed size this used to open at rather than to zero.
-    const QSize windowSize=(win!=nullptr && win->width()>0 && win->height()>0)
-                           ? win->size() : QSize{900,400};
-
-    const int w=qMin(qMax(contentWidth,windowSize.width()/2),windowSize.width());
-    const int h=qMin(qMax(400,windowSize.height()/2),windowSize.height());
-    return QSize{w,h};
-}
-
-/**
- * @brief Open `frame` at `size`, then let the user shrink it again.
- *
- * Sizing a FloatingDialogFrame is not a resize() away: popup() calls QWidget::adjustSize(), which
- * takes the frame's SIZE HINT and throws away any geometry set beforehand -- so a resize() on the
- * content (what this used to do) had no effect at all, and the viewer opened at whatever its
- * content happened to hint. For a code viewer that is QTextBrowser's own small default, which is
- * how an expanded code block ended up smaller than the bubble it came from.
- *
- * minimumSize is the one channel adjustSize() must honour, so the size is imposed that way and
- * then relaxed to a usable floor once the frame has taken it. Relaxing afterwards does not resize
- * anything -- the frame already has its geometry -- it only stops the initial size from becoming
- * a permanent lower bound the user cannot drag back. Doing it BEFORE popup() also keeps popup()'s
- * own centring correct, which resizing afterwards would not.
- */
-void applyExpandedViewerSize(QWidget* container, FloatingDialogFrame* frame, const QSize& size)
-{
-    container->setMinimumSize(size);
-    frame->popup();
-    container->setMinimumSize(qMin(ViewerMinWidth,size.width()),
-                              qMin(ViewerMinHeight,size.height()));
-}
-
 }
 
 //--------------------------------------------------------------------------
@@ -2302,7 +2322,7 @@ void ChatMessageTextBrowser::openTableViewer(int index)
 
     containerLayout->addWidget(buttonRow);
 
-    const auto viewerSize=expandedViewerSize(
+    const auto viewerSize=TextViewer::expandedSize(
         this,static_cast<int>(m_tables[static_cast<std::size_t>(index)].naturalWidth)+48);
 
     // FloatingDialogFrame is the only shell in this library that hosts an arbitrary widget as a
@@ -2346,8 +2366,8 @@ void ChatMessageTextBrowser::openTableViewer(int index)
     // disposes of the content; this disposes of the shell around it.
     connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
 
-    // Not frame->resize(): popup() adjustSize()s over it -- see applyExpandedViewerSize().
-    applyExpandedViewerSize(container,frame,viewerSize);
+    // Not frame->resize(): popup() adjustSize()s over it -- see TextViewer::popupSized().
+    TextViewer::popupSized(container,frame,viewerSize);
 }
 
 //--------------------------------------------------------------------------
@@ -2365,119 +2385,33 @@ void ChatMessageTextBrowser::openCodeBlockViewer(int index)
     // Qt's HTML exporter does not emit the `class="language-x"` attribute its own PARSER reads
     // back into QTextFormat::BlockCodeLanguage -- the round trip is asymmetric -- so the language
     // was lost, ensureSyntaxHighlighter()'s documentHasCodeLanguage() gate then refused to attach
-    // a highlighter at all, and the expanded code came out in one flat colour.
-    //
-    // Going back through markdownToHtml() is also what guarantees parity rather than merely
-    // approximating it: this is the exact path that produced the bubble's own HTML.
-    const auto code=codeBlockText(tracked);
+    // a highlighter at all, and the expanded code came out in one flat colour. TextViewer::setCode()
+    // goes back through markdownToHtml(), which is what guarantees parity with the bubble rather
+    // than merely approximating it: this is the exact path that produced the bubble's own HTML.
+    auto* viewer=new TextViewer();
+    viewer->setToast(m_toast);
 
-    // A fence long enough to survive whatever backtick runs the code itself contains -- CommonMark
-    // closes a fence only on a run at least as long as the opening one, so a shorter fence around
-    // code containing ``` would terminate early and the tail would render as prose.
-    int longestRun=0;
-    int run=0;
-    for (const auto ch : code)
-    {
-        run=(ch==QLatin1Char('`')) ? run+1 : 0;
-        longestRun=qMax(longestRun,run);
-    }
-    const QString fence(qMax(3,longestRun+1),QLatin1Char('`'));
-
-    const auto codeHtml=markdownToHtml(fence+tracked.language+QStringLiteral("\n")
-                                       +code+QStringLiteral("\n")+fence);
-
-    auto* container=new QFrame();
-    container->setObjectName(QStringLiteral("codeBlockViewerFrame"));
-    auto* containerLayout=Layout::vertical(container);
-
-    // The SAME widget the bubble renders through, in viewer mode -- not a second browser. That is
-    // what makes the expanded code genuinely identical to the bubble's: the syntax highlighting,
-    // the painted slab with its padding and radius, messagetext.css and the theme-change replay
-    // are all this class's own behaviour, and a plain QTextBrowser has none of them (a
-    // QSyntaxHighlighter's formats live on the block layouts, not in the document, so they do not
-    // survive the toHtml() above at all -- the expanded code came out unhighlighted and with no
-    // background for exactly that reason).
-    auto* view=new ChatMessageTextBrowser(container);
-    view->setObjectName(QStringLiteral("codeBlockViewer"));
-    view->setViewerMode(true);
-    view->setToast(m_toast);
-    // Selectable, with the same right-click Copy the bubble offers.
-    view->setCopyable(true);
+    // Settings the viewer's own browser must share with this one, applied BEFORE the content is
+    // loaded -- see TextViewer::browser().
+    auto* view=viewer->browser();
     view->setSyntaxHighlightingEnabled(isSyntaxHighlightingEnabled());
     view->setCodeBlockPadding(m_codeBlockPadding);
     view->setCodeBlockRadius(m_codeBlockRadius);
-    // The strip would be redundant here: the language is not in doubt once the block is open on
-    // its own, and Copy/expand already live in the button row below.
-    view->setCodeBlockOverlayEnabled(false);
-    // setHtmlContent(), not setHtml(): it is the entry point that tracks the block, reserves the
-    // padding and attaches the highlighter. setHtml() alone would load the text and none of that.
-    view->setHtmlContent(codeHtml);
-    containerLayout->addWidget(view,1);
 
-    auto* buttonRow=new QFrame(container);
-    buttonRow->setObjectName(QStringLiteral("codeBlockViewerButtons"));
-    auto* buttonLayout=Layout::horizontal(buttonRow);
-    buttonLayout->addStretch(1);
+    viewer->setCode(codeBlockText(tracked),tracked.language);
+    // What the header shows where a file viewer shows its name. An untagged fence has no
+    // language to show, so the header is left without a title rather than saying "Code".
+    viewer->setTitle(tracked.language);
 
-    auto* fullScreenButton=new PushButton(tr("Full screen"),buttonRow);
-    fullScreenButton->setObjectName(QStringLiteral("codeBlockViewerFullScreenButton"));
-    buttonLayout->addWidget(fullScreenButton);
-
-    auto* copyButton=new PushButton(tr("Copy code"),buttonRow);
-    copyButton->setObjectName(QStringLiteral("codeBlockViewerCopyButton"));
-    // Copies from the ORIGINAL tracked block rather than from the viewer's own document: this is
-    // the same text the overlay's Copy button puts on the clipboard (codeBlockText()'s plain,
-    // un-highlighted form), so the two routes cannot disagree about what "copy this code" means.
-    connect(copyButton,&PushButton::clicked,this,
-        [this,index]()
-        {
-            if (static_cast<std::size_t>(index)<m_codeBlocks.size())
-            {
-                copyCodeBlock(m_codeBlocks[static_cast<std::size_t>(index)]);
-            }
-        }
-    );
-    buttonLayout->addWidget(copyButton);
-
-    auto* closeButton=new PushButton(tr("Close"),buttonRow);
-    closeButton->setObjectName(QStringLiteral("codeBlockViewerCloseButton"));
-    buttonLayout->addWidget(closeButton);
-
-    containerLayout->addWidget(buttonRow);
+    // The viewer's own Copy puts exactly the text it was given on the clipboard, and that is
+    // codeBlockText() -- the plain, un-highlighted form the overlay's Copy button copies too, so
+    // the two routes cannot disagree about what "copy this code" means. Deliberately NOT routed
+    // back through copyCodeBlock(): this bubble is a recycled widget that may be gone, or showing
+    // another message, by the time a long-lived viewer's Copy is clicked.
 
     // Same sizing rule as openTableViewer() -- the content's own natural width plus room for the
     // frame and a scrollbar, floored at half the window so expanding always gains real room.
-    const auto viewerSize=expandedViewerSize(this,static_cast<int>(tracked.naturalWidth)+48);
-
-    auto* frame=new FloatingDialogFrame(this);
-    frame->setWidget(container,true);
-    frame->setAutoCloseOnOutsideClick(true);
-
-    auto toggleFullScreen=[frame,fullScreenButton]()
-    {
-        if (frame->isFullScreen())
-        {
-            frame->showNormal();
-            fullScreenButton->setText(tr("Full screen"));
-        }
-        else
-        {
-            frame->showFullScreen();
-            fullScreenButton->setText(tr("Exit full screen"));
-        }
-    };
-    connect(fullScreenButton,&PushButton::clicked,frame,toggleFullScreen);
-
-    auto* fullScreenShortcut=new QShortcut(Qt::Key_F11,frame);
-    fullScreenShortcut->setContext(Qt::WindowShortcut);
-    connect(fullScreenShortcut,&QShortcut::activated,frame,toggleFullScreen);
-
-    connect(closeButton,&PushButton::clicked,frame,[frame](){frame->close();});
-
-    connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
-
-    // Not frame->resize(): popup() adjustSize()s over it -- see applyExpandedViewerSize().
-    applyExpandedViewerSize(container,frame,viewerSize);
+    TextViewer::open(viewer,this,static_cast<int>(tracked.naturalWidth)+48);
 }
 
 //--------------------------------------------------------------------------

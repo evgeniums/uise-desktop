@@ -228,6 +228,7 @@ SET (HEADERS
     include/uise/desktop/chatimageviewercontrols.hpp
     include/uise/desktop/chatimageviewer.hpp
     include/uise/desktop/chatimageviewerwindow.hpp
+    include/uise/desktop/textviewer.hpp
 
     include/uise/desktop/circlebusy.hpp
     include/uise/desktop/lineedit.hpp
@@ -460,6 +461,7 @@ SET (SOURCES
     src/chatimageviewercontrols.cpp
     src/chatimageviewer.cpp
     src/chatimageviewerwindow.cpp
+    src/textviewer.cpp
 
     src/circlebusy.cpp
     src/lineedit.cpp

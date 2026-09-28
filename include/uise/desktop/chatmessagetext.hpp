@@ -347,16 +347,35 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          * SIZING: a bubble shrink-wraps to its content (sizeHint()), refuses the wheel so the chat
          * list scrolls instead, wraps at a negotiated width, and owns its own scrollbar policy so
          * a wide table or code line can overflow it. A viewer fills the window it was given,
-         * scrolls both ways under its own scrollbars, and never wraps.
+         * scrolls both ways under its own scrollbars, and starts out not wrapping (a viewer's host
+         * may switch wrapping on afterwards with setLineWrapMode(); nothing here negotiates a wrap
+         * width, so QTextEdit::WidgetWidth is then all it takes).
          *
-         * Exists so openCodeBlockViewer() can show the expanded code through the SAME widget the
-         * bubble uses, instead of a second browser that would have to re-implement the slab and
-         * the highlighter and then drift from it.
+         * Exists so TextViewer can show expanded code and text through the SAME widget the bubble
+         * uses, instead of a second browser that would have to re-implement the slab and the
+         * highlighter and then drift from it.
          */
         void setViewerMode(bool enable);
         bool isViewerMode() const noexcept
         {
             return m_viewerMode;
+        }
+
+        /**
+         * @brief Let long lines of code wrap at the viewport instead of scrolling sideways.
+         *
+         * For a viewer (see setViewerMode()) together with setLineWrapMode(QTextEdit::WidgetWidth):
+         * a code line is unwrappable by default (see applyCodeBlockLayout()), so widening the
+         * viewport's wrap alone changes nothing for code, and a line with no space in it -- a
+         * row of asterisks, a URL -- would never break at all. This clears that flag on every
+         * tracked code block, so such a line breaks wherever it has to, and puts it back when turned
+         * off. It survives a content reload or a theme replay. A bubble has no use for it: its
+         * overflow logic assumes code does not wrap.
+         */
+        void setCodeWrapEnabled(bool enable);
+        bool isCodeWrapEnabled() const noexcept
+        {
+            return m_codeWrapEnabled;
         }
 
         void setCodeBlockWidenBubbleEnabled(bool enable);
@@ -411,9 +430,9 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          * @brief Open one tracked code block in a resizable viewer, as the overlay's expand button
          *  does.
          *
-         * Same shell, and the same reasoning, as openTableViewer(): a FloatingDialogFrame hosting a
-         * NoWrap browser with both scrollbars, so the code can be read at its natural width however
-         * narrow the bubble was. Out of range is a no-op.
+         * Shown in a TextViewer (a FloatingDialogFrame with a header bar, hosting a NoWrap browser
+         * with both scrollbars), so the code can be read at its natural width however narrow the
+         * bubble was; Wrap lines in its header switches that off. Out of range is a no-op.
          */
         void openCodeBlockViewer(int index);
 
@@ -824,6 +843,9 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
          */
         void applyCodeBlockLayout();
 
+        //! Set or clear nonBreakableLines() on every tracked code block per m_codeWrapEnabled.
+        void applyCodeWrap();
+
         /**
          * @brief Decide, against the CURRENT wrap width, which tracked code blocks overflow it.
          *
@@ -943,6 +965,7 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         //! See setViewerMode(). Gates the BUBBLE-specific sizing only, never the content
         //! behaviour, so a viewer and a bubble cannot render the same code differently.
         bool m_viewerMode=false;
+        bool m_codeWrapEnabled=false;
         bool m_horizontalWheelScroll=true;
 
         //! Which way the CURRENT touchpad gesture was going when it started. Latched at

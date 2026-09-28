@@ -169,15 +169,9 @@ background-color: #2A2A2A;
    the light theme, that file applies ONE outlined treatment to every button with no
    primary/secondary split, so Copy table is not singled out here either -- matching the dialogs
    is the point. Sizing matches that file's own values (min-width 80px, padding 4px 12px). */
-/* The code-block viewer (ChatMessageTextBrowser::openCodeBlockViewer()) is the same shell with the
-   same three roles, so it is styled by the same rules rather than a parallel copy -- the two
-   viewers differing in button treatment would be a bug, not a distinction. */
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton {
 color: #CCCCCC;
 border: 1px solid #999999;
 background-color: transparent;
@@ -186,10 +180,7 @@ padding: 4px 12px;
 }
 #tableViewerFrame #tableViewerFullScreenButton QPushButton:hover,
 #tableViewerFrame #tableViewerCopyButton QPushButton:hover,
-#tableViewerFrame #tableViewerCloseButton QPushButton:hover,
-#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton:hover,
-#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton:hover,
-#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton:hover {
+#tableViewerFrame #tableViewerCloseButton QPushButton:hover {
 color: #EEEEEE;
 border: 1px solid #EEEEEE;
 }
@@ -198,8 +189,34 @@ border: 1px solid #EEEEEE;
    background shows straight through it (see docs/styling.md section 7). Without this the button
    row around the Copy table button is transparent. */
 #tableViewerFrame,
-#codeBlockViewerFrame {
+#textViewerFrame {
 background-color: #232323;
+}
+
+/* TextViewer header -- see chat.qss for the structure. The hover and checked fills are the same
+   hues the icons already take in TextViewer / TextViewerMenu (chat.json): a faint wash of the
+   text colour to hover, of the checked-icon blue to mark a toggle that is on. */
+#textViewerHeader {
+border-bottom: 1px solid #3A3A3A;
+}
+
+#textViewerHeader #subtitle {
+color: #A8A8A8;
+}
+
+#textViewerHeader #copyButton:hover,
+#textViewerHeader #wrapButton:hover,
+#textViewerHeader #sourceButton:hover,
+#textViewerHeader #fullScreenButton:hover,
+#textViewerHeader #menuButton:hover,
+#textViewerHeader #closeButton:hover {
+background-color: rgba(255,255,255,25);
+}
+
+#textViewerHeader #wrapButton[checked="true"],
+#textViewerHeader #sourceButton[checked="true"],
+#textViewerHeader #menuButton[checked="true"] {
+background-color: rgba(76,154,255,40);
 }
 
 

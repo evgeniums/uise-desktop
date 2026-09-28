@@ -89,10 +89,7 @@ padding: 0px;
    throughout these rules. */
 #tableViewerFrame #tableViewerFullScreenButton QPushButton,
 #tableViewerFrame #tableViewerCopyButton QPushButton,
-#tableViewerFrame #tableViewerCloseButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerFullScreenButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerCopyButton QPushButton,
-#codeBlockViewerFrame #codeBlockViewerCloseButton QPushButton {
+#tableViewerFrame #tableViewerCloseButton QPushButton {
 border-radius: 4px;
 }
 
@@ -103,16 +100,62 @@ border-radius: 4px;
 /* The TOP padding is what keeps the buttons clear of the content above them -- with a horizontal
    scrollbar showing (a wide table, an overflowing code line) that scrollbar is the bottom edge of
    the browser, and the buttons sat directly against it. */
-#tableViewerFrame #tableViewerButtons,
-#codeBlockViewerFrame #codeBlockViewerButtons {
+#tableViewerFrame #tableViewerButtons {
 padding: 12px 8px 12px 8px;
 }
 
 /* The browser above the row needs the same inset, or the code's slab runs flush into the window's
    own edges. The table viewer has never needed this (its own document margin plus the table's
    border read as an inset already), but a code block paints an edge-to-edge background. */
-#codeBlockViewerFrame uise--ChatMessageTextBrowser {
-margin: 8px 8px 0px 8px;
+
+/* TextViewer (the expanded code / text / markdown viewer): a header bar over the content. Structural
+   only -- colours are per theme, like every other rule here. The buttons are IconTextButtons, so
+   the icon size is set the way #tableExpandButton's is above: by the "#icon" objectName and the
+   image inside it, because these are constructed directly and the type selector is not
+   dependable on them. */
+#textViewerHeader {
+padding: 6px 8px 6px 12px;
+}
+
+#textViewerHeader #textBlock {
+padding: 0px;
+}
+
+#textViewerHeader #subtitle {
+font-size: 11px;
+}
+
+/* The file-type icon leads the title; it is not a button, so it gets room instead of a hover box. */
+#textViewerHeader #titleIcon {
+padding: 0px 8px 0px 0px;
+}
+
+#textViewerHeader #copyButton,
+#textViewerHeader #wrapButton,
+#textViewerHeader #sourceButton,
+#textViewerHeader #fullScreenButton,
+#textViewerHeader #menuButton,
+#textViewerHeader #closeButton {
+padding: 6px;
+border-radius: 6px;
+margin-left: 2px;
+}
+
+#textViewerHeader #icon,
+#textViewerHeader uise--RoundedImage {
+min-width: 16px;
+max-width: 16px;
+min-height: 16px;
+max-height: 16px;
+margin: 0px;
+padding: 0px;
+}
+
+/* The browser under the header needs an inset, or the code's slab (a painted, edge-to-edge
+   background) runs flush into the window's own edges. No top inset: the header's own bottom
+   padding is the gap. */
+#textViewerFrame uise--ChatMessageTextBrowser {
+margin: 0px 8px 8px 8px;
 }
 
 /* The uise--PushButton wrappers must stay borderless -- the inner QPushButton above already
@@ -122,10 +165,7 @@ margin: 8px 8px 0px 8px;
    each other; the row's own padding above handles the distance to the window edges. */
 #tableViewerFrame #tableViewerFullScreenButton,
 #tableViewerFrame #tableViewerCopyButton,
-#tableViewerFrame #tableViewerCloseButton,
-#codeBlockViewerFrame #codeBlockViewerFullScreenButton,
-#codeBlockViewerFrame #codeBlockViewerCopyButton,
-#codeBlockViewerFrame #codeBlockViewerCloseButton {
+#tableViewerFrame #tableViewerCloseButton {
 border: none;
 margin: 0px 0px 0px 12px;
 }
