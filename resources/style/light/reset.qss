@@ -20,7 +20,10 @@ background-color: transparent;
 QComboBox QAbstractItemView, QMenu {
 background-color: #FFFFFF;
 color: #000000;
-border: 1px solid #CCCCCC;
+}
+
+QComboBox QAbstractItemView {
+border:none;
 }
 
 /* Native QMenu rows -- uise::Label's Copy/Select All menu, and the QMenu-based menus in
