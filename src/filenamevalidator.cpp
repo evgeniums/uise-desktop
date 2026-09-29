@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QCoreApplication>
 #include <QRegularExpression>
 
@@ -155,6 +157,85 @@ QString FileNameValidator::problemText(Problem problem)
             break;
     }
     return QString();
+}
+
+//--------------------------------------------------------------------------
+
+QString FileNameValidator::sanitize(const QString& name, const QString& fallback)
+{
+    if (check(name)==Problem::None)
+    {
+        return name;
+    }
+
+    auto result=name;
+
+    auto sep=std::max(result.lastIndexOf(QLatin1Char('/')),result.lastIndexOf(QLatin1Char('\\')));
+    if (sep>=0)
+    {
+        result=result.mid(sep+1);
+    }
+
+    for (auto& c : result)
+    {
+        if (isForbiddenChar(c))
+        {
+            c=QLatin1Char('_');
+        }
+    }
+
+    static const QRegularExpression dots(QStringLiteral("\\.{2,}"));
+    result.replace(dots,QStringLiteral("."));
+
+    auto trim=[](QString& str)
+    {
+        auto isEdge=[](QChar c)
+        {
+            return c.isSpace() || c==QLatin1Char('.');
+        };
+        while (!str.isEmpty() && isEdge(str.front()))
+        {
+            str.remove(0,1);
+        }
+        while (!str.isEmpty() && isEdge(str.back()))
+        {
+            str.chop(1);
+        }
+    };
+    trim(result);
+
+    if (result.toUtf8().size()>MaxNameBytes)
+    {
+        auto dot=result.lastIndexOf(QLatin1Char('.'));
+        auto ext=dot>0 ? result.mid(dot) : QString();
+        // a huge "extension" is not worth preserving
+        if (ext.toUtf8().size()>32)
+        {
+            ext.clear();
+        }
+        auto stem=ext.isEmpty() ? result : result.left(dot);
+        while (!stem.isEmpty() && (stem.toUtf8().size()+ext.toUtf8().size())>MaxNameBytes)
+        {
+            stem.chop(1);
+        }
+        if (!stem.isEmpty() && stem.back().isHighSurrogate())
+        {
+            stem.chop(1);
+        }
+        trim(stem);
+        result=stem+ext;
+    }
+
+    if (isReservedName(result))
+    {
+        result.prepend(QLatin1Char('_'));
+    }
+
+    if (check(result)!=Problem::None)
+    {
+        return fallback;
+    }
+    return result;
 }
 
 UISE_DESKTOP_NAMESPACE_END

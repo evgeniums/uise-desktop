@@ -101,4 +101,41 @@ BOOST_AUTO_TEST_CASE(ValidatorStates)
     BOOST_CHECK(state(QStringLiteral("con"))==QValidator::Intermediate);
 }
 
+BOOST_AUTO_TEST_CASE(Sanitize)
+{
+    auto s=[](const QString& name)
+    {
+        return FileNameValidator::sanitize(name);
+    };
+
+    // valid names are returned untouched
+    BOOST_CHECK_EQUAL(s(QStringLiteral("a.tar.gz")).toStdString(),"a.tar.gz");
+
+    // path components are dropped
+    BOOST_CHECK_EQUAL(s(QStringLiteral("../../etc/passwd")).toStdString(),"passwd");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("C:\\dir\\a.txt")).toStdString(),"a.txt");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("a/")).toStdString(),"file");
+
+    BOOST_CHECK_EQUAL(s(QStringLiteral("a:b*c?.txt")).toStdString(),"a_b_c_.txt");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("a..b")).toStdString(),"a.b");
+    BOOST_CHECK_EQUAL(s(QStringLiteral(".hidden ")).toStdString(),"hidden");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("name.")).toStdString(),"name");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("..")).toStdString(),"file");
+    BOOST_CHECK_EQUAL(s(QString()).toStdString(),"file");
+    BOOST_CHECK_EQUAL(s(QStringLiteral("con.txt")).toStdString(),"_con.txt");
+
+    // too long: cut, extension kept, result valid
+    auto longName=QString(300,QLatin1Char('a'))+QStringLiteral(".txt");
+    auto cut=s(longName);
+    BOOST_CHECK(cut.endsWith(QStringLiteral(".txt")));
+    BOOST_CHECK_EQUAL(cut.toUtf8().size(),255);
+    BOOST_CHECK(FileNameValidator::isValid(cut));
+
+    auto longCyr=QString(300,QChar(0x0444))+QStringLiteral(".txt");
+    BOOST_CHECK(FileNameValidator::isValid(s(longCyr)));
+
+    // custom fallback
+    BOOST_CHECK_EQUAL(FileNameValidator::sanitize(QStringLiteral("///"),QStringLiteral("x")).toStdString(),"x");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

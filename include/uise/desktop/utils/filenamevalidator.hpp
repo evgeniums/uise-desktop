@@ -84,6 +84,19 @@ class UISE_DESKTOP_EXPORT FileNameValidator : public QValidator
          * @return Empty string for Problem::None.
          */
         static QString problemText(Problem problem);
+
+        /**
+         * @brief Turn an untrusted name (e.g. received from a peer) into a valid file name.
+         * @param name Name to sanitize; may be a path.
+         * @param fallback Name to use if nothing usable is left, default "file".
+         * @return A name for which isValid() is true; @a name itself if it was already valid.
+         *
+         * Steps: keep only what follows the last / or \ (so "../../x" becomes "x"); replace
+         * forbidden characters with "_"; collapse runs of dots; trim spaces and dots from both
+         * ends; prefix a reserved device name with "_"; cut to 255 UTF-8 bytes, preserving the
+         * extension.
+         */
+        static QString sanitize(const QString& name, const QString& fallback=QStringLiteral("file"));
 };
 
 UISE_DESKTOP_NAMESPACE_END
