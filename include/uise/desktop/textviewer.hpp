@@ -31,6 +31,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 #include <QString>
 #include <QSize>
+#include <QUrl>
 #include <QEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
@@ -202,6 +203,14 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
 
         //! The checkable "Always ..." row was toggled, `checked` being its new state.
         void alwaysExternalToggled(bool checked);
+
+        /**
+         * @brief A hyperlink in the rendered content was clicked (markdown).
+         *
+         * Relayed from the browser as is -- what a click does, and which schemes are acceptable at
+         * all, is the host's policy, not this library's: nothing is opened here.
+         */
+        void linkActivated(const QUrl& url);
 
     protected:
 

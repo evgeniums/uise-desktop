@@ -631,7 +631,7 @@ TextViewer::TextViewer(QWidget* parent)
     connect(pimpl->findCloseButton,&IconTextButton::clicked,this,[this](){pimpl->setFindBarVisible(false);});
 
     // Cmd+F / Ctrl+F. Window-scoped: the viewer is its own top-level window, and this must work
-    // wherever focus is inside it (the browser itself takes none).
+    // wherever focus is inside it.
     auto* findShortcut=new QShortcut(QKeySequence::Find,this);
     findShortcut->setContext(Qt::WindowShortcut);
     connect(findShortcut,&QShortcut::activated,this,[this](){pimpl->setFindBarVisible(true);});
@@ -659,6 +659,9 @@ TextViewer::TextViewer(QWidget* parent)
     // Selectable, with the same right-click Copy the bubble offers.
     pimpl->browser->setCopyable(true);
     l->addWidget(pimpl->browser,1);
+
+    // Not opened here: the browser only reports the click, see linkActivated()'s doc comment.
+    connect(pimpl->browser,&ChatMessageTextBrowser::linkActivated,this,&TextViewer::linkActivated);
 
     // New content and the theme-change replay both rebuild the document, which strands every
     // position the search holds. Searching again is what keeps the bar honest.
