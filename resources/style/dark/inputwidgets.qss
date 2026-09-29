@@ -19,3 +19,9 @@ uise--ValidatedInput uise--PushButton QPushButton:hover
 uise--ValidatedInput QLabel#error {
 color: #ff6677;
 }
+
+/* EditableLabelText with a validator: text that is not (yet) acceptable, e.g. an invalid file
+ * name in the file upload dialog. The apply button is disabled at the same time. */
+uise--EditableLabel QLineEdit#editor[state="intermediate"] {
+color: #ff6677;
+}

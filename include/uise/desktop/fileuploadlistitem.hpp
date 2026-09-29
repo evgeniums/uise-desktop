@@ -121,8 +121,11 @@ class UISE_DESKTOP_EXPORT FileUploadListItem : public QFrame
          * the user hasn't pressed Enter or clicked the apply control yet), this applies the
          * pending edit, which synchronously emits renameRequested() with the new name.
          * Does nothing if the name field isn't being edited.
+         *
+         * @return false if the edited name is not a valid file name (see FileNameValidator): the
+         *  field then stays in editing mode with focus and no rename is emitted; true otherwise.
          */
-        void commitPendingRename();
+        bool commitPendingRename();
 
         /**
          * @brief Close the per-item drop-down menu if open, without animation.

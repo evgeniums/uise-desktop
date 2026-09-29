@@ -9,6 +9,7 @@ SET (SOURCES
     testmiscutils.cpp
     testalbumlayout.cpp
     testflowpack.cpp
+    testfilenamevalidator.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

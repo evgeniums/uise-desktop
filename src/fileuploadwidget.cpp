@@ -422,9 +422,20 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
         // name but clicked Send instead of pressing Enter or the field's own apply control
         // -- commit any such pending edit now, so items() reflects it before the host reads
         // it in response to sendRequested below.
+        // A name that is not a valid file name stays in editing mode (focused, highlighted):
+        // do not send until the user fixes or cancels it.
+        auto ok=true;
         for (auto* row : pimpl->listItems)
         {
-            row->commitPendingRename();
+            if (!row->commitPendingRename())
+            {
+                ok=false;
+                break;
+            }
+        }
+        if (!ok)
+        {
+            return;
         }
         emit sendRequested();
     };

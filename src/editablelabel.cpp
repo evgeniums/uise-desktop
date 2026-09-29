@@ -365,4 +365,57 @@ QString EditableLabel::comment() const
 
 //--------------------------------------------------------------------------
 
+void EditableLabelText::setValidator(const QValidator* validator, std::function<QString (const QString&)> hint)
+{
+    m_hint=std::move(hint);
+    editorWidget()->setValidator(validator);
+    if (!m_validationWatched)
+    {
+        m_validationWatched=true;
+        connect(
+            editorWidget(),
+            &QLineEdit::textChanged,
+            this,
+            [this](const QString&)
+            {
+                updateValidationState();
+            }
+        );
+    }
+    updateValidationState();
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabelText::updateValidationState()
+{
+    auto* edit=editorWidget();
+    auto acceptable=edit->hasAcceptableInput();
+
+    edit->setProperty("state",acceptable ? "acceptable" : "intermediate");
+    edit->setToolTip((acceptable || !m_hint) ? QString() : m_hint(edit->text()));
+    applyButton()->setEnabled(acceptable);
+    Style::updateWidgetStyle(edit);
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabelText::apply()
+{
+    if (!editorWidget()->hasAcceptableInput())
+    {
+        updateValidationState();
+        return;
+    }
+    baseType::apply();
+}
+
+//--------------------------------------------------------------------------
+
+void EditableLabelText::restoreWidgetValue()
+{
+    baseType::restoreWidgetValue();
+    updateValidationState();
+}
+
 }

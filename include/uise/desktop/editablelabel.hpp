@@ -36,6 +36,8 @@ You may select, at your option, one of the above-comboed licenses.
 
 #include <QBoxLayout>
 #include <QEvent>
+#include <QValidator>
+#include <functional>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -309,6 +311,11 @@ class UISE_DESKTOP_EXPORT EditableLabel : public AbstractValueWidget
 
         virtual void restoreWidgetValue()
         {}
+
+        PushButton* applyButton() const noexcept
+        {
+            return m_applyButton;
+        }
 
         bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -1188,6 +1195,29 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public EditableLabelTmpl<EditableL
 
         using baseType::baseType;
 
+        /**
+         * @brief Set validator of the editor.
+         * @param validator Validator, the label does not take ownership. Pass nullptr to remove.
+         * @param hint Optional callback returning a short reason why a text is not acceptable,
+         *  shown as the editor tooltip.
+         *
+         * While the text is not acceptable the editor gets property state="intermediate" (for
+         * QSS), the apply button is disabled and apply() keeps the label in editing mode.
+         */
+        void setValidator(const QValidator* validator, std::function<QString (const QString&)> hint={});
+
+        /**
+         * @brief Refresh validation indication for the current editor text.
+         *
+         * Called automatically on editing; call it after setValue(), which does not emit signals.
+         */
+        void updateValidationState();
+
+        /**
+         * @brief Apply editor if its text is acceptable, otherwise keep editing.
+         */
+        virtual void apply() override;
+
     signals:
 
         void valueChanged(const QString& text);
@@ -1198,6 +1228,13 @@ class UISE_DESKTOP_EXPORT EditableLabelText : public EditableLabelTmpl<EditableL
         {
             emit valueChanged(editorWidget()->text());
         }
+
+        virtual void restoreWidgetValue() override;
+
+    private:
+
+        std::function<QString (const QString&)> m_hint;
+        bool m_validationWatched=false;
 };
 
 /**

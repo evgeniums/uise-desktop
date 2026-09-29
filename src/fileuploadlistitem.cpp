@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/filesizeformat.hpp>
+#include <uise/desktop/utils/filenamevalidator.hpp>
 #include <uise/desktop/utils/filetypeicon.hpp>
 #include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/icontextbutton.hpp>
@@ -147,6 +148,13 @@ FileUploadListItem::FileUploadListItem(QWidget* parent)
         }
     );
     pimpl->nameLabel->setEditButtonAlwaysHidden(true);
+    pimpl->nameLabel->setValidator(
+        new FileNameValidator(pimpl->nameLabel),
+        [](const QString& text)
+        {
+            return FileNameValidator::problemText(FileNameValidator::check(text));
+        }
+    );
 
     pimpl->rowInfoLabel=new QLabel(textColumn);
     pimpl->rowInfoLabel->setObjectName("infoLabel");
@@ -243,6 +251,7 @@ void FileUploadListItem::refresh()
     updateInfoLabels();
 
     pimpl->nameLabel->setValue(pimpl->item.fileName());
+    pimpl->nameLabel->updateValidationState();
     updateNameLabel();
 
     rebuildMenu();
@@ -319,12 +328,21 @@ void FileUploadListItem::beginRename()
 
 //--------------------------------------------------------------------------
 
-void FileUploadListItem::commitPendingRename()
+bool FileUploadListItem::commitPendingRename()
 {
+    if (!pimpl->nameLabel->isEditing())
+    {
+        return true;
+    }
+
+    pimpl->nameLabel->apply();
     if (pimpl->nameLabel->isEditing())
     {
-        pimpl->nameLabel->apply();
+        // the name is not a valid file name, apply() kept the editor open
+        pimpl->nameLabel->editorWidget()->setFocus();
+        return false;
     }
+    return true;
 }
 
 //--------------------------------------------------------------------------

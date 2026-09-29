@@ -62,6 +62,7 @@ SET (HEADERS
     include/uise/desktop/utils/enums.hpp
     include/uise/desktop/utils/datetime.hpp
     include/uise/desktop/utils/filesizeformat.hpp
+    include/uise/desktop/utils/filenamevalidator.hpp
     include/uise/desktop/utils/filetypeicon.hpp
     include/uise/desktop/utils/audiotime.hpp
     include/uise/desktop/utils/pixmapscale.hpp
@@ -330,6 +331,7 @@ SET (SOURCES
     src/singleshottimer.cpp
     src/directchildwidget.cpp
     src/mimedatautils.cpp
+    src/filenamevalidator.cpp
     src/dragsource.cpp
     src/alignedstretchingwidget.cpp
     src/autoresizingtextedit.cpp
