@@ -3589,12 +3589,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4869"/>
+        <location filename="../src/messageeditor.cpp" line="+4801"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+41"/>
         <source>Insert emoji</source>
         <translation type="unfinished">Insert emoji</translation>
     </message>
@@ -4364,12 +4364,12 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+0"/>
-        <location line="+335"/>
+        <location line="+338"/>
         <source>Full screen</source>
         <translation>Full screen</translation>
     </message>
     <message>
-        <location line="-129"/>
+        <location line="-132"/>
         <source>Open in system app</source>
         <translation>Open in system app</translation>
     </message>
@@ -4384,7 +4384,7 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Find</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy</source>
         <translation>Copy</translation>
     </message>
@@ -4394,14 +4394,14 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Wrap lines</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+8"/>
-        <location line="+201"/>
+        <location line="+7"/>
+        <location line="+9"/>
+        <location line="+204"/>
         <source>Show source</source>
         <translation>Show source</translation>
     </message>
     <message>
-        <location line="-201"/>
+        <location line="-204"/>
         <source>Show rendered</source>
         <translation>Show rendered</translation>
     </message>

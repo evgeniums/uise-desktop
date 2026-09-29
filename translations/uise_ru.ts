@@ -3567,12 +3567,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4869"/>
+        <location filename="../src/messageeditor.cpp" line="+4801"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+41"/>
         <source>Insert emoji</source>
         <translation>Вставить эмодзи</translation>
     </message>
@@ -4316,12 +4316,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+0"/>
-        <location line="+335"/>
+        <location line="+338"/>
         <source>Full screen</source>
         <translation>Во весь экран</translation>
     </message>
     <message>
-        <location line="-129"/>
+        <location line="-132"/>
         <source>Open in system app</source>
         <translatorcomment>i18n-lint: allow-long -- the same string and wording as ChatFileItem&apos;s menu entry; &quot;system app&quot; is one fixed term across the app and no shorter correct phrasing exists.</translatorcomment>
         <translation>Открыть в системном приложении</translation>
@@ -4337,7 +4337,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Найти</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -4347,14 +4347,14 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Перенос строк</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+8"/>
-        <location line="+201"/>
+        <location line="+7"/>
+        <location line="+9"/>
+        <location line="+204"/>
         <source>Show source</source>
         <translation>Исходный текст</translation>
     </message>
     <message>
-        <location line="-201"/>
+        <location line="-204"/>
         <source>Show rendered</source>
         <translation>Оформленный текст</translation>
     </message>
