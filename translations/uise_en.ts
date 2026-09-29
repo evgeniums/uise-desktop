@@ -581,7 +581,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>EditableLabelBool</name>
     <message>
-        <location filename="../include/uise/desktop/editablelabel.hpp" line="+964"/>
+        <location filename="../include/uise/desktop/editablelabel.hpp" line="+971"/>
         <source>On</source>
         <translation>On</translation>
     </message>
@@ -3292,7 +3292,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+376"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+394"/>
         <source>Edit image</source>
         <translation>Edit image</translation>
     </message>
@@ -3357,7 +3357,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Send</translation>
     </message>
     <message>
-        <location line="+314"/>
+        <location line="+325"/>
         <source>Send files</source>
         <translation>Send files</translation>
     </message>
@@ -3589,12 +3589,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4869"/>
+        <location filename="../src/messageeditor.cpp" line="+4801"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+41"/>
         <source>Insert emoji</source>
         <translation type="unfinished">Insert emoji</translation>
     </message>
@@ -4167,7 +4167,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::ReplyDialog</name>
     <message>
-        <location filename="../src/replydialog.cpp" line="+100"/>
+        <location filename="../src/replydialog.cpp" line="+118"/>
         <source>You can select a part of the text to quote only that part.</source>
         <translation>You can select a part of the text to quote only that part.</translation>
     </message>
@@ -4177,8 +4177,9 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Reply to message</translation>
     </message>
     <message>
-        <location line="+53"/>
-        <location line="+182"/>
+        <location line="+8"/>
+        <location line="+45"/>
+        <location line="+192"/>
         <source>Save</source>
         <translation>Save</translation>
     </message>
@@ -4364,12 +4365,12 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+0"/>
-        <location line="+335"/>
+        <location line="+338"/>
         <source>Full screen</source>
         <translation>Full screen</translation>
     </message>
     <message>
-        <location line="-129"/>
+        <location line="-132"/>
         <source>Open in system app</source>
         <translation>Open in system app</translation>
     </message>
@@ -4384,7 +4385,7 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Find</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy</source>
         <translation>Copy</translation>
     </message>
@@ -4394,14 +4395,14 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Wrap lines</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+8"/>
-        <location line="+201"/>
+        <location line="+7"/>
+        <location line="+9"/>
+        <location line="+204"/>
         <source>Show source</source>
         <translation>Show source</translation>
     </message>
     <message>
-        <location line="-201"/>
+        <location line="-204"/>
         <source>Show rendered</source>
         <translation>Show rendered</translation>
     </message>
