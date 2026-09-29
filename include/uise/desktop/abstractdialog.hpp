@@ -235,6 +235,14 @@ class UISE_DESKTOP_EXPORT AbstractDialog : public WidgetQFrame
         void buttonClicked(int id);
 
         /**
+         * @brief Emitted when the title icon installed by Dialog<>::setSvgIcon() is clicked.
+         *
+         * Nothing listens by default, so the icon stays decorative unless an implementation
+         * (e.g. ReplyDialog) connects to it.
+         */
+        void iconClicked();
+
+        /**
          * @brief Emitted immediately before closeRequested(), from closeDialog() itself.
          *
          * For a host that must read the dialog's own content before an implementation's

@@ -121,6 +121,15 @@ Dialog<BaseT>::Dialog(QWidget* parent)
     pimpl->contentLayout->addWidget(pimpl->icon);
     pimpl->icon->setObjectName("dialogIcon");
     pimpl->icon->setVisible(false);
+    QObject::connect(
+        pimpl->icon,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            emit AbstractDialog::iconClicked();
+        }
+    );
 
     pimpl->dialogFrame=new QFrame(this);
     pimpl->dialogFrame->setObjectName("dialogFrame");

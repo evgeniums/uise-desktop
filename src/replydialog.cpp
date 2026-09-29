@@ -59,6 +59,24 @@ namespace {
 constexpr int MinMessageAreaHeight=80;
 constexpr int MaxMessageAreaHeight=500;
 
+// QScrollArea::sizeHint() under-reports a real bubble's height, so the area's preferred height
+// is supplied explicitly (measured from the content in updateMessageAreaHeight()) while its
+// minimum stays small -- that lets the layout shrink ONLY this area, and scroll the bubble
+// inside it, when the popup is capped below the natural height of the whole dialog.
+class MessageScrollArea : public ScrollArea
+{
+    public:
+
+        using ScrollArea::ScrollArea;
+
+        QSize sizeHint() const override
+        {
+            return QSize(ScrollArea::sizeHint().width(),preferredHeight);
+        }
+
+        int preferredHeight=MinMessageAreaHeight;
+};
+
 }
 
 //--------------------------------------------------------------------------
@@ -67,7 +85,7 @@ class ReplyDialog_p
 {
     public:
 
-        ScrollArea* messageArea=nullptr;
+        MessageScrollArea* messageArea=nullptr;
         QFrame* messageHolder=nullptr;
         QBoxLayout* messageHolderLayout=nullptr;
         QPointer<AbstractChatMessage> message;
@@ -101,19 +119,19 @@ ReplyDialog::ReplyDialog(QWidget* parent)
 
     setTitle(tr("Reply to message"));
     // ReplyDialogIcon is a DEDICATED context (not "ReplyDialog", which the #actions row
-    // icons also use) with no "hovered" mode defined at all -- this title icon is purely
-    // decorative (see abstractdialog.qss's #dialogIcon notes: nothing ever connects its
-    // clicked()), but PushButton::enterEvent() unconditionally swaps to the icon's hoverIcon()
-    // on mouse-enter regardless of whether the button does anything on click (src/pushbutton.cpp)
-    // -- there is no per-instance way to opt out of that swap, only to make it invisible by
-    // giving the icon no "hovered" colour to swap to, so SvgIcon::offContent()'s own fallback
-    // (missing mode -> IconMode::Normal) renders the same colour either way.
+    // icons also use) so its own "hovered" colour can be styled independently. The icon is
+    // clickable here: see the iconClicked() connection below.
     setSvgIcon(Style::instance().svgIconLocator().icon(QStringLiteral("ReplyDialogIcon::reply"),this));
+    if (auto* icon=findChild<QWidget*>(QStringLiteral("dialogIcon")))
+    {
+        icon->setCursor(Qt::PointingHandCursor);
+        icon->setToolTip(tr("Save"));
+    }
 
     auto content=new QFrame(this);
     auto contentLayout=Layout::vertical(content);
 
-    pimpl->messageArea=new ScrollArea(content);
+    pimpl->messageArea=new MessageScrollArea(content);
     pimpl->messageArea->setObjectName("messageArea");
     pimpl->messageArea->setWidgetResizable(true);
     pimpl->messageArea->setFrameShape(QFrame::NoFrame);
@@ -154,6 +172,16 @@ ReplyDialog::ReplyDialog(QWidget* parent)
         AbstractDialog::standardButton(AbstractDialog::StandardButton::Cancel,this),
         AbstractDialog::ButtonConfig{static_cast<int>(AbstractDialog::StandardButton::Apply),tr("Save")}
     });
+
+    // Clicking the title icon triggers the very same action as the Save/"Quote selected"
+    // button: activateButton() clicks the real Apply button, so it goes through the same
+    // buttonClicked -> saveRequested path below.
+    connect(this,&AbstractDialog::iconClicked,this,
+        [this]()
+        {
+            activateButton(static_cast<int>(AbstractDialog::StandardButton::Apply));
+        }
+    );
 
     // Cancel already auto-closes via Dialog<>'s own signal-mapper handler (see dialog.ipp) --
     // only Apply/"Quote selected" needs handling here, and deliberately does NOT close the
@@ -334,7 +362,12 @@ void ReplyDialog::updateSaveButton()
     // setButtonText() relabels the existing Apply button in place -- unlike setButtons(), it
     // does not destroy/recreate the whole row (see Dialog<>::doSetButtons()), which visibly
     // flickered every button (Cancel included) on each select/deselect.
-    setButtonText(AbstractDialog::StandardButton::Apply,quote ? tr("Quote selected") : tr("Save"));
+    const auto text=quote ? tr("Quote selected") : tr("Save");
+    setButtonText(AbstractDialog::StandardButton::Apply,text);
+    if (auto* icon=findChild<QWidget*>(QStringLiteral("dialogIcon")))
+    {
+        icon->setToolTip(text);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -391,8 +424,10 @@ void ReplyDialog::updateMessageAreaHeight()
     // FileUploadWidget::doUpdateListAreaHeight() (src/fileuploadwidget.cpp) for the original.
     if (pimpl->message.isNull())
     {
+        pimpl->messageArea->preferredHeight=MinMessageAreaHeight;
         pimpl->messageArea->setMinimumHeight(MinMessageAreaHeight);
         pimpl->messageArea->setMaximumHeight(MaxMessageAreaHeight);
+        pimpl->messageArea->updateGeometry();
         return;
     }
 
@@ -419,8 +454,14 @@ void ReplyDialog::updateMessageAreaHeight()
 
     auto h=qBound(MinMessageAreaHeight,contentHeight,MaxMessageAreaHeight);
 
-    pimpl->messageArea->setMinimumHeight(h);
+    // Preferred = measured content height, maximum = same, but the minimum is only the floor:
+    // pinning min==max made the dialog un-shrinkable, so when ModalPopup capped the popup at
+    // maxHeightPercent() the layout squeezed the comment/actions rows and they overlapped this
+    // area. With a low minimum only the (scrollable) message area gives up the missing height.
+    pimpl->messageArea->preferredHeight=h;
+    pimpl->messageArea->setMinimumHeight(qMin(MinMessageAreaHeight,h));
     pimpl->messageArea->setMaximumHeight(h);
+    pimpl->messageArea->updateGeometry();
 
     // The two lines above only give messageArea the right constraints; this is what actually
     // gets that new size reflected on screen (and up through ModalPopup's own geometry), same

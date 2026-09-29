@@ -25,6 +25,9 @@
             "modes" : {
                 "normal" : {
                     "off" : { "currentColor" : "#1e6091" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#12405f" }
                 }
             }
         },

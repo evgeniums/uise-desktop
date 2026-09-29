@@ -30,9 +30,9 @@ uise--AbstractDialog #dialogIcon QPushButton:hover,
 uise--AbstractDialog #dialogIcon QPushButton:pressed {background:transparent;}
 uise--AbstractDialog #dialogIcon {padding:0 8px;}
 
-/* Purely decorative -- Dialog<>::setSvgIcon() is used by every dialog in this library (e.g.
- * ReplyDialog, ForwardDialog) to show a title icon, and nothing anywhere connects its inherited
- * QPushButton::clicked(). Switching rippleEnabled off here (rather than in C++) follows this
+/* Decorative by default -- Dialog<>::setSvgIcon() is used by every dialog in this library (e.g.
+ * ReplyDialog, ForwardDialog) to show a title icon, and nothing connects to its
+ * AbstractDialog::iconClicked() unless a dialog opts in (only ReplyDialog does). Switching rippleEnabled off here (rather than in C++) follows this
  * property's own documented purpose: "a stylesheet can switch the effect off for a given widget
  * type or objectName without touching C++", see RippleOverlay's own class doc comment. */
 uise--AbstractDialog #dialogIcon uise--RippleOverlay {
