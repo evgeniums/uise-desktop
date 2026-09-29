@@ -29,9 +29,13 @@ uise--DateTimePickerDropdown #buttonsFrame {
 margin-top: 4px;
 }
 
+/* min-width: an input placed directly in an EditablePanel also matches the panel's generic
+ * "uise--EditablePanel uise--PushButton QPushButton" rule (min-width: 100px); the ID selector
+ * wins for every property set here, so the width must be reset explicitly too. */
 uise--DateTimeInput #pickerButton QPushButton {
 border: none;
 background-color: transparent;
 icon-size: 18px;
 padding: 0;
+min-width: 0;
 }
