@@ -233,6 +233,7 @@ SET (HEADERS
     include/uise/desktop/circlebusy.hpp
     include/uise/desktop/lineedit.hpp
     include/uise/desktop/searchlineedit.hpp
+    include/uise/desktop/combobox.hpp
 
     include/uise/desktop/buttonslist.hpp
     include/uise/desktop/validatedinput.hpp
@@ -466,6 +467,7 @@ SET (SOURCES
     src/circlebusy.cpp
     src/lineedit.cpp
     src/searchlineedit.cpp
+    src/combobox.cpp
 
     src/buttonslist.cpp
     src/validatedinput.cpp

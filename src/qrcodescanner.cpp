@@ -30,7 +30,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPermission>
 #endif
 #include <QMediaCaptureSession>
-#include <QComboBox>
 
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -41,6 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/combobox.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/qrcodefromvideo.hpp>
 #include <uise/desktop/qrcodescanner.hpp>
@@ -65,7 +65,7 @@ class QrCodeScanner_p
         QMediaCaptureSession captureSession;
         std::unique_ptr<QCamera> camera;
 
-        QComboBox* deviceList;
+        ComboBox* deviceList;
 
         QGraphicsScene* scene;
         QGraphicsView* view;
@@ -108,12 +108,12 @@ void QrCodeScanner::construct()
 
     l->addStretch(1);
 
-    pimpl->deviceList=new QComboBox(this);
+    pimpl->deviceList=new ComboBox(this);
     pimpl->deviceList->setObjectName("deviceList");
     l->addWidget(pimpl->deviceList,0,Qt::AlignCenter);
     connect(
         pimpl->deviceList,
-        &QComboBox::currentIndexChanged,
+        &ComboBox::currentIndexChanged,
         this,
         [this](int index)
         {

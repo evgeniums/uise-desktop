@@ -31,7 +31,6 @@ You may select, at your option, one of the above-comboed licenses.
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
-#include <QComboBox>
 #include <QTextEdit>
 #include <QCoreApplication>
 
@@ -41,6 +40,7 @@ You may select, at your option, one of the above-comboed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/checkbox.hpp>
+#include <uise/desktop/combobox.hpp>
 #include <uise/desktop/valuewidget.hpp>
 #include <uise/desktop/editablepanel.hpp>
 #include <uise/desktop/datetimeinput.hpp>
@@ -664,7 +664,7 @@ template <>
 struct EditableLabelTraits<EditableLabel::Type::Combo>
 {
     using type=EditableLabelCombo;
-    using widgetType=QComboBox;
+    using widgetType=ComboBox;
 
     static void loadLabel(QLabel* label, widgetType* widget, const EditableLabelFormatter* formatter=nullptr)
     {
@@ -716,7 +716,7 @@ struct EditableLabelTraits<EditableLabel::Type::Combo>
     {
         widget->connect(
             widget,
-            &QComboBox::currentIndexChanged,
+            &ComboBox::currentIndexChanged,
             valueWidget,
             [valueWidget](int)
             {

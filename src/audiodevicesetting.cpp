@@ -24,13 +24,13 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QLabel>
-#include <QComboBox>
 #include <QProgressBar>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/label.hpp>
+#include <uise/desktop/combobox.hpp>
 #include <uise/desktop/audiodevicesetting.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
@@ -48,7 +48,7 @@ class AudioDeviceSetting_p
         AudioDeviceType type=AudioDeviceType::Capture;
 
         PushButton* typeButton=nullptr;
-        QComboBox* combo=nullptr;
+        ComboBox* combo=nullptr;
         QString defaultDeviceName;
         QString comment;
         Label* commentLabel=nullptr;
@@ -92,7 +92,7 @@ AudioDeviceSetting::AudioDeviceSetting(AudioDeviceType type, QWidget* parent)
     auto comboL=Layout::vertical(comboFrame);
     deviceL->addWidget(comboFrame);
 
-    pimpl->combo=new QComboBox(deviceRow);
+    pimpl->combo=new ComboBox(deviceRow);
     pimpl->combo->setObjectName("deviceCombo");
     pimpl->combo->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
     comboL->addWidget(pimpl->combo);
@@ -102,7 +102,7 @@ AudioDeviceSetting::AudioDeviceSetting(AudioDeviceType type, QWidget* parent)
 
     connect(
         pimpl->combo,
-        QOverload<int>::of(&QComboBox::currentIndexChanged),
+        QOverload<int>::of(&ComboBox::currentIndexChanged),
         this,
         [this](int)
         {
