@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_FILEUPLOADITEM_HPP
 #define UISE_DESKTOP_FILEUPLOADITEM_HPP
 
+#include <optional>
 #include <vector>
 
 #include <QString>
@@ -39,6 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/abstractmessageeditor.hpp>
+#include <uise/desktop/messageeditingmode.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -158,6 +160,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         void setNonImageMimeTypes(QSet<QString> mimeTypes)
         {
             m_nonImageMimeTypes=std::move(mimeTypes);
+            m_editableTextCache=-1;
         }
 
         /**
@@ -226,6 +229,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         void setFileName(QString name)
         {
             m_fileName=std::move(name);
+            m_editableTextCache=-1;
         }
 
         QString suffix() const;
@@ -259,6 +263,7 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         void setExplicitMimeType(QString mime)
         {
             m_explicitMimeType=std::move(mime);
+            m_editableTextCache=-1;
         }
 
         /**
@@ -291,6 +296,82 @@ class UISE_DESKTOP_EXPORT FileUploadItem
          * "photo.jpg".
          */
         void setImage(QImage image);
+
+        /**
+         * @brief Overwrite the content with already-encoded bytes -- the write side of editing a
+         *  text file, as setImage() is of editing an image.
+         * @param data The new content, held verbatim from now on.
+         *
+         * Switches type() to Data and invalidates the cached size(). Only the item changes: a File
+         * item's file on disk is never touched, and its filePath() stays as provenance while
+         * encodedData() no longer reads it. fileName() is left as it is, and so is mimeType() --
+         * frozen into explicitMimeType() first, because a Data item has no file to sniff and
+         * would otherwise re-derive it from the name's extension alone (an extensionless text
+         * file sniffed as text would turn into application/octet-stream).
+         */
+        void setData(QByteArray data);
+
+        /**
+         * @brief Decode the content as text.
+         * @param ok Set to false when it is not text worth editing: NUL bytes without a BOM to say
+         *  it is UTF-16/32, or invalid for its encoding. Invalid UTF-8 is a refusal rather than a
+         *  best-effort decode, so a legacy code page never shows up as replacement characters.
+         *  Left unset by nullptr.
+         * @return The text without its BOM, with line endings as they are in the bytes.
+         *
+         * The encoding is the BOM's when there is one, UTF-8 otherwise.
+         */
+        QString text(bool* ok=nullptr) const;
+
+        /**
+         * @brief Replace the content by `text`, see setData().
+         *
+         * Encoded the way the current content is: UTF-16/32 (with BOM) stays what it was, UTF-8
+         * with a BOM keeps its BOM, everything else is plain UTF-8. Line endings are written as
+         * given.
+         */
+        void setText(const QString& text);
+
+        /**
+         * @brief Whether this item is a text file the user may be offered to edit.
+         *
+         * False while maxTextEditSize() is 0 (the default: a bare item invents no policy, like
+         * maxImageAspectRatio(); FileUploadWidget stamps its own onto every item it creates), for
+         * an image, for content larger than that limit or empty, for a type that is not text
+         * (its mime type does not derive from text/plain), and for text() that does not decode.
+         * Evaluated once and cached until something it depends on changes.
+         */
+        bool isEditableText() const;
+
+        //! Largest content size in bytes isEditableText() accepts. 0 disables text editing.
+        qint64 maxTextEditSize() const noexcept
+        {
+            return m_maxTextEditSize;
+        }
+
+        void setMaxTextEditSize(qint64 size) noexcept
+        {
+            m_maxTextEditSize=size;
+            m_editableTextCache=-1;
+        }
+
+        /**
+         * @brief The mode a text editor should start in for this item, when the source of the
+         *  content knows better than its file name does.
+         *
+         * A composer's text sent as a document is edited in the mode it was typed in; unset (the
+         * default) means the editor's own choice by file type. Not used by this class beyond
+         * carrying it: it survives copies, setData() and setText().
+         */
+        std::optional<MessageEditingMode> textEditingMode() const noexcept
+        {
+            return m_textEditingMode;
+        }
+
+        void setTextEditingMode(std::optional<MessageEditingMode> mode) noexcept
+        {
+            m_textEditingMode=mode;
+        }
 
         QByteArray imageFormat() const noexcept
         {
@@ -383,6 +464,11 @@ class UISE_DESKTOP_EXPORT FileUploadItem
         mutable qint64 m_size=-1;
         uint32_t m_maxImageAspectRatio=0;
         QSet<QString> m_nonImageMimeTypes;
+
+        qint64 m_maxTextEditSize=0;
+        //! isEditableText()'s answer, -1 while not computed.
+        mutable int8_t m_editableTextCache=-1;
+        std::optional<MessageEditingMode> m_textEditingMode;
 };
 
 using FileUploadItems=std::vector<FileUploadItem>;

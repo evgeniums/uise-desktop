@@ -34,11 +34,17 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPainter>
 #include <QImage>
 #include <QPixmap>
+#include <QFile>
+#include <QFileInfo>
+#include <QLocale>
+#include <QTemporaryDir>
+#include <QCryptographicHash>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/framewithmodalstatus.hpp>
 #include <uise/desktop/imageeditdialog.hpp>
+#include <uise/desktop/texteditdialog.hpp>
 #include <uise/desktop/fileuploadwidget.hpp>
 #include <uise/desktop/fileuploaddialog.hpp>
 
@@ -78,6 +84,18 @@ QImage makeSampleImage()
 QImage makeDisproportionalImage()
 {
     return makeGradientImage(900,30,QStringLiteral("Banner"));
+}
+
+//! For proving that Apply changes only the staged copy: logged when a sample file is written and
+//! again after every applied edit -- the two must match.
+QString fileDigest(const QString& path)
+{
+    QFile file(path);
+    if (path.isEmpty() || !file.open(QIODevice::ReadOnly))
+    {
+        return QStringLiteral("(unreadable)");
+    }
+    return QString::fromLatin1(QCryptographicHash::hash(file.readAll(),QCryptographicHash::Sha256).toHex().left(16));
 }
 
 QString logOptions(const FileUploadItems& items, const FileUploadOptions& opts)
@@ -191,8 +209,81 @@ int main(int argc, char *argv[])
         );
     };
 
-    auto wireUploadWidget=[openImageEditor,logMsg](AbstractFileUploadWidget* uw, const QString& label)
+    // The text counterpart, same rebinding pattern for the same reason: the dialog is reused, so
+    // a connection made once would stay bound to the first (widget, index).
+    auto* textEditDialog=new ModalTextEditDialog(central);
+    auto textApplyConnection=std::make_shared<QMetaObject::Connection>();
+
+    auto openTextEditor=[textEditDialog,logMsg,textApplyConnection](AbstractFileUploadWidget* uw, int index)
     {
+        bool ok=false;
+        const auto text=uw->itemText(index,&ok);
+        if (!ok)
+        {
+            logMsg(QString("item %1 does not decode as text").arg(index));
+            return;
+        }
+        // A copy: setItemText() below replaces the widget's own.
+        const auto item=uw->items()[static_cast<size_t>(index)];
+
+        textEditDialog->openDialog();
+        auto dlg=textEditDialog->dialog();
+        if (dlg==nullptr)
+        {
+            return;
+        }
+        auto* viewer=dlg->viewer();
+
+        viewer->setTitle(item.fileName());
+        viewer->setSubtitle(QLocale().formattedDataSize(item.size(),1,QLocale::DataSizeTraditionalFormat));
+        const auto suffix=item.suffix().toLower();
+        if (suffix==QStringLiteral("md") || suffix==QStringLiteral("markdown") || item.mimeType()==QStringLiteral("text/markdown"))
+        {
+            viewer->setMarkdown(text);
+        }
+        else if (suffix.isEmpty() || suffix==QStringLiteral("txt"))
+        {
+            viewer->setPlainText(text);
+        }
+        else
+        {
+            viewer->setCode(text,suffix);
+        }
+        viewer->startEditing(item.textEditingMode());
+
+        QObject::disconnect(*textApplyConnection);
+        *textApplyConnection=QObject::connect(
+            dlg,
+            &AbstractTextEditDialog::textApplied,
+            textEditDialog,
+            [dlg,uw,index,logMsg,item](const QString& edited, bool modified)
+            {
+                if (modified)
+                {
+                    uw->setItemText(index,edited);
+                    logMsg(QString("edited text at index %1 (%2 chars); original file digest now %3")
+                               .arg(index).arg(edited.size()).arg(fileDigest(item.filePath())));
+                }
+                else
+                {
+                    logMsg(QString("text at index %1 applied unchanged").arg(index));
+                }
+                dlg->closeDialog();
+            }
+        );
+    };
+
+    auto wireUploadWidget=[openImageEditor,openTextEditor,logMsg](AbstractFileUploadWidget* uw, const QString& label)
+    {
+        QObject::connect(
+            uw,
+            &AbstractFileUploadWidget::editTextRequested,
+            uw,
+            [uw,openTextEditor](int index)
+            {
+                openTextEditor(uw,index);
+            }
+        );
         QObject::connect(
             uw,
             &AbstractFileUploadWidget::editImageRequested,
@@ -417,6 +508,13 @@ int main(int argc, char *argv[])
     rootLayout->addWidget(imageEditDialog);
     rootLayout->addSpacing(8);
 
+    // Tall: the dialog takes 95% of this host's height, and the editor wants room.
+    textEditDialog->setObjectName("textEditWrapper");
+    applyWrapperTheme(textEditDialog);
+    textEditDialog->setMinimumHeight(560);
+    rootLayout->addWidget(textEditDialog);
+    rootLayout->addSpacing(8);
+
     // --- 3. controls ---
 
     auto* controlsFrame=new QFrame(central);
@@ -486,6 +584,71 @@ int main(int argc, char *argv[])
         {
             QByteArray data("Sample raw byte payload, not an image, not on disk.");
             standaloneWidget->addItems({FileUploadItem::fromData(data,QStringLiteral("sample.bin"),QStringLiteral("application/octet-stream"))});
+        }
+    );
+
+    // Text editing (FileUploadItem::isEditableText()): real files in a temp folder, so that "Edit
+    // text" has originals to leave alone. Expect "Edit text" on note.txt, notes.md and hello.py
+    // (menu of each row), and NOT on big.txt (over the size limit) or data.bin (NUL bytes).
+    auto* sampleDir=new QTemporaryDir();
+    auto addTextFiles=new QPushButton(QStringLiteral("Add text files"));
+    applyButtonStyle(addTextFiles);
+    demoButtons.push_back(addTextFiles);
+    cl->addWidget(addTextFiles);
+    QObject::connect(
+        addTextFiles,
+        &QPushButton::clicked,
+        standaloneWidget,
+        [standaloneWidget,sampleDir,logMsg]()
+        {
+            auto write=[sampleDir](const QString& name, const QByteArray& content)
+            {
+                const auto path=sampleDir->filePath(name);
+                QFile file(path);
+                if (file.open(QIODevice::WriteOnly))
+                {
+                    file.write(content);
+                }
+                return path;
+            };
+
+            QStringList paths;
+            paths<<write(QStringLiteral("note.txt"),"first line\r\nsecond line\r\n");
+            paths<<write(QStringLiteral("notes.md"),"# Notes\n\nSome *emphasis* here.\n");
+            paths<<write(QStringLiteral("hello.py"),"def main():\n\tprint(\"hi\")\n");
+            paths<<write(QStringLiteral("big.txt"),QByteArray(600*1024,'x'));
+            paths<<write(QStringLiteral("data.bin"),QByteArray("bin\0ary\0data",12));
+
+            QString digests;
+            for (const auto& path: paths)
+            {
+                digests+=QString("\n  %1  %2").arg(QFileInfo(path).fileName(),fileDigest(path));
+            }
+            logMsg(QString("sample files written to %1, digests:%2").arg(sampleDir->path(),digests));
+
+            standaloneWidget->addFiles(paths);
+        }
+    );
+
+    // A composer's text sent as a document: in-memory, with the mode it was typed in. The editor
+    // must start in Formatted text (Wysiwyg), which a plain notes.md would not.
+    auto addComposerText=new QPushButton(QStringLiteral("Add composer text (Wysiwyg)"));
+    applyButtonStyle(addComposerText);
+    demoButtons.push_back(addComposerText);
+    cl->addWidget(addComposerText);
+    QObject::connect(
+        addComposerText,
+        &QPushButton::clicked,
+        standaloneWidget,
+        [standaloneWidget]()
+        {
+            auto item=FileUploadItem::fromData(
+                QByteArray("# Composer note\n\nSome **bold** text.\n"),
+                QStringLiteral("composer.md"),
+                QStringLiteral("text/markdown")
+            );
+            item.setTextEditingMode(MessageEditingMode::Wysiwyg);
+            standaloneWidget->addItems({item});
         }
     );
 

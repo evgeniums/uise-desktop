@@ -108,6 +108,21 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
          */
         virtual void setItemImage(int index, QImage image)=0;
 
+        /**
+         * @brief Read an item's content as text, for handing off to a text editor.
+         * @param ok Set to false when the content does not decode as text, see
+         *  FileUploadItem::text().
+         */
+        virtual QString itemText(int index, bool* ok=nullptr) const=0;
+
+        /**
+         * @brief Overwrite an item's content with edited text, from a text editor.
+         *
+         * Only the staged item changes: it becomes in-memory content (FileUploadItem::setText()),
+         * and a file on disk it was added from is never written to. fileName() stays.
+         */
+        virtual void setItemText(int index, const QString& text)=0;
+
         virtual void setItemFileName(int index, const QString& name)=0;
 
         /**
@@ -164,6 +179,17 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
          * @brief Get the current excluded mime types, see setNonImageMimeTypes().
          */
         virtual const QSet<QString>& nonImageMimeTypes() const noexcept=0;
+
+        /**
+         * @brief Set the largest text file, in bytes, that offers "Edit text". Stamped onto every
+         *  item added from now on and every item already in items(), like
+         *  setMaxImageAspectRatio().
+         * @param size 0 turns text editing off altogether. FileUploadWidget starts with
+         *  DefaultMaxTextEditSize.
+         */
+        virtual void setMaxTextEditSize(qint64 size)=0;
+
+        virtual qint64 maxTextEditSize() const noexcept=0;
 
         /**
          * @brief Use the platform-native file picker in requestAddFiles().
@@ -280,6 +306,12 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
         void emptied();
 
         void editImageRequested(int index);
+
+        /**
+         * @brief "Edit text" was chosen for the item at `index`: the host opens its text editor
+         *  on itemText(index) and writes the result back with setItemText().
+         */
+        void editTextRequested(int index);
 
         /**
          * @brief Emitted when addFiles()/addItems()/a drop/a paste would push items().size()

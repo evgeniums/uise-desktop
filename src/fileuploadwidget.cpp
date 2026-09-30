@@ -164,6 +164,7 @@ class FileUploadWidget_p
         bool rememberChoice=false;
         uint32_t maxImageAspectRatio=FileUploadWidget::DefaultMaxImageAspectRatio;
         QSet<QString> nonImageMimeTypes=FileUploadWidget::DefaultNonImageMimeTypes();
+        qint64 maxTextEditSize=FileUploadWidget::DefaultMaxTextEditSize;
 
         QFrame* headerFrame=nullptr;
         QLabel* captionLabel=nullptr;
@@ -486,6 +487,7 @@ void FileUploadWidget::addRowFor(const FileUploadItem& source)
     auto it=source;
     it.setMaxImageAspectRatio(pimpl->maxImageAspectRatio);
     it.setNonImageMimeTypes(pimpl->nonImageMimeTypes);
+    it.setMaxTextEditSize(pimpl->maxTextEditSize);
     pimpl->items.push_back(it);
 
     auto* row=new FileUploadListItem(pimpl->listContent);
@@ -504,6 +506,19 @@ void FileUploadWidget::addRowFor(const FileUploadItem& source)
             if (idx>=0)
             {
                 emit editImageRequested(idx);
+            }
+        }
+    );
+    connect(
+        row,
+        &FileUploadListItem::editTextRequested,
+        this,
+        [this,row]()
+        {
+            auto idx=indexOfRow(row);
+            if (idx>=0)
+            {
+                emit editTextRequested(idx);
             }
         }
     );
@@ -1095,6 +1110,43 @@ void FileUploadWidget::setItemImage(int index, QImage image)
 
 //--------------------------------------------------------------------------
 
+QString FileUploadWidget::itemText(int index, bool* ok) const
+{
+    if (index<0 || static_cast<size_t>(index)>=pimpl->items.size())
+    {
+        if (ok!=nullptr)
+        {
+            *ok=false;
+        }
+        return QString();
+    }
+    return pimpl->items[static_cast<size_t>(index)].text(ok);
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadWidget::setItemText(int index, const QString& text)
+{
+    if (index<0 || static_cast<size_t>(index)>=pimpl->items.size())
+    {
+        return;
+    }
+    pimpl->items[static_cast<size_t>(index)].setText(text);
+
+    // Same mutate-then-resync pattern as setItemImage(): pimpl->items is the source of truth, the
+    // row's own copy is refreshed from it (its size line and its menu with it).
+    auto* row=pimpl->listItems[static_cast<size_t>(index)];
+    row->setItem(pimpl->items[static_cast<size_t>(index)]);
+    applyViewToRow(row,index);
+
+    updateCaption();
+    updateMenuVisibility();
+    updateListAreaHeight();
+    emit itemsChanged();
+}
+
+//--------------------------------------------------------------------------
+
 void FileUploadWidget::setItemFileName(int index, const QString& name)
 {
     if (index<0 || static_cast<size_t>(index)>=pimpl->items.size())
@@ -1178,6 +1230,34 @@ void FileUploadWidget::setMaxImageAspectRatio(uint32_t ratio)
 
     updateCaption();
     updateMenuVisibility();
+    updateListAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+qint64 FileUploadWidget::maxTextEditSize() const noexcept
+{
+    return pimpl->maxTextEditSize;
+}
+
+void FileUploadWidget::setMaxTextEditSize(qint64 size)
+{
+    size=qMax<qint64>(0,size);
+    if (pimpl->maxTextEditSize==size)
+    {
+        return;
+    }
+    pimpl->maxTextEditSize=size;
+
+    // Same mutate-then-resync pattern as setMaxImageAspectRatio().
+    for (size_t i=0;i<pimpl->items.size();++i)
+    {
+        pimpl->items[i].setMaxTextEditSize(size);
+        auto* row=pimpl->listItems[i];
+        row->setItem(pimpl->items[i]);
+        applyViewToRow(row,static_cast<int>(i));
+    }
+
     updateListAreaHeight();
 }
 

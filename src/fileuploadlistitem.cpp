@@ -57,7 +57,8 @@ enum class MenuAction
 {
     EditImage=1,
     RenameFile=2,
-    Remove=3
+    Remove=3,
+    EditText=4
 };
 
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
@@ -125,6 +126,9 @@ FileUploadListItem::FileUploadListItem(QWidget* parent)
     // a modest, fixed corner radius: RoundedImage defaults to width/2 (a circle/ellipse),
     // which is wrong for a rectangular file/image thumbnail
     pimpl->rowPreview->setCornersRadius(6,6);
+    // A click on it edits the file when it is editable text, see eventFilter() and refresh(): the
+    // row counterpart of the image view's clickable preview.
+    pimpl->rowPreview->installEventFilter(this);
     pimpl->rowLayout->addWidget(pimpl->rowPreview);
 
     auto* textColumn=new QFrame(pimpl->rowFrame);
@@ -148,6 +152,9 @@ FileUploadListItem::FileUploadListItem(QWidget* parent)
         }
     );
     pimpl->nameLabel->setEditButtonAlwaysHidden(true);
+    // The name opens an editable text file like its icon does, see eventFilter(). The filter sits
+    // on the label's own QLabel, so it is out of the way while a rename shows the line edit.
+    pimpl->nameLabel->label()->installEventFilter(this);
     pimpl->nameLabel->setValidator(
         new FileNameValidator(pimpl->nameLabel),
         [](const QString& text)
@@ -253,6 +260,21 @@ void FileUploadListItem::refresh()
     pimpl->nameLabel->setValue(pimpl->item.fileName());
     pimpl->nameLabel->updateValidationState();
     updateNameLabel();
+
+    // Same affordance as the image view's preview (pointing hand, click): an editable text file's
+    // icon opens the text editor. isEditableText() is cached, so asking on every refresh is cheap.
+    if (pimpl->item.isEditableText())
+    {
+        pimpl->rowPreview->setCursor(Qt::PointingHandCursor);
+        pimpl->rowPreview->setToolTip(tr("Edit text"));
+        pimpl->nameLabel->label()->setCursor(Qt::PointingHandCursor);
+    }
+    else
+    {
+        pimpl->rowPreview->unsetCursor();
+        pimpl->rowPreview->setToolTip(QString());
+        pimpl->nameLabel->label()->unsetCursor();
+    }
 
     rebuildMenu();
 }
@@ -379,6 +401,17 @@ bool FileUploadListItem::eventFilter(QObject* obj, QEvent* event)
             emit previewClicked();
         }
     }
+    else if ((obj==pimpl->rowPreview || obj==pimpl->nameLabel->label()) && event->type()==QEvent::MouseButtonPress)
+    {
+        auto* me=static_cast<QMouseEvent*>(event);
+        // A single click, so a double click -- which is what starts a rename by mouse -- no longer
+        // reaches the name on an editable text file: its first press has opened the editor by
+        // then. Rename stays in the row's menu ("Rename file") and the name's own context menu.
+        if (me->button()==Qt::LeftButton && pimpl->item.isEditableText())
+        {
+            emit editTextRequested();
+        }
+    }
     return QFrame::eventFilter(obj,event);
 }
 
@@ -392,6 +425,12 @@ void FileUploadListItem::rebuildMenu()
     if (it.isImage())
     {
         items.push_back(MenuItem(static_cast<int>(MenuAction::EditImage),tr("Edit image"),menuIcon(QStringLiteral("editImage"),this)));
+    }
+    // The text counterpart of "Edit image": isEditableText() is what carries the size limit and the
+    // "is it really text" test, and it is cached on the item, so asking here is cheap.
+    if (it.isEditableText())
+    {
+        items.push_back(MenuItem(static_cast<int>(MenuAction::EditText),tr("Edit text"),menuIcon(QStringLiteral("editText"),this)));
     }
     // A Type::Data item is presented as a named document row just like Type::File -- offer
     // rename there too. Type::ImageData is the only kind with no persistent on-disk/caller name
@@ -559,6 +598,10 @@ void FileUploadListItem::onMenuItemTriggered(int id)
     {
         case (MenuAction::EditImage):
             emit editRequested();
+            break;
+
+        case (MenuAction::EditText):
+            emit editTextRequested();
             break;
 
         case (MenuAction::RenameFile):

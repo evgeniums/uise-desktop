@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFileInfo>
 #include <QBuffer>
 #include <QImageReader>
+#include <QStringConverter>
 #include <QMimeDatabase>
 #include <QDateTime>
 #include <QPainter>
@@ -320,9 +321,141 @@ void FileUploadItem::setImage(QImage image)
     m_encoded.clear();
     m_pixelSize=QSize();
     m_size=-1;
+    m_editableTextCache=-1;
     // m_fileName and m_filePath are left untouched: an edited File/Data item keeps its display
     // name, and filePath() stays as provenance even though image()/encodedData() no longer
     // read from it (or from the held bytes) once type() is ImageData
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadItem::setData(QByteArray data)
+{
+    // Frozen while the current type can still say what it is: a File item's mime comes from its
+    // path, and a Data item's from its name -- both of which the new type would re-derive without
+    // the content sniffing the old one had.
+    if (m_explicitMimeType.isEmpty())
+    {
+        m_explicitMimeType=mimeType();
+    }
+    if (m_fileName.isEmpty())
+    {
+        m_fileName=fileName();
+    }
+
+    m_type=Type::Data;
+    m_encoded=std::move(data);
+    m_image=QImage();
+    m_pixelSize=QSize();
+    m_size=-1;
+    m_editableTextCache=-1;
+    // m_filePath stays as provenance, like setImage() leaves it
+}
+
+//--------------------------------------------------------------------------
+
+QString FileUploadItem::text(bool* ok) const
+{
+    if (ok!=nullptr)
+    {
+        *ok=false;
+    }
+
+    const auto data=encodedData();
+
+    auto encoding=QStringConverter::encodingForData(data);
+    if (!encoding)
+    {
+        // No BOM. UTF-16 text is full of NULs, so this test only makes sense here.
+        if (data.contains('\0'))
+        {
+            return {};
+        }
+        encoding=QStringConverter::Utf8;
+    }
+
+    QStringDecoder decoder(*encoding);
+    QString result=decoder.decode(data);
+    if (decoder.hasError())
+    {
+        return {};
+    }
+
+    // Whether the decoder consumes a leading BOM is a detail of its flags.
+    if (result.startsWith(QChar(0xFEFF)))
+    {
+        result.remove(0,1);
+    }
+
+    if (ok!=nullptr)
+    {
+        *ok=true;
+    }
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadItem::setText(const QString& text)
+{
+    // What the current bytes are, asked before they are replaced. A BOM is the only evidence of
+    // anything but plain UTF-8, and it is kept.
+    const auto current=encodedData();
+    const auto encoding=QStringConverter::encodingForData(current);
+
+    QByteArray bytes;
+    if (encoding)
+    {
+        QStringEncoder encoder(*encoding,QStringConverter::Flag::WriteBom);
+        bytes=encoder.encode(text);
+    }
+    else
+    {
+        bytes=text.toUtf8();
+    }
+    setData(std::move(bytes));
+}
+
+//--------------------------------------------------------------------------
+
+bool FileUploadItem::isEditableText() const
+{
+    if (m_editableTextCache>=0)
+    {
+        return m_editableTextCache!=0;
+    }
+
+    auto compute=[this]()
+    {
+        if (m_maxTextEditSize<=0 || isImage())
+        {
+            return false;
+        }
+
+        const auto bytes=size();
+        if (bytes<=0 || bytes>m_maxTextEditSize)
+        {
+            return false;
+        }
+
+        const auto mime=mimeType();
+        if (!mime.startsWith(QStringLiteral("text/")))
+        {
+            QMimeDatabase db;
+            const auto type=db.mimeTypeForName(mime);
+            if (!type.isValid() || !type.inherits(QStringLiteral("text/plain")))
+            {
+                return false;
+            }
+        }
+
+        bool ok=false;
+        text(&ok);
+        return ok;
+    };
+
+    m_editableTextCache=compute() ? 1 : 0;
+    return m_editableTextCache!=0;
 }
 
 //--------------------------------------------------------------------------

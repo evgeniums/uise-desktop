@@ -87,6 +87,12 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
         //! genuinely wants no exclusions can still setNonImageMimeTypes({}) explicitly.
         static QSet<QString> DefaultNonImageMimeTypes();
 
+        //! Out-of-the-box limit for offering "Edit text", see
+        //! AbstractFileUploadWidget::setMaxTextEditSize(). Editing goes through a rich text
+        //! widget that lays the whole document out, so the limit is far below what a chat may
+        //! carry; a host that wants another one sets it.
+        constexpr static const qint64 DefaultMaxTextEditSize=512*1024;
+
         explicit FileUploadWidget(QWidget* parent=nullptr);
 
         ~FileUploadWidget();
@@ -105,6 +111,8 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
 
         QImage itemImage(int index) const override;
         void setItemImage(int index, QImage image) override;
+        QString itemText(int index, bool* ok=nullptr) const override;
+        void setItemText(int index, const QString& text) override;
         void setItemFileName(int index, const QString& name) override;
 
         bool isHighQuality() const override;
@@ -121,6 +129,9 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
 
         void setNonImageMimeTypes(QSet<QString> mimeTypes) override;
         const QSet<QString>& nonImageMimeTypes() const noexcept override;
+
+        void setMaxTextEditSize(qint64 size) override;
+        qint64 maxTextEditSize() const noexcept override;
 
         FileUploadOptions options() const override;
 

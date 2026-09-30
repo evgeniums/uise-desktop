@@ -140,6 +140,9 @@ class UISE_DESKTOP_EXPORT FileUploadListItem : public QFrame
 
         void editRequested();
 
+        //! "Edit text" was chosen in the menu, offered while item().isEditableText().
+        void editTextRequested();
+
         /**
          * @brief Emitted once an inline rename is committed (Enter/the accept control).
          * @param newName The new file name.

@@ -8,6 +8,7 @@
                 "delete" : "${uise-svg-icons-1}/trash",
                 "rename" : "${uise-svg-icons-1}/pencil",
                 "editImage" : "${uise-svg-icons-1}/photo-edit",
+                "editText" : "${uise-svg-icons-1}/edit",
                 "add" : "${uise-svg-icons-1}/paperclip",
                 "file" : "${uise-svg-icons-1}/file",
                 "image" : "${uise-svg-icons-1}/photo",
