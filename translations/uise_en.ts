@@ -3292,12 +3292,18 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+394"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+269"/>
+        <location line="+164"/>
+        <source>Edit text</source>
+        <translation>Edit text</translation>
+    </message>
+    <message>
+        <location line="-6"/>
         <source>Edit image</source>
         <translation>Edit image</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+13"/>
         <source>Rename file</source>
         <translation>Rename file</translation>
     </message>
@@ -3310,7 +3316,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+272"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+273"/>
         <source>Full quality</source>
         <translation>Full quality</translation>
     </message>
@@ -3357,7 +3363,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Send</translation>
     </message>
     <message>
-        <location line="+325"/>
+        <location line="+339"/>
         <source>Send files</source>
         <translation>Send files</translation>
     </message>
@@ -3382,7 +3388,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>%1 files selected</translation>
     </message>
     <message>
-        <location line="+727"/>
+        <location line="+792"/>
         <source>Add files</source>
         <translation>Add files</translation>
     </message>
@@ -3589,7 +3595,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4801"/>
+        <location filename="../src/messageeditor.cpp" line="+4814"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3599,12 +3605,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Insert emoji</translation>
     </message>
     <message>
-        <location line="+1708"/>
+        <location line="+1723"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+2856"/>
+        <location line="+2935"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3749,7 +3755,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="-4707"/>
+        <location line="-4801"/>
         <source>Hold to record a voice message</source>
         <translation>Hold to record a voice message</translation>
     </message>
@@ -4354,7 +4360,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::TextViewer</name>
     <message>
-        <location filename="../src/textviewer.cpp" line="+196"/>
+        <location filename="../src/textviewer.cpp" line="+209"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -4365,12 +4371,12 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+0"/>
-        <location line="+338"/>
+        <location line="+623"/>
         <source>Full screen</source>
         <translation>Full screen</translation>
     </message>
     <message>
-        <location line="-132"/>
+        <location line="-162"/>
         <source>Open in system app</source>
         <translation>Open in system app</translation>
     </message>
@@ -4380,7 +4386,7 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Save as</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+121"/>
         <source>Find</source>
         <translation>Find</translation>
     </message>
@@ -4397,14 +4403,19 @@ These tips can help you create longer passwords that are easier to remember. Try
     <message>
         <location line="+7"/>
         <location line="+9"/>
-        <location line="+204"/>
+        <location line="+284"/>
         <source>Show source</source>
         <translation>Show source</translation>
     </message>
     <message>
-        <location line="-204"/>
+        <location line="-284"/>
         <source>Show rendered</source>
         <translation>Show rendered</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Edit</source>
+        <translation>Edit</translation>
     </message>
     <message>
         <location line="+18"/>
@@ -4418,7 +4429,7 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+28"/>
-        <location line="+41"/>
+        <location line="+44"/>
         <source>Close</source>
         <translation>Close</translation>
     </message>
@@ -4436,6 +4447,31 @@ These tips can help you create longer passwords that are easier to remember. Try
         <location line="+5"/>
         <source>Next match</source>
         <translation>Next match</translation>
+    </message>
+    <message>
+        <location line="+70"/>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Discard your changes?</source>
+        <translation>Discard your changes?</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Keep editing</source>
+        <translation>Keep editing</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Discard</source>
+        <translation>Discard</translation>
     </message>
 </context>
 <context>

@@ -3268,12 +3268,18 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+394"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+269"/>
+        <location line="+164"/>
+        <source>Edit text</source>
+        <translation>Изменить текст</translation>
+    </message>
+    <message>
+        <location line="-6"/>
         <source>Edit image</source>
         <translation>Изменить изображение</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+13"/>
         <source>Rename file</source>
         <translation>Переименовать файл</translation>
     </message>
@@ -3286,7 +3292,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+272"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+273"/>
         <source>Full quality</source>
         <translation>Полное качество</translation>
     </message>
@@ -3333,7 +3339,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отправить</translation>
     </message>
     <message>
-        <location line="+325"/>
+        <location line="+339"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
@@ -3358,7 +3364,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Выбрано файлов: %1</translation>
     </message>
     <message>
-        <location line="+727"/>
+        <location line="+792"/>
         <source>Add files</source>
         <translation>Добавить файлы</translation>
     </message>
@@ -3567,7 +3573,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4801"/>
+        <location filename="../src/messageeditor.cpp" line="+4814"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>
@@ -3577,12 +3583,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Вставить эмодзи</translation>
     </message>
     <message>
-        <location line="+1708"/>
+        <location line="+1723"/>
         <source>code here</source>
         <translation>код</translation>
     </message>
     <message>
-        <location line="+2856"/>
+        <location line="+2935"/>
         <source>No suggestions</source>
         <translation>Нет вариантов</translation>
     </message>
@@ -3727,7 +3733,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Очистить</translation>
     </message>
     <message>
-        <location line="-4707"/>
+        <location line="-4801"/>
         <source>Hold to record a voice message</source>
         <translation>Удерживайте, чтобы записать голосовое сообщение</translation>
     </message>
@@ -4306,7 +4312,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::TextViewer</name>
     <message>
-        <location filename="../src/textviewer.cpp" line="+196"/>
+        <location filename="../src/textviewer.cpp" line="+209"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
@@ -4317,12 +4323,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+0"/>
-        <location line="+338"/>
+        <location line="+623"/>
         <source>Full screen</source>
         <translation>Во весь экран</translation>
     </message>
     <message>
-        <location line="-132"/>
+        <location line="-162"/>
         <source>Open in system app</source>
         <translatorcomment>i18n-lint: allow-long -- the same string and wording as ChatFileItem&apos;s menu entry; &quot;system app&quot; is one fixed term across the app and no shorter correct phrasing exists.</translatorcomment>
         <translation>Открыть в системном приложении</translation>
@@ -4333,7 +4339,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Сохранить как</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+121"/>
         <source>Find</source>
         <translation>Найти</translation>
     </message>
@@ -4350,14 +4356,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+7"/>
         <location line="+9"/>
-        <location line="+204"/>
+        <location line="+284"/>
         <source>Show source</source>
         <translation>Исходный текст</translation>
     </message>
     <message>
-        <location line="-204"/>
+        <location line="-284"/>
         <source>Show rendered</source>
         <translation>Оформленный текст</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Edit</source>
+        <translation>Изменить</translation>
     </message>
     <message>
         <location line="+18"/>
@@ -4371,7 +4382,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+28"/>
-        <location line="+41"/>
+        <location line="+44"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
@@ -4389,6 +4400,31 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <location line="+5"/>
         <source>Next match</source>
         <translation>Найти далее</translation>
+    </message>
+    <message>
+        <location line="+70"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>Применить</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Discard your changes?</source>
+        <translation>Отбросить изменения?</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Keep editing</source>
+        <translation>Продолжить</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Discard</source>
+        <translation>Отбросить</translation>
     </message>
 </context>
 <context>
