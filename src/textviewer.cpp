@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <vector>
 
 #include <QFrame>
+#include <QBoxLayout>
+#include <QApplication>
 #include <QPointer>
 #include <QShortcut>
 #include <QClipboard>
@@ -44,6 +46,9 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/label.hpp>
 #include <uise/desktop/lineedit.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/messageeditor.hpp>
+#include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/floatingdialog.hpp>
 #include <uise/desktop/toast.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
@@ -179,6 +184,13 @@ class TextViewer_p
 
         void applyWrap(bool on)
         {
+            if (editing)
+            {
+                // The editor is a plain text area: its own wrap mode is all there is to switch.
+                editor->textEdit()->setLineWrapMode(on ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
+                return;
+            }
+
             // Viewer mode is NoWrap, and nothing in viewer mode negotiates a wrap width (that is
             // setWrapWidth(), which only a bubble's host calls), so the browser is an ordinary
             // QTextBrowser here and WidgetWidth wraps its prose. Code is a second switch: its
@@ -190,7 +202,8 @@ class TextViewer_p
 
         void copy()
         {
-            QGuiApplication::clipboard()->setText(text);
+            // What the user sees: while editing, that is the editor's text.
+            QGuiApplication::clipboard()->setText(q->editedText());
             if (!toast.isNull())
             {
                 toast->show(TextViewer::tr("Copied"));
@@ -221,6 +234,12 @@ class TextViewer_p
         //! every highlight and the selection.
         void setFindBarVisible(bool visible)
         {
+            // Find searches the rendered browser, which is not on screen while editing.
+            if (visible && editing)
+            {
+                return;
+            }
+
             if (visible==findBarShown)
             {
                 if (visible)
@@ -400,6 +419,255 @@ class TextViewer_p
             }
         }
 
+        //! ---- editing ----
+
+        void ensureEditor()
+        {
+            if (editor!=nullptr)
+            {
+                return;
+            }
+
+            editor=new MessageEditor(q);
+            editor->setObjectName(QStringLiteral("textViewerEditor"));
+            editor->setVisible(false);
+            editor->setExpandButtonVisible(false);
+            editor->setFinishOnEnter(false);
+            editor->setMaxLength(0);
+            editor->setPlaceHolderText(QString());
+            // A file, not a message: permanent toolbar, the editor fills the window, Tab is a
+            // tab, Enter is a line break, Ctrl/Cmd+Enter applies.
+            editor->setToolbarPinned(true);
+            editor->setLiteralTabEnabled(true);
+            rootLayout->insertWidget(rootLayout->indexOf(editBar),editor,1);
+
+            QObject::connect(editor,&AbstractMessageEditor::editingFinished,q,[this](){applyEdit();});
+            // Typing means the user did not decide to discard after all.
+            QObject::connect(editor,&AbstractMessageEditor::textChanged,q,
+                [this]()
+                {
+                    if (confirmingDiscard)
+                    {
+                        showDiscardConfirmation(false);
+                    }
+                }
+            );
+        }
+
+        //! While editing, Escape and a click outside must not close the frame and take unsaved
+        //! text with them. Restores exactly what was there.
+        void protectFrame(bool protect)
+        {
+            if (frame.isNull() || frameProtected==protect)
+            {
+                return;
+            }
+            frameProtected=protect;
+            if (protect)
+            {
+                frameShortcutBeforeEdit=frame->isShortcutEnabled();
+                frameAutoCloseBeforeEdit=frame->isAutoCloseOnOutsideClick();
+                frame->setShortcutEnabled(false);
+                frame->setAutoCloseOnOutsideClick(false);
+            }
+            else
+            {
+                frame->setShortcutEnabled(frameShortcutBeforeEdit);
+                frame->setAutoCloseOnOutsideClick(frameAutoCloseBeforeEdit);
+            }
+        }
+
+        //! Header buttons that mean something only for the rendered view.
+        void setViewChromeVisible(bool visible)
+        {
+            findButton->setVisible(visible);
+            source->setVisible(visible && mode==Mode::Markdown);
+            editButton->setVisible(visible && editable);
+            menuButton->setVisible(visible && fileActionsVisible);
+        }
+
+        QString rawEditedText() const
+        {
+            // Plaintext and Markdown modes hold the text itself; text(Plain) is the byte-faithful
+            // read of a plain document, and text(Markdown) of the other two (Wysiwyg exports).
+            const auto format=(editor->messageEditingMode()==MessageEditingMode::Plaintext)
+                                  ? TextFormat::Plain : TextFormat::Markdown;
+            return editor->text(format);
+        }
+
+        //! The editor works on LF; a file that came with CRLF goes back with it.
+        QString withLoadedLineEndings(QString result) const
+        {
+            if (crlf)
+            {
+                result.replace(QLatin1Char('\n'),QStringLiteral("\r\n"));
+            }
+            return result;
+        }
+
+        void startEditing(std::optional<MessageEditingMode> requested)
+        {
+            if (editing)
+            {
+                return;
+            }
+            ensureEditor();
+
+            const bool markdownContent=(mode==Mode::Markdown);
+            auto chosen=requested.value_or(markdownContent ? MessageEditingMode::Markdown : MessageEditingMode::Plaintext);
+            if (!markdownContent && chosen==MessageEditingMode::Wysiwyg)
+            {
+                // Re-parsing source code as markdown would rewrite it.
+                chosen=MessageEditingMode::Plaintext;
+            }
+
+            setFindBarVisible(false);
+            editing=true;
+            viewerWrap=wrap->isChecked();
+
+            editor->clear();
+            editor->toolbar()->modeMenu()->setItemVisible(static_cast<int>(MessageEditingMode::Wysiwyg),markdownContent);
+            editor->setMessageEditingMode(chosen);
+            editor->loadText(normalized(),chosen==MessageEditingMode::Plaintext ? TextFormat::Plain : TextFormat::Markdown);
+            editor->textEdit()->setProperty("monospace",!markdownContent);
+            Style::updateWidgetStyle(editor->textEdit());
+            // Measured after the load: a Wysiwyg export of untouched text is not a change.
+            baseline=rawEditedText();
+
+            browser->setVisible(false);
+            editor->setVisible(true);
+            setViewChromeVisible(false);
+            showDiscardConfirmation(false);
+            editBar->setVisible(true);
+            protectFrame(true);
+            editEscape->setEnabled(true);
+
+            // Prose wraps, source does not -- the viewer's own default for the same content.
+            wrap->setChecked(markdownContent);
+            applyWrap(markdownContent);
+
+            auto* textEdit=editor->textEdit();
+            textEdit->moveCursor(QTextCursor::Start);
+            textEdit->ensureCursorVisible();
+            editor->setFocusIn();
+        }
+
+        //! Back to the viewer, without deciding what happens to the text.
+        void endEditing()
+        {
+            editing=false;
+            confirmingDiscard=false;
+
+            editBar->setVisible(false);
+            editor->setVisible(false);
+            editor->clear();
+            browser->setVisible(true);
+            setViewChromeVisible(true);
+            editEscape->setEnabled(false);
+            protectFrame(false);
+
+            wrap->setChecked(viewerWrap);
+            applyWrap(viewerWrap);
+        }
+
+        void applyEdit()
+        {
+            if (!editing)
+            {
+                return;
+            }
+
+            const auto raw=rawEditedText();
+            const bool modified=(raw!=baseline);
+            const auto result=modified ? withLoadedLineEndings(raw) : text;
+
+            endEditing();
+            if (modified)
+            {
+                text=result;
+                findAnchor=0;
+                render();
+            }
+            emit q->editApplied(text,modified);
+        }
+
+        //! Cancel or Close. Asks first when there is something to lose.
+        void requestCancel(bool thenClose)
+        {
+            if (!editing)
+            {
+                return;
+            }
+            closeAfterDiscard=thenClose;
+
+            if (rawEditedText()==baseline)
+            {
+                discard();
+                return;
+            }
+            showDiscardConfirmation(true);
+        }
+
+        void discard()
+        {
+            const bool close=closeAfterDiscard;
+            closeAfterDiscard=false;
+
+            q->cancelEditing();
+            if (close)
+            {
+                closeHost();
+            }
+        }
+
+        void closeHost()
+        {
+            if (!frame.isNull())
+            {
+                frame->close();
+            }
+            else
+            {
+                emit q->closeRequested();
+            }
+        }
+
+        //! Escape while editing is Cancel: it asks first when there is something to lose, and while
+        //! the question is showing it answers it with "Keep editing". Only ever enabled while
+        //! editing, with the frame's own Escape shortcut off for the same time (see protectFrame()
+        //! and findEscape), so two enabled Escape shortcuts never make each other ambiguous.
+        void onEditEscape()
+        {
+            // A drop-down or dialog of the editor's own (toolbar menus, link dialog) is open on
+            // top: that Escape is theirs.
+            if (!editing || QApplication::activePopupWidget()!=nullptr)
+            {
+                return;
+            }
+
+            if (confirmingDiscard)
+            {
+                closeAfterDiscard=false;
+                showDiscardConfirmation(false);
+                editor->setFocusIn();
+                return;
+            }
+            requestCancel(false);
+        }
+
+        //! The bar's second state: the question replaces the Cancel / Apply buttons, in place, so
+        //! nothing pops up over a modal dialog and there is no Escape / focus contest with one.
+        void showDiscardConfirmation(bool show)
+        {
+            confirmingDiscard=show;
+            actionRow->setVisible(!show);
+            confirmRow->setVisible(show);
+            if (show)
+            {
+                keepEditingButton->qPushButton()->setFocus();
+            }
+        }
+
         //! (Re)fill the "..." menu from the state above. The "Always ..." row, and the separator
         //! that sets it apart, exist only while it has text: a file with no extension has nothing
         //! for it to refer to, and a per-row hide could not take the separator with it.
@@ -438,9 +706,32 @@ class TextViewer_p
         IconTextButton* findPreviousButton=nullptr;
         IconTextButton* findCloseButton=nullptr;
         QShortcut* findEscape=nullptr;
+        QShortcut* editEscape=nullptr;
         bool findBarShown=false;
         bool frameShortcutWasEnabled=true;
         int findAnchor=0;
+
+        IconTextButton* editButton=nullptr;
+        QBoxLayout* rootLayout=nullptr;
+        MessageEditor* editor=nullptr;
+        QFrame* editBar=nullptr;
+        QFrame* actionRow=nullptr;
+        QFrame* confirmRow=nullptr;
+        PushButton* cancelButton=nullptr;
+        PushButton* applyButton=nullptr;
+        PushButton* keepEditingButton=nullptr;
+        PushButton* discardButton=nullptr;
+        bool editable=false;
+        bool editing=false;
+        bool confirmingDiscard=false;
+        bool closeAfterDiscard=false;
+        bool viewerWrap=false;
+        bool crlf=false;
+        bool frameProtected=false;
+        bool frameShortcutBeforeEdit=true;
+        bool frameAutoCloseBeforeEdit=false;
+        //! rawEditedText() right after the load, what "modified" is measured against.
+        QString baseline;
 
         QPointer<DropdownMenu> menu;
         QString alwaysText;
@@ -468,6 +759,7 @@ TextViewer::TextViewer(QWidget* parent)
     setObjectName(QStringLiteral("textViewerFrame"));
 
     auto l=Layout::vertical(this);
+    pimpl->rootLayout=l;
 
     // --- header ---
 
@@ -535,6 +827,12 @@ TextViewer::TextViewer(QWidget* parent)
         }
     );
 
+    // Only shown once setEditable(true), see startEditing().
+    pimpl->editButton=pimpl->makeButton(QStringLiteral("edit"),QStringLiteral("editButton"),tr("Edit"),pimpl->header);
+    pimpl->editButton->setVisible(false);
+    hl->addWidget(pimpl->editButton);
+    connect(pimpl->editButton,&IconTextButton::clicked,this,[this](){startEditing();});
+
     // Not checkable: the frame's own state is the truth, and a checked look kept in step with it
     // would only be a second copy of it to get out of sync -- Escape or the window manager can end
     // full screen without going through this button. The tooltip carries the state instead.
@@ -590,10 +888,13 @@ TextViewer::TextViewer(QWidget* parent)
     connect(pimpl->closeButton,&IconTextButton::clicked,this,
         [this]()
         {
-            if (!pimpl->frame.isNull())
+            if (pimpl->editing)
             {
-                pimpl->frame->close();
+                // Close is Cancel that also leaves: it asks first if there are edits to lose.
+                pimpl->requestCancel(true);
+                return;
             }
+            pimpl->closeHost();
         }
     );
 
@@ -674,6 +975,67 @@ TextViewer::TextViewer(QWidget* parent)
             }
         }
     );
+
+    // --- edit bar ---
+
+    // Hidden until startEditing(). Two rows, one visible at a time: Cancel / Apply, and the
+    // question that replaces them when Cancel would throw edits away.
+    pimpl->editBar=new QFrame(this);
+    pimpl->editBar->setObjectName(QStringLiteral("textViewerEditBar"));
+    pimpl->editBar->setVisible(false);
+    l->addWidget(pimpl->editBar);
+    auto bl=Layout::vertical(pimpl->editBar);
+
+    pimpl->actionRow=new QFrame(pimpl->editBar);
+    pimpl->actionRow->setObjectName(QStringLiteral("actionRow"));
+    bl->addWidget(pimpl->actionRow);
+    auto al=Layout::horizontal(pimpl->actionRow);
+    al->addStretch(1);
+
+    pimpl->cancelButton=new PushButton(tr("Cancel"),pimpl->actionRow);
+    pimpl->cancelButton->setObjectName(QStringLiteral("cancelButton"));
+    al->addWidget(pimpl->cancelButton);
+    connect(pimpl->cancelButton,&PushButton::clicked,this,[this](){pimpl->requestCancel(false);});
+
+    pimpl->applyButton=new PushButton(tr("Apply"),pimpl->actionRow);
+    pimpl->applyButton->setObjectName(QStringLiteral("applyButton"));
+    al->addWidget(pimpl->applyButton);
+    connect(pimpl->applyButton,&PushButton::clicked,this,[this](){pimpl->applyEdit();});
+
+    pimpl->confirmRow=new QFrame(pimpl->editBar);
+    pimpl->confirmRow->setObjectName(QStringLiteral("confirmRow"));
+    pimpl->confirmRow->setVisible(false);
+    bl->addWidget(pimpl->confirmRow);
+    auto cl=Layout::horizontal(pimpl->confirmRow);
+
+    auto* confirmLabel=new Label(tr("Discard your changes?"),pimpl->confirmRow);
+    confirmLabel->setObjectName(QStringLiteral("confirmLabel"));
+    cl->addWidget(confirmLabel,1);
+
+    pimpl->keepEditingButton=new PushButton(tr("Keep editing"),pimpl->confirmRow);
+    pimpl->keepEditingButton->setObjectName(QStringLiteral("keepEditingButton"));
+    cl->addWidget(pimpl->keepEditingButton);
+    connect(pimpl->keepEditingButton,&PushButton::clicked,this,
+        [this]()
+        {
+            pimpl->closeAfterDiscard=false;
+            pimpl->showDiscardConfirmation(false);
+            pimpl->editor->setFocusIn();
+        }
+    );
+
+    pimpl->discardButton=new PushButton(tr("Discard"),pimpl->confirmRow);
+    pimpl->discardButton->setObjectName(QStringLiteral("discardButton"));
+    cl->addWidget(pimpl->discardButton);
+    connect(pimpl->discardButton,&PushButton::clicked,this,[this](){pimpl->discard();});
+
+    // Escape = Cancel while editing, see TextViewer_p::onEditEscape(). Created disabled; both
+    // signals go to the same handler, as findEscape's do.
+    pimpl->editEscape=new QShortcut(Qt::Key_Escape,this);
+    pimpl->editEscape->setContext(Qt::WindowShortcut);
+    pimpl->editEscape->setEnabled(false);
+    connect(pimpl->editEscape,&QShortcut::activated,this,[this](){pimpl->onEditEscape();});
+    connect(pimpl->editEscape,&QShortcut::activatedAmbiguously,this,[this](){pimpl->onEditEscape();});
 }
 
 //--------------------------------------------------------------------------
@@ -710,7 +1072,12 @@ TextViewer::~TextViewer()
 
 void TextViewer::setCode(const QString& text, const QString& language)
 {
+    if (pimpl->editing)
+    {
+        cancelEditing();
+    }
     pimpl->text=text;
+    pimpl->crlf=text.contains(QStringLiteral("\r\n"));
     pimpl->findAnchor=0;
     pimpl->language=language;
     pimpl->mode=language.isEmpty() ? TextViewer_p::Mode::Plain : TextViewer_p::Mode::Code;
@@ -726,7 +1093,12 @@ void TextViewer::setCode(const QString& text, const QString& language)
 
 void TextViewer::setMarkdown(const QString& text)
 {
+    if (pimpl->editing)
+    {
+        cancelEditing();
+    }
     pimpl->text=text;
+    pimpl->crlf=text.contains(QStringLiteral("\r\n"));
     pimpl->findAnchor=0;
     pimpl->language.clear();
     pimpl->mode=TextViewer_p::Mode::Markdown;
@@ -750,6 +1122,72 @@ void TextViewer::setPlainText(const QString& text)
 const QString& TextViewer::text() const noexcept
 {
     return pimpl->text;
+}
+
+//--------------------------------------------------------------------------
+
+void TextViewer::setEditable(bool editable)
+{
+    pimpl->editable=editable;
+    pimpl->editButton->setVisible(editable && !pimpl->editing);
+}
+
+//--------------------------------------------------------------------------
+
+bool TextViewer::isEditable() const noexcept
+{
+    return pimpl->editable;
+}
+
+//--------------------------------------------------------------------------
+
+void TextViewer::startEditing(std::optional<MessageEditingMode> mode)
+{
+    pimpl->startEditing(mode);
+}
+
+//--------------------------------------------------------------------------
+
+bool TextViewer::isEditing() const noexcept
+{
+    return pimpl->editing;
+}
+
+//--------------------------------------------------------------------------
+
+MessageEditingMode TextViewer::editingMode() const
+{
+    return pimpl->editor!=nullptr ? pimpl->editor->messageEditingMode() : MessageEditingMode::Plaintext;
+}
+
+//--------------------------------------------------------------------------
+
+QString TextViewer::editedText() const
+{
+    if (!pimpl->editing)
+    {
+        return pimpl->text;
+    }
+    return pimpl->withLoadedLineEndings(pimpl->rawEditedText());
+}
+
+//--------------------------------------------------------------------------
+
+bool TextViewer::isEditModified() const
+{
+    return pimpl->editing && pimpl->rawEditedText()!=pimpl->baseline;
+}
+
+//--------------------------------------------------------------------------
+
+void TextViewer::cancelEditing()
+{
+    if (!pimpl->editing)
+    {
+        return;
+    }
+    pimpl->endEditing();
+    emit editCancelled();
 }
 
 //--------------------------------------------------------------------------
@@ -785,7 +1223,7 @@ void TextViewer::setSubtitle(const QString& subtitle)
 void TextViewer::setFileActionsVisible(bool visible)
 {
     pimpl->fileActionsVisible=visible;
-    pimpl->menuButton->setVisible(visible);
+    pimpl->menuButton->setVisible(visible && !pimpl->editing);
 }
 
 //--------------------------------------------------------------------------
@@ -884,6 +1322,10 @@ FloatingDialogFrame* TextViewer::open(TextViewer* viewer, QWidget* anchor, int c
     frame->setWindowTitle(viewer->pimpl->titleText);
     viewer->pimpl->frame=frame;
     viewer->pimpl->updateFullScreenToolTip();
+    if (viewer->pimpl->editing)
+    {
+        viewer->pimpl->protectFrame(true);
+    }
 
     connect(frame,&FloatingDialogFrame::closed,frame,&QObject::deleteLater);
 

@@ -134,6 +134,7 @@ padding: 0px 8px 0px 0px;
 #textViewerHeader #copyButton,
 #textViewerHeader #wrapButton,
 #textViewerHeader #sourceButton,
+#textViewerHeader #editButton,
 #textViewerHeader #fullScreenButton,
 #textViewerHeader #menuButton,
 #textViewerHeader #closeButton {
@@ -147,6 +148,7 @@ margin-left: 2px;
 #textViewerHeader #copyButton uise--RippleOverlay,
 #textViewerHeader #wrapButton uise--RippleOverlay,
 #textViewerHeader #sourceButton uise--RippleOverlay,
+#textViewerHeader #editButton uise--RippleOverlay,
 #textViewerHeader #fullScreenButton uise--RippleOverlay,
 #textViewerHeader #menuButton uise--RippleOverlay,
 #textViewerHeader #closeButton uise--RippleOverlay {
@@ -196,6 +198,35 @@ padding: 0px;
    padding is the gap. */
 #textViewerFrame uise--ChatMessageTextBrowser {
 margin: 0px 8px 8px 8px;
+}
+
+/* TextViewer editing mode (startEditing()): the MessageEditor takes the browser's place and gets
+   the same side inset, with its own toolbar on top. Code is edited in the code slab's family. */
+#textViewerFrame #textViewerEditor {
+margin: 0px 8px 0px 8px;
+}
+
+#textViewerFrame #textViewerEditor QTextEdit[monospace="true"] {
+font-family: "Menlo","Consolas","monospace";
+}
+
+/* The bottom bar: Cancel / Apply, or the discard question in their place. The PushButton wrappers
+   stay borderless (the inner QPushButton paints the frame) and carry only the spacing; colours and
+   sizes of the inner buttons are per theme. */
+#textViewerEditBar {
+padding: 8px 8px 8px 12px;
+}
+
+#textViewerEditBar #confirmLabel {
+padding: 0px 8px 0px 0px;
+}
+
+#textViewerEditBar #cancelButton,
+#textViewerEditBar #applyButton,
+#textViewerEditBar #keepEditingButton,
+#textViewerEditBar #discardButton {
+border: none;
+margin: 0px 0px 0px 12px;
 }
 
 /* The uise--PushButton wrappers must stay borderless -- the inner QPushButton above already

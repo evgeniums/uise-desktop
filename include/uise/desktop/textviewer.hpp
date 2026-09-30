@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_TEXTVIEWER_HPP
 
 #include <memory>
+#include <optional>
 
 #include <QFrame>
 #include <QString>
@@ -35,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QEvent>
 
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/messageeditingmode.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -69,6 +71,13 @@ class TextViewer_p;
  * Presentational and signal-only, like ChatImageViewerControls: nothing here knows about files,
  * settings or the clipboard-of-record. The "..." menu's actions are emitted as *Requested()
  * signals for the host to implement.
+ *
+ * Editing: startEditing() swaps the content for a MessageEditor with its formatting toolbar
+ * permanently shown, and Cancel / Apply buttons appear at the bottom. Apply hands the new text
+ * to the host through editApplied() and re-renders the viewer with it; nothing here writes a
+ * file. Cancel with unsaved changes asks first, in place of the buttons ("Discard your
+ * changes?"), and so does Close. While editing, Escape is Cancel (so it asks too) and a click
+ * outside the frame no longer closes it, so edits are not lost by a stray key or click.
  *
  * Meant to be shown through open(), which puts it into a FloatingDialogFrame with the header as
  * the drag handle. A TextViewer that has not been opened that way still works as an embedded
@@ -109,8 +118,52 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
         //! Show `text` verbatim in a monospace slab, no highlighting. Same as setCode(text,{}).
         void setPlainText(const QString& text);
 
-        //! The text last passed to setCode()/setMarkdown()/setPlainText(), as given.
+        //! The text last passed to setCode()/setMarkdown()/setPlainText(), as given. After an
+        //! Apply this is the applied text.
         const QString& text() const noexcept;
+
+        /**
+         * @brief Show an "Edit" button in the header that enters editing mode. Default false.
+         *
+         * A host that calls startEditing() itself (an edit dialog) has no use for the button.
+         */
+        void setEditable(bool editable);
+
+        bool isEditable() const noexcept;
+
+        /**
+         * @brief Replace the content by an editor on text() and show Cancel / Apply.
+         * @param mode The editor's starting mode. Default: Markdown (source) for markdown
+         *  content, Plaintext for code and plain text. Content that is not markdown is never
+         *  started in Wysiwyg, and the mode switcher does not offer it, since re-parsing source
+         *  code as markdown would rewrite it. Markdown content may use all three.
+         *
+         * Plaintext and Markdown modes keep the text byte for byte (Tab is a real tab); Wysiwyg
+         * exports through markdown, which normalises the source. Does nothing while already
+         * editing.
+         */
+        void startEditing(std::optional<MessageEditingMode> mode={});
+
+        bool isEditing() const noexcept;
+
+        //! The editor's current mode. Only meaningful while isEditing().
+        MessageEditingMode editingMode() const;
+
+        /**
+         * @brief The edited text. While not editing, the same as text().
+         *
+         * Line endings are the loaded text's: CRLF is put back when text() had it, since the
+         * editor works on LF only.
+         */
+        QString editedText() const;
+
+        //! Whether the editor now differs from what it was loaded with (measured after the load,
+        //! so a Wysiwyg re-export of untouched text does not count).
+        bool isEditModified() const;
+
+        //! Leave editing mode without the confirmation; editCancelled() is emitted. For a host
+        //! that decided to discard.
+        void cancelEditing();
 
         /**
          * @brief The browser doing the rendering, for a host that wants to tune it (code slab
@@ -211,6 +264,29 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
          * all, is the host's policy, not this library's: nothing is opened here.
          */
         void linkActivated(const QUrl& url);
+
+        /**
+         * @brief Apply was pressed (or Ctrl/Cmd+Enter in the editor). Editing mode has ended.
+         * @param text The text to use: the editor's, with the loaded text's line endings.
+         *  Exactly the previous text() when `modified` is false.
+         * @param modified Whether it differs from what the editor was loaded with.
+         *
+         * text() is already `text` when this is emitted, and the viewer shows it.
+         */
+        void editApplied(const QString& text, bool modified);
+
+        //! Editing mode ended without applying (Cancel, or Close, after the discard was
+        //! confirmed if there was anything to lose).
+        void editCancelled();
+
+        /**
+         * @brief The Close button was used and the viewer is not in a frame of its own to close
+         *  (it is embedded, e.g. in a dialog). The host closes whatever hosts it.
+         *
+         * While editing, emitted only after the changes were discarded (or there were none), and
+         * after editCancelled().
+         */
+        void closeRequested();
 
     protected:
 

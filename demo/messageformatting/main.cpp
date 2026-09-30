@@ -65,6 +65,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/syntaxlanguage.hpp>
 #include <uise/desktop/messageeditor.hpp>
 #include <uise/desktop/messageeditortoolbar.hpp>
+#include <uise/desktop/textviewer.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/hyperlinkdialog.hpp>
 
@@ -1218,6 +1219,78 @@ int main(int argc, char *argv[])
     auto* editorStackedLabel=new QLabel(QStringLiteral("side widgets: row"));
     editorStatusLayout->addWidget(editorStackedLabel);
     editorStatusLayout->addStretch(1);
+
+    // Document editing (setToolbarPinned() + setLiteralTabEnabled()): the editor fills a window,
+    // the toolbar is permanent, Tab is a real tab, Enter is a line break and Ctrl/Cmd+Enter
+    // reports editingFinished(). The formatting buttons need the mode switcher's Wysiwyg.
+    auto* documentEditorButton=new QPushButton(QStringLiteral("Document editor..."));
+    editorStatusLayout->addWidget(documentEditorButton);
+    QObject::connect(documentEditorButton,&QPushButton::clicked,central,
+        [central]()
+        {
+            auto* dlg=new QDialog(central);
+            dlg->setAttribute(Qt::WA_DeleteOnClose);
+            dlg->setWindowTitle(QStringLiteral("Document editor"));
+            dlg->resize(900,600);
+            auto* dl=Layout::vertical(dlg);
+
+            auto* editor=new MessageEditor(dlg);
+            editor->setToolbarPinned(true);
+            editor->setLiteralTabEnabled(true);
+            editor->setMessageEditingMode(MessageEditingMode::Plaintext);
+            editor->setFinishOnEnter(false);
+            editor->loadText(QStringLiteral("int main()\n{\n\treturn 0;\n}\n"),TextFormat::Plain);
+            dl->addWidget(editor,1);
+
+            auto* status=new QLabel(QStringLiteral("Ctrl/Cmd+Enter applies"),dlg);
+            dl->addWidget(status);
+            QObject::connect(editor,&AbstractMessageEditor::editingFinished,status,
+                [editor,status]()
+                {
+                    status->setText(QString("applied: %1 characters, %2 tabs")
+                                        .arg(editor->text(TextFormat::Plain).size())
+                                        .arg(editor->text(TextFormat::Plain).count(QLatin1Char('\t'))));
+                }
+            );
+            dlg->show();
+        }
+    );
+
+    // TextViewer editing mode (Stage 2 of the simple text editor): a code sample and a markdown
+    // sample (with CRLF line endings) in a viewer with the Edit button on. The result of
+    // Apply / Cancel is reported in the mode label.
+    auto openTextViewer=[central,editorModeLabel](bool markdown)
+    {
+        auto* viewer=new TextViewer();
+        viewer->setEditable(true);
+        if (markdown)
+        {
+            viewer->setTitle(QStringLiteral("notes.md"));
+            viewer->setMarkdown(QStringLiteral("# Notes\r\n\r\nSome *emphasis* and a [link](https://example.com).\r\n\r\n- one\r\n- two\r\n"));
+        }
+        else
+        {
+            viewer->setTitle(QStringLiteral("main.cpp"));
+            viewer->setCode(QStringLiteral("int main()\n{\n\treturn 0;\n}\n"),QStringLiteral("cpp"));
+        }
+        QObject::connect(viewer,&TextViewer::editApplied,viewer,
+            [editorModeLabel](const QString& text, bool modified)
+            {
+                editorModeLabel->setText(QString("applied: modified=%1, %2 chars, %3 CR")
+                                             .arg(modified).arg(text.size()).arg(text.count(QLatin1Char('\r'))));
+            }
+        );
+        QObject::connect(viewer,&TextViewer::editCancelled,viewer,
+            [editorModeLabel](){editorModeLabel->setText(QStringLiteral("edit cancelled"));}
+        );
+        TextViewer::open(viewer,central,600);
+    };
+    auto* codeViewerButton=new QPushButton(QStringLiteral("View code (editable)..."));
+    editorStatusLayout->addWidget(codeViewerButton);
+    QObject::connect(codeViewerButton,&QPushButton::clicked,central,[openTextViewer](){openTextViewer(false);});
+    auto* markdownViewerButton=new QPushButton(QStringLiteral("View markdown (editable)..."));
+    editorStatusLayout->addWidget(markdownViewerButton);
+    QObject::connect(markdownViewerButton,&QPushButton::clicked,central,[openTextViewer](){openTextViewer(true);});
 
     // task-spellcheck.md: "Load dictionary" -- flips DemoSpellChecker::isReady() and emits
     // dictionaryChanged(), which is what actually makes the "wrold"/"teh" squiggles above appear

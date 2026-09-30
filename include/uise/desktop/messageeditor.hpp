@@ -639,8 +639,25 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! picker) can apply an identical rule to a Return pressed while IT has focus.
         bool isFinishKey(Qt::KeyboardModifiers modifiers) const noexcept
         {
-            const auto ctrlOrShift=static_cast<bool>(modifiers & (Qt::ControlModifier | Qt::ShiftModifier));
+            // A document editor has no "send" gesture a stray Shift can trigger: only Ctrl (Cmd on
+            // macOS) finishes, and Shift+Enter is an ordinary line break again.
+            const auto mask=m_finishKeyRequiresControl ? Qt::ControlModifier : (Qt::ControlModifier | Qt::ShiftModifier);
+            const auto ctrlOrShift=static_cast<bool>(modifiers & mask);
             return m_newLineOnEnter ? ctrlOrShift : !ctrlOrShift;
+        }
+
+        //! See MessageEditor::setToolbarPinned(), which is the only caller. Default false.
+        void setFinishKeyRequiresControl(bool enable) noexcept
+        {
+            m_finishKeyRequiresControl=enable;
+        }
+
+        //! Off makes mentionQueryAtCursor() report nothing, so no "@word" is ever a mention query:
+        //! no mentionQueryChanged(), and Tab after one is an ordinary Tab. Default true. Turned
+        //! off by MessageEditor::setToolbarPinned() -- "@Override" in a source file is not a name.
+        void setMentionDetectionEnabled(bool enable) noexcept
+        {
+            m_mentionDetection=enable;
         }
 
         /**
@@ -887,6 +904,8 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
 
         bool m_autoResize;
         bool m_newLineOnEnter;
+        bool m_finishKeyRequiresControl=false;
+        bool m_mentionDetection=true;
         bool m_expanded=false;
         int m_maxHeight=DefaultMaxHeight;
         int m_maxHeightPercent=0;
@@ -1122,6 +1141,39 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          */
         void setParagraphIndentSpaces(int count);
         int paragraphIndentSpaces() const;
+
+        /**
+         * @brief Make Tab / Shift+Tab insert and remove a real tab character, in Plaintext and
+         *  Markdown modes. Default false.
+         *
+         * For a host that edits FILES rather than messages: the default indent gesture inserts
+         * paragraphIndentSpaces() no-break spaces (see applyIndentStep() for why), which is
+         * exactly what must not end up in source code. With this on, one Tab is one '\t' at the
+         * caret, or at the start of every selected line in Plaintext mode; Shift+Tab removes a
+         * '\t' the same way. A list line and a selection in Markdown mode keep their markdown
+         * meaning, and table-cell navigation, mention completion and Wysiwyg are unaffected.
+         */
+        void setLiteralTabEnabled(bool enable);
+        bool isLiteralTabEnabled() const noexcept;
+
+        /**
+         * @brief Show the formatting toolbar permanently and let the editor fill its parent.
+         *  Default false.
+         *
+         * The document-editor counterpart of setExpanded(): the toolbar is visible from now on
+         * with its Close button hidden, the expand button is hidden, and the text area takes
+         * whatever height it is given (Expanding policy, its own scrollbar) instead of tracking
+         * its content or being pinned at effectiveMaxHeight(). Enter always inserts a line break
+         * and only Ctrl/Cmd+Enter finishes editing, so finishEditing() / editingFinished() is the
+         * host's "apply" gesture. The side-widget rearrangement that runs on every keystroke is
+         * skipped, which keeps typing cheap in a large document. "@word" is no longer a mention
+         * query, so Tab after one is an ordinary Tab.
+         *
+         * setExpanded() is ignored while pinned. Give the editor a stretch factor in the host's
+         * layout; it has no useful sizeHint of its own.
+         */
+        void setToolbarPinned(bool pinned);
+        bool isToolbarPinned() const noexcept;
 
         /**
          * @brief Pixels one blockquote level indents by.

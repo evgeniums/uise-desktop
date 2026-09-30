@@ -17,6 +17,7 @@
                 "copy" : "${uise-svg-icons-1}/copy",
                 "wrap" : "${uise-svg-icons-1}/text-wrap",
                 "source" : "${uise-svg-icons-1}/code",
+                "edit" : "${uise-svg-icons-1}/pencil",
                 "fullScreen" : "${uise-svg-icons-1}/maximize",
                 "menu" : "${uise-svg-icons-1}/dots",
                 "close" : "${uise-svg-icons-1}/x",

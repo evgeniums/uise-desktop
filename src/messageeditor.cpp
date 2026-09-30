@@ -3810,6 +3810,11 @@ EnhancedTextEdit::MentionQuery EnhancedTextEdit::mentionQueryAtCursor() const
 {
     MentionQuery query;
 
+    if (!m_mentionDetection)
+    {
+        return query;
+    }
+
     const auto cursor=textCursor();
     if (cursor.hasSelection())
     {
@@ -4693,6 +4698,14 @@ class MessageEditor_p
 
         //! See MessageEditor::setParagraphIndentSpaces().
         int paragraphIndentSpaces=MessageEditor::DefaultParagraphIndentSpaces;
+
+        //! See MessageEditor::setLiteralTabEnabled().
+        bool literalTab=false;
+
+        //! See MessageEditor::setToolbarPinned(). The editor's own vertical policy from before it
+        //! was pinned, put back on unpinning.
+        bool toolbarPinned=false;
+        QSizePolicy::Policy verticalPolicyBeforePin=QSizePolicy::Preferred;
 
         //! See MessageEditor::setBlockquoteIndent().
         qreal blockquoteIndent=MessageEditor::DefaultBlockquoteIndent;
@@ -5849,6 +5862,13 @@ int MessageEditor::textLineCount() const
 
 void MessageEditor::updateArrangementForContent()
 {
+    // A pinned editor fills its parent and has no side widgets to rearrange; skipping also keeps
+    // the per-keystroke activateUpward() that a rearrangement ends in out of a large document.
+    if (pimpl->toolbarPinned)
+    {
+        return;
+    }
+
     // Expanded means a tall text area by definition -- it is pinned at effectiveMaxHeight()
     // whatever the content -- so side widgets belong underneath it for exactly the reason
     // multi-line content moves them there. Without this an expanded but EMPTY editor would strand
@@ -6084,7 +6104,8 @@ void MessageEditor::setupReturnPressed()
     // is expanded regardless of the host's setting -- see that method's own doc comment. Re-run
     // from updateExpanded() as well as from updateFinishOnEnter(), since either input can change
     // the answer.
-    pimpl->editor->setNewLineOnEnter(!effectiveFinishOnEnter());
+    // A pinned editor is a document, not a message: Enter is never "send".
+    pimpl->editor->setNewLineOnEnter(pimpl->toolbarPinned || !effectiveFinishOnEnter());
 }
 
 //--------------------------------------------------------------------------
@@ -6151,6 +6172,13 @@ bool MessageEditor::hasVisibleBlockFormatting() const
 
 void MessageEditor::updateExpanded()
 {
+    // The toolbar of a pinned editor is permanent and its height is not the composer's; expanding
+    // would pin the text area to a Fixed height. See setToolbarPinned().
+    if (pimpl->toolbarPinned)
+    {
+        return;
+    }
+
     pimpl->editor->setExpandedEnabled(isExpanded());
     pimpl->toolbar->setVisible(isExpanded());
 
@@ -6919,7 +6947,8 @@ void stepBlockquoteLevel(const std::vector<QTextBlock>& blocks, int delta, qreal
 //! Add or remove `count` no-break spaces AT THE CARET, which is where a Tab with nothing selected
 //! belongs: Tab is a "widen the gap here" gesture, not only a "shift this line right" one, so
 //! mid-line it has to act mid-line. The caret is left after the inserted spaces, ready to type.
-void stepNoBreakSpacesAtCursor(QTextEdit* editor, int delta, int count)
+//! `fill` is U+00A0 for the paragraph indent, or a tab for MessageEditor::setLiteralTabEnabled().
+void stepNoBreakSpacesAtCursor(QTextEdit* editor, int delta, int count, QChar fill=QChar(NoBreakSpace))
 {
     if (count<=0)
     {
@@ -6931,7 +6960,7 @@ void stepNoBreakSpacesAtCursor(QTextEdit* editor, int delta, int count)
 
     if (delta>0)
     {
-        cursor.insertText(QString(count*delta,QChar(NoBreakSpace)));
+        cursor.insertText(QString(count*delta,fill));
     }
     else
     {
@@ -6942,7 +6971,7 @@ void stepNoBreakSpacesAtCursor(QTextEdit* editor, int delta, int count)
         const auto text=block.text();
 
         int available=0;
-        while (available<offset && text.at(offset-1-available)==QChar(NoBreakSpace))
+        while (available<offset && text.at(offset-1-available)==fill)
         {
             ++available;
         }
@@ -6967,7 +6996,7 @@ void stepNoBreakSpacesAtCursor(QTextEdit* editor, int delta, int count)
 //! Only reached for a SELECTION in Plaintext mode, which is the one case with no blockquote to
 //! fall back on: indenting a selected run of lines has to happen here or not at all. Line starts
 //! rather than the caret, because that is a block indent, not a gap in the middle of a sentence.
-void stepLineStartNoBreakSpaces(const std::vector<QTextBlock>& blocks, int delta, int count)
+void stepLineStartNoBreakSpaces(const std::vector<QTextBlock>& blocks, int delta, int count, QChar fill=QChar(NoBreakSpace))
 {
     if (count<=0)
     {
@@ -6986,13 +7015,13 @@ void stepLineStartNoBreakSpaces(const std::vector<QTextBlock>& blocks, int delta
 
         if (delta>0)
         {
-            cursor.insertText(QString(count*delta,QChar(NoBreakSpace)));
+            cursor.insertText(QString(count*delta,fill));
         }
         else
         {
             const auto text=block.text();
             int leading=0;
-            while (leading<text.size() && text.at(leading)==QChar(NoBreakSpace))
+            while (leading<text.size() && text.at(leading)==fill)
             {
                 ++leading;
             }
@@ -7162,16 +7191,21 @@ void MessageEditor::applySourceIndentStep(int delta, bool markdownSource)
         }
     }
 
+    // setLiteralTabEnabled(): the indent is a real tab, one per step, for a host editing files
+    // where the U+00A0 would be corrupting the content.
+    const QChar fill=pimpl->literalTab ? QChar(u'\t') : QChar(NoBreakSpace);
+    const auto count=pimpl->literalTab ? 1 : paragraphIndentSpaces();
+
     // Plaintext with a selection is the only case that indents whole lines: every other route
     // out of here has a caret and no selection, and Tab there means "widen the gap I am standing
     // in".
     if (cursor.hasSelection())
     {
-        stepLineStartNoBreakSpaces(blocks,delta,paragraphIndentSpaces());
+        stepLineStartNoBreakSpaces(blocks,delta,count,fill);
         return;
     }
 
-    stepNoBreakSpacesAtCursor(pimpl->editor,delta,paragraphIndentSpaces());
+    stepNoBreakSpacesAtCursor(pimpl->editor,delta,count,fill);
 }
 
 //--------------------------------------------------------------------------
@@ -7242,6 +7276,79 @@ void MessageEditor::setBlockquoteIndent(qreal indent)
 qreal MessageEditor::blockquoteIndent() const
 {
     return pimpl->blockquoteIndent;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setToolbarPinned(bool pinned)
+{
+    if (pimpl->toolbarPinned==pinned)
+    {
+        return;
+    }
+    pimpl->toolbarPinned=pinned;
+
+    if (pinned)
+    {
+        // Not setExpandedEnabled(): that pins the height. What a document wants is a text area
+        // that takes whatever height it is given and scrolls its own content.
+        pimpl->editor->setExpandedEnabled(false);
+        pimpl->editor->setAutoResizingEnabled(false);
+        auto policy=pimpl->editor->sizePolicy();
+        policy.setVerticalPolicy(QSizePolicy::Expanding);
+        pimpl->editor->setSizePolicy(policy);
+        pimpl->editor->setFinishKeyRequiresControl(true);
+        pimpl->editor->setMentionDetectionEnabled(false);
+
+        auto policyThis=sizePolicy();
+        pimpl->verticalPolicyBeforePin=policyThis.verticalPolicy();
+        policyThis.setVerticalPolicy(QSizePolicy::Expanding);
+        setSizePolicy(policyThis);
+
+        pimpl->expandButton->setVisible(false);
+        pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Close,false);
+        pimpl->toolbar->setMode(messageEditingMode());
+        pimpl->toolbar->setFormattingEnabled(messageEditingMode()==MessageEditingMode::Wysiwyg);
+        pimpl->toolbar->setButtonEnabled(MessageEditorToolbarButton::Link,messageEditingMode()!=MessageEditingMode::Plaintext);
+        pimpl->toolbar->setVisible(true);
+        syncToolbarState();
+    }
+    else
+    {
+        pimpl->editor->setFinishKeyRequiresControl(false);
+        pimpl->editor->setMentionDetectionEnabled(true);
+        auto policyThis=sizePolicy();
+        policyThis.setVerticalPolicy(pimpl->verticalPolicyBeforePin);
+        setSizePolicy(policyThis);
+        pimpl->toolbar->setVisible(isExpanded());
+        pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Close,isExpandButtonVisible());
+        pimpl->expandButton->setVisible(isExpandButtonVisible());
+        pimpl->editor->setExpandedEnabled(isExpanded());
+    }
+
+    setupReturnPressed();
+    Layout::activateUpward(this);
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isToolbarPinned() const noexcept
+{
+    return pimpl->toolbarPinned;
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::setLiteralTabEnabled(bool enable)
+{
+    pimpl->literalTab=enable;
+}
+
+//--------------------------------------------------------------------------
+
+bool MessageEditor::isLiteralTabEnabled() const noexcept
+{
+    return pimpl->literalTab;
 }
 
 //--------------------------------------------------------------------------

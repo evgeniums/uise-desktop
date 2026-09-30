@@ -278,10 +278,55 @@ color: #ff6677;
 color: #777777;
 }
 
+/* Editing mode's bottom bar -- see chat.qss. Apply and Keep editing are the affirmative buttons and
+   take the accent fill the table viewer's Copy uses; Cancel and Discard take the outlined
+   treatment of its dismissive ones. */
+#textViewerEditBar {
+border-top: 1px solid #EEEEEE;
+}
+
+#textViewerEditBar #confirmLabel {
+color: #555555;
+}
+
+#textViewerEditBar #applyButton QPushButton,
+#textViewerEditBar #keepEditingButton QPushButton {
+background-color: #218DAE;
+color: #EEEEEE;
+border: 1px solid #218DAE;
+}
+#textViewerEditBar #applyButton QPushButton:hover,
+#textViewerEditBar #keepEditingButton QPushButton:hover {
+background-color: #0099b8;
+color: #FFFFFF;
+border: 1px solid #0099b8;
+}
+
+#textViewerEditBar #cancelButton QPushButton,
+#textViewerEditBar #discardButton QPushButton {
+color: #555555;
+border: 1px solid #999999;
+background-color: transparent;
+}
+#textViewerEditBar #cancelButton QPushButton:hover,
+#textViewerEditBar #discardButton QPushButton:hover {
+color: #444444;
+border: 1px solid #444444;
+}
+
+#textViewerEditBar #cancelButton QPushButton,
+#textViewerEditBar #applyButton QPushButton,
+#textViewerEditBar #keepEditingButton QPushButton,
+#textViewerEditBar #discardButton QPushButton {
+min-width: 80px;
+padding: 3px 12px;
+}
+
 #textViewerHeader #findButton:hover,
 #textViewerHeader #copyButton:hover,
 #textViewerHeader #wrapButton:hover,
 #textViewerHeader #sourceButton:hover,
+#textViewerHeader #editButton:hover,
 #textViewerHeader #fullScreenButton:hover,
 #textViewerHeader #menuButton:hover,
 #textViewerHeader #closeButton:hover,
