@@ -359,6 +359,10 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
 {
     Q_OBJECT
 
+    //! Radius in pixels of the right-bottom circle (the online badge); 0, the default, sizes the circle
+    //! as CornerImageSizeRatio of the avatar's width. Settable from QSS: `qproperty-rightBottomCircleRadius: 6;`
+    Q_PROPERTY(int rightBottomCircleRadius READ rightBottomCircleRadius WRITE setRightBottomCircleRadius)
+
     public:
 
         constexpr static const double DefaultFontSizeRation=0.37;
@@ -442,6 +446,12 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         void setRightBottomCircleRadius(int r)
         {
             m_rightBottomCircleRadius=r;
+            update();
+        }
+
+        int rightBottomCircleRadius() const noexcept
+        {
+            return m_rightBottomCircleRadius;
         }
 
         int rightBottomCircleDiameter() const
