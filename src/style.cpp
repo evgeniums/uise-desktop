@@ -100,6 +100,7 @@ void Style::reloadStyleSheet()
     m_loadedCss.clear();
     m_iconThemes.clear();
     m_syntaxThemes.clear();
+    m_paletteThemes.clear();
 
     // check dark theme
     auto darkTheme=false;
@@ -227,10 +228,34 @@ void Style::reloadStyleSheet()
                     // SvgIconTheme::loadFromJson(), which happily reads "theme" then fails on the
                     // mandatory "contexts" array and logs a spurious warning every reload.
                     auto sniffDoc=QJsonDocument::fromJson(data);
-                    bool isSyntaxTheme=sniffDoc.isObject()
-                        && sniffDoc.object().value(QStringLiteral("kind")).toString()==QStringLiteral("syntax");
+                    auto sniffKind=sniffDoc.isObject()
+                        ? sniffDoc.object().value(QStringLiteral("kind")).toString() : QString{};
+                    bool isSyntaxTheme=sniffKind==QStringLiteral("syntax");
+                    bool isPaletteTheme=sniffKind==QStringLiteral("palette");
 
-                    if (isSyntaxTheme)
+                    if (isPaletteTheme)
+                    {
+                        ColorPaletteTheme paletteTheme;
+                        QString errorMessage;
+                        auto ok=paletteTheme.loadFromJson(src,&errorMessage);
+                        if (ok)
+                        {
+                            auto name=paletteTheme.name();
+                            if (name==defaultColorTheme || name==colorTheme || name==AnyColorTheme)
+                            {
+                                m_paletteThemes.emplace_back(std::move(paletteTheme));
+                            }
+                            else
+                            {
+                                qWarning() << "Invalid colour palette theme \"" << name << "\" in " << fileName;
+                            }
+                        }
+                        else
+                        {
+                            qWarning() << "Failed to load colour palette theme from " << fileName << ": " << errorMessage;
+                        }
+                    }
+                    else if (isSyntaxTheme)
                     {
                         SyntaxTheme syntaxTheme;
                         QString errorMessage;
@@ -283,6 +308,17 @@ void Style::reloadStyleSheet()
     //! @todo Apply color substitutions
     setQss(m_loadedQss);
     setCss(m_loadedCss);
+
+    // Iterate a copy: a handler may (un)register handlers. A handler removed by an earlier one
+    // (its owner was destroyed) must not be called from the copy, hence the re-check.
+    auto handlers=m_palettesChangedHandlers;
+    for (auto& handler: handlers)
+    {
+        if (m_palettesChangedHandlers.find(handler.first)!=m_palettesChangedHandlers.end())
+        {
+            handler.second();
+        }
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -418,6 +454,7 @@ void Style::reset()
     m_colorMap.clear();
     m_iconThemes.clear();
     m_syntaxThemes.clear();
+    m_paletteThemes.clear();
 
     resetStyleSheetDirs();
     resetSvgIconLocator();

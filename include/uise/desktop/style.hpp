@@ -27,6 +27,9 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_STYLE_HPP
 
 #include <map>
+#include <vector>
+#include <optional>
+#include <functional>
 #include <QString>
 #include <QIcon>
 #include <QStyle>
@@ -35,6 +38,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/syntaxtheme.hpp>
+#include <uise/desktop/colorpalette.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
@@ -482,6 +486,68 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
             return m_syntaxThemes;
         }
 
+        /**
+         * @brief Look up a named colour palette across every loaded ColorPaletteTheme.
+         * @param name Palette name, see ColorPaletteNames.
+         * @return The palette, or empty if no loaded theme defines it, or the last one that does
+         *  defines it as an explicitly empty list (the opt-out for a label that does not want one).
+         *
+         * Later-loaded themes override earlier ones for the same palette name -- same cascade
+         * semantics as everything else in Style. The WHOLE list is replaced, never merged entry by
+         * entry: an index only means something within one list.
+         */
+        std::vector<QColor> colorPalette(const QString& name) const
+        {
+            std::vector<QColor> result;
+            for (const auto& theme : m_paletteThemes)
+            {
+                if (theme.hasPalette(name))
+                {
+                    result=theme.palette(name);
+                }
+            }
+            return result;
+        }
+
+        /**
+         * @brief Pick a stable colour of a named palette for a key (e.g. a sender uid hash).
+         * @return The colour, or empty if the palette is not defined or is empty.
+         *
+         * The same key always yields the same slot (see paletteIndexForKey()), so a sender keeps
+         * their colour across restarts, and across a light/dark switch as long as both themes
+         * ship palettes of the same length.
+         */
+        std::optional<QColor> paletteColor(const QString& name, QByteArrayView key) const
+        {
+            auto palette=colorPalette(name);
+            if (palette.empty())
+            {
+                return std::optional<QColor>{};
+            }
+            return palette.at(paletteIndexForKey(key,palette.size()));
+        }
+
+        /**
+         * @brief Register a callback invoked whenever the loaded palettes may have changed.
+         * @return Handler id for removePalettesChangedHandler().
+         *
+         * Style is not a QObject, so this is the only way for a non-widget consumer (such as an
+         * avatar source) to learn about a theme switch. The callback fires at the end of
+         * reloadStyleSheet(), i.e. before the new style sheet is applied and before widgets get
+         * QEvent::StyleChange. It runs on the thread that called reloadStyleSheet() (the GUI thread).
+         */
+        int addPalettesChangedHandler(std::function<void()> handler)
+        {
+            auto id=++m_lastPalettesHandlerId;
+            m_palettesChangedHandlers.emplace(id,std::move(handler));
+            return id;
+        }
+
+        void removePalettesChangedHandler(int id)
+        {
+            m_palettesChangedHandlers.erase(id);
+        }
+
         void applyStyleSheet(bool reload=false)
         {
             reloadStyleSheet();
@@ -587,6 +653,10 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
 
         std::vector<SvgIconTheme> m_iconThemes;
         std::vector<SyntaxTheme> m_syntaxThemes;
+        std::vector<ColorPaletteTheme> m_paletteThemes;
+
+        std::map<int,std::function<void()>> m_palettesChangedHandlers;
+        int m_lastPalettesHandlerId=0;
 
         ButtonsStyle m_defaultButtonsStyle;
         std::map<QString,ButtonsStyle> m_buttonsStyle;

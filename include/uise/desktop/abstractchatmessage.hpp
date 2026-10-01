@@ -318,6 +318,17 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageSenderHeader : public ChatMessageCo
         virtual void setSenderTitle(QString title) =0;
         virtual QString senderTitle() const =0;
 
+        /**
+         * @brief Stable key (typically the sender's uid hash) the title's colour is derived from.
+         *
+         * An implementation that colours titles picks a colour from the ColorPaletteNames::ChatSenderTitle
+         * palette by this key, so the same sender is always the same colour. An empty key, or an
+         * application whose style defines no such palette, means "no per-sender colour" -- the
+         * implementation falls back to its plain QSS colour. Not pure: an implementation that does
+         * not colour its title simply ignores it. Re-settable at any time, like setSenderTitle().
+         */
+        virtual void setSenderColorKey(QString /*key*/) {}
+
     signals:
 
         //! The sender name was clicked -- a host typically opens that sender's character/member

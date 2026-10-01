@@ -10,6 +10,7 @@ SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testmessageeditor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatmessagetext.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testspellcheck.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testcolorpalette.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

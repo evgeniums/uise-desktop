@@ -173,6 +173,14 @@ class UISE_DESKTOP_EXPORT Avatar : public WithPath
 
         QPixmap generatePixmap(const QSize& size) const;
 
+        /**
+         * @brief Recompute the generated background colour and re-push the generated pixmap to
+         *  the producers. Call after the source's palette changed. No-op for an avatar that shows
+         *  a real image (the base pixmap) -- only the generated, initials-on-colour one depends
+         *  on the palette.
+         */
+        void refreshGeneratedBackground();
+
         const std::set<QSize,compareQSize> watchPixmapSizes() const
         {
             return m_watchSizes;
@@ -236,8 +244,9 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         using AvatarBuilderFn=std::function<std::shared_ptr<Avatar> (const WithPath&)>;
 
         AvatarSource();
+        ~AvatarSource();
 
-        //! @todo Configure font and pallette from Style
+        //! @todo Configure font from Style
 
         void setFontName(QString name)
         {
@@ -282,8 +291,14 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
         void clearAvatars();
 
+        /**
+         * @brief Set the palette explicitly. By default the source follows the style's
+         *  "avatar-background" palette (see ColorPaletteNames) and tracks theme switches; an
+         *  explicit palette stops that and is kept as is.
+         */
         void setBackgroundPallette(std::vector<QColor> pallette)
         {
+            m_ownPallette=false;
             m_backgroundPallette=std::move(pallette);
         }
 
@@ -291,6 +306,12 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
         {
             return m_backgroundPallette;
         }
+
+        /**
+         * @brief Reload the palette from the style (a no-op for whatever was set explicitly) and
+         *  refresh the generated avatars if it changed. Called automatically on every style reload.
+         */
+        void reloadBackgroundPallette();
 
         std::shared_ptr<Avatar> avatar(const WithPath& path) const
         {
@@ -324,6 +345,7 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
         void setBackgroundColorGenerator(std::shared_ptr<AvatarBackgroundGenerator> backgroundColorGenerator)
         {
+            m_ownGenerator=false;
             m_backgroundColorGenerator=std::move(backgroundColorGenerator);
         }
 
@@ -353,6 +375,11 @@ class UISE_DESKTOP_EXPORT AvatarSource : public RoundedImageSource
 
         std::shared_ptr<AvatarBackgroundGenerator> m_backgroundColorGenerator;
         AvatarBuilderFn m_avatarBuilder;
+
+        //! False once the application sets the palette / the generator itself -- see reloadBackgroundPallette().
+        bool m_ownPallette=true;
+        bool m_ownGenerator=true;
+        int m_palettesHandlerId=0;
 };
 
 class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
@@ -582,6 +609,8 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
         void fillIfNoPixmap(QPainter*) override;
 
         virtual void updateBackgroundColor();
+
+        void changeEvent(QEvent* event) override;
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;

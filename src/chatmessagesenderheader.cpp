@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/colorpalette.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/chatmessagesenderheader.hpp>
 
@@ -59,6 +60,9 @@ class ChatMessageSenderHeader_p
 
         bool clickable=true;
         int maxWidthHint=DefaultMaxWidthHint;
+
+        //! See AbstractChatMessageSenderHeader::setSenderColorKey().
+        QString colorKey;
 
         //! Matches ChatMessageForwardHeader's own latch: a press only marks the label down,
         //! letting a press dragged out before release cancel the click.
@@ -107,6 +111,41 @@ void ChatMessageSenderHeader::setSenderTitle(QString title)
 QString ChatMessageSenderHeader::senderTitle() const
 {
     return pimpl->nameLabel->text();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageSenderHeader::setSenderColorKey(QString key)
+{
+    pimpl->colorKey=std::move(key);
+    updateSenderColor();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageSenderHeader::updateSenderColor()
+{
+    // No key or no such palette in the style -> nullopt -> the QSS colour applies.
+    std::optional<QColor> color;
+    if (!pimpl->colorKey.isEmpty())
+    {
+        color=Style::instance().paletteColor(ColorPaletteNames::ChatSenderTitle,pimpl->colorKey.toUtf8());
+    }
+    pimpl->nameLabel->setTextColor(color);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageSenderHeader::changeEvent(QEvent* event)
+{
+    // StyleChange is delivered to every widget after the application style sheet is re-applied,
+    // which happens after Style::reloadStyleSheet() has reloaded the palettes -- so the new theme's
+    // palette is what updateSenderColor() reads. setTextColor() is a no-op when nothing changed.
+    if (event->type()==QEvent::StyleChange)
+    {
+        updateSenderColor();
+    }
+    AbstractChatMessageSenderHeader::changeEvent(event);
 }
 
 //--------------------------------------------------------------------------

@@ -146,6 +146,7 @@ SET (HEADERS
     include/uise/desktop/svgicon.hpp
     include/uise/desktop/svgiconcontext.hpp
     include/uise/desktop/svgiconlocator.hpp
+    include/uise/desktop/colorpalette.hpp
     include/uise/desktop/syntaxtheme.hpp
     include/uise/desktop/syntaxlanguage.hpp
     include/uise/desktop/syntaxtokenizer.hpp
@@ -379,6 +380,7 @@ SET (SOURCES
     src/svgicon.cpp
     src/svgiconcontext.cpp
     src/svgiconlocator.cpp
+    src/colorpalette.cpp
     src/syntaxtheme.cpp
     src/syntaxlanguage.cpp
     src/syntaxlanguagedata.cpp

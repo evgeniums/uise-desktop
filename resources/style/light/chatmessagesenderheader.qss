@@ -1,4 +1,8 @@
-/* Reuses chat.qss's own mentionColor accent (task-message-formatting-plan.md Stage 6) -- a
+/* FALLBACK colour only. A sender's name is normally coloured per sender from the
+   "chat-sender-title" palette (palettes.json, ChatMessageSenderHeader::setSenderColorKey()), which
+   wins over this rule through a widget-level style sheet. This applies when no key is set
+   or the style defines no such palette (or an empty one -- a label's opt-out).
+   Reuses chat.qss's own mentionColor accent (task-message-formatting-plan.md Stage 6) -- a
    sender's name and an @mention both name a person, so sharing the hue keeps the palette
    subtle rather than introducing a new one. */
 uise--ChatMessageSenderHeader #senderTitle QLabel {

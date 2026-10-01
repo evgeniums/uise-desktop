@@ -181,6 +181,8 @@
         <file>style/messagetext.css</file>
         <file>style/dark/messagetext.css</file>
         <file>style/light/messagetext.css</file>
+        <file>style/dark/palettes.json</file>
+        <file>style/light/palettes.json</file>
         <file>style/dark/syntax.json</file>
         <file>style/light/syntax.json</file>
         <file>style/replypreview.json</file>

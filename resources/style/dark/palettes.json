@@ -1,0 +1,16 @@
+{
+    "kind" : "palette",
+    "theme" : "dark",
+    "palettes" : {
+        "chat-sender-title" : [
+            "#FF8E86", "#FFA357", "#8CDB6F", "#C9A2F5",
+            "#6FCCE8", "#82B1FF", "#F28CC0", "#E3BE5C"
+        ],
+        "avatar-background" : [
+            "#fb5607", "#ff006e", "#8338ec", "#9C4A1A",
+            "#390099", "#ce4257", "#519A66", "#386641",
+            "#A16207", "#B5179E", "#C1121F", "#15803D",
+            "#D53F8C", "#B56576", "#7C6A0A"
+        ]
+    }
+}

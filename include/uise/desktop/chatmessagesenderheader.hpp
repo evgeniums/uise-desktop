@@ -71,6 +71,11 @@ class UISE_DESKTOP_EXPORT ChatMessageSenderHeader : public AbstractChatMessageSe
         void setSenderTitle(QString title) override;
         QString senderTitle() const override;
 
+        //! Colours the title from the ColorPaletteNames::ChatSenderTitle palette by this key. Re-evaluated
+        //! on every style change, so a light/dark switch picks up the new theme's palette. See
+        //! AbstractChatMessageSenderHeader::setSenderColorKey().
+        void setSenderColorKey(QString key) override;
+
         //! Whether the name reacts to clicks (cursor, hover, clicked()). Default true.
         void setClickable(bool enable);
         bool isClickable() const;
@@ -88,7 +93,11 @@ class UISE_DESKTOP_EXPORT ChatMessageSenderHeader : public AbstractChatMessageSe
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 
+        void changeEvent(QEvent* event) override;
+
     private:
+
+        void updateSenderColor();
 
         std::unique_ptr<ChatMessageSenderHeader_p> pimpl;
 };

@@ -31,15 +31,56 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 
 #include <uise/desktop/utils/datetime.hpp>
+#include <uise/desktop/style.hpp>
+#include <uise/desktop/colorpalette.hpp>
 #include <uise/desktop/avatar.hpp>
 
 UISE_DESKTOP_NAMESPACE_BEGIN
 
-static const char* ColorPallette[]={"#fb5607","#ff006e","#8338ec","#3a86ff",
-                                    "#00a6fb", "#006494", "ef476f", "#006d77",
-                                    "#e36414","#2a9d8f", "#fa9500", "#390099",
-                                      "#ce4257", "#52796f","#0077b6", "#519A66"
+//! Built-in fallback, used only when the loaded style defines no non-empty "avatar-background"
+//! palette (see ColorPaletteNames and resources/style/{light,dark}/palettes.json, which carry the
+//! same list). Keep the two in sync.
+//!
+//! Chosen to stay clearly distinguishable (CIEDE2000 >= 20) from the surfaces an avatar is drawn
+//! on, in both themes: list rows and their hover/selected states, the chat view and, notably,
+//! the selected tab (#218DAE light, #1e6091 dark). That rules out every blue and teal, so there
+//! are none -- re-check against the tab/list colours before adding one.
+static const char* ColorPallette[]={"#fb5607","#ff006e","#8338ec","#9C4A1A",
+                                    "#390099","#ce4257","#519A66","#386641",
+                                    "#A16207","#B5179E","#C1121F","#15803D",
+                                    "#D53F8C","#B56576","#7C6A0A"
                                     };
+
+namespace {
+
+std::vector<QColor> fallbackBackgroundPallette()
+{
+    std::vector<QColor> result;
+    auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
+    for (size_t i=0;i<colorCount;i++)
+    {
+        auto color=QColor::fromString(ColorPallette[i]);
+        if (color.isValid())
+        {
+            result.emplace_back(color);
+        }
+    }
+    return result;
+}
+
+//! The palette from the loaded style, so a white label or an opaque restyle can override it per
+//! colour theme; the built-in list when the style defines none.
+std::vector<QColor> styleBackgroundPallette()
+{
+    auto pallette=Style::instance().colorPalette(ColorPaletteNames::AvatarBackground);
+    if (pallette.empty())
+    {
+        pallette=fallbackBackgroundPallette();
+    }
+    return pallette;
+}
+
+}
 
 /********************* AvatarBackgroundGenerator ********************/
 
@@ -53,16 +94,7 @@ AvatarBackgroundGenerator::AvatarBackgroundGenerator(std::vector<QColor> backgro
         return;
     }
 
-    auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
-    for (size_t i=0;i<colorCount;i++)
-    {
-        auto color=QColor::fromString(ColorPallette[i]);
-        if (color.isValid())
-        {
-            m_backgroundPallette.emplace_back(color);
-        }
-    }
-
+    m_backgroundPallette=styleBackgroundPallette();
     if (m_backgroundPallette.empty())
     {
         m_backgroundPallette.emplace_back(DefaultBackgroundColor);
@@ -88,14 +120,7 @@ QColor AvatarBackgroundGenerator::generateBackgroundColor(const WithPath& path) 
     {
         hash.addData(el);
     }
-    auto result=hash.result();
-
-    size_t idx=0;
-    memcpy(&idx,result.constData(),sizeof(idx));
-
-    size_t palletteLength = m_backgroundPallette.size();
-    auto colorIdx=idx%palletteLength;
-
+    auto colorIdx=paletteIndex(hash.result(),m_backgroundPallette.size());
     return m_backgroundPallette.at(colorIdx);
 }
 
@@ -112,6 +137,15 @@ Avatar::Avatar()
 
 Avatar::~Avatar()
 {}
+
+//--------------------------------------------------------------------------
+
+void Avatar::refreshGeneratedBackground()
+{
+    updateBackgroundColor();
+    // generated pixmaps are never cached (see pixmap()), so re-pushing is all it takes
+    updateGeneratedAvatar();
+}
 
 //--------------------------------------------------------------------------
 
@@ -407,22 +441,61 @@ AvatarSource::AvatarSource()
       m_fontSizeRatio(Avatar::DefaultFontSizeRatio),
       m_maxAvatarLetterCount(DefaultMaxAvatarLetterCount)
 {
-    auto colorCount=sizeof(ColorPallette)/sizeof(ColorPallette[0]);
-    for (size_t i=0;i<colorCount;i++)
-    {
-        auto color=QColor::fromString(ColorPallette[i]);
-        if (color.isValid())
+    m_backgroundColorGenerator=std::make_shared<AvatarBackgroundGenerator>();
+    reloadBackgroundPallette();
+
+    // Style is not a QObject: this is how a theme switch reaches us (see Style::addPalettesChangedHandler()).
+    m_palettesHandlerId=Style::instance().addPalettesChangedHandler(
+        [this]()
         {
-            m_backgroundPallette.emplace_back(color);
+            reloadBackgroundPallette();
+        }
+    );
+}
+
+//--------------------------------------------------------------------------
+
+AvatarSource::~AvatarSource()
+{
+    Style::instance().removePalettesChangedHandler(m_palettesHandlerId);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarSource::reloadBackgroundPallette()
+{
+    // Whatever the application set explicitly is left alone.
+    if (!m_ownPallette && !m_ownGenerator)
+    {
+        return;
+    }
+
+    auto pallette=styleBackgroundPallette();
+    if (pallette.empty())
+    {
+        pallette.emplace_back(Qt::blue);
+    }
+
+    auto changed=false;
+    if (m_ownPallette && m_backgroundPallette!=pallette)
+    {
+        m_backgroundPallette=pallette;
+        changed=true;
+    }
+    if (m_ownGenerator && m_backgroundColorGenerator && m_backgroundColorGenerator->backgroundPallette()!=pallette)
+    {
+        m_backgroundColorGenerator->setBackgroundPallette(pallette);
+        changed=true;
+    }
+
+    // The default palettes are the same in every shipped theme, so a theme switch usually changes nothing.
+    if (changed)
+    {
+        for (auto& el: m_avatars)
+        {
+            el.second->refreshGeneratedBackground();
         }
     }
-
-    if (m_backgroundPallette.empty())
-    {
-        m_backgroundPallette.emplace_back(Qt::blue);
-    }
-
-    m_backgroundColorGenerator=std::make_shared<AvatarBackgroundGenerator>();
 }
 
 //--------------------------------------------------------------------------
@@ -562,15 +635,27 @@ void AvatarWidget::updateBackgroundColor()
     {
         hash.addData(el);
     }
-    auto result=hash.result();
-
-    size_t idx=0;
-    memcpy(&idx,result.constData(),sizeof(idx));
-
-    size_t palletteLength = m_avatarSource->backgroundPallette().size();
-    auto colorIdx=idx%palletteLength;
-
+    auto colorIdx=paletteIndex(hash.result(),m_avatarSource->backgroundPallette().size());
     m_backgroundColor=m_avatarSource->backgroundPallette().at(colorIdx);
+}
+
+//--------------------------------------------------------------------------
+
+void AvatarWidget::changeEvent(QEvent* event)
+{
+    RoundedImage::changeEvent(event);
+
+    // The avatar source reloads its palette when the style does, which is before the new style
+    // sheet is applied, so by the time StyleChange arrives the palette is already the new theme's.
+    if (event->type()==QEvent::StyleChange)
+    {
+        auto prev=m_backgroundColor;
+        updateBackgroundColor();
+        if (prev!=m_backgroundColor)
+        {
+            update();
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

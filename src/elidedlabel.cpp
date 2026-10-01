@@ -87,6 +87,27 @@ void ElidedLabel::setText(const QString& text)
 
 //--------------------------------------------------------------------------
 
+void ElidedLabel::setTextColor(std::optional<QColor> color)
+{
+    if (m_textColor==color)
+    {
+        return;
+    }
+    m_textColor=color;
+
+    // Only the visible label: m_hiddenLabel is never shown, it only measures the full text.
+    if (m_textColor)
+    {
+        m_label->setStyleSheet(QStringLiteral("QLabel{color:%1;}").arg(m_textColor->name(QColor::HexRgb)));
+    }
+    else
+    {
+        m_label->setStyleSheet(QString{});
+    }
+}
+
+//--------------------------------------------------------------------------
+
 void ElidedLabel::setAlignment(Qt::Alignment alignment)
 {
     m_hiddenLabel->setAlignment(alignment);
