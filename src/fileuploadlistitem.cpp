@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QBoxLayout>
 #include <QResizeEvent>
+#include <QTimer>
 #include <QMouseEvent>
 #include <QPointer>
 #include <QGuiApplication>
@@ -400,6 +401,17 @@ bool FileUploadListItem::eventFilter(QObject* obj, QEvent* event)
         {
             emit previewClicked();
         }
+    }
+    else if (obj==pimpl->nameLabel->label() && (event->type()==QEvent::Resize || event->type()==QEvent::Show))
+    {
+        // The label's OWN geometry, not this item's: when resizeEvent() runs, the nested
+        // item -> textColumn -> EditableLabel -> label layouts have not been laid out yet, so
+        // updateNameLabel() elided the name against a stale (narrow) label width and nothing
+        // re-elided it once the label reached its real one -- a short name was shown as
+        // "sem_al...ue.txt" in a wide row, until an edit/cancel cycle happened to resize the item
+        // again. Elision depends only on the label's width, so this is the one place that sees it.
+        // Called after the event has been delivered, so the width is the new one.
+        QTimer::singleShot(0,this,&FileUploadListItem::updateNameLabel);
     }
     else if ((obj==pimpl->rowPreview || obj==pimpl->nameLabel->label()) && event->type()==QEvent::MouseButtonPress)
     {
