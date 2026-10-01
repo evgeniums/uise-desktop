@@ -314,6 +314,13 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToItem(const typen
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::optional<int> FlyweightListView<ItemT,OrderComparer,IdComparer>::itemViewOffset(const typename ItemT::IdType &id) const
+{
+    return pimpl->itemViewOffset(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToItemEdge(const typename ItemT::IdType &id, Direction direction)
 {
     return pimpl->scrollToItemEdge(id,direction);
@@ -805,6 +812,27 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 int FlyweightListView<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeEffective() const
 {
     return pimpl->jumpEdgeInvisibleSizeEffective();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeClickInterceptor(JumpEdgeClickInterceptor cb)
+{
+    pimpl->setJumpEdgeClickInterceptor(std::move(cb));
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setJumpEdgeForceVisible(bool value)
+{
+    pimpl->setJumpEdgeForceVisible(value);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isJumpEdgeForceVisible() const
+{
+    return pimpl->isJumpEdgeForceVisible();
 }
 
 //--------------------------------------------------------------------------

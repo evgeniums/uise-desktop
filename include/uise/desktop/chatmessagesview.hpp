@@ -453,6 +453,10 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! via loadMessagesAround()).
         bool scrollToMessage(const Id& id, int offset=0);
 
+        //! The scrollToMessage() offset that reproduces the message's current on-screen position
+        //! (see FlyweightListView::itemViewOffset()). nullopt if `id` isn't loaded.
+        std::optional<int> messageViewOffset(const Id& id) const;
+
         //! Scroll so that one edge of a message already present in the loaded window aligns with
         //! the corresponding edge of the viewport -- the message's own top for Direction::HOME,
         //! its own bottom for Direction::END. Same never-fetches contract as scrollToMessage().

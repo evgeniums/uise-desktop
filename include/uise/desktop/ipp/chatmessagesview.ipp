@@ -872,6 +872,14 @@ bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessage(const Id& id, int of
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+std::optional<int> ChatMessagesView<BaseMessageT,Traits>::messageViewOffset(const Id& id) const
+{
+    return m_listView->itemViewOffset(id);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 bool ChatMessagesView<BaseMessageT,Traits>::scrollToMessageEdge(const Id& id, Direction direction)
 {
     return m_listView->scrollToItemEdge(id,direction);

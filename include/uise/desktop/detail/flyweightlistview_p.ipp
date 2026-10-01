@@ -112,6 +112,7 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_jumpEdge(nullptr),
         m_jumpEdgeOffset(FlyweightListView<ItemT>::DefaultJumpEdgeXOffset,FlyweightListView<ItemT>::DefaultJumpEdgeYOffset),
         m_jumpEdgeInvisibleItemCount(FlyweightListView<ItemT>::DefaultJumpInvisibleItemCount),
+        m_jumpEdgeForceVisible(false),
         m_pendingViewportChangedInform(false),
         m_lastInformedListPos(0),
         m_itemsAlignment(FlyweightListViewAlignment::Center),
@@ -1900,6 +1901,30 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItem(const typ
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::optional<int> FlyweightListView_p<ItemT,OrderComparer,IdComparer>::itemViewOffset(const typename ItemT::IdType &id) const
+{
+    const auto& idx=itemIdx();
+    auto it=idx.find(id);
+    if (it==idx.end())
+    {
+        return std::nullopt;
+    }
+
+    auto widget=it->widget();
+    if (!widget || widget->parent()!=m_llist)
+    {
+        return std::nullopt;
+    }
+
+    // scrollToItem() lands the widget's viewport begin (m_llist position + widget position
+    // within m_llist) at -offset, so the offset reproducing the current position is its negation.
+    const auto listPos=oprop(m_llist->pos(),OProp::pos);
+    const auto widgetListPos=oprop(widget->pos(),OProp::pos);
+    return -(listPos+widgetListPos);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToItemEdge(const typename ItemT::IdType &id, Direction direction)
 {
     const auto& idx=itemIdx();
@@ -2883,8 +2908,34 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
 #endif
     }
 
-    m_jumpEdge->setVisible(showControl);
+    m_jumpEdge->setVisible(showControl || m_jumpEdgeForceVisible);
     updateJumpEdgePosition();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setJumpEdgeClickInterceptor(typename FlyweightListView<ItemT>::JumpEdgeClickInterceptor cb)
+{
+    m_jumpEdgeClickInterceptor=std::move(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setJumpEdgeForceVisible(bool value)
+{
+    if (m_jumpEdgeForceVisible==value)
+    {
+        return;
+    }
+    m_jumpEdgeForceVisible=value;
+    updateJumpEdgeVisibility();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isJumpEdgeForceVisible() const
+{
+    return m_jumpEdgeForceVisible;
 }
 
 //--------------------------------------------------------------------------
@@ -2973,6 +3024,12 @@ int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpEdgeInvisibleSizeEf
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onJumpEdgeClicked()
 {
+    if (m_jumpEdgeClickInterceptor && m_jumpEdgeClickInterceptor())
+    {
+        mainBarHolder()->notifyUserScrolled();
+        return;
+    }
+
     auto direction=Direction::HOME;
     if (m_jumpEdge->iconDirection()==JumpEdge::IconDirection::Down
         ||

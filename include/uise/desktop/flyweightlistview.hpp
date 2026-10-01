@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <vector>
 #include <memory>
 #include <functional>
+#include <optional>
 
 #include <QFrame>
 
@@ -109,6 +110,10 @@ class FlyweightListView : public QFrame
         using RemoveItemCb=std::function<void (typename ItemT::WidgetType*)>;
 
         using ScrollCb=std::function<void ()>;
+
+        //! Returns true when the JumpEdge click was fully handled by the interceptor, in which
+        //! case the built-in jump to the edge is skipped.
+        using JumpEdgeClickInterceptor=std::function<bool ()>;
 
         using EachItemHandler=std::function<bool (const ItemT*)>;
 
@@ -309,6 +314,18 @@ class FlyweightListView : public QFrame
          * @return True if item exists in the view, false otherwise.
          */
         bool scrollToItem(const typename ItemT::IdType& id, int offset=0);
+
+        /**
+         * @brief Get the scrollToItem() offset that reproduces the item's CURRENT position.
+         * @param id Id of the item.
+         * @return Offset in pixels, or std::nullopt if the item is not in the view or has no widget.
+         *
+         * Inverse of scrollToItem(): scrollToItem(id,*itemViewOffset(id)) leaves the item exactly
+         * where it is on screen now (negative when the item's own top is below the viewport top,
+         * positive when it is scrolled partly above it). Meant for "remember where I was, come
+         * back later" navigation. Does not scroll.
+         */
+        std::optional<int> itemViewOffset(const typename ItemT::IdType& id) const;
 
         /**
          * @brief Scroll so that one edge of an item aligns with the corresponding edge of the
@@ -705,6 +722,24 @@ class FlyweightListView : public QFrame
         int jumpEdgeInvisibleSizeEffective() const;
 
         void updateJumpEdgeVisibility();
+
+        /**
+         * @brief Set interceptor invoked when the user clicks the JumpEdge control.
+         * @param cb Interceptor; when it returns true the click is considered handled and the
+         * built-in jump to the edge is skipped. Pass an empty function to remove it.
+         *
+         * Only the control's own click goes through this: the Home/End keys and programmatic
+         * jumpToEdge() calls are unaffected.
+         */
+        void setJumpEdgeClickInterceptor(JumpEdgeClickInterceptor cb);
+
+        /**
+         * @brief Keep the JumpEdge control visible regardless of the invisible-items/size
+         * thresholds, e.g. while its click is intercepted to mean something other than "jump to
+         * the edge". Has no effect while the control is disabled by setJumpEdgeControlEnabled().
+         */
+        void setJumpEdgeForceVisible(bool value);
+        bool isJumpEdgeForceVisible() const;
 
         JumpEdge* jumpEdgeControl() const;
 

@@ -179,6 +179,7 @@ class FlyweightListView_p : public OrientationInvariant
         void scrollToEdge(Direction direction);
 
         bool scrollToItem(const typename ItemT::IdType &id, int offset);
+        std::optional<int> itemViewOffset(const typename ItemT::IdType &id) const;
 
         bool scrollToItemEdge(const typename ItemT::IdType &id, Direction direction);
         bool itemFitsViewport(const typename ItemT::IdType &id) const;
@@ -307,6 +308,10 @@ class FlyweightListView_p : public OrientationInvariant
 
         void setJumpEdgeControlEnabled(bool value);
         bool isJumpEdgeControlEnabled() const;
+
+        void setJumpEdgeClickInterceptor(typename FlyweightListView<ItemT>::JumpEdgeClickInterceptor cb);
+        void setJumpEdgeForceVisible(bool value);
+        bool isJumpEdgeForceVisible() const;
 
         void updateJumpEdgeVisibility();
         void updateJumpEdgePosition();
@@ -468,6 +473,8 @@ class FlyweightListView_p : public OrientationInvariant
         QSize m_jumpEdgeOffset;
         size_t m_jumpEdgeInvisibleItemCount;
         std::optional<int> m_jumpEdgeInvisibleSize;
+        bool m_jumpEdgeForceVisible;
+        typename FlyweightListView<ItemT>::JumpEdgeClickInterceptor m_jumpEdgeClickInterceptor;
 
         bool m_pendingViewportChangedInform;
         int m_lastInformedListPos;
