@@ -391,10 +391,14 @@ min-width: 16px;
  * avatar itself is shown only on the LAST message of a batch. forcedAvatarMargin is the
  * breathing room on EACH side of it, so the column comes out 28+2*6 = 40px wide.
  *
- * avatarSize, by contrast, is NOT a useful knob here: updateAvatarForced() overwrites it on
- * every pass (with forcedAvatarSize, or with the narrow default on a column that can never hold
- * an avatar), so changing it below has no visible effect. It is left in place as the pre-pass
- * baseline only.
+ * avatarSize, by contrast, is deliberately NOT set here, and must not be: it is the size
+ * updateAvatarForced() currently APPLIES (forcedAvatarSize, or the narrow default on a column
+ * that can never hold an avatar), not an input. Every repolish of the avatar column --
+ * ChatMessageAvatar::setSelected()/setSent() repolish it directly on each selection/direction
+ * change, and nothing re-runs updateAvatarForced() after those -- would re-apply a QSS value over
+ * it, so the avatar would shrink to that value as soon as its message got selected and stay
+ * shrunk after deselection. The pre-pass baseline comes from the C++ constructor instead
+ * (ChatMessageAvatar::DefaultAvatarSize).
  *
  * Keep these two OUT of light/chat.qss and dark/chat.qss, which carry colour only: the column
  * width they produce is cached per view in ChatMessagesView::m_messageBubbleOuterWidth, sampled
@@ -421,7 +425,6 @@ uise--AbstractChatMessage uise--ChatMessageAvatar {
 qproperty-tailShape: 1;
 qproperty-tailWidth: 10;
 qproperty-tailHeight: 20;
-qproperty-avatarSize: 16;
 qproperty-forcedAvatarSize: 28;
 qproperty-forcedAvatarMargin: 6;
 qproperty-avatarBottomOffset: 6;
@@ -469,11 +472,10 @@ border: none;
  * and this one just keeps tracking smoothly. Fading it out at the handoff instead is what used to
  * flicker at a batch boundary.
  *
- * There is deliberately NO qproperty-avatarSize (nor -forcedAvatarSize) here, unlike
- * uise--ChatMessageAvatar above: the floating copy re-reads its size from the message it
- * represents on every update pass instead, so it follows forcedAvatarSize automatically and can
- * never be silently shrunk back to a stylesheet default by an app-wide restyle the way the
- * anchored avatar can (see ChatMessage::changeEvent()'s own doc comment on that trap).
+ * There is deliberately NO qproperty-avatarSize (nor -forcedAvatarSize) here: the floating copy
+ * re-reads its size from the message it represents on every update pass instead, so it follows
+ * forcedAvatarSize automatically and can never be silently shrunk back to a stylesheet default by
+ * a restyle (the same reason uise--ChatMessageAvatar above sets no qproperty-avatarSize either).
  *
  * bottomOffset is the gap from the viewport's bottom edge to the avatar's, in its natural resting
  * position. It is pulled UP from there onto the batch tail's own anchored avatar once that has

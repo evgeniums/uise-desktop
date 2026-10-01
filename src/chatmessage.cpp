@@ -1987,25 +1987,18 @@ void ChatMessage::changeEvent(QEvent* event)
 {
     AbstractChatMessage::changeEvent(event);
 
-    // avatarSize is a genuine Q_PROPERTY (chat.qss's qproperty-avatarSize:16) so a full app
-    // stylesheet reload (e.g. auto-following an OS colour-theme change, Style::instance().
-    // applyStyleSheet(true)) re-polishes avatarFrame and silently resets it to that QSS default,
-    // shrinking the actual avatar IMAGE back to 16x16 even though the column around it (a plain
-    // setFixedWidth(), not QSS-backed) stays at whatever width updateAvatarForced() last gave it.
-    // Unlike updateLastInBatch()'s own qproperty-selectorPositionLeft concern (worked around by
-    // never repolishing `this`), that repolish happens on avatarFrame directly and cannot be
-    // opted out of. Only re-deriving the forced size afterwards fixes it back up -- otherwise
-    // every already-built message's avatar stays stuck at the QSS default (looks "very small")
-    // until the chat is closed and reopened, which rebuilds ChatMessageAvatar from scratch
-    // instead.
-    //
-    // Second reason, and the one that survives even if the above is ever solved differently: a
-    // RELOADED stylesheet can carry new qproperty-forcedAvatarSize/-forcedAvatarMargin values.
+    // A RELOADED stylesheet (e.g. auto-following an OS colour-theme change, Style::instance().
+    // applyStyleSheet(true)) can carry new qproperty-forcedAvatarSize/-forcedAvatarMargin values.
     // Those normally reach this row through ChatMessageAvatar::forcedAvatarGeometryChanged()
     // (connected in construct()), but that signal fires only when the value actually CHANGES --
-    // a repolish re-applying the same value is silent, which is exactly the case where the
-    // avatarSize reset above still has to be undone. So both paths are needed, and neither is
-    // redundant: the signal covers a changed knob, this covers an unchanged one.
+    // a repolish re-applying the same value is silent. So both paths are needed, and neither is
+    // redundant: the signal covers a changed knob, this re-asserts the forced geometry on every
+    // full restyle.
+    //
+    // This is NOT what keeps avatarSize intact across avatarFrame's own repolishes: those
+    // (ChatMessageAvatar::setSelected()/setSent()) never send StyleChange to this row at all.
+    // That holds only because no stylesheet sets qproperty-avatarSize -- see that Q_PROPERTY's
+    // own doc comment.
     //
     // Deferred via singleShot(0): a mass repolish walks the WHOLE widget tree, and whether this
     // row's own StyleChange fires before or after avatarFrame's own qproperty writers have run is

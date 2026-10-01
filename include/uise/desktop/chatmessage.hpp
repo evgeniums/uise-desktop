@@ -363,12 +363,13 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
     //! Side of the (square) avatar image CURRENTLY applied -- NOT this column's width, which
     //! ChatMessage::updateAvatarForced() sets separately (avatar plus its horizontal margins).
     //!
-    //! Deliberately NOT the knob to tune from QSS: updateAvatarForced() rewrites this on every
-    //! call with either forcedAvatarSize() (avatar forced visible) or DefaultAvatarSize (the
-    //! narrow, avatar-hidden column), so a qproperty-avatarSize in a stylesheet only survives
-    //! until the first of those runs -- which is once per message, before it is ever shown. It
-    //! stays a qproperty only so the narrow column's own baseline is styleable and so a repolish
-    //! restores a sane value; to change how big the avatar actually LOOKS, set
+    //! An OUTPUT, not a QSS knob -- must NOT be set via qproperty-avatarSize: updateAvatarForced()
+    //! writes it with either forcedAvatarSize() (avatar forced visible) or DefaultAvatarSize (the
+    //! narrow, avatar-hidden column), and every repolish of this widget (setSelected()/setSent()
+    //! repolish it directly, with nothing re-running updateAvatarForced() afterwards) would
+    //! re-apply a stylesheet value over that -- i.e. the avatar would shrink the moment its
+    //! message got selected and stay shrunk after deselection. The pre-pass baseline is set by
+    //! the constructor instead. To change how big the avatar actually LOOKS, set
     //! qproperty-forcedAvatarSize below.
     Q_PROPERTY(int avatarSize READ avatarSize WRITE setAvatarSize)
     //! Distance in px from the message's bottom edge to the avatar's bottom edge -- i.e. how far
@@ -646,9 +647,9 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         //! The Default* values, unlike the two above: these two are pure INPUTS -- nothing in
         //! C++ ever writes them, only a host or a stylesheet does -- so there is no ctor call
         //! whose no-op guard has to be dodged, and starting them anywhere else would just mean
-        //! the first read is wrong. It is also why the qproperty-avatarSize trap documented in
-        //! ChatMessage::changeEvent() cannot happen to them: a repolish that re-applies the QSS
-        //! value restores exactly what updateAvatarForced() was already using.
+        //! the first read is wrong. It is also why, unlike avatarSize (see its Q_PROPERTY doc
+        //! above), they are safe to set from QSS: a repolish that re-applies the QSS value
+        //! restores exactly what updateAvatarForced() was already using.
         int m_forcedAvatarSize=DefaultForcedAvatarSize;
         int m_forcedAvatarMargin=DefaultForcedAvatarMargin;
         bool m_right=false;
@@ -747,10 +748,8 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! hidden can otherwise stay wrong until the chat is rebuilt from scratch.
         void showEvent(QShowEvent* event) override;
 
-        //! Re-derives the avatar's forced size/visibility after a QSS repolish, for two
-        //! reasons -- see this method's own doc comment (chatmessage.cpp): chat.qss's
-        //! qproperty-avatarSize default would otherwise silently win back over
-        //! updateAvatarForced()'s own value, and a RELOADED stylesheet's new
+        //! Re-derives the avatar's forced size/visibility after a QSS repolish -- see this
+        //! method's own doc comment (chatmessage.cpp): a RELOADED stylesheet's new
         //! qproperty-forcedAvatarSize/forcedAvatarMargin has to reach this row (the avatar's own
         //! forcedAvatarGeometryChanged() covers every other path, but its setters no-op when a
         //! repolish re-applies an unchanged value).
