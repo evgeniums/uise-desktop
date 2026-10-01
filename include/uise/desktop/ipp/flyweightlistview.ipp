@@ -398,6 +398,41 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isScrollAtEdge(Direction
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setFollowLimit(const typename ItemT::IdType& id)
+{
+    pimpl->setFollowLimit(id);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::clearFollowLimit()
+{
+    pimpl->clearFollowLimit();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::optional<typename ItemT::IdType> FlyweightListView<ItemT,OrderComparer,IdComparer>::followLimit() const
+{
+    return pimpl->followLimit();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::followStickEdge()
+{
+    pimpl->followStickEdge();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isFollowingStickEdge() const
+{
+    return pimpl->isFollowingStickEdge();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToEdge(Direction direction)
 {
     pimpl->scrollToEdge(direction);

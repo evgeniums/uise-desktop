@@ -29,6 +29,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <optional>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -177,6 +178,13 @@ class FlyweightListView_p : public OrientationInvariant
         void clear(bool onDestroy=false);
 
         void scrollToEdge(Direction direction);
+
+        void setFollowLimit(const typename ItemT::IdType &id);
+        void clearFollowLimit();
+        std::optional<typename ItemT::IdType> followLimit() const;
+        void followStickEdge();
+        bool isFollowingStickEdge() const;
+        std::optional<int> followLimitViewPos() const;
 
         bool scrollToItem(const typename ItemT::IdType &id, int offset);
         std::optional<int> itemViewOffset(const typename ItemT::IdType &id) const;
@@ -416,6 +424,8 @@ class FlyweightListView_p : public OrientationInvariant
         typename ItemT::SortValueType m_lastViewportSortValue;
         bool m_atBegin;
         bool m_atEnd;
+        std::optional<typename ItemT::IdType> m_followLimitId;
+        bool m_atFollowLimit=false;
         int m_firstWidgetPos;
         int m_lastWidgetEdge;
 

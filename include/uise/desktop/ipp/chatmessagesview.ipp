@@ -585,7 +585,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     // message is reached. The #bottomSpace case this guard was written for always arrives via
     // insertMessage()/readjustList(), which pass an empty vector, so it still re-asserts.
     bool wasStuckToEnd=!mergingFetchedBatch && m_listView->itemCount()>0
-                     && m_listView->stickMode()==Direction::END && m_listView->isScrollAtEdge(Direction::END);
+                     && m_listView->stickMode()==Direction::END && m_listView->isFollowingStickEdge();
 
     bool hasUnreadSep=false;
     bool prevLastInBatch=true;
@@ -671,9 +671,12 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
             [this]()
             {
                 if (m_listView!=nullptr && m_listView->stickMode()==Direction::END
-                    && !m_listView->isScrollAtEdge(Direction::END))
+                    && !m_listView->isFollowingStickEdge())
                 {
-                    m_listView->scrollToEdge(Direction::END);
+                    // followStickEdge(), not scrollToEdge(END): honours the follow limit (an
+                    // incoming message in an inactive chat must not push the first unseen one
+                    // out of the top of the viewport -- see FlyweightListView::setFollowLimit()).
+                    m_listView->followStickEdge();
                 }
             }
         );

@@ -868,7 +868,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
 {
-    if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME))
+    if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME)
+        || (m_atFollowLimit && m_stick==Direction::END))
     {
         if (fwlvDebugEnabled())
         {
@@ -876,7 +877,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
                        << static_cast<int>(m_stick) << " llist.pos=" << oprop(m_llist->pos(),OProp::pos)
                        << " -> scrollToEdge" << std::endl;
         }
-        scrollToEdge(m_stick);
+        // Honours the follow limit (a plain scrollToEdge() when none is set).
+        followStickEdge();
         return;
     }
 
@@ -1663,6 +1665,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
     m_wheelOffsetAccumulatedOther=0.0f;
     m_atBegin=true;
     m_atEnd=true;
+    m_followLimitId.reset();
+    m_atFollowLimit=false;
     m_firstItem=nullptr;
     m_lastItem=nullptr;
     m_firstWidgetPos=0;
@@ -1863,6 +1867,107 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToEdge(Direction
     };
 
     scrollTo(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setFollowLimit(const typename ItemT::IdType &id)
+{
+    // Deliberately no keepCurrentConfiguration() here: it overwrites the m_atEnd snapshot that
+    // compensateSizeChange() must still see unchanged (see resizeList()'s caller comments).
+    m_followLimitId=id;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clearFollowLimit()
+{
+    m_followLimitId.reset();
+    m_atFollowLimit=false;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::optional<typename ItemT::IdType> FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followLimit() const
+{
+    return m_followLimitId;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::optional<int> FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followLimitViewPos() const
+{
+    if (!m_followLimitId)
+    {
+        return std::nullopt;
+    }
+
+    // Same lookup as itemViewOffset(): the item's begin in viewport coordinates.
+    const auto& idx=itemIdx();
+    auto it=idx.find(*m_followLimitId);
+    if (it==idx.end())
+    {
+        return std::nullopt;
+    }
+    auto widget=it->widget();
+    if (!widget || widget->parent()!=m_llist)
+    {
+        return std::nullopt;
+    }
+    return oprop(m_llist->pos(),OProp::pos)+oprop(widget->pos(),OProp::pos);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followStickEdge()
+{
+    if (m_stick!=Direction::END || !m_followLimitId)
+    {
+        scrollToEdge(m_stick);
+        return;
+    }
+
+    // The limit item still below (or exactly at) the viewport top caps the scroll so that its top
+    // lands at the viewport top at most. One already above the top (the user scrolled past it)
+    // limits nothing -- following never yanks the view back up.
+    auto limitPos=followLimitViewPos();
+    auto cb=[limitPos](int minPos, int maxPos, int oldPos)
+    {
+        std::ignore=maxPos;
+        if (limitPos && *limitPos>=0)
+        {
+            return std::max(minPos,oldPos-*limitPos);
+        }
+        return minPos;
+    };
+
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: followStickEdge() limit "
+                   << (limitPos ? std::to_string(*limitPos) : std::string("<not laid out/not loaded>"))
+                   << std::endl;
+    }
+    scrollTo(cb);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isFollowingStickEdge() const
+{
+    if (m_stick==Direction::END)
+    {
+        if (isAtEnd())
+        {
+            return true;
+        }
+        if (m_followLimitId)
+        {
+            auto pos=followLimitViewPos();
+            return pos && std::abs(*pos)<=1;
+        }
+        return false;
+    }
+    return isAtBegin();
 }
 
 //--------------------------------------------------------------------------
@@ -2111,6 +2216,15 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::keepCurrentConfigurati
 
     m_atBegin=isAtBegin();
     m_atEnd=isAtEnd();
+
+    // Pinned with the follow limit item's top at the viewport top (see followStickEdge()): the
+    // sticking edge is "reached" even though the list end is still below the viewport.
+    m_atFollowLimit=false;
+    if (m_stick==Direction::END && !m_atEnd && m_followLimitId)
+    {
+        auto limitPos=followLimitViewPos();
+        m_atFollowLimit=limitPos && std::abs(*limitPos)<=1;
+    }
 
     if (fwlvDebugEnabled())
     {

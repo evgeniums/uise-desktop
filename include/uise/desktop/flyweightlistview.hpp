@@ -380,6 +380,44 @@ class FlyweightListView : public QFrame
         bool isScrollAtEdge(Direction direction) const noexcept;
 
         /**
+         * @brief Limit how far automatic following of the end may scroll.
+         * @param id Id of the limit item.
+         *
+         * Only affects stickMode()==Direction::END. While a limit is set, the automatic
+         * "stick to the end" scroll (item insertion/resizing while the view is at the end)
+         * never scrolls the limit item's top above the top of the viewport: following stops as
+         * soon as the limit item's top reaches the viewport top, and items appended further
+         * stay below the viewport without scrolling. A limit item that is already above the
+         * viewport top does not limit anything. The limit is dropped by clear().
+         */
+        void setFollowLimit(const typename ItemT::IdType& id);
+
+        /**
+         * @brief Remove the limit set with setFollowLimit().
+         */
+        void clearFollowLimit();
+
+        /**
+         * @brief Get the limit set with setFollowLimit().
+         * @return Id of the limit item or std::nullopt if no limit is set.
+         */
+        std::optional<typename ItemT::IdType> followLimit() const;
+
+        /**
+         * @brief Scroll as the automatic sticking would, honouring the limit.
+         *
+         * Identical to scrollToEdge(stickMode()) when no limit is set or stickMode() is not
+         * Direction::END. Use it instead of scrollToEdge() when re-asserting the sticking.
+         */
+        void followStickEdge();
+
+        /**
+         * @brief Check if the view is at the edge it sticks to, or pinned at the follow limit.
+         * @return True if automatic following has nothing more to scroll.
+         */
+        bool isFollowingStickEdge() const;
+
+        /**
          * @brief Enable or disable horisontal scrolling with the mouse wheel.
          * @param enable Enable id true, disabke otherwise.
          */
