@@ -200,6 +200,18 @@ padding: 0px;
 margin: 0px 8px 8px 8px;
 }
 
+/* The viewer's text areas -- the browser, and the editor's text edit in editing mode -- carry no
+   border at all. An application may style EVERY QTextEdit its own way (whitemdesktop's whitem.qss
+   gives them a bottom border only, to look like its form fields), which is wrong for a content
+   area that fills the window. The id in the selector outranks such a type selector, and the
+   :hover and :focus forms are spelled out because those rules outrank the plain one by their
+   pseudo-class otherwise. */
+#textViewerFrame QTextEdit,
+#textViewerFrame QTextEdit:hover,
+#textViewerFrame QTextEdit:focus {
+border: none;
+}
+
 /* TextViewer editing mode (startEditing()): the MessageEditor takes the browser's place and gets
    the same side inset, with its own toolbar on top. Code is edited in the code slab's family. */
 #textViewerFrame #textViewerEditor {

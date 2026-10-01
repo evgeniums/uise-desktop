@@ -110,13 +110,31 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
         /**
          * @brief Show `text` as markdown, rendered.
          *
-         * Wrapping starts on, since rendered prose has to. The Markdown Source/Rendered button
-         * appears, and switches between this rendering and the source in a highlight-free slab.
+         * Rendered as a document, by CommonMark's rules: a single newline inside a paragraph is a
+         * space, so a hard-wrapped file reflows to the window (unlike a chat message, which shows
+         * every newline as a line break). Wrapping starts on, since rendered prose has to. The
+         * Markdown Source/Rendered button appears, and switches between this rendering and the
+         * source in a highlight-free slab.
          */
         void setMarkdown(const QString& text);
 
         //! Show `text` verbatim in a monospace slab, no highlighting. Same as setCode(text,{}).
         void setPlainText(const QString& text);
+
+        //! Largest text, in characters, rendered whole. Default: 2 Mi characters, i.e. a 2 MiB file.
+        constexpr static int DefaultMaxSourceChars=2*1024*1024;
+
+        /**
+         * @brief The most characters of text the viewer renders, set BEFORE setCode()/setMarkdown()/
+         *  setPlainText().
+         *
+         * markdownToHtml() truncates its source at MarkdownRenderOptions::maxSourceChars, 64Ki by
+         * default -- a guard for pasted chat messages that would silently cut a file shown here, since
+         * everything the viewer shows goes through it. So the viewer carries its own, and a host sets it
+         * from whatever limit it already applies to the files it opens: characters never outnumber
+         * bytes, so a file that passed a byte limit of the same size is shown whole.
+         */
+        void setMaxSourceChars(int maxChars);
 
         //! The text last passed to setCode()/setMarkdown()/setPlainText(), as given. After an
         //! Apply this is the applied text.

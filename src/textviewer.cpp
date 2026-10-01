@@ -24,11 +24,9 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <vector>
-#include <iostream>
 
 #include <QFrame>
 #include <QBoxLayout>
-#include <QAbstractTextDocumentLayout>
 #include <QApplication>
 #include <QPointer>
 #include <QShortcut>
@@ -143,11 +141,22 @@ class TextViewer_p
             QString html;
             if (rendered)
             {
-                html=markdownToHtml(normalized());
+                // A markdown FILE is a document, not a chat message: CommonMark's own rule applies,
+                // so a single newline inside a paragraph is a space and a hard-wrapped file (the
+                // usual README, 80 columns a line) reflows to the window instead of keeping its
+                // source line breaks -- which is also what makes the Wrap button mean anything
+                // here. The chat convention (every newline a visible break, the options' default)
+                // is for text somebody typed into a message.
+                MarkdownRenderOptions options;
+                options.hardLineBreaks=false;
+                options.maxSourceChars=maxSourceChars;
+                html=markdownToHtml(normalized(),options);
             }
             else
             {
-                html=markdownToHtml(fenceCode(normalized(),mode==Mode::Code ? language : QString()));
+                MarkdownRenderOptions options;
+                options.maxSourceChars=maxSourceChars;
+                html=markdownToHtml(fenceCode(normalized(),mode==Mode::Code ? language : QString()),options);
             }
 
             // A code block inside rendered markdown keeps its Copy strip; a viewer that IS one
@@ -184,30 +193,12 @@ class TextViewer_p
             return result;
         }
 
-        //! TEMPORARY (WRAP-DEBUG): what decides whether a QTextEdit really wraps. Remove once the
-        //! "wrap button does nothing for markdown" report is understood.
-        static void debugWrap(const char* where, bool on, QTextEdit* te)
-        {
-            auto* doc=te->document();
-            const auto alignment=doc->documentLayout()->property("contentHasAlignment");
-            std::cerr<<"WRAP-DEBUG "<<where<<" on="<<on
-                     <<" lineWrapMode="<<static_cast<int>(te->lineWrapMode())
-                     <<" optionWrapMode="<<static_cast<int>(doc->defaultTextOption().wrapMode())
-                     <<" pageSize="<<doc->pageSize().width()<<"x"<<doc->pageSize().height()
-                     <<" viewportWidth="<<te->viewport()->width()
-                     <<" contentHasAlignment="<<(alignment.isValid() ? (alignment.toBool() ? "true" : "false") : "n/a")
-                     <<" hScrollPolicy="<<static_cast<int>(te->horizontalScrollBarPolicy())
-                     <<" idealWidth="<<doc->idealWidth()
-                     <<std::endl;
-        }
-
         void applyWrap(bool on)
         {
             if (editing)
             {
                 // The editor is a plain text area: its own wrap mode is all there is to switch.
                 editor->textEdit()->setLineWrapMode(on ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
-                debugWrap("editor",on,editor->textEdit());
                 return;
             }
 
@@ -218,7 +209,6 @@ class TextViewer_p
             // such as a row of asterisks, would still run out of the viewport.
             browser->setLineWrapMode(on ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
             browser->setCodeWrapEnabled(on);
-            debugWrap("viewer",on,browser);
         }
 
         void copy()
@@ -767,6 +757,7 @@ class TextViewer_p
         QPointer<Toast> toast;
 
         QString text;
+        int maxSourceChars=TextViewer::DefaultMaxSourceChars;
         QString language;
         QString titleText;
         Mode mode=Mode::Plain;
@@ -1148,6 +1139,13 @@ void TextViewer::setPlainText(const QString& text)
 const QString& TextViewer::text() const noexcept
 {
     return pimpl->text;
+}
+
+//--------------------------------------------------------------------------
+
+void TextViewer::setMaxSourceChars(int maxChars)
+{
+    pimpl->maxSourceChars=qMax(1,maxChars);
 }
 
 //--------------------------------------------------------------------------
