@@ -30,6 +30,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QColor>
 #include <QFrame>
+#include <QString>
+#include <QStringList>
 
 #include <uise/desktop/uisedesktop.hpp>
 
@@ -57,12 +59,19 @@ class TypingIndicator_p;
  * is bundled into the library's Qt resource file; it is applied automatically
  * when the uise-desktop Style singleton is active.
  *
+ * The text never makes the widget wider than the room it is given: it is elided
+ * on the right. Names inside the text (see setElidedText()) are elided one by
+ * one first, so that the words around them stay readable.
+ *
  * Usage:
  * @code
  *   auto ti = new TypingIndicator(parent);
  *   ti->setText("User is typing");
  *   ti->setDotsPosition(TypingIndicator::DotsPosition::Left);
  *   ti->start();
+ *
+ *   // names are elided individually, the words around them are kept
+ *   ti->setElidedText("%1 and %2 are typing", {"Alexandra Longname", "Bob"});
  * @endcode
  */
 class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
@@ -77,6 +86,7 @@ class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
     Q_PROPERTY(double activeScale        READ activeScale        WRITE setActiveScale)
     Q_PROPERTY(int    animationDurationMs READ animationDurationMs WRITE setAnimationDurationMs)
     Q_PROPERTY(int    spacing            READ spacing            WRITE setSpacing)
+    Q_PROPERTY(int    maxNameWidth       READ maxNameWidth       WRITE setMaxNameWidth)
 
     public:
 
@@ -92,8 +102,34 @@ class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
 
         // ---- text ----
 
+        /**
+         * @brief Sets plain text, elided on the right when it does not fit.
+         *
+         * Same as setElidedText() without names.
+         */
         void    setText(const QString& text);
+
+        /**
+         * @brief The whole text, as set, not elided.
+         */
         QString text() const;
+
+        /**
+         * @brief Sets text that mentions names, e.g. "%1 and %2 are typing".
+         *
+         * @a pattern holds @c %1 ... @c %N placeholders (one or two digits) that are replaced by
+         * @a names in a single pass, so a name that itself contains "%1" is safe. A placeholder
+         * without a name stays as it is.
+         *
+         * When the text does not fit the width of the widget the room that is left after the
+         * words of the pattern is shared between the names: a short name keeps its full length
+         * and what it does not need goes to the longer ones, which are elided on the right.
+         * Every name is also capped at maxNameWidth(). If the text still does not fit it is
+         * elided as a whole. The full text is the tooltip while something is elided.
+         *
+         * Elision follows the width of the widget, so it is redone on every resize.
+         */
+        void    setElidedText(const QString& pattern, const QStringList& names);
 
         // ---- dots position ----
 
@@ -140,14 +176,34 @@ class UISE_DESKTOP_EXPORT TypingIndicator : public QFrame
         void setSpacing(int px);
         int  spacing() const noexcept;
 
+        /** @brief Widest a single name of setElidedText() may be, in pixels; 0 (default) means no cap. */
+        void setMaxNameWidth(int px);
+        int  maxNameWidth() const noexcept;
+
+        // ---- geometry ----
+
+        /** @brief Wide enough for the whole text, however little room there is at the moment. */
+        QSize sizeHint() const override;
+
     public slots:
 
         void start();
         void stop();
 
+    protected:
+
+        void resizeEvent(QResizeEvent* event) override;
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
     private:
 
         void rebuildLayout();
+
+        //! Rebuilds the text of the label for the current width.
+        void updateText();
+
+        //! Width that is left for the text of the label, -1 when the widget has no width yet.
+        int availableTextWidth() const;
 
         std::unique_ptr<TypingIndicator_p> pimpl;
 };
