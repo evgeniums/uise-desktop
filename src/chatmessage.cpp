@@ -146,11 +146,32 @@ void AbstractChatMessage::setHighlightFactor(qreal value)
 {
     m_highlightFactor=value;
     update(highlightRect());
+
+    // The quoted-text tint (see startHighlight()) rides the very same hold+fade as the row flash.
+    if (m_textHighlightSection!=TextHighlightSection::None)
+    {
+        auto* c=content();
+        if (m_textHighlightSection==TextHighlightSection::Body)
+        {
+            if (c!=nullptr && c->body()!=nullptr)
+            {
+                c->body()->setTextHighlightFactor(value);
+            }
+        }
+        else if (c!=nullptr && c->comment()!=nullptr)
+        {
+            c->comment()->setTextHighlightFactor(value);
+        }
+        if (value<=0.0)
+        {
+            m_textHighlightSection=TextHighlightSection::None;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------
 
-void AbstractChatMessage::startHighlight()
+void AbstractChatMessage::startHighlight(const QString& quote, int quoteOffset)
 {
     ensureHighlightAnimation();
 
@@ -160,6 +181,28 @@ void AbstractChatMessage::startHighlight()
     // RippleOverlay's own animations for the same house pitfall) -- harmless here, nothing is
     // connected to m_highlightAnim's finished(), only its valueChanged() above.
     m_highlightAnim->stop();
+
+    // A re-jump must not leave the PREVIOUS quote tinted if this one lives elsewhere (or is
+    // absent) -- drop it first, then place the new one. setHighlightFactor(0) below would reach
+    // only the section recorded last, so this is cleared explicitly while it still is.
+    if (m_textHighlightSection!=TextHighlightSection::None)
+    {
+        setHighlightFactor(0.0);
+    }
+
+    if (!quote.isEmpty())
+    {
+        auto* c=content();
+        if (c!=nullptr && c->body()!=nullptr && c->body()->highlightText(quote,quoteOffset))
+        {
+            m_textHighlightSection=TextHighlightSection::Body;
+        }
+        else if (c!=nullptr && c->comment()!=nullptr && c->comment()->highlightText(quote,quoteOffset))
+        {
+            m_textHighlightSection=TextHighlightSection::Comment;
+        }
+    }
+
     setHighlightFactor(1.0);
 
     // restart=true: a re-jump onto an already-highlighted (or fading) message always restarts

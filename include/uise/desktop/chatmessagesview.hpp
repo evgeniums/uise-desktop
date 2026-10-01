@@ -468,7 +468,24 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! startHighlight()) on a message already present in the loaded window. False if `id`
         //! isn't loaded -- same never-fetches contract as scrollToMessage(). Any previously
         //! highlighted message is cleared first, so at most one row is ever lit at a time.
-        bool highlightMessage(const Id& id);
+        //! `quote`/`quoteOffset` are forwarded to AbstractChatMessage::startHighlight(): when
+        //! `quote` is not empty, that text inside the message is tinted too (best-effort).
+        bool highlightMessage(const Id& id, const QString& quote={}, int quoteOffset=-1);
+
+        /**
+         * @brief Scroll a message already in the loaded window so a quoted fragment inside it is
+         *  visible -- for a message taller than the viewport, whose quote may sit off-screen
+         *  after the jump that landed on its top.
+         * @param quote Text to bring into view; `quoteOffset` is its search hint, see
+         *  AbstractChatMessageBody::selectText().
+         * @return Whether the view was scrolled. False when the message isn't loaded, the quote
+         *  isn't found, or it is already fully visible (the view never moves needlessly).
+         *
+         * The fragment's first line lands a quarter of the way down the viewport -- some context
+         * above it -- but never above the message's own top. A fragment taller than the viewport
+         * is aligned the same way, so its start is what shows.
+         */
+        bool revealMessageQuote(const Id& id, const QString& quote, int quoteOffset=-1);
 
         void clear();
 

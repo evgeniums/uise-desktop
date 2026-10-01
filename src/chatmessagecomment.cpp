@@ -143,9 +143,39 @@ void ChatMessageComment::setOwnContextMenuEnabled(bool enable)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageComment::selectText(const QString& text)
+void ChatMessageComment::selectText(const QString& text, int hintOffset)
 {
-    pimpl->text->selectText(text);
+    pimpl->text->selectText(text,hintOffset);
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageComment::selectionStart() const
+{
+    return pimpl->text->selectionStart();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageComment::highlightText(const QString& text, int hintOffset)
+{
+    return pimpl->text->highlightText(text,hintOffset);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageComment::setTextHighlightFactor(qreal factor)
+{
+    pimpl->text->setTextHighlightFactor(factor);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageComment::textRect(const QString& text, int hintOffset) const
+{
+    const auto rect=pimpl->text->textRect(text,hintOffset);
+    // The text widget's rect is in ITS coordinates; this section's own are wanted.
+    return rect.isNull() ? rect : QRect(pimpl->text->mapTo(this,rect.topLeft()),rect.size());
 }
 
 //--------------------------------------------------------------------------

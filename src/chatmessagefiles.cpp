@@ -517,9 +517,38 @@ void ChatMessageFiles::setOwnContextMenuEnabled(bool enable)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageFiles::selectText(const QString& text)
+void ChatMessageFiles::selectText(const QString& text, int hintOffset)
 {
-    pimpl->comment->selectText(text);
+    pimpl->comment->selectText(text,hintOffset);
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageFiles::selectionStart() const
+{
+    return pimpl->comment->selectionStart();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageFiles::highlightText(const QString& text, int hintOffset)
+{
+    return pimpl->comment->highlightText(text,hintOffset);
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFiles::setTextHighlightFactor(qreal factor)
+{
+    pimpl->comment->setTextHighlightFactor(factor);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageFiles::textRect(const QString& text, int hintOffset) const
+{
+    const auto rect=pimpl->comment->textRect(text,hintOffset);
+    return rect.isNull() ? rect : QRect(pimpl->comment->mapTo(this,rect.topLeft()),rect.size());
 }
 
 //--------------------------------------------------------------------------

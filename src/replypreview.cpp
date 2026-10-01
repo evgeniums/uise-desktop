@@ -23,6 +23,10 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <functional>
+
+#include <QEvent>
+#include <QFontMetrics>
 #include <QLocale>
 #include <QMouseEvent>
 
@@ -30,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/elidedlabel.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/replypreview.hpp>
@@ -68,6 +73,65 @@ constexpr int MinContentWidth=260;
 // long regardless of how much markdown source went in.
 constexpr int MarkdownPreviewSourceCap=4*DefaultReplyTextTrimLength;
 
+// A non-space run longer than this gets a zero-width space line-break opportunity inserted every
+// this-many characters in the full-quote label -- see breakLongWords(). Comfortably narrower than
+// the block's own MinContentWidth at any sane font size, so a break opportunity always lies within reach.
+constexpr int LongWordBreakEvery=16;
+
+//! Display-only: lets a QLabel wrap a long unbroken run (a URL, a hash, a path) that has no
+//! spaces. QLabel breaks only at word boundaries, so without this such a quote would overflow
+//! the block and be clipped at its right edge. U+200B is a line-break opportunity that occupies
+//! no width, so a run that fits still looks untouched. Never applied to anything stored or sent.
+QString breakLongWords(const QString& text)
+{
+    QString out;
+    out.reserve(text.size()+text.size()/LongWordBreakEvery);
+
+    int run=0;
+    for (const auto ch : text)
+    {
+        if (ch.isSpace() || ch==QChar(0x200B))
+        {
+            run=0;
+        }
+        else if (run==LongWordBreakEvery)
+        {
+            out+=QChar(0x200B);
+            run=0;
+        }
+        out+=ch;
+        if (!ch.isSpace() && ch!=QChar(0x200B))
+        {
+            ++run;
+        }
+    }
+    return out;
+}
+
+//! The wrapped quote text. Only difference from Label: tells its owner when a font/style change
+//! may have altered the height it needs -- the QSS font (see replypreview.qss) arrives at polish
+//! time, typically AFTER the first bubble-width negotiation pass already sized this label
+//! against the default font. No Q_OBJECT, so no moc involvement for a file-local class.
+class QuoteLabel : public Label
+{
+    public:
+
+        using Label::Label;
+
+        std::function<void()> metricsChanged;
+
+    protected:
+
+        void changeEvent(QEvent* event) override
+        {
+            Label::changeEvent(event);
+            if ((event->type()==QEvent::FontChange || event->type()==QEvent::StyleChange) && metricsChanged)
+            {
+                metricsChanged();
+            }
+        }
+};
+
 }
 
 //--------------------------------------------------------------------------
@@ -93,6 +157,11 @@ class ReplyPreview_p
         ElidedLabel* title;
         RoundedImage* quoteIcon;
         ElidedLabel* text;
+        //! The full quote, word-wrapped -- shown INSTEAD of `text` while isFullQuoteShown().
+        QuoteLabel* quoteText;
+
+        //! Last width handed to setContentMaxWidth(), 0 until a bubble negotiates one.
+        int contentMaxWidth=0;
 
         ReplyPreviewData data;
 
@@ -189,6 +258,25 @@ ReplyPreview::ReplyPreview(QWidget* parent)
     pimpl->text->setElideMode(Qt::ElideRight);
     pimpl->text->setMaxLines(1);
     pimpl->textColumnLayout->addWidget(pimpl->text);
+
+    // Full-quote variant of `text` above -- hidden until refresh() decides this block is showing
+    // a quote in full (see isFullQuoteShown()). PlainText, so a quote is never reinterpreted as
+    // markup/HTML. Its height is set explicitly (updateQuoteHeight()), not negotiated through
+    // heightForWidth: a bubble reads sizeHint() only, and sizes each section from
+    // updateMaximumBubbleWidth(), exactly like the text bodies do.
+    pimpl->quoteText=new QuoteLabel(pimpl->textColumn);
+    pimpl->quoteText->setObjectName("quoteText");
+    pimpl->quoteText->setTextFormat(Qt::PlainText);
+    pimpl->quoteText->setWordWrap(true);
+    pimpl->quoteText->setAlignment(Qt::AlignLeft|Qt::AlignTop);
+    pimpl->quoteText->setTextInteractionFlags(Qt::NoTextInteraction);
+    pimpl->quoteText->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+    pimpl->quoteText->setVisible(false);
+    pimpl->quoteText->metricsChanged=[this]()
+    {
+        updateQuoteHeight();
+    };
+    pimpl->textColumnLayout->addWidget(pimpl->quoteText);
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
 
@@ -297,7 +385,22 @@ int ReplyPreview::contentWidthHint(int forMaxWidth) const
     {
         titleRowWidth+=QuoteIconSize.width()+QuoteIconSpacing;
     }
-    auto textWidth=qMax(titleRowWidth,pimpl->text->widthHint());
+    int bodyTextWidth=pimpl->text->widthHint();
+    if (isFullQuoteShown())
+    {
+        // The widest single line of the quote, unwrapped -- what the wrapped label would like
+        // to have. QLabel::sizeHint() is no use here: with word wrap on it reports some
+        // arbitrary wrapped shape, not the natural width.
+        QFontMetrics fm(pimpl->quoteText->font());
+        bodyTextWidth=0;
+        const auto lines=pimpl->quoteText->text().split(QLatin1Char('\n'));
+        for (const auto& line : lines)
+        {
+            bodyTextWidth=qMax(bodyTextWidth,fm.horizontalAdvance(line));
+        }
+        bodyTextWidth+=pimpl->quoteText->contentsMargins().left()+pimpl->quoteText->contentsMargins().right();
+    }
+    auto textWidth=qMax(titleRowWidth,bodyTextWidth);
 
     auto natural=horizontalTotalMargin(this)+AccentBarWidth+AccentBarSpacing+textWidth;
     if (isIconSlotVisible())
@@ -317,12 +420,56 @@ void ReplyPreview::setContentMaxWidth(int width)
     // quote icon sits inside the text column's own title row, already covered by this cap. The
     // title/text ElidedLabels re-elide themselves from their own resizeEvent() once the column
     // is relaid out at this width, nothing further is needed here.
+    pimpl->contentMaxWidth=width;
+    pimpl->textColumn->setMaximumWidth(qMax(0,width-reservedWidth()));
+    // The column's width is what the quote wraps against, so its height is only known now.
+    updateQuoteHeight();
+    updateGeometry();
+}
+
+//--------------------------------------------------------------------------
+
+int ReplyPreview::reservedWidth() const
+{
     auto reserved=AccentBarWidth+AccentBarSpacing+horizontalTotalMargin(this);
     if (isIconSlotVisible())
     {
         reserved+=IconSlotSize.width()+IconSlotSpacing;
     }
-    pimpl->textColumn->setMaximumWidth(qMax(0,width-reserved));
+    return reserved;
+}
+
+//--------------------------------------------------------------------------
+
+int ReplyPreview::quoteLabelWidth() const
+{
+    // Before any bubble has negotiated a width (the very first frame), assume the widest this
+    // block ever gets -- the same cap contentWidthHint() applies -- rather than wrapping against
+    // nothing; setContentMaxWidth() corrects it as soon as the real width is known.
+    auto total=pimpl->contentMaxWidth>0
+                   ? pimpl->contentMaxWidth
+                   : (maxWidthHint()>0 ? maxWidthHint() : DefaultReplyMaxWidthHint);
+    return qMax(0,total-reservedWidth());
+}
+
+//--------------------------------------------------------------------------
+
+void ReplyPreview::updateQuoteHeight()
+{
+    if (!isFullQuoteShown())
+    {
+        // Drop a stale pin left over from when it WAS shown, so the next time starts unconstrained.
+        pimpl->quoteText->setMinimumHeight(0);
+        pimpl->quoteText->setMaximumHeight(QWIDGETSIZE_MAX);
+        return;
+    }
+
+    const auto width=quoteLabelWidth();
+    const auto height=pimpl->quoteText->heightForWidth(width);
+    if (height>=0)
+    {
+        pimpl->quoteText->setFixedHeight(height);
+    }
     updateGeometry();
 }
 
@@ -350,6 +497,13 @@ void ReplyPreview::updateAccentBarVisible()
 //--------------------------------------------------------------------------
 
 void ReplyPreview::updateQuoteIconVisible()
+{
+    refresh();
+}
+
+//--------------------------------------------------------------------------
+
+void ReplyPreview::updateQuoteFullText()
 {
     refresh();
 }
@@ -442,6 +596,30 @@ void ReplyPreview::refresh()
                           : d.text();
     pimpl->text->setText(deleted ? pimpl->deletedText : trimReplyText(previewText,charLimit));
 
+    // A quote shown in full (bubble only, see AbstractReplyPreview::quoteFullText) replaces the
+    // one-line elided label above with its own wrapped one, fed the UNCOLLAPSED text -- line
+    // breaks the user selected across are part of the quote. Only quoteTrimLength() caps it, and
+    // a well-behaved host never sends more than that (MaxReplyQuoteLength), so this is a
+    // defensive bound, not the normal path. Cut on a code-point boundary, not mid surrogate pair.
+    const bool fullQuote=isFullQuoteShown();
+    pimpl->text->setVisible(!fullQuote);
+    pimpl->quoteText->setVisible(fullQuote);
+    if (fullQuote)
+    {
+        auto quote=previewText;
+        if (quote.size()>charLimit)
+        {
+            auto cut=charLimit;
+            if (cut>0 && quote.at(cut-1).isHighSurrogate())
+            {
+                --cut;
+            }
+            quote.truncate(cut);
+        }
+        pimpl->quoteText->setText(breakLongWords(quote));
+    }
+    updateQuoteHeight();
+
     // Turning deleted mid-lifetime (a bubble's placeholder resolving to "not found") would
     // otherwise shrink this block by a whole row: buildReplySection() deliberately reserves
     // titleRow's height from construction (its own blank-placeholder seed, see that function's
@@ -483,6 +661,13 @@ bool ReplyPreview::originalDeleted() const
 {
     const auto& d=pimpl->data;
     return d.isDeleted() || d.kind()==ReplyMessageKind::Deleted;
+}
+
+//--------------------------------------------------------------------------
+
+bool ReplyPreview::isFullQuoteShown() const
+{
+    return isQuoteFullText() && pimpl->data.isQuote() && !originalDeleted();
 }
 
 //--------------------------------------------------------------------------

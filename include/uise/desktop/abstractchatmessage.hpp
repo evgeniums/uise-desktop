@@ -424,7 +424,19 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageComment : public ChatMessageContent
         virtual void setOwnContextMenuEnabled(bool enable) {std::ignore=enable;}
 
         //! See AbstractChatMessageBody::selectText().
-        virtual void selectText(const QString& /*text*/) {}
+        virtual void selectText(const QString& /*text*/, int /*hintOffset*/=-1) {}
+
+        //! See AbstractChatMessageBody::selectionStart().
+        virtual int selectionStart() const {return -1;}
+
+        //! See AbstractChatMessageBody::highlightText().
+        virtual bool highlightText(const QString& /*text*/, int /*hintOffset*/=-1) {return false;}
+
+        //! See AbstractChatMessageBody::setTextHighlightFactor().
+        virtual void setTextHighlightFactor(qreal /*factor*/) {}
+
+        //! See AbstractChatMessageBody::textRect().
+        virtual QRect textRect(const QString& /*text*/, int /*hintOffset*/=-1) const {return QRect{};}
 
         //! See AbstractChatMessageBody::linkAt().
         virtual QString linkAt(const QPoint& /*pos*/) const {return QString{};}
@@ -484,11 +496,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
         virtual void setOwnContextMenuEnabled(bool enable) {std::ignore=enable;}
 
         /**
-         * @brief Select the first occurrence of `text` within this body's own content, if any.
+         * @brief Select an occurrence of `text` within this body's own content, if any.
          * @param text Text to find and select -- typically a quote already picked once (e.g. a
          *  message context menu's "Quote and reply"), being re-applied to a fresh preview of the
          *  same message (e.g. AbstractReplyDialog's own static bubble) so the dialog opens with
          *  that same fragment already highlighted instead of nothing selected.
+         * @param hintOffset Position (as reported by selectionStart()) the quote was originally
+         *  picked at, or -1 for none. The search starts there first and, when `text` is not
+         *  found at or after it (e.g. the content was edited since), falls back to a search from
+         *  the beginning -- so a quote that occurs several times resolves to the intended
+         *  occurrence, not always the first.
          *
          * No-op by default -- a body with no selectable content at all (ChatMessageCall) never
          * overrides this; a text body overrides it to search its own rendered plain text.
@@ -496,7 +513,42 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          * effort: silently does nothing if `text` isn't found (e.g. content changed since the
          * quote was picked) or the body has no comment to search.
          */
-        virtual void selectText(const QString& /*text*/) {}
+        virtual void selectText(const QString& /*text*/, int /*hintOffset*/=-1) {}
+
+        /**
+         * @brief Start of the current selection, in this body's own rendered-text positions --
+         *  the value to hand back later as selectText()/highlightText()'s `hintOffset`.
+         * @return -1 when there is no selection (and by default, for a body with no text).
+         *  ChatMessageFiles/ChatMessageImages forward to their optional comment, if any.
+         */
+        virtual int selectionStart() const {return -1;}
+
+        /**
+         * @brief Paint a transient background tint over an occurrence of `text`, WITHOUT touching
+         *  the real selection.
+         * @param text Text to find, same matching rules and `hintOffset` meaning as selectText().
+         * @return Whether an occurrence was found and tinted. False by default -- a body with no
+         *  text never overrides this. The tint itself is driven by setTextHighlightFactor().
+         */
+        virtual bool highlightText(const QString& /*text*/, int /*hintOffset*/=-1) {return false;}
+
+        /**
+         * @brief Set the strength of the tint highlightText() placed: 1 is full, 0 removes it.
+         * Driven by AbstractChatMessage's own jump-highlight animation, so the tint holds and
+         * fades together with the whole-row flash.
+         */
+        virtual void setTextHighlightFactor(qreal /*factor*/) {}
+
+        /**
+         * @brief Where an occurrence of `text` sits inside this body, in THIS widget's own
+         *  coordinates -- from the top of its first line to the bottom of its last.
+         * @param text Text to find, same matching rules and `hintOffset` meaning as selectText().
+         * @return A null QRect when `text` isn't found (and by default, for a body with no text).
+         *  Meant for scrolling a long message so the quoted fragment comes into view -- see
+         *  AbstractChatMessage::quoteRect(). ChatMessageFiles/ChatMessageImages forward to their
+         *  optional comment, translating the rect into their own coordinates.
+         */
+        virtual QRect textRect(const QString& /*text*/, int /*hintOffset*/=-1) const {return QRect{};}
 
         /**
          * @brief Href of the hyperlink rendered at widget-local position `pos`, or empty if
@@ -1804,6 +1856,59 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             return selectedText();
         }
 
+        //! Start of the selection genuinelySelectedText() reports, in the owning section's own
+        //! text positions (see AbstractChatMessageBody::selectionStart()), or -1 if none. Same
+        //! body-then-comment order as ChatMessage::selectedText(): when both hold a selection
+        //! the text is their concatenation, and the offset is the body's own.
+        int genuineSelectionStart() const
+        {
+            if (genuinelySelectedText().isEmpty())
+            {
+                return -1;
+            }
+            auto* c=content();
+            auto* body=c!=nullptr ? c->body() : nullptr;
+            auto* comment=c!=nullptr ? c->comment() : nullptr;
+            if (body!=nullptr && body->hasSelectableText() && !body->selectedText().isEmpty())
+            {
+                return body->selectionStart();
+            }
+            if (comment!=nullptr)
+            {
+                return comment->selectionStart();
+            }
+            return -1;
+        }
+
+        //! Where `quote` sits inside this message, in THIS widget's own coordinates (see
+        //! AbstractChatMessageBody::textRect()); body first, then comment -- the same order
+        //! startHighlight() uses to tint it. Null QRect if it isn't found.
+        QRect quoteRect(const QString& quote, int quoteOffset=-1) const
+        {
+            auto* c=content();
+            if (c==nullptr || quote.isEmpty())
+            {
+                return QRect{};
+            }
+            if (auto* body=c->body())
+            {
+                auto r=body->textRect(quote,quoteOffset);
+                if (!r.isNull())
+                {
+                    return QRect(body->mapTo(this,r.topLeft()),r.size());
+                }
+            }
+            if (auto* comment=c->comment())
+            {
+                auto r=comment->textRect(quote,quoteOffset);
+                if (!r.isNull())
+                {
+                    return QRect(comment->mapTo(this,r.topLeft()),r.size());
+                }
+            }
+            return QRect{};
+        }
+
         bool isFirstInBatch() const
         {
             return m_firstInBatch;
@@ -1972,7 +2077,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         //! Only an EXPLICIT jump (ChatMessages::jumpToMessage()) should ever call this -- see its
         //! own doc comment for why implicit jumps (jumpToDate()/jumpToFirstUnread()/
         //! jumpToEdge()/openLoad()) must not.
-        void startHighlight();
+        //!
+        //! @param quote When not empty, ALSO tints that text inside the body (or, failing that,
+        //!  the comment) for the same hold+fade -- see AbstractChatMessageBody::highlightText().
+        //!  @param quoteOffset is that call's `hintOffset`. A quote that is no longer found
+        //!  leaves just the whole-row flash, exactly as with no quote at all.
+        void startHighlight(const QString& quote={}, int quoteOffset=-1);
 
         //! Cancel any running/pending highlight immediately, with no fade.
         void clearHighlight();
@@ -2091,6 +2201,16 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         qreal m_highlightFactor=0.0;
         QVariantAnimation* m_highlightAnim=nullptr;
         SingleShotTimer* m_highlightHoldTimer=nullptr;
+
+        //! Which content section currently carries the text-range tint startHighlight() placed,
+        //! so setHighlightFactor() keeps driving it (and clearHighlight() removes it).
+        enum class TextHighlightSection : int
+        {
+            None,
+            Body,
+            Comment
+        };
+        TextHighlightSection m_textHighlightSection=TextHighlightSection::None;
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageText : public AbstractChatMessageBody

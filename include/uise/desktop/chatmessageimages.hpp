@@ -108,7 +108,15 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         void setOwnContextMenuEnabled(bool enable) override;
 
-        void selectText(const QString& text) override;
+        void selectText(const QString& text, int hintOffset=-1) override;
+
+        int selectionStart() const override;
+
+        bool highlightText(const QString& text, int hintOffset=-1) override;
+
+        void setTextHighlightFactor(qreal factor) override;
+
+        QRect textRect(const QString& text, int hintOffset=-1) const override;
 
         QString linkAt(const QPoint& pos) const override;
 

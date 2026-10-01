@@ -59,12 +59,17 @@ enum class ReplyMessageKind : uint8_t
 //! reply preview -- see trimReplyText() and AbstractReplyPreview::textTrimLength().
 constexpr const int DefaultReplyTextTrimLength=200;
 
-//! Default number of characters of a QUOTED fragment (ReplyPreviewData::isQuote()) carried into
-//! a reply preview or emitted by AbstractReplyDialog's "Quote selected" -- kept as a distinct
-//! limit from DefaultReplyTextTrimLength/textTrimLength(): a quote is already the user's own
-//! deliberately hand-picked selection, not necessarily the same length as the trim policy
-//! applied to a full original message, see AbstractReplyPreview::quoteTrimLength().
-constexpr const int DefaultReplyQuoteTrimLength=200;
+//! Hard cap on the length of a QUOTED fragment (ReplyPreviewData::isQuote()), in UTF-16 code
+//! units. A selection longer than this is REFUSED by the host (error toast), never silently
+//! cut -- AbstractReplyDialog no longer trims what it emits, see its saveRequested().
+constexpr const int MaxReplyQuoteLength=200;
+
+//! Display-only safety cap applied to a quote's text by AbstractReplyPreview::quoteTrimLength().
+//! A well-behaved host never sends more than MaxReplyQuoteLength, so this only guards against
+//! oversized text arriving over the wire from a misbehaving peer. Kept as a distinct limit from
+//! DefaultReplyTextTrimLength/textTrimLength(): a quote is the user's own deliberately
+//! hand-picked selection, not a head trim of a full original message.
+constexpr const int DefaultReplyQuoteTrimLength=MaxReplyQuoteLength;
 
 //! Default AbstractReplyPreview::maxWidthHint() -- see that property's own doc comment for why
 //! a reply preview block caps its own contribution to bubble-width negotiation.

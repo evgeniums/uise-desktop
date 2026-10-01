@@ -502,9 +502,17 @@ int main(int argc, char *argv[])
                 dialogFrame->dialog(),
                 &AbstractReplyDialog::saveRequested,
                 central,
-                [dialogFrame,replyBar,kindCombo,logMsg](const QString& quoted)
+                [dialogFrame,replyBar,kindCombo,logMsg](const QString& quoted, int quoteOffset)
                 {
-                    logMsg(QString("dialog: saveRequested(\"%1\")").arg(quoted));
+                    logMsg(QString("dialog: saveRequested(\"%1\", offset=%2)").arg(quoted).arg(quoteOffset));
+
+                    // Mirrors what a real host does: a quote over MaxReplyQuoteLength is refused and
+                    // the dialog stays open, it is never silently cut here.
+                    if (quoted.size()>MaxReplyQuoteLength)
+                    {
+                        logMsg(QString("dialog: quote refused, %1 > %2 characters").arg(quoted.size()).arg(MaxReplyQuoteLength));
+                        return;
+                    }
 
                     // Save (quoted empty): revert to the original message's own (trimmed) text.
                     // "Quote selected" (quoted non-empty): show the user-picked fragment instead,

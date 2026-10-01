@@ -89,6 +89,65 @@ bool isCodeBlockFormat(const QTextBlockFormat& format)
     return format.nonBreakableLines() || format.boolProperty(CodeWrappedProperty);
 }
 
+//! Maps every character QTextDocument::toPlainText() rewrites onto the one it would produce --
+//! the frame markers (U+FDD0/U+FDD1), paragraph/line separators and the non-breaking space --
+//! so a quote taken from QTextCursor::selectedText() (which keeps those raw) compares equal to
+//! the document's plain text. One-for-one by construction, so every index stays a valid
+//! QTextDocument position.
+QString normalizeForQuoteSearch(QString text)
+{
+    for (int i=0;i<text.size();++i)
+    {
+        const auto ch=text.at(i).unicode();
+        if (ch==0xFDD0 || ch==0xFDD1 || ch==QChar::ParagraphSeparator || ch==QChar::LineSeparator)
+        {
+            text[i]=QChar('\n');
+        }
+        else if (ch==QChar::Nbsp)
+        {
+            text[i]=QChar(' ');
+        }
+    }
+    return text;
+}
+
+//! Locates `quote` inside `doc` and returns a cursor selecting it, or a null cursor if absent.
+//!
+//! Searches the normalized plain text rather than QTextDocument::find(): find() matches within
+//! a single paragraph only, so a quote that spans a line break would never be found. The search
+//! starts at `hintOffset` (where the quote was originally picked) and, when nothing matches at or
+//! after it -- e.g. text before it was edited -- falls back to the beginning, so a quote that
+//! occurs several times resolves to the intended occurrence whenever the text still allows it.
+QTextCursor findQuote(QTextDocument* doc, const QString& quote, int hintOffset)
+{
+    const auto needle=normalizeForQuoteSearch(quote);
+    if (doc==nullptr || needle.isEmpty())
+    {
+        return QTextCursor{};
+    }
+
+    const auto haystack=normalizeForQuoteSearch(doc->toPlainText());
+
+    int start=-1;
+    if (hintOffset>=0 && hintOffset<haystack.size())
+    {
+        start=haystack.indexOf(needle,hintOffset);
+    }
+    if (start<0)
+    {
+        start=haystack.indexOf(needle,0);
+    }
+    if (start<0)
+    {
+        return QTextCursor{};
+    }
+
+    QTextCursor cursor(doc);
+    cursor.setPosition(start);
+    cursor.setPosition(start+needle.size(),QTextCursor::KeepAnchor);
+    return cursor;
+}
+
 }
 
 /******************************EnhancedTextEdit********************************/
@@ -115,6 +174,16 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
     // linkActivated() instead -- the host (whitemdesktop) decides what a click actually does.
     setOpenLinks(false);
     connect(this,&QTextBrowser::anchorClicked,this,&ChatMessageTextBrowser::linkActivated);
+
+    // Positions in the previous document mean nothing once it is rebuilt, and a QTextEdit's own
+    // extra selections do not reliably survive it (see documentRebuilt()'s doc comment) -- drop
+    // the quote tint rather than leave it painted over unrelated text.
+    connect(this,&ChatMessageTextBrowser::documentRebuilt,this,
+        [this]()
+        {
+            setRangeHighlightFactor(0.0);
+        }
+    );
 
     // This is a read-only display widget -- nothing ever exposes Ctrl+Z/Ctrl+Shift+Z here, and
     // updateHoveredAnchor()'s underline toggling would otherwise silently grow an unused undo
@@ -1517,6 +1586,62 @@ void ChatMessageTextBrowser::setMentionColor(const QColor& color)
     }
     m_mentionColor=color;
     applyDocumentStyle();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setQuoteHighlightColor(const QColor& color)
+{
+    m_quoteHighlightColor=color;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setRangeHighlight(int start, int end)
+{
+    // Replacing a range that is still showing: drop its tint first, so the new one starts clean.
+    setRangeHighlightFactor(0.0);
+    if (start<0 || end<=start)
+    {
+        return;
+    }
+    m_rangeHighlightStart=start;
+    m_rangeHighlightEnd=end;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageTextBrowser::setRangeHighlightFactor(qreal factor)
+{
+    // Never touch extra selections this widget did not put there itself.
+    if (m_rangeHighlightStart<0)
+    {
+        return;
+    }
+
+    if (factor<=0.0)
+    {
+        m_rangeHighlightStart=-1;
+        m_rangeHighlightEnd=-1;
+        setExtraSelections({});
+        return;
+    }
+
+    QColor tint=m_quoteHighlightColor;
+    if (!tint.isValid())
+    {
+        // Same look as TextViewer's find matches (runFind()).
+        tint=palette().color(QPalette::Highlight);
+        tint.setAlpha(110);
+    }
+    tint.setAlphaF(qBound(0.0,tint.alphaF()*factor,1.0));
+
+    QTextEdit::ExtraSelection highlight;
+    highlight.format.setBackground(tint);
+    highlight.cursor=QTextCursor(document());
+    highlight.cursor.setPosition(m_rangeHighlightStart);
+    highlight.cursor.setPosition(m_rangeHighlightEnd,QTextCursor::KeepAnchor);
+    setExtraSelections({highlight});
 }
 
 //--------------------------------------------------------------------------
@@ -3010,13 +3135,13 @@ void ChatMessageText::setOwnContextMenuEnabled(bool enable)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageText::selectText(const QString& text)
+void ChatMessageText::selectText(const QString& text, int hintOffset)
 {
     if (text.isEmpty())
     {
         return;
     }
-    auto cursor=pimpl->text->document()->find(text);
+    auto cursor=findQuote(pimpl->text->document(),text,hintOffset);
     if (cursor.isNull())
     {
         // Not found -- e.g. the quote was picked before an edit changed this text. Best-effort,
@@ -3024,6 +3149,64 @@ void ChatMessageText::selectText(const QString& text)
         return;
     }
     pimpl->text->setTextCursor(cursor);
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageText::selectionStart() const
+{
+    auto cursor=pimpl->text->textCursor();
+    return cursor.hasSelection() ? cursor.selectionStart() : -1;
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageText::highlightText(const QString& text, int hintOffset)
+{
+    if (text.isEmpty())
+    {
+        return false;
+    }
+    auto cursor=findQuote(pimpl->text->document(),text,hintOffset);
+    if (cursor.isNull())
+    {
+        return false;
+    }
+    pimpl->text->setRangeHighlight(cursor.selectionStart(),cursor.selectionEnd());
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageText::setTextHighlightFactor(qreal factor)
+{
+    pimpl->text->setRangeHighlightFactor(factor);
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageText::textRect(const QString& text, int hintOffset) const
+{
+    if (text.isEmpty())
+    {
+        return QRect{};
+    }
+    auto cursor=findQuote(pimpl->text->document(),text,hintOffset);
+    if (cursor.isNull())
+    {
+        return QRect{};
+    }
+
+    // cursorRect() is one line tall at the cursor's own position: the start's and the end's rects
+    // together span first line top to last line bottom, however many lines the fragment wraps over.
+    QTextCursor start=cursor;
+    start.setPosition(cursor.selectionStart());
+    QTextCursor end=cursor;
+    end.setPosition(cursor.selectionEnd());
+    const auto rect=pimpl->text->cursorRect(start).united(pimpl->text->cursorRect(end));
+
+    // cursorRect() is in the browser's VIEWPORT coordinates, this widget's own are wanted.
+    return QRect(pimpl->text->viewport()->mapTo(this,rect.topLeft()),rect.size());
 }
 
 //--------------------------------------------------------------------------

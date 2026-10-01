@@ -25,6 +25,10 @@ uise--AbstractReplyPreview #text QLabel {
 color: #555555;
 }
 
+uise--AbstractReplyPreview #quoteText {
+color: #555555;
+}
+
 uise--AbstractReplyPreview[deleted="true"] #text QLabel {
 color: #999999;
 }

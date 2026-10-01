@@ -6,6 +6,7 @@ qproperty-textTrimLength: 200;
 qproperty-quoteTrimLength: 200;
 qproperty-maxWidthHint: 320;
 qproperty-quoteIconVisible: false;
+qproperty-quoteFullText: false;
 }
 
 uise--AbstractReplyPreview #accentBar {
@@ -56,6 +57,18 @@ font-weight: normal;
 font-size: 12px;
 }
 
+/* The full-quote label (see AbstractReplyPreview::quoteFullText) is a plain QLabel itself, not an
+   ElidedLabel wrapping one, so it is targeted directly -- and must carry no padding/margin/border
+   of its own: ReplyPreview::updateQuoteHeight() sizes it with QLabel::heightForWidth(), which only
+   agrees with what is painted when the box model adds nothing around the text. */
+uise--AbstractReplyPreview #quoteText {
+font-weight: normal;
+font-size: 12px;
+padding: 0;
+margin: 0;
+border: none;
+}
+
 uise--AbstractReplyPreview[deleted="true"] #text QLabel {
 font-style: italic;
 }
@@ -81,6 +94,9 @@ qproperty-maxWidthHint: 300;
 /* Marks "this is a reply" -- only meaningful once the message is actually a finalized bubble,
    not while still being composed (see AbstractReplyBar, which leaves this at its false default). */
 qproperty-quoteIconVisible: true;
+/* A quote is the point of the reply block inside a bubble -- show all of it, wrapped. The short
+   reply bar above the composer leaves this off and stays one line tall. */
+qproperty-quoteFullText: true;
 }
 
 /* ---- short reply bar above the chat editor ---- */

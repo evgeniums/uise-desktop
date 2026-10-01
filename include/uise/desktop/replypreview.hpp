@@ -85,6 +85,7 @@ class UISE_DESKTOP_EXPORT ReplyPreview : public AbstractReplyPreview
         void updateQuoteTrimLength() override;
         void updateAccentBarVisible() override;
         void updateQuoteIconVisible() override;
+        void updateQuoteFullText() override;
 
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
@@ -113,6 +114,22 @@ class UISE_DESKTOP_EXPORT ReplyPreview : public AbstractReplyPreview
         //! itself (swaps the pointing-hand cursor for an arrow) so both stay in sync off one
         //! definition.
         bool originalDeleted() const;
+
+        //! True while the quote is shown in full in its own wrapped label instead of on the
+        //! single elided line -- see AbstractReplyPreview::quoteFullText. The one definition
+        //! refresh() and contentWidthHint() share.
+        bool isFullQuoteShown() const;
+
+        //! Width the text column gets inside the bubble -- what the quote label wraps against --
+        //! and the horizontal room everything BESIDE that column takes (accent bar, icon slot,
+        //! this widget's own margins). setContentMaxWidth() caps the column with the former.
+        int reservedWidth() const;
+        int quoteLabelWidth() const;
+
+        //! Re-derives the quote label's fixed height for quoteLabelWidth(): its own
+        //! heightForWidth(), so the block's sizeHint() -- all a bubble ever reads -- already
+        //! includes every wrapped line. No-op while the full quote isn't shown.
+        void updateQuoteHeight();
 
         std::unique_ptr<ReplyPreview_p> pimpl;
 };

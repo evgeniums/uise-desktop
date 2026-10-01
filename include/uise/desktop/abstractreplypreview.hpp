@@ -69,6 +69,13 @@ class UISE_DESKTOP_EXPORT AbstractReplyPreview : public WidgetQFrame
     //! the default here is false and replypreview.qss turns it on only for the bubble-embedded
     //! instance. Never shown at all while the title itself is hidden, see contentWidthHint().
     Q_PROPERTY(bool quoteIconVisible READ isQuoteIconVisible WRITE setQuoteIconVisible)
+    //! QSS: qproperty-quoteFullText: true; -- show a QUOTE (data().isQuote()) in full, word-wrapped
+    //! over as many lines as it needs with its own line breaks kept, instead of collapsed onto a
+    //! single elided line. Meant for the reply block embedded in a bubble, where the quote is the
+    //! point of the block; the short reply bar above the composer keeps this at its false default
+    //! so it stays one line tall. A plain (non-quote) reply is unaffected either way. The height
+    //! this adds is bounded by quoteTrimLength().
+    Q_PROPERTY(bool quoteFullText READ isQuoteFullText WRITE setQuoteFullText)
 
     public:
 
@@ -176,6 +183,17 @@ class UISE_DESKTOP_EXPORT AbstractReplyPreview : public WidgetQFrame
             return m_quoteIconVisible;
         }
 
+        void setQuoteFullText(bool enable)
+        {
+            m_quoteFullText=enable;
+            updateQuoteFullText();
+        }
+
+        bool isQuoteFullText() const noexcept
+        {
+            return m_quoteFullText;
+        }
+
     signals:
 
         void clicked();
@@ -197,6 +215,9 @@ class UISE_DESKTOP_EXPORT AbstractReplyPreview : public WidgetQFrame
         //! Called after setQuoteIconVisible() -- no-op in the base class.
         virtual void updateQuoteIconVisible() {}
 
+        //! Called after setQuoteFullText() -- no-op in the base class.
+        virtual void updateQuoteFullText() {}
+
     private:
 
         int m_textTrimLength=DefaultReplyTextTrimLength;
@@ -204,6 +225,7 @@ class UISE_DESKTOP_EXPORT AbstractReplyPreview : public WidgetQFrame
         int m_maxWidthHint=DefaultReplyMaxWidthHint;
         bool m_accentBarVisible=true;
         bool m_quoteIconVisible=false;
+        bool m_quoteFullText=false;
 };
 
 }

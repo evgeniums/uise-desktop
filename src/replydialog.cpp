@@ -105,8 +105,6 @@ class ReplyDialog_p
         //! destroys and recreates every button -- see Dialog<>::doSetButtons()) on every single
         //! cursor movement; only an actual quote/no-quote transition rebuilds it.
         bool quoteMode=false;
-
-        int quoteTrimLength=DefaultReplyQuoteTrimLength;
 };
 
 //--------------------------------------------------------------------------
@@ -192,7 +190,16 @@ ReplyDialog::ReplyDialog(QWidget* parent)
         {
             if (AbstractDialog::isButton(id,AbstractDialog::StandardButton::Apply))
             {
-                emit saveRequested(pimpl->quoteMode ? trimReplyText(selectedText(),pimpl->quoteTrimLength) : QString{});
+                // Passed through exactly as selected -- see AbstractReplyDialog::saveRequested()
+                // on why length policy (and any refusal) belongs to the host, not here.
+                if (pimpl->quoteMode)
+                {
+                    emit saveRequested(selectedText(),message()!=nullptr ? message()->genuineSelectionStart() : -1);
+                }
+                else
+                {
+                    emit saveRequested(QString{},-1);
+                }
             }
         }
     );
@@ -332,20 +339,6 @@ QString ReplyDialog::selectedText() const
         return QString{};
     }
     return pimpl->message->selectedText();
-}
-
-//--------------------------------------------------------------------------
-
-void ReplyDialog::setQuoteTrimLength(int length)
-{
-    pimpl->quoteTrimLength=length;
-}
-
-//--------------------------------------------------------------------------
-
-int ReplyDialog::quoteTrimLength() const
-{
-    return pimpl->quoteTrimLength;
 }
 
 //--------------------------------------------------------------------------

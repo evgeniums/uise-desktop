@@ -75,6 +75,13 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
     //! comment.
     Q_PROPERTY(QColor mentionColor READ mentionColor WRITE setMentionColor)
 
+    //! QSS: qproperty-quoteHighlightColor: rgba(...); -- the tint setRangeHighlight() paints over
+    //! a quoted fragment after a jump from a reply block (see AbstractChatMessageBody::
+    //! highlightText()). Invalid (the default) means QPalette::Highlight at alpha 110, the same
+    //! look TextViewer's find matches use. Reachable through qproperty- for the same reason as
+    //! linkColor above: the tint is an ExtraSelection format, not something QSS can style.
+    Q_PROPERTY(QColor quoteHighlightColor READ quoteHighlightColor WRITE setQuoteHighlightColor)
+
     // task-message-formatting-plan.md, Stage 3: reactive, not a load-time gate -- the setter
     // itself attaches/detaches and repaints immediately, since a bubble can be constructed and
     // loaded before its first QStyle::polish() (Style::updateWidgetStyle() bails on an un-
@@ -551,6 +558,30 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         }
         void setMentionColor(const QColor& color);
 
+        QColor quoteHighlightColor() const noexcept
+        {
+            return m_quoteHighlightColor;
+        }
+        void setQuoteHighlightColor(const QColor& color);
+
+        /**
+         * @brief Remember a document range [start,end) to tint, WITHOUT showing it yet -- the
+         *  tint appears once setRangeHighlightFactor() is called with a positive factor.
+         *
+         * Uses a QTextEdit extra selection, never the real text cursor: the user's selection (and
+         * so the context menu's "Quote and reply" / Copy state) is left exactly as it was. The
+         * range is dropped automatically whenever the document is rebuilt (documentRebuilt()),
+         * since positions in the previous document mean nothing afterwards.
+         */
+        void setRangeHighlight(int start, int end);
+
+        /**
+         * @brief Set the strength of the range tint: 1 is full (quoteHighlightColor()'s own
+         *  alpha), 0 removes it and forgets the range. No-op when no range was remembered, so a
+         *  caller driving it from an animation never disturbs extra selections set by anyone else.
+         */
+        void setRangeHighlightFactor(qreal factor);
+
         /**
          * @brief Enable/disable code-block syntax highlighting (task-message-formatting-plan.md,
          *  Stage 3). On by default.
@@ -947,6 +978,9 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         QColor m_linkColor;
         bool m_linkUnderline=false;
         QColor m_mentionColor;
+        QColor m_quoteHighlightColor;
+        int m_rangeHighlightStart=-1;
+        int m_rangeHighlightEnd=-1;
         QString m_lastHtml;
         QString m_hoveredAnchor;
         SyntaxHighlighter* m_highlighter=nullptr;
@@ -1127,7 +1161,15 @@ class UISE_DESKTOP_EXPORT ChatMessageText : public AbstractChatMessageText
 
         void setOwnContextMenuEnabled(bool enable) override;
 
-        void selectText(const QString& text) override;
+        void selectText(const QString& text, int hintOffset=-1) override;
+
+        int selectionStart() const override;
+
+        bool highlightText(const QString& text, int hintOffset=-1) override;
+
+        void setTextHighlightFactor(qreal factor) override;
+
+        QRect textRect(const QString& text, int hintOffset=-1) const override;
 
         QString linkAt(const QPoint& pos) const override;
 

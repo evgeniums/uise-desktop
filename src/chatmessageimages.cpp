@@ -816,12 +816,48 @@ void ChatMessageImages::setOwnContextMenuEnabled(bool enable)
 
 //--------------------------------------------------------------------------
 
-void ChatMessageImages::selectText(const QString& text)
+void ChatMessageImages::selectText(const QString& text, int hintOffset)
 {
     if (pimpl->comment!=nullptr)
     {
-        pimpl->comment->selectText(text);
+        pimpl->comment->selectText(text,hintOffset);
     }
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageImages::selectionStart() const
+{
+    return (pimpl->comment!=nullptr) ? pimpl->comment->selectionStart() : -1;
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImages::highlightText(const QString& text, int hintOffset)
+{
+    return (pimpl->comment!=nullptr) ? pimpl->comment->highlightText(text,hintOffset) : false;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setTextHighlightFactor(qreal factor)
+{
+    if (pimpl->comment!=nullptr)
+    {
+        pimpl->comment->setTextHighlightFactor(factor);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QRect ChatMessageImages::textRect(const QString& text, int hintOffset) const
+{
+    if (pimpl->comment==nullptr)
+    {
+        return QRect{};
+    }
+    const auto rect=pimpl->comment->textRect(text,hintOffset);
+    return rect.isNull() ? rect : QRect(pimpl->comment->mapTo(this,rect.topLeft()),rect.size());
 }
 
 //--------------------------------------------------------------------------

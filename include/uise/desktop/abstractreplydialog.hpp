@@ -115,14 +115,6 @@ class UISE_DESKTOP_EXPORT AbstractReplyDialog : public AbstractDialog
         //! Equivalent to message()->selectedText() (empty if no message() is set).
         virtual QString selectedText() const =0;
 
-        //! Character-count cap applied to selectedText() before it is emitted by
-        //! saveRequested() -- see trimReplyText() and
-        //! AbstractReplyPreview::quoteTrimLength()'s own doc comment for why a quote gets a
-        //! limit distinct from a plain reply's trim length. Default
-        //! DefaultReplyQuoteTrimLength.
-        virtual void setQuoteTrimLength(int length) =0;
-        virtual int quoteTrimLength() const =0;
-
     signals:
 
         //! One of the action rows set via setActions() was picked.
@@ -130,10 +122,15 @@ class UISE_DESKTOP_EXPORT AbstractReplyDialog : public AbstractDialog
 
         /**
          * @brief The Save (or "Quote selected") button was pressed.
-         * @param quotedText Empty for a plain Save; selectedText() already passed through
-         *  trimReplyText() at quoteTrimLength(), for "Quote selected".
+         * @param quotedText Empty for a plain Save; for "Quote selected", selectedText() exactly
+         *  as selected -- NOT trimmed, collapsed or capped here. Whether it is acceptable (length,
+         *  see MaxReplyQuoteLength) is the host's call: it can refuse with an error and leave this
+         *  dialog open for the user to shorten the selection, which a silent cut here could not.
+         * @param quoteOffset Where the selection starts in the section it was made in (see
+         *  AbstractChatMessageBody::selectionStart()), for the host to store as a search hint and
+         *  hand back to selectText()/highlightText() later. -1 for a plain Save.
          */
-        void saveRequested(const QString& quotedText);
+        void saveRequested(const QString& quotedText, int quoteOffset);
 };
 
 }

@@ -83,9 +83,6 @@ class UISE_DESKTOP_EXPORT ReplyDialog : public Dialog<AbstractReplyDialog>
 
         QString selectedText() const override;
 
-        void setQuoteTrimLength(int length) override;
-        int quoteTrimLength() const override;
-
         void prepareToShow() override;
 
     private:

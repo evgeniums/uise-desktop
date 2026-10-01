@@ -888,7 +888,7 @@ bool ChatMessagesView<BaseMessageT,Traits>::messageFitsViewport(const Id& id) co
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-bool ChatMessagesView<BaseMessageT,Traits>::highlightMessage(const Id& id)
+bool ChatMessagesView<BaseMessageT,Traits>::highlightMessage(const Id& id, const QString& quote, int quoteOffset)
 {
     auto item=m_listView->item(id);
     if (item==nullptr || item->item()==nullptr)
@@ -910,8 +910,51 @@ bool ChatMessagesView<BaseMessageT,Traits>::highlightMessage(const Id& id)
     }
 
     m_highlightedMessage=ui;
-    ui->startHighlight();
+    ui->startHighlight(quote,quoteOffset);
     return true;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::revealMessageQuote(const Id& id, const QString& quote, int quoteOffset)
+{
+    auto item=m_listView->item(id);
+    if (item==nullptr || item->item()==nullptr)
+    {
+        return false;
+    }
+    auto* ui=item->item()->ui();
+    auto* viewport=m_listView->viewportFrame();
+    if (ui==nullptr || viewport==nullptr || quote.isEmpty())
+    {
+        return false;
+    }
+
+    const auto rect=ui->quoteRect(quote,quoteOffset);
+    if (rect.isNull())
+    {
+        return false;
+    }
+
+    // Where the fragment is on screen right now, from the widget's real position -- not assumed
+    // from the jump having put the message's top at the viewport's top (it may have been clamped
+    // at the end of the list).
+    const int viewHeight=viewport->height();
+    // Via global coordinates: item widgets are children of the list's inner scrolling widget, not
+    // of the viewport frame, so mapTo(viewport) has no ancestor chain to walk.
+    const int itemTop=viewport->mapFromGlobal(ui->mapToGlobal(QPoint(0,0))).y();
+    const int quoteTop=itemTop+rect.top();
+    const int quoteBottom=itemTop+rect.bottom()+1;
+    if (quoteTop>=0 && quoteBottom<=viewHeight)
+    {
+        return false;
+    }
+
+    // scrollToItem()'s offset is measured from the message's own top, and is clamped to the
+    // list's scroll range. Never negative: that would scroll ABOVE the message, away from it.
+    const int offset=qMax(0,rect.top()-viewHeight/4);
+    return m_listView->scrollToItem(id,offset);
 }
 
 //--------------------------------------------------------------------------
