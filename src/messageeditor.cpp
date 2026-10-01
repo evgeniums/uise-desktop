@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <array>
 #include <limits>
 #include <memory>
+#include <iterator>
 #include <vector>
 
 #include <QKeyEvent>
@@ -1257,6 +1258,136 @@ void replaceEmojiImagesForExport(QTextDocument* document, bool defaultPackOnly)
     }
 }
 
+/** @brief Take leading and trailing whitespace out of every bold / italic / strikeout / underline run,
+ *  on an export clone, so the markers qtextmarkdownwriter writes can actually close.
+ *
+ * A selection made with the mouse or by word selection very often takes the space after the last
+ * word with it, so "Nunc sed turpis. " ends up bold, trailing space included. qtextmarkdownwriter
+ * spells that literally as "**Nunc sed turpis. **Sed", and in CommonMark a closing delimiter run
+ * that follows whitespace is not right-flanking, so it cannot close: the pair is read as literal
+ * asterisks. Everything downstream shows them -- the chat bubble, a document opened in the
+ * editor (where a later switch to Markdown source then backslash-escapes them, "\**Nunc ..."), a
+ * copied selection. The same holds for an opening run followed by whitespace.
+ *
+ * Whitespace carries no visible emphasis (bold space looks like a space), so clearing the
+ * property on it changes nothing on screen and gives "**Nunc sed turpis.** Sed". Only the EDGES of
+ * a run are trimmed: whitespace between two words of it is part of the run and stays. A run of
+ * nothing but whitespace loses the property altogether.
+ *
+ * Each property is handled on its own, so overlapping runs (bold across part of an italic one) are
+ * each trimmed against their own edges. A run is a stretch of consecutive fragments of one block
+ * that all carry the property. Underlined text inside a LINK is left alone: the underline there is
+ * the link's look, not an emphasis marker, and qtextmarkdownwriter does not write it as one.
+ *
+ * Collected first and applied afterwards, because merging a character format splits and joins
+ * fragments, which would invalidate the iteration in progress.
+ */
+void trimEmphasisPaddingForExport(QTextDocument* document)
+{
+    struct Emphasis
+    {
+        bool (*has)(const QTextCharFormat&);
+        void (*clear)(QTextCharFormat&);
+        bool skipAnchors;
+    };
+    static const Emphasis kinds[]={
+        {[](const QTextCharFormat& f){return f.fontWeight()>QFont::Normal;},
+         [](QTextCharFormat& f){f.setFontWeight(QFont::Normal);},false},
+        {[](const QTextCharFormat& f){return f.fontItalic();},
+         [](QTextCharFormat& f){f.setFontItalic(false);},false},
+        {[](const QTextCharFormat& f){return f.fontStrikeOut();},
+         [](QTextCharFormat& f){f.setFontStrikeOut(false);},false},
+        {[](const QTextCharFormat& f){return f.fontUnderline();},
+         [](QTextCharFormat& f){f.setFontUnderline(false);},true}
+    };
+
+    struct Trim
+    {
+        int position;
+        int length;
+        size_t kind;
+    };
+    std::vector<Trim> trims;
+
+    for (auto block=document->begin(); block.isValid() && block!=document->end();
+         block=block.next())
+    {
+        for (size_t k=0; k<std::size(kinds); ++k)
+        {
+            const auto& kind=kinds[k];
+
+            int runStart=-1;
+            QString runText;
+
+            const auto closeRun=[&]()
+            {
+                if (runStart<0)
+                {
+                    return;
+                }
+
+                const int size=runText.size();
+                int leading=0;
+                while (leading<size && runText.at(leading).isSpace())
+                {
+                    ++leading;
+                }
+                int trailing=0;
+                // All-whitespace runs are covered once, by the leading trim.
+                while (leading<size && trailing<size-leading && runText.at(size-1-trailing).isSpace())
+                {
+                    ++trailing;
+                }
+
+                if (leading>0)
+                {
+                    trims.push_back(Trim{runStart,leading,k});
+                }
+                if (trailing>0)
+                {
+                    trims.push_back(Trim{runStart+size-trailing,trailing,k});
+                }
+                runStart=-1;
+                runText.clear();
+            };
+
+            for (auto it=block.begin(); !it.atEnd(); ++it)
+            {
+                const auto fragment=it.fragment();
+                const auto format=fragment.charFormat();
+                const bool carries=kind.has(format) && !(kind.skipAnchors && format.isAnchor());
+
+                if (!carries)
+                {
+                    closeRun();
+                    continue;
+                }
+                if (runStart>=0 && fragment.position()!=runStart+runText.size())
+                {
+                    closeRun();
+                }
+                if (runStart<0)
+                {
+                    runStart=fragment.position();
+                }
+                runText+=fragment.text();
+            }
+            closeRun();
+        }
+    }
+
+    for (const auto& trim: trims)
+    {
+        QTextCursor cursor(document);
+        cursor.setPosition(trim.position);
+        cursor.setPosition(trim.position+trim.length,QTextCursor::KeepAnchor);
+
+        QTextCharFormat format;
+        kinds[trim.kind].clear(format);
+        cursor.mergeCharFormat(format);
+    }
+}
+
 /** @brief The WYSIWYG markdown export, in one place: blank lines preserved, code fences restored.
  *
  * Works on a CLONE rather than the live document -- fillEmptyBlocksForExport() inserts real
@@ -1268,6 +1399,7 @@ QString wysiwygMarkdown(const QTextDocument* document)
     std::unique_ptr<QTextDocument> clone(document->clone());
     fillEmptyBlocksForExport(clone.get());
     mergeProseBlocksForExport(clone.get());
+    trimEmphasisPaddingForExport(clone.get());
     padEmptyTableColumnsForExport(clone->rootFrame());
     replaceEmojiImagesForExport(clone.get(),true);
     return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(clone->toMarkdown())));
@@ -1311,6 +1443,7 @@ QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
     cursor.insertFragment(fragment);
     fillEmptyBlocksForExport(&temp);
     mergeProseBlocksForExport(&temp);
+    trimEmphasisPaddingForExport(&temp);
     padEmptyTableColumnsForExport(temp.rootFrame());
     replaceEmojiImagesForExport(&temp,true);
     return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(temp.toMarkdown())));
