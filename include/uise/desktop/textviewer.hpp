@@ -139,8 +139,9 @@ class UISE_DESKTOP_EXPORT TextViewer : public QFrame
          *  code as markdown would rewrite it. Markdown content may use all three.
          *
          * Plaintext and Markdown modes keep the text byte for byte (Tab is a real tab); Wysiwyg
-         * exports through markdown, which normalises the source. Does nothing while already
-         * editing.
+         * exports through markdown, which normalises the source. The formatting toolbar, with its
+         * mode switcher, is shown for markdown content only: source and plain text are edited as
+         * they are. Does nothing while already editing.
          */
         void startEditing(std::optional<MessageEditingMode> mode={});
 

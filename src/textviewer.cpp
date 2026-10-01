@@ -24,9 +24,11 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <vector>
+#include <iostream>
 
 #include <QFrame>
 #include <QBoxLayout>
+#include <QAbstractTextDocumentLayout>
 #include <QApplication>
 #include <QPointer>
 #include <QShortcut>
@@ -182,12 +184,30 @@ class TextViewer_p
             return result;
         }
 
+        //! TEMPORARY (WRAP-DEBUG): what decides whether a QTextEdit really wraps. Remove once the
+        //! "wrap button does nothing for markdown" report is understood.
+        static void debugWrap(const char* where, bool on, QTextEdit* te)
+        {
+            auto* doc=te->document();
+            const auto alignment=doc->documentLayout()->property("contentHasAlignment");
+            std::cerr<<"WRAP-DEBUG "<<where<<" on="<<on
+                     <<" lineWrapMode="<<static_cast<int>(te->lineWrapMode())
+                     <<" optionWrapMode="<<static_cast<int>(doc->defaultTextOption().wrapMode())
+                     <<" pageSize="<<doc->pageSize().width()<<"x"<<doc->pageSize().height()
+                     <<" viewportWidth="<<te->viewport()->width()
+                     <<" contentHasAlignment="<<(alignment.isValid() ? (alignment.toBool() ? "true" : "false") : "n/a")
+                     <<" hScrollPolicy="<<static_cast<int>(te->horizontalScrollBarPolicy())
+                     <<" idealWidth="<<doc->idealWidth()
+                     <<std::endl;
+        }
+
         void applyWrap(bool on)
         {
             if (editing)
             {
                 // The editor is a plain text area: its own wrap mode is all there is to switch.
                 editor->textEdit()->setLineWrapMode(on ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
+                debugWrap("editor",on,editor->textEdit());
                 return;
             }
 
@@ -198,6 +218,7 @@ class TextViewer_p
             // such as a row of asterisks, would still run out of the viewport.
             browser->setLineWrapMode(on ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
             browser->setCodeWrapEnabled(on);
+            debugWrap("viewer",on,browser);
         }
 
         void copy()
@@ -526,6 +547,11 @@ class TextViewer_p
             viewerWrap=wrap->isChecked();
 
             editor->clear();
+            // Only markdown has anything for the toolbar to do. Source and plain text are edited as
+            // they are: nothing to format, no second mode worth offering (Markdown source over a
+            // .txt is the same text under a name that means nothing), and undo / redo are the
+            // text edit's own keys. So the bar -- and the mode switcher with it -- is not shown.
+            editor->toolbar()->setVisible(markdownContent);
             editor->toolbar()->modeMenu()->setItemVisible(static_cast<int>(MessageEditingMode::Wysiwyg),markdownContent);
             editor->setMessageEditingMode(chosen);
             editor->loadText(normalized(),chosen==MessageEditingMode::Plaintext ? TextFormat::Plain : TextFormat::Markdown);
