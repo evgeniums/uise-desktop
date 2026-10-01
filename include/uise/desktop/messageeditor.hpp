@@ -1251,8 +1251,11 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          *  mentionHref()).
          * @param title Display text. Falls back to `uid` when empty, same as insertLink() falls
          *  back to the url.
+         * @param trailingSpace Also insert one plain space after the mention, so the user can keep
+         *  typing: unless the next character of the document already is white space. The space
+         *  is not part of the mention.
          */
-        void insertMention(const QString& uid, const QString& title);
+        void insertMention(const QString& uid, const QString& title, bool trailingSpace=false);
 
         /**
          * @brief Insert a mention in its PLAIN "@username" text form.
@@ -1266,9 +1269,9 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          * plain mention typed right after a link is provably plain.
          *
          * Replaces the in-progress "@word" / the current explicit selection, same rule as
-         * insertMention().
+         * insertMention(). \p trailingSpace: see insertMention().
          */
-        void insertMentionText(const QString& username);
+        void insertMentionText(const QString& username, bool trailingSpace=false);
 
         /**
          * @brief Insert an emoji at the caret -- see AbstractMessageEditor::insertEmoji() for the

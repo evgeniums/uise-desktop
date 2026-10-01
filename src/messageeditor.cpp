@@ -7777,7 +7777,24 @@ void MessageEditor::onMentionButtonRequested()
 
 //--------------------------------------------------------------------------
 
-void MessageEditor::insertMention(const QString& uid, const QString& title)
+//! Whether a mention just inserted up to `cursor` should be followed by a space of its own: not when the next
+//! character already is white space (a mention put into the middle of a sentence, or before a line break).
+static bool needsSpaceAfterMention(const QTextCursor& cursor)
+{
+    const auto* document=cursor.document();
+
+    // The last "character" of a QTextDocument is its closing paragraph separator, which is white space: a mention
+    // at the very end of the text, where the space is wanted most, must not be taken for one followed by a line break.
+    if (cursor.position()>=document->characterCount()-1)
+    {
+        return true;
+    }
+    return !document->characterAt(cursor.position()).isSpace();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertMention(const QString& uid, const QString& title, bool trailingSpace)
 {
     if (uid.isEmpty() || uid.contains(QLatin1Char(' ')))
     {
@@ -7800,6 +7817,10 @@ void MessageEditor::insertMention(const QString& uid, const QString& title)
         cursor.insertText(
             QLatin1Char('[')+displayTitle+QStringLiteral("](")+mentionHref(uid)+QLatin1Char(')')
         );
+        if (trailingSpace && needsSpaceAfterMention(cursor))
+        {
+            cursor.insertText(QStringLiteral(" "));
+        }
         pimpl->editor->setTextCursor(cursor);
         finishFormatAction();
         return;
@@ -7844,6 +7865,12 @@ void MessageEditor::insertMention(const QString& uid, const QString& title)
     continuation.clearProperty(QTextFormat::AnchorName);
     cursor.setCharFormat(continuation);
 
+    // The space is plain text in the continuation format: never part of the mention's anchor.
+    if (trailingSpace && needsSpaceAfterMention(cursor))
+    {
+        cursor.insertText(QStringLiteral(" "),continuation);
+    }
+
     pimpl->editor->setTextCursor(cursor);
     pimpl->editor->setCurrentCharFormat(continuation);
 
@@ -7852,7 +7879,7 @@ void MessageEditor::insertMention(const QString& uid, const QString& title)
 
 //--------------------------------------------------------------------------
 
-void MessageEditor::insertMentionText(const QString& username)
+void MessageEditor::insertMentionText(const QString& username, bool trailingSpace)
 {
     // Valid in EVERY MessageEditingMode, Plaintext included (the confirmed Stage 6 design
     // choice): the payload is ordinary text carrying no markup meaning, so there is no mode that
@@ -7874,6 +7901,10 @@ void MessageEditor::insertMentionText(const QString& username)
     format.clearProperty(QTextFormat::AnchorHref);
     format.clearProperty(QTextFormat::AnchorName);
     cursor.insertText(text,format);
+    if (trailingSpace && needsSpaceAfterMention(cursor))
+    {
+        cursor.insertText(QStringLiteral(" "),format);
+    }
 
     pimpl->editor->setTextCursor(cursor);
     pimpl->editor->setCurrentCharFormat(format);
