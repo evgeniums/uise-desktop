@@ -363,6 +363,10 @@ class UISE_DESKTOP_EXPORT AvatarWidget : public RoundedImage
     //! as CornerImageSizeRatio of the avatar's width. Settable from QSS: `qproperty-rightBottomCircleRadius: 6;`
     Q_PROPERTY(int rightBottomCircleRadius READ rightBottomCircleRadius WRITE setRightBottomCircleRadius)
 
+    //! Fill color of the right-bottom circle (the online badge); DefaultCornerCircleColor by default.
+    //! Settable from QSS: `qproperty-rightBottomCircleColor: #55CC55;`
+    Q_PROPERTY(QColor rightBottomCircleColor READ rightBottomCircleColor WRITE setRightBottomCircleColor)
+
     public:
 
         constexpr static const double DefaultFontSizeRation=0.37;
