@@ -5604,4 +5604,32 @@ BOOST_AUTO_TEST_CASE(TestEmojiGalleryFitsWholeDefaultPack)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestMarkdownExportDoesNotHardWrapLongLines)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            // Qt's own toMarkdown() breaks prose at 80 columns, and in a chat those breaks are
+            // indistinguishable from line breaks the user typed: a long pasted paragraph came out as
+            // a ragged stack of short lines, and a wrap next to an emphasis marker wrote the marker
+            // before the newline. Every newline in the export must be one the user typed.
+            QString word(QStringLiteral("lorem"));
+            QStringList words;
+            for (int i=0;i<60;++i)
+            {
+                words.append(word);
+            }
+            const auto longLine=words.join(QLatin1Char(' '));
+
+            MessageEditor editor;
+            editor.setMessageEditingMode(MessageEditingMode::Wysiwyg);
+            editor.loadText(longLine+QStringLiteral("\nsecond line"),TextFormat::Markdown);
+
+            const auto md=editor.text(TextFormat::Markdown);
+            UISE_TEST_CHECK_EQUAL(md.trimmed().count(QLatin1Char('\n')),1);
+            UISE_TEST_CHECK(md.startsWith(longLine));
+        }
+    );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

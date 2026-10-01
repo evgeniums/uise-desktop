@@ -892,4 +892,78 @@ BOOST_AUTO_TEST_CASE(TestEmojiSrcRoundTrip)
     UISE_TEST_CHECK(emojiReactionId(QStringLiteral("https://example.com/x.png")).isEmpty());
 }
 
+BOOST_AUTO_TEST_CASE(TestChatMarkdownToDocumentWritesHardBreaks)
+{
+    // A single newline is a visible break in chat but a space in a .md file, so the document form
+    // spells every prose break as an explicit CommonMark hard break.
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("aa\nbb\ncc")),QStringLiteral("aa  \nbb  \ncc"));
+
+    // Paragraph breaks are not line breaks.
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("aa\n\nbb")),QStringLiteral("aa\n\nbb"));
+
+    // Block syntax keeps its plain newline: a hard break after a heading, or between list items,
+    // would change what the construct means.
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("# Title\nbody")),QStringLiteral("# Title\nbody"));
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("- a\n- b")),QStringLiteral("- a\n- b"));
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("```\nx\ny\n```")),QStringLiteral("```\nx\ny\n```"));
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("|a|b|\n|-|-|\n|1|2|")),QStringLiteral("|a|b|\n|-|-|\n|1|2|"));
+
+    // A list item's own continuation line is a break inside the item.
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(QStringLiteral("- a\n  b")),QStringLiteral("- a  \n  b"));
+
+    // Idempotent, and trailing blanks are not stacked.
+    const auto once=chatMarkdownToDocument(QStringLiteral("aa\nbb  \ncc"));
+    UISE_TEST_CHECK_EQUAL(once,QStringLiteral("aa  \nbb  \ncc"));
+    UISE_TEST_CHECK_EQUAL(chatMarkdownToDocument(once),once);
+}
+
+BOOST_AUTO_TEST_CASE(TestDocumentRenderKeepsHardBreaksTight)
+{
+    MarkdownRenderOptions document;
+    document.hardLineBreaks=false;
+
+    // A hard break is ONE paragraph with a <br/> -- the same tight shape as a chat bubble -- not a
+    // paragraph per line.
+    auto hard=renderMd(QStringLiteral("aa  \nbb  \ncc"),document);
+    UISE_TEST_CHECK_EQUAL(hard.count(QStringLiteral("<p>")),1);
+    UISE_TEST_CHECK_EQUAL(hard.count(QStringLiteral("<br/>")),2);
+
+    auto backslash=renderMd(QStringLiteral("aa\\\nbb"),document);
+    UISE_TEST_CHECK_EQUAL(backslash.count(QStringLiteral("<p>")),1);
+    UISE_TEST_CHECK_EQUAL(backslash.count(QStringLiteral("<br/>")),1);
+
+    // A soft newline still reflows: this is what keeps a hard-wrapped README readable.
+    auto soft=renderMd(QStringLiteral("aa\nbb\ncc"),document);
+    UISE_TEST_CHECK_EQUAL(soft.count(QStringLiteral("<p>")),1);
+    UISE_TEST_CHECK(!soft.contains(QStringLiteral("<br/>")));
+
+    // Spaces inside a fence are content, never a break.
+    auto fenced=renderMd(QStringLiteral("```\nx  \ny\n```"),document);
+    UISE_TEST_CHECK(!fenced.contains(QStringLiteral("<br/>")));
+
+    // What a chat message looks like in a file: round trip through the document form renders
+    // with the same breaks the bubble shows.
+    const auto chat=QStringLiteral("one\ntwo\nthree");
+    auto asDocument=renderMd(chatMarkdownToDocument(chat),document);
+    auto asBubble=renderMd(chat);
+    UISE_TEST_CHECK_EQUAL(asDocument.count(QStringLiteral("<br/>")),asBubble.count(QStringLiteral("<br/>")));
+    UISE_TEST_CHECK_EQUAL(asDocument.count(QStringLiteral("<p>")),asBubble.count(QStringLiteral("<p>")));
+}
+
+BOOST_AUTO_TEST_CASE(TestDocumentMarkdownToChat)
+{
+    // Hard breaks become the chat dialect's plain newline, soft newlines flow into one line.
+    UISE_TEST_CHECK_EQUAL(documentMarkdownToChat(QStringLiteral("aa  \nbb  \ncc")),QStringLiteral("aa\nbb\ncc"));
+    UISE_TEST_CHECK_EQUAL(documentMarkdownToChat(QStringLiteral("aa\\\nbb")),QStringLiteral("aa\nbb"));
+    UISE_TEST_CHECK_EQUAL(documentMarkdownToChat(QStringLiteral("hard wrapped\n  prose line\nends here")),
+                          QStringLiteral("hard wrapped prose line ends here"));
+
+    // Block syntax is untouched.
+    UISE_TEST_CHECK_EQUAL(documentMarkdownToChat(QStringLiteral("# T\n\n- a\n- b")),QStringLiteral("# T\n\n- a\n- b"));
+
+    // The two directions are inverse for composed chat text.
+    const auto chat=QStringLiteral("one\ntwo\n\nthree\n- a\n- b\nfour\nfive");
+    UISE_TEST_CHECK_EQUAL(documentMarkdownToChat(chatMarkdownToDocument(chat)),chat);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

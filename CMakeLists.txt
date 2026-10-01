@@ -483,6 +483,8 @@ SET (SOURCES
     src/abstractchatmessageerror.cpp
     src/abstractchatmessageinvitation.cpp
     src/markdownrenderer.cpp
+    src/markdownwriter.cpp
+    src/markdownwriter.hpp
     src/chatmessagetext.cpp
     src/chatmessagecall.cpp
     src/chatmessageerror.cpp

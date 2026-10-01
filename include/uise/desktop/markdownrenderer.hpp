@@ -369,6 +369,36 @@ UISE_DESKTOP_EXPORT QString markdownToPlainText(const QString& markdown, int max
 UISE_DESKTOP_EXPORT QString markdownWithChatLineBreaks(const QString& markdown);
 
 /**
+ * @brief Chat-dialect markdown (every newline is a visible line break) as a markdown FILE.
+ *
+ * A chat message and a `.md` file mean different things by a single newline. In a message it is a
+ * break, because that is what a person typing it meant (markdownToHtml()'s default). In a file it
+ * is a space: CommonMark, and so every other viewer, reflows it -- which is how a line break the
+ * author typed vanished from a message sent "as a document". This writes each such newline as an
+ * explicit CommonMark hard break (two trailing spaces), so the breaks survive in any viewer and
+ * the file still reads cleanly as plain text. Block syntax (lists, headings, quotes, fenced and
+ * indented code, tables, blank lines) is left alone, by the same rules markdownWithChatLineBreaks()
+ * applies. Idempotent.
+ *
+ * @param chatMarkdown Source text as produced by MessageEditor::text(TextFormat::Markdown).
+ * @return The same text with in-paragraph newlines spelled as hard breaks.
+ */
+UISE_DESKTOP_EXPORT QString chatMarkdownToDocument(const QString& chatMarkdown);
+
+/**
+ * @brief The inverse of chatMarkdownToDocument(): a markdown FILE as chat-dialect markdown.
+ *
+ * A hard break (two trailing spaces, or a trailing backslash) becomes a plain newline, which the
+ * chat dialect reads as a break; a soft newline is a space, which is what a document reader sees.
+ * So a hard-wrapped README comes back as flowing paragraphs and a file written by
+ * chatMarkdownToDocument() comes back exactly as it was composed.
+ *
+ * @param documentMarkdown Source text of a markdown file.
+ * @return Chat-dialect markdown with the same visible line structure.
+ */
+UISE_DESKTOP_EXPORT QString documentMarkdownToChat(const QString& documentMarkdown);
+
+/**
  * @brief Whether `doc` is nothing but 1..maxCount emoji, and if so which.
  *
  * The same test markdownToHtml() applies to a freshly-parsed markdown document (see

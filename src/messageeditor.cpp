@@ -88,6 +88,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/svgicon.hpp>
 #include <uise/desktop/messageeditor.hpp>
 
+#include "markdownwriter.hpp"
+
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
 // match what moc (a real preprocessor) resolves at runtime -- translations for every string here
@@ -1398,7 +1400,7 @@ QString wysiwygMarkdown(const QTextDocument* document)
     trimEmphasisPaddingForExport(clone.get());
     padEmptyTableColumnsForExport(clone->rootFrame());
     replaceEmojiImagesForExport(clone.get(),true);
-    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(clone->toMarkdown())));
+    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(detail::documentToMarkdown(clone.get()))));
 }
 
 /** @brief plainTextKeepingIndent() with emoji images resolved to their codes.
@@ -1442,7 +1444,7 @@ QString wysiwygMarkdown(const QTextDocumentFragment& fragment)
     trimEmphasisPaddingForExport(&temp);
     padEmptyTableColumnsForExport(temp.rootFrame());
     replaceEmojiImagesForExport(&temp,true);
-    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(temp.toMarkdown())));
+    return collapseBlankRuns(restoreCodeFences(fixEmphasisMarkerNesting(detail::documentToMarkdown(&temp))));
 }
 
 /** @brief Turn every property-based code block in a document into the literal "```" text form.
@@ -5419,7 +5421,7 @@ void MessageEditor::loadText(const QString& text, TextFormat format)
             {
                 QTextDocument scratch;
                 scratch.setHtml(text);
-                pimpl->editor->setPlainText(scratch.toMarkdown());
+                pimpl->editor->setPlainText(detail::documentToMarkdown(&scratch));
             }
             else
             {
@@ -5487,7 +5489,7 @@ QString MessageEditor::text(TextFormat format) const
         {
             switch (format)
             {
-                case (TextFormat::Markdown): return pimpl->editor->toMarkdown();
+                case (TextFormat::Markdown): return detail::documentToMarkdown(pimpl->editor->document());
                 case (TextFormat::Plain): return plainTextKeepingIndent(pimpl->editor->document());
                 case (TextFormat::Html): return pimpl->editor->toHtml();
             }
@@ -5536,7 +5538,13 @@ QString MessageEditor::selectedText(TextFormat format) const
         {
             switch (format)
             {
-                case (TextFormat::Markdown): return fragment.toMarkdown();
+                case (TextFormat::Markdown):
+                {
+                    QTextDocument temp;
+                    QTextCursor tempCursor(&temp);
+                    tempCursor.insertFragment(fragment);
+                    return detail::documentToMarkdown(&temp);
+                }
                 case (TextFormat::Plain): return plainTextKeepingIndent(cursor);
                 case (TextFormat::Html): return fragment.toHtml();
             }

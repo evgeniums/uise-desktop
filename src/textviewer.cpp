@@ -501,9 +501,19 @@ class TextViewer_p
         {
             // Plaintext and Markdown modes hold the text itself; text(Plain) is the byte-faithful
             // read of a plain document, and text(Markdown) of the other two (Wysiwyg exports).
-            const auto format=(editor->messageEditingMode()==MessageEditingMode::Plaintext)
-                                  ? TextFormat::Plain : TextFormat::Markdown;
-            return editor->text(format);
+            const auto editingMode=editor->messageEditingMode();
+            if (editingMode==MessageEditingMode::Plaintext)
+            {
+                return editor->text(TextFormat::Plain);
+            }
+            auto markdown=editor->text(TextFormat::Markdown);
+            if (editingMode==MessageEditingMode::Wysiwyg)
+            {
+                // The editor speaks the chat dialect (a newline is a break); a file speaks
+                // CommonMark (a newline is a space), so its breaks go back out as hard breaks.
+                markdown=chatMarkdownToDocument(markdown);
+            }
+            return markdown;
         }
 
         //! The editor works on LF; a file that came with CRLF goes back with it.
@@ -544,7 +554,12 @@ class TextViewer_p
             editor->toolbar()->setVisible(markdownContent);
             editor->toolbar()->modeMenu()->setItemVisible(static_cast<int>(MessageEditingMode::Wysiwyg),markdownContent);
             editor->setMessageEditingMode(chosen);
-            editor->loadText(normalized(),chosen==MessageEditingMode::Plaintext ? TextFormat::Plain : TextFormat::Markdown);
+            // A Wysiwyg editor reads the chat dialect, so a file's soft newlines (reflow, a space) must
+            // not turn into breaks there: only its hard breaks stay breaks. Markdown source and plain
+            // text are edited byte for byte.
+            const auto loaded=(markdownContent && chosen==MessageEditingMode::Wysiwyg)
+                                  ? documentMarkdownToChat(normalized()) : normalized();
+            editor->loadText(loaded,chosen==MessageEditingMode::Plaintext ? TextFormat::Plain : TextFormat::Markdown);
             editor->textEdit()->setProperty("monospace",!markdownContent);
             Style::updateWidgetStyle(editor->textEdit());
             // Measured after the load: a Wysiwyg export of untouched text is not a change.

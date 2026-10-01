@@ -328,6 +328,45 @@ bool isTableDelimiterLine(const QString& line)
     return sawDash;
 }
 
+//! What preserveChatLineBreaks() does at a newline that is a plain prose boundary (not a block
+//! construct, not inside code or a table).
+enum class LineBreakPolicy
+{
+    //! Every such newline is a visible break: the chat convention.
+    Chat,
+
+    //! Only a CommonMark HARD break (two trailing spaces, or a trailing backslash) is a visible
+    //! break; the marker is dropped and the newline becomes U+2028. A soft newline stays '\n', so
+    //! it reflows. This is how a markdown FILE is rendered.
+    DocumentHardOnly,
+
+    //! A document turned into chat text: a hard break becomes a plain '\n' (marker dropped), a
+    //! soft one becomes a single space, which is what CommonMark reflow means.
+    DocumentToChat
+};
+
+//! Length of the CommonMark hard-break marker ending the line: a trailing backslash that is not
+//! itself escaped, or two or more trailing spaces. 0 when the line has none.
+int hardBreakMarkerLength(const QString& line)
+{
+    int backslashes=0;
+    while (backslashes<line.size() && line.at(line.size()-1-backslashes)==QLatin1Char('\\'))
+    {
+        ++backslashes;
+    }
+    if (backslashes%2==1)
+    {
+        return 1;
+    }
+
+    int spaces=0;
+    while (spaces<line.size() && line.at(line.size()-1-spaces)==QLatin1Char(' '))
+    {
+        ++spaces;
+    }
+    return spaces>=2 ? spaces : 0;
+}
+
 /**
  * @brief Preserve a chat message's line breaks through markdown rendering, so a single typed
  *  newline stays visually a new line instead of CommonMark's own rule of joining
@@ -361,7 +400,7 @@ bool isTableDelimiterLine(const QString& line)
  * line), and table blocks (from a detected header+delimiter pair until the next blank line) --
  * merging a line boundary inside any of those would corrupt the construct itself.
  */
-QString preserveChatLineBreaks(const QString& src)
+QString preserveChatLineBreaks(const QString& src, LineBreakPolicy policy=LineBreakPolicy::Chat)
 {
     auto lines=src.split(QLatin1Char('\n'));
     if (lines.size()<=1)
@@ -375,6 +414,9 @@ QString preserveChatLineBreaks(const QString& src)
     bool inTable=false;
     bool prevBlank=true; // the start of the document counts as "preceded by a blank line"
     bool prevIndentedCode=false;
+    //! The previous boundary was merged away: the next line continues a paragraph, and CommonMark
+    //! ignores a continuation line's leading whitespace.
+    bool trimNextLeading=false;
 
     QString out;
     out.reserve(src.size());
@@ -414,7 +456,20 @@ QString preserveChatLineBreaks(const QString& src)
             inTable=true;
         }
 
-        out+=line;
+        if (trimNextLeading)
+        {
+            int first=0;
+            while (first<line.size() && (line.at(first)==QLatin1Char(' ') || line.at(first)==QLatin1Char('\t')))
+            {
+                ++first;
+            }
+            out+=QStringView(line).mid(first);
+            trimNextLeading=false;
+        }
+        else
+        {
+            out+=line;
+        }
 
         bool nextBlank=(i+1>=lines.size()) || lines.at(i+1).trimmed().isEmpty();
         bool skip=inFence || indentedCode || inTable;
@@ -433,7 +488,50 @@ QString preserveChatLineBreaks(const QString& src)
                 // boundary at all -- with an embedded LineSeparator marking where the visual
                 // break belongs. See this function's own top comment for why a real '\n'
                 // (hard-break syntax included) does not work here.
-                out+=QChar::LineSeparator;
+                switch (policy)
+                {
+                    case (LineBreakPolicy::Chat):
+                    {
+                        out+=QChar::LineSeparator;
+                        break;
+                    }
+
+                    case (LineBreakPolicy::DocumentHardOnly):
+                    {
+                        const auto marker=hardBreakMarkerLength(line);
+                        if (marker>0)
+                        {
+                            out.chop(marker);
+                            out+=QChar::LineSeparator;
+                            trimNextLeading=true;
+                        }
+                        else
+                        {
+                            out+=QLatin1Char('\n');
+                        }
+                        break;
+                    }
+
+                    case (LineBreakPolicy::DocumentToChat):
+                    {
+                        const auto marker=hardBreakMarkerLength(line);
+                        if (marker>0)
+                        {
+                            out.chop(marker);
+                            out+=QLatin1Char('\n');
+                        }
+                        else
+                        {
+                            while (!out.isEmpty() && (out.back()==QLatin1Char(' ') || out.back()==QLatin1Char('\t')))
+                            {
+                                out.chop(1);
+                            }
+                            out+=QLatin1Char(' ');
+                        }
+                        trimNextLeading=true;
+                        break;
+                    }
+                }
             }
             else
             {
@@ -1294,6 +1392,14 @@ QString markdownToHtml(const QString& markdown, const MarkdownRenderOptions& opt
     {
         src=preserveChatLineBreaks(src);
     }
+    else
+    {
+        // A document follows CommonMark: a soft newline reflows, but an explicit hard break (two
+        // trailing spaces or a backslash) must still be a break. md4c reports it as a literal
+        // '\n', which QTextCursor::insertText() turns into a NEW BLOCK -- a loose paragraph per
+        // line -- so it is carried as U+2028 like a chat break, for the tight <br/>.
+        src=preserveChatLineBreaks(src,LineBreakPolicy::DocumentHardOnly);
+    }
 
     QTextDocument doc;
     doc.setMarkdown(src,QTextDocument::MarkdownDialectGitHub);
@@ -1339,6 +1445,41 @@ QString markdownWithChatLineBreaks(const QString& markdown)
     // The same call markdownToHtml() makes on the way in, exposed for MessageEditor's own import
     // so the two cannot drift -- see the declaration for why the editor needs it.
     return preserveChatLineBreaks(markdown);
+}
+
+//--------------------------------------------------------------------------
+
+QString chatMarkdownToDocument(const QString& chatMarkdown)
+{
+    auto prepared=preserveChatLineBreaks(chatMarkdown);
+
+    QString out;
+    out.reserve(prepared.size()+prepared.size()/16);
+    for (const auto& ch : prepared)
+    {
+        if (ch==QChar::LineSeparator)
+        {
+            // Trailing whitespace is not part of the line: the marker is exactly two spaces, so a
+            // line that already carried one comes out the same (idempotent).
+            while (!out.isEmpty() && (out.back()==QLatin1Char(' ') || out.back()==QLatin1Char('\t')))
+            {
+                out.chop(1);
+            }
+            out+=QStringLiteral("  \n");
+        }
+        else
+        {
+            out+=ch;
+        }
+    }
+    return out;
+}
+
+//--------------------------------------------------------------------------
+
+QString documentMarkdownToChat(const QString& documentMarkdown)
+{
+    return preserveChatLineBreaks(documentMarkdown,LineBreakPolicy::DocumentToChat);
 }
 
 //--------------------------------------------------------------------------
