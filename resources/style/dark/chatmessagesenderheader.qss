@@ -4,7 +4,7 @@
    sender's name and an @mention both name a person, so sharing the hue keeps the palette
    subtle rather than introducing a new one. */
 uise--ChatMessageSenderHeader #senderTitle QLabel {
-color: #C9A2F5;
+color: #E0C8FB;
 }
 
 uise--ChatMessageSenderHeader #senderTitle QLabel:hover {
