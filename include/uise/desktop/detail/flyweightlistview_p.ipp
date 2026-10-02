@@ -118,7 +118,14 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_itemsAlignment(FlyweightListViewAlignment::Center),
         m_firstShowDone(false)
 {
-    m_currentBatchCount=0;    
+    m_currentBatchCount=0;
+    m_smooth.durationMs=FlyweightListView<ItemT>::DefaultSmoothFollowDurationMs;
+    m_smoothTicker.setHandler(
+        [this](int dtMs)
+        {
+            onSmoothFollowTick(dtMs);
+        }
+    );
 }
 
 //--------------------------------------------------------------------------
@@ -317,6 +324,22 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::beginUpdate()
                    << " beginUpdate()" << std::endl;
     }
     m_ignoreUpdates=true;
+
+    // Snapshot for smooth following of appended items, see isSmoothAppendEligible()
+    m_batchLiveInsert=false;
+    m_batchBulk=false;
+    m_batchPrevLastId.reset();
+    m_smoothAnchorId.reset();
+    if (m_smooth.enabled && m_stick==Direction::END)
+    {
+        if (const auto* last=lastItem())
+        {
+            m_batchPrevLastId=last->id();
+        }
+        // idle: an append leaves the last item where it is; animating: anchor on what is on screen
+        captureSmoothAnchor(!m_smooth.active);
+    }
+
     beginItemRangeChange();
 }
 
@@ -336,6 +359,10 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endUpdate()
     m_ignoreUpdates=false;
     endItemRangeChange();
     viewportUpdated();
+
+    m_batchLiveInsert=false;
+    m_batchBulk=false;
+    m_batchPrevLastId.reset();
 
     checkInvariants("endUpdate");
 }
@@ -701,6 +728,13 @@ int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::endItemEdge() const
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateStickingPositions()
 {
+    if (m_smooth.active)
+    {
+        // The animation owns the position until it finishes, and finishSmoothFollow() lands exactly
+        // on the edge. Snapping to it here would end the animation at once.
+        return;
+    }
+
     auto begin=oprop(m_llist->pos(),OProp::pos);
     auto end=oprop(listEndInViewport(),OProp::pos);
     auto viewPortSize=oprop(m_view,OProp::size);
@@ -782,7 +816,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     bool moveBegin=(edge<(viewSize-1)) && (viewSize>oldViewSize);
 
     // if size of viewport changed then list will try to fit the viewport as much as possible
-    if ((m_stick==Direction::HOME && moveBegin) || (m_stick==Direction::END && moveEnd))
+    // While smooth following the list is deliberately offset from the edge it sticks to, so it must
+    // not be moved to fit the new size; the offset is clamped below instead.
+    if (!m_smooth.active && ((m_stick==Direction::HOME && moveBegin) || (m_stick==Direction::END && moveEnd)))
     {
         auto delta=viewSize-oldViewSize;
         auto newPos=oprop(m_llist,OProp::pos)+delta;
@@ -839,6 +875,12 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     // position, snap the list back -- see clampOtherAxisPos() for why nothing else does this
     clampOtherAxisPos();
 
+    if (m_smooth.active)
+    {
+        // the target moved with the viewport size: keep the offset in [0,max] or finish
+        clampSmoothLag();
+    }
+
     // process updated viewport
     viewportUpdated();
 
@@ -868,6 +910,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSizeChange()
 {
+    if (m_stick==Direction::END && (m_smooth.active || isSmoothAppendEligible()) && compensateSmoothFollow())
+    {
+        return;
+    }
+
     if ((m_atEnd && m_stick==Direction::END ) || (m_atBegin && m_stick==Direction::HOME)
         || (m_atFollowLimit && m_stick==Direction::END))
     {
@@ -1459,7 +1506,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
     auto afterWidget=insertItemToContainer(item,true);
 
     const bool isLast=(lastItem()==&item);
-    if (isLast && !wasLast && !(m_stick==Direction::END && isAtEnd()))
+    if (isLast && !wasLast && !(m_stick==Direction::END && (isAtEnd() || m_smooth.active)))
     {
         if (!endLoaded)
         {
@@ -1499,6 +1546,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertContinuousItems(
     {
         return;
     }
+
+    // fetched/loaded content, not a live append: never animated
+    m_batchBulk=true;
 
     // Insert every item into the sort-order/id container first, WITHOUT asking
     // insertItemToContainer() for an anchor widget yet (findAfterWidget=false). Computing the
@@ -1619,6 +1669,9 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList(const char*
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
 {
+    cancelSmoothFollow("clear");
+    m_batchBulk=true;
+
     const auto& order=itemOrder();
 
     if (!onDestroy)
@@ -1684,6 +1737,22 @@ template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scroll(int delta)
 {
     auto oldPos=oprop(m_llist,OProp::pos);
+
+    if (m_smooth.active)
+    {
+        // wheelEvent() calls scroll() even for a gesture that has no main-axis component
+        if (delta==0)
+        {
+            return;
+        }
+
+        // Scrolling towards the end while the view is on its way there: just get there.
+        // Scrolling away is explicit positioning and cancels the animation in scrollTo() below.
+        if (m_stick==Direction::END && delta>0)
+        {
+            finishSmoothFollow("userScrollTowardsEnd");
+        }
+    }
 
     auto cb=[delta](int minPos, int maxPos, int oldPos)
     {
@@ -1807,21 +1876,17 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::fu
 #if 0
     qDebug() << printCurrentDateTime() << ": FlyweightListView_p::scrollTo() " << m_obj;
 #endif
-    auto viewportSize=oprop(m_view,OProp::size);
-    auto listSize=oprop(m_llist,OProp::size);
+    // Every explicit positioning (user scroll, scrollToItem(), scrollToEdge(), ...) funnels through
+    // here, and all of it takes over from the animation: stop it where it is. followStickEdge() and
+    // updateStickingPositions() are the only internal callers that must not, and they bail out
+    // before reaching this point while animating.
+    const bool smoothWasActive=m_smooth.active;
+    if (smoothWasActive)
+    {
+        cancelSmoothFollow("scrollTo");
+    }
 
-    int minPos=0;
-    int maxPos=0;
-    if (listSize>viewportSize)
-    {
-        minPos=viewportSize-listSize;
-        minPos=std::max(minPos,-listSize);
-    }
-    else if (m_stick==Direction::END)
-    {
-        minPos=viewportSize-listSize;
-        maxPos=minPos;
-    }
+    auto [minPos,maxPos]=scrollRange();
 
     auto pos=m_llist->pos();
     auto posCoordinate=oprop(pos,OProp::pos);
@@ -1838,6 +1903,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollTo(const std::fu
                        << std::endl;
         }
         m_llist->move(pos);
+        viewportUpdated();
+    }
+    else if (smoothWasActive)
+    {
+        // nothing moved, but the animation state changed: refresh m_atEnd, the JumpEdge, etc.
         viewportUpdated();
     }
 }
@@ -1921,6 +1991,12 @@ std::optional<int> FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followLi
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followStickEdge()
 {
+    if (m_smooth.active)
+    {
+        // already on the way, and the animation re-evaluates the target on every frame
+        return;
+    }
+
     if (m_stick!=Direction::END || !m_followLimitId)
     {
         scrollToEdge(m_stick);
@@ -1956,7 +2032,7 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isFollowingStickEdge()
 {
     if (m_stick==Direction::END)
     {
-        if (isAtEnd())
+        if (isAtEnd() || m_smooth.active)
         {
             return true;
         }
@@ -1968,6 +2044,417 @@ bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isFollowingStickEdge()
         return false;
     }
     return isAtBegin();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+std::pair<int,int> FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollRange() const
+{
+    auto viewportSize=oprop(m_view,OProp::size);
+    auto listSize=oprop(m_llist,OProp::size);
+
+    int minPos=0;
+    int maxPos=0;
+    if (listSize>viewportSize)
+    {
+        minPos=viewportSize-listSize;
+        minPos=std::max(minPos,-listSize);
+    }
+    else if (m_stick==Direction::END)
+    {
+        minPos=viewportSize-listSize;
+        maxPos=minPos;
+    }
+    return {minPos,maxPos};
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::scrollToLocalEnd()
+{
+    if (m_smooth.active)
+    {
+        // Already animating to the end, let it carry on (towards the very end, past any follow
+        // limit, as scrollToEdge() would go) instead of snapping. This is what makes a sender's own
+        // message, which is inserted and then jumped to, scroll in like any other.
+        m_smooth.toTrueEnd=true;
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: smooth jumpToEdge(END) while animating -> toTrueEnd, lag="
+                       << m_smooth.lag << std::endl;
+        }
+        return;
+    }
+    scrollToEdge(Direction::END);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::followTargetPos() const
+{
+    auto minPos=scrollRange().first;
+    if (m_stick!=Direction::END || !m_followLimitId || m_smooth.toTrueEnd)
+    {
+        return minPos;
+    }
+
+    // Same rule as followStickEdge(): a limit item whose top is still at or below the viewport top
+    // caps the scroll so that its top lands on the viewport top at most.
+    auto limitPos=followLimitViewPos();
+    if (limitPos && *limitPos>=0)
+    {
+        return std::max(minPos,oprop(m_llist,OProp::pos)-*limitPos);
+    }
+    return minPos;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::smoothMaxLag() const
+{
+    return std::max(oprop(m_view,OProp::size),1);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::canAnimateSmoothFollow() const
+{
+    if (!m_smooth.enabled || m_stick!=Direction::END || fwlvSmoothKilled())
+    {
+        return false;
+    }
+    if (!m_view->isVisible())
+    {
+        return false;
+    }
+    auto* window=m_obj->window();
+    return window==nullptr || !window->isMinimized();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::captureSmoothAnchor(bool lastItemInsteadOfViewport)
+{
+    m_smoothAnchorId.reset();
+    const ItemT* item=lastItemInsteadOfViewport?lastItem():lastViewportItem();
+    if (item && item->widget())
+    {
+        m_smoothAnchorId=item->id();
+        m_smoothAnchorTop=oprop(item->widget(),OProp::pos);
+    }
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::isSmoothAppendEligible() const
+{
+    // Everything here must hold for the batch being closed to be treated as an append to a view
+    // that is following its end: a single live insertion (not a fetched/loaded batch, see
+    // m_batchBulk), a view that was flush with the end before the insertion (m_atEnd is the
+    // pre-change snapshot, same as the instant path in compensateSizeChange() relies on), and a
+    // new last item after the one that was last before the batch. Items are compared by id, so a
+    // dedup remove+reinsert of the same last message is not an append.
+    if (!m_ignoreUpdates || !m_batchLiveInsert || m_batchBulk || !m_atEnd || !m_batchPrevLastId)
+    {
+        return false;
+    }
+    if (!canAnimateSmoothFollow())
+    {
+        return false;
+    }
+    const auto* last=lastItem();
+    if (last==nullptr || !(last->id()!=*m_batchPrevLastId))
+    {
+        return false;
+    }
+    return hasItem(*m_batchPrevLastId);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView_p<ItemT,OrderComparer,IdComparer>::compensateSmoothFollow()
+{
+    // Called by compensateSizeChange() right after m_llist was resized, either to start the
+    // animation for an append (!active) or to absorb any size change while it runs (active).
+    //
+    // The list is moved so that the anchor item's top edge stays exactly where it was on screen.
+    // That makes an append at the tail leave the visible content untouched while the target moves
+    // up by the appended size, i.e. grows the offset between them (the lag) by exactly that.
+    // Anything above the anchor changing (top trimming, in-place growth) moves the list along with
+    // the target and leaves the lag as it was; anything below it (the bubble that is just being
+    // revealed settling to its final size) adds to the lag.
+    const bool wasActive=m_smooth.active;
+
+    if (!canAnimateSmoothFollow())
+    {
+        if (wasActive)
+        {
+            finishSmoothFollow("cannotAnimate");
+            return true;
+        }
+        return false;
+    }
+
+    const ItemT* anchor=nullptr;
+    if (m_smoothAnchorId)
+    {
+        const auto& idx=itemIdx();
+        if (auto it=idx.find(*m_smoothAnchorId); it!=idx.end() && it->widget())
+        {
+            anchor=&(*it);
+        }
+    }
+
+    const auto target=followTargetPos();
+    const auto curPos=oprop(m_llist,OProp::pos);
+    int newPos=curPos;
+    if (anchor)
+    {
+        auto delta=m_smoothAnchorTop-oprop(anchor->widget(),OProp::pos);
+        if (!wasActive && delta!=0)
+        {
+            // Something at or above the last item changed in the same batch, so this is not a plain
+            // append and the anchor cannot be trusted to mean "nothing on screen moved".
+            if (fwlvDebugEnabled())
+            {
+                std::cerr << "CHAT-FWLV-DEBUG: smooth start refused, anchor moved by " << delta
+                           << std::endl;
+            }
+            return false;
+        }
+        newPos=curPos+delta;
+    }
+    else if (wasActive)
+    {
+        // anchor gone (removed): keep the lag, the content is not preserved across this change
+        newPos=target+static_cast<int>(std::lround(m_smooth.lag));
+    }
+    else
+    {
+        return false;
+    }
+
+    auto lag=newPos-target;
+    if (lag<1)
+    {
+        if (wasActive)
+        {
+            finishSmoothFollow("noLag");
+            return true;
+        }
+        // nothing to animate, the instant path handles it
+        return false;
+    }
+
+    const auto maxLag=smoothMaxLag();
+    if (lag>maxLag)
+    {
+        if (fwlvDebugEnabled())
+        {
+            std::cerr << "CHAT-FWLV-DEBUG: smooth lag " << lag << " capped to " << maxLag << std::endl;
+        }
+        lag=maxLag;
+        newPos=target+lag;
+    }
+
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: smooth " << (wasActive?"compensate":"start") << " pos "
+                   << curPos << " -> " << newPos << " target=" << target << " lag="
+                   << m_smooth.lag << " -> " << lag << " listSize=" << oprop(m_llist,OProp::size)
+                   << std::endl;
+    }
+
+    if (newPos!=curPos)
+    {
+        auto pos=m_llist->pos();
+        setOProp(pos,OProp::pos,newPos);
+        m_llist->move(pos);
+    }
+    m_smooth.lag=lag;
+    captureSmoothAnchor(false);
+
+    if (!wasActive)
+    {
+        m_smooth.active=true;
+        m_smoothTicker.startTicking();
+    }
+    return true;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clampSmoothLag()
+{
+    auto target=followTargetPos();
+    auto curPos=oprop(m_llist,OProp::pos);
+    auto lag=curPos-target;
+    if (lag<=0)
+    {
+        finishSmoothFollow("clamped");
+        return;
+    }
+
+    const auto maxLag=smoothMaxLag();
+    if (lag>maxLag)
+    {
+        lag=maxLag;
+        auto pos=m_llist->pos();
+        setOProp(pos,OProp::pos,target+lag);
+        m_llist->move(pos);
+    }
+    m_smooth.lag=lag;
+    captureSmoothAnchor(false);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onSmoothFollowTick(int dtMs)
+{
+    if (!m_smooth.active)
+    {
+        m_smoothTicker.stopTicking();
+        return;
+    }
+    if (m_ignoreUpdates)
+    {
+        // in the middle of a batch, the geometry is not settled
+        return;
+    }
+    if (!canAnimateSmoothFollow())
+    {
+        finishSmoothFollow("cannotAnimate");
+        return;
+    }
+
+    const auto target=followTargetPos();
+    const auto curPos=oprop(m_llist,OProp::pos);
+
+    // The offset is always what the list position says it is. m_smooth.lag only carries the
+    // fractional part that rounding to whole pixels would otherwise lose between frames.
+    double lag=curPos-target;
+    if (std::abs(lag-m_smooth.lag)<1.0)
+    {
+        lag=m_smooth.lag;
+    }
+
+    const double maxLag=smoothMaxLag();
+    if (lag>maxLag)
+    {
+        lag=maxLag;
+    }
+
+    // Exponential approach: each frame covers a fixed fraction of what is left, so a message
+    // appended meanwhile just makes the next steps larger, and the minimum speed keeps the tail
+    // from crawling. Time based, so independent of the frame rate.
+    const double dt=std::min(dtMs,64);
+    const double tau=std::max(m_smooth.durationMs/4.0,1.0);
+    const double step=std::max(lag*(1.0-std::exp(-dt/tau)),FlyweightListView<ItemT>::SmoothFollowMinSpeed*dt);
+    const double newLag=std::max(lag-step,0.0);
+
+    if (fwlvSmoothTraceEnabled())
+    {
+        std::cerr << "CHAT-FWLV-SMOOTH: tick dt=" << dtMs << " target=" << target << " pos=" << curPos
+                   << " lag=" << lag << " -> " << newLag << std::endl;
+    }
+
+    if (newLag<=0.5)
+    {
+        finishSmoothFollow("reached");
+        return;
+    }
+
+    m_smooth.lag=newLag;
+    const auto newPos=target+static_cast<int>(std::lround(newLag));
+    if (newPos!=curPos)
+    {
+        auto pos=m_llist->pos();
+        setOProp(pos,OProp::pos,newPos);
+        m_llist->move(pos);
+    }
+    captureSmoothAnchor(false);
+
+    // not viewportUpdated(): that would run checkItemCount() on every frame
+    informViewportUpdated();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::finishSmoothFollow(const char* reason)
+{
+    if (!m_smooth.active)
+    {
+        return;
+    }
+
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: smooth finish (" << reason << ") lag=" << m_smooth.lag
+                   << std::endl;
+    }
+
+    // the target still depends on toTrueEnd, so clear the flags only after reading it
+    m_smoothTicker.stopTicking();
+    const auto target=followTargetPos();
+    m_smooth.active=false;
+    m_smooth.toTrueEnd=false;
+    m_smooth.lag=0;
+    m_smoothAnchorId.reset();
+
+    if (oprop(m_llist,OProp::pos)!=target)
+    {
+        auto pos=m_llist->pos();
+        setOProp(pos,OProp::pos,target);
+        m_llist->move(pos);
+    }
+
+    // refreshes m_atEnd, the scroll bars and the JumpEdge, and runs whatever checkItemCount()
+    // held back (a no-op while a batch is open: endUpdate() does it)
+    viewportUpdated();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::cancelSmoothFollow(const char* reason) noexcept
+{
+    if (!m_smooth.active)
+    {
+        return;
+    }
+
+    if (fwlvDebugEnabled())
+    {
+        std::cerr << "CHAT-FWLV-DEBUG: smooth cancel (" << reason << ") lag=" << m_smooth.lag
+                   << std::endl;
+    }
+
+    m_smoothTicker.stopTicking();
+    m_smooth.active=false;
+    m_smooth.toTrueEnd=false;
+    m_smooth.lag=0;
+    m_smoothAnchorId.reset();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::setSmoothFollowEnabled(bool enable)
+{
+    if (m_smooth.enabled==enable)
+    {
+        return;
+    }
+    if (!enable)
+    {
+        finishSmoothFollow("disabled");
+    }
+    m_smooth.enabled=enable;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onHidden()
+{
+    finishSmoothFollow("hidden");
 }
 
 //--------------------------------------------------------------------------
@@ -2483,6 +2970,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         removeExtraItemsFromBegin(hiddenBefore-maxHidden);
     }
 
+    if (m_smooth.active)
+    {
+        // Items below the viewport are not hidden content to prefetch or trim here, they are the
+        // messages being scrolled into view. finishSmoothFollow() runs viewportUpdated(), which
+        // comes back here for the END side once the animation is over.
+        return;
+    }
+
     size_t hiddenAfter=0;
     auto last=lastItem();
     auto lastVisible=lastViewportItem();
@@ -2944,6 +3439,14 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateJumpEdgeVisibili
         return;
     }
 
+    if (m_smooth.active && m_stick==Direction::END)
+    {
+        // the content below the viewport is being scrolled into view, not left behind
+        m_jumpEdge->setVisible(m_jumpEdgeForceVisible);
+        updateJumpEdgePosition();
+        return;
+    }
+
     const auto& order=itemOrder();
     size_t invisibleCount=0;
     bool showControl=false;
@@ -3177,11 +3680,11 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
         auto last=lastItem();
         if (!m_enableFlyweight)
         {
-            scrollToEdge(Direction::END);
+            scrollToLocalEnd();
         }
         else if (last!=nullptr && m_maxSortValueSet && !m_orderComparer(last->sortValue(),m_maxSortValue))
         {
-            scrollToEdge(Direction::END);
+            scrollToLocalEnd();
         }
         else if (m_endRequestCb)
         {

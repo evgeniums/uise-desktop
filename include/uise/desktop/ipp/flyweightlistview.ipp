@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QEvent>
 #include <QShowEvent>
+#include <QHideEvent>
 #include <QKeyEvent>
 
 #include <uise/desktop/flyweightlistview.hpp>
@@ -244,6 +245,9 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItems(const std::v
         beginUpdate();
     }
 
+    // a batch of items is not a live append
+    pimpl->m_batchBulk=true;
+
     for (auto&& item:items)
     {
         pimpl->insertItem(item,false);
@@ -276,6 +280,11 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertContinuousItems(co
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::insertItem(const ItemT& item, bool adjustMinMax)
 {
+    if (pimpl->m_ignoreUpdates)
+    {
+        // a single item inserted by the owner into an open batch: the candidate for smooth following
+        pimpl->m_batchLiveInsert=true;
+    }
     pimpl->insertItem(item,adjustMinMax);
 }
 
@@ -433,6 +442,41 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isFollowingStickEdge() c
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setSmoothFollowEnabled(bool enable)
+{
+    pimpl->setSmoothFollowEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isSmoothFollowEnabled() const noexcept
+{
+    return pimpl->m_smooth.enabled;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::setSmoothFollowDuration(int milliseconds)
+{
+    pimpl->m_smooth.durationMs=std::max(milliseconds,1);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView<ItemT,OrderComparer,IdComparer>::smoothFollowDuration() const noexcept
+{
+    return pimpl->m_smooth.durationMs;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isSmoothFollowActive() const noexcept
+{
+    return pimpl->m_smooth.active;
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::scrollToEdge(Direction direction)
 {
     pimpl->scrollToEdge(direction);
@@ -470,6 +514,14 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::showEvent(QShowEvent *ev
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView<ItemT,OrderComparer,IdComparer>::hideEvent(QHideEvent *event)
+{
+    QFrame::hideEvent(event);
+    pimpl->onHidden();
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setFlyweightEnabled(bool enable) noexcept
 {
     return pimpl->setFlyweightEnabled(enable);
@@ -486,6 +538,7 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isFlyweightEnabled() con
 template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView<ItemT,OrderComparer,IdComparer>::setStickMode(Direction mode) noexcept
 {
+    pimpl->cancelSmoothFollow("setStickMode");
     pimpl->m_stick=mode;
     pimpl->m_jumpEdge->setDirection(mode);
     pimpl->updateListAlignment();

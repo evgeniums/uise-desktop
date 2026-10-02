@@ -26,7 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_HPP
 #define UISE_DESKTOP_FLYWEIGHTLISTVIEW_P_HPP
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
+#include <utility>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -44,6 +47,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/pointerholder.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/frameticker.hpp>
 #include <uise/desktop/utils/orientationinvariant.hpp>
 
 #include <uise/desktop/scrollbarholder.hpp>
@@ -81,6 +85,30 @@ inline bool fwlvDebugEnabled() noexcept
 {
     static const bool enabled=std::getenv("UISE_FWLV_CHECK")!=nullptr;
     return enabled;
+}
+
+/**
+ * @brief Check whether per-frame tracing of the smooth following animation is enabled.
+ *
+ * Gated by the UISE_FWLV_SMOOTH_TRACE environment variable. Event-level smooth following
+ * diagnostics (start/cancel/finish) are under fwlvDebugEnabled(); this one is separate because
+ * it prints on every animation frame.
+ */
+inline bool fwlvSmoothTraceEnabled() noexcept
+{
+    static const bool enabled=std::getenv("UISE_FWLV_SMOOTH_TRACE")!=nullptr;
+    return enabled;
+}
+
+/**
+ * @brief Check whether smooth following is force-disabled with the UISE_FWLV_NO_SMOOTH environment variable.
+ *
+ * A runtime kill switch for A/B comparison against the instant behaviour.
+ */
+inline bool fwlvSmoothKilled() noexcept
+{
+    static const bool killed=std::getenv("UISE_FWLV_NO_SMOOTH")!=nullptr;
+    return killed;
 }
 
 class UISE_DESKTOP_EXPORT FlyweightListView_q : public QObject
@@ -359,6 +387,55 @@ class FlyweightListView_p : public OrientationInvariant
 
         void updateListAlignment();
 
+        //
+        // Smooth following of appended items, see FlyweightListView::setSmoothFollowEnabled().
+        //
+        // While m_smooth.active the view is animating towards its follow target. The distance
+        // still to go ("lag") is always pos-target, where target is the position followStickEdge()
+        // would scroll to: it is never tracked independently, so every other size change just
+        // falls out of the anchoring in compensateSmoothFollow().
+        //
+
+        void setSmoothFollowEnabled(bool enable);
+
+        //! Main-axis list position range, same as scrollTo() clamps to.
+        std::pair<int,int> scrollRange() const;
+
+        //! Main-axis list position at which the view follows the edge it sticks to.
+        int followTargetPos() const;
+
+        //! Maximum lag, one viewport.
+        int smoothMaxLag() const;
+
+        //! Whether smooth following may run at all right now.
+        bool canAnimateSmoothFollow() const;
+
+        //! Whether the insertion batch being closed appended items at the tail of a following view.
+        bool isSmoothAppendEligible() const;
+
+        //! Called by compensateSizeChange(), returns true if the list position was handled here.
+        bool compensateSmoothFollow();
+
+        void onSmoothFollowTick(int dtMs);
+
+        //! Keep the offset from the follow target within [0,max] after the target moved on its own
+        //! (viewport resize), or finish if it is gone.
+        void clampSmoothLag();
+
+        //! The scrollToEdge(END) of jumpToEdge(), that lets a running animation carry on to the end.
+        void scrollToLocalEnd();
+
+        //! Move to the follow target, stop the animation and refresh the viewport state.
+        void finishSmoothFollow(const char* reason);
+
+        //! Stop the animation where it is, without moving.
+        void cancelSmoothFollow(const char* reason) noexcept;
+
+        //! Remember the item and top edge compensateSmoothFollow() will anchor on.
+        void captureSmoothAnchor(bool lastItemInsteadOfViewport);
+
+        void onHidden();
+
     public:
 
         using OrderIdxFn=boost::multi_index::const_mem_fun<
@@ -428,6 +505,29 @@ class FlyweightListView_p : public OrientationInvariant
         bool m_atFollowLimit=false;
         int m_firstWidgetPos;
         int m_lastWidgetEdge;
+        struct SmoothFollow
+        {
+            bool enabled=false;
+            bool active=false;
+            //! Set by jumpToEdge(END) while active: head for the very end, ignoring the follow limit.
+            bool toTrueEnd=false;
+            double lag=0;
+            int durationMs=0;
+        };
+        SmoothFollow m_smooth;
+        FrameTicker m_smoothTicker;
+
+        // Insertion batch (beginUpdate()..endUpdate()) bookkeeping for isSmoothAppendEligible().
+        std::optional<typename ItemT::IdType> m_batchPrevLastId;
+        bool m_batchLiveInsert=false;
+        bool m_batchBulk=false;
+
+        // The item whose top edge compensateSmoothFollow() keeps fixed on screen, and that top
+        // edge in m_llist coordinates, captured just before the geometry change it compensates:
+        // at beginUpdate() (the last item when idle, the last viewport item when animating) and
+        // again after every move while animating.
+        std::optional<typename ItemT::IdType> m_smoothAnchorId;
+        int m_smoothAnchorTop=0;
 
         const ItemT* m_firstItem;
         const ItemT* m_lastItem;

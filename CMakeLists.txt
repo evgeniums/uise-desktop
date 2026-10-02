@@ -52,6 +52,7 @@ SET (HEADERS
     include/uise/desktop/utils/destroywidget.hpp
     include/uise/desktop/utils/pointerholder.hpp
     include/uise/desktop/utils/singleshottimer.hpp
+    include/uise/desktop/utils/frameticker.hpp
     include/uise/desktop/utils/orientationinvariant.hpp
     include/uise/desktop/utils/directchildwidget.hpp
     include/uise/desktop/utils/substitutecolors.hpp
@@ -331,6 +332,7 @@ SET (SOURCES
     src/linkedlistviewitem.cpp
     src/linkedlistview.cpp
     src/singleshottimer.cpp
+    src/frameticker.cpp
     src/directchildwidget.cpp
     src/mimedatautils.cpp
     src/filenamevalidator.cpp

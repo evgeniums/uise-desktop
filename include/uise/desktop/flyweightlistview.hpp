@@ -102,6 +102,9 @@ class FlyweightListView : public QFrame
         inline static size_t DefaultJumpEdgeYOffset=10;
         inline static size_t DefaultJumpInvisibleItemCount=3;
 
+        inline static int DefaultSmoothFollowDurationMs=250;
+        inline static double SmoothFollowMinSpeed=0.1; // px per ms
+
         using RequestItemsCb=std::function<void (const ItemT*,size_t,Direction)>;
         using ItemRangeCb=std::function<void (const ItemT*,const ItemT*)>;
         using RequestJumpCb=std::function<void (bool,Qt::KeyboardModifiers)>;
@@ -408,14 +411,58 @@ class FlyweightListView : public QFrame
          *
          * Identical to scrollToEdge(stickMode()) when no limit is set or stickMode() is not
          * Direction::END. Use it instead of scrollToEdge() when re-asserting the sticking.
+         * Does nothing while a smooth following animation is running, see isSmoothFollowActive().
          */
         void followStickEdge();
 
         /**
          * @brief Check if the view is at the edge it sticks to, or pinned at the follow limit.
-         * @return True if automatic following has nothing more to scroll.
+         * @return True if automatic following has nothing more to scroll, or a smooth following
+         *  animation is on its way to the edge (see setSmoothFollowEnabled()).
          */
         bool isFollowingStickEdge() const;
+
+        /**
+         * @brief Enable or disable smooth following of appended items.
+         * @param enable Enable if true, disable otherwise. Disabled by default.
+         *
+         * Only affects stickMode()==Direction::END. When enabled, an item appended after the last
+         * item while the view is following the end (see isFollowingStickEdge()) is laid out
+         * below the viewport and the list is then scrolled up to reveal it with a short
+         * animation instead of snapping. Further items appended during the animation add to the
+         * remaining distance, so the scrolling continues until the end is reached. The remaining
+         * distance is capped at one viewport size, any excess snaps at once.
+         *
+         * Only appends are animated. Resizing of items or of the view, loading, clearing and
+         * jumping stay instant. Any explicit positioning (user scrolling, scrollToItem(),
+         * scrollToEdge(), etc.) cancels the animation in place. Disabling the feature finishes a
+         * running animation at once.
+         */
+        void setSmoothFollowEnabled(bool enable);
+
+        /**
+         * @brief Check if smooth following of appended items is enabled.
+         */
+        bool isSmoothFollowEnabled() const noexcept;
+
+        /**
+         * @brief Set nominal duration of the smooth following animation.
+         * @param milliseconds Duration, the animation decays exponentially with a time constant of a quarter of it.
+         */
+        void setSmoothFollowDuration(int milliseconds);
+
+        /**
+         * @brief Get nominal duration of the smooth following animation.
+         */
+        int smoothFollowDuration() const noexcept;
+
+        /**
+         * @brief Check if a smooth following animation is running now.
+         *
+         * While it runs isFollowingStickEdge() is true, followStickEdge() does nothing, and
+         * jumpToEdge(Direction::END) lets the animation continue to the very end instead of snapping.
+         */
+        bool isSmoothFollowActive() const noexcept;
 
         /**
          * @brief Enable or disable horisontal scrolling with the mouse wheel.
@@ -481,6 +528,11 @@ class FlyweightListView : public QFrame
          * falls back to a fetch through RequestEndCb/RequestHomeCb when it isn't. Exposed so a
          * host can trigger the same behaviour programmatically (e.g. "go to the latest message
          * after sending one") without reimplementing that decision or reaching into internals.
+         *
+         * While a smooth following animation (see setSmoothFollowEnabled()) is running, a jump to
+         * Direction::END that would be a plain local scroll does not snap: the animation carries
+         * on to the very end, ignoring the follow limit like scrollToEdge() does. So an item
+         * inserted and then jumped to scrolls in the same way as an item that was just inserted.
          */
         void jumpToEdge(Direction direction, bool forceLongJump=true, Qt::KeyboardModifiers modifiers={});
 
@@ -794,6 +846,7 @@ class FlyweightListView : public QFrame
 
         void resizeEvent(QResizeEvent *event) override;
         void showEvent(QShowEvent *event) override;
+        void hideEvent(QHideEvent *event) override;
         void keyPressEvent(QKeyEvent* event) override;
         void wheelEvent(QWheelEvent *event) override;
 

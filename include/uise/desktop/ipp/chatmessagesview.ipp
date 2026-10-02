@@ -182,6 +182,8 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
     m_listView->setPrefetchItemCount(20);
     m_listView->setFlyweightEnabled(true);
     m_listView->setStickMode(Direction::END);
+    // a message appended while the view is at the end scrolls in instead of snapping
+    m_listView->setSmoothFollowEnabled(true);
     m_listView->setVerticalScrollBarPlaceHolder(true);
 
     m_dateSubtitle=new ChatDateSubtitle(m_listView->viewportFrame());
