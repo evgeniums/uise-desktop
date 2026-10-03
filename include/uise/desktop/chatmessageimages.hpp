@@ -41,9 +41,9 @@ class ChatMessageText;
 class ChatMessageImages_p;
 
 /**
- * @brief Concrete image chat message body: a Telegram-style album grid (see albumLayout()) of
- *  ChatMessageImageItem tiles, followed by an optional embedded ChatMessageText comment --
- *  exactly the same comment-reuse idiom as ChatMessageFiles.
+ * @brief Concrete image chat message body: an exact-aspect, gapless album grid (see
+ *  albumLayout()) of ChatMessageImageItem tiles, followed by an optional embedded
+ *  ChatMessageText comment -- exactly the same comment-reuse idiom as ChatMessageFiles.
  *
  * No QLayout is used anywhere in this class: both the tiles and the comment are positioned with
  * manual geometry in layoutChildren(), called from resizeEvent() and from the QEvent::
@@ -65,12 +65,14 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 {
     Q_OBJECT
 
-    // todo-album-layout-small-tile-packing.md: QSS-settable, same idiom as qproperty-
-    // maxBubbleWidth on uise--ChatMessageFiles (see chatmessagefiles.qss) -- declared here rather
-    // than on AbstractChatMessageImages because the setters must invalidate THIS class's own
-    // layout memo (see rebuildGrid()'s layoutUnchanged check).
+    // QSS-settable, same idiom as qproperty-maxBubbleWidth on uise--ChatMessageFiles (see
+    // chatmessagefiles.qss) -- declared here rather than on AbstractChatMessageImages because the
+    // setters must invalidate THIS class's own layout memo (see rebuildGrid()'s layoutUnchanged
+    // check).
     Q_PROPERTY(int minTileSize READ minTileSize WRITE setMinTileSize)
     Q_PROPERTY(qreal tileMaxUpscale READ tileMaxUpscale WRITE setTileMaxUpscale)
+    Q_PROPERTY(qreal maxWidthRatio READ maxWidthRatio WRITE setMaxWidthRatio)
+    Q_PROPERTY(int maxBubbleWidth READ maxBubbleWidth WRITE setMaxBubbleWidth)
 
     public:
 
@@ -95,6 +97,9 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         void setAnimationMode(ImageLabel::AnimationMode mode) override;
         ImageLabel::AnimationMode animationMode() const override;
+
+        void setLayoutMode(AlbumLayoutMode mode) override;
+        AlbumLayoutMode layoutMode() const override;
 
         void startItemDrag(const QUuid& id, const QList<QUrl>& urls, const QString& sourceTag) override;
 
@@ -135,13 +140,13 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         QSize minimumSizeHint() const override;
 
         /**
-         * @brief Hard floor (logical px) on BOTH dimensions of every tile, aspect preserved,
-         *  instead of being left genuinely tiny -- see AlbumLayoutOptions::minCappedTile's own
-         *  doc comment for the mechanism (albumlayout.hpp) and TileMaxUpscale/tileMaxUpscale()
-         *  for the paint-time counterpart that actually fills the floored tile. Applies to any
-         *  densely-packed tile a template happened to size small, not just a small-resolution
-         *  image -- see albumLayout()'s own doc comment for why the two used to be conflated.
-         *  Settable from QSS via qproperty-minTileSize (see chatmessagefiles.qss).
+         * @brief Floor (logical px) on a tile's short side for the uniform all-thumbnail shrink:
+         *  an album made only of small images is scaled down as a whole towards their natural
+         *  size, but never so far that any tile's short side drops below this -- see
+         *  AlbumLayoutOptions::shrinkFloor's own doc comment (albumlayout.hpp). Doubles as the
+         *  extent an unresolved placeholder tile is laid out at (see rebuildGrid()), so a
+         *  genuinely small image and a placeholder read at the same scale. Settable from QSS via
+         *  qproperty-minTileSize (see chatmessagefiles.qss).
          */
         void setMinTileSize(int size);
 
@@ -149,14 +154,35 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         /**
          * @brief How far a tile may enlarge its content beyond the image's own natural
-         *  resolution -- forwarded to every tile via ChatMessageImageItem::setMaxUpscale(). Needs
-         *  to be raised together with minTileSize() so a small source can actually reach the new
-         *  floor rather than sitting centred on a padded canvas (see this class's own rebuildGrid()
-         *  for the derivation). Settable from QSS via qproperty-tileMaxUpscale.
+         *  resolution on its FALLBACK paint paths -- forwarded to every tile via
+         *  ChatMessageImageItem::setMaxUpscale(), see its doc comment for which paths those are.
+         *  A tile whose rect matches its image's aspect ratio (every tile albumLayout() lays out)
+         *  covers its rect regardless of resolution and does not consult this. Settable from QSS
+         *  via qproperty-tileMaxUpscale.
          */
         void setTileMaxUpscale(qreal maxUpscale);
 
         qreal tileMaxUpscale() const noexcept;
+
+        /**
+         * @brief Share of the width the view offers (the negotiated forMaxWidth, i.e. the chat's
+         *  content width up to its maxMessageWidth) that the album may take -- 0.7 by default, so
+         *  an image message never spans the whole viewport the way the Wide layout otherwise
+         *  would. Values outside (0,1] mean "no ratio cap". Combined with maxBubbleWidth() below
+         *  by taking the smaller budget. Settable from QSS via qproperty-maxWidthRatio.
+         */
+        void setMaxWidthRatio(qreal ratio);
+
+        qreal maxWidthRatio() const noexcept;
+
+        /**
+         * @brief Absolute cap (logical px) on the album's width budget, same idea as
+         *  AbstractChatMessageFiles::maxBubbleWidth(); 0 (the default) disables it. Settable from
+         *  QSS via qproperty-maxBubbleWidth. The caption keeps its own text cap regardless.
+         */
+        void setMaxBubbleWidth(int width);
+
+        int maxBubbleWidth() const noexcept;
 
     protected:
 
@@ -169,6 +195,10 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
     private:
 
         void rebuildGrid(int forMaxWidth);
+
+        //! Invalidates the layout memo and re-lays the album out after one of the width caps
+        //! (maxWidthRatio/maxBubbleWidth) changed -- see setMinTileSize() for the same idiom.
+        void relayoutForCapChange();
 
         //! Single placement path for every child (tiles + comment), replacing the QLayout this
         //! class used to have -- see the class doc comment. Also centers the tile block

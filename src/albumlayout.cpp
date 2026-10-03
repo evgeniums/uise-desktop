@@ -24,6 +24,9 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <numeric>
 
 #include <QtGlobal>
 
@@ -33,114 +36,566 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
 
-qreal aspectOf(const QSize& sz)
+double aspectOf(const QSize& sz)
 {
     if (sz.width()<=0 || sz.height()<=0)
     {
         return 1.0;
     }
-    return static_cast<qreal>(sz.width())/static_cast<qreal>(sz.height());
+    return static_cast<double>(sz.width())/static_cast<double>(sz.height());
 }
 
-//! Aspect-ratio class used to pick a 3/4-image template from the MULTISET of classes across all
-//! images in the album, rather than from a single image's aspect -- see classify()'s own
-//! rationale in albumLayout()'s header doc comment.
-enum class AspectClass
+/********************** Cost weights **********************/
+
+// All cost terms are dimensionless (differences of natural logarithms), so the weights below are
+// comparable with each other: a weight of 1 on a term means "a factor of e in that term costs as
+// much as a factor of e in tile-area imbalance". Tuned against demo/chatmessagefiles; the tests
+// assert invariants rather than exact rects so these can be adjusted without churning them.
+
+//! Variance of log(tile area / target area) across the album's tiles -- see targetAreas().
+constexpr double WeightBalance=0.7;
+//! Share of tiles nested two or more orientation changes deep -- a weak preference for plain
+//! rows/columns (and one level of hero + stack / grid) over fiddly nested structures.
+constexpr double WeightNesting=0.3;
+//! log(maxWidth / album width): the album should use the whole width budget.
+constexpr double WeightWidthShortfall=3.0;
+//! log(box area / album area): among width-filling structures, prefer the one with the larger
+//! tiles (a 2-row block over a 1-row strip of tiny tiles).
+constexpr double WeightAreaUse=0.6;
+//! Mean over known-size images of log(tile width / natural width) when the tile is larger than
+//! the image -- a root-level tie-breaker in favour of upscaling less.
+constexpr double WeightUpscale=0.5;
+//! Sum over tiles of log(minTile / short side) for tiles squeezed under minTile.
+constexpr double WeightUnderMin=4.0;
+
+/********************** Search bounds **********************/
+
+//! Candidates for one sub-sequence are deduplicated by aspect ratio in buckets this wide (in
+//! log units, ~6%), keeping the best partial cost per bucket, before the per-interval cap.
+constexpr double AspectBucketWidth=0.06;
+constexpr int MinCandidatesPerInterval=4;
+constexpr int MaxCandidatesPerInterval=32;
+//! Total (candidate x candidate x orientation) combinations the DP is allowed, which sets the
+//! per-interval cap from the image count: 32 for up to 5 images, 16 at 8, 12 at 10, 4 from ~20.
+constexpr double CombinationBudget=60000.0;
+
+enum class Orient : uint8_t
 {
-    Tall,
-    Square,
-    Wide
+    Leaf,
+    SideBySide, //!< left | right, shared height
+    Stacked     //!< top / bottom, shared width
 };
 
-constexpr qreal TallThreshold=0.85;
-constexpr qreal WideThreshold=1.2;
-
-AspectClass classify(qreal a)
+/**
+ * @brief One candidate structure for a contiguous run of images.
+ *
+ * Every node of a split tree satisfies W = alpha*H + beta in logical px, with beta carrying the
+ * spacing seams exactly: a leaf is (aspect, 0); side by side adds alphas and betas plus one
+ * seam; stacked combines reciprocals (see combine()). Because the relation is affine, nesting
+ * several same-orientation binary splits reproduces a k-ary row/column exactly, so binary trees
+ * lose nothing.
+ *
+ * The balance statistics (s1, s2) are sums of d_k = log(area_k / target_k) over the subtree's
+ * leaves with the subtree normalised to height 1 -- a stacked parent rescales its children, which
+ * shifts every d_k in that child by one constant (see combine()), so the sums can be maintained
+ * incrementally and the variance is available at every node without visiting its leaves.
+ * Spacing is ignored in these statistics only (a <=2% effect on relative areas); the geometry
+ * itself is exact.
+ */
+struct Cand
 {
-    if (a<TallThreshold)
+    double alpha=1.0;
+    double beta=0.0;
+    double logAlpha=0.0;
+
+    double s1=0.0;
+    double s2=0.0;
+    int m=1;        //!< leaf count
+
+    // Leaves by nesting level relative to this subtree's root, where a level is one change of
+    // orientation on the path down: a plain row is all level 0, a hero beside a stacked pair has
+    // the pair at level 1. nestP = sum over leaves of max(0, level-1).
+    int cnt0=1;
+    int cnt1=0;
+    int cntDeep=0;
+    int nestP=0;
+
+    double partial=0.0;
+
+    Orient orient=Orient::Leaf;
+    int split=-1;   //!< last image index of the left/top child
+    int left=-1;    //!< candidate index within the left/top child's interval
+    int right=-1;   //!< candidate index within the right/bottom child's interval
+};
+
+struct DRect
+{
+    double x=0;
+    double y=0;
+    double w=0;
+    double h=0;
+};
+
+int candidateLimit(int n)
+{
+    // number of (i,k,j) split triples the DP visits is C(n+1,3); each costs 2*K*K combinations
+    auto triples=static_cast<double>(n)*(n+1.0)*(n-1.0)/6.0;
+    if (triples<=0)
     {
-        return AspectClass::Tall;
+        return MaxCandidatesPerInterval;
     }
-    if (a>WideThreshold)
-    {
-        return AspectClass::Wide;
-    }
-    return AspectClass::Square;
+    auto k=static_cast<int>(std::floor(std::sqrt(CombinationBudget/(2.0*triples))));
+    return qBound(MinCandidatesPerInterval,k,MaxCandidatesPerInterval);
 }
-
-int countClass(const std::vector<AspectClass>& classes, AspectClass c)
-{
-    return static_cast<int>(std::count(classes.begin(),classes.end(),c));
-}
-
-qreal clampAspect(qreal a, qreal lo, qreal hi)
-{
-    return qBound(lo,a,hi);
-}
-
-//! Which image gets a template's "hero" slot (the full-width row, or the big left tile): always
-//! the FIRST one, so every tile ends up where the message put it -- images are shown in the order
-//! they were sent, left to right and top to bottom, and a caption referring to "the first photo"
-//! keeps meaning the first tile.
-//!
-//! An earlier version picked the aspect farthest from square instead, on the grounds that it fits
-//! the big slot best. Dropped: it let an image visibly jump position relative to how it was sent,
-//! and it was never what made this layout order-independent in the first place -- that comes from
-//! choosing the TEMPLATE by the aspect-class multiset over all images (see classify()), which is
-//! unaffected by this. Reordering the same images therefore still picks the same shape; only
-//! which image occupies which slot follows the message, as it should.
-constexpr int HeroIndex=0;
 
 /**
- * @brief Stack tiles of the same width across totalHeight, proportioned by each tile's own
- *  aspect ratio rather than an even split.
+ * @brief Per-image target area (logical px^2) the balance term measures each tile against.
  *
- * Each tile's height is solved so that width/height reproduces its own aspect ratio as closely
- * as the minTile floor and the shared totalHeight budget allow (weight_i proportional to
- * 1/aspect_i -- a taller/narrower image asks for more height at a fixed width), floored at
- * minTile, with the last tile absorbing the rounding remainder so the stack still sums to
- * totalHeight whenever the budget allows it. Supersedes the previous even split, which assumed
- * mismatched aspects were absorbed by a center-crop at paint time -- real content is fitted
- * inside its tile and padded, not cropped (see utils/pixmapscale.hpp's scaledToFitPadded()), so
- * an even split just meant a wrong-shaped tile letterboxing harder than it needed to.
+ * A photograph -- anything whose natural logical area is at least an equal share of the box --
+ * targets exactly that equal share, so photographs want equal tiles. A genuinely small image
+ * targets its own natural area (floored at a minTile square), i.e. a proportionally smaller
+ * tile, which is what steers it into the small slot of a structure instead of a photo-sized one.
+ * Unknown sizes behave as photographs.
  */
-std::vector<QRect> stackByAspect(int x, int y, int width, int totalHeight, const std::vector<qreal>& aspects, int spacing, int minTile)
+std::vector<double> targetAreas(const std::vector<QSize>& pixelSizes, const AlbumLayoutOptions& options)
 {
-    std::vector<QRect> rects;
-    auto count=static_cast<int>(aspects.size());
-    if (count<=0)
+    const auto n=static_cast<int>(pixelSizes.size());
+    const double refArea=std::max(1.0,static_cast<double>(options.maxWidth)*options.maxHeight/std::max(n,2));
+    const double floorArea=static_cast<double>(options.minTile)*options.minTile;
+
+    std::vector<double> targets(static_cast<size_t>(n),refArea);
+    if (options.devicePixelRatio<=0)
     {
-        return rects;
+        return targets;
+    }
+    for (int i=0;i<n;++i)
+    {
+        const auto& sz=pixelSizes[static_cast<size_t>(i)];
+        if (sz.width()<=0 || sz.height()<=0)
+        {
+            continue;
+        }
+        auto natural=(sz.width()/options.devicePixelRatio)*(sz.height()/options.devicePixelRatio);
+        targets[static_cast<size_t>(i)]=std::min(refArea,std::max(floorArea,natural));
+    }
+    return targets;
+}
+
+class Layout
+{
+    public:
+
+        Layout(const std::vector<QSize>& pixelSizes, const AlbumLayoutOptions& options)
+            : m_sizes(pixelSizes),
+              m_options(options),
+              m_n(static_cast<int>(pixelSizes.size())),
+              m_s(static_cast<double>(options.spacing)),
+              m_table(static_cast<size_t>(m_n)*static_cast<size_t>(m_n))
+        {}
+
+        void build();
+
+        //! Root candidate with the lowest total cost once fitted into the box, and its tiles.
+        void chooseRoot(int& rootIndex, int& width, int& height, std::vector<DRect>& tiles) const;
+
+        //! Uniform all-thumbnail shrink -- see AlbumLayoutOptions::shrinkFloor.
+        void shrink(int rootIndex, int& width, int& height, std::vector<DRect>& tiles) const;
+
+        const std::vector<Cand>& at(int i, int j) const
+        {
+            return m_table[static_cast<size_t>(i)*static_cast<size_t>(m_n)+static_cast<size_t>(j)];
+        }
+
+    private:
+
+        std::vector<Cand>& at(int i, int j)
+        {
+            return m_table[static_cast<size_t>(i)*static_cast<size_t>(m_n)+static_cast<size_t>(j)];
+        }
+
+        Cand combine(const Cand& left, const Cand& right, Orient orient, int split, int leftIndex, int rightIndex) const;
+
+        static void accumulateNesting(Cand& parent, const Cand& child);
+
+        void prune(std::vector<Cand>& all, std::vector<Cand>& out) const;
+
+        void fitRoot(const Cand& root, int& width, int& height) const;
+
+        void place(int i, int j, int index, double x, double y, double w, double h, std::vector<DRect>& out) const;
+
+        double rootCost(const Cand& root, int width, int height, const std::vector<DRect>& tiles) const;
+
+        const std::vector<QSize>& m_sizes;
+        const AlbumLayoutOptions& m_options;
+        int m_n;
+        double m_s;
+        int m_limit=MaxCandidatesPerInterval;
+        std::vector<double> m_targets;
+        std::vector<std::vector<Cand>> m_table;
+};
+
+//--------------------------------------------------------------------------
+
+void Layout::accumulateNesting(Cand& parent, const Cand& child)
+{
+    int c0=child.cnt0;
+    int c1=child.cnt1;
+    int cd=child.cntDeep;
+    int np=child.nestP;
+    if (child.orient!=Orient::Leaf && child.orient!=parent.orient)
+    {
+        // every leaf in this child moves one level deeper
+        np+=c1+cd;
+        cd+=c1;
+        c1=c0;
+        c0=0;
+    }
+    parent.cnt0+=c0;
+    parent.cnt1+=c1;
+    parent.cntDeep+=cd;
+    parent.nestP+=np;
+}
+
+//--------------------------------------------------------------------------
+
+Cand Layout::combine(const Cand& left, const Cand& right, Orient orient, int split, int leftIndex, int rightIndex) const
+{
+    Cand c;
+    c.orient=orient;
+    c.split=split;
+    c.left=leftIndex;
+    c.right=rightIndex;
+    c.m=left.m+right.m;
+    c.cnt0=0;
+    c.cnt1=0;
+    c.cntDeep=0;
+    c.nestP=0;
+
+    if (orient==Orient::SideBySide)
+    {
+        // shared height: widths add, plus one seam
+        c.alpha=left.alpha+right.alpha;
+        c.beta=left.beta+right.beta+m_s;
+        c.logAlpha=std::log(c.alpha);
+        // children keep the parent's height, so their per-leaf statistics are unchanged
+        c.s1=left.s1+right.s1;
+        c.s2=left.s2+right.s2;
+    }
+    else
+    {
+        // shared width W: H = (W-bT)/aT + (W-bB)/aB + s, solved for W = alpha*H + beta
+        c.alpha=1.0/(1.0/left.alpha+1.0/right.alpha);
+        c.beta=c.alpha*(left.beta/left.alpha+right.beta/right.alpha-m_s);
+        c.logAlpha=std::log(c.alpha);
+        // at parent height 1 a child's height is alpha/alpha_child, which scales each of its leaf
+        // areas by that squared -- a constant shift of every d_k in the child
+        c.s1=0;
+        c.s2=0;
+        for (const Cand* child : {&left,&right})
+        {
+            auto delta=2.0*(c.logAlpha-child->logAlpha);
+            c.s1+=child->s1+child->m*delta;
+            c.s2+=child->s2+2.0*delta*child->s1+child->m*delta*delta;
+        }
     }
 
-    auto available=qMax(minTile*count,totalHeight-spacing*(count-1));
+    accumulateNesting(c,left);
+    accumulateNesting(c,right);
 
-    std::vector<qreal> weight(static_cast<size_t>(count));
-    qreal sumWeight=0;
-    for (int i=0;i<count;++i)
+    auto mean=c.s1/c.m;
+    auto variance=std::max(0.0,c.s2/c.m-mean*mean);
+    c.partial=WeightBalance*variance+WeightNesting*static_cast<double>(c.nestP)/m_n;
+    return c;
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::prune(std::vector<Cand>& all, std::vector<Cand>& out) const
+{
+    out.clear();
+    if (all.empty())
     {
-        auto asp=aspects[static_cast<size_t>(i)]>0 ? aspects[static_cast<size_t>(i)] : 1.0;
-        weight[static_cast<size_t>(i)]=1.0/asp;
-        sumWeight+=weight[static_cast<size_t>(i)];
+        return;
     }
 
-    std::vector<int> heights(static_cast<size_t>(count));
-    int used=0;
-    for (int i=0;i<count-1;++i)
+    // Keep the best partial cost per aspect bucket -- the parent needs a CHOICE of shapes for
+    // this run of images far more than it needs several near-identical shapes -- then the best
+    // m_limit overall. Stable sorts and strict comparisons throughout, so the result is a pure
+    // function of the input order (determinism is part of albumLayout()'s contract).
+    std::vector<int> order(all.size());
+    std::iota(order.begin(),order.end(),0);
+    auto bucketOf=[&all](int idx)
     {
-        auto hh=qMax(minTile,qRound(available*weight[static_cast<size_t>(i)]/sumWeight));
-        heights[static_cast<size_t>(i)]=hh;
-        used+=hh;
-    }
-    heights[static_cast<size_t>(count-1)]=qMax(minTile,available-used);
+        return qRound(all[static_cast<size_t>(idx)].logAlpha/AspectBucketWidth);
+    };
+    std::stable_sort(order.begin(),order.end(),
+        [&all,&bucketOf](int lhs, int rhs)
+        {
+            auto bl=bucketOf(lhs);
+            auto br=bucketOf(rhs);
+            if (bl!=br)
+            {
+                return bl<br;
+            }
+            return all[static_cast<size_t>(lhs)].partial<all[static_cast<size_t>(rhs)].partial;
+        }
+    );
 
-    auto yy=y;
-    for (int i=0;i<count;++i)
+    std::vector<int> picked;
+    picked.reserve(order.size());
+    int lastBucket=0;
+    bool haveLast=false;
+    for (auto idx : order)
     {
-        rects.emplace_back(x,yy,width,heights[static_cast<size_t>(i)]);
-        yy+=heights[static_cast<size_t>(i)]+spacing;
+        auto b=bucketOf(idx);
+        if (!haveLast || b!=lastBucket)
+        {
+            picked.push_back(idx);
+            lastBucket=b;
+            haveLast=true;
+        }
     }
-    return rects;
+
+    std::stable_sort(picked.begin(),picked.end(),
+        [&all](int lhs, int rhs)
+        {
+            return all[static_cast<size_t>(lhs)].partial<all[static_cast<size_t>(rhs)].partial;
+        }
+    );
+    if (static_cast<int>(picked.size())>m_limit)
+    {
+        picked.resize(static_cast<size_t>(m_limit));
+    }
+
+    out.reserve(picked.size());
+    for (auto idx : picked)
+    {
+        out.push_back(all[static_cast<size_t>(idx)]);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::build()
+{
+    m_limit=candidateLimit(m_n);
+    m_targets=targetAreas(m_sizes,m_options);
+
+    for (int i=0;i<m_n;++i)
+    {
+        Cand leaf;
+        leaf.alpha=aspectOf(m_sizes[static_cast<size_t>(i)]);
+        leaf.beta=0.0;
+        leaf.logAlpha=std::log(leaf.alpha);
+        // area of a leaf at height 1 is its aspect
+        auto d=std::log(leaf.alpha/m_targets[static_cast<size_t>(i)]);
+        leaf.s1=d;
+        leaf.s2=d*d;
+        at(i,i).push_back(leaf);
+    }
+
+    std::vector<Cand> all;
+    for (int len=2;len<=m_n;++len)
+    {
+        for (int i=0;i+len-1<m_n;++i)
+        {
+            auto j=i+len-1;
+            all.clear();
+            for (int k=i;k<j;++k)
+            {
+                const auto& lefts=at(i,k);
+                const auto& rights=at(k+1,j);
+                all.reserve(all.size()+2*lefts.size()*rights.size());
+                for (size_t li=0;li<lefts.size();++li)
+                {
+                    for (size_t ri=0;ri<rights.size();++ri)
+                    {
+                        all.push_back(combine(lefts[li],rights[ri],Orient::SideBySide,k,static_cast<int>(li),static_cast<int>(ri)));
+                        all.push_back(combine(lefts[li],rights[ri],Orient::Stacked,k,static_cast<int>(li),static_cast<int>(ri)));
+                    }
+                }
+            }
+            prune(all,at(i,j));
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::fitRoot(const Cand& root, int& width, int& height) const
+{
+    // as wide as the box allows, unless the height budget binds first
+    double hReal=static_cast<double>(m_options.maxHeight);
+    if (root.alpha>0)
+    {
+        hReal=std::min(hReal,(static_cast<double>(m_options.maxWidth)-root.beta)/root.alpha);
+    }
+    hReal=std::max(hReal,1.0);
+    auto wReal=root.alpha*hReal+root.beta;
+    width=std::max(1,qRound(wReal));
+    height=std::max(1,qRound(hReal));
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::place(int i, int j, int index, double x, double y, double w, double h, std::vector<DRect>& out) const
+{
+    const auto& c=at(i,j)[static_cast<size_t>(index)];
+    if (c.orient==Orient::Leaf)
+    {
+        out[static_cast<size_t>(i)]=DRect{x,y,w,h};
+        return;
+    }
+
+    const auto k=c.split;
+    const auto& left=at(i,k)[static_cast<size_t>(c.left)];
+    const auto& right=at(k+1,j)[static_cast<size_t>(c.right)];
+
+    // The node's own (w,h) came from an integer-rounded parent, so alpha*h+beta misses w by up to
+    // half a pixel; distributing the available extent in proportion to what each child asks for
+    // spreads that error instead of dumping it onto one child.
+    if (c.orient==Orient::SideBySide)
+    {
+        auto wl=std::max(1e-6,left.alpha*h+left.beta);
+        auto wr=std::max(1e-6,right.alpha*h+right.beta);
+        auto avail=std::max(1e-6,w-m_s);
+        auto wLeft=avail*wl/(wl+wr);
+        auto wRight=avail-wLeft;
+        place(i,k,c.left,x,y,wLeft,h,out);
+        place(k+1,j,c.right,x+wLeft+m_s,y,wRight,h,out);
+    }
+    else
+    {
+        auto ht=std::max(1e-6,(w-left.beta)/left.alpha);
+        auto hb=std::max(1e-6,(w-right.beta)/right.alpha);
+        auto avail=std::max(1e-6,h-m_s);
+        auto hTop=avail*ht/(ht+hb);
+        auto hBottom=avail-hTop;
+        place(i,k,c.left,x,y,w,hTop,out);
+        place(k+1,j,c.right,x,y+hTop+m_s,w,hBottom,out);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+double Layout::rootCost(const Cand& root, int width, int height, const std::vector<DRect>& tiles) const
+{
+    auto cost=root.partial;
+
+    const auto maxW=static_cast<double>(m_options.maxWidth);
+    const auto maxH=static_cast<double>(m_options.maxHeight);
+    cost+=WeightWidthShortfall*std::max(0.0,std::log(maxW/width));
+    cost+=WeightAreaUse*std::max(0.0,std::log((maxW*maxH)/(static_cast<double>(width)*height)));
+
+    if (m_options.devicePixelRatio>0)
+    {
+        double upscale=0;
+        int known=0;
+        for (int i=0;i<m_n;++i)
+        {
+            const auto& sz=m_sizes[static_cast<size_t>(i)];
+            if (sz.width()<=0 || sz.height()<=0)
+            {
+                continue;
+            }
+            auto naturalW=sz.width()/m_options.devicePixelRatio;
+            upscale+=std::max(0.0,std::log(tiles[static_cast<size_t>(i)].w/naturalW));
+            ++known;
+        }
+        if (known>0)
+        {
+            cost+=WeightUpscale*upscale/m_n;
+        }
+    }
+
+    double underMin=0;
+    const auto minTile=static_cast<double>(m_options.minTile);
+    for (const auto& t : tiles)
+    {
+        auto shortSide=std::max(1e-6,std::min(t.w,t.h));
+        if (shortSide<minTile)
+        {
+            underMin+=std::log(minTile/shortSide);
+        }
+    }
+    cost+=WeightUnderMin*underMin;
+
+    return cost;
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::chooseRoot(int& rootIndex, int& width, int& height, std::vector<DRect>& tiles) const
+{
+    const auto& roots=at(0,m_n-1);
+    rootIndex=0;
+    double best=0;
+    std::vector<DRect> candidateTiles(static_cast<size_t>(m_n));
+    for (size_t r=0;r<roots.size();++r)
+    {
+        int w=0;
+        int h=0;
+        fitRoot(roots[r],w,h);
+        place(0,m_n-1,static_cast<int>(r),0.0,0.0,w,h,candidateTiles);
+        auto cost=rootCost(roots[r],w,h,candidateTiles);
+        if (r==0 || cost<best)
+        {
+            best=cost;
+            rootIndex=static_cast<int>(r);
+            width=w;
+            height=h;
+            tiles=candidateTiles;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void Layout::shrink(int rootIndex, int& width, int& height, std::vector<DRect>& tiles) const
+{
+    if (m_options.devicePixelRatio<=0)
+    {
+        return;
+    }
+
+    // The least-upscaled known image decides: if even IT is shown larger than natural size, the
+    // whole album is thumbnails and may come down to its natural scale. One image at or above
+    // natural size (a normal photo) makes f>=1 and keeps everything as laid out.
+    double f=0;
+    bool anyKnown=false;
+    for (int i=0;i<m_n;++i)
+    {
+        const auto& sz=m_sizes[static_cast<size_t>(i)];
+        if (sz.width()<=0 || sz.height()<=0)
+        {
+            continue;
+        }
+        auto naturalW=sz.width()/m_options.devicePixelRatio;
+        f=std::max(f,naturalW/std::max(1e-6,tiles[static_cast<size_t>(i)].w));
+        anyKnown=true;
+    }
+    if (!anyKnown || f>=1.0)
+    {
+        return;
+    }
+
+    // ...but never below the floor on any tile's short side
+    const auto floorPx=static_cast<double>((m_options.shrinkFloor>0) ? m_options.shrinkFloor : m_options.minTile);
+    double fMin=0;
+    for (const auto& t : tiles)
+    {
+        fMin=std::max(fMin,floorPx/std::max(1e-6,std::min(t.w,t.h)));
+    }
+    f=std::min(1.0,std::max(f,fMin));
+    if (f>=1.0)
+    {
+        return;
+    }
+
+    const auto& root=at(0,m_n-1)[static_cast<size_t>(rootIndex)];
+    height=std::max(1,qRound(f*height));
+    width=std::max(1,qRound(root.alpha*height+root.beta));
+    place(0,m_n-1,rootIndex,0.0,0.0,width,height,tiles);
 }
 
 }
@@ -149,15 +604,12 @@ std::vector<QRect> stackByAspect(int x, int y, int width, int totalHeight, const
 
 std::vector<QRect> albumLayout(
         const std::vector<QSize>& pixelSizes,
-        const AlbumLayoutOptions& options,
+        const AlbumLayoutOptions& optionsIn,
         QSize* totalSize
     )
 {
     std::vector<QRect> rects;
     const auto n=static_cast<int>(pixelSizes.size());
-    const auto w=options.maxWidth;
-    const auto s=options.spacing;
-
     if (n==0)
     {
         if (totalSize!=nullptr)
@@ -167,659 +619,49 @@ std::vector<QRect> albumLayout(
         return rects;
     }
 
-    std::vector<qreal> a(static_cast<size_t>(n));
-    for (int i=0;i<n;++i)
+    if (optionsIn.mode==AlbumLayoutMode::PresetTemplates)
     {
-        a[static_cast<size_t>(i)]=aspectOf(pixelSizes[static_cast<size_t>(i)]);
+        return albumLayoutPresets(pixelSizes,optionsIn,totalSize);
     }
 
-    // Which visual row each tile belongs to -- filled in by every template below, and used only
-    // by the natural-size cap's re-flow pass (see its own comment). Templates whose tiles are
-    // nested rather than strictly rowed (the n==3 mixed hero + stacked pair) report the grouping
-    // the re-flow should fall back to, since the cap re-flow cannot preserve nesting.
-    std::vector<int> rowIndex(static_cast<size_t>(n),0);
+    AlbumLayoutOptions options=optionsIn;
+    options.maxWidth=std::max(1,options.maxWidth);
+    options.maxHeight=std::max(1,options.maxHeight);
+    options.minTile=std::max(1,options.minTile);
+    options.spacing=std::max(0,options.spacing);
 
-    if (n==1)
-    {
-        int width;
-        int height;
-        if (a[0]>=1.0)
-        {
-            width=w;
-            height=qMax(options.minTile,qRound(width/a[0]));
-            if (height>options.maxHeight)
-            {
-                height=options.maxHeight;
-                width=qMax(options.minTile,qRound(height*a[0]));
-            }
-        }
-        else
-        {
-            height=options.maxHeight;
-            width=qMax(options.minTile,qRound(height*a[0]));
-            if (width>w)
-            {
-                width=w;
-                height=qMax(options.minTile,qRound(width/a[0]));
-            }
-        }
-        rects.emplace_back(0,0,width,height);
-    }
-    else if (n==2)
-    {
-        if (classify(a[0])==AspectClass::Wide && classify(a[1])==AspectClass::Wide)
-        {
-            // both wide -- two stacked full-width rows, each at its own natural height
-            auto h0=qMax(options.minTile,qRound(w/a[0]));
-            auto h1=qMax(options.minTile,qRound(w/a[1]));
-            rects.emplace_back(0,0,w,h0);
-            rects.emplace_back(0,h0+s,w,h1);
-            rowIndex[0]=0;
-            rowIndex[1]=1;
-        }
-        else
-        {
-            // side-by-side columns, widths proportional to aspect at a shared height -- this
-            // also covers "both tall" (near-equal aspects produce near-equal columns)
-            auto h=qMax(options.minTile,qRound((w-s)/(a[0]+a[1])));
-            auto w0=qRound(a[0]*h);
-            auto w1=(w-s)-w0; // last tile absorbs rounding so the row sums exactly to w
-            rects.emplace_back(0,0,w0,h);
-            rects.emplace_back(w0+s,0,w1,h);
-        }
-    }
-    else if (n==3)
-    {
-        std::vector<AspectClass> cls{classify(a[0]),classify(a[1]),classify(a[2])};
-        rects.assign(3,QRect());
+    Layout layout(pixelSizes,options);
+    layout.build();
 
-        if (countClass(cls,AspectClass::Wide)>=2)
-        {
-            // wide majority -- ONE hero image full width on top, the other two side by side in a
-            // proportional row below. Deliberately NOT three stacked full-width rows: stacking
-            // every wide image turns the album into a narrow tall column that wastes the bubble's
-            // horizontal budget (and, once the bubble's own minimum width kicks in, leaves visible
-            // dead space beside it). Prefer spending horizontal space over growing vertically.
-            //
-            // The hero is the first image (see HeroIndex) and the other two follow it in message
-            // order, so the tiles read exactly as the message was sent.
-            const auto hero=HeroIndex;
-            std::vector<int> others;
-            for (int i=0;i<3;++i)
-            {
-                if (i!=hero)
-                {
-                    others.push_back(i);
-                }
-            }
+    int rootIndex=0;
+    int width=0;
+    int height=0;
+    std::vector<DRect> tiles(static_cast<size_t>(n));
+    layout.chooseRoot(rootIndex,width,height,tiles);
+    layout.shrink(rootIndex,width,height,tiles);
 
-            auto h0=qMax(options.minTile,qRound(w/clampAspect(a[static_cast<size_t>(hero)],0.5,2.5)));
-            rects[static_cast<size_t>(hero)]=QRect(0,0,w,h0);
-
-            auto aLeft=a[static_cast<size_t>(others[0])];
-            auto aRight=a[static_cast<size_t>(others[1])];
-            auto h1=qMax(options.minTile,qRound((w-s)/(aLeft+aRight)));
-            auto wLeft=qMax(1,qRound(aLeft*h1));
-            // last tile absorbs rounding so the row sums exactly to w; floored at 1 so an
-            // extreme-aspect image (h1 pinned at minTile far below what aLeft would otherwise
-            // demand) can never drive this to zero/negative width -- same guard the n==4 wide
-            // template's own last-tile branch already has, missing here until this fix
-            auto wRight=qMax(1,(w-s)-wLeft);
-            rects[static_cast<size_t>(others[0])]=QRect(0,h0+s,wLeft,h1);
-            rects[static_cast<size_t>(others[1])]=QRect(wLeft+s,h0+s,wRight,h1);
-
-            rowIndex[static_cast<size_t>(hero)]=0;
-            rowIndex[static_cast<size_t>(others[0])]=1;
-            rowIndex[static_cast<size_t>(others[1])]=1;
-        }
-        else if (countClass(cls,AspectClass::Tall)>=2)
-        {
-            // tall majority -- three columns at a shared height, widths proportional to aspect
-            auto sumA=a[0]+a[1]+a[2];
-            auto h=qMax(options.minTile,qRound((w-2*s)/sumA));
-            int x=0;
-            for (int i=0;i<2;++i)
-            {
-                auto tw=qRound(a[static_cast<size_t>(i)]*h);
-                rects[static_cast<size_t>(i)]=QRect(x,0,tw,h);
-                x+=tw+s;
-            }
-            auto usedW=rects[0].width()+rects[1].width();
-            rects[2]=QRect(x,0,(w-2*s)-usedW,h);
-            // all three share the single row -- rowIndex is already 0 for every tile
-        }
-        else
-        {
-            // mixed -- the first image becomes the big tile on the left (see HeroIndex); the other
-            // two stack on the right in message order, proportioned by their own aspect via
-            // stackByAspect()
-            const auto hero=HeroIndex;
-            std::vector<int> others;
-            for (int i=0;i<3;++i)
-            {
-                if (i!=hero)
-                {
-                    others.push_back(i);
-                }
-            }
-
-            auto leftWidth=qRound((w-s)*2.0/3.0);
-            auto rightWidth=(w-s)-leftWidth;
-            auto leftHeight=qMax(options.minTile,qRound(leftWidth/clampAspect(a[static_cast<size_t>(hero)],0.6,1.6)));
-            rects[static_cast<size_t>(hero)]=QRect(0,0,leftWidth,leftHeight);
-
-            std::vector<qreal> otherAspects{a[static_cast<size_t>(others[0])],a[static_cast<size_t>(others[1])]};
-            auto rightRects=stackByAspect(leftWidth+s,0,rightWidth,leftHeight,otherAspects,s,options.minTile);
-            rects[static_cast<size_t>(others[0])]=rightRects[0];
-            rects[static_cast<size_t>(others[1])]=rightRects[1];
-
-            // This is the one nested template (a full-height hero beside a 2-tile column), which
-            // the cap's re-flow cannot reproduce -- report the hero and the pair as two rows, so
-            // that IF the cap fires the layout degrades to hero-on-top + pair-below rather than
-            // producing overlapping rects. With no capping the nested geometry above stands.
-            rowIndex[static_cast<size_t>(hero)]=0;
-            rowIndex[static_cast<size_t>(others[0])]=1;
-            rowIndex[static_cast<size_t>(others[1])]=1;
-        }
-    }
-    else if (n==4)
-    {
-        std::vector<AspectClass> cls{classify(a[0]),classify(a[1]),classify(a[2]),classify(a[3])};
-        rects.assign(4,QRect());
-
-        if (countClass(cls,AspectClass::Wide)>=3)
-        {
-            // wide majority -- ONE hero image full width on top, the other three side by side in
-            // a proportional row below. Same rationale as the n==3 wide-majority template above:
-            // never stack every wide image into a narrow tall column, and the hero is the first
-            // image (see HeroIndex) so the tiles keep message order.
-            const auto hero=HeroIndex;
-            std::vector<int> others;
-            for (int i=0;i<4;++i)
-            {
-                if (i!=hero)
-                {
-                    others.push_back(i);
-                }
-            }
-
-            auto h0=qMax(options.minTile,qRound(w/clampAspect(a[static_cast<size_t>(hero)],0.5,2.5)));
-            rects[static_cast<size_t>(hero)]=QRect(0,0,w,h0);
-
-            qreal sumA=0;
-            for (auto idx : others)
-            {
-                sumA+=a[static_cast<size_t>(idx)];
-            }
-            auto h1=qMax(options.minTile,qRound((w-2*s)/sumA));
-
-            int x=0;
-            int usedW=0;
-            for (size_t k=0;k<others.size()-1;++k)
-            {
-                auto tw=qMax(1,qRound(a[static_cast<size_t>(others[k])]*h1));
-                rects[static_cast<size_t>(others[k])]=QRect(x,h0+s,tw,h1);
-                x+=tw+s;
-                usedW+=tw;
-            }
-            // last tile absorbs rounding so the row sums exactly to w; floored at 1 so a minTile
-            // clamp on h1 can never drive it to zero/negative width
-            auto wLast=qMax(1,(w-2*s)-usedW);
-            rects[static_cast<size_t>(others.back())]=QRect(x,h0+s,wLast,h1);
-
-            rowIndex[static_cast<size_t>(hero)]=0;
-            for (auto idx : others)
-            {
-                rowIndex[static_cast<size_t>(idx)]=1;
-            }
-        }
-        else if (countClass(cls,AspectClass::Tall)>=3)
-        {
-            // tall majority -- four columns at a shared height, widths proportional to aspect
-            auto sumA=a[0]+a[1]+a[2]+a[3];
-            auto h=qMax(options.minTile,qRound((w-3*s)/sumA));
-            int x=0;
-            for (int i=0;i<3;++i)
-            {
-                auto tw=qRound(a[static_cast<size_t>(i)]*h);
-                rects[static_cast<size_t>(i)]=QRect(x,0,tw,h);
-                x+=tw+s;
-            }
-            auto usedW=rects[0].width()+rects[1].width()+rects[2].width();
-            rects[3]=QRect(x,0,(w-3*s)-usedW,h);
-            // all four share the single row -- rowIndex is already 0 for every tile
-        }
-        else
-        {
-            // mixed -- 2x2 grid: two proportional rows, each a side-by-side pair in display
-            // order (images 0,1 on top, 2,3 below), same proportion rule as the n==2 side-by-side
-            // template. Unlike the n==3 mixed template this stays purely positional -- with no
-            // single class holding a majority there is no data-driven way to pick which pair
-            // belongs together, so display order is the least surprising choice.
-            auto rowRects=[w,s,&options](int y, qreal aLeft, qreal aRight)
-            {
-                auto h=qMax(options.minTile,qRound((w-s)/(aLeft+aRight)));
-                auto wLeft=qRound(aLeft*h);
-                auto wRight=(w-s)-wLeft;
-                return std::make_pair(QRect(0,y,wLeft,h),QRect(wLeft+s,y,wRight,h));
-            };
-
-            auto row0=rowRects(0,a[0],a[1]);
-            rects[0]=row0.first;
-            rects[1]=row0.second;
-
-            auto row1Y=qMax(rects[0].height(),rects[1].height())+s;
-            auto row1=rowRects(row1Y,a[2],a[3]);
-            rects[2]=row1.first;
-            rects[3]=row1.second;
-
-            rowIndex[0]=0;
-            rowIndex[1]=0;
-            rowIndex[2]=1;
-            rowIndex[3]=1;
-        }
-    }
-    else
-    {
-        // justified-rows fallback: greedily fill each row until one more image would exceed the
-        // width budget at the target row height (spacing-aware, so the greedy decision matches
-        // what the row will actually be rescaled to below), then rescale that row's tiles to sum
-        // to exactly w -- a standard justified-gallery packing, the only template here that
-        // genuinely scales to any count
-        auto targetRowHeight=qBound(options.minTile,qRound(w/3.0),options.maxHeight/2);
-
-        int i=0;
-        int y=0;
-        int row=0;
-        while (i<n)
-        {
-            auto rowStart=i;
-            qreal sumA=0;
-            int rowCount=0;
-            while (i<n)
-            {
-                auto nextCount=rowCount+1;
-                auto budget=w-s*(nextCount-1);
-                if (rowCount>0 && (sumA+a[static_cast<size_t>(i)])*targetRowHeight>=budget)
-                {
-                    break;
-                }
-                sumA+=a[static_cast<size_t>(i)];
-                ++rowCount;
-                ++i;
-            }
-
-            auto rowHeight=qBound(options.minTile,qRound((w-s*(rowCount-1))/sumA),options.maxHeight);
-            auto rowBudget=w-s*(rowCount-1);
-
-            std::vector<int> widths(static_cast<size_t>(rowCount));
-            int sumWidths=0;
-            for (int k=0;k<rowCount-1;++k)
-            {
-                auto tw=qMax(1,qRound(a[static_cast<size_t>(rowStart+k)]*rowHeight));
-                widths[static_cast<size_t>(k)]=tw;
-                sumWidths+=tw;
-            }
-            auto lastWidth=rowBudget-sumWidths;
-            if (lastWidth<1)
-            {
-                // rowHeight's minTile/maxHeight clamping pushed the row over budget -- redistribute
-                // proportionally across the whole row instead of dumping all the error onto the
-                // last tile (which could otherwise go zero/negative width)
-                qreal rowSumA=0;
-                for (int k=0;k<rowCount;++k)
-                {
-                    rowSumA+=a[static_cast<size_t>(rowStart+k)];
-                }
-                int used=0;
-                for (int k=0;k<rowCount-1;++k)
-                {
-                    auto tw=qMax(1,qRound(rowBudget*a[static_cast<size_t>(rowStart+k)]/rowSumA));
-                    widths[static_cast<size_t>(k)]=tw;
-                    used+=tw;
-                }
-                lastWidth=qMax(1,rowBudget-used);
-            }
-            widths[static_cast<size_t>(rowCount-1)]=lastWidth;
-
-            int x=0;
-            for (int k=0;k<rowCount;++k)
-            {
-                rects.emplace_back(x,y,widths[static_cast<size_t>(k)],rowHeight);
-                rowIndex[static_cast<size_t>(rowStart+k)]=row;
-                x+=widths[static_cast<size_t>(k)]+s;
-            }
-
-            y+=rowHeight+s;
-            ++row;
-        }
-    }
-
-    // Floor every tile is guaranteed to reach on BOTH of its axes (see below and
-    // AlbumLayoutOptions::minCappedTile). Clamped to the width budget: a floor larger than the
-    // album's whole width could never be honoured by any tile, and pretending otherwise only
-    // pushes tiles off the edge of a bubble sized from totalSize.
-    const auto cappedFloor=qMin((options.minCappedTile>0) ? options.minCappedTile : options.minTile,w);
-
-    // Re-flow every row left to right after a per-tile rescale, so no gap is left where a tile
-    // shrank and no overlap where one grew, and so the album's own width collapses to what its
-    // tiles actually occupy (the caller sizes the bubble from totalSize, letting it hug a small
-    // album). Tiles keep their template order within a row; rows keep their template order.
-    // Row-mates are top-aligned -- after a per-tile rescale they legitimately differ in height,
-    // which is the whole point: their sizes now reflect the images' real sizes rather than a
-    // shared row height.
-    //
-    // A row that grew past the width budget WRAPS onto a further line rather than overflowing:
-    // unlike maxHeight, the width budget is hard -- ChatMessageImages::bubbleWidthHint() clamps
-    // the bubble to it (std::min), so a tile sticking out past maxWidth would simply be cut off.
-    auto reflowRows=[&rects,&rowIndex,n,w,s](const std::vector<qreal>& scale)
-    {
-        auto rowCount=(*std::max_element(rowIndex.begin(),rowIndex.end()))+1;
-        std::vector<int> order(static_cast<size_t>(n));
-        for (int i=0;i<n;++i)
-        {
-            order[static_cast<size_t>(i)]=i;
-        }
-        std::stable_sort(order.begin(),order.end(),
-            [&rects](int lhs, int rhs)
-            {
-                return rects[static_cast<size_t>(lhs)].x()<rects[static_cast<size_t>(rhs)].x();
-            }
-        );
-
-        int y=0;
-        for (int row=0;row<rowCount;++row)
-        {
-            int x=0;
-            int lineHeight=0;
-            for (auto idx : order)
-            {
-                if (rowIndex[static_cast<size_t>(idx)]!=row)
-                {
-                    continue;
-                }
-                const auto& r=rects[static_cast<size_t>(idx)];
-                auto f=scale[static_cast<size_t>(idx)];
-                auto tw=qMax(1,qRound(r.width()*f));
-                auto th=qMax(1,qRound(r.height()*f));
-                if (x>0 && x+tw>w)
-                {
-                    y+=lineHeight+s;
-                    x=0;
-                    lineHeight=0;
-                }
-                rects[static_cast<size_t>(idx)]=QRect(x,y,tw,th);
-                x+=tw+s;
-                lineHeight=qMax(lineHeight,th);
-            }
-            if (lineHeight>0)
-            {
-                y+=lineHeight+s;
-            }
-        }
-    };
-
-    // Per-tile sizing pass, bounded from ABOVE by the image's own resolution and from BELOW by
-    // cappedFloor.
-    //
-    // Upper bound (the natural-size cap): a tile bigger than its image would otherwise be filled
-    // by upscaling the content (blurry) or by padding it (the reported "small image gets a big
-    // tile with paddings around it"), and it made a 100px thumbnail claim exactly as much room as
-    // a 2048px photo whenever they happened to share an aspect ratio.
-    //
-    // Lower bound (the floor, todo-album-layout-small-tile-packing.md): scaling a rect uniformly
-    // by qMax(floor/w,floor/h) puts its SHORT side exactly on the floor and leaves the long side
-    // above it, whatever the rect's aspect ratio -- so the floor is always reachable by a pure
-    // aspect-preserving scale and NEVER needs a crop (real chat image content is fitted inside its
-    // tile and never cropped, see ChatMessageImageItem::updatePreview()).
-    //
-    // The floor is NOT clamped to <=1.0 and is NOT gated on the natural-size cap having fired. It
-    // used to be both, which made this pass shrink-only: a full-resolution photo that a dense
-    // justified row packed into a 52x65 slot never had the floor evaluated at all (its own
-    // resolution exceeded the slot, so the cap returned early), and a tile the floor should have
-    // grown could at best be shrunk less. Both axes of every tile must clear the floor, however
-    // small the template packed it.
-    //
-    // Applied PER TILE, never as a whole-album shrink: an oversized tile must not drag its
-    // neighbours' tiles down with it.
-    if (options.devicePixelRatio>0)
-    {
-        std::vector<qreal> scale(static_cast<size_t>(n),1.0);
-        bool anyAdjusted=false;
-
-        for (int i=0;i<n;++i)
-        {
-            const auto& sz=pixelSizes[static_cast<size_t>(i)];
-            const auto& r=rects[static_cast<size_t>(i)];
-            if (r.width()<=0 || r.height()<=0)
-            {
-                continue;
-            }
-
-            // 1.0 (unbounded) for an unknown resolution: a placeholder has no natural size to cap
-            // against, but it still has to honour the floor below -- growing a rect to the floor
-            // needs no knowledge of the source, and a placeholder tile is exactly the one that
-            // shows a load control and so must not be tiny.
-            qreal naturalCap=1.0;
-            if (sz.width()>0 && sz.height()>0)
-            {
-                naturalCap=qMin(1.0,qMin((sz.width()/options.devicePixelRatio)/r.width(),
-                                         (sz.height()/options.devicePixelRatio)/r.height()));
-            }
-
-            auto floorRequirement=qMax(static_cast<qreal>(cappedFloor)/r.width(),
-                                       static_cast<qreal>(cappedFloor)/r.height());
-
-            // the floor wins over natural-size accuracy whenever the two disagree -- a blurry
-            // usable tile beats an accurate unusable one
-            auto f=qMax(naturalCap,floorRequirement);
-            if (f>1.0)
-            {
-                // ...but never past the width budget, which is hard (see reflowRows() above). A
-                // tile whose aspect ratio makes cappedFloor*aspect exceed maxWidth is the one case
-                // the floor cannot be honoured without cropping or distorting, so it is not
-                // honoured there.
-                f=qMax(1.0,qMin(f,static_cast<qreal>(w)/r.width()));
-            }
-
-            if (!qFuzzyCompare(f,1.0))
-            {
-                scale[static_cast<size_t>(i)]=f;
-                anyAdjusted=true;
-            }
-        }
-
-        if (anyAdjusted)
-        {
-            reflowRows(scale);
-        }
-    }
-
+    // Round EDGES, not sizes: a seam separates x1 of one tile from x1+spacing of the next with an
+    // integer spacing, and qRound(v+s)==qRound(v)+s, so every seam stays exactly `spacing` wide
+    // and the album's own border stays exact. Each tile's dimensions end up within one pixel of
+    // its exact aspect, which the painter covers rather than pads.
+    rects.reserve(static_cast<size_t>(n));
     int totalW=0;
     int totalH=0;
-    for (const auto& r : rects)
+    for (const auto& t : tiles)
     {
-        totalW=qMax(totalW,r.x()+r.width());
-        totalH=qMax(totalH,r.y()+r.height());
+        auto x0=qRound(t.x);
+        auto y0=qRound(t.y);
+        auto x1=std::max(x0+1,qRound(t.x+t.w));
+        auto y1=std::max(y0+1,qRound(t.y+t.h));
+        rects.emplace_back(x0,y0,x1-x0,y1-y0);
+        totalW=std::max(totalW,x1);
+        totalH=std::max(totalH,y1);
     }
-
-    // if the album grew taller than the budget, scale every rect down uniformly rather than
-    // clip -- keeps every tile's own proportions from its template intact. Scaling each tile's
-    // EDGES (not its width/height independently) keeps every row/column's rects flush with the
-    // album's own bounding box, which is recomputed from the scaled rects below rather than
-    // trusting the pre-scale totalW/totalH times factor.
-    if (totalH>options.maxHeight && totalH>0)
-    {
-        auto factor=static_cast<qreal>(options.maxHeight)/static_cast<qreal>(totalH);
-        for (auto& r : rects)
-        {
-            auto left=qRound(r.x()*factor);
-            auto top=qRound(r.y()*factor);
-            auto right=qRound((r.x()+r.width())*factor);
-            auto bottom=qRound((r.y()+r.height())*factor);
-            r=QRect(left,top,qMax(1,right-left),qMax(1,bottom-top));
-        }
-        totalW=0;
-        totalH=0;
-        for (const auto& r : rects)
-        {
-            totalW=qMax(totalW,r.x()+r.width());
-            totalH=qMax(totalH,r.y()+r.height());
-        }
-    }
-
-    // The uniform scale-down above is floor-blind -- it scales every rect by one factor, including
-    // tiles the pass above put exactly on cappedFloor, which is how a correctly floored 100px
-    // thumbnail used to come back out at 46px. Restore the floor for anything it pushed below, as
-    // a grow-only pass through the same re-flow.
-    //
-    // Deliberately a SECOND pass rather than a clamp on the rescale factor itself: clamping the
-    // factor would let one at-floor tile veto the whole shrink, leaving albums up to 2.2x taller
-    // than the budget (measured on a real 8-image message). Shrinking everything first and then
-    // growing only what fell through the floor lets the big tiles absorb the height and keeps the
-    // album at its budget, while still guaranteeing the floor.
-    //
-    // The album can still end up somewhat taller than maxHeight (by whatever height the floor
-    // forces back). That is the intended priority: maxHeight is a soft target -- nothing
-    // downstream clips to it, ChatMessageImages::sizeHint()/minimumSizeHint() just report
-    // whatever comes back here, and bubble-width negotiation only negotiates width -- whereas a
-    // sub-floor tile is the defect the floor exists to prevent.
-    if (options.devicePixelRatio>0)
-    {
-        std::vector<qreal> regrow(static_cast<size_t>(n),1.0);
-        bool anyBelowFloor=false;
-
-        for (int i=0;i<n;++i)
-        {
-            const auto& r=rects[static_cast<size_t>(i)];
-            if (r.width()<=0 || r.height()<=0
-                || (r.width()>=cappedFloor && r.height()>=cappedFloor))
-            {
-                continue;
-            }
-            auto f=qMax(static_cast<qreal>(cappedFloor)/r.width(),
-                        static_cast<qreal>(cappedFloor)/r.height());
-            regrow[static_cast<size_t>(i)]=qMax(1.0,qMin(f,static_cast<qreal>(w)/r.width()));
-            anyBelowFloor=true;
-        }
-
-        if (anyBelowFloor)
-        {
-            reflowRows(regrow);
-
-            totalW=0;
-            totalH=0;
-            for (const auto& r : rects)
-            {
-                totalW=qMax(totalW,r.x()+r.width());
-                totalH=qMax(totalH,r.y()+r.height());
-            }
-        }
-    }
-
-    // Pass 4 -- re-pack the rows into width another section of the bubble has already claimed.
-    //
-    // Which row a tile sits in was decided from its PRE-cap size, chosen to fill w; the cap then
-    // shrank small images to their real on-screen size without ever revisiting that decision, so
-    // a thumbnail album keeps a row count computed for tiles several times larger than the ones
-    // actually drawn. See AlbumLayoutOptions::claimedWidth for why this is gated on space another
-    // section already committed rather than on the width budget: re-packing on w alone would make
-    // a caption-less album claim a wider bubble for itself, which is a different (and unwanted)
-    // change. With claimedWidth at its 0 default nothing below runs.
-    //
-    // Only which row each tile lands in changes here -- every tile keeps the size passes 1-3 gave
-    // it, and the images keep their order, so the natural-size cap and the floor both still hold.
-    const auto packW=qMin(options.claimedWidth,w);
-    if (options.claimedWidth>0 && n>1 && totalW<packW)
-    {
-        // Rows produced by greedy first-fit at a given line width, tiles taken in image order.
-        // First-fit minimises the row count for a fixed order, and is monotone in the limit
-        // (a wider line never needs more rows) -- both relied on below.
-        auto rowsAt=[&rects,n,s](int limit)
-        {
-            int rows=1;
-            int x=0;
-            for (int i=0;i<n;++i)
-            {
-                auto tw=rects[static_cast<size_t>(i)].width();
-                if (x>0 && x+tw>limit)
-                {
-                    ++rows;
-                    x=0;
-                }
-                x+=tw+s;
-            }
-            return rows;
-        };
-
-        // Packing at packW gives the fewest rows these tiles can occupy. Packing AT that width
-        // though would leave the tail row nearly empty (five equal tiles in a 590px bubble go
-        // 4+1), so the actual line width used is the narrowest one that still achieves the same
-        // row count -- found by bisection, and yielding an even 3+2 instead. The lower bound is
-        // the widest single tile, since no line can be narrower than the tile it must hold.
-        const auto minRows=rowsAt(packW);
-
-        int lo=0;
-        for (const auto& r : rects)
-        {
-            lo=qMax(lo,r.width());
-        }
-        int hi=packW;
-        while (lo<hi)
-        {
-            auto mid=lo+(hi-lo)/2;
-            if (rowsAt(mid)<=minRows)
-            {
-                hi=mid;
-            }
-            else
-            {
-                lo=mid+1;
-            }
-        }
-
-        const auto lineWidth=lo;
-
-        int x=0;
-        int y=0;
-        int lineHeight=0;
-        for (int i=0;i<n;++i)
-        {
-            auto tw=rects[static_cast<size_t>(i)].width();
-            auto th=rects[static_cast<size_t>(i)].height();
-            if (x>0 && x+tw>lineWidth)
-            {
-                y+=lineHeight+s;
-                x=0;
-                lineHeight=0;
-            }
-            rects[static_cast<size_t>(i)]=QRect(x,y,tw,th);
-            x+=tw+s;
-            lineHeight=qMax(lineHeight,th);
-        }
-
-        totalW=0;
-        totalH=0;
-        for (const auto& r : rects)
-        {
-            totalW=qMax(totalW,r.x()+r.width());
-            totalH=qMax(totalH,r.y()+r.height());
-        }
-    }
-
-    // Resolution enters this function ONLY through the per-tile natural-size cap above, never
-    // through the templates: which template runs, and the proportions inside it, still come from
-    // aspect ratios alone (confirmed requirement -- geometry must never depend on which
-    // rung/preview happens to be locally available at render time, and pixelSizes is the
-    // ORIGINAL's size from attachment metadata, not a rung's). A whole-album uniform shrink keyed
-    // on the worst-fitting member was tried instead of the per-tile cap and reverted: it dragged
-    // every other tile down whenever one small image shared an album with normal-sized photos.
 
     if (totalSize!=nullptr)
     {
         *totalSize=QSize(totalW,totalH);
     }
-
     return rects;
 }
 

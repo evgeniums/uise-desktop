@@ -120,13 +120,11 @@ inline QPixmap scaledAndCropped(const QPixmap& src, const QSize& targetSize)
  *  enlarged, because there contentSize equals src.size().
  * @param maxUpscale How far the ORIGINAL may be enlarged beyond its own size, as a multiplier
  *  (e.g. 2.0 allows up to double). 1.0 (the default) is the historical never-upscale rule,
- *  unchanged for every existing caller. Used by chat album tiles (see
- *  ChatMessageImageItem::setMaxUpscale()) so a genuinely small original still fills its tile,
- *  bounded, instead of sitting at native size on a padded canvas -- see
- *  ChatMessageImageItem::updatePreview(). Deliberately a paint-time-only allowance, applied to a
- *  tile's own already-decided rect -- see albumLayout()'s own doc comment for why the analogous
- *  layout-time idea (shrinking the whole album to bound one tile's upscale) was tried and
- *  reverted.
+ *  unchanged for every existing caller. Used by chat album tiles on their fallback paint path
+ *  (see ChatMessageImageItem::setMaxUpscale()) so a small original with no usable aspect
+ *  information still fills most of its tile, bounded, instead of sitting at native size on a
+ *  padded canvas -- see ChatMessageImageItem::updatePreview(). Deliberately a paint-time-only
+ *  allowance, applied to a tile's own already-decided rect.
  * @return A pixmap that fits inside boxSize with the source's own aspect ratio preserved (one
  *  dimension may be smaller than the box; never enlarged beyond contentSize*maxUpscale, where
  *  contentSize defaults to the source's own size). Used for previews whose true aspect ratio
@@ -172,13 +170,12 @@ inline QPixmap scaledToFit(const QPixmap& src, const QSize& boxSize, const QSize
  *  default) is the historical never-upscale rule, unchanged for every existing caller.
  * @return A pixmap of exactly targetSize, transparent outside the centred, aspect-preserved
  *  source content, never enlarged beyond contentSize*maxUpscale -- i.e. letterboxed/pillarboxed
- *  rather than cropped. Used for chat message image tiles (ChatMessageImageItem) showing REAL
- *  content, where displaying the full image at its own aspect ratio was an explicit, confirmed
- *  requirement (unlike scaledAndCropped()'s square/fixed-chip use cases, which are unaffected).
- *  Those same tiles' low-resolution placeholder uses scaledAndCropped() instead, same as every
- *  other thumbnail chip -- see ChatMessageImageItem::updatePreview()'s own doc comment for why
- *  REAL content is padded but the placeholder is cropped, and for why maxUpscale is non-default
- *  there (album tiles bounded-upscale a genuinely small original rather than pad it).
+ *  rather than cropped. Used for chat message image tiles (ChatMessageImageItem) on their
+ *  fallback paint path -- an item whose original pixel size is unknown, where there is no aspect
+ *  ratio to trust and so nothing may be cropped. A tile whose original IS known covers its rect
+ *  with scaledAndCropped() instead: albumLayout() gives every tile exactly its image's aspect
+ *  ratio, so covering shows the full image with no padding and crops at most a pixel of
+ *  rounding -- see ChatMessageImageItem::updatePreview()'s own doc comment.
  */
 inline QPixmap scaledToFitPadded(const QPixmap& src, const QSize& targetSize, const QSize& contentSize=QSize(), qreal maxUpscale=1.0)
 {

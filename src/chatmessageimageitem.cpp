@@ -182,6 +182,7 @@ class ChatMessageImageItem_p
         qreal stillMaxUpscale=0.0;
         QSize stillPixelSize;
         bool stillPlaceholder=false;
+        bool stillCover=false;
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
@@ -191,6 +192,9 @@ class ChatMessageImageItem_p
         //! either -- this tile has no dependency on albumlayout.hpp at all, only on whatever
         //! concrete value its owner pushes through setMaxUpscale().
         qreal maxUpscale=2.0;
+
+        //! See ChatMessageImageItem::setCoverContent().
+        bool coverContent=false;
 
         bool dragEnabled=true;
 };
@@ -381,6 +385,25 @@ qreal ChatMessageImageItem::maxUpscale() const noexcept
 
 //--------------------------------------------------------------------------
 
+void ChatMessageImageItem::setCoverContent(bool enable)
+{
+    if (pimpl->coverContent==enable)
+    {
+        return;
+    }
+    pimpl->coverContent=enable;
+    updatePreview();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImageItem::coverContent() const noexcept
+{
+    return pimpl->coverContent;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageImageItem::closeMenu()
 {
     if (!pimpl->menu.isNull())
@@ -560,7 +583,8 @@ void ChatMessageImageItem::updatePreview()
             && pimpl->stillDpr==dpr
             && pimpl->stillMaxUpscale==pimpl->maxUpscale
             && pimpl->stillPixelSize==pimpl->item.pixelSize()
-            && pimpl->stillPlaceholder==pimpl->item.isPreviewPlaceholder())
+            && pimpl->stillPlaceholder==pimpl->item.isPreviewPlaceholder()
+            && pimpl->stillCover==pimpl->coverContent)
         {
             setPlaceholderMode(false);
             return;
@@ -568,93 +592,62 @@ void ChatMessageImageItem::updatePreview()
 
         pimpl->preview->setSvgIcon(nullptr);
 
-        // Fit the image inside the tile, preserving its own aspect ratio and never cropping it --
-        // confirmed requirement: a chat image tile must show the full original image, only ever
-        // scaled down, bounded-upscaled at most maxUpscale() times its own natural resolution
-        // (see setMaxUpscale()'s doc comment) -- purely a paint-time allowance on THIS tile's own
-        // already-decided rect, never on album layout geometry (see albumLayout()'s own doc
-        // comment for why a whole-album resolution clamp was tried and reverted instead).
-        // scaledToFitPadded() (not scaledAndCropped()) composes the fitted image centred onto an
-        // exactly-tile-sized canvas, since RoundedImage::paintEvent()'s QBrush texture fill needs
-        // an exact-size pixmap to render correctly at all (a smaller one tiles instead of
-        // centering).
+        // albumLayout() hands this tile exactly its image's aspect ratio, to within one logical
+        // pixel per dimension (integer rounding of the tile's edges). So the normal case is to
+        // COVER the tile -- scale the rung to the tile's physical box and centre-crop the
+        // sub-pixel residual -- which is what keeps a multi-image album visually gapless: a
+        // fit-and-pad would leave a hairline of transparent canvas along one edge of every tile
+        // whose rounding went the other way. The crop is at most that one logical pixel for real
+        // content, never a visible part of the image. Resolution does not enter into it: a small
+        // original is upscaled to fill the tile the layout gave it (see albumLayout()'s own doc
+        // comment for why a smaller tile would break the packing, and for the uniform shrink that
+        // keeps an ALL-thumbnail album small), and the thumbnail-to-rung swap is pixel-stable by
+        // construction because both states cover the same box.
         //
-        // ...but a PLACEHOLDER preview whose own framing disagrees with the real content's --
-        // i.e. a SQUARE centre-crop of a non-square original -- cannot be fitted the same way
-        // without visibly stretching/misrepresenting it, so it is instead cropped to fill CONTENT
-        // BOX SIZE below: scale to COVER that box, preserving the thumbnail's own aspect ratio,
-        // and centre-crop the overflow, same policy every other thumbnail chip in this library
-        // already uses (see FileUploadListItem::updatePreviews(), ChatMessageFileItem,
-        // ImagePreviewStrip) -- then padded onto the tile canvas exactly like real content is.
-        // Using the SAME content box for both states (fittedContentSize(), computed from
-        // item.pixelSize() alone, before any real content is local) is what keeps the visible
-        // box from jumping in size when the placeholder is later replaced by a real rung: without
-        // it, a small original's placeholder used to fill the whole tile and the real rung would
-        // then appear at a much smaller, padded size once it arrived.
-        //
-        // todo-aspect-preserving-embedded-thumbnails.md: since the embedded thumbnail rung is now
-        // generated at the ORIGINAL's own aspect ratio (files2::ImageManager::versionBoxFor(),
-        // ScaleMode::FitInside), an up-to-date placeholder's framing already agrees with the real
-        // rung's, so it is fitted exactly like real content -- the crop branch above is dead code
-        // for a freshly generated thumbnail and survives only for framings that still disagree:
-        // an already-sent message's pre-change square thumbnail, or one supplied by a mobile
-        // client (whitembridge, outside this repo), which still crops. sameAspect() (see
-        // pixmapscale.hpp) is what tells the two apart -- comparing the PLACEHOLDER's own decoded
-        // size against item.pixelSize() (the original's), not against the tile's box, so the
-        // check is unaffected by which box this tile happens to be laid out at.
-        bool cropFraming=pimpl->item.isPreviewPlaceholder()
-            && !sameAspect(preview.size(),pimpl->item.pixelSize());
-        //
-        // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio --
-        // the brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
+        // Scale to PHYSICAL pixels and tag the result with the screen's devicePixelRatio -- the
+        // brush fill DOES honor the tag (see FileUploadListItem::updatePreviews() and
         // pixmapscale.hpp's own doc comments for the same rule). Without both halves --
         // physical-size canvas AND the tag -- the tile rasterises at 1x and reads as soft/blurry
         // on any HiDPI/Retina display.
-        // item.pixelSize() is the ORIGINAL image's own pixel size, known from the attachment
-        // metadata (chat_file_item::width/height) long before any content is local. Passing it
-        // is what stops a reduced-resolution RUNG from being letterboxed: the preview handed
-        // over here is whichever rung the image source resolved (for a chat tile, normally the
-        // 1080px `chat` rung -- see whitemdesktop's ChatImageSource), which on a HiDPI display
-        // is routinely SMALLER than this tile's physical box, and scaledToFit()'s never-upscale
-        // rule would then centre it at native size and pad the remainder. The rule is about the
-        // ORIGINAL's resolution, not the delivered rung's -- see scaledToFit()'s own doc
-        // comment. A genuinely small image is unaffected up to maxUpscale(): there pixelSize()
-        // equals the delivered pixmap's size, so the clamp still refuses to enlarge it further.
-        auto contentBox=fittedContentSize(pimpl->item.pixelSize(),physicalSize,pimpl->maxUpscale);
-        auto srcPx=QPixmap::fromImage(preview);
+        //
+        // sameAspect() against the TILE is checked rather than assumed, because two framings can
+        // still genuinely disagree with it and keep the older paths:
+        //  - a PLACEHOLDER preview whose own framing disagrees with the original's -- a legacy
+        //    square centre-crop of a non-square original (an already-sent message's pre-change
+        //    thumbnail, or one supplied by a mobile client; see todo-aspect-preserving-embedded-
+        //    thumbnails.md) -- on a tile that does not match the original either (stale geometry
+        //    between two layouts): crop it to the content box the ORIGINAL's aspect would occupy
+        //    (fittedContentSize(), from item.pixelSize() alone) and pad, so it does not
+        //    misrepresent the image. On a tile that DOES match the original it simply covers the
+        //    tile like everything else, which centre-crops it to the original's shape;
+        //  - an item with no known pixel size at all: fit inside and pad, bounded by
+        //    maxUpscale(), never crop -- there is no aspect to trust.
+        // Tolerance 0.06 rather than sameAspect()'s 0.04 default so that one pixel of rounding
+        // on a tile near albumLayout()'s 60px soft floor still counts as agreeing.
+        //
+        // coverContent() (the PresetTemplates layout mode) short-circuits all of this: that
+        // layout sizes cells from clamped ratios and the centre-crop IS its design, so the tile
+        // always covers, whatever the image's ratio and whether or not it is known.
+        const auto& pixelSize=pimpl->item.pixelSize();
+        const bool haveNaturalSize=pixelSize.isValid() && !pixelSize.isEmpty();
+        const bool coverTile=pimpl->coverContent || (haveNaturalSize && sameAspect(pixelSize,size(),0.06));
+        const bool cropFraming=pimpl->item.isPreviewPlaceholder() && !sameAspect(preview.size(),pixelSize);
 
-        // EVERY rung paints into exactly contentBox -- the size the ORIGINAL's own aspect ratio
-        // says this tile's content should occupy (fittedContentSize() above) -- rather than each
-        // rung being fitted by its OWN aspect ratio.
-        //
-        // This is what makes the thumbnail-to-real-rung swap pixel-stable. Each rung is an
-        // independent FitInside render of the same original, so each one's integer dimensions
-        // round differently: for an original of aspect 1.5381, the `chat` rung is 1080x702
-        // (1.53846) while the 128px thumbnail is 128x83 (1.54217). Fitting each by its own aspect
-        // (scaledToFitPadded()'s never-upscale rule works off src.size()) therefore produced
-        // content boxes a few physical px apart -- measured at 836 vs 840 px tall on a real tile,
-        // i.e. a visible ~2 logical px jump the instant the real rung replaced the placeholder,
-        // even though the TILE itself never moved. Scaling both to the original-derived box
-        // removes the rounding difference at the source.
-        //
-        // IgnoreAspectRatio is deliberate and is NOT a distortion: contentBox is derived from
-        // item.pixelSize() (the original's true dimensions) and every rung is a scaled rendition
-        // of that same original, so forcing the rung onto that box CORRECTS its own rounding
-        // rather than introducing any -- the correction is well under half a percent, whereas the
-        // jump it removes was plainly visible. It also keeps the maxUpscale bound intact, since
-        // fittedContentSize() already applies it.
-        //
-        // Falls back to the old aspect-preserving fit when pixelSize() is unknown: contentBox is
-        // then just the whole tile box, and forcing arbitrary content onto it would genuinely
-        // distort (a 16:9 preview stretched square). Letterboxing is correct there.
-        const bool haveNaturalSize=pimpl->item.pixelSize().isValid()
-            && !pimpl->item.pixelSize().isEmpty();
-        auto px=cropFraming
-            ? composePadded(scaledAndCropped(srcPx,contentBox),physicalSize)
-            : (haveNaturalSize
-                ? composePadded(srcPx.scaled(contentBox,Qt::IgnoreAspectRatio,Qt::SmoothTransformation),
-                                physicalSize)
-                : scaledToFitPadded(srcPx,physicalSize,pimpl->item.pixelSize(),pimpl->maxUpscale));
+        auto srcPx=QPixmap::fromImage(preview);
+        QPixmap px;
+        if (coverTile)
+        {
+            px=scaledAndCropped(srcPx,physicalSize);
+        }
+        else if (cropFraming)
+        {
+            auto contentBox=fittedContentSize(pixelSize,physicalSize,pimpl->maxUpscale);
+            px=composePadded(scaledAndCropped(srcPx,contentBox),physicalSize);
+        }
+        else
+        {
+            px=scaledToFitPadded(srcPx,physicalSize,pixelSize,pimpl->maxUpscale);
+        }
         px.setDevicePixelRatio(dpr);
         pimpl->preview->setPixmap(px);
 
@@ -665,6 +658,7 @@ void ChatMessageImageItem::updatePreview()
         pimpl->stillMaxUpscale=pimpl->maxUpscale;
         pimpl->stillPixelSize=pimpl->item.pixelSize();
         pimpl->stillPlaceholder=pimpl->item.isPreviewPlaceholder();
+        pimpl->stillCover=pimpl->coverContent;
 
         setPlaceholderMode(false);
     }
@@ -718,14 +712,14 @@ void ChatMessageImageItem::repositionOverlays()
         // todo-load-control-overflows-small-image-tiles.md: LoadControlSize is a fixed constant
         // (its own comment explains why -- LoadControl's stylesheet min/max-width/height is not
         // necessarily what an unmeasured sizeHint() would report), so it does not shrink with a
-        // genuinely small tile on its own. albumLayout()'s minCappedTile floor now keeps ordinary
-        // album tiles comfortably larger than this control in the common case, but three narrow
-        // cases still reach a tile smaller than 56x56: a tile whose aspect ratio exceeds
-        // maxWidth/minCappedTile (the floor's own documented width-budget exception), a theme
-        // setting qproperty-minTileSize below 56, and options.devicePixelRatio<=0 (which disables
-        // the floor entirely). boundedTo() is the unconditional backstop for all three -- a no-op
-        // on the now-common comfortably-large tile, and never lets the control overhang its own
-        // tile's edge on a tiny one.
+        // genuinely small tile on its own. albumLayout()'s cost function defends a 60px soft
+        // floor on every tile's short side (AlbumLayoutOptions::minTile) and the all-thumbnail
+        // shrink stops at qproperty-minTileSize, so ordinary album tiles are comfortably larger
+        // than this control -- but neither is a hard guarantee (a budget too small for the image
+        // count, an extreme aspect ratio, or a theme setting minTileSize below 56 can all still
+        // produce one). boundedTo() is the unconditional backstop: a no-op on the common
+        // comfortably-large tile, and never lets the control overhang its own tile's edge on a
+        // tiny one.
         auto controlSize=LoadControlSize.boundedTo(size());
         pimpl->loadControl->setGeometry(
             (width()-controlSize.width())/2,

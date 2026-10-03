@@ -496,6 +496,7 @@ SET (SOURCES
     src/chatfloatingavatar.cpp
 
     src/albumlayout.cpp
+    src/albumlayoutpresets.cpp
     src/flowpack.cpp
     src/chatfileitem.cpp
     src/chatmessagefileitem.cpp

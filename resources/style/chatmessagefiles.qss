@@ -27,6 +27,15 @@ qproperty-minTileSize: 100;
 qproperty-tileMaxUpscale: 2.5;
 }
 
+/* Width budget of an image album: at most this share of the width the view offers (the chat's
+ * content width up to its maxMessageWidth), plus an optional absolute cap like the file rows'
+ * (0 = off). Both layout modes fill whatever budget they get, so without this an image message
+ * would span the whole viewport. See ChatMessageImages::maxWidthRatio()/maxBubbleWidth(). */
+uise--ChatMessageImages {
+qproperty-maxWidthRatio: 0.7;
+qproperty-maxBubbleWidth: 0;
+}
+
 uise--ChatMessageFileItem {
 border-radius:8px;
 padding:4px 0;

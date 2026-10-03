@@ -51,11 +51,11 @@ class ChatMessageImageItem_p;
 /**
  * @brief One tile of an image chat message's album grid.
  *
- * A clickable preview filling whatever rect the owning ChatMessageImages gives it (see
- * albumLayout()), fitted inside that rect with its own aspect ratio preserved -- see
- * updatePreview()'s own doc comment for the one exception (a placeholder preview whose framing
- * disagrees with the real content, still centre-cropped to avoid misrepresenting it) -- with a
- * drop-down menu button floating over its top-right corner and,
+ * A clickable preview covering whatever rect the owning ChatMessageImages gives it -- the rect
+ * already has the image's own aspect ratio to within a pixel (see albumLayout()), so covering it
+ * shows the whole image with no padding; see updatePreview()'s own doc comment for the two
+ * fallback framings (an unknown pixel size, or a legacy placeholder whose framing disagrees with
+ * the original) -- with a drop-down menu button floating over its top-right corner and,
  * while the image is not yet transferred, a LoadControlMenu -- wrapping an AbstractLoadControl
  * -- centered on top of it. That load control offers pause-or-cancel directly on click while
  * running -- see its own docs -- so this tile has no separate always-visible Cancel control of
@@ -121,17 +121,31 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
 
         /**
          * @brief Set how far this tile may upscale its content beyond the item's own natural
-         *  (logical) resolution, as a multiplier -- forwarded to utils/pixmapscale.hpp's
-         *  scaledToFitPadded() and used to size the placeholder crop the same way, so the
-         *  visible content box does not change size when a placeholder preview is replaced by
-         *  real content. Applied purely at paint time, to THIS tile's own already-decided rect --
-         *  never to album layout geometry (see albumLayout()'s own doc comment for why a
-         *  whole-album resolution clamp was tried and reverted). Set by the owning
-         *  ChatMessageImages (see its TileMaxUpscale constant).
+         *  (logical) resolution, as a multiplier, on its FALLBACK paint paths only -- an item
+         *  whose pixel size is unknown (fitted inside the tile via utils/pixmapscale.hpp's
+         *  scaledToFitPadded()) or a legacy placeholder whose framing disagrees with both the
+         *  original and the tile (cropped to fittedContentSize()). The normal path -- a tile
+         *  whose rect matches its image's aspect ratio, which is every tile albumLayout() lays
+         *  out -- covers the tile regardless of resolution and ignores this. Applied purely at
+         *  paint time, never to album layout geometry. Set by the owning ChatMessageImages (see
+         *  its DefaultTileMaxUpscale constant).
          */
         void setMaxUpscale(qreal maxUpscale);
 
         qreal maxUpscale() const noexcept;
+
+        /**
+         * @brief Always paint the content aspect-FILL: scale it to cover the whole tile and
+         *  centre-crop whatever does not fit, whatever the image's own aspect ratio is. Set by
+         *  the owning ChatMessageImages for AlbumLayoutMode::PresetTemplates, whose cells are
+         *  sized from clamped ratios and rely on exactly this crop (see albumLayoutPresets()).
+         *  Off (the default), the tile covers only when its rect already matches the image's
+         *  aspect ratio -- the AlbumLayoutMode::Wide case -- and otherwise fits and pads, never
+         *  cropping real content (see updatePreview()).
+         */
+        void setCoverContent(bool enable);
+
+        bool coverContent() const noexcept;
 
         /**
          * @brief Close the per-item drop-down menu if open, without animation.

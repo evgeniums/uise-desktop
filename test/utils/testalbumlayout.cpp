@@ -17,18 +17,23 @@ You may select, at your option, one of the above-listed licenses.
 
 /** @file uise/test/utils/testalbumlayout.cpp
 *
-*  Test of albumLayout() -- geometry regression cases from
-*  whitemdesktop/todos/closed/todo-album-layout-odd-combinations.md.
+*  Test of albumLayout() -- the exact-aspect, gapless guillotine layout. Almost every case
+*  asserts the function's documented INVARIANTS (see albumlayout.hpp) rather than exact
+*  rectangles, so the cost weights in albumlayout.cpp can be tuned visually without churning
+*  this file; the few cases that pin a shape say why.
 *
 */
 
 /****************************************************************************/
 
 #include <algorithm>
-#include <map>
-#include <set>
+#include <cmath>
+#include <random>
+#include <vector>
 
 #include <boost/test/unit_test.hpp>
+
+#include <QElapsedTimer>
 
 #include <uise/test/uise-testthread.hpp>
 #include <uise/desktop/utils/albumlayout.hpp>
@@ -38,15 +43,18 @@ using namespace UISE_TEST_NAMESPACE;
 
 namespace {
 
-//! Every rect is non-degenerate (positive width/height), no two rects overlap, and the union
-//! bounding box equals totalSize. Does NOT assert a minTile floor -- some templates (e.g. the
-//! maxHeight rescue, or stackByAspect() under a very tight budget) may legitimately go below it,
-//! see their own doc comments; callers that want minTile enforced check it themselves against a
-//! budget generous enough for it to hold. The minCappedTile floor, unlike minTile, IS a hard
-//! guarantee (modulo the width-budget exception documented on AlbumLayoutOptions::minCappedTile)
-//! -- see TestDenselyPackedTileFloor and TestFloorSurvivesMaxHeightScaleDown below for where it is
-//! actually asserted.
-void checkValidGeometry(const std::vector<QRect>& rects, const QSize& totalSize)
+double aspectOf(const QSize& sz)
+{
+    if (sz.width()<=0 || sz.height()<=0)
+    {
+        return 1.0;
+    }
+    return static_cast<double>(sz.width())/sz.height();
+}
+
+//! Every rect is non-degenerate, no two rects overlap, the union bounding box equals totalSize,
+//! and both budgets hold.
+void checkValidGeometry(const std::vector<QRect>& rects, const QSize& totalSize, const AlbumLayoutOptions& options)
 {
     UISE_TEST_CHECK(!rects.empty());
 
@@ -55,8 +63,8 @@ void checkValidGeometry(const std::vector<QRect>& rects, const QSize& totalSize)
     for (size_t i=0;i<rects.size();++i)
     {
         const auto& r=rects[i];
-        UISE_TEST_CHECK_GT(r.width(),0);
-        UISE_TEST_CHECK_GT(r.height(),0);
+        UISE_TEST_CHECK(r.width()>0);
+        UISE_TEST_CHECK(r.height()>0);
         boundW=qMax(boundW,r.x()+r.width());
         boundH=qMax(boundH,r.y()+r.height());
 
@@ -68,803 +76,838 @@ void checkValidGeometry(const std::vector<QRect>& rects, const QSize& totalSize)
 
     UISE_TEST_CHECK_EQUAL(boundW,totalSize.width());
     UISE_TEST_CHECK_EQUAL(boundH,totalSize.height());
+    UISE_TEST_CHECK_LE(totalSize.width(),options.maxWidth);
+    UISE_TEST_CHECK_LE(totalSize.height(),options.maxHeight);
 }
 
-//! Multiset of (width,height) pairs, order-independent -- used to compare two layouts run on a
-//! permutation of the same input sizes.
-std::multiset<std::pair<int,int>> rectSizeMultiset(const std::vector<QRect>& rects)
+//! Every tile has its image's aspect ratio to within the documented rounding: one pixel per
+//! dimension, expressed as a tolerance on the log-ratio.
+void checkAspects(const std::vector<QRect>& rects, const std::vector<QSize>& sizes)
 {
-    std::multiset<std::pair<int,int>> result;
-    for (const auto& r : rects)
+    for (size_t i=0;i<rects.size();++i)
     {
-        result.insert({r.width(),r.height()});
+        const auto& r=rects[i];
+        auto tileAspect=static_cast<double>(r.width())/r.height();
+        auto imageAspect=aspectOf(sizes[i]);
+        auto tolerance=std::log(1.0+2.0/qMin(r.width(),r.height()));
+        UISE_TEST_CHECK(std::fabs(std::log(tileAspect/imageAspect))<=tolerance);
     }
-    return result;
 }
+
+enum class Side
+{
+    Left,
+    Right,
+    Top,
+    Bottom
+};
+
+//! One edge of tile `i` either lies on the album's border, or is fully covered -- along its whole
+//! extent, allowing at most `spacing` between consecutive covering neighbours (the crossing of a
+//! perpendicular seam) -- by neighbours whose facing edge is exactly `spacing` away.
+bool edgeCovered(const std::vector<QRect>& rects, size_t i, Side side, const QSize& total, int spacing)
+{
+    const auto& r=rects[i];
+    switch (side)
+    {
+        case Side::Left:
+            if (r.x()==0)
+            {
+                return true;
+            }
+            break;
+        case Side::Right:
+            if (r.x()+r.width()==total.width())
+            {
+                return true;
+            }
+            break;
+        case Side::Top:
+            if (r.y()==0)
+            {
+                return true;
+            }
+            break;
+        case Side::Bottom:
+            if (r.y()+r.height()==total.height())
+            {
+                return true;
+            }
+            break;
+    }
+
+    std::vector<std::pair<int,int>> segments;
+    for (size_t j=0;j<rects.size();++j)
+    {
+        if (j==i)
+        {
+            continue;
+        }
+        const auto& o=rects[j];
+        bool facing=false;
+        switch (side)
+        {
+            case Side::Left:
+                facing=(o.x()+o.width()+spacing==r.x());
+                break;
+            case Side::Right:
+                facing=(o.x()==r.x()+r.width()+spacing);
+                break;
+            case Side::Top:
+                facing=(o.y()+o.height()+spacing==r.y());
+                break;
+            case Side::Bottom:
+                facing=(o.y()==r.y()+r.height()+spacing);
+                break;
+        }
+        if (!facing)
+        {
+            continue;
+        }
+        if (side==Side::Left || side==Side::Right)
+        {
+            segments.emplace_back(o.y(),o.y()+o.height());
+        }
+        else
+        {
+            segments.emplace_back(o.x(),o.x()+o.width());
+        }
+    }
+    if (segments.empty())
+    {
+        return false;
+    }
+    std::sort(segments.begin(),segments.end());
+
+    int lo=(side==Side::Left || side==Side::Right) ? r.y() : r.x();
+    int hi=(side==Side::Left || side==Side::Right) ? r.y()+r.height() : r.x()+r.width();
+    if (segments.front().first>lo)
+    {
+        return false;
+    }
+    int covered=lo;
+    for (const auto& seg : segments)
+    {
+        if (seg.first>covered+spacing && covered<hi)
+        {
+            return false;
+        }
+        covered=qMax(covered,seg.second);
+    }
+    return covered>=hi;
+}
+
+//! No gaps other than the spacing seams: see edgeCovered().
+void checkGapless(const std::vector<QRect>& rects, const QSize& total, int spacing)
+{
+    for (size_t i=0;i<rects.size();++i)
+    {
+        UISE_TEST_CHECK(edgeCovered(rects,i,Side::Left,total,spacing));
+        UISE_TEST_CHECK(edgeCovered(rects,i,Side::Right,total,spacing));
+        UISE_TEST_CHECK(edgeCovered(rects,i,Side::Top,total,spacing));
+        UISE_TEST_CHECK(edgeCovered(rects,i,Side::Bottom,total,spacing));
+    }
+}
+
+//! Message order: for i<j, tile j is entirely to the right of tile i or entirely below it.
+void checkOrder(const std::vector<QRect>& rects, int spacing)
+{
+    for (size_t i=0;i<rects.size();++i)
+    {
+        for (size_t j=i+1;j<rects.size();++j)
+        {
+            const auto& a=rects[i];
+            const auto& b=rects[j];
+            bool rightOf=b.x()>=a.x()+a.width()+spacing;
+            bool below=b.y()>=a.y()+a.height()+spacing;
+            UISE_TEST_CHECK(rightOf || below);
+        }
+    }
+}
+
+//! An album the uniform shrink did not touch always reaches one of its two budgets.
+void checkBudgetTouched(const QSize& total, const AlbumLayoutOptions& options)
+{
+    UISE_TEST_CHECK(total.width()==options.maxWidth || total.height()==options.maxHeight);
+}
+
+void checkAll(const std::vector<QRect>& rects, const QSize& total, const std::vector<QSize>& sizes, const AlbumLayoutOptions& options)
+{
+    UISE_TEST_REQUIRE_EQUAL(rects.size(),sizes.size());
+    checkValidGeometry(rects,total,options);
+    checkAspects(rects,sizes);
+    checkGapless(rects,total,options.spacing);
+    checkOrder(rects,options.spacing);
+}
+
+int shortSide(const QRect& r)
+{
+    return qMin(r.width(),r.height());
+}
+
+double area(const QRect& r)
+{
+    return static_cast<double>(r.width())*r.height();
+}
+
+//! The eight-image message that exercised every path of the previous algorithm at once: two
+//! 2048px squares, a tall 1599x2048, three 100x100 thumbnails and two mid-size images.
+const std::vector<QSize> RealWorldMix{
+    QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
+    QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
+};
+
+const std::vector<QSize> TenMixed{
+    QSize(1600,900),QSize(600,1200),QSize(1500,850),QSize(650,1250),QSize(1000,1000),
+    QSize(1200,800),QSize(800,1200),QSize(1600,900),QSize(900,900),QSize(1400,1000)
+};
 
 }
 
 BOOST_AUTO_TEST_SUITE(TestAlbumLayout)
 
-BOOST_AUTO_TEST_CASE(TestEmptyAndSingle)
+BOOST_AUTO_TEST_CASE(TestEmpty)
 {
     AlbumLayoutOptions options;
-
     QSize totalSize;
     auto rects=albumLayout({},options,&totalSize);
     UISE_TEST_CHECK(rects.empty());
     UISE_TEST_CHECK_EQUAL(totalSize.width(),0);
     UISE_TEST_CHECK_EQUAL(totalSize.height(),0);
+}
 
-    // wide single image -- fills the width budget
-    rects=albumLayout({QSize(1600,900)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(1));
+BOOST_AUTO_TEST_CASE(TestSingleImage)
+{
+    AlbumLayoutOptions options;
+    QSize totalSize;
+
+    // wide -- fills the width budget
+    std::vector<QSize> wide{QSize(1600,900)};
+    auto rects=albumLayout(wide,options,&totalSize);
+    checkAll(rects,totalSize,wide,options);
     UISE_TEST_CHECK_EQUAL(rects[0].x(),0);
     UISE_TEST_CHECK_EQUAL(rects[0].y(),0);
     UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
-    checkValidGeometry(rects,totalSize);
 
-    // tall single image -- fills the height budget
-    rects=albumLayout({QSize(900,1600)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(1));
+    // tall -- fills the height budget, narrower than the width budget
+    std::vector<QSize> tall{QSize(700,1000)};
+    rects=albumLayout(tall,options,&totalSize);
+    checkAll(rects,totalSize,tall,options);
     UISE_TEST_CHECK_EQUAL(rects[0].height(),options.maxHeight);
-    checkValidGeometry(rects,totalSize);
+    UISE_TEST_CHECK(rects[0].width()<options.maxWidth);
 
-    // square single image
-    rects=albumLayout({QSize(500,500)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(1));
+    // square -- the whole (square) box
+    std::vector<QSize> square{QSize(2000,2000)};
+    rects=albumLayout(square,options,&totalSize);
+    checkAll(rects,totalSize,square,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.maxHeight);
+
+    // unknown size -- treated as square, not degenerate, and not shrunk (nothing to shrink to)
+    std::vector<QSize> unknown{QSize(-1,-1)};
+    rects=albumLayout(unknown,options,&totalSize);
+    checkAll(rects,totalSize,unknown,options);
     UISE_TEST_CHECK_EQUAL(rects[0].width(),rects[0].height());
-    checkValidGeometry(rects,totalSize);
-
-    // unknown size -- treated as square (aspect 1:1), not degenerate
-    rects=albumLayout({QSize(-1,-1)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(1));
-    UISE_TEST_CHECK_EQUAL(rects[0].width(),rects[0].height());
-    checkValidGeometry(rects,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestTwoImages)
-{
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    // both wide -- two stacked full-width rows
-    auto rects=albumLayout({QSize(1600,900),QSize(1800,700)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
     UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
-    UISE_TEST_CHECK_EQUAL(rects[1].width(),options.maxWidth);
-    checkValidGeometry(rects,totalSize);
-
-    // not both wide -- side-by-side columns summing exactly to maxWidth
-    rects=albumLayout({QSize(1200,900),QSize(900,1200)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK_EQUAL(rects[0].width()+rects[1].width()+options.spacing,options.maxWidth);
-    UISE_TEST_CHECK_EQUAL(rects[0].height(),rects[1].height());
-    checkValidGeometry(rects,totalSize);
-
-    // order independence: in the both-wide template each row's height is a function of its own
-    // aspect only, so swapping the two images must produce the exact same set of tile sizes (the
-    // side-by-side template's own rounding-remainder tile can legitimately differ by 1px
-    // depending on which image absorbs it, so that branch is not asserted here).
-    auto sizesA=rectSizeMultiset(albumLayout({QSize(1600,900),QSize(1800,700)},options,nullptr));
-    auto sizesB=rectSizeMultiset(albumLayout({QSize(1800,700),QSize(1600,900)},options,nullptr));
-    UISE_TEST_CHECK(sizesA==sizesB);
 }
 
-BOOST_AUTO_TEST_CASE(TestThreeImagesMajority)
+BOOST_AUTO_TEST_CASE(TestSmallAlbumsInvariants)
 {
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    // wide majority (2 of 3) -- ONE hero full-width on top, the other two side by side below.
-    // Explicitly NOT a stack of three full-width rows: that shape wastes the bubble's horizontal
-    // budget and grows the album into a narrow tall column (observed regression).
-    auto rects=albumLayout({QSize(1600,900),QSize(1800,700),QSize(1000,1000)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(3));
-    int fullWidthCount=0;
-    for (const auto& r : rects)
-    {
-        if (r.width()==options.maxWidth)
-        {
-            ++fullWidthCount;
-        }
-    }
-    UISE_TEST_CHECK_EQUAL(fullWidthCount,1);
-    // the two non-hero tiles share a row: same y, same height, widths summing to maxWidth
-    {
-        std::vector<QRect> row;
-        for (const auto& r : rects)
-        {
-            if (r.width()!=options.maxWidth)
-            {
-                row.push_back(r);
-            }
-        }
-        UISE_TEST_REQUIRE_EQUAL(row.size(),static_cast<size_t>(2));
-        UISE_TEST_CHECK_EQUAL(row[0].y(),row[1].y());
-        UISE_TEST_CHECK_EQUAL(row[0].height(),row[1].height());
-        UISE_TEST_CHECK_EQUAL(row[0].width()+row[1].width()+options.spacing,options.maxWidth);
-    }
-    checkValidGeometry(rects,totalSize);
-
-    // tall majority (2 of 3) -- three columns at a shared height, summing to maxWidth
-    rects=albumLayout({QSize(600,1200),QSize(700,1300),QSize(1000,1000)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(3));
-    UISE_TEST_CHECK_EQUAL(rects[0].height(),rects[1].height());
-    UISE_TEST_CHECK_EQUAL(rects[1].height(),rects[2].height());
-    int sumW=rects[0].width()+rects[1].width()+rects[2].width()+2*options.spacing;
-    UISE_TEST_CHECK_EQUAL(sumW,options.maxWidth);
-    checkValidGeometry(rects,totalSize);
-
-    // the hero slot goes to the FIRST image, always -- tiles are displayed in message order (see
-    // HeroIndex). Asserted by index, not by looking for the biggest tile.
-    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
-    UISE_TEST_CHECK_EQUAL(rects[0].y(),0);
-    UISE_TEST_CHECK_GT(rects[1].y(),rects[0].y());
-    UISE_TEST_CHECK_EQUAL(rects[1].x(),0);
-    UISE_TEST_CHECK_GT(rects[2].x(),rects[1].x());
-
-    // order independence of the TEMPLATE (not of slot assignment): the same three images in a
-    // different order must still pick the same shape -- one full-width hero plus a two-tile row --
-    // rather than flipping to a different template the way branching on a[0] alone used to. Which
-    // image lands in which slot follows the message, so the individual tile sizes do differ.
-    // Given a height budget it cannot exceed, so the maxHeight rescue (which scales the hero below
-    // maxWidth) does not obscure the shape being asserted -- a square first image makes this
-    // template tall.
-    AlbumLayoutOptions tallBudget;
-    tallBudget.maxHeight=4000;
-    auto reordered=albumLayout({QSize(1000,1000),QSize(1800,700),QSize(1600,900)},tallBudget,nullptr);
-    UISE_TEST_REQUIRE_EQUAL(reordered.size(),static_cast<size_t>(3));
-    UISE_TEST_CHECK_EQUAL(reordered[0].width(),tallBudget.maxWidth);
-    UISE_TEST_CHECK_EQUAL(reordered[1].y(),reordered[2].y());
-    UISE_TEST_CHECK_EQUAL(reordered[1].width()+reordered[2].width()+tallBudget.spacing,tallBudget.maxWidth);
-}
-
-BOOST_AUTO_TEST_CASE(TestThreeImagesMixed)
-{
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    // one clearly wide, one clearly tall, one square-ish -- no majority, so this falls to the
-    // mixed template: a big left tile with the other two stacked on its right.
-    QSize wideImg(2000,600);   // aspect ~3.33
-    QSize tallImg(700,1000);   // aspect 0.7
-    QSize squareImg(1000,1050); // aspect ~0.95
-
-    auto order1=albumLayout({wideImg,tallImg,squareImg},options,&totalSize);
-    checkValidGeometry(order1,totalSize);
-
-    // the big left tile is the FIRST image (see HeroIndex), and the remaining two stack to its
-    // right in message order -- top one first
-    UISE_TEST_CHECK_EQUAL(order1[0].x(),0);
-    UISE_TEST_CHECK_EQUAL(order1[0].y(),0);
-    UISE_TEST_CHECK_GT(order1[1].x(),order1[0].x());
-    UISE_TEST_CHECK_EQUAL(order1[1].x(),order1[2].x());
-    UISE_TEST_CHECK_GT(order1[2].y(),order1[1].y());
-
-    // reordering keeps the same template shape (big left + stacked pair), just with the images in
-    // their new positions -- the first one is the big tile again
-    auto order2=albumLayout({tallImg,squareImg,wideImg},options,&totalSize);
-    checkValidGeometry(order2,totalSize);
-    UISE_TEST_CHECK_EQUAL(order2[0].x(),0);
-    UISE_TEST_CHECK_EQUAL(order2[0].y(),0);
-    UISE_TEST_CHECK_EQUAL(order2[1].x(),order2[2].x());
-    UISE_TEST_CHECK_GT(order2[1].x(),order2[0].x());
-}
-
-BOOST_AUTO_TEST_CASE(TestFourImagesMajority)
-{
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    // wide majority (3 of 4) -- ONE hero full-width on top, the other three side by side below
-    // (not four stacked full-width rows, see the n==3 case's own comment)
-    auto rects=albumLayout(
-        {QSize(1600,900),QSize(1800,700),QSize(1500,850),QSize(1000,1000)},
-        options,&totalSize
-    );
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(4));
-    int fullWidthCount=0;
-    std::vector<QRect> bottomRow;
-    for (const auto& r : rects)
-    {
-        UISE_TEST_CHECK_GT(r.width(),0);
-        UISE_TEST_CHECK_GT(r.height(),0);
-        if (r.width()==options.maxWidth)
-        {
-            ++fullWidthCount;
-        }
-        else
-        {
-            bottomRow.push_back(r);
-        }
-    }
-    UISE_TEST_CHECK_EQUAL(fullWidthCount,1);
-    UISE_TEST_REQUIRE_EQUAL(bottomRow.size(),static_cast<size_t>(3));
-    int rowW=bottomRow[0].width()+bottomRow[1].width()+bottomRow[2].width()+2*options.spacing;
-    UISE_TEST_CHECK_EQUAL(rowW,options.maxWidth);
-    checkValidGeometry(rects,totalSize);
-
-    // the hero slot is the FIRST image and the other three follow it left to right in message
-    // order (see HeroIndex)
-    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
-    UISE_TEST_CHECK_EQUAL(rects[0].y(),0);
-    UISE_TEST_CHECK_EQUAL(rects[1].x(),0);
-    UISE_TEST_CHECK_GT(rects[2].x(),rects[1].x());
-    UISE_TEST_CHECK_GT(rects[3].x(),rects[2].x());
-    UISE_TEST_CHECK_EQUAL(rects[1].y(),rects[2].y());
-    UISE_TEST_CHECK_EQUAL(rects[2].y(),rects[3].y());
-
-    // tall majority (3 of 4)
-    rects=albumLayout(
-        {QSize(600,1200),QSize(700,1300),QSize(650,1250),QSize(1000,1000)},
-        options,&totalSize
-    );
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(4));
-    int sumW=0;
-    for (const auto& r : rects)
-    {
-        sumW+=r.width();
-        UISE_TEST_CHECK_GT(r.width(),0);
-    }
-    sumW+=3*options.spacing;
-    UISE_TEST_CHECK_EQUAL(sumW,options.maxWidth);
-    checkValidGeometry(rects,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestFourImagesMixed)
-{
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    // no majority (2 wide, 2 tall) -- 2x2 grid: two rows, each summing to maxWidth
-    auto rects=albumLayout(
-        {QSize(1600,900),QSize(600,1200),QSize(1500,850),QSize(650,1250)},
-        options,&totalSize
-    );
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(4));
-    UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[1].y());
-    UISE_TEST_CHECK_EQUAL(rects[2].y(),rects[3].y());
-    UISE_TEST_CHECK_EQUAL(rects[0].width()+rects[1].width()+options.spacing,options.maxWidth);
-    UISE_TEST_CHECK_EQUAL(rects[2].width()+rects[3].width()+options.spacing,options.maxWidth);
-    checkValidGeometry(rects,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestJustifiedRows)
-{
-    AlbumLayoutOptions options;
-    // This case is about the justified packing arithmetic -- rows summing to exactly maxWidth --
-    // so both of the passes that legitimately break that invariant are kept out of the way:
-    //  * the natural-size cap AND the minCappedTile floor (both shrink/grow individual tiles by
-    //    design) -- devicePixelRatio=0 switches off both, not just the cap;
-    //  * the maxHeight rescue (it scales the whole album, including row widths), avoided by
-    //    giving this album a height budget it cannot exceed.
-    // All three have their own coverage -- TestNaturalSizeCap/TestAllThumbnails,
-    // TestDenselyPackedTileFloor/TestFloorSurvivesMaxHeightScaleDown, and TestMaxHeightScaleDown
-    // respectively.
-    options.devicePixelRatio=0;
-    options.maxHeight=4000;
-    QSize totalSize;
-
-    // seven images of varied aspect -- every row must sum exactly to maxWidth, no degenerate
-    // tiles even though rowHeight clamping is exercised
-    std::vector<QSize> seven;
-    for (int i=0;i<7;++i)
-    {
-        int w=200+(i%3)*90;
-        int h=200+((i+1)%3)*90;
-        seven.emplace_back(w,h);
-    }
-    auto rects=albumLayout(seven,options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(7));
-    checkValidGeometry(rects,totalSize);
-
-    // group rects into rows by shared y and check each row sums exactly to maxWidth
-    std::vector<int> rowYs;
-    for (const auto& r : rects)
-    {
-        if (std::find(rowYs.begin(),rowYs.end(),r.y())==rowYs.end())
-        {
-            rowYs.push_back(r.y());
-        }
-    }
-    for (auto y : rowYs)
-    {
-        int rowW=-options.spacing;
-        for (const auto& r : rects)
-        {
-            if (r.y()==y)
-            {
-                rowW+=r.width()+options.spacing;
-            }
-        }
-        UISE_TEST_CHECK_EQUAL(rowW,options.maxWidth);
-    }
-
-    // one extreme panorama among normal images -- must not produce a degenerate width for
-    // itself or for its row siblings (regression for the greedy-fill / last-tile-absorbs bugs)
-    std::vector<QSize> withPanorama{
-        QSize(3000,1000), // aspect 3.0 -- very wide
-        QSize(400,300),QSize(400,300),QSize(400,300),QSize(400,300),QSize(400,300)
-    };
-    auto rects2=albumLayout(withPanorama,options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects2.size(),static_cast<size_t>(6));
-    checkValidGeometry(rects2,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestAllThumbnails)
-{
-    // regression case from the todo: a batch of small (thumbnail-sized) images. Every tile must
-    // be capped to its own image's size (never blown up to fill the width budget), so the album
-    // as a whole ends up far narrower than maxWidth.
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    std::vector<QSize> thumbs;
-    for (int i=0;i<5;++i)
-    {
-        thumbs.emplace_back(100+(i%2)*20,75+(i%3)*10);
-    }
-    auto rects=albumLayout(thumbs,options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(5));
-    checkValidGeometry(rects,totalSize);
-
-    for (size_t i=0;i<rects.size();++i)
-    {
-        // no tile wider than its own image (allowing the minTile floor -- minCappedTile is unset
-        // here, so it falls back to minTile -- and 1px of rounding)
-        auto limit=qMax(options.minTile,thumbs[i].width())+1;
-        UISE_TEST_CHECK(rects[i].width()<=limit);
-    }
-    UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
-}
-
-BOOST_AUTO_TEST_CASE(TestNaturalSizeCap)
-{
-    // The reported case: a 100x100 thumbnail sent together with a 2048x2048 photo. They share an
-    // aspect ratio, so the aspect-only template gives them identical tiles -- the cap must shrink
-    // the thumbnail's tile to its own size while leaving the photo's tile alone, and the row must
-    // close up behind it rather than leaving a gap.
-    //
-    // options.minCappedTile is left at its default (0, "use minTile") throughout this test --
-    // see TestMinCappedTileFloor below for the configurable floor todo-album-layout-small-tile-
-    // packing.md added, which this same cap mechanism now also serves.
-    AlbumLayoutOptions options;
-    QSize totalSize;
-
-    const QSize small(100,100);
-    const QSize big(2048,2048);
-    auto rects=albumLayout({small,big},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
-    checkValidGeometry(rects,totalSize);
-
-    // the thumbnail's tile is its own size (dpr 1 here), the photo's is not capped at all
-    UISE_TEST_CHECK_EQUAL(rects[0].width(),small.width());
-    UISE_TEST_CHECK_EQUAL(rects[0].height(),small.height());
-    UISE_TEST_CHECK_GT(rects[1].width(),rects[0].width());
-
-    // no gap left where the small tile shrank, and the album is narrower than the full budget
-    UISE_TEST_CHECK_EQUAL(rects[1].x(),rects[0].width()+options.spacing);
-    UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
-
-    // the photo alone gets exactly the same tile it gets in the pair -- sending a photo with a
-    // thumbnail must not shrink the photo (the "one small image drags the whole grid down"
-    // failure), nor grow it
-    QSize soloTotal;
-    auto solo=albumLayout({big},options,&soloTotal);
-    UISE_TEST_REQUIRE_EQUAL(solo.size(),static_cast<size_t>(1));
-    UISE_TEST_CHECK_GE(solo[0].width(),rects[1].width());
-
-    // on a 2x display the same thumbnail covers half as many logical px, so its tile halves too
-    // -- floored at minTile
-    options.devicePixelRatio=2.0;
-    auto hidpi=albumLayout({small,big},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(hidpi.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK_EQUAL(hidpi[0].width(),qMax(options.minTile,small.width()/2));
-    checkValidGeometry(hidpi,totalSize);
-
-    // a tile is never shrunk below minTile even for a 1x1 image
-    options.devicePixelRatio=1.0;
-    auto tiny=albumLayout({QSize(4,4),big},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(tiny.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK_GE(tiny[0].width(),options.minTile);
-    UISE_TEST_CHECK_GE(tiny[0].height(),options.minTile);
-    checkValidGeometry(tiny,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestMinCappedTileFloor)
-{
-    // todo-album-layout-small-tile-packing.md: rather than a 2D packing pass grouping small tiles
-    // together, a small image's tile is floored at a configurable, larger-than-minTile size and
-    // the image is scaled up to fill it (aspect preserved) -- exercised here via the same tiny
-    // 4x4-vs-2048 pairing TestNaturalSizeCap uses for the minTile floor above.
-    AlbumLayoutOptions options;
-    const QSize tinyImg(4,4);
-    const QSize big(2048,2048);
-
-    // default (0) still falls back to minTile -- reproduces TestNaturalSizeCap's own floor
-    // exactly, proving the new field is opt-in and changes nothing when left unset.
-    QSize defaultTotal;
-    auto atDefault=albumLayout({tinyImg,big},options,&defaultTotal);
-    UISE_TEST_REQUIRE_EQUAL(atDefault.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK_EQUAL(atDefault[0].width(),options.minTile);
-    UISE_TEST_CHECK_EQUAL(atDefault[0].height(),options.minTile);
-    checkValidGeometry(atDefault,defaultTotal);
-
-    // explicit minTile-equal value reproduces the exact same geometry (the "second run with
-    // minCappedTile=60" case) -- the knob is a genuine substitute for minTile, not a second,
-    // independently-behaving mechanism.
-    options.minCappedTile=options.minTile;
-    QSize sameTotal;
-    auto atSameFloor=albumLayout({tinyImg,big},options,&sameTotal);
-    UISE_TEST_REQUIRE_EQUAL(atSameFloor.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK(atSameFloor[0]==atDefault[0]);
-    UISE_TEST_CHECK(atSameFloor[1]==atDefault[1]);
-    UISE_TEST_CHECK(sameTotal==defaultTotal);
-
-    // a larger floor (100, the default ChatMessageImages ships -- see chatmessagefiles.qss)
-    // scales the tiny image's tile up accordingly, aspect preserved (1:1 source -> square tile),
-    // still without dragging the photo's own tile down and still closing the row's gap.
-    options.minCappedTile=100;
-    QSize totalSize;
-    auto rects=albumLayout({tinyImg,big},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
-    checkValidGeometry(rects,totalSize);
-    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.minCappedTile);
-    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.minCappedTile);
-    UISE_TEST_CHECK_EQUAL(rects[1].x(),rects[0].width()+options.spacing);
-    UISE_TEST_CHECK_GT(rects[1].width(),rects[0].width());
-    UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
-
-    // the photo alone still gets exactly the same tile regardless of minCappedTile -- the floor
-    // must never drag an already-adequately-sized neighbour's tile with it.
-    QSize soloTotal;
-    auto solo=albumLayout({big},options,&soloTotal);
-    UISE_TEST_REQUIRE_EQUAL(solo.size(),static_cast<size_t>(1));
-    UISE_TEST_CHECK_GE(solo[0].width(),rects[1].width());
-}
-
-BOOST_AUTO_TEST_CASE(TestDenselyPackedTileFloor)
-{
-    // Regression for the shrink-only floor: the floor check used to be skipped entirely for any
-    // tile whose image had MORE resolution than its slot -- i.e. for exactly the full-resolution
-    // photos a dense multi-row justified layout squeezes smallest. In this real 8-image message
-    // at a narrow budget, one of the 2048px photos was handed a 52x65 tile and kept it, because
-    // its own resolution comfortably exceeded 52x65 so the cap returned early and the floor was
-    // never evaluated. Nothing about that tile was "naturally small"; it was a packing artifact.
-    //
-    // Every tile must clear the floor on BOTH axes, at every budget -- by scaling, never by
-    // cropping (see ChatMessageImageItem::updatePreview()'s never-crop rule).
-    const std::vector<QSize> mix{
-        QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
-        QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
+    // The shapes the hand-picked templates used to cover, now all one algorithm -- every one
+    // must be exact-aspect, gapless, in order, within budget and touching a budget.
+    const std::vector<std::vector<QSize>> albums{
+        {QSize(1600,900),QSize(1600,900)},                                   // two wide
+        {QSize(1600,900),QSize(700,1000)},                                   // wide + tall
+        {QSize(700,1000),QSize(700,1000)},                                   // two tall
+        {QSize(700,1000),QSize(700,1000),QSize(1600,900)},                   // 2 portraits + 1 landscape
+        {QSize(1000,1000),QSize(1600,900),QSize(1600,900)},                  // square + 2 wide
+        {QSize(1600,1200),QSize(1600,1200),QSize(1600,1200)},                // three 4:3
+        {QSize(2000,600),QSize(700,1000),QSize(1000,1050)},                  // wide/tall/square
+        {QSize(1600,900),QSize(600,1200),QSize(1500,850),QSize(650,1250)},   // 2 wide + 2 tall
+        {QSize(1600,1200),QSize(1600,1200),QSize(1600,1200),QSize(1600,1200)}, // four 4:3
+        {QSize(700,1000),QSize(700,1000),QSize(700,1000),QSize(700,1000)},   // four portraits
+        {QSize(1600,900),QSize(600,1200),QSize(1500,850),QSize(650,1250),QSize(1000,1000)}, // five mixed
+        {QSize(200,200),QSize(290,380),QSize(380,290),QSize(200,380),QSize(290,200),QSize(380,200),QSize(200,290)}, // seven (demo generator)
     };
 
-    for (int budget : {200,250,300,400,500,600,700,800})
+    for (const auto& sizes : albums)
+    {
+        for (int budget : {320,420,590})
+        {
+            AlbumLayoutOptions options;
+            options.maxWidth=budget;
+            QSize totalSize;
+            auto rects=albumLayout(sizes,options,&totalSize);
+            checkAll(rects,totalSize,sizes,options);
+            checkBudgetTouched(totalSize,options);
+            // nothing here is small enough to be squeezed under the soft floor
+            for (const auto& r : rects)
+            {
+                UISE_TEST_CHECK_GE(shortSide(r),options.minTile);
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestTwoLandscapesStack)
+{
+    // Pinned shape: two 16:9 photos. Side by side they would be a 118px-tall strip across the
+    // full width; stacked they are height-bound and a little narrower but four times the area.
+    // The cost's area-use term is what prefers the latter -- this guards that preference.
+    AlbumLayoutOptions options;
+    QSize totalSize;
+    std::vector<QSize> sizes{QSize(1600,900),QSize(1600,900)};
+    auto rects=albumLayout(sizes,options,&totalSize);
+    checkAll(rects,totalSize,sizes,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].x(),rects[1].x());
+    UISE_TEST_CHECK(rects[1].y()>rects[0].y());
+    UISE_TEST_CHECK_EQUAL(totalSize.height(),options.maxHeight);
+    UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
+}
+
+BOOST_AUTO_TEST_CASE(TestDeterminism)
+{
+    AlbumLayoutOptions options;
+    QSize total1;
+    QSize total2;
+    auto rects1=albumLayout(RealWorldMix,options,&total1);
+    auto rects2=albumLayout(RealWorldMix,options,&total2);
+    UISE_TEST_CHECK(rects1==rects2);
+    UISE_TEST_CHECK(total1==total2);
+
+    // a permutation may legitimately pick a different structure, but must still be valid
+    std::vector<QSize> permuted{QSize(700,1000),QSize(1000,1050),QSize(2000,600)};
+    auto rects=albumLayout(permuted,options,&total1);
+    checkAll(rects,total1,permuted,options);
+}
+
+BOOST_AUTO_TEST_CASE(TestAllThumbnailsShrink)
+{
+    const std::vector<QSize> thumbs{QSize(60,45),QSize(70,50),QSize(55,40),QSize(65,48),QSize(60,44)};
+
+    // every image smaller than its tile -> the album is shrunk uniformly, down to the floor
     {
         AlbumLayoutOptions options;
-        options.maxWidth=budget;
-        options.devicePixelRatio=2.0;
-
+        options.devicePixelRatio=1.0;
         QSize totalSize;
-        auto rects=albumLayout(mix,options,&totalSize);
-        UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
-        checkValidGeometry(rects,totalSize);
-
+        auto rects=albumLayout(thumbs,options,&totalSize);
+        checkAll(rects,totalSize,thumbs,options);
+        UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
+        UISE_TEST_CHECK(totalSize.height()<options.maxHeight);
         for (const auto& r : rects)
         {
-            // minCappedTile unset -> the floor is minTile
-            UISE_TEST_CHECK_GE(r.width(),options.minTile);
-            UISE_TEST_CHECK_GE(r.height(),options.minTile);
+            UISE_TEST_CHECK_GE(shortSide(r),options.minTile-1);
         }
-
-        // the width budget stays hard even when the floor grows tiles into it -- a row that no
-        // longer fits wraps rather than overflowing, because ChatMessageImages::bubbleWidthHint()
-        // clamps the bubble to this budget and an overflowing tile would just be cut off
-        UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
     }
 
-    // and with the configurable floor ChatMessageImages actually ships (100, see
-    // chatmessagefiles.qss's qproperty-minTileSize) -- still on both axes, still within the width
-    // budget, at the widest bubble budget this mix was checked against
-    AlbumLayoutOptions shipped;
-    shipped.maxWidth=800;
-    shipped.devicePixelRatio=2.0;
-    shipped.minCappedTile=100;
-
-    QSize shippedTotal;
-    auto shippedRects=albumLayout(mix,shipped,&shippedTotal);
-    UISE_TEST_REQUIRE_EQUAL(shippedRects.size(),mix.size());
-    checkValidGeometry(shippedRects,shippedTotal);
-    for (const auto& r : shippedRects)
+    // the shrink floor is configurable separately (ChatMessageImages feeds its minTileSize)
     {
-        UISE_TEST_CHECK_GE(r.width(),shipped.minCappedTile);
-        UISE_TEST_CHECK_GE(r.height(),shipped.minCappedTile);
+        AlbumLayoutOptions options;
+        options.devicePixelRatio=1.0;
+        options.shrinkFloor=100;
+        QSize totalSize;
+        auto rects=albumLayout(thumbs,options,&totalSize);
+        checkAll(rects,totalSize,thumbs,options);
+        UISE_TEST_CHECK(totalSize.width()<options.maxWidth);
+        for (const auto& r : rects)
+        {
+            UISE_TEST_CHECK_GE(shortSide(r),options.shrinkFloor-1);
+        }
     }
-    UISE_TEST_CHECK(shippedTotal.width()<=shipped.maxWidth);
+
+    // one normal photo in the set and nothing shrinks -- the thumbnails are upscaled instead
+    {
+        auto withPhoto=thumbs;
+        withPhoto.push_back(QSize(1600,900));
+        AlbumLayoutOptions options;
+        options.devicePixelRatio=1.0;
+        QSize totalSize;
+        auto rects=albumLayout(withPhoto,options,&totalSize);
+        checkAll(rects,totalSize,withPhoto,options);
+        checkBudgetTouched(totalSize,options);
+    }
+
+    // devicePixelRatio 0 disables the shrink entirely
+    {
+        AlbumLayoutOptions options;
+        options.devicePixelRatio=0;
+        QSize totalSize;
+        auto rects=albumLayout(thumbs,options,&totalSize);
+        checkAll(rects,totalSize,thumbs,options);
+        checkBudgetTouched(totalSize,options);
+    }
 }
 
-BOOST_AUTO_TEST_CASE(TestFloorSurvivesMaxHeightScaleDown)
+BOOST_AUTO_TEST_CASE(TestSingleSmallImageShrinks)
 {
-    // The maxHeight rescue scales every rect by one factor, floored tiles included -- it used to
-    // undo the floor completely, dropping correctly-floored 100px tiles back to 46-58px whenever
-    // the album happened to exceed the height budget. The floor now outranks maxHeight: the
-    // rescale still runs (so the big tiles absorb the shrink instead of the album ballooning),
-    // and anything it pushed under the floor is grown back afterwards.
-    const std::vector<QSize> mix{
-        QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
-        QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
-    };
-
+    // the one-image instance of the uniform shrink: shown at natural logical size, floored
     AlbumLayoutOptions options;
-    options.maxWidth=400;
-    options.devicePixelRatio=2.0;
-    options.minCappedTile=100;
-
     QSize totalSize;
-    auto rects=albumLayout(mix,options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
-    checkValidGeometry(rects,totalSize);
 
-    // this album genuinely exceeds the height budget -- i.e. the rescue really did run
-    UISE_TEST_CHECK_GT(totalSize.height(),options.maxHeight);
+    std::vector<QSize> hundred{QSize(100,100)};
+    options.devicePixelRatio=1.0;
+    auto rects=albumLayout(hundred,options,&totalSize);
+    checkAll(rects,totalSize,hundred,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),100);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),100);
 
-    for (const auto& r : rects)
-    {
-        UISE_TEST_CHECK_GE(r.width(),options.minCappedTile);
-        UISE_TEST_CHECK_GE(r.height(),options.minCappedTile);
-    }
-    UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
+    std::vector<QSize> twoHundred{QSize(200,200)};
+    options.devicePixelRatio=2.0;
+    rects=albumLayout(twoHundred,options,&totalSize);
+    checkAll(rects,totalSize,twoHundred,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),100);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),100);
 
-    // ...and the album is still kept near its height budget rather than being left at whatever
-    // height the un-rescaled layout had: shrinking first and re-growing only the floored tiles is
-    // what keeps this bounded (skipping the rescale outright produced 730px here).
-    UISE_TEST_CHECK(totalSize.height()<2*options.maxHeight);
+    // below the floor -> held at the floor (minTile, since shrinkFloor is 0 here)
+    std::vector<QSize> thirty{QSize(30,30)};
+    options.devicePixelRatio=1.0;
+    rects=albumLayout(thirty,options,&totalSize);
+    checkAll(rects,totalSize,thirty,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.minTile);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.minTile);
 }
 
-BOOST_AUTO_TEST_CASE(TestNormalPhotosNotCapped)
+BOOST_AUTO_TEST_CASE(TestThumbnailSteering)
 {
-    // Guard for the regression this cap could cause: ordinary camera-sized photos are far larger
-    // than any tile, so the cap must never fire for them -- their templates (and the full-width
-    // rows those produce) must survive untouched.
-    AlbumLayoutOptions options;
-    QSize capped;
-    QSize uncapped;
-
-    std::vector<QSize> photos{QSize(4000,3000),QSize(3800,2900),QSize(4032,3024),QSize(3600,2700)};
-
-    auto withCap=albumLayout(photos,options,&capped);
-
-    options.devicePixelRatio=0; // disables the cap entirely
-    auto withoutCap=albumLayout(photos,options,&uncapped);
-
-    UISE_TEST_REQUIRE_EQUAL(withCap.size(),withoutCap.size());
-    for (size_t i=0;i<withCap.size();++i)
+    // three 100x100 thumbnails interleaved with three photos: the thumbnails must land in the
+    // smaller slots on average, and the largest tile must be a photo's. Not asserted per tile:
+    // a thumbnail directly beside a same-aspect photo necessarily shares its size (see
+    // albumlayout.hpp), and the structure is free to change with tuning.
+    const std::vector<QSize> sizes{
+        QSize(100,100),QSize(2048,2048),QSize(100,100),QSize(2048,1365),QSize(100,100),QSize(1600,1200)
+    };
+    for (qreal dpr : {1.0,2.0})
     {
-        UISE_TEST_CHECK(withCap[i]==withoutCap[i]);
-    }
-    UISE_TEST_CHECK(capped==uncapped);
+        AlbumLayoutOptions options;
+        options.devicePixelRatio=dpr;
+        QSize totalSize;
+        auto rects=albumLayout(sizes,options,&totalSize);
+        checkAll(rects,totalSize,sizes,options);
+        checkBudgetTouched(totalSize,options);
 
-    // and the album still spends the whole horizontal budget -- the regression reported after the
-    // first attempt at this todo was ordinary photos being stacked into a narrow tall column.
-    // Not asserted as an exact equality: the maxHeight rescue can shave a pixel off the total.
-    UISE_TEST_CHECK_GE(capped.width(),options.maxWidth-2);
+        double thumbArea=(area(rects[0])+area(rects[2])+area(rects[4]))/3.0;
+        double photoArea=(area(rects[1])+area(rects[3])+area(rects[5]))/3.0;
+        UISE_TEST_CHECK(thumbArea<photoArea);
+
+        size_t largest=0;
+        for (size_t i=1;i<rects.size();++i)
+        {
+            if (area(rects[i])>area(rects[largest]))
+            {
+                largest=i;
+            }
+        }
+        UISE_TEST_CHECK(largest==1 || largest==3 || largest==5);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestMaxHeightHard)
+{
+    // portraits are what used to overflow the height budget -- now both budgets are hard and a
+    // too-tall structure is simply scaled (and thereby narrowed) to fit
+    for (int count : {4,10})
+    {
+        std::vector<QSize> sizes(static_cast<size_t>(count),QSize(700,1000));
+        for (auto box : {QSize(420,420),QSize(200,1000),QSize(1000,300)})
+        {
+            AlbumLayoutOptions options;
+            options.maxWidth=box.width();
+            options.maxHeight=box.height();
+            QSize totalSize;
+            auto rects=albumLayout(sizes,options,&totalSize);
+            checkAll(rects,totalSize,sizes,options);
+            checkBudgetTouched(totalSize,options);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(TestMixedKnownAndUnknownSize)
 {
-    // one item with an unresolved/unknown pixel size mixed with known ones -- must not crash or
-    // produce degenerate geometry (the unknown one is treated as aspect 1:1)
+    // an unknown size lays out as a square and does not trigger the shrink
     AlbumLayoutOptions options;
     QSize totalSize;
-
-    auto rects=albumLayout({QSize(1600,900),QSize(-1,-1),QSize(900,1200)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(3));
-    checkValidGeometry(rects,totalSize);
+    std::vector<QSize> sizes{QSize(1600,900),QSize(0,0),QSize(700,1000)};
+    auto rects=albumLayout(sizes,options,&totalSize);
+    checkAll(rects,totalSize,sizes,options);
+    checkBudgetTouched(totalSize,options);
+    UISE_TEST_CHECK(qAbs(rects[1].width()-rects[1].height())<=1);
 }
 
 BOOST_AUTO_TEST_CASE(TestRealWorldMixAcrossBudgets)
 {
-    // A real 8-image message that exercised every path at once: two 2048px squares, a tall
-    // 1599x2048, three 100x100 thumbnails and two mid-size images. Laid out across the range of
-    // bubble budgets a resizing view actually produces, the geometry must stay valid throughout.
-    //
-    // Note for anyone touching ChatMessageImages::updateMaximumBubbleWidth(): the album's own
-    // width is NOT a fixed point of this function. Laying this set out at budget W yields an
-    // album narrower than W, and re-running it at that narrower width yields a different (often
-    // much narrower again) album, because the number of tiles that fit per row decides how tall
-    // the album is, which decides how hard the maxHeight rescue shrinks it. That is why the
-    // widget keeps the layout its negotiation settled on instead of re-running it against the
-    // bubble width it just produced -- see that function's own comment. Deliberately not asserted
-    // here as an invariant: making the layout a fixed point would be an improvement, not a
-    // regression, and this test should not stand in its way.
-    //
-    // todo-album-layout-small-tile-packing.md: the album can now legitimately end up TALLER than
-    // options.maxHeight -- the minCappedTile floor (default here, i.e. 0 -> falls back to minTile)
-    // overrides the maxHeight scale-down when the two disagree, rather than the old behaviour of
-    // silently shrinking a floored tile back under the floor. See TestFloorSurvivesMaxHeightScaleDown
-    // for the case where this is asserted directly at the shipped minCappedTile=100.
-    const std::vector<QSize> mix{
-        QSize(100,100),QSize(2048,2048),QSize(1599,2048),QSize(100,100),
-        QSize(2048,2048),QSize(442,311),QSize(100,100),QSize(473,454)
-    };
-
-    for (int budget : {200,250,300,400,500,600,700,800})
+    for (int budget : {320,420,590,800})
     {
         AlbumLayoutOptions options;
         options.maxWidth=budget;
         options.devicePixelRatio=2.0;
-
         QSize totalSize;
-        auto rects=albumLayout(mix,options,&totalSize);
-        UISE_TEST_REQUIRE_EQUAL(rects.size(),mix.size());
-        checkValidGeometry(rects,totalSize);
-
-        // width stays a hard ceiling regardless of the floor (see reflowRows()'s wrap in the .cpp)
-        UISE_TEST_CHECK(totalSize.width()<=options.maxWidth);
-        // height is not: the floor can legitimately hold the album above budget, measured up to a
-        // few tens of px here -- bounded generously rather than pinned to a measured constant so
-        // this doesn't become a change-detector test
-        UISE_TEST_CHECK_LE(totalSize.height(),options.maxHeight+4*options.spacing+options.minTile);
-
-        // every tile capped to its own image's logical size, floored at minTile (minCappedTile
-        // is left at its default here, i.e. 0 -> falls back to minTile -- see
-        // TestMinCappedTileFloor for the configurable floor itself). A tile the FLOOR grew is
-        // allowed past its source's own logical size -- that is what the floor is for -- so the
-        // natural-size assertion below only applies to a tile the floor did not have to touch.
-        for (size_t i=0;i<rects.size();++i)
-        {
-            if (qMin(rects[i].width(),rects[i].height())>options.minTile)
-            {
-                auto natW=qMax(options.minTile,qRound(mix[i].width()/options.devicePixelRatio));
-                UISE_TEST_CHECK(rects[i].width()<=natW+1);
-            }
-            UISE_TEST_CHECK_GE(qMin(rects[i].width(),rects[i].height()),options.minTile);
-        }
+        auto rects=albumLayout(RealWorldMix,options,&totalSize);
+        checkAll(rects,totalSize,RealWorldMix,options);
+        // the 2048px squares are photos, so this album never shrinks
+        checkBudgetTouched(totalSize,options);
     }
 }
 
-BOOST_AUTO_TEST_CASE(TestMaxHeightScaleDown)
+BOOST_AUTO_TEST_CASE(TestPlaceholderBudgets)
 {
-    // a two-row stack far taller than maxHeight -- must be scaled down uniformly, stay flush, and
-    // re-report totalSize from the SCALED rects rather than from the pre-scale estimate
-    AlbumLayoutOptions options;
-    options.maxHeight=200; // deliberately small to force the rescue path
-    QSize totalSize;
+    // mirrors ChatMessageImages::rebuildGrid()'s allPlaceholders branch at the shipped 100px
+    // minTileSize: extent 105, box two extents (plus one seam) wide and tall
+    const int extent=105;
+    const int box=extent*2+2;
 
-    // both wide (so the stacked two-row template runs) and large enough that the natural-size cap
-    // never fires -- this case is specifically about the maxHeight rescue
-    auto rects=albumLayout({QSize(1600,1200),QSize(1800,1300)},options,&totalSize);
-    UISE_TEST_REQUIRE_EQUAL(rects.size(),static_cast<size_t>(2));
-    UISE_TEST_CHECK_EQUAL(totalSize.height(),options.maxHeight);
-    UISE_TEST_CHECK(rects[0].y()==0);
-    UISE_TEST_CHECK_GT(rects[1].y(),rects[0].y());
-    checkValidGeometry(rects,totalSize);
-}
-
-BOOST_AUTO_TEST_CASE(TestClaimedWidthRepack)
-{
-    // Five genuinely small originals: the templates size them to fill the width budget, then the
-    // per-tile natural-size cap shrinks every tile to its own size without revisiting which row
-    // it landed in -- leaving a row count computed for tiles several times larger than the ones
-    // drawn. claimedWidth lets the album spend space a caption has already taken, re-packing
-    // those stale rows without touching any tile's size.
-    const std::vector<QSize> thumbs{
-        QSize(120,90),QSize(140,100),QSize(110,80),QSize(130,96),QSize(120,88)
-    };
-
-    AlbumLayoutOptions base;
-    base.maxWidth=590;
-    base.devicePixelRatio=2.0;
-    base.minCappedTile=100;
-
-    QSize plainTotal;
-    auto plain=albumLayout(thumbs,base,&plainTotal);
-    UISE_TEST_REQUIRE_EQUAL(plain.size(),thumbs.size());
-    checkValidGeometry(plain,plainTotal);
-
-    auto rowCount=[](const std::vector<QRect>& rects)
     {
-        std::set<int> ys;
+        AlbumLayoutOptions options;
+        options.maxWidth=extent;
+        options.maxHeight=extent;
+        QSize totalSize;
+        std::vector<QSize> one{QSize(0,0)};
+        auto rects=albumLayout(one,options,&totalSize);
+        checkAll(rects,totalSize,one,options);
+        UISE_TEST_CHECK_EQUAL(rects[0].width(),extent);
+        UISE_TEST_CHECK_EQUAL(rects[0].height(),extent);
+    }
+
+    {
+        AlbumLayoutOptions options;
+        options.maxWidth=box;
+        options.maxHeight=box;
+        QSize totalSize;
+        std::vector<QSize> two{QSize(0,0),QSize(0,0)};
+        auto rects=albumLayout(two,options,&totalSize);
+        checkAll(rects,totalSize,two,options);
+        // two squares side by side
+        UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[1].y());
+        UISE_TEST_CHECK_EQUAL(rects[0].width(),extent);
+        UISE_TEST_CHECK_EQUAL(rects[1].width(),extent);
+        UISE_TEST_CHECK_EQUAL(totalSize.height(),extent);
+    }
+
+    for (int count : {3,4,5})
+    {
+        AlbumLayoutOptions options;
+        options.maxWidth=box;
+        options.maxHeight=box;
+        QSize totalSize;
+        std::vector<QSize> many(static_cast<size_t>(count),QSize(0,0));
+        auto rects=albumLayout(many,options,&totalSize);
+        checkAll(rects,totalSize,many,options);
+        checkBudgetTouched(totalSize,options);
         for (const auto& r : rects)
         {
-            ys.insert(r.y());
+            UISE_TEST_CHECK_GE(shortSide(r),options.minTile);
         }
-        return static_cast<int>(ys.size());
-    };
-
-    // with no claim the album keeps its compact block -- the whole point of gating the re-pack on
-    // already-claimed space rather than on maxWidth, so a caption-less album never grows its own
-    // bubble just because the budget allowed it. Explicit comparisons rather than the CHECK_GT/LT
-    // macros: there is no CHECK_LT, and CHECK_GT is wired to BOOST_CHECK_GE in the harness, so
-    // neither would actually assert the strict inequality these cases are about.
-    UISE_TEST_CHECK(plainTotal.width()<base.maxWidth);
-    UISE_TEST_CHECK(rowCount(plain)>1);
-
-    auto claimed=base;
-    claimed.claimedWidth=base.maxWidth;
-
-    QSize repackedTotal;
-    auto repacked=albumLayout(thumbs,claimed,&repackedTotal);
-    UISE_TEST_REQUIRE_EQUAL(repacked.size(),thumbs.size());
-    checkValidGeometry(repacked,repackedTotal);
-
-    // every tile keeps the size the cap and the floor gave it -- only its row changed
-    UISE_TEST_CHECK(rectSizeMultiset(plain)==rectSizeMultiset(repacked));
-
-    // fewer rows, never more, and never taller
-    UISE_TEST_CHECK(rowCount(repacked)<rowCount(plain));
-    UISE_TEST_CHECK_LE(repackedTotal.height(),plainTotal.height());
-
-    // the re-pack spends the claimed width, and stays inside it
-    UISE_TEST_CHECK(repackedTotal.width()>plainTotal.width());
-    UISE_TEST_CHECK_LE(repackedTotal.width(),claimed.claimedWidth);
-
-    // ...but spreads evenly rather than filling the first line and orphaning the tail: with the
-    // rows balanced no line may hold more than one tile more than any other
-    std::map<int,int> perRow;
-    for (const auto& r : repacked)
-    {
-        ++perRow[r.y()];
     }
-    int fullest=0;
-    int emptiest=static_cast<int>(thumbs.size());
-    for (const auto& row : perRow)
-    {
-        fullest=qMax(fullest,row.second);
-        emptiest=qMin(emptiest,row.second);
-    }
-    UISE_TEST_CHECK_LE(fullest-emptiest,1);
-
-    // the floor still holds after the re-pack
-    for (const auto& r : repacked)
-    {
-        UISE_TEST_CHECK_GE(r.width(),claimed.minCappedTile);
-        UISE_TEST_CHECK_GE(r.height(),claimed.minCappedTile);
-    }
-
-    // a claim NARROWER than the album already is changes nothing -- there is no free space to
-    // spread into, and the album must not be squeezed to honour it (maxWidth is the only hard
-    // ceiling)
-    auto narrow=base;
-    narrow.claimedWidth=plainTotal.width()/2;
-
-    QSize narrowTotal;
-    auto narrowRects=albumLayout(thumbs,narrow,&narrowTotal);
-    UISE_TEST_CHECK(narrowRects==plain);
-    UISE_TEST_CHECK_EQUAL(narrowTotal.width(),plainTotal.width());
 }
 
-BOOST_AUTO_TEST_CASE(TestClaimedWidthLeavesFullWidthAlbumsAlone)
+BOOST_AUTO_TEST_CASE(TestFuzz)
 {
-    // Normal-sized photos already fill the width budget, so there is nothing for the re-pack to
-    // reclaim -- a caption must not be able to rearrange a hero template just by being long.
-    const std::vector<QSize> photos{
-        QSize(2000,600),QSize(700,1000),QSize(1000,1050),QSize(1600,900)
-    };
+    std::mt19937 rng(20261003u);
+    std::uniform_int_distribution<int> countDist(1,12);
+    std::uniform_real_distribution<double> aspectDist(0.3,3.5);
+    std::uniform_int_distribution<int> heightDist(600,3000);
+    std::uniform_int_distribution<int> thumbDist(30,120);
+    std::uniform_real_distribution<double> unitDist(0.0,1.0);
+    const std::vector<QSize> boxes{QSize(320,320),QSize(420,420),QSize(590,420),QSize(200,600),QSize(1000,300)};
+    const std::vector<int> spacings{0,2,8};
+    const std::vector<qreal> dprs{1.0,2.0};
 
-    AlbumLayoutOptions base;
-    base.maxWidth=590;
-    base.devicePixelRatio=2.0;
-    base.minCappedTile=100;
+    for (int iteration=0;iteration<400;++iteration)
+    {
+        auto count=countDist(rng);
+        std::vector<QSize> sizes;
+        sizes.reserve(static_cast<size_t>(count));
+        for (int i=0;i<count;++i)
+        {
+            if (unitDist(rng)<0.2)
+            {
+                sizes.emplace_back(thumbDist(rng),thumbDist(rng));
+            }
+            else
+            {
+                auto h=heightDist(rng);
+                sizes.emplace_back(qMax(1,qRound(h*aspectDist(rng))),h);
+            }
+        }
 
-    QSize plainTotal;
-    auto plain=albumLayout(photos,base,&plainTotal);
+        AlbumLayoutOptions options;
+        auto box=boxes[static_cast<size_t>(iteration)%boxes.size()];
+        options.maxWidth=box.width();
+        options.maxHeight=box.height();
+        options.spacing=spacings[static_cast<size_t>(iteration)%spacings.size()];
+        options.devicePixelRatio=dprs[static_cast<size_t>(iteration)%dprs.size()];
 
-    // the premise: these are large enough that the natural-size cap never fires, so the 2x2
-    // template's rows still span the whole budget and there is no slack to reclaim. Asserted
-    // rather than assumed -- if a template change ever left this album narrow, the identity
-    // check below would start failing for a reason that has nothing to do with claimedWidth.
-    UISE_TEST_REQUIRE_EQUAL(plainTotal.width(),base.maxWidth);
+        QSize totalSize;
+        auto rects=albumLayout(sizes,options,&totalSize);
+        checkAll(rects,totalSize,sizes,options);
+    }
+}
 
-    auto claimed=base;
-    claimed.claimedWidth=base.maxWidth;
+BOOST_AUTO_TEST_CASE(TestLargeCountDoesNotCrash)
+{
+    // far above the default per-message cap, but the cap is configurable -- the layout must stay
+    // valid (and finish) however many images it is handed
+    for (int count : {25,60})
+    {
+        std::vector<QSize> sizes;
+        for (int i=0;i<count;++i)
+        {
+            sizes.push_back(TenMixed[static_cast<size_t>(i)%TenMixed.size()]);
+        }
+        AlbumLayoutOptions options;
+        QSize totalSize;
+        auto rects=albumLayout(sizes,options,&totalSize);
+        checkAll(rects,totalSize,sizes,options);
+    }
+}
 
-    QSize claimedTotal;
-    auto claimedRects=albumLayout(photos,claimed,&claimedTotal);
+BOOST_AUTO_TEST_CASE(TestNarrowBudget)
+{
+    // a budget far too small for the soft floor: still valid geometry, within budget
+    AlbumLayoutOptions options;
+    options.maxWidth=50;
+    QSize totalSize;
+    std::vector<QSize> sizes{QSize(1600,900),QSize(700,1000),QSize(1000,1000)};
+    auto rects=albumLayout(sizes,options,&totalSize);
+    checkAll(rects,totalSize,sizes,options);
+}
 
-    UISE_TEST_CHECK(claimedRects==plain);
-    UISE_TEST_CHECK(claimedTotal==plainTotal);
+BOOST_AUTO_TEST_CASE(TestTiming)
+{
+    // albumLayout() runs on every bubble-width negotiation (memoised, but the first pass per
+    // width is live) -- keep a ten-image album well inside a frame
+    AlbumLayoutOptions options;
+    QSize totalSize;
+    QElapsedTimer timer;
+    timer.start();
+    const int runs=100;
+    for (int i=0;i<runs;++i)
+    {
+        auto rects=albumLayout(TenMixed,options,&totalSize);
+        UISE_TEST_REQUIRE_EQUAL(rects.size(),TenMixed.size());
+    }
+    auto meanMs=static_cast<double>(timer.nsecsElapsed())/runs/1e6;
+    UISE_TEST_MESSAGE("albumLayout() n=10 mean " << meanMs << " ms");
+    UISE_TEST_CHECK(meanMs<50.0);
+}
+
+/********************** AlbumLayoutMode::PresetTemplates **********************/
+
+namespace {
+
+//! Preset-mode invariants: valid geometry within budget, gapless seams, message order. Aspects
+//! are NOT checked (that mode crops), but every block of two or more images must span the full
+//! width budget unless the all-thumbnail shrink applied.
+void checkPresets(const std::vector<QRect>& rects, const QSize& total, const std::vector<QSize>& sizes, const AlbumLayoutOptions& options, bool expectFullWidth=true)
+{
+    UISE_TEST_REQUIRE_EQUAL(rects.size(),sizes.size());
+    checkValidGeometry(rects,total,options);
+    checkGapless(rects,total,options.spacing);
+    checkOrder(rects,options.spacing);
+    if (expectFullWidth && sizes.size()>1)
+    {
+        UISE_TEST_CHECK_EQUAL(total.width(),options.maxWidth);
+    }
+}
+
+AlbumLayoutOptions presetOptions()
+{
+    AlbumLayoutOptions options;
+    options.mode=AlbumLayoutMode::PresetTemplates;
+    return options;
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestPresetsDispatchAndSingle)
+{
+    auto options=presetOptions();
+    QSize viaAlbumLayout;
+    QSize direct;
+    auto rects1=albumLayout(RealWorldMix,options,&viaAlbumLayout);
+    auto rects2=albumLayoutPresets(RealWorldMix,options,&direct);
+    UISE_TEST_CHECK(rects1==rects2);
+    UISE_TEST_CHECK(viaAlbumLayout==direct);
+
+    // single wide image: full width, height from the CLAMPED ratio (1.7 here, the image is 1.78)
+    std::vector<QSize> wide{QSize(1600,900)};
+    auto rects=albumLayout(wide,options,&direct);
+    checkPresets(rects,direct,wide,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.maxWidth*1000/options.presets.maxRatio);
+
+    // single tall image: height-bound, narrower
+    std::vector<QSize> tall{QSize(700,1000)};
+    rects=albumLayout(tall,options,&direct);
+    checkPresets(rects,direct,tall,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.maxHeight);
+    UISE_TEST_CHECK(rects[0].width()<options.maxWidth);
+
+    // empty
+    rects=albumLayout({},options,&direct);
+    UISE_TEST_CHECK(rects.empty());
+    UISE_TEST_CHECK_EQUAL(direct.width(),0);
+}
+
+BOOST_AUTO_TEST_CASE(TestPresetsTemplates)
+{
+    auto options=presetOptions();
+    QSize total;
+
+    // two similar landscapes stack, each full width (then squeezed into the height budget)
+    std::vector<QSize> twoWide{QSize(1600,900),QSize(1600,900)};
+    auto rects=albumLayout(twoWide,options,&total);
+    checkPresets(rects,total,twoWide,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
+    UISE_TEST_CHECK_EQUAL(rects[1].width(),options.maxWidth);
+    UISE_TEST_CHECK(rects[1].y()>rects[0].y());
+    UISE_TEST_CHECK_EQUAL(total.height(),options.maxHeight);
+
+    // two similar portraits: an exact half each, side by side
+    std::vector<QSize> twoTall{QSize(700,1000),QSize(720,1000)};
+    rects=albumLayout(twoTall,options,&total);
+    checkPresets(rects,total,twoTall,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[1].y());
+    UISE_TEST_CHECK(qAbs(rects[0].width()-rects[1].width())<=1);
+
+    // three narrow images: one row of three
+    std::vector<QSize> threeNarrow(3,QSize(700,1000));
+    rects=albumLayout(threeNarrow,options,&total);
+    checkPresets(rects,total,threeNarrow,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[1].y());
+    UISE_TEST_CHECK_EQUAL(rects[1].y(),rects[2].y());
+
+    // wide first of four: full-width hero on top, a row of three below
+    std::vector<QSize> fourWideFirst{QSize(1600,900),QSize(1000,1000),QSize(700,1000),QSize(1200,800)};
+    rects=albumLayout(fourWideFirst,options,&total);
+    checkPresets(rects,total,fourWideFirst,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
+    UISE_TEST_CHECK_EQUAL(rects[1].y(),rects[2].y());
+    UISE_TEST_CHECK_EQUAL(rects[2].y(),rects[3].y());
+    UISE_TEST_CHECK(rects[1].y()>rects[0].y());
+
+    // narrow first of four: full-height column on the left, a stack of three on the right
+    std::vector<QSize> fourNarrowFirst{QSize(700,1000),QSize(1600,900),QSize(1000,1000),QSize(1600,900)};
+    rects=albumLayout(fourNarrowFirst,options,&total);
+    checkPresets(rects,total,fourNarrowFirst,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),total.height());
+    UISE_TEST_CHECK_EQUAL(rects[1].x(),rects[2].x());
+    UISE_TEST_CHECK_EQUAL(rects[2].x(),rects[3].x());
+    UISE_TEST_CHECK(rects[1].y()<rects[2].y() && rects[2].y()<rects[3].y());
+
+    // square first of four: 2x2 with one shared vertical seam
+    std::vector<QSize> fourSquareFirst{QSize(1000,1000),QSize(1600,900),QSize(600,1200),QSize(1500,850)};
+    rects=albumLayout(fourSquareFirst,options,&total);
+    checkPresets(rects,total,fourSquareFirst,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].x(),rects[2].x());
+    UISE_TEST_CHECK_EQUAL(rects[1].x(),rects[3].x());
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),rects[2].width());
+    UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[1].y());
+    UISE_TEST_CHECK_EQUAL(rects[2].y(),rects[3].y());
+}
+
+BOOST_AUTO_TEST_CASE(TestPresetsCompositions)
+{
+    auto options=presetOptions();
+    QSize total;
+
+    // seven squares: the documented 3+4 tie-break (lexicographically smaller composition wins)
+    std::vector<QSize> seven(7,QSize(1000,1000));
+    auto rects=albumLayout(seven,options,&total);
+    checkPresets(rects,total,seven,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].y(),rects[2].y());
+    UISE_TEST_CHECK(rects[3].y()>rects[2].y());
+    UISE_TEST_CHECK_EQUAL(rects[3].y(),rects[6].y());
+
+    // ten portraits never exceed the height budget (squeezed if needed)
+    std::vector<QSize> tenTall(10,QSize(700,1000));
+    rects=albumLayout(tenTall,options,&total);
+    checkPresets(rects,total,tenTall,options);
+
+    // more images than maxRows x maxPerRow can hold still lays out validly
+    std::vector<QSize> many;
+    for (int i=0;i<25;++i)
+    {
+        many.push_back(TenMixed[static_cast<size_t>(i)%TenMixed.size()]);
+    }
+    rects=albumLayout(many,options,&total);
+    checkPresets(rects,total,many,options);
+
+    // determinism
+    QSize total2;
+    auto again=albumLayout(TenMixed,options,&total2);
+    rects=albumLayout(TenMixed,options,&total);
+    UISE_TEST_CHECK(rects==again);
+}
+
+BOOST_AUTO_TEST_CASE(TestPresetsThumbnailShrink)
+{
+    auto options=presetOptions();
+    options.devicePixelRatio=1.0;
+    QSize total;
+
+    // a lone 100x100 is not blown up to the bubble width
+    std::vector<QSize> hundred{QSize(100,100)};
+    auto rects=albumLayout(hundred,options,&total);
+    checkPresets(rects,total,hundred,options,false);
+    UISE_TEST_CHECK_LE(rects[0].width(),100);
+    UISE_TEST_CHECK_GE(rects[0].width(),options.minTile);
+
+    // all-thumbnail album shrinks, floored; one photo in it and it does not
+    const std::vector<QSize> thumbs{QSize(60,45),QSize(70,50),QSize(55,40),QSize(65,48),QSize(60,44)};
+    options.shrinkFloor=100;
+    rects=albumLayout(thumbs,options,&total);
+    checkPresets(rects,total,thumbs,options,false);
+    UISE_TEST_CHECK(total.width()<options.maxWidth);
+    for (const auto& r : rects)
+    {
+        UISE_TEST_CHECK_GE(shortSide(r),options.shrinkFloor-1);
+    }
+
+    auto withPhoto=thumbs;
+    withPhoto.push_back(QSize(1600,900));
+    rects=albumLayout(withPhoto,options,&total);
+    checkPresets(rects,total,withPhoto,options);
+}
+
+BOOST_AUTO_TEST_CASE(TestPresetsFuzz)
+{
+    std::mt19937 rng(20261003u);
+    std::uniform_int_distribution<int> countDist(1,12);
+    std::uniform_real_distribution<double> aspectDist(0.25,4.0);
+    std::uniform_int_distribution<int> heightDist(600,3000);
+    std::uniform_int_distribution<int> thumbDist(30,120);
+    std::uniform_real_distribution<double> unitDist(0.0,1.0);
+    const std::vector<QSize> boxes{QSize(320,320),QSize(420,420),QSize(590,420),QSize(200,600),QSize(1000,300),QSize(50,420)};
+    const std::vector<int> spacings{0,2,8};
+
+    for (int iteration=0;iteration<400;++iteration)
+    {
+        auto count=countDist(rng);
+        std::vector<QSize> sizes;
+        for (int i=0;i<count;++i)
+        {
+            if (unitDist(rng)<0.2)
+            {
+                sizes.emplace_back(thumbDist(rng),thumbDist(rng));
+            }
+            else
+            {
+                auto h=heightDist(rng);
+                sizes.emplace_back(qMax(1,qRound(h*aspectDist(rng))),h);
+            }
+        }
+        auto options=presetOptions();
+        auto box=boxes[static_cast<size_t>(iteration)%boxes.size()];
+        options.maxWidth=box.width();
+        options.maxHeight=box.height();
+        options.spacing=spacings[static_cast<size_t>(iteration)%spacings.size()];
+        options.devicePixelRatio=(iteration%2==0) ? 1.0 : 2.0;
+
+        QSize total;
+        auto rects=albumLayout(sizes,options,&total);
+        // the shrink may legitimately narrow an all-thumbnail album, so full width is not asserted
+        checkPresets(rects,total,sizes,options,false);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

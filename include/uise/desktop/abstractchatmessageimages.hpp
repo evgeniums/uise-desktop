@@ -34,6 +34,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 #include <uise/desktop/chatfileitem.hpp>
 #include <uise/desktop/imagelabel.hpp>
+#include <uise/desktop/utils/albumlayout.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -90,6 +91,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageImages : public AbstractChatMessage
         virtual void setAnimationMode(ImageLabel::AnimationMode mode) =0;
 
         virtual ImageLabel::AnimationMode animationMode() const =0;
+
+        /**
+         * @brief Choose which album layout algorithm this body uses -- see AlbumLayoutMode.
+         *  Applied to the current album at once (the bubble width is renegotiated) and to every
+         *  later setItems(). Wide is the default.
+         */
+        virtual void setLayoutMode(AlbumLayoutMode mode) =0;
+
+        virtual AlbumLayoutMode layoutMode() const =0;
 
         /**
          * @brief Start an outgoing QDrag for one item, carrying urls.
