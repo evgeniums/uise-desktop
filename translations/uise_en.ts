@@ -2994,7 +2994,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2238"/>
+        <location filename="../src/chatmessage.cpp" line="+2274"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -3020,7 +3020,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2201"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2326"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3043,7 +3043,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1260"/>
+        <location line="-1316"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3058,7 +3058,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Open code in a larger window</translation>
     </message>
     <message>
-        <location line="+917"/>
+        <location line="+973"/>
         <source>Show the full table</source>
         <translation>Show the full table</translation>
     </message>
@@ -3292,8 +3292,8 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+269"/>
-        <location line="+164"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+270"/>
+        <location line="+175"/>
         <source>Edit text</source>
         <translation>Edit text</translation>
     </message>
@@ -3595,7 +3595,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4814"/>
+        <location filename="../src/messageeditor.cpp" line="+4942"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3610,7 +3610,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+2935"/>
+        <location line="+2966"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3755,7 +3755,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="-4801"/>
+        <location line="-4832"/>
         <source>Hold to record a voice message</source>
         <translation>Hold to record a voice message</translation>
     </message>
@@ -4173,7 +4173,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::ReplyDialog</name>
     <message>
-        <location filename="../src/replydialog.cpp" line="+118"/>
+        <location filename="../src/replydialog.cpp" line="+116"/>
         <source>You can select a part of the text to quote only that part.</source>
         <translation>You can select a part of the text to quote only that part.</translation>
     </message>
@@ -4185,7 +4185,7 @@ These tips can help you create longer passwords that are easier to remember. Try
     <message>
         <location line="+8"/>
         <location line="+45"/>
-        <location line="+192"/>
+        <location line="+187"/>
         <source>Save</source>
         <translation>Save</translation>
     </message>
@@ -4198,7 +4198,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::ReplyPreview</name>
     <message>
-        <location filename="../src/replypreview.cpp" line="+112"/>
+        <location filename="../src/replypreview.cpp" line="+181"/>
         <source>Reply to %1, %2</source>
         <translation>Reply to %1, %2</translation>
     </message>
@@ -4360,7 +4360,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::TextViewer</name>
     <message>
-        <location filename="../src/textviewer.cpp" line="+209"/>
+        <location filename="../src/textviewer.cpp" line="+220"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -4371,12 +4371,12 @@ These tips can help you create longer passwords that are easier to remember. Try
     </message>
     <message>
         <location line="+0"/>
-        <location line="+623"/>
+        <location line="+644"/>
         <source>Full screen</source>
         <translation>Full screen</translation>
     </message>
     <message>
-        <location line="-162"/>
+        <location line="-163"/>
         <source>Open in system app</source>
         <translation>Open in system app</translation>
     </message>
@@ -4386,7 +4386,7 @@ These tips can help you create longer passwords that are easier to remember. Try
         <translation>Save as</translation>
     </message>
     <message>
-        <location line="+121"/>
+        <location line="+122"/>
         <source>Find</source>
         <translation>Find</translation>
     </message>
