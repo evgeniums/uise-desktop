@@ -546,7 +546,7 @@ void ChatMessagesView<BaseMessageT,Traits>::onJumpRequested(Direction direction,
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages)
+void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Message*>& messages, std::optional<bool> startReachedArg)
 {
     // Non-empty on entry means this pass is merging in a just-loaded/fetched batch
     // (insertFetched(), loadMessagesAround()); empty means a pure re-adjust of what is already
@@ -589,8 +589,18 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     bool wasStuckToEnd=!mergingFetchedBatch && m_listView->itemCount()>0
                      && m_listView->stickMode()==Direction::END && m_listView->isFollowingStickEdge();
 
+    // Whether the oldest item of the merged list is known to be the very first message of the
+    // chat. Only then does it get a date separator and count as first-in-batch (sender header):
+    // while older messages may still be prefetched, they could turn out to share its date/sender,
+    // and decorating it early makes the separator/header flash and vanish right after the first
+    // fetch. Deferring is invisible instead -- if the prefetch proves them needed they appear
+    // ABOVE the content already on screen. Load paths pass the answer explicitly because their
+    // list markers are not set yet while this runs (clear()/loadItems() wipe them, they are set
+    // right after); every other pass reads it from the list.
+    const bool startReached=startReachedArg.has_value() ? *startReachedArg : m_listView->isBeginLoaded();
+
     bool hasUnreadSep=false;
-    bool prevLastInBatch=true;
+    bool prevLastInBatch=startReached;
     for (size_t i=0;i<messages.size();i++)
     {
         auto msg=messages[i];
@@ -602,7 +612,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         if (i==0)
         {
             auto current=QDateTime::currentDateTime().date();
-            dateVisible=true;
+            dateVisible=startReached;
             withYear=dt.date().year()!=current.year();
         }
         else
@@ -703,8 +713,13 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
 
     if (forLoad || jumpToEnd)
     {
+        // A load shorter than requested starts at the true beginning of the chat -- see
+        // adjustMessageList() for why that matters. An unknown request size (0) never claims it.
+        const bool startReached=wasRequestedMaxCount>0
+                                && messageItems.size()<static_cast<size_t>(wasRequestedMaxCount);
+
         m_listView->clear();
-        adjustMessageList(messages);
+        adjustMessageList(messages,startReached);
 
         adjustMessagesSizes(&messages);
         m_listView->loadItems(messageItems);
@@ -714,7 +729,14 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
         // markers before loadItems() had them silently wiped the moment it ran, leaving
         // canFetchAfter/canFetchBefore permanently true for this freshly loaded window (see the
         // matching comment in loadMessagesAround() below for the full consequence chain).
-        m_listView->setMinSortValue({});
+        if (startReached && !messageItems.empty())
+        {
+            m_listView->setMinSortValue(messageItems.front().sortValue());
+        }
+        else
+        {
+            m_listView->setMinSortValue({});
+        }
         if (messageItems.empty())
         {
             m_listView->setMaxSortValue({});
@@ -749,6 +771,12 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
                 if (first!=nullptr)
                 {
                     m_listView->setMinSortValue(first->sortValue());
+
+                    // The start of history is now known, so the oldest item may finally get its
+                    // date separator / sender header (deferred until now, see adjustMessageList()).
+                    m_listView->beginUpdate();
+                    adjustCurrentMessagesList();
+                    m_listView->endUpdate();
                 }
             }
         }
@@ -757,7 +785,9 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             m_listView->beginUpdate();
 
             // preprocess list with merged existing and new messages
-            adjustMessageList(messages);
+            const bool reachesStart=wasRequestedDirection!=Direction::END
+                                    && messageItems.size()<static_cast<size_t>(wasRequestedMaxCount);
+            adjustMessageList(messages,reachesStart ? std::optional<bool>(true) : std::nullopt);
 
             // insert items to the list
             adjustMessagesSizes(&messages);
@@ -808,9 +838,9 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items)
+void ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount)
 {
-    insertFetched(true,items);
+    insertFetched(true,items,wasRequestedMaxCount);
 }
 
 //--------------------------------------------------------------------------
@@ -842,8 +872,19 @@ void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector
         messageItems.push_back(message);
     }
 
+    // The window starts at the true beginning of the chat when the caller pinned the min marker
+    // at (or before) its oldest item -- see adjustMessageList(). A null/unknown marker is smaller
+    // than every real sort value, so it never claims it.
+    bool startReached=false;
+    if (!messageItems.empty())
+    {
+        auto oldest=std::min_element(messageItems.begin(),messageItems.end(),
+            [](const auto& l, const auto& r) { return l.sortValue()<r.sortValue(); });
+        startReached=!(minSortValue<oldest->sortValue());
+    }
+
     m_listView->clear();
-    adjustMessageList(messages);
+    adjustMessageList(messages,startReached);
 
     adjustMessagesSizes(&messages);
     m_listView->loadItems(messageItems);
@@ -1060,7 +1101,23 @@ void ChatMessagesView<BaseMessageT,Traits>::doRemoveMessage(const Id& id)
         m_selectedMessages.erase(id);
         emit selectedCountChanged(m_selectedMessages.size());
     }
-    m_listView->removeItem(id);    
+
+    // Removing the oldest message of a window that reached the start of history must keep it
+    // reached: the marker still points at the removed item, which would read as "older messages
+    // may exist" and strip the new oldest item's date separator until a prefetch re-pins it.
+    const auto* first=m_listView->firstItem();
+    const bool pinNewFirst=first!=nullptr && first->id()==id && m_listView->isBeginLoaded();
+
+    m_listView->removeItem(id);
+
+    if (pinNewFirst)
+    {
+        auto newFirst=m_listView->firstItem();
+        if (newFirst!=nullptr)
+        {
+            m_listView->setMinSortValue(newFirst->sortValue());
+        }
+    }
 }
 
 //--------------------------------------------------------------------------

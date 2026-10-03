@@ -685,6 +685,18 @@ class FlyweightListView : public QFrame
         typename ItemT::SortValueType minSortValue() const noexcept;
 
         /**
+         * @brief Check if the loaded window already reaches the true beginning of the data.
+         * @return True if the min sorting value was set by the owner and the first item is not
+         *  past it, i.e. no prefetch to the HOME side can bring more items.
+         *
+         * Same predicate that stops the scroll-driven prefetch and lets jumpToEdge(HOME) scroll
+         * locally. False for an empty list.
+         *
+         * See also setMinSortValue().
+         */
+        bool isBeginLoaded() const noexcept;
+
+        /**
          * @brief Get vertical scrollbar.
          * @return Query result.
          */

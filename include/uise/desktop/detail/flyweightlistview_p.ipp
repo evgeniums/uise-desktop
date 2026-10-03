@@ -1486,8 +1486,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::reorderItem(const Item
     const bool wasLast=(prevLast==&item);
     const bool endLoaded=m_maxSortValueSet && prevLast!=nullptr &&
                            !m_orderComparer(prevLast->sortValue(),m_maxSortValue);
-    const bool beginLoaded=m_minSortValueSet && prevFirst!=nullptr &&
-                             !m_orderComparer(m_minSortValue,prevFirst->sortValue());
+    const bool beginLoaded=isBeginLoadedAt(prevFirst);
 
     if (adjustMinMax)
     {
@@ -2934,7 +2933,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         }
         hiddenBefore=static_cast<size_t>(diff);
     }
-    bool canFetchBefore=first && (!m_minSortValueSet || m_orderComparer(m_minSortValue,first->sortValue()));
+    bool canFetchBefore=first && !isBeginLoadedAt(first);
 
 #ifdef UISE_DESKTOP_FLYWEIGHTLISTVIEW_DEBUG
     std::cout << printCurrentDateTime() << ": FlyweightListView_p::checkItemCount hiddenBefore "<<hiddenBefore<<" minPrefetch "<<minPrefetch << " prefetch " << prefetch << " maxHidden "<<maxHidden
@@ -3078,7 +3077,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
         hiddenAfter=to-from;
     }
 
-    bool canFetchBefore=first && (!m_minSortValueSet || m_orderComparer(m_minSortValue,first->sortValue()));
+    bool canFetchBefore=first && !isBeginLoadedAt(first);
     bool canFetchAfter=last && (!m_maxSortValueSet || m_orderComparer(last->sortValue(),m_maxSortValue));
     if (!canFetchBefore && !canFetchAfter)
     {
@@ -3698,7 +3697,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
         {
             scrollToEdge(Direction::HOME);
         }
-        else if (first!=nullptr && m_minSortValueSet && !m_orderComparer(m_minSortValue,first->sortValue()))
+        else if (isBeginLoadedAt(first))
         {
             scrollToEdge(Direction::HOME);
         }

@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGESVIEW_HPP
 #define UISE_DESKTOP_CHATMESSAGESVIEW_HPP
 
+#include <optional>
+
 #include <QBoxLayout>
 #include <QShortcut>
 
@@ -432,9 +434,18 @@ class ChatMessagesView : public AbstractChatMessagesView
             m_messageBuilder=messageBuilder;
         }
 
-        void adjustMessageList(std::vector<Message*>& messages);
+        //! Recompute date separators, unread separator and batch (first/last) flags over `messages`
+        //! merged with everything already loaded. The oldest item of the merged list only gets a
+        //! date separator and counts as first-in-batch (sender header) once the start of history
+        //! is known: until then an older prefetch may still prove them wrong, and showing them
+        //! early makes them flicker away. `startReached` says whether the start is known -- load
+        //! paths pass it explicitly because their markers are not set yet at this point; nullopt
+        //! reads it from the list (FlyweightListView::isBeginLoaded()).
+        void adjustMessageList(std::vector<Message*>& messages, std::optional<bool> startReached=std::nullopt);
 
-        void loadMessages(const std::vector<Data>& items);
+        //! `wasRequestedMaxCount` is the item count the caller asked for (0 if unknown): a shorter
+        //! result means the loaded window starts at the true beginning of the history.
+        void loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount=0);
 
         void insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
 

@@ -226,6 +226,15 @@ class FlyweightListView_p : public OrientationInvariant
         const ItemT* firstItem() const noexcept;
         const ItemT* lastItem() const noexcept;
 
+        // True when the owner has pinned the min marker and `first` (the list's first item) is
+        // not past it, i.e. nothing more exists before the loaded window. The single source of
+        // truth for checkItemCount()'s canFetchBefore, jumpToEdge() and reorderItem()'s
+        // beginLoaded -- they must stay in lockstep.
+        bool isBeginLoadedAt(const ItemT* first) const noexcept
+        {
+            return first!=nullptr && m_minSortValueSet && !m_orderComparer(m_minSortValue,first->sortValue());
+        }
+
         bool isHorizontal() const noexcept override;
 
         void onListContentResized();
