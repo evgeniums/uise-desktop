@@ -280,6 +280,12 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // already exists. A no-op for the overwhelming majority of nodes, which carry neither.
     navbar->setItemLeadingWidget(index,node->leadingWidget());
     navbar->setItemTrailingWidget(index,node->trailingWidget());
+    // Same seeding reason again: a node that opted in to a title badge (HTreeNode::
+    // hasTitleBadge()) gets its item's badge, and the QSS-reserved icon gap, from creation.
+    if (node->hasTitleBadge())
+    {
+        navbar->setItemIconBadge(index,node->titleBadgeText(),node->isTitleBadgeMuted());
+    }
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
 
@@ -345,6 +351,15 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         [this,index](std::shared_ptr<SvgIcon> icon)
         {
             navbar->setItemIcon(index,std::move(icon));
+        }
+    );
+    node->connect(
+        node,
+        &HTreeNode::titleBadgeUpdated,
+        self,
+        [this,index](const QString& text, bool muted)
+        {
+            navbar->setItemIconBadge(index,text,muted);
         }
     );
     node->connect(
@@ -487,6 +502,10 @@ bool HTreeTab_p::reconstructLastNode(int index, HTreePath path)
     // different widget than the surviving item does.
     navbar->setItemLeadingWidget(index,cand->leadingWidget());
     navbar->setItemTrailingWidget(index,cand->trailingWidget());
+    if (cand->hasTitleBadge())
+    {
+        navbar->setItemIconBadge(index,cand->titleBadgeText(),cand->isTitleBadgeMuted());
+    }
     navbar->blockSignals(false);
 
     // cand may or may not still carry the tab-level signal wiring from when it was last

@@ -108,6 +108,11 @@ class UISE_DESKTOP_EXPORT CountBadge : public QFrame
         void paintEvent(QPaintEvent* event) override;
         void changeEvent(QEvent* event) override;
 
+        //! Called after anything that can change the badge's sizeHint() or look (text, muted
+        //! state, style/font/palette change), right after updateGeometry()+update(). Lets a
+        //! subclass that positions the badge itself (IconBadge) react. Does nothing by default.
+        virtual void contentChanged();
+
     private:
 
         void updateGeometryAndRepaint();

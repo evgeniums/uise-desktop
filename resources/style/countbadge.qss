@@ -17,3 +17,12 @@ uise--CountBadge > QLabel#badge {
     min-width: 8px;
     min-height: 17px;
 }
+
+/* IconBadge (a CountBadge floating over an icon's top-right corner): placement is computed against
+   a virtual icon square of anchorSize, with the badge's right edge offsetX past it and its top
+   offsetY above it. These are the C++ defaults, repeated here as the QSS tuning point. */
+uise--IconBadge {
+qproperty-anchorSize: 22;
+qproperty-offsetX: 2;
+qproperty-offsetY: 3;
+}

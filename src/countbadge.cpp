@@ -121,6 +121,13 @@ void CountBadge::updateGeometryAndRepaint()
 {
     updateGeometry();
     update();
+    contentChanged();
+}
+
+//--------------------------------------------------------------------------
+
+void CountBadge::contentChanged()
+{
 }
 
 //--------------------------------------------------------------------------

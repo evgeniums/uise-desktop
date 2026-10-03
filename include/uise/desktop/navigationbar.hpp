@@ -283,6 +283,17 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
         void setItemIcon(int index, std::shared_ptr<SvgIcon> icon);
 
         /**
+         * @brief Show a counter badge over the top-right corner of an item's icon (see
+         * IconTextButton::setIconBadge()). The badge floats outside the item's layout, so this
+         * never changes any size and, unlike setItemIcon(), does not re-measure the scroll area.
+         * The first call, even with empty text, reserves the icon-to-text gap via QSS.
+         * @param index Item index.
+         * @param text Pre-formatted badge text; empty hides the badge.
+         * @param muted Use the muted badge colour.
+         */
+        void setItemIconBadge(int index, const QString& text, bool muted=false);
+
+        /**
          * @brief Set trailing (post-text) SVG icon for an existing item.
          * @param index Item index.
          * @param icon SVG icon (null to hide the trailing icon).

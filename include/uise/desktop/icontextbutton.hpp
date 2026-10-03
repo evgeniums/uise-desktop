@@ -43,6 +43,7 @@ namespace uise {
 
 class RoundedImage;
 class RippleOverlay;
+class IconBadge;
 
 class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 {
@@ -112,6 +113,26 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         QWidget* trailingWidget() const noexcept
         {
             return m_trailingWidget.get();
+        }
+
+        /**
+         * @brief Show a counter badge over the top-right corner of the (leading) icon, or hide it
+         * with empty \p text. The badge is an IconBadge floating over this button, outside the
+         * layout: changing it never changes this button's size.
+         *
+         * The first call creates the badge and sets the dynamic property iconBadge="true" on this
+         * button (repolishing the icon wrapper), which QSS can use to reserve a permanent gap
+         * between the icon and the text for the badge to grow into -- see navigationbar.qss. The
+         * property then stays set even while the badge is hidden, so that gap never toggles.
+         *
+         * @param text Pre-formatted badge text, e.g. "42" or "1.2K"; empty hides the badge.
+         * @param muted Use the muted badge colour.
+         */
+        void setIconBadge(const QString& text, bool muted=false);
+
+        IconBadge* iconBadge() const noexcept
+        {
+            return m_iconBadge;
         }
 
         void setParentHovered(bool enable);
@@ -238,6 +259,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         QPointer<QWidget> m_leadingWidget;
         QPointer<QWidget> m_trailingWidget;
+
+        // Created lazily by setIconBadge(); a child of this button, destroyed with it.
+        IconBadge* m_iconBadge=nullptr;
 
         bool m_parentHovered;
         bool m_checked;

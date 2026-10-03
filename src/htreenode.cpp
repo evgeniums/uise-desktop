@@ -252,6 +252,9 @@ class HTreeNode_p
 
         QIcon icon;
         std::shared_ptr<SvgIcon> titleIcon;
+        bool hasTitleBadge=false;
+        QString titleBadgeText;
+        bool titleBadgeMuted=false;
         QPointer<QWidget> leadingWidget;
         QPointer<QWidget> trailingWidget;
         QString tooltip;
@@ -580,6 +583,37 @@ void HTreeNode::setTitleIcon(std::shared_ptr<SvgIcon> icon)
 {
     pimpl->titleIcon=icon;
     emit titleIconUpdated(std::move(icon));
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::hasTitleBadge() const
+{
+    return pimpl->hasTitleBadge;
+}
+
+//--------------------------------------------------------------------------
+
+QString HTreeNode::titleBadgeText() const
+{
+    return pimpl->titleBadgeText;
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeNode::isTitleBadgeMuted() const
+{
+    return pimpl->titleBadgeMuted;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setTitleBadge(const QString& text, bool muted)
+{
+    pimpl->hasTitleBadge=true;
+    pimpl->titleBadgeText=text;
+    pimpl->titleBadgeMuted=muted;
+    emit titleBadgeUpdated(text,muted);
 }
 
 //--------------------------------------------------------------------------

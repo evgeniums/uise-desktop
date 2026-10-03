@@ -184,6 +184,16 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         //! exists with no icon slot.
         std::shared_ptr<SvgIcon> titleIcon() const;
 
+        //! Counter badge drawn over the top-right corner of titleIcon() in this node's navigation
+        //! bar item. Stored on the node for the same reason titleIcon() is: set it in the node's
+        //! init, before the item exists, and HTreeTab_p::appendNode() seeds the item from it.
+        //! hasTitleBadge() is true once setTitleBadge() was called at all, even with empty text:
+        //! that is how a node opts in to the badge (and the QSS-reserved icon-to-text gap) from the
+        //! start, so the first real count never changes any size. Empty text hides the badge.
+        bool hasTitleBadge() const;
+        QString titleBadgeText() const;
+        bool isTitleBadgeMuted() const;
+
         //! Widget embedded at the leading edge of this node's navigation bar item, ahead of
         //! titleIcon(). Stored on the node for the same reason titleIcon() is (see above): a
         //! node is init()ed before HTreeTab_p::appendNode() creates its navbar item, so a widget
@@ -326,6 +336,9 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         //! diverge since they happen in the same call.
         void setTitleIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
+        //! Store the title badge and emit titleBadgeUpdated() -- see hasTitleBadge().
+        void setTitleBadge(const QString& text, bool muted=false);
+
         //! Store the leading widget and emit leadingWidgetUpdated() -- see leadingWidget()'s
         //! doc comment. Does not reparent the widget itself; NavigationBar does that once an
         //! item exists to receive it, so a node with no navbar item yet is never left holding a
@@ -372,6 +385,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void iconUpdated(const QIcon&);
 
         void titleIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
+        void titleBadgeUpdated(const QString& text, bool muted);
         void trailingIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         void leadingWidgetUpdated(QWidget* widget);

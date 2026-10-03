@@ -103,6 +103,7 @@ SET (HEADERS
     include/uise/desktop/skeleton.hpp
     include/uise/desktop/typingindicator.hpp
     include/uise/desktop/countbadge.hpp
+    include/uise/desktop/iconbadge.hpp
 
     include/uise/desktop/modalpopup.hpp
     include/uise/desktop/drawer.hpp
@@ -357,6 +358,7 @@ SET (SOURCES
     src/skeleton.cpp
     src/typingindicator.cpp
     src/countbadge.cpp
+    src/iconbadge.cpp
     src/modalpopup.cpp
     src/drawer.cpp
     src/scrollarea.cpp

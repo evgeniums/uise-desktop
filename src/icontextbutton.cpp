@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/roundedimage.hpp>
+#include <uise/desktop/iconbadge.hpp>
 #include <uise/desktop/ripple.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/icontextbutton.hpp>
@@ -258,6 +259,23 @@ void IconTextButton::setTrailingSvgIcon(std::shared_ptr<SvgIcon> icon)
 std::shared_ptr<SvgIcon> IconTextButton::trailingSvgIcon() const
 {
     return m_trailingIcon->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void IconTextButton::setIconBadge(const QString& text, bool muted)
+{
+    if (m_iconBadge==nullptr)
+    {
+        // Created even for empty text: a caller opting in with an empty badge wants the QSS gap
+        // reserved from the start, so the first real count never changes any size.
+        m_iconBadge=new IconBadge(m_icon,this);
+        // The QSS gap rule is a descendant selector keyed on this button's property, so the
+        // property lives here while the icon wrapper (the rule's target) is what gets repolished.
+        Style::setStyleProperty(this,"iconBadge",true,m_icon->parentWidget());
+    }
+    m_iconBadge->setMuted(muted);
+    m_iconBadge->setText(text);
 }
 
 //--------------------------------------------------------------------------

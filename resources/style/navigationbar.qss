@@ -55,6 +55,16 @@ margin-right: 3px;
 margin-top: 2px;
 }
 
+/* An item that carries an icon badge (IconTextButton::setIconBadge() sets iconBadge="true" on the
+   first call, even with empty text) gets a permanently wider icon-to-text gap. The badge is
+   placed as if on a 22px icon (IconBadge anchorSize) with its right edge pinned offsetX past that
+   box, i.e. past the 12px icon by (22-12)/2+offsetX = 7px, and grows leftwards -- the gap must
+   clear that edge so a count never covers the text. The extra attribute selector makes this
+   outscore the rule above. Keep in step with the IconBadge defaults below. */
+uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton[iconBadge="true"] #icon {
+margin-right: 9px;
+}
+
 uise--NavigationBar uise--NavigationBarPanel uise--IconTextButton #trailingIcon uise--RoundedImage{
 min-width:14px;
 max-width:14px;
