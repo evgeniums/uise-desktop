@@ -141,33 +141,17 @@ padding-bottom:6px;
    many rows are visible before it scrolls. Both purely presentational, but galleryColumns is no
    longer only cosmetic: it is what the row PLAN is built from, so changing it rebuilds the plan.
 
-   The column count is bounded by geometry this file does not own, so the reasoning matters more
-   than the number:
+   The count is NOT bounded by the panel's width any more. The panel's natural width comes from
+   its widest child, the category tab strip (one tab per category, ten in the default pack), and
+   the grid used to have to make do with whatever that left it -- minus the vertical scrollbar,
+   which is subtracted from the viewport the rows lay out in. Rows wider than that were clipped
+   and the list grew a horizontal scrollbar. ChatReactionGallery::applyViewportSize() now gives
+   the grid a minimum width of one full row plus its scrollbar, both measured at runtime, so the
+   panel widens to fit instead. Cell pitch, cell spacing and the platform scrollbar width all
+   change that width on their own, and none of them need to be known here.
 
-   The panel takes its width from its widest child, which is the category tab strip -- one tab per
-   category, ten in the default pack. The grid's rows then have to fit in that width MINUS the
-   grid's own vertical scrollbar, which is subtracted from the viewport the rows lay out in. Sizing
-   the rows to the panel's full width therefore overflows the viewport by exactly that scrollbar
-   and the list grows a horizontal scrollbar underneath them, which is what 10 columns did.
-
-   The strip's slack is what the rows live in, so the count follows from the cell pitch: a cell is
-   its icon-size plus #galleryButton's padding and border, and the gap between cells is
-   ReactionCellSpacing (src/chatreactiongallery.cpp, matched to the recent row above the grid --
-   the two are read side by side).
-
-   9 is the count that fills that slack most closely. It is also close enough to the edge that it
-   was measured, not derived: the numbers involved (the platform scrollbar's width, what a polished
-   PushButton actually reports) are not all knowable from this file. If a horizontal scrollbar
-   appears under the rows, the rows have outgrown the viewport -- drop to 8 rather than trying to
-   reclaim the difference elsewhere.
-
-   Whatever the count, a band of dead space down the right of every row is the residue of all this
-   and cannot be tuned away here: making the strip narrower so the GRID drives the panel width only
-   moves the problem, since the rows would then be exactly as wide as the panel and the scrollbar
-   would overflow them again. Removing it for real means deriving the count from the panel's live
-   viewport width and rebuilding the row plan when it changes -- real machinery for a popup whose
-   width never changes after it opens. If the pack's category count, the cell pitch or the cell
-   spacing changes, redo the arithmetic above. */
+   9 matches ChatReactionQuickBar::MaxRowIcons, so the recents row above the grid is never wider
+   than the grid beneath it. Raise both together if a wider picker is ever wanted. */
 uise--ChatReactionGallery {
 qproperty-galleryColumns: 9;
 qproperty-galleryVisibleRows: 5;

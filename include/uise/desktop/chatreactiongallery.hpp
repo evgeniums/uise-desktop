@@ -124,6 +124,11 @@ class UISE_DESKTOP_EXPORT ChatReactionQuickBar : public Frame
             return m_leadingIconIds;
         }
 
+        //! Whether a button for this bare icon id is currently in the row. Looks at what is
+        //! actually on screen -- leading ids and basics alike, after dedup, the cap and skipping
+        //! unresolvable ids -- not at leadingIconIds().
+        bool showsIconId(const QString& iconId) const;
+
         //! Ceiling on the WHOLE composed row (leading ids plus basics). Matches the emoji
         //! gallery's own 9-column grid, so the recents row never outruns the grid beneath it.
         //! The collapsed quick bar is unaffected: it sets no leading ids and its pack ships
@@ -271,8 +276,18 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
          * Bare icon ids, most recent FIRST. Unresolvable ids are skipped rather than left as holes
          * in the row -- see ChatReactionQuickBar::setLeadingIconIds(), which this forwards to.
          * They are PREPENDED to the pack's basics, so the row keeps its default icons.
+         *
+         * While the gallery is VISIBLE the row is kept still when the new list leads with an id
+         * the row already shows: a picker that stays open lets the user click the same emoji
+         * repeatedly, and re-ordering the row after the first click moved it from under the
+         * pointer. Such an update is held back and applied the next time the gallery is shown.
+         * A list leading with an id the row does not show (the user picked it from the grid
+         * below) is applied at once, as is any update while the gallery is hidden.
          */
         void setRecentIds(QStringList ids);
+
+        //! The latest list handed to setRecentIds(), including one still held back -- not
+        //! necessarily what the row shows right now.
         QStringList recentIds() const;
 
     Q_SIGNALS:
@@ -332,9 +347,16 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         //! showEvent()) and its resetSearch() right after from building the same rows twice.
         void applyRows();
 
-        //! Clamp the view to galleryVisibleRows() rows, measured from a live row's own size hint
-        //! so the clamp tracks the theme rather than duplicating its numbers.
-        void applyVisibleRowsHeight();
+        /**
+         * @brief Size the view: clamp its height to galleryVisibleRows() rows and give it a
+         *  minimum width that fits a full row of icons plus its vertical scrollbar.
+         *
+         * Both are measured from live rows and the scrollbar's own size hint, so they track the
+         * theme rather than duplicating its numbers. The width half is what keeps the rows from
+         * being clipped (and a horizontal scrollbar from appearing) when the panel's natural
+         * width, set by the category tab strip, is a few pixels short of what the rows need.
+         */
+        void applyViewportSize();
 
         /**
          * @brief (Re)build the category tab strip from m_pack->categories().
@@ -361,6 +383,10 @@ class UISE_DESKTOP_EXPORT ChatReactionGallery : public Frame
         QFrame* m_recentFrame;
         QLabel* m_recentTitle;
         ChatReactionQuickBar* m_recentBar;
+
+        //! A setRecentIds() list held back while the gallery is visible -- see setRecentIds().
+        QStringList m_pendingRecentIds;
+        bool m_recentIdsPending=false;
 
         SearchLineEdit* m_searchEdit;
 

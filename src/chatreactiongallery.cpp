@@ -160,6 +160,17 @@ void ChatReactionQuickBar::setLeadingIconIds(QStringList ids)
 
 //--------------------------------------------------------------------------
 
+bool ChatReactionQuickBar::showsIconId(const QString& iconId) const
+{
+    return std::any_of(m_buttons.begin(),m_buttons.end(),
+                       [&iconId](const PushButton* button)
+                       {
+                           return button->property("reactionId").toString()==iconId;
+                       });
+}
+
+//--------------------------------------------------------------------------
+
 void ChatReactionQuickBar::setChevronVisible(bool enable)
 {
     m_expandButton->setVisible(enable);
@@ -242,8 +253,14 @@ void ChatReactionQuickBar::rebuild()
         button->setCheckable(true);
         button->setChecked(m_ownReactionIds.contains(iconId));
         connect(button,&PushButton::clicked,this,
-                [this,iconId]()
+                [this,button,iconId]()
                 {
+                    // Checkable only so the button can DISPLAY "already on the message" (see
+                    // setOwnReactionIds()); a click must not also toggle it. Without this, a host
+                    // with no own reactions to show (the emoji picker passes none) left the clicked
+                    // button stuck checked. Put back before emitting: the host's handler may call
+                    // setOwnReactionIds() itself, and that has to win.
+                    button->setChecked(m_ownReactionIds.contains(iconId));
                     Q_EMIT reactionPicked(iconId);
                 });
 
@@ -565,6 +582,50 @@ class ChatReactionGalleryGrid : public QFrame
         void setPack(std::shared_ptr<AbstractReactionIconPack> pack)
         {
             m_pack=std::move(pack);
+            resetMeasuredRowWidth();
+        }
+
+        //! Forget the widest row seen so far -- for a change that alters how wide a full row is
+        //! (a new pack, a new column count). A search must NOT call this: see measuredRowWidth().
+        void resetMeasuredRowWidth() noexcept
+        {
+            m_rowWidth=0;
+        }
+
+        /**
+         * @brief Width a FULL row of icons wants, or 0 when nothing is built yet to measure.
+         *
+         * The widest size hint among the live rows, and the widest ever seen since
+         * resetMeasuredRowWidth(): a search that leaves only short rows must not shrink the
+         * panel, which would then jump wider again when the search is cleared. The first rows of
+         * a browse plan are always full, so the first measurement is already the real one.
+         */
+        int measuredRowWidth()
+        {
+            m_view->eachItem(
+                [this](const ChatReactionGalleryRowItem* item)
+                {
+                    auto* row=item->item();
+                    // Polish first: the cells' padding and border come from the QSS, and an
+                    // unpolished button reports a size without them.
+                    row->ensurePolished();
+                    m_rowWidth=std::max(m_rowWidth,row->sizeHint().width());
+                    return true;
+                }
+            );
+            return m_rowWidth;
+        }
+
+        //! Horizontal space the view takes beside its rows: the vertical scrollbar, which sits in
+        //! the view's own layout next to the viewport, plus any margins on the way in. The bar is
+        //! counted even while it is hidden -- the plan is nearly always taller than the viewport,
+        //! and a panel that widened only when the bar appeared would resize mid-scroll.
+        int scrollOverheadWidth() const
+        {
+            auto* bar=m_view->verticalScrollBar();
+            bar->ensurePolished();
+            const auto margins=contentsMargins()+m_view->contentsMargins();
+            return bar->sizeHint().width()+margins.left()+margins.right();
         }
 
         void setOwnReactionIds(QStringList ids)
@@ -766,6 +827,7 @@ class ChatReactionGalleryGrid : public QFrame
         std::shared_ptr<AbstractReactionIconPack> m_pack;
         QStringList m_ownReactionIds;
         PickHandler m_pick;
+        int m_rowWidth=0;
 };
 
 //--------------------------------------------------------------------------
@@ -951,6 +1013,13 @@ void ChatReactionGallery::showEvent(QShowEvent* event)
     std::cerr << "EMOJI-DEBUG ChatReactionGallery::showEvent objectName="
                << objectName().toStdString() << std::endl;
     Frame::showEvent(event);
+    if (m_recentIdsPending)
+    {
+        // Showing is the next open: the row catches up with picks made while it was held still.
+        m_recentIdsPending=false;
+        m_recentBar->setLeadingIconIds(std::move(m_pendingRecentIds));
+        m_pendingRecentIds.clear();
+    }
     applyRows();
 }
 
@@ -1037,16 +1106,32 @@ void ChatReactionGallery::applyRows()
     // between, and with no categories at all there never were any.
     m_categoryTabs->setVisible(searchPrefix.isEmpty() && !m_categoryTabButtons.empty() && !empty);
 
-    applyVisibleRowsHeight();
+    applyViewportSize();
 
     Q_EMIT sizeChanged();
 }
 
 //--------------------------------------------------------------------------
 
-void ChatReactionGallery::applyVisibleRowsHeight()
+void ChatReactionGallery::applyViewportSize()
 {
-    // galleryVisibleRows used to be stored and never read by anything: the gallery was as tall as
+    // Width: the panel's natural width comes from its widest child, which is the category tab
+    // strip, and nothing used to tell it that the grid's rows need more than whatever that
+    // happens to be. When they did, the viewport (the grid minus the vertical scrollbar) came out
+    // narrower than a row, clipping the last column and growing a horizontal scrollbar. The grid
+    // now states what it needs -- a full row plus the scrollbar -- and the panel widens to match.
+    // Measured from live rows and the bar's own size hint, so it tracks the theme and platform
+    // (a Windows scrollbar is wider than a macOS one) instead of baking in a number.
+    //
+    // Left alone (not reset to 0) when nothing could be measured: the previous minimum is still
+    // the best answer, and an empty plan hides the grid anyway.
+    const auto rowWidth=m_grid->measuredRowWidth();
+    if (rowWidth>0)
+    {
+        m_grid->setMinimumWidth(rowWidth+m_grid->scrollOverheadWidth());
+    }
+
+    // Height: galleryVisibleRows used to be stored and never read by anything: the gallery was as tall as
     // its whole pack and grew without bound with a bigger one. chatreactions.qss has always
     // documented this property as sizing the viewport; this is what makes that true.
     //
@@ -1147,6 +1232,19 @@ void ChatReactionGallery::setEmptyText(const QString& text)
 
 void ChatReactionGallery::setRecentIds(QStringList ids)
 {
+    // Hold the update back when the id just promoted is already in the row. The picker stays open
+    // across picks, and rebuilding the row after the first click moved that emoji to the front,
+    // so a second click on the same spot hit a different one. A pick the row does NOT show (made
+    // from the grid below) is the only thing worth changing the row for. Hidden, nothing can be
+    // clicked, so the update goes straight through.
+    if (isVisible() && !ids.isEmpty() && m_recentBar->showsIconId(ids.front()))
+    {
+        m_pendingRecentIds=std::move(ids);
+        m_recentIdsPending=true;
+        return;
+    }
+    m_recentIdsPending=false;
+    m_pendingRecentIds.clear();
     m_recentBar->setLeadingIconIds(std::move(ids));
 }
 
@@ -1154,7 +1252,7 @@ void ChatReactionGallery::setRecentIds(QStringList ids)
 
 QStringList ChatReactionGallery::recentIds() const
 {
-    return m_recentBar->leadingIconIds();
+    return m_recentIdsPending ? m_pendingRecentIds : m_recentBar->leadingIconIds();
 }
 
 //--------------------------------------------------------------------------
@@ -1171,6 +1269,8 @@ void ChatReactionGallery::setGalleryColumns(int value)
 {
     if (m_galleryColumns==value) return;
     m_galleryColumns=value;
+    // A full row is a different width now.
+    m_grid->resetMeasuredRowWidth();
     // The column count is what chops each run of icons into rows, so the whole plan changes --
     // see applyRows()'s own appendRun(). Same prefix as before, so the dirty flag has to be set
     // explicitly; rebuildRows() only infers it from a CHANGED prefix.
@@ -1184,7 +1284,7 @@ void ChatReactionGallery::setGalleryVisibleRows(int value)
 {
     if (m_galleryVisibleRows==value) return;
     m_galleryVisibleRows=value;
-    applyVisibleRowsHeight();
+    applyViewportSize();
     Q_EMIT sizeChanged();
 }
 
