@@ -426,6 +426,24 @@ UISE_DESKTOP_EXPORT QString documentMarkdownToChat(const QString& documentMarkdo
 UISE_DESKTOP_EXPORT bool emojiOnlyDocument(const QTextDocument* doc, int maxCount,
                                             std::vector<QString>& reactionIds);
 
+/**
+ * @brief The emoji-only rendering markdownToHtml() gives 1..options.emojiOnlyMaxCount emoji,
+ *  applied to PLAIN text.
+ *
+ * For a host whose plain-text messages are rendered by its own code but should still show the
+ * large "just a couple of emoji" row -- a sender that never promotes emoji text to Markdown (e.g.
+ * a mobile client) otherwise gets small OS glyphs where a desktop sender gets large pack art.
+ * The text is loaded as plain text, never parsed as Markdown, so leading whitespace and markup
+ * characters keep their literal meaning and cannot disqualify (or fake) the case.
+ *
+ * @param text Plain message text.
+ * @param options Uses emojiEnabled, emojiOnlyMaxCount and emojiOnlySize.
+ * @return The emoji-only HTML, or an empty string when the text is anything else or
+ *  options.emojiEnabled is off -- the caller then renders the text its own way.
+ */
+UISE_DESKTOP_EXPORT QString plainEmojiOnlyToHtml(const QString& text,
+                                                 const MarkdownRenderOptions& options);
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_MARKDOWN_RENDERER_HPP

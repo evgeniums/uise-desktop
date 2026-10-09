@@ -1425,6 +1425,35 @@ QString markdownToHtml(const QString& markdown, const MarkdownRenderOptions& opt
 
 //--------------------------------------------------------------------------
 
+QString plainEmojiOnlyToHtml(const QString& text, const MarkdownRenderOptions& options)
+{
+    if (!options.emojiEnabled)
+    {
+        return QString{};
+    }
+
+    // Bounded like markdownToHtml(): the test is a whole-document walk, and an emoji-only message
+    // is at most a handful of characters, so an oversized text can never qualify anyway.
+    if (text.size()>options.maxSourceChars)
+    {
+        return QString{};
+    }
+
+    QTextDocument doc;
+    doc.setPlainText(text);
+
+    std::vector<QString> reactionIds;
+    if (!emojiOnlyDocument(&doc,options.emojiOnlyMaxCount,reactionIds))
+    {
+        return QString{};
+    }
+
+    HtmlWriter writer(options);
+    return writer.renderEmojiOnly(reactionIds,options.emojiOnlySize);
+}
+
+//--------------------------------------------------------------------------
+
 QString markdownToPlainText(const QString& markdown, int maxSourceChars)
 {
     auto src=markdown;
