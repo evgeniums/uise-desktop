@@ -26,6 +26,8 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
+#include <algorithm>
+
 #include <QClipboard>
 #include <QApplication>
 #include <QCursor>
@@ -707,24 +709,54 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const std::vector<Data>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd)
+size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const std::vector<Data>& dbItems, int wasRequestedMaxCount, Direction wasRequestedDirection, bool jumpToEnd, int fillHeight)
 {
     std::vector<Message*> messages;
     std::vector<ChatMessageViewItemWrapper<BaseMessageT,Traits>> messageItems;
 
-    for (const auto& dbItem : dbItems)
+    // Whether every item was built -- false only when fillHeight stopped the build early and the
+    // older rest of dbItems is left to the caller (see loadMessages()' fillViewportOnly).
+    bool allBuilt=true;
+    if (forLoad && fillHeight>0)
     {
-        auto message=makeMessage(dbItem);
+        // Newest first, measuring as we go: each bubble is sized right away so its height is
+        // known. adjustMessagesSizes() below sizes it once more after adjustMessageList() has set
+        // its batch position (sender header, tail), which can change it slightly -- the half
+        // screen loadMessages() adds on top of the viewport absorbs that.
+        int filled=0;
+        size_t i=dbItems.size();
+        while (i>0 && filled<fillHeight)
+        {
+            --i;
+            auto message=makeMessage(dbItems[i]);
+            adjustMesssageSize(message);
+            filled+=message->ui()->sizeHint().height();
 
-        messages.push_back(message);
-        messageItems.push_back(message);
+            messages.push_back(message);
+            messageItems.push_back(message);
+        }
+        allBuilt=(i==0);
+        std::reverse(messages.begin(),messages.end());
+        std::reverse(messageItems.begin(),messageItems.end());
+    }
+    else
+    {
+        for (const auto& dbItem : dbItems)
+        {
+            auto message=makeMessage(dbItem);
+
+            messages.push_back(message);
+            messageItems.push_back(message);
+        }
     }
 
     if (forLoad || jumpToEnd)
     {
         // A load shorter than requested starts at the true beginning of the chat -- see
-        // adjustMessageList() for why that matters. An unknown request size (0) never claims it.
-        const bool startReached=wasRequestedMaxCount>0
+        // adjustMessageList() for why that matters. An unknown request size (0) never claims it,
+        // and neither does a partial build: older items of this very load are still to come.
+        const bool startReached=allBuilt
+                                && wasRequestedMaxCount>0
                                 && messageItems.size()<static_cast<size_t>(wasRequestedMaxCount);
 
         m_listView->clear();
@@ -842,14 +874,29 @@ void ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const st
             m_listView->endUpdate();
         }
     }
+
+    return messageItems.size();
 }
 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount)
+size_t ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount, bool fillViewportOnly)
 {
-    insertFetched(true,items,wasRequestedMaxCount);
+    // Below this the viewport has not been laid out yet (a page loaded before it was ever shown),
+    // so "what covers it" is meaningless -- load everything, as without fillViewportOnly.
+    constexpr int MinFillViewportHeight=100;
+
+    int fillHeight=0;
+    if (fillViewportOnly)
+    {
+        const auto viewportHeight=m_listView->viewportSize().height();
+        if (viewportHeight>=MinFillViewportHeight)
+        {
+            fillHeight=viewportHeight+viewportHeight/2;
+        }
+    }
+    return insertFetched(true,items,wasRequestedMaxCount,Direction::END,false,fillHeight);
 }
 
 //--------------------------------------------------------------------------

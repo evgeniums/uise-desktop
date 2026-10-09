@@ -445,7 +445,16 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         //! `wasRequestedMaxCount` is the item count the caller asked for (0 if unknown): a shorter
         //! result means the loaded window starts at the true beginning of the history.
-        void loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount=0);
+        //!
+        //! With `fillViewportOnly`, only the NEWEST items needed to cover the viewport (plus half
+        //! a screen) are built, newest first, measuring each bubble as it goes; the older rest of
+        //! `items` is left unloaded so the caller can prepend it later via
+        //! insertContinuousMessages(..., Direction::HOME, false) -- e.g. a few per event-loop
+        //! turn, so a chat opens without building the whole window before the first paint. Falls
+        //! back to loading everything while the viewport has no usable size yet.
+        //!
+        //! @return How many of the newest items were loaded (items.size() when all of them were).
+        size_t loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount=0, bool fillViewportOnly=false);
 
         void insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
 
@@ -696,7 +705,10 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 
-        void insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false);
+        //! `fillHeight` > 0 (forLoad only): build newest first and stop once the built bubbles are
+        //! that tall -- see loadMessages()' fillViewportOnly. Returns how many of the newest items
+        //! were built.
+        size_t insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false, int fillHeight=0);
 
         void replaceSelectedData(Message* msg);
 
