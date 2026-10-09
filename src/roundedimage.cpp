@@ -32,9 +32,36 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/datetime.hpp>
+#include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
+#include <iostream> // AVATAR-DEBUG (temporary)
+
 UISE_DESKTOP_NAMESPACE_BEGIN
+
+namespace {
+
+//! A QBrush texture TILES when its pixmap's logical size differs from the shape it fills (see
+//! scaledToFitPadded()'s doc comment). Normalizes to exactly logicalSize*dpr, tagged with dpr.
+//! A pixmap that already matches is returned untouched.
+QPixmap fitBrushPixmap(const QPixmap& px, const QSize& logicalSize, bool* adjusted=nullptr)
+{
+    const qreal pixelRatio=qApp->primaryScreen()->devicePixelRatio();
+    const QSize target=logicalSize*pixelRatio;
+    if (target.isEmpty() || (px.size()==target && qFuzzyCompare(px.devicePixelRatio(),pixelRatio)))
+    {
+        return px;
+    }
+    if (adjusted!=nullptr)
+    {
+        *adjusted=true;
+    }
+    auto result=(px.size()==target) ? px : scaledAndCropped(px,target);
+    result.setDevicePixelRatio(pixelRatio);
+    return result;
+}
+
+}
 
 
 /************************** RoundedImage **********************************/
@@ -314,6 +341,7 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
             px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
         }
     }
+    bool fromPrevConsumer=false; // AVATAR-DEBUG (temporary)
     if (px.isNull())
     {
         if (m_pixmapConsumer!=nullptr)
@@ -324,6 +352,7 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
         if (px.isNull() && m_prevPixmapConsumer!=nullptr)
         {
             px=m_prevPixmapConsumer->pixmapProducer()->pixmap();
+            fromPrevConsumer=!px.isNull();
         }
     }
 
@@ -337,8 +366,22 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
     }
     else if (!px.isNull())
     {
+        // Never hand the brush a pixmap whose logical size differs from the shape: it would tile.
+        bool adjusted=false;
+        auto brushPx=fitBrushPixmap(px,size(),&adjusted);
+        if (adjusted) // AVATAR-DEBUG (temporary)
+        {
+            std::cerr << "AVATAR-DEBUG obj=" << objectName().toStdString()
+                      << " widget=" << size().width() << "x" << size().height()
+                      << " px=" << px.width() << "x" << px.height()
+                      << " pxDpr=" << px.devicePixelRatio()
+                      << " screenDpr=" << qApp->primaryScreen()->devicePixelRatio()
+                      << " fromPrevConsumer=" << fromPrevConsumer
+                      << " path=" << toWithPath().toString()
+                      << std::endl;
+        }
         painter.setPen(Qt::NoPen);
-        painter.setBrush(px);
+        painter.setBrush(brushPx);
         painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
     }
     else
