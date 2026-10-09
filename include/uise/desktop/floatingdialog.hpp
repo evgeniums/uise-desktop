@@ -175,6 +175,18 @@ class UISE_DESKTOP_EXPORT FloatingDialogFrame : public QFrame
         bool isAutoCloseOnOutsideClick() const noexcept;
 
         /**
+         * @brief Exempt a widget (and its children) from the outside-click dismissal.
+         * @param widget The control that opens/toggles this frame, or nullptr to clear. Not owned.
+         *
+         * A press on it never counts as "outside", so the control's own click handling stays the
+         * sole authority on what happens to the frame -- otherwise the press would close the frame
+         * and the control's clicked() would immediately reopen it. Same role as
+         * DropdownFrame::setTriggerWidget(). Only meaningful with setAutoCloseOnOutsideClick().
+         */
+        void setOutsideClickIgnoredWidget(QWidget* widget) noexcept;
+        QWidget* outsideClickIgnoredWidget() const noexcept;
+
+        /**
          * @brief Set the duration of the fade played on popup()/close().
          * @param val Duration in milliseconds; 0 disables the animation (instant show/hide,
          *  the pre-fade behaviour).

@@ -1348,12 +1348,24 @@ int main(int argc, char *argv[])
         "Emoji: use the button on the RIGHT of the editor (WYSIWYG inserts an image, Markdown "
         "source inserts the character, Plaintext hides the button entirely). HOVER it and the "
         "gallery appears without checking the button, then closes itself shortly after the "
-        "pointer leaves both it and the button; CLICK it (or pick an emoji) and the gallery is "
-        "pinned open with the button checked. The presets below load straight into the bubble to "
+        "pointer leaves both it and the button; CLICK it and the button is checked and the "
+        "gallery stays up (picking an emoji does not change that). By default the button is a "
+        "drop-down: the gallery closes on a click outside it, Escape, or another click on the "
+        "button. Tick the box below for the pin behaviour instead, where only the button, the "
+        "gallery's X or Escape close it. The presets below load straight into the bubble to "
         "show the four rendering rules:"
     ));
     emojiLabel->setWordWrap(true);
     rootLayout->addWidget(emojiLabel);
+
+    auto* emojiPinCheck=new QCheckBox(QStringLiteral("Emoji button pins the gallery on click (instead of a drop-down)"));
+    rootLayout->addWidget(emojiPinCheck);
+    QObject::connect(emojiPinCheck,&QCheckBox::toggled,msgEditor,
+        [msgEditor](bool pin)
+        {
+            msgEditor->setEmojiButtonMode(pin ? EmojiButtonMode::Pin : EmojiButtonMode::Dropdown);
+        }
+    );
 
     auto* emojiButtonsFrame=new QFrame(central);
     auto* emojiButtonsLayout=Layout::horizontal(emojiButtonsFrame);

@@ -71,6 +71,7 @@ class FloatingDialogFrame_p
         bool autoCloseOnOutsideClick=false;
         bool outsideFilterInstalled=false;
         bool suppressNextOutsideClose=false;
+        QPointer<QWidget> outsideClickIgnoredWidget;
 
         int minVisibleMargin=FloatingDialogFrame::DefaultMinVisibleMargin;
 
@@ -157,6 +158,14 @@ static bool isOutsidePress(FloatingDialogFrame* frame, QObject* obj)
 
     auto* topLevel=w->window();
     if (topLevel==frame)
+    {
+        return false;
+    }
+
+    // The widget that opens/toggles the frame (see setOutsideClickIgnoredWidget()): its own
+    // press handling decides what happens to the frame, so closing here too would race it.
+    auto* ignored=frame->outsideClickIgnoredWidget();
+    if (ignored!=nullptr && (w==ignored || ignored->isAncestorOf(w)))
     {
         return false;
     }
@@ -551,6 +560,20 @@ void FloatingDialogFrame::setAutoCloseOnOutsideClick(bool enable) noexcept
 bool FloatingDialogFrame::isAutoCloseOnOutsideClick() const noexcept
 {
     return pimpl->autoCloseOnOutsideClick;
+}
+
+//--------------------------------------------------------------------------
+
+void FloatingDialogFrame::setOutsideClickIgnoredWidget(QWidget* widget) noexcept
+{
+    pimpl->outsideClickIgnoredWidget=widget;
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* FloatingDialogFrame::outsideClickIgnoredWidget() const noexcept
+{
+    return pimpl->outsideClickIgnoredWidget.data();
 }
 
 //--------------------------------------------------------------------------

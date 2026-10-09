@@ -1303,6 +1303,10 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! @copydoc AbstractMessageEditor::setEmojiGalleryPinned()
         void setEmojiGalleryPinned(bool pinned) override;
 
+        //! @copydoc AbstractMessageEditor::setEmojiButtonMode()
+        void setEmojiButtonMode(EmojiButtonMode mode) override;
+        EmojiButtonMode emojiButtonMode() const noexcept override;
+
         //! How many entries the picker's recents row keeps. Matches the 7 basics the row falls
         //! back to when no history exists, so promoting an emoji never changes the row's width --
         //! a recents row that grew a slot on first use would shift every icon under the pointer.
@@ -1628,6 +1632,13 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
         //! never on a pick (see ensureEmojiGallery()'s emojiPicked handler). A no-op when the
         //! gallery is closed or already pinned.
         void pinEmojiGallery();
+
+        //! Re-asserts, on the (shared, per-window) gallery frame, how it is dismissed by a mouse
+        //! press elsewhere: ON only for a latched gallery in EmojiButtonMode::Dropdown, with the
+        //! emoji button exempt (its own click toggles). Called after every open and latch, and
+        //! from onEmojiGalleryClosed() to switch it back off -- the frame is shared, so a flag
+        //! left on by one open would otherwise leak into the next, hover-opened, one.
+        void applyEmojiDropdownDismissal();
 
         //! Shared body of closeEmojiGallery() (userInitiated=true) and every programmatic close
         //! (userInitiated=false -- the editor being hidden, a switch to

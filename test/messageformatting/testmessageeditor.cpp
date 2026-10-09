@@ -43,6 +43,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QFrame>
 #include <QBoxLayout>
 #include <QKeyEvent>
+#include <QMouseEvent>
+#include <QElapsedTimer>
 #include <QTextDocument>
 #include <QTextCursor>
 #include <QTextTable>
@@ -5398,6 +5400,7 @@ BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinSurvivesHideAndReopensOnShow)
         [&]()
         {
             MessageEditor editor;
+            editor.setEmojiButtonMode(EmojiButtonMode::Pin);
             editor.setEmojiButtonVisible(true);
             editor.show();
 
@@ -5438,6 +5441,7 @@ BOOST_AUTO_TEST_CASE(TestEmojiGalleryPinnedChangedSignal)
         [&]()
         {
             MessageEditor editor;
+            editor.setEmojiButtonMode(EmojiButtonMode::Pin);
             editor.setEmojiButtonVisible(true);
             editor.show();
 
@@ -5478,6 +5482,7 @@ BOOST_AUTO_TEST_CASE(TestSetEmojiGalleryPinnedOnHiddenEditorOnlyRemembers)
         [&]()
         {
             MessageEditor editor;
+            editor.setEmojiButtonMode(EmojiButtonMode::Pin);
             editor.setEmojiButtonVisible(true);
             // Deliberately never shown -- mirrors a cached chat page's composer that is not the
             // current one, which is exactly the case setEmojiGalleryPinned()'s own doc comment
@@ -5497,6 +5502,205 @@ BOOST_AUTO_TEST_CASE(TestSetEmojiGalleryPinnedOnHiddenEditorOnlyRemembers)
     );
 }
 
+namespace {
+
+//! The gallery's close runs behind a fade, so "closed" is reached a few event-loop turns later.
+bool waitEmojiGalleryClosed(const MessageEditor& editor)
+{
+    QElapsedTimer timer;
+    timer.start();
+    while (editor.isEmojiGalleryOpen() && timer.elapsed()<1000)
+    {
+        QApplication::processEvents(QEventLoop::AllEvents,20);
+    }
+    return !editor.isEmojiGalleryOpen();
+}
+
+//! A left-button press delivered through QCoreApplication::sendEvent(), which -- unlike
+//! QApplication::notify() as QTest uses it -- runs the application-wide event filters the
+//! gallery's outside-click dismissal is installed as.
+void pressMouseOn(QWidget* widget)
+{
+    const QPointF local(2,2);
+    QMouseEvent press(QEvent::MouseButtonPress,local,widget->mapToGlobal(local),
+                      Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+    QCoreApplication::sendEvent(widget,&press);
+}
+
+}
+
+BOOST_AUTO_TEST_CASE(TestEmojiButtonModeDefaultsToDropdown)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(editor.emojiButtonMode()==EmojiButtonMode::Dropdown);
+
+            editor.setEmojiButtonMode(EmojiButtonMode::Pin);
+            UISE_TEST_CHECK(editor.emojiButtonMode()==EmojiButtonMode::Pin);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestDropdownClickOpensLatchedAndClickAgainCloses)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(editor.emojiButton()->isChecked());
+
+            auto* dialog=editor.findChild<FloatingEmojiGalleryDialog*>();
+            UISE_TEST_REQUIRE(dialog!=nullptr);
+            UISE_TEST_CHECK(dialog->isAutoCloseOnOutsideClick());
+            UISE_TEST_CHECK(dialog->outsideClickIgnoredWidget()==editor.emojiButton());
+
+            // A drop-down toggles: the second click dismisses it.
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(waitEmojiGalleryClosed(editor));
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+            // The frame is shared: the dismissal must not leak into the next, hover-opened, open.
+            UISE_TEST_CHECK(!dialog->isAutoCloseOnOutsideClick());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestDropdownClickOnHoverOpenedGalleryLatchesIt)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.openEmojiGallery(false);
+            auto* dialog=editor.findChild<FloatingEmojiGalleryDialog*>();
+            UISE_TEST_REQUIRE(dialog!=nullptr);
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(!dialog->isAutoCloseOnOutsideClick());
+
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(dialog->isAutoCloseOnOutsideClick());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestDropdownNeverReportsOrRemembersAPin)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            QSignalSpy spy(&editor,&AbstractMessageEditor::emojiGalleryPinnedChanged);
+
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(waitEmojiGalleryClosed(editor));
+            UISE_TEST_CHECK(spy.isEmpty());
+
+            // A host's pin push has nothing to apply to.
+            editor.setEmojiGalleryPinned(true);
+            QApplication::processEvents();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+
+            // A latch does not come back when the composer is shown again.
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            editor.hide();
+            QApplication::processEvents();
+            editor.show();
+            QApplication::processEvents();
+            UISE_TEST_CHECK(!editor.isEmojiGalleryOpen());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+            UISE_TEST_CHECK(spy.isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestDropdownClosesOnOutsidePressButNotOnTheButton)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+            // The press that opens a frame is suppressed for one event-loop turn; get past it.
+            QApplication::processEvents();
+
+            // The trigger is exempt: its own click decides, a press on it must not race that.
+            pressMouseOn(editor.emojiButton());
+            QApplication::processEvents();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+
+            // Anywhere else in the application is "outside".
+            pressMouseOn(&editor);
+            UISE_TEST_CHECK(waitEmojiGalleryClosed(editor));
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHoverOpenedDropdownGalleryIgnoresOutsidePress)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            // Hover-open is unchanged by the mode: it is dismissed by the pointer leaving (the
+            // poll), not by a press elsewhere.
+            editor.openEmojiGallery(false);
+            QApplication::processEvents();
+            pressMouseOn(&editor);
+            QApplication::processEvents();
+            UISE_TEST_CHECK(editor.isEmojiGalleryOpen());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestSwitchingEmojiButtonModeClosesTheGalleryWithoutReporting)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEmojiButtonMode(EmojiButtonMode::Pin);
+            editor.setEmojiButtonVisible(true);
+            editor.show();
+
+            editor.emojiButton()->click();
+            UISE_TEST_CHECK(editor.isEmojiGalleryPinned());
+
+            QSignalSpy spy(&editor,&AbstractMessageEditor::emojiGalleryPinnedChanged);
+            editor.setEmojiButtonMode(EmojiButtonMode::Dropdown);
+            UISE_TEST_CHECK(waitEmojiGalleryClosed(editor));
+            UISE_TEST_CHECK(!editor.isEmojiGalleryPinned());
+            UISE_TEST_CHECK(!editor.emojiButton()->isChecked());
+            UISE_TEST_CHECK(spy.isEmpty());
+        }
+    );
+}
+
 //! task-emoji-gallery-shared-per-window.md: two composers sharing one top-level window share ONE
 //! gallery dialog rather than one each, so a chat switch between them hands it off in place --
 //! no fade, no re-anchor, and any position the user dragged it to survives exactly.
@@ -5511,6 +5715,8 @@ BOOST_AUTO_TEST_CASE(TestEmojiGallerySharedAcrossComposersInSameWindow)
             auto* editorB=new MessageEditor(&window);
             layout->addWidget(editorA);
             layout->addWidget(editorB);
+            editorA->setEmojiButtonMode(EmojiButtonMode::Pin);
+            editorB->setEmojiButtonMode(EmojiButtonMode::Pin);
             editorA->setEmojiButtonVisible(true);
             editorB->setEmojiButtonVisible(true);
             editorB->hide();

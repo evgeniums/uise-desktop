@@ -4767,6 +4767,12 @@ class MessageEditor_p
         //! frame's fade, so nothing can be cleared at the call site.
         bool emojiCloseProgrammatic=false;
 
+        //! What a click on the emoji button does -- see AbstractMessageEditor::setEmojiButtonMode().
+        //! In Dropdown mode emojiDialogPinned is only the LATCH of a click-opened gallery: it
+        //! checks the button and stops the hover poll, exactly as a pin does, but is never
+        //! remembered across a close or a hide, and never reported to the host.
+        EmojiButtonMode emojiButtonMode=EmojiButtonMode::Dropdown;
+
         //! Recently-used emoji, most recent first, bare icon ids -- see
         //! AbstractMessageEditor::setEmojiRecentIds(). Empty leaves the picker's row on the pack's
         //! own basics, which is what it showed before this existed.
@@ -5042,6 +5048,28 @@ MessageEditor::MessageEditor(QWidget* parent)
         {
             // A click is always decisive, so it never waits for (or races) the hover delay.
             pimpl->emojiHoverOpenTimer->stop();
+
+            if (pimpl->emojiButtonMode==EmojiButtonMode::Dropdown)
+            {
+                // Drop-down trigger: a click toggles. Nothing is pinned in the host's sense, so
+                // none of the emojiGalleryPinnedChanged() emits below apply. A hovered gallery is
+                // latched rather than closed, same reasoning as the Pin branch: the gesture was
+                // "keep this". The latch is dismissed by an outside press (applyEmojiDropdownDismissal())
+                // or Escape, or by clicking the button again.
+                if (pimpl->emojiDialogOpen && !pimpl->emojiDialogPinned)
+                {
+                    pinEmojiGallery();
+                }
+                else if (pimpl->emojiDialogOpen)
+                {
+                    closeEmojiGallery();
+                }
+                else
+                {
+                    openEmojiGallery();
+                }
+                return;
+            }
 
             if (pimpl->emojiDialogOpen && !pimpl->emojiDialogPinned)
             {
@@ -8049,6 +8077,23 @@ void MessageEditor::pinEmojiGallery()
     pimpl->emojiDialogPinned=true;
     stopEmojiHoverPoll();
     syncEmojiButtonChecked();
+    applyEmojiDropdownDismissal();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::applyEmojiDropdownDismissal()
+{
+    if (pimpl->emojiDialog.isNull())
+    {
+        return;
+    }
+    auto* frame=pimpl->emojiDialog.data();
+    const auto latchedDropdown=pimpl->emojiDialogOpen
+                               && pimpl->emojiDialogPinned
+                               && pimpl->emojiButtonMode==EmojiButtonMode::Dropdown;
+    frame->setOutsideClickIgnoredWidget(latchedDropdown ? pimpl->emojiButton : nullptr);
+    frame->setAutoCloseOnOutsideClick(latchedDropdown);
 }
 
 //--------------------------------------------------------------------------
@@ -8271,6 +8316,11 @@ void MessageEditor::claimEmojiGallery(EmojiGallerySharedState* state)
         previousOwner->pimpl->emojiHoverOpenTimer->stop();
         previousOwner->stopEmojiHoverPoll();
         previousOwner->pimpl->emojiDialogOpen=false;
+        if (previousOwner->pimpl->emojiButtonMode==EmojiButtonMode::Dropdown)
+        {
+            // A latch is not remembered -- see hideEvent().
+            previousOwner->pimpl->emojiDialogPinned=false;
+        }
         previousOwner->syncEmojiButtonChecked();
     }
     // Deliberately does NOT touch state->packValid: the pack is a property of the DIALOG (see
@@ -8456,6 +8506,7 @@ void MessageEditor::openEmojiGallery(bool pinned)
     pimpl->emojiDialogOpen=true;
     pimpl->emojiDialogPinned=pinned;
     syncEmojiButtonChecked();
+    applyEmojiDropdownDismissal();
 
     if (!pinned)
     {
@@ -8499,7 +8550,7 @@ void MessageEditor::closeEmojiGalleryInternal(bool userInitiated)
             pimpl->emojiDialogPinned=false;
         }
         syncEmojiButtonChecked();
-        if (userInitiated && wasPinned)
+        if (userInitiated && wasPinned && pimpl->emojiButtonMode==EmojiButtonMode::Pin)
         {
             emit emojiGalleryPinnedChanged(false);
         }
@@ -8533,16 +8584,21 @@ void MessageEditor::onEmojiGalleryClosed()
     const auto programmatic=pimpl->emojiCloseProgrammatic;
     pimpl->emojiCloseProgrammatic=false;
     pimpl->emojiDialogOpen=false;
-    if (!programmatic)
+    // A drop-down's latch is never remembered, programmatic close or not -- there is no pin for
+    // showEvent() to bring back.
+    const auto dropdown=pimpl->emojiButtonMode==EmojiButtonMode::Dropdown;
+    if (!programmatic || dropdown)
     {
         pimpl->emojiDialogPinned=false;
     }
     stopEmojiHoverPoll();
     syncEmojiButtonChecked();
+    // The frame is shared: leave it as a hover-opened gallery needs it, not as this latch did.
+    applyEmojiDropdownDismissal();
     // The one place focus returns to the text edit; see the emoji button's own clicked() handler
     // for why it deliberately does not do this itself.
     restoreEditorFocus();
-    if (wasPinned && !pimpl->emojiDialogPinned)
+    if (!dropdown && wasPinned && !pimpl->emojiDialogPinned)
     {
         emit emojiGalleryPinnedChanged(false);
     }
@@ -8568,8 +8624,42 @@ void MessageEditor::onEmojiGalleryReturnPressed(Qt::KeyboardModifiers modifiers)
 
 //--------------------------------------------------------------------------
 
+void MessageEditor::setEmojiButtonMode(EmojiButtonMode mode)
+{
+    if (pimpl->emojiButtonMode==mode)
+    {
+        return;
+    }
+    // Whatever is up was opened under the old mode's rules (a pin that would outlive a close, or
+    // a latch that must not). Taken down as a non-user close and the pin forgotten, so neither
+    // mode inherits the other's state; a host going to Pin mode re-pushes its own pin.
+    // The latch is cleared BEFORE the close for the same reason setEmojiGalleryPinned(false) does:
+    // the close is asynchronous and its closed() handler must already see the new value.
+    pimpl->emojiDialogPinned=false;
+    if (pimpl->emojiDialogOpen)
+    {
+        closeEmojiGalleryInternal(false);
+    }
+    pimpl->emojiButtonMode=mode;
+    syncEmojiButtonChecked();
+}
+
+//--------------------------------------------------------------------------
+
+EmojiButtonMode MessageEditor::emojiButtonMode() const noexcept
+{
+    return pimpl->emojiButtonMode;
+}
+
+//--------------------------------------------------------------------------
+
 void MessageEditor::setEmojiGalleryPinned(bool pinned)
 {
+    if (pimpl->emojiButtonMode==EmojiButtonMode::Dropdown)
+    {
+        // No pin exists in this mode (see EmojiButtonMode::Dropdown); a host's push is dropped.
+        return;
+    }
     if (pimpl->emojiDialogPinned==pinned)
     {
         return;
@@ -9246,6 +9336,14 @@ void MessageEditor::hideEvent(QHideEvent* event)
     // Not a user dismissal -- the pin is remembered, and showEvent() re-opens (or, more often,
     // silently keeps) it. A composer being hidden is typically a chat page going into the cache,
     // not the user closing anything.
+    if (pimpl->emojiButtonMode==EmojiButtonMode::Dropdown && pimpl->emojiDialogPinned)
+    {
+        // Unlike a pin, a drop-down's latch is not remembered: showEvent() must not bring the
+        // gallery back, and releaseEmojiGallery()'s deferred check then closes it unless another
+        // composer in the window claims it (an ordinary chat switch).
+        pimpl->emojiDialogPinned=false;
+        syncEmojiButtonChecked();
+    }
     releaseEmojiGallery();
 
     // Unlike the emoji gallery nothing is remembered: a recording of a composer that has gone is

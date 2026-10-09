@@ -56,6 +56,23 @@ namespace uise {
 // re-exported here unchanged via the #include above.
 
 /**
+ * @brief What a click on the composer's emoji button does -- see
+ *  AbstractMessageEditor::setEmojiButtonMode(). Hovering the button behaves the same in both.
+ */
+enum class EmojiButtonMode
+{
+    //! The button is a drop-down trigger: a click shows the gallery until the user clicks
+    //! outside it, presses Escape, or clicks the button again. Nothing is pinned, remembered or
+    //! reported through emojiGalleryPinnedChanged().
+    Dropdown=0,
+
+    //! A click pins the gallery: it stays up until explicitly dismissed (the button, its X,
+    //! Escape), is remembered across hide/show, and is reported through
+    //! emojiGalleryPinnedChanged() so a host can persist it.
+    Pin=1
+};
+
+/**
  * @brief Ids of the standard rows AbstractMessageEditor's own context menu builds and handles
  *  itself (see AbstractMessageEditor::setContextMenuHandler()).
  *
@@ -472,6 +489,24 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         virtual void setEmojiGalleryPinned(bool pinned)
         {
             std::ignore=pinned;
+        }
+
+        /**
+         * @brief Choose what a click on the emoji button does. Default EmojiButtonMode::Dropdown.
+         *
+         * In Dropdown mode setEmojiGalleryPinned() is ignored and emojiGalleryPinnedChanged() is
+         * never emitted: there is no pin to share or persist. Changing the mode closes an open
+         * gallery (not a user dismissal) and forgets any pin, so a host switching to Pin mode
+         * re-pushes its own setEmojiGalleryPinned() afterwards.
+         */
+        virtual void setEmojiButtonMode(EmojiButtonMode mode)
+        {
+            std::ignore=mode;
+        }
+
+        virtual EmojiButtonMode emojiButtonMode() const noexcept
+        {
+            return EmojiButtonMode::Dropdown;
         }
 
         //! Close the emoji gallery if it is open, and un-check the emoji button.
