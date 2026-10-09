@@ -717,7 +717,7 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
     // Whether every item was built -- false only when fillHeight stopped the build early and the
     // older rest of dbItems is left to the caller (see loadMessages()' fillViewportOnly).
     bool allBuilt=true;
-    if (forLoad && fillHeight>0)
+    if ((forLoad || jumpToEnd) && fillHeight>0)
     {
         // Newest first, measuring as we go: each bubble is sized right away so its height is
         // known. adjustMessagesSizes() below sizes it once more after adjustMessageList() has set
@@ -881,38 +881,40 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+int ChatMessagesView<BaseMessageT,Traits>::fillViewportHeight() const
+{
+    const auto viewportHeight=m_listView->viewportSize().height();
+    if (viewportHeight<MinFillViewportHeight)
+    {
+        return 0;
+    }
+    return viewportHeight+viewportHeight/2;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 size_t ChatMessagesView<BaseMessageT,Traits>::loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount, bool fillViewportOnly)
 {
-    // Below this the viewport has not been laid out yet (a page loaded before it was ever shown),
-    // so "what covers it" is meaningless -- load everything, as without fillViewportOnly.
-    constexpr int MinFillViewportHeight=100;
-
-    int fillHeight=0;
-    if (fillViewportOnly)
-    {
-        const auto viewportHeight=m_listView->viewportSize().height();
-        if (viewportHeight>=MinFillViewportHeight)
-        {
-            fillHeight=viewportHeight+viewportHeight/2;
-        }
-    }
+    const int fillHeight=fillViewportOnly ? fillViewportHeight() : 0;
     return insertFetched(true,items,wasRequestedMaxCount,Direction::END,false,fillHeight);
 }
 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem)
+size_t ChatMessagesView<BaseMessageT,Traits>::insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCount, Direction wasRequestedDirection, bool wasStratItem, bool fillViewportOnly)
 {
-    insertFetched(false,items,wasRequestedMaxCount,wasRequestedDirection,wasStratItem);
+    const int fillHeight=(fillViewportOnly && wasStratItem) ? fillViewportHeight() : 0;
+    return insertFetched(false,items,wasRequestedMaxCount,wasRequestedDirection,wasStratItem,fillHeight);
 }
 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
-void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
-                                                                const SortValue& minSortValue, const SortValue& maxSortValue,
-                                                                int offset)
+std::pair<size_t,size_t> ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
+                                                                                    const SortValue& minSortValue, const SortValue& maxSortValue,
+                                                                                    int offset, bool fillViewportOnly)
 {
     // Mirrors insertFetched()'s forLoad branch (clear + reload the whole list), but the min/max
     // sort-value markers come from the caller instead of being inferred from an edge load -- a
@@ -920,12 +922,78 @@ void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector
     std::vector<Message*> messages;
     std::vector<ChatMessageViewItemWrapper<BaseMessageT,Traits>> messageItems;
 
-    for (const auto& item : items)
-    {
-        auto message=makeMessage(item);
+    // [first,last) of `items` actually built.
+    size_t first=0;
+    size_t last=items.size();
 
-        messages.push_back(message);
-        messageItems.push_back(message);
+    const int viewportHeight=fillViewportOnly ? m_listView->viewportSize().height() : 0;
+    size_t anchorIdx=items.size();
+    if (viewportHeight>=MinFillViewportHeight)
+    {
+        for (size_t i=0;i<items.size();i++)
+        {
+            if (Traits::id(items[i])==anchorId)
+            {
+                anchorIdx=i;
+                break;
+            }
+        }
+    }
+
+    if (anchorIdx<items.size())
+    {
+        // Outward from the anchor, measuring as we go -- see insertFetched()'s own fill loop for
+        // why each bubble is sized right away.
+        auto build=[this,&items](size_t i, int& filled)
+        {
+            auto message=makeMessage(items[i]);
+            adjustMesssageSize(message);
+            filled+=message->ui()->sizeHint().height();
+            return message;
+        };
+
+        // scrollToItem() puts the anchor's top `offset` px below the viewport's top, so the
+        // anchor and what follows it fill the screen from there down.
+        std::vector<Message*> below;
+        int filledBelow=0;
+        size_t i=anchorIdx;
+        while (i<items.size() && filledBelow<viewportHeight+viewportHeight/2)
+        {
+            below.push_back(build(i,filledBelow));
+            ++i;
+        }
+        last=i;
+
+        // Above the anchor: its `offset` plus half a screen -- and whatever the newer side could
+        // not cover, since scrollToItem() then clamps to the list's end and shows more of the
+        // older side instead.
+        const int aboveTarget=std::max(offset,0)+viewportHeight/2+std::max(0,viewportHeight-filledBelow);
+        std::vector<Message*> above;
+        int filledAbove=0;
+        i=anchorIdx;
+        while (i>0 && filledAbove<aboveTarget)
+        {
+            --i;
+            above.push_back(build(i,filledAbove));
+        }
+        first=i;
+
+        messages.assign(above.rbegin(),above.rend());
+        messages.insert(messages.end(),below.begin(),below.end());
+        for (auto* message : messages)
+        {
+            messageItems.push_back(message);
+        }
+    }
+    else
+    {
+        for (const auto& item : items)
+        {
+            auto message=makeMessage(item);
+
+            messages.push_back(message);
+            messageItems.push_back(message);
+        }
     }
 
     // The window starts at the true beginning of the chat when the caller pinned the min marker
@@ -961,6 +1029,8 @@ void ChatMessagesView<BaseMessageT,Traits>::loadMessagesAround(const std::vector
     // valid synchronously right after loadItems(): endUpdate() (called inside loadItems()) runs
     // resizeList() inline, so the anchor's widget is already laid out.
     m_listView->scrollToItem(anchorId,offset);
+
+    return {first,last};
 }
 
 //--------------------------------------------------------------------------

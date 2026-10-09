@@ -456,7 +456,9 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! @return How many of the newest items were loaded (items.size() when all of them were).
         size_t loadMessages(const std::vector<Data>& items, int wasRequestedMaxCount=0, bool fillViewportOnly=false);
 
-        void insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true);
+        //! `fillViewportOnly` applies to a `jumpToEnd` reload only, exactly as loadMessages()'
+        //! does. Returns how many of the newest items were loaded (items.size() when all were).
+        size_t insertContinuousMessages(const std::vector<Data>& items, int wasRequestedMaxCountoverride, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=true, bool fillViewportOnly=false);
 
         //! Replace the whole list with a window centred on an arbitrary anchor (not necessarily
         //! an edge), then scroll to it. `minSortValue`/`maxSortValue` are the "is there more data
@@ -464,9 +466,20 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! loadMessages() (always an edge-anchored load), a mid-list window can't infer them from
         //! `items` alone, so the caller must supply them explicitly. `offset` is forwarded to
         //! scrollToItem() as-is (0 aligns anchorId's leading edge with the viewport's top).
-        void loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
-                                const SortValue& minSortValue, const SortValue& maxSortValue,
-                                int offset=0);
+        //!
+        //! With `fillViewportOnly`, only the items around the anchor that cover the viewport are
+        //! built, outward from it: the anchor and newer ones until the screen below its top (plus
+        //! half a screen) is covered, then older ones for `offset` plus half a screen above it --
+        //! more when the newer side runs out, since the view then scrolls up to its end. The rest
+        //! is left unloaded for the caller to prepend/append later through
+        //! insertContinuousMessages(). The markers are applied as given, so the flyweight list
+        //! keeps asking for rows on a side that was only partly built. Falls back to loading
+        //! everything when the viewport has no usable size yet or `anchorId` is not in `items`.
+        //!
+        //! @return The [first,last) index range of `items` that was loaded.
+        std::pair<size_t,size_t> loadMessagesAround(const std::vector<Data>& items, const Id& anchorId,
+                                                    const SortValue& minSortValue, const SortValue& maxSortValue,
+                                                    int offset=0, bool fillViewportOnly=false);
 
         //! Scroll to a message already present in the loaded window. False if `id` isn't loaded
         //! (this never fetches -- the caller must have loaded a window containing it first, e.g.
@@ -705,9 +718,18 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void onJumpRequested(Direction direction, bool forceLongJump, Qt::KeyboardModifiers modifiers);
 
-        //! `fillHeight` > 0 (forLoad only): build newest first and stop once the built bubbles are
-        //! that tall -- see loadMessages()' fillViewportOnly. Returns how many of the newest items
-        //! were built.
+        //! Below this the viewport has not been laid out yet (e.g. a page loaded before it was ever
+        //! shown), so "what covers it" is meaningless and fillViewportOnly loads everything.
+        constexpr static int MinFillViewportHeight=100;
+
+        //! How tall the built bubbles must be for a fillViewportOnly load: the viewport plus half a
+        //! screen, absorbing the separators/headers adjustMessageList() adds after measuring. 0
+        //! when the viewport has no usable size yet (load everything).
+        int fillViewportHeight() const;
+
+        //! `fillHeight` > 0 (forLoad or jumpToEnd only): build newest first and stop once the
+        //! built bubbles are that tall -- see loadMessages()' fillViewportOnly. Returns how many of
+        //! the newest items were built.
         size_t insertFetched(bool forLoad, const std::vector<Data>& items, int wasRequestedMaxCount=0, Direction wasRequestedDirection=Direction::END, bool jumpToEnd=false, int fillHeight=0);
 
         void replaceSelectedData(Message* msg);
