@@ -999,6 +999,15 @@ class UISE_DESKTOP_EXPORT ChatMessageTextBrowser : public QTextBrowser
         bool m_tableExpandButtonOnHover=true;
         std::vector<TrackedTable> m_tables;
         std::vector<TrackedCodeBlock> m_codeBlocks;
+
+        //! State behind setWrapWidth()'s skip rule: true while the document is laid out for its
+        //! CURRENT content at line-wrap column m_wrapColumn with idealWidth() <= m_wrapIdealCeil.
+        //! Cleared by anything that can invalidate that (any content/format change via
+        //! QTextDocument::contentsChanged, a font or style change, a wrap-mode switch).
+        bool m_wrapCurrent=false;
+        int m_wrapColumn=0;
+        int m_wrapIdealCeil=0;
+
         int m_codeBlockPadding=DefaultCodeBlockPadding;
         int m_documentTopMargin=UseDocumentMargin;
         int m_codeBlockRadius=DefaultCodeBlockRadius;

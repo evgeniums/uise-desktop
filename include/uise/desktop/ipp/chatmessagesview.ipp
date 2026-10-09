@@ -104,8 +104,17 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setDateSeparatorVisible(bool ena
         );
     }
 
+    // adjustMessageList() re-applies this to every loaded row on every pass; skip the widget
+    // writes (setText relayouts the pill) when nothing changed. isHidden() is the explicit
+    // show/hide state, so a section that was never shown (fresh, or hidden) still gets applied.
+    const auto label=chatDateLabel(m_msg->dateTime(),withYear);
+    if (!dateSection->isHidden()==enable && dateSection->text()==label)
+    {
+        return;
+    }
+
     dateSection->setVisible(enable);
-    dateSection->setText(chatDateLabel(m_msg->dateTime(),withYear));
+    dateSection->setText(label);
 }
 
 //--------------------------------------------------------------------------

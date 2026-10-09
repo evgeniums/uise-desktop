@@ -1780,6 +1780,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {
             destroyWidget(m_content);
             m_content=content;
+
+            // The new content has not been told the batch position yet -- let the next
+            // setFirstInBatch()/setLastInBatch() through even if the value is unchanged.
+            m_firstInBatchApplied=false;
+            m_lastInBatchApplied=false;
+
             m_content->setChatMessage(this);
             updateContent();
             emit contentUpdated();
@@ -2035,15 +2041,32 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
             emit selectionUpdated(m_selected);
         }
 
+        //! No-op when the value is unchanged AND already applied once: ChatMessagesView::
+        //! adjustMessageList() re-sets this on every loaded row on every pass, and each real
+        //! update costs a style-property write plus updateGeometry() (see
+        //! ChatMessage::updateLastInBatch()). The "applied" latch keeps the very first call
+        //! effective even when it equals the member's default, and setContent() clears it, since
+        //! a freshly attached content has not seen the current value yet.
         void setLastInBatch(bool enable)
         {
+            if (m_lastInBatchApplied && m_lastInBatch==enable)
+            {
+                return;
+            }
+            m_lastInBatchApplied=true;
             m_lastInBatch=enable;
             updateLastInBatch();
             emit lastInBatchUpdated();
         }
 
+        //! See setLastInBatch().
         void setFirstInBatch(bool enable)
         {
+            if (m_firstInBatchApplied && m_firstInBatch==enable)
+            {
+                return;
+            }
+            m_firstInBatchApplied=true;
             m_firstInBatch=enable;
             updateFirstInBatch();
             emit firstInBatchUpdated();
@@ -2192,6 +2215,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         Direction m_direction=Direction::Sent;
         bool m_firstInBatch=true;
         bool m_lastInBatch=true;
+        bool m_firstInBatchApplied=false;
+        bool m_lastInBatchApplied=false;
         bool m_contentVisible=true;
         bool m_avatarVisible=false;
         bool m_senderAvatarsAlways=false;

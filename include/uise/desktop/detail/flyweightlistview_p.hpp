@@ -585,7 +585,11 @@ class FlyweightListView_p : public OrientationInvariant
         double m_maxHiddenRatio;
         std::optional<size_t> m_prefetchItemCount;
 
-        int m_currentBatchCount;
+        //! Remaining back-to-back prefetch batches armed by the last threshold crossing, one
+        //! counter per edge: a single shared counter let a HOME trigger also fetch (and later
+        //! trim) rows below the viewport.
+        int m_currentBatchCountBefore;
+        int m_currentBatchCountAfter;
 
         bool m_enableJumpEdgeControl;
         JumpEdge* m_jumpEdge;

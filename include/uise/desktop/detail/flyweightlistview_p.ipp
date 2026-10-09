@@ -118,7 +118,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_itemsAlignment(FlyweightListViewAlignment::Center),
         m_firstShowDone(false)
 {
-    m_currentBatchCount=0;
+    m_currentBatchCountBefore=0;
+    m_currentBatchCountAfter=0;
     m_smooth.durationMs=FlyweightListView<ItemT>::DefaultSmoothFollowDurationMs;
     m_smoothTicker.setHandler(
         [this](int dtMs)
@@ -1723,7 +1724,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::clear(bool onDestroy)
     m_lastItem=nullptr;
     m_firstWidgetPos=0;
     m_prefetchItemWindow=m_prefetchItemWindowHint;
-    m_currentBatchCount=0;
+    m_currentBatchCountBefore=0;
+    m_currentBatchCountAfter=0;
     m_maxSortValueSet=false;
     m_minSortValueSet=false;
 
@@ -2943,23 +2945,23 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
              << " m_prefetchThresholdRatio=" << m_prefetchThresholdRatio
              << " prefetchItemWindow()="<<prefetchItemWindow()
              << " m_prefetchScreenCount="<<m_prefetchScreenCount
-             << " m_currentBatchCount="<<m_currentBatchCount
+             << " m_currentBatchCountBefore="<<m_currentBatchCountBefore
              << " from="<<from
              << " to="<<to;
 #endif
 
-    if ((m_currentBatchCount>0 || hiddenBefore<minPrefetch) && canFetchBefore)
+    if ((m_currentBatchCountBefore>0 || hiddenBefore<minPrefetch) && canFetchBefore)
     {
         if (m_requestItemsCb)
         {
             if (hiddenBefore<minPrefetch)
             {
-                m_currentBatchCount=m_prefetchScreenCount;
+                m_currentBatchCountBefore=m_prefetchScreenCount;
             }
-            m_currentBatchCount--;
-            if (m_currentBatchCount<0)
+            m_currentBatchCountBefore--;
+            if (m_currentBatchCountBefore<0)
             {
-                m_currentBatchCount=0;
+                m_currentBatchCountBefore=0;
             }
             m_requestItemsCb(firstItem(),prefetch,Direction::HOME);
         }
@@ -3008,18 +3010,18 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
 #endif
 
     bool canFetchAfter=last && (!m_maxSortValueSet || m_orderComparer(last->sortValue(),m_maxSortValue));
-    if ((m_currentBatchCount>0 || hiddenAfter<minPrefetch)  && canFetchAfter)
+    if ((m_currentBatchCountAfter>0 || hiddenAfter<minPrefetch)  && canFetchAfter)
     {
         if (m_requestItemsCb)
         {
             if (hiddenAfter<minPrefetch)
             {
-                m_currentBatchCount=m_prefetchScreenCount;
+                m_currentBatchCountAfter=m_prefetchScreenCount;
             }
-            m_currentBatchCount--;
-            if (m_currentBatchCount<0)
+            m_currentBatchCountAfter--;
+            if (m_currentBatchCountAfter<0)
             {
-                m_currentBatchCount=0;
+                m_currentBatchCountAfter=0;
             }
             m_requestItemsCb(lastItem(),prefetch,Direction::END);
         }
@@ -3031,7 +3033,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::checkItemCount()
 
     if (!canFetchBefore && !canFetchAfter)
     {
-        m_currentBatchCount=0;
+        m_currentBatchCountBefore=0;
+        m_currentBatchCountAfter=0;
     }
 }
 

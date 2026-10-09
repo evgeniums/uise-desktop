@@ -164,6 +164,17 @@ ChatMessageTextBrowser::ChatMessageTextBrowser(QWidget* parent) : QTextBrowser(p
 
     setLineWrapMode(FixedPixelWidth);
 
+    // Any edit of the document (setHtml(), a root-frame margin or block-format change, ...)
+    // invalidates what setWrapWidth() remembers about the current layout -- see its comment.
+    // Layout-only changes (page size) do not emit this, which is what lets setWrapWidth() keep its
+    // own bookkeeping across its relayouts.
+    connect(document(),&QTextDocument::contentsChanged,this,
+        [this]()
+        {
+            m_wrapCurrent=false;
+        }
+    );
+
     // Qt's own 40px per indent level leaves even a one-level list a long way from the bubble's
     // edge, and it has to agree with the composer's -- see DefaultListIndentWidth.
     document()->setIndentWidth(DefaultListIndentWidth);
@@ -241,7 +252,16 @@ void ChatMessageTextBrowser::updateSize()
     // already caps idealWidth() at the text width in that case.
     auto ideal=document()->idealWidth();
     auto cap=lineWrapColumnOrWidth();
-    document()->setTextWidth((cap>0 && ideal>cap) ? static_cast<qreal>(cap) : ideal);
+    const qreal target=(cap>0 && ideal>cap) ? static_cast<qreal>(cap) : ideal;
+
+    // QTextDocument::setTextWidth() relayouts (and so reshapes every block) even when the width is
+    // unchanged. It is unchanged whenever the content fills the whole wrap width -- the
+    // setLineWrapColumnOrWidth() that setWrapWidth() just made already laid the document out at
+    // exactly `cap`, so repeating it is a second identical layout of every long message.
+    if (!qFuzzyCompare(document()->textWidth()+1.0,target+1.0))
+    {
+        document()->setTextWidth(target);
+    }
     updateGeometry();
 }
 
@@ -249,6 +269,32 @@ void ChatMessageTextBrowser::updateSize()
 
 void ChatMessageTextBrowser::setWrapWidth(int w)
 {
+    // Skip the whole pass when it provably reproduces the current layout. Every document relayout
+    // reshapes all text (QTextLayout::beginLayout() drops the shaping results), and a bubble
+    // negotiation asks twice -- ChatMessageText::bubbleWidthHint() at the full budget, then
+    // updateMaximumBubbleWidth() at the width that hint measured -- each costing two layouts
+    // (relayoutDocument() at w, then updateSize() at the ideal width).
+    //
+    // Sound when the document is already laid out for its current content at column
+    // m_wrapColumn with idealWidth() <= m_wrapIdealCeil, and the new width satisfies
+    // m_wrapIdealCeil <= w <= m_wrapColumn: wrapping is greedy, so every existing line already fits
+    // within w (it fits within the ideal width), and the word that did not fit at the wider column
+    // cannot fit at w either -- identical line breaks, identical idealWidth(), identical text width.
+    // Not applied to documents with code blocks or tables: their width logic
+    // (applyCodeBlockOverflow(), applyWideTableLayout()) reads the column itself and measures the
+    // document unconstrained, so they always take the full path.
+    if (m_wrapCurrent
+        && lineWrapMode()==FixedPixelWidth
+        && lineWrapColumnOrWidth()==m_wrapColumn
+        && m_tables.empty() && m_codeBlocks.empty()
+        && w>=m_wrapIdealCeil && w<=m_wrapColumn)
+    {
+        // updateSize() ends with this on the full path; keep the parent layout's invalidation
+        // behaviour identical even though the size hint cannot have changed.
+        updateGeometry();
+        return;
+    }
+
     setLineWrapColumnOrWidth(w);
     // Re-evaluate wide tables against the NEW width before shrink-wrapping: this is where the
     // wrap width first becomes known at all (setHtmlContent() runs before any negotiation pass,
@@ -262,6 +308,12 @@ void ChatMessageTextBrowser::setWrapWidth(int w)
     // scrollbar by one negotiation. applyWideTableLayout() above has already had its say on the
     // shared scrollbar; this runs after it, so the combined decision is the final one.
     applyCodeBlockOverflow();
+
+    // Recorded last: nothing above edits the document's content for a document without tables or
+    // code blocks, and for one with them the skip rule at the top never applies anyway.
+    m_wrapColumn=lineWrapColumnOrWidth();
+    m_wrapIdealCeil=qCeil(document()->idealWidth());
+    m_wrapCurrent=true;
 }
 
 //--------------------------------------------------------------------------
@@ -784,6 +836,7 @@ void ChatMessageTextBrowser::setViewerMode(bool enable)
         return;
     }
     m_viewerMode=enable;
+    m_wrapCurrent=false;
 
     if (m_viewerMode)
     {
@@ -1492,6 +1545,16 @@ void ChatMessageTextBrowser::registerEmojiResources(const QString& html)
 
 void ChatMessageTextBrowser::setHtmlContent(const QString& html)
 {
+    // Polish BEFORE m_lastHtml is set. A fresh browser's first polish otherwise lands after this
+    // load (typically ChatMessageContent::updateWidgets() -> setVisible() -> ensurePolished()),
+    // and every qproperty-* it applies (linkColor, linkUnderline, mentionColor,
+    // documentTopMargin) plus its trailing QEvent::StyleChange re-runs applyDocumentStyle()'s
+    // full setHtml() replay or a whole-document relayout of the text just loaded here --
+    // profiled at ~15-19% of a chat-scroll prefetch stall. Polished first, those all see an empty
+    // m_lastHtml and only set the document's default stylesheet, so the HTML below is parsed and
+    // laid out once, already in its final style. A no-op once polished (a re-load, an edit).
+    ensurePolished();
+
     m_lastHtml=html;
     // Before setHtml(), never after -- see registerEmojiResources()'s own doc comment.
     registerEmojiResources(html);
@@ -1534,6 +1597,9 @@ void ChatMessageTextBrowser::setPlainTextContent(const QString& text)
     // only ever cleared by loading new HTML) -- in a recycled flyweight bubble, potentially
     // someone else's message. See this method's own header doc comment.
     m_lastHtml.clear();
+    // Same reason as setHtmlContent(): let the first polish's qproperty/StyleChange work happen
+    // on an empty document rather than relaying out the text set just below.
+    ensurePolished();
     setPlainText(text);
     applyDocumentTopMargin();
     // Plain text has no images -- run the pass anyway for the same "clear the previous content's
@@ -1678,6 +1744,14 @@ void ChatMessageTextBrowser::setSyntaxHighlightingEnabled(bool enable)
 void ChatMessageTextBrowser::changeEvent(QEvent* event)
 {
     QTextBrowser::changeEvent(event);
+
+    // A new font or style can move every line break without touching the document's content, so
+    // what setWrapWidth() remembers about the layout no longer holds.
+    if (event->type()==QEvent::StyleChange || event->type()==QEvent::FontChange)
+    {
+        m_wrapCurrent=false;
+    }
+
     if (event->type()==QEvent::StyleChange)
     {
         // Style::instance().css() can change on a theme switch even when this widget's OWN
