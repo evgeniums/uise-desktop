@@ -1,0 +1,10 @@
+/*
+ * ListReorderDrop -- the line shown between rows while a row is dragged to a new place in a list.
+ * Neutral geometry (theme-agnostic); the thickness is set in code. Colours live in
+ * light/listreorder.qss and dark/listreorder.qss.
+ */
+
+QFrame#listReorderIndicator {
+    border: none;
+    border-radius: 1px;
+}

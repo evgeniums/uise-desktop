@@ -18,9 +18,10 @@ You may select, at your option, one of the above-listed licenses.
 /** @file uise/desktop/utils/dragsource.hpp
 *
 *  Declares helpers for starting an OUTGOING file drag (dragging a local file OUT of a widget
-*  onto the desktop, a file manager, or another application). This is the only place in the
-*  library that constructs a QDrag -- everywhere else (FileUploadWidget, FileDropOverlay) only
-*  ever accepts an incoming drop.
+*  onto the desktop, a file manager, or another application), and for dragging a row to a new
+*  place inside its own list. This is the only place in the library that constructs a QDrag --
+*  everywhere else (FileUploadWidget, FileDropOverlay, ListReorderDrop) only ever accepts an
+*  incoming drop.
 *
 */
 
@@ -104,6 +105,20 @@ class UISE_DESKTOP_EXPORT DragGesture
  *  still being resolved asynchronously. true once QDrag::exec() has returned.
  */
 UISE_DESKTOP_EXPORT bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& preview={}, const QString& sourceTag={});
+
+/**
+ * @brief Start a drag that moves a row inside a list.
+ * @param source The row widget the drag originates from -- becomes QDrag's parent.
+ * @param listTag Identity of the list the row belongs to, see ListReorderDrop. A list refuses a
+ *  drag whose tag is not its own, so a row cannot be dropped into another list.
+ * @param itemId Id of the dragged row.
+ * @param preview Pixmap shown under the cursor while dragging; may be null.
+ * @return false, without starting a drag, when listTag or itemId is empty or the left mouse
+ *  button is no longer down. true once QDrag::exec() has returned.
+ *
+ * The payload is read back with mimeDataListReorder().
+ */
+UISE_DESKTOP_EXPORT bool startListReorderDrag(QWidget* source, const QString& listTag, const QString& itemId, const QPixmap& preview={});
 
 UISE_DESKTOP_NAMESPACE_END
 

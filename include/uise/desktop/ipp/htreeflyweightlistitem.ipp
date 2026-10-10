@@ -113,6 +113,36 @@ HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::HTreeFlyweightList
 
 //--------------------------------------------------------------------------
 
+template <typename ItemT, typename BaseT, typename OrderComparer, typename IdComparer>
+void HTreeFlyweightListView<ItemT,BaseT,OrderComparer,IdComparer>::enableDragReorder(ListReorderDrop::DroppedFn onMoved)
+{
+    if (!m_reorderDrop.isNull())
+    {
+        m_reorderDrop->setDroppedFn(std::move(onMoved));
+        return;
+    }
+
+    auto rowsFn=[this]()
+    {
+        std::vector<ListReorderDrop::Row> rows;
+        this->listView()->eachItem(
+            [&rows](const auto* item)
+            {
+                auto* row=item->widget();
+                if (row!=nullptr && row->isDragReorderEnabled())
+                {
+                    rows.push_back({row->uniqueId(),row});
+                }
+                return true;
+            }
+        );
+        return rows;
+    };
+    m_reorderDrop=new ListReorderDrop(this,std::move(rowsFn),std::move(onMoved));
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_IPP

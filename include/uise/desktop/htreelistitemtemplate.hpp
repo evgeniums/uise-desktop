@@ -237,11 +237,33 @@ class HTreeListItemT : public BaseT
             return m_buttonMode;
         }
 
+        /**
+         * @brief Let the user drag the row to a new place in its list.
+         * @param enable Enable or disable dragging.
+         *
+         * The list must have a ListReorderDrop target for the drag to go anywhere, see
+         * HTreeFlyweightListView::enableDragReorder(). While enabled the row opens its node on
+         * mouse release instead of press, because the same press may turn into a drag; moving
+         * the mouse past the drag distance starts the drag and the row is not opened. A row
+         * with dragging disabled opens on press, as before.
+         */
+        void setDragReorderEnabled(bool enable);
+        bool isDragReorderEnabled() const noexcept;
+
+        /**
+         * @brief Add entries to the row's context menu.
+         * @param extender Called with the menu after the standard entries and fillContextMenu()
+         *  have been added. Pass an empty function to remove it.
+         */
+        void setContextMenuExtender(std::function<void (QMenu*)> extender);
+
     protected:
 
         void enterEvent(QEnterEvent *event) override;
         void leaveEvent(QEvent *event) override;
         void mousePressEvent(QMouseEvent *event) override;
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void mouseReleaseEvent(QMouseEvent *event) override;
         void mouseDoubleClickEvent(QMouseEvent *event) override;
 
         virtual void fillContextMenu(QMenu* menu);

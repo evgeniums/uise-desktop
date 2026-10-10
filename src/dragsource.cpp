@@ -126,4 +126,29 @@ bool startFileUrlDrag(QWidget* source, const QList<QUrl>& urls, const QPixmap& p
 
 //--------------------------------------------------------------------------
 
+bool startListReorderDrag(QWidget* source, const QString& listTag, const QString& itemId, const QPixmap& preview)
+{
+    if (listTag.isEmpty() || itemId.isEmpty() || !(QApplication::mouseButtons() & Qt::LeftButton))
+    {
+        return false;
+    }
+
+    auto* drag=new QDrag(source);
+    auto* mimeData=new QMimeData();
+    mimeData->setData(listReorderMimeFormat(),(listTag+QChar(0x1f)+itemId).toUtf8());
+    drag->setMimeData(mimeData);
+    if (!preview.isNull())
+    {
+        drag->setPixmap(preview);
+        // centre of the preview, in logical pixels
+        const auto ratio=preview.devicePixelRatio();
+        drag->setHotSpot(QPoint(static_cast<int>(preview.width()/ratio/2),static_cast<int>(preview.height()/ratio/2)));
+    }
+
+    drag->exec(Qt::MoveAction);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

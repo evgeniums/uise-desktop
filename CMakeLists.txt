@@ -71,6 +71,7 @@ SET (HEADERS
     include/uise/desktop/utils/flowpack.hpp
     include/uise/desktop/utils/mimedatautils.hpp
     include/uise/desktop/utils/dragsource.hpp
+    include/uise/desktop/utils/listreorderdrop.hpp
 
     include/uise/desktop/linkedlistview.hpp
     include/uise/desktop/linkedlistviewitem.hpp
@@ -338,6 +339,7 @@ SET (SOURCES
     src/mimedatautils.cpp
     src/filenamevalidator.cpp
     src/dragsource.cpp
+    src/listreorderdrop.cpp
     src/alignedstretchingwidget.cpp
     src/autoresizingtextedit.cpp
     src/editablelabel.cpp

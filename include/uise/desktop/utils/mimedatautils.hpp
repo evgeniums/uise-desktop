@@ -161,6 +161,23 @@ UISE_DESKTOP_EXPORT const QString& dragSourceMimeFormat();
  */
 UISE_DESKTOP_EXPORT QString mimeDataDragSourceTag(const QMimeData* mimeData);
 
+/**
+ * @brief Get the private MIME format of a drag that moves a row inside a list.
+ * @return "application/x-uise-list-reorder" -- ignored by every other application. Its payload is
+ *  the tag of the list the row belongs to and the row's id; read it back with
+ *  mimeDataListReorder().
+ */
+UISE_DESKTOP_EXPORT const QString& listReorderMimeFormat();
+
+/**
+ * @brief Read the list tag and the row id of a list-reorder drag.
+ * @param mimeData Payload to inspect; nullptr is treated as not a list-reorder drag.
+ * @param listTag Receives the tag of the list the dragged row belongs to.
+ * @param itemId Receives the id of the dragged row.
+ * @return true if mimeData carries listReorderMimeFormat() with both a tag and an id.
+ */
+UISE_DESKTOP_EXPORT bool mimeDataListReorder(const QMimeData* mimeData, QString& listTag, QString& itemId);
+
 UISE_DESKTOP_NAMESPACE_END
 
 #endif // UISE_DESKTOP_MIMEDATAUTILS_HPP

@@ -1,0 +1,9 @@
+/*
+ * ListReorderDrop -- dark theme colours.
+ *
+ * Same accent as the count badges, so the drop line reads as part of the same interface.
+ */
+
+QFrame#listReorderIndicator {
+    background-color: #4895ef;
+}

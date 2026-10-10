@@ -316,4 +316,34 @@ QString mimeDataDragSourceTag(const QMimeData* mimeData)
 
 //--------------------------------------------------------------------------
 
+const QString& listReorderMimeFormat()
+{
+    static const QString format=QStringLiteral("application/x-uise-list-reorder");
+    return format;
+}
+
+//--------------------------------------------------------------------------
+
+bool mimeDataListReorder(const QMimeData* mimeData, QString& listTag, QString& itemId)
+{
+    if (mimeData==nullptr || !mimeData->hasFormat(listReorderMimeFormat()))
+    {
+        return false;
+    }
+
+    // "<tag>\x1f<id>": the unit separator cannot appear in a tag built by the library and is
+    // not expected in a row id
+    const auto parts=QString::fromUtf8(mimeData->data(listReorderMimeFormat())).split(QChar(0x1f));
+    if (parts.size()!=2 || parts[0].isEmpty() || parts[1].isEmpty())
+    {
+        return false;
+    }
+
+    listTag=parts[0];
+    itemId=parts[1];
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 UISE_DESKTOP_NAMESPACE_END

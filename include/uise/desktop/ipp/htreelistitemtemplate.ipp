@@ -35,6 +35,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
+#include <uise/desktop/utils/dragsource.hpp>
+#include <uise/desktop/utils/listreorderdrop.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/svgicon.hpp>
@@ -68,6 +70,11 @@ class HTreeListItemT_p
 
         bool openInTabEnabled=true;
         bool openInWindowEnabled=true;
+
+        bool dragReorder=false;
+        DragGesture dragGesture;
+
+        std::function<void (QMenu*)> menuExtender;
 
         QPointer<QObject> navigationObj;
         std::function<void(const HTreePathElement&,const HTreePath&)> openFn;
@@ -138,6 +145,10 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint&)
     }
 
     fillContextMenu(menu);
+    if (pimpl->menuExtender)
+    {
+        pimpl->menuExtender(menu);
+    }
 
     menu->setDefaultAction(open);
     menu->exec(QCursor::pos());
@@ -375,7 +386,98 @@ void HTreeListItemT<BaseT>::mousePressEvent(QMouseEvent *event)
         return;
     }
 
+    if (pimpl->dragReorder && !m_buttonMode && event->button()==Qt::LeftButton)
+    {
+        // The press may turn into a drag, so the click waits for the release. Accepting the press
+        // makes this row get the moves and the release even when a child widget got the press.
+        pimpl->dragGesture.press(event->position().toPoint());
+        event->accept();
+        return;
+    }
+
     click();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::mouseMoveEvent(QMouseEvent *event)
+{
+    if (!pimpl->dragGesture.isArmed())
+    {
+        QFrame::mouseMoveEvent(event);
+        return;
+    }
+
+    if (!(event->buttons()&Qt::LeftButton))
+    {
+        pimpl->dragGesture.reset();
+        return;
+    }
+
+    if (!pimpl->dragGesture.movedPastThreshold(event->position().toPoint()))
+    {
+        return;
+    }
+    pimpl->dragGesture.reset();
+
+    const auto tag=listReorderTagFor(this);
+    if (tag.isEmpty())
+    {
+        return;
+    }
+
+    // The drop is reported after the drag has ended, so this row is not touched afterwards: the
+    // owner may reload the list and destroy it.
+    startListReorderDrag(this,tag,QString::fromStdString(uniqueId()),this->grab());
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (pimpl->dragGesture.isArmed())
+    {
+        const bool isClick=pimpl->dragGesture.releaseIsClick();
+        pimpl->dragGesture.reset();
+        if (isClick && event->button()==Qt::LeftButton)
+        {
+            event->accept();
+            click();
+            return;
+        }
+    }
+
+    QFrame::mouseReleaseEvent(event);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::setDragReorderEnabled(bool enable)
+{
+    pimpl->dragReorder=enable;
+    if (!enable)
+    {
+        pimpl->dragGesture.reset();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+bool HTreeListItemT<BaseT>::isDragReorderEnabled() const noexcept
+{
+    return pimpl->dragReorder;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::setContextMenuExtender(std::function<void (QMenu*)> extender)
+{
+    pimpl->menuExtender=std::move(extender);
 }
 
 //--------------------------------------------------------------------------

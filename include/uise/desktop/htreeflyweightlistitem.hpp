@@ -26,7 +26,10 @@ You may select, at your option, one of the above-listed licenses.
 #ifndef UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_HPP
 #define UISE_DESKTOP_HTREE_FLYWEIGHT_LIST_ITEM_HPP
 
+#include <QPointer>
+
 #include <uise/desktop/uisedesktop.hpp>
+#include <uise/desktop/utils/listreorderdrop.hpp>
 #include <uise/desktop/flyweightlistview.hpp>
 #include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/flyweightlistitem.hpp>
@@ -153,6 +156,22 @@ class HTreeFlyweightListView : public HTreeListFlyweightView<HTreeFlyweightListI
 
         HTreeFlyweightListView(int minimumWidth) : HTreeFlyweightListView(nullptr,minimumWidth)
         {}
+
+        /**
+         * @brief Let the user move rows of the list by dragging them.
+         * @param onMoved Called when a row has been dropped at a new place, with the row's id and
+         *  the slot it was dropped at, see ListReorderDrop. The list is not changed here: the
+         *  owner stores the new place and reloads the list. Calling this again replaces the
+         *  callback.
+         *
+         * Only rows with setDragReorderEnabled(true) can be dragged and count as places; other
+         * rows of the list stay where they are.
+         */
+        void enableDragReorder(ListReorderDrop::DroppedFn onMoved);
+
+    private:
+
+        QPointer<ListReorderDrop> m_reorderDrop;
 };
 
 #if defined(_MSC_VER) && !defined(UISE_DESKTOP_BUILD)
