@@ -319,8 +319,9 @@ class UISE_DESKTOP_EXPORT ChatMessageReactionsRow : public Frame
         //! mode for a pure view.
         void toggleRequested(const QString& reactionId, bool currentlyOwn);
 
-        //! The trailing "..." overflow chip was clicked.
-        void moreRequested();
+        //! The trailing "..." overflow chip was clicked. `chipGlobalRect` is that chip's rect in
+        //! global coordinates, so a host can anchor a popup at it.
+        void moreRequested(const QRect& chipGlobalRect);
 
     protected:
 

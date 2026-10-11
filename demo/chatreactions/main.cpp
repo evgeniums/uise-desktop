@@ -186,9 +186,10 @@ int main(int argc, char *argv[])
         }
     );
     QObject::connect(reactionsSection,&AbstractChatMessageReactions::moreRequested,log,
-        [logMsg]()
+        [logMsg](const QRect& chipGlobalRect)
         {
-            logMsg(QStringLiteral("moreRequested: host would show a who-reacted-with-what list here"));
+            logMsg(QStringLiteral("moreRequested: host would show a who-reacted-with-what list at (%1,%2 %3x%4)")
+                   .arg(chipGlobalRect.x()).arg(chipGlobalRect.y()).arg(chipGlobalRect.width()).arg(chipGlobalRect.height()));
         }
     );
 
@@ -290,7 +291,7 @@ int main(int argc, char *argv[])
         }
     );
     QObject::connect(reactionsSection->row(),&ChatMessageReactionsRow::moreRequested,log,
-        [logMsg]()
+        [logMsg](const QRect&)
         {
             logMsg(QStringLiteral("row moreRequested (\"...\" chip clicked)"));
         }

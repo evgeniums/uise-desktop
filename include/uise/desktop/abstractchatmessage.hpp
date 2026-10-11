@@ -665,7 +665,8 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageReactions : public ChatMessageConte
 
         //! The trailing "..." overflow chip was clicked -- the host is expected to show a
         //! who-reacted-with-what list (task-chat-message-reactions.md's "who-when-read submenu").
-        void moreRequested();
+        //! `chipGlobalRect` is the chip's rect in global coordinates, to anchor that list at.
+        void moreRequested(const QRect& chipGlobalRect);
 };
 
 class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentSection

@@ -115,9 +115,26 @@ class UISE_DESKTOP_EXPORT MenuItem
             return item;
         }
 
+        /**
+         * @brief Construct an item that opens a host-provided DropdownFrame instead of a child menu.
+         *
+         * For content a menu row cannot express (a list with avatars, a form). The row looks and
+         * behaves like any submenu row -- chevron, hover-to-open, click-to-open -- but what opens
+         * is the frame the host registered with DropdownMenu::setSubmenuFrame(), which is asked
+         * for in DropdownMenu::submenuAboutToShow(id). A frame submenu with no frame registered
+         * by then simply does not open. The row's text, enabled and visible state are ordinary
+         * (setItemText() etc.), so a host can update it while the menu is open.
+         */
+        static MenuItem frameSubmenu(int id, QString text, std::shared_ptr<SvgIcon> icon={})
+        {
+            MenuItem item(id,std::move(text),std::move(icon));
+            item.isFrameSubmenu=true;
+            return item;
+        }
+
         bool hasSubmenu() const noexcept
         {
-            return !children.empty();
+            return isFrameSubmenu || !children.empty();
         }
 
         int id=-1;
@@ -129,6 +146,11 @@ class UISE_DESKTOP_EXPORT MenuItem
         bool isSeparator=false;
         bool isVisible=true;
         bool isSection=false;
+
+        /**
+         * @brief The row opens a host-provided frame (see frameSubmenu()); children stays empty.
+         */
+        bool isFrameSubmenu=false;
 
         /**
          * @brief Exclusive (radio-like) group this item belongs to, or -1 for none.
@@ -275,6 +297,29 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
          */
         DropdownMenu* submenuFor(int id) const;
 
+        /**
+         * @brief Register the frame a MenuItem::frameSubmenu() row opens.
+         * @param id Id of the frame-submenu item.
+         * @param frame The frame to open beside the row, or nullptr to unregister.
+         *
+         * Normally called from a slot of submenuAboutToShow(id), which fires on every opening just
+         * before the frame is shown, so the host can fill it with fresh content first. The frame is
+         * chained to this menu (DropdownFrame::setChainParent()), so a click inside it does not
+         * dismiss the menu, and an outside click or Escape closes both. The menu does NOT take
+         * ownership: the host keeps the frame alive for as long as it is registered, and the menu
+         * unchains it when it is unregistered, replaced, or the menu is destroyed or cleared.
+         * Re-registering the same frame is a cheap no-op.
+         *
+         * A plain DropdownFrame draws no background, so give the frame a style: either the
+         * ready-made one, setObjectName("dropdownPanel") (dropdownmenu.qss), or your own.
+         */
+        void setSubmenuFrame(int id, DropdownFrame* frame);
+
+        /**
+         * @brief The frame registered for a frame-submenu item, or nullptr.
+         */
+        DropdownFrame* submenuFrame(int id) const;
+
     signals:
 
         void itemTriggered(int id);
@@ -285,7 +330,8 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
          * @param id Id of the submenu item being opened.
          *
          * Last chance to edit that item's children (via items()/setItems() reaching into the
-         * descriptor tree) before the submenu measures itself.
+         * descriptor tree) before the submenu measures itself. For a MenuItem::frameSubmenu()
+         * row this is where the host calls setSubmenuFrame() and fills the frame.
          */
         void submenuAboutToShow(int id);
 

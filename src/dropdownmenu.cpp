@@ -66,6 +66,11 @@ class DropdownMenu_p
         // on every single opening
         std::map<int,QPointer<DropdownMenu>> submenus;
 
+        // host-owned frames of MenuItem::frameSubmenu() rows (see DropdownMenu::setSubmenuFrame()).
+        // Kept apart from `submenus` on purpose: those are menus THIS class creates, caches and
+        // destroys; these are only borrowed, and are unchained -- never destroyed -- here.
+        std::map<int,QPointer<DropdownFrame>> frameSubmenus;
+
         SingleShotTimer* hoverTimer=nullptr;
         int openSubmenuId=-1;
         int hoverDelayMs=DropdownMenu::DefaultSubmenuHoverDelayMs;
@@ -173,6 +178,15 @@ DropdownMenu::~DropdownMenu()
         kv.second->disconnect(this);
         kv.second->setChainParent(nullptr);
     }
+    for (auto& kv : pimpl->frameSubmenus)
+    {
+        if (kv.second.isNull())
+        {
+            continue;
+        }
+        kv.second->disconnect(this);
+        kv.second->setChainParent(nullptr);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -217,6 +231,17 @@ void DropdownMenu::clear()
         }
     }
     pimpl->submenus.clear();
+
+    // borrowed frames are unchained, not destroyed -- they belong to the host
+    for (auto& kv : pimpl->frameSubmenus)
+    {
+        if (!kv.second.isNull())
+        {
+            kv.second->disconnect(this);
+            kv.second->setChainParent(nullptr);
+        }
+    }
+    pimpl->frameSubmenus.clear();
 }
 
 //--------------------------------------------------------------------------
@@ -432,6 +457,66 @@ DropdownMenu* DropdownMenu::submenuFor(int id) const
 {
     auto it=pimpl->submenus.find(id);
     return (it!=pimpl->submenus.end()) ? it->second.data() : nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+DropdownFrame* DropdownMenu::submenuFrame(int id) const
+{
+    auto it=pimpl->frameSubmenus.find(id);
+    return (it!=pimpl->frameSubmenus.end()) ? it->second.data() : nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownMenu::setSubmenuFrame(int id, DropdownFrame* frame)
+{
+    auto it=pimpl->frameSubmenus.find(id);
+    if (it!=pimpl->frameSubmenus.end() && it->second.data()==frame)
+    {
+        return;
+    }
+
+    // unchain whatever was registered before
+    if (it!=pimpl->frameSubmenus.end())
+    {
+        if (!it->second.isNull())
+        {
+            if (pimpl->openSubmenuId==id)
+            {
+                closeSubmenu(true);
+            }
+            it->second->disconnect(this);
+            it->second->setChainParent(nullptr);
+        }
+        pimpl->frameSubmenus.erase(it);
+    }
+
+    if (frame==nullptr)
+    {
+        return;
+    }
+
+    frame->setChainParent(this);
+    connect(
+        frame,
+        &DropdownFrame::closeRequested,
+        this,
+        [this,id](DropdownFrame::CloseReason)
+        {
+            onSubmenuClosed(id);
+        }
+    );
+    connect(
+        frame,
+        &DropdownFrame::hidden,
+        this,
+        [this,id]()
+        {
+            onSubmenuClosed(id);
+        }
+    );
+    pimpl->frameSubmenus[id]=frame;
 }
 
 //--------------------------------------------------------------------------
@@ -820,13 +905,32 @@ void DropdownMenu::openSubmenu(int id)
         return;
     }
 
-    auto* sub=ensureSubmenu(id);
-    sub->setItems(item->children);   // the child holds only a copy -- refresh it every opening
-    // rows are destroyed and rebuilt on every fillContent(), so the trigger must be re-pointed
-    // at the CURRENT row widget on every opening, not just the first
-    sub->setTriggerWidget(row);
+    DropdownFrame* sub=nullptr;
+    if (item->isFrameSubmenu)
+    {
+        // the host supplies (or refreshes) the frame in this very signal
+        emit submenuAboutToShow(id);
+        sub=submenuFrame(id);
+        if (sub==nullptr)
+        {
+            return;
+        }
+        sub->setTriggerWidget(row);
+        // same rule ensureSubmenu() applies to a child menu: a parent that pops instantly must not
+        // have its submenu grow-animate under it
+        sub->setAnimationDurationMs(animationDurationMs());
+    }
+    else
+    {
+        auto* menu=ensureSubmenu(id);
+        menu->setItems(item->children);   // the child holds only a copy -- refresh it every opening
+        // rows are destroyed and rebuilt on every fillContent(), so the trigger must be re-pointed
+        // at the CURRENT row widget on every opening, not just the first
+        menu->setTriggerWidget(row);
+        sub=menu;
 
-    emit submenuAboutToShow(id);
+        emit submenuAboutToShow(id);
+    }
 
     // anchor = this row's own vertical band, widened to THIS frame's outer edges, so the
     // submenu clears this frame's QSS padding/border and a left-flip lands on this frame's own
@@ -862,6 +966,11 @@ void DropdownMenu::closeSubmenu(bool immediate)
     if (it!=pimpl->submenus.end() && !it->second.isNull())
     {
         it->second->closeDropdown(immediate);
+    }
+
+    if (auto* frame=submenuFrame(id))
+    {
+        frame->closeDropdown(immediate);
     }
 }
 

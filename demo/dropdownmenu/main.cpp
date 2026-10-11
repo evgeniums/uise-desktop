@@ -31,6 +31,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QScrollArea>
 #include <QCursor>
 #include <QMetaEnum>
+#include <QTimer>
+#include <QStringList>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -574,6 +576,89 @@ int main(int argc, char *argv[])
         [logMsg](int id)
         {
             logMsg(QString("File menu (bottom-pinned): item %1 triggered").arg(id));
+        }
+    );
+
+    // --- 13. frame submenu: a row that opens a host-provided frame instead of a child menu ---
+    //
+    // The shape a "Read by N" row of a chat message needs: the submenu content is a custom widget
+    // that is filled asynchronously after the row opens it, and the row's own text is updated
+    // once the data arrives.
+
+    auto* audienceRow=new QFrame(central);
+    auto* audienceRowL=Layout::horizontal(audienceRow);
+    rootLayout->addWidget(audienceRow);
+
+    audienceRowL->addWidget(new QLabel(QStringLiteral("Frame submenu (content loads after 400 ms):")));
+
+    auto* audienceButton=new IconTextButton(QStringLiteral("Message"),audienceRow);
+    audienceRowL->addWidget(audienceButton);
+    audienceRowL->addStretch(1);
+
+    enum AudienceId
+    {
+        AudienceCopy=1,
+        AudienceReadBy
+    };
+
+    auto* audienceMenu=new DropdownMenu(audienceRow);
+    audienceMenu->setItems({
+        MenuItem(AudienceCopy,QStringLiteral("Copy")),
+        MenuItem::frameSubmenu(AudienceReadBy,QStringLiteral("Read by..."))
+    });
+    audienceMenu->attachTo(audienceButton);
+
+    // owned by the host, created once; the menu only borrows it
+    auto* audienceFrame=new DropdownFrame(audienceRow);
+    // a bare DropdownFrame is fully transparent (and so click-through): take the menu's look
+    audienceFrame->setObjectName("dropdownPanel");
+    QObject::connect(
+        audienceMenu,
+        &DropdownMenu::submenuAboutToShow,
+        audienceFrame,
+        [audienceMenu,audienceFrame](int id)
+        {
+            if (id!=AudienceReadBy)
+            {
+                return;
+            }
+
+            // a no-op after the first opening
+            audienceMenu->setSubmenuFrame(id,audienceFrame);
+
+            auto* loading=new QLabel(QStringLiteral("Loading..."));
+            loading->setMargin(8);
+            audienceFrame->setContent(loading);
+
+            QTimer::singleShot(
+                400,
+                audienceFrame,
+                [audienceMenu,audienceFrame]()
+                {
+                    auto* list=new QFrame();
+                    auto* listL=Layout::vertical(list);
+                    const QStringList names{QStringLiteral("Alice  10:41"),QStringLiteral("Bob  10:43"),QStringLiteral("Carol  10:50")};
+                    for (const auto& name : names)
+                    {
+                        auto* label=new QLabel(name);
+                        label->setMargin(6);
+                        listL->addWidget(label);
+                    }
+                    audienceFrame->setContent(list);
+                    audienceMenu->setItemText(AudienceReadBy,QString("Read by %1").arg(names.size()));
+                    // the frame is open and was measured around "Loading..."
+                    audienceFrame->remeasure();
+                }
+            );
+        }
+    );
+    QObject::connect(
+        audienceMenu,
+        &DropdownMenu::itemTriggered,
+        log,
+        [logMsg](int id)
+        {
+            logMsg(QString("Message menu: item %1 triggered").arg(id));
         }
     );
 
