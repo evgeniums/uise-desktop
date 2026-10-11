@@ -598,13 +598,20 @@ int main(int argc, char *argv[])
     enum AudienceId
     {
         AudienceCopy=1,
-        AudienceReadBy
+        AudienceReadBy,
+        AudienceInfo
     };
+
+    // informational: normal colours, but no hover, no click, and the menu stays open
+    MenuItem audienceInfoItem(AudienceInfo,QStringLiteral("Read at 21:37"));
+    audienceInfoItem.isInert=true;
 
     auto* audienceMenu=new DropdownMenu(audienceRow);
     audienceMenu->setItems({
         MenuItem(AudienceCopy,QStringLiteral("Copy")),
-        MenuItem::frameSubmenu(AudienceReadBy,QStringLiteral("Read by..."))
+        MenuItem::frameSubmenu(AudienceReadBy,QStringLiteral("Read by...")),
+        MenuItem::separator(),
+        audienceInfoItem
     });
     audienceMenu->attachTo(audienceButton);
 

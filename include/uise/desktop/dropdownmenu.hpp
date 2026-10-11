@@ -153,6 +153,18 @@ class UISE_DESKTOP_EXPORT MenuItem
         bool isFrameSubmenu=false;
 
         /**
+         * @brief The row is informational: it looks like any enabled row, but does nothing.
+         *
+         * No hover highlight, no press ripple, no pointing cursor, and a click on it neither emits
+         * DropdownMenu::itemTriggered() nor closes the menu -- the row is transparent to the mouse, so the
+         * events fall through to the menu frame. Unlike isEnabled=false it is not greyed out, and its text
+         * can still be changed with DropdownMenu::setItemText(). (A disabled row is for something that is
+         * not available; this is for something that is only to be read.) Keyboard activation does not exist
+         * for menu rows, so there is nothing else to switch off.
+         */
+        bool isInert=false;
+
+        /**
          * @brief Exclusive (radio-like) group this item belongs to, or -1 for none.
          *
          * Checking an item with group>=0 unchecks every other currently-checked item that
