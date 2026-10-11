@@ -484,7 +484,7 @@ void ChatMessageReactionsRow::onChipClicked(ChatMessageReactionChip* chip)
 {
     if (chip->isEllipsis())
     {
-        Q_EMIT moreRequested();
+        Q_EMIT moreRequested(QRect(chip->mapToGlobal(QPoint(0,0)),chip->size()));
         return;
     }
 

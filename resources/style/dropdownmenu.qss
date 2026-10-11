@@ -15,6 +15,23 @@ qproperty-submenuHoverDelayMs: 200;
 qproperty-submenuCloseDelayMs: 250;
 }
 
+/* A plain DropdownFrame has no background of its own (it is a translucent top-level window, so
+   with none the popup is invisible and clicks fall through to whatever is underneath). A frame
+   that holds custom content -- typically one registered with DropdownMenu::setSubmenuFrame() --
+   takes the menu's look by setObjectName("dropdownPanel"). Same metrics as DropdownMenu above, so
+   sideOffsetY cancels the panel's own padding (8px) and border (1px) the same way. */
+uise--DropdownFrame#dropdownPanel {
+padding:8px;
+border:1px solid;
+border-radius:6px;
+qproperty-offsetX: 0;
+qproperty-offsetY: 4;
+qproperty-animationDurationMs: 150;
+qproperty-easingCurveType: 6;
+qproperty-sideOffsetX: 0;
+qproperty-sideOffsetY: -9;
+}
+
 uise--DropdownMenu #menuContent {
 padding:0;
 margin:0;

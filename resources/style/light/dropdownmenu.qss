@@ -3,6 +3,11 @@ background-color: #FFFFFF;
 border-color: #D0D0D0;
 }
 
+uise--DropdownFrame#dropdownPanel {
+background-color: #FFFFFF;
+border-color: #D0D0D0;
+}
+
 uise--DropdownMenu #separator {
 background-color: #E0E0E0;
 }
