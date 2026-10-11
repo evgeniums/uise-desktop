@@ -689,6 +689,12 @@ void DropdownMenu::fillContent()
         }
         btn->setEnabled(item.isEnabled);
 
+        // see MenuItem::isInert: no hover, ripple, cursor or click -- the events fall through to the frame
+        if (item.isInert)
+        {
+            btn->setAttribute(Qt::WA_TransparentForMouseEvents,true);
+        }
+
         const auto hasSub=item.hasSubmenu();
 
         // a submenu item is never checkable -- its trailing chevron occupies the same slot the
