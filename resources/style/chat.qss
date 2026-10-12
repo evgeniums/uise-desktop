@@ -444,6 +444,12 @@ uise--AbstractChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
 
+/* An informational line ("Alice joined the chat") reads as a sentence, not a heading. Colours
+   come from the generic section rules in light/chat.qss and dark/chat.qss. */
+uise--AbstractChatSeparatorSection[separator_type="info"] uise--AvatarButton #text {
+font-weight: normal;
+}
+
 /*
  * ChatDateSubtitle - floating date pill over the chat messages viewport.
  * Colours come from the uise--ChatSeparatorSection rules in light/chat.qss and dark/chat.qss,

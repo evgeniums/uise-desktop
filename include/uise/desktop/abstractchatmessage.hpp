@@ -96,6 +96,10 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         constexpr static const char* TypeDate="date";
         constexpr static const char* TypeFolder="folder";
         constexpr static const char* TypeUnreadMessages="unread";
+        //! The message itself is an informational line (e.g. "Alice joined the chat"), shown as
+        //! this centred section while the message's own content is hidden. Kept as the LAST
+        //! section, directly above where the content would be.
+        constexpr static const char* TypeInfo="info";
 
         using AbstractChatMessageChild::AbstractChatMessageChild;
 
@@ -199,6 +203,19 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparator : public AbstractChatMessageChil
                 }
             }
             return nullptr;
+        }
+
+        //! Index of the first section of the type, -1 when there is none.
+        int sectionIndex(const QString& type) const
+        {
+            for (size_t i=0;i<m_sections.size();i++)
+            {
+                if (m_sections[i] && m_sections[i]->type()==type)
+                {
+                    return static_cast<int>(i);
+                }
+            }
+            return -1;
         }
 
     protected:

@@ -149,7 +149,9 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setUnreadSeparatorVisible(bool e
 
         section=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
         section->setType(AbstractChatSeparatorSection::TypeUnreadMessages);
-        sep->insertSection(section,10);
+        // after the date, before an informational line, which always stays directly above the
+        // (hidden) content it stands for
+        sep->insertSection(section,sep->sectionIndex(AbstractChatSeparatorSection::TypeInfo));
     }
 
     section->setVisible(enable);
@@ -2052,7 +2054,9 @@ void ChatMessagesView<BaseMessageT,Traits>::updateFloatingAvatar()
         return;
     }
     auto* bottomMsg=bottomItem->widget();
-    if (bottomMsg==nullptr || bottomMsg->avatarColumnWidget()==nullptr)
+    // A row whose content is hidden (an informational line drawn as its top separator) has no
+    // avatar column to stand in for.
+    if (bottomMsg==nullptr || bottomMsg->avatarColumnWidget()==nullptr || !bottomMsg->isContentVisible())
     {
         m_floatingAvatar->setWanted(false);
         setObscuredAvatarMessage(nullptr);
