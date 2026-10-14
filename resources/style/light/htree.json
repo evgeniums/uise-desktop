@@ -116,6 +116,17 @@
             }
         },
         {
+            "name" : "HTreeListItemMenu",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#444444" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#000000" }
+                }
+            }
+        },
+        {
             "name" : "NavigationBarDisabled",
             "modes" : {
                 "normal" : {

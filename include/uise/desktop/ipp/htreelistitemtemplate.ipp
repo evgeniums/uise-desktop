@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QLabel>
 #include <QMenu>
+#include <QPointer>
 #include <QMouseEvent>
 #include <QStyle>
 #include <QApplication>
@@ -74,8 +75,13 @@ class HTreeListItemT_p
         bool dragReorder=false;
         DragGesture dragGesture;
 
-        std::function<void (QMenu*)> menuExtender;
+        std::function<void (HTreeListItemMenu&)> menuExtender;
         std::function<void (const QPoint&)> menuHandler;
+
+        // Created on first use, items rebuilt on every popup. currentMenu holds the handlers of
+        // the host's entries for the popup that is (or was last) shown.
+        QPointer<DropdownMenu> contextMenu;
+        HTreeListItemMenu currentMenu;
 
         QPointer<QObject> navigationObj;
         std::function<void(const HTreePathElement&,const HTreePath&)> openFn;
@@ -98,67 +104,83 @@ void HTreeListItemT<BaseT>::showMenu(const QPoint& pos)
         return;
     }
 
-    auto menu=new QMenu(this);
+    // The standard entries use ids below HTreeListItemMenu::FirstCustomId, the host's entries
+    // are numbered from it.
+    constexpr const int OpenId=0;
+    constexpr const int OpenInTabId=1;
+    constexpr const int OpenInWindowId=2;
 
-    auto open=menu->addAction(QObject::tr("Open","HTreeListItem"));
-    QObject::connect(open,&QAction::triggered,qobject(),
-        [this]()
-        {
-            if (targetSubpath().isNull())
+    if (pimpl->contextMenu.isNull())
+    {
+        pimpl->contextMenu=new DropdownMenu();
+        // a context menu is expected to pop up instantly
+        pimpl->contextMenu->setAnimationDurationMs(0);
+        pimpl->contextMenu->setTriggerWidget(this);
+        QObject::connect(
+            pimpl->contextMenu,
+            &DropdownMenu::itemTriggered,
+            qobject(),
+            [this](int id)
             {
-                emit qobject()->openRequested(pathElement(),residentPath());
+                switch (id)
+                {
+                    case (OpenId):
+                        requestOpen();
+                        break;
+                    case (OpenInTabId):
+                        requestOpenInNewTab();
+                        break;
+                    case (OpenInWindowId):
+                        requestOpenInNewWindow();
+                        break;
+                    default:
+                    {
+                        // copied out first: the handler may reload the list and destroy this row
+                        auto handler=pimpl->currentMenu.handler(id);
+                        if (handler)
+                        {
+                            handler();
+                        }
+                        break;
+                    }
+                }
             }
-            else
-            {
-                emit qobject()->openSubpathRequested(targetSubpath(),residentPath());
-            }
-        }
-    );
+        );
+    }
 
+    auto icon=[this](const char* alias)
+    {
+        return Style::instance().svgIconLocator().icon(QString("HTreeListItemMenu::%1").arg(alias),this);
+    };
+
+    std::vector<MenuItem> items;
+    items.emplace_back(OpenId,QObject::tr("Open","HTreeListItem"),icon("open"));
     if (pimpl->openInTabEnabled)
     {
-        auto openInTab=menu->addAction(QObject::tr("Open in new tab","HTreeListItem"));
-        QObject::connect(openInTab,&QAction::triggered,qobject(),
-            [this]()
-            {
-                if (targetSubpath().isNull())
-                {
-                    emit qobject()->openInNewTabRequested(pathElement(),residentPath());
-                }
-                else
-                {
-                    emit qobject()->openSubpathInNewTabRequested(targetSubpath(),residentPath());
-                }
-            }
-        );
+        items.emplace_back(OpenInTabId,QObject::tr("Open in new tab","HTreeListItem"),icon("openInTab"));
     }
-
     if (pimpl->openInWindowEnabled)
     {
-        auto openInNewWindow=menu->addAction(QObject::tr("Open in new window","HTreeListItem"));
-        QObject::connect(openInNewWindow,&QAction::triggered,qobject(),
-                [this]()
-                {
-                    if (targetSubpath().isNull())
-                    {
-                        emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
-                    }
-                    else
-                    {
-                        emit qobject()->openSubpathInNewTreeRequested(targetSubpath(),residentPath());
-                    }
-                }
-        );
+        items.emplace_back(OpenInWindowId,QObject::tr("Open in new window","HTreeListItem"),icon("openInWindow"));
     }
 
-    fillContextMenu(menu);
+    pimpl->currentMenu.clear();
+    fillContextMenu(pimpl->currentMenu);
     if (pimpl->menuExtender)
     {
-        pimpl->menuExtender(menu);
+        pimpl->menuExtender(pimpl->currentMenu);
+    }
+    if (!pimpl->currentMenu.isEmpty())
+    {
+        items.emplace_back(MenuItem::separator());
+        for (const auto& item : pimpl->currentMenu.items())
+        {
+            items.emplace_back(item);
+        }
     }
 
-    menu->setDefaultAction(open);
-    menu->exec(QCursor::pos());
+    pimpl->contextMenu->setItems(std::move(items));
+    pimpl->contextMenu->popupAt(this->mapToGlobal(pos));
 }
 
 //--------------------------------------------------------------------------
@@ -198,6 +220,12 @@ HTreeListItemT<BaseT>::HTreeListItemT(HTreePathElement el, QWidget* parent)
 template <typename BaseT>
 HTreeListItemT<BaseT>::~HTreeListItemT()
 {
+    if (!pimpl->contextMenu.isNull())
+    {
+        pimpl->contextMenu->closeDropdown(true);
+        destroyWidget(pimpl->contextMenu);
+    }
+
     m_qobject->resetOnDestroy();
     m_qobject->deleteLater();
 }
@@ -311,28 +339,52 @@ void HTreeListItemT<BaseT>::click()
 #endif
         )
     {
-        if (targetSubpath().isNull())
-        {
-            emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
-        }
-        else
-        {
-            emit qobject()->openSubpathInNewTreeRequested(targetSubpath(),residentPath());
-        }
+        requestOpenInNewWindow();
         return;
     }
     if (QApplication::keyboardModifiers() & Qt::ControlModifier)
     {
-        if (targetSubpath().isNull())
-        {
-            emit qobject()->openInNewTabRequested(pathElement(),residentPath());
-        }
-        else
-        {
-            emit qobject()->openSubpathInNewTabRequested(targetSubpath(),residentPath());
-        }
+        requestOpenInNewTab();
         return;
     }
+    requestOpen();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::requestOpenInNewWindow()
+{
+    if (targetSubpath().isNull())
+    {
+        emit qobject()->openInNewTreeRequested(pathElement(),residentPath());
+    }
+    else
+    {
+        emit qobject()->openSubpathInNewTreeRequested(targetSubpath(),residentPath());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::requestOpenInNewTab()
+{
+    if (targetSubpath().isNull())
+    {
+        emit qobject()->openInNewTabRequested(pathElement(),residentPath());
+    }
+    else
+    {
+        emit qobject()->openSubpathInNewTabRequested(targetSubpath(),residentPath());
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::requestOpen()
+{
     setSelected(true);
     if (pimpl->navigationObj)
     {
@@ -482,7 +534,7 @@ bool HTreeListItemT<BaseT>::isDragReorderEnabled() const noexcept
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
-void HTreeListItemT<BaseT>::setContextMenuExtender(std::function<void (QMenu*)> extender)
+void HTreeListItemT<BaseT>::setContextMenuExtender(std::function<void (HTreeListItemMenu&)> extender)
 {
     pimpl->menuExtender=std::move(extender);
 }
@@ -516,7 +568,7 @@ void HTreeListItemT<BaseT>::mouseDoubleClickEvent(QMouseEvent *event)
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
-void HTreeListItemT<BaseT>::fillContextMenu(QMenu* menu)
+void HTreeListItemT<BaseT>::fillContextMenu(HTreeListItemMenu& menu)
 {
     std::ignore=menu;
 }

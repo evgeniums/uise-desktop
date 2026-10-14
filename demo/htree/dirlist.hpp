@@ -188,10 +188,10 @@ class DirListItem : public HTreeStandardListItem
 
     protected:
 
-        void fillContextMenu(QMenu* menu)
+        void fillContextMenu(UISE_DESKTOP_NAMESPACE::HTreeListItemMenu& menu) override
         {
-            auto action=menu->addAction("Open exclusive");
-            connect(action,&QAction::triggered,this,
+            menu.addItem(
+                "Open exclusive",
                 [this]()
                 {
                     if (entry.is_directory())

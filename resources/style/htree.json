@@ -23,6 +23,14 @@
             }
         },
         {
+            "name" : "HTreeListItemMenu",
+            "aliases" : {
+                "open" : "${uise-svg-icons-1}/arrow-right",
+                "openInTab" : "${uise-svg-icons-1}/plus",
+                "openInWindow" : "${uise-svg-icons-1}/external-link"
+            }
+        },
+        {
             "name" : "HTreeTabCloseWarn",
             "aliases" : {
                 "close" : "${uise-svg-icons-1}/x"

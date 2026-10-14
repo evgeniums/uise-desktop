@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <functional>
 #include <memory>
+#include <vector>
 #include <QFrame>
 #include <QPointer>
 
@@ -35,6 +36,8 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/htreepath.hpp>
 #include <uise/desktop/htreenode.hpp>
+#include <uise/desktop/svgicon.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -129,6 +132,80 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
         HTreePathElement m_pathElement;
         HTreePath m_residentPath;
         HTreePath m_targetSubpath;
+};
+
+/**
+ * @brief Entries a host adds to the context menu of an HTreeListItemT row.
+ *
+ * The row's standard entries (Open, Open in new tab, Open in new window) are added by the row
+ * itself; a host appends its own through HTreeListItemT::setContextMenuExtender() or
+ * HTreeListItemT::fillContextMenu(). Each entry carries the function to run when it is chosen,
+ * so the host does not deal with menu ids.
+ */
+class HTreeListItemMenu
+{
+    public:
+
+        /** Ids below this are reserved for the row's standard entries. */
+        constexpr static const int FirstCustomId=3;
+
+        /**
+         * @brief Append an entry.
+         * @param text Text of the entry.
+         * @param icon Optional icon of the entry.
+         * @param handler Called when the user chooses the entry.
+         */
+        void addItem(QString text, std::shared_ptr<SvgIcon> icon, std::function<void ()> handler)
+        {
+            m_items.emplace_back(FirstCustomId+static_cast<int>(m_handlers.size()),std::move(text),std::move(icon));
+            m_handlers.emplace_back(std::move(handler));
+        }
+
+        void addItem(QString text, std::function<void ()> handler)
+        {
+            addItem(std::move(text),std::shared_ptr<SvgIcon>{},std::move(handler));
+        }
+
+        void addSeparator()
+        {
+            m_items.emplace_back(MenuItem::separator());
+        }
+
+        bool isEmpty() const noexcept
+        {
+            return m_handlers.empty();
+        }
+
+        const std::vector<MenuItem>& items() const noexcept
+        {
+            return m_items;
+        }
+
+        /**
+         * @brief Handler of the entry with the given id.
+         * @return A copy, so the caller can run it even if running it destroys the menu's owner
+         *  (a handler may well rebuild the list the row belongs to). Empty for an unknown id.
+         */
+        std::function<void ()> handler(int id) const
+        {
+            const auto index=id-FirstCustomId;
+            if (index<0 || static_cast<size_t>(index)>=m_handlers.size())
+            {
+                return std::function<void ()>{};
+            }
+            return m_handlers[static_cast<size_t>(index)];
+        }
+
+        void clear()
+        {
+            m_items.clear();
+            m_handlers.clear();
+        }
+
+    private:
+
+        std::vector<MenuItem> m_items;
+        std::vector<std::function<void ()>> m_handlers;
 };
 
 template <typename BaseT>
@@ -227,6 +304,29 @@ class HTreeListItemT : public BaseT
 
         void click();
 
+        /**
+         * @brief Open the row's node the way a plain click does.
+         *
+         * Selects the row, then goes through the navigation handler if one is set, or emits
+         * openRequested()/openSubpathRequested() otherwise. Navigation is deferred by one short
+         * cycle so the selection highlight paints first.
+         */
+        void requestOpen();
+
+        /**
+         * @brief Open the row's node in a new tab, as Ctrl/Cmd-click does.
+         *
+         * Emits openSubpathInNewTabRequested() if the row has a target subpath, openInNewTabRequested() otherwise.
+         */
+        void requestOpenInNewTab();
+
+        /**
+         * @brief Open the row's node in a new window, as Shift-click does.
+         *
+         * Emits openSubpathInNewTreeRequested() if the row has a target subpath, openInNewTreeRequested() otherwise.
+         */
+        void requestOpenInNewWindow();
+
         void setButtonMode(bool enable)
         {
             m_buttonMode=enable;
@@ -252,19 +352,21 @@ class HTreeListItemT : public BaseT
 
         /**
          * @brief Add entries to the row's context menu.
-         * @param extender Called with the menu after the standard entries and fillContextMenu()
-         *  have been added. Pass an empty function to remove it.
+         * @param extender Called with the menu entries each time the menu is shown, after the
+         *  standard entries and fillContextMenu() have been added. Entries it adds go below a
+         *  separator. Pass an empty function to remove it.
          */
-        void setContextMenuExtender(std::function<void (QMenu*)> extender);
+        void setContextMenuExtender(std::function<void (HTreeListItemMenu&)> extender);
 
         /**
-         * @brief Show the row's context menu yourself instead of the standard QMenu.
+         * @brief Show the row's context menu yourself instead of the standard one.
          * @param handler Called with the global position the menu was requested at, each time the
          *  user asks for the menu. When set, the standard menu, fillContextMenu() and the
          *  extender are all skipped. The handler emits qobject()'s openRequested() and friends
          *  itself for the entries it offers. Pass an empty function to restore the standard menu.
          *
-         * For hosts that want a styled menu such as a DropdownMenu.
+         * For hosts that want a menu of their own, for example with entries that depend on state
+         * of the node behind the row.
          */
         void setContextMenuHandler(std::function<void (const QPoint& globalPos)> handler);
 
@@ -277,7 +379,7 @@ class HTreeListItemT : public BaseT
         void mouseReleaseEvent(QMouseEvent *event) override;
         void mouseDoubleClickEvent(QMouseEvent *event) override;
 
-        virtual void fillContextMenu(QMenu* menu);
+        virtual void fillContextMenu(HTreeListItemMenu& menu);
 
         void showMenu(const QPoint& pos);
 
