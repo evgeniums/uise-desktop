@@ -1335,7 +1335,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Yesterday</translation>
     </message>
     <message>
-        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+89"/>
+        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+103"/>
         <source>Open</source>
         <comment>HTreeListItem</comment>
         <translation>Open</translation>
@@ -1353,7 +1353,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Open in new window</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+316"/>
+        <location filename="../src/htreenode.cpp" line="+319"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Expand</translation>
@@ -2679,7 +2679,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatMessagesView</name>
     <message>
-        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+182"/>
+        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+184"/>
         <source>Unread messages</source>
         <translation>Unread messages</translation>
     </message>
@@ -3020,7 +3020,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTableViewer</name>
     <message>
-        <location filename="../src/chatmessagetext.cpp" line="+2326"/>
+        <location filename="../src/chatmessagetext.cpp" line="+2400"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3043,7 +3043,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessageTextBrowser</name>
     <message>
-        <location line="-1316"/>
+        <location line="-1337"/>
         <source>Copied</source>
         <translation>Copied</translation>
     </message>
@@ -3058,7 +3058,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Open code in a larger window</translation>
     </message>
     <message>
-        <location line="+973"/>
+        <location line="+994"/>
         <source>Show the full table</source>
         <translation>Show the full table</translation>
     </message>
@@ -3097,20 +3097,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+784"/>
-        <location line="+381"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+846"/>
+        <location line="+417"/>
         <source>Recently used</source>
         <translation>Recently used</translation>
     </message>
     <message>
-        <location line="-367"/>
-        <location line="+337"/>
+        <location line="-403"/>
+        <location line="+360"/>
         <source>Search reactions</source>
         <translation>Search reactions</translation>
     </message>
     <message>
-        <location line="-319"/>
-        <location line="+327"/>
+        <location line="-342"/>
+        <location line="+350"/>
         <source>No matching reactions</source>
         <translation>No matching reactions</translation>
     </message>
@@ -3467,7 +3467,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeNodeTitleBar</name>
     <message>
-        <location filename="../src/htreenode.cpp" line="-211"/>
+        <location filename="../src/htreenode.cpp" line="-214"/>
         <source>Close this section with all subsequent sections</source>
         <translation>Close this section with all subsequent sections</translation>
     </message>
@@ -3490,7 +3490,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeTab</name>
     <message>
-        <location filename="../src/htreetab.cpp" line="+672"/>
+        <location filename="../src/htreetab.cpp" line="+691"/>
         <source>Collapse</source>
         <translation>Collapse</translation>
     </message>
@@ -3595,7 +3595,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4942"/>
+        <location filename="../src/messageeditor.cpp" line="+4948"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3605,12 +3605,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Insert emoji</translation>
     </message>
     <message>
-        <location line="+1723"/>
+        <location line="+1745"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+2966"/>
+        <location line="+3036"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3755,7 +3755,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="-4832"/>
+        <location line="-4924"/>
         <source>Hold to record a voice message</source>
         <translation>Hold to record a voice message</translation>
     </message>
@@ -4101,7 +4101,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::PasswordDialog</name>
     <message>
-        <location filename="../src/passworddialog.cpp" line="+114"/>
+        <location filename="../src/passworddialog.cpp" line="+129"/>
         <source>Enter password</source>
         <translation>Enter password</translation>
     </message>
@@ -4127,7 +4127,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::PasswordPanel</name>
     <message>
-        <location filename="../src/passwordpanel.cpp" line="+106"/>
+        <location filename="../src/passwordpanel.cpp" line="+108"/>
         <source>Enter password</source>
         <translation>Enter password</translation>
     </message>
