@@ -257,6 +257,17 @@ class HTreeListItemT : public BaseT
          */
         void setContextMenuExtender(std::function<void (QMenu*)> extender);
 
+        /**
+         * @brief Show the row's context menu yourself instead of the standard QMenu.
+         * @param handler Called with the global position the menu was requested at, each time the
+         *  user asks for the menu. When set, the standard menu, fillContextMenu() and the
+         *  extender are all skipped. The handler emits qobject()'s openRequested() and friends
+         *  itself for the entries it offers. Pass an empty function to restore the standard menu.
+         *
+         * For hosts that want a styled menu such as a DropdownMenu.
+         */
+        void setContextMenuHandler(std::function<void (const QPoint& globalPos)> handler);
+
     protected:
 
         void enterEvent(QEnterEvent *event) override;

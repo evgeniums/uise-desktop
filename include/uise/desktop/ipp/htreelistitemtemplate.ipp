@@ -75,6 +75,7 @@ class HTreeListItemT_p
         DragGesture dragGesture;
 
         std::function<void (QMenu*)> menuExtender;
+        std::function<void (const QPoint&)> menuHandler;
 
         QPointer<QObject> navigationObj;
         std::function<void(const HTreePathElement&,const HTreePath&)> openFn;
@@ -84,10 +85,16 @@ class HTreeListItemT_p
 //--------------------------------------------------------------------------
 
 template <typename BaseT>
-void HTreeListItemT<BaseT>::showMenu(const QPoint&)
+void HTreeListItemT<BaseT>::showMenu(const QPoint& pos)
 {
     if (m_buttonMode)
     {
+        return;
+    }
+
+    if (pimpl->menuHandler)
+    {
+        pimpl->menuHandler(this->mapToGlobal(pos));
         return;
     }
 
@@ -478,6 +485,14 @@ template <typename BaseT>
 void HTreeListItemT<BaseT>::setContextMenuExtender(std::function<void (QMenu*)> extender)
 {
     pimpl->menuExtender=std::move(extender);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseT>
+void HTreeListItemT<BaseT>::setContextMenuHandler(std::function<void (const QPoint&)> handler)
+{
+    pimpl->menuHandler=std::move(handler);
 }
 
 //--------------------------------------------------------------------------
