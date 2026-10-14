@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_PASSWORD_DIALOG_HPP
 
 #include <memory>
+#include <tuple>
 
 #include <QFrame>
 #include <QPointer>
@@ -63,6 +64,29 @@ class UISE_DESKTOP_EXPORT AbstractPasswordDialog : public AbstractDialog
         virtual void setError(const QString& message)=0;
 
         virtual void reset()=0;
+
+        /**
+         * @brief Show an optional checkbox under the password field, e.g. "Remember password".
+         *
+         * Dialogs that do not support the option ignore it and isOptionChecked() stays false.
+         * The checkbox is unchecked by reset().
+         */
+        virtual void setOptionCheckBox(const QString& text, bool checked=false)
+        {
+            std::ignore=text;
+            std::ignore=checked;
+        }
+
+        //! True if the option checkbox is shown and checked.
+        virtual bool isOptionChecked() const
+        {
+            return false;
+        }
+
+        //! Hide and uncheck the option checkbox.
+        virtual void clearOptionCheckBox()
+        {
+        }
 
     signals:
 
@@ -113,6 +137,12 @@ class UISE_DESKTOP_EXPORT PasswordDialog : public Dialog<AbstractPasswordDialog>
         virtual void reset() override;
 
         virtual void construct() override;
+
+        void setOptionCheckBox(const QString& text, bool checked=false) override;
+
+        bool isOptionChecked() const override;
+
+        void clearOptionCheckBox() override;
 
     private:
 

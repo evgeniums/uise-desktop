@@ -155,6 +155,10 @@ NewPasswordDialog::~NewPasswordDialog()
 
 QString NewPasswordDialog::currentPassword() const
 {
+    if (!isCurrentPasswordVisible())
+    {
+        return QString{};
+    }
     return pimpl->currentInput->password();
 }
 
@@ -198,7 +202,14 @@ void NewPasswordDialog::setPasswordFocus()
 {
     raise();
     setFocus();
-    pimpl->currentInput->editor()->setFocus();
+    if (isCurrentPasswordVisible())
+    {
+        pimpl->currentInput->editor()->setFocus();
+    }
+    else
+    {
+        pimpl->panel->setPasswordFocus();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -258,6 +269,26 @@ AbstractPasswordInput* NewPasswordDialog::currentPasswordInput() const
 AbstractNewPasswordPanel* NewPasswordDialog::newPasswordPanel() const
 {
     return pimpl->panel;
+}
+
+//--------------------------------------------------------------------------
+
+void NewPasswordDialog::setCurrentPasswordVisible(bool visible)
+{
+    pimpl->currentInput->setVisible(visible);
+    if (!visible)
+    {
+        pimpl->currentInput->reset();
+    }
+    updateMinimumHeight();
+}
+
+//--------------------------------------------------------------------------
+
+bool NewPasswordDialog::isCurrentPasswordVisible() const
+{
+    // isHidden() rather than isVisible(): the answer must not depend on the dialog being on screen
+    return !pimpl->currentInput->isHidden();
 }
 
 //--------------------------------------------------------------------------

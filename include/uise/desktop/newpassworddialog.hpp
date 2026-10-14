@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_NEW_PASSWORD_DIALOG_HPP
 
 #include <memory>
+#include <tuple>
 
 #include <QFrame>
 #include <QPointer>
@@ -77,6 +78,22 @@ class UISE_DESKTOP_EXPORT AbstractNewPasswordDialog : public AbstractDialog
         virtual AbstractPasswordInput* currentPasswordInput() const=0;
 
         virtual AbstractNewPasswordPanel* newPasswordPanel() const=0;
+
+        /**
+         * @brief Show or hide the "current password" field.
+         *
+         * Hide it when the current password is not needed. While hidden currentPassword() is empty.
+         * Dialogs that cannot hide the field ignore the call and keep it visible.
+         */
+        virtual void setCurrentPasswordVisible(bool visible)
+        {
+            std::ignore=visible;
+        }
+
+        virtual bool isCurrentPasswordVisible() const
+        {
+            return true;
+        }
 
     signals:
 
@@ -140,6 +157,10 @@ class UISE_DESKTOP_EXPORT NewPasswordDialog : public Dialog<AbstractNewPasswordD
         virtual AbstractPasswordInput* currentPasswordInput() const override;
 
         virtual AbstractNewPasswordPanel* newPasswordPanel() const override;
+
+        void setCurrentPasswordVisible(bool visible) override;
+
+        bool isCurrentPasswordVisible() const override;
 
     private:
 

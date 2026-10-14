@@ -27,6 +27,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLabel>
 #include <QSignalMapper>
 
+#include <QBoxLayout>
+
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/pushbutton.hpp>
@@ -160,6 +162,19 @@ void PasswordPanel::reset()
 void PasswordPanel::setError(const QString& message)
 {
     pimpl->error->setText(message);
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordPanel::insertBelowInput(QWidget* widget)
+{
+    // before the error label: the label is an empty line of reserved height when there is no error,
+    // and anything placed after it would float below that blank space
+    auto* l=qobject_cast<QBoxLayout*>(layout());
+    if (l!=nullptr)
+    {
+        l->insertWidget(l->indexOf(pimpl->error),widget);
+    }
 }
 
 //--------------------------------------------------------------------------

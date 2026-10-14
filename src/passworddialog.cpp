@@ -25,6 +25,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QPointer>
 #include <QLabel>
+#include <QFrame>
 #include <QSignalMapper>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -32,6 +33,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/singleshottimer.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/checkbox.hpp>
 #include <uise/desktop/passwordpanel.hpp>
 #include <uise/desktop/passworddialog.hpp>
 
@@ -52,6 +54,8 @@ class PasswordDialog_p
     public:
 
         AbstractPasswordPanel* passwordPanel;
+        CheckBox* checkBox;
+        QFrame* checkBoxRow;
 };
 
 //--------------------------------------------------------------------------
@@ -68,6 +72,17 @@ void PasswordDialog::construct()
 {
     pimpl->passwordPanel=makeWidget<AbstractPasswordPanel,PasswordPanel>();
 
+    // The optional checkbox lives inside the panel, right under the input. Placed after the panel
+    // it would sit below the error line's reserved (blank) height.
+    pimpl->checkBoxRow=new QFrame(pimpl->passwordPanel);
+    pimpl->checkBoxRow->setObjectName("checkBoxRow");
+    pimpl->checkBox=new CheckBox(pimpl->checkBoxRow);
+    pimpl->checkBox->setObjectName("optionCheckBox");
+    auto* rl=Layout::horizontal(pimpl->checkBoxRow);
+    rl->addWidget(pimpl->checkBox);
+    pimpl->checkBoxRow->setVisible(false);
+    pimpl->passwordPanel->insertBelowInput(pimpl->checkBoxRow);
+
     setWidget(pimpl->passwordPanel);
 
     setButtons(
@@ -83,7 +98,7 @@ void PasswordDialog::construct()
         this,
         [this]()
         {
-            pimpl->passwordPanel->reset();
+            reset();
         }
     );
 
@@ -166,6 +181,33 @@ void PasswordDialog::setPasswordFocus()
 void PasswordDialog::reset()
 {
     pimpl->passwordPanel->reset();
+    pimpl->checkBox->setChecked(false);
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordDialog::setOptionCheckBox(const QString& text, bool checked)
+{
+    pimpl->checkBox->setText(text);
+    pimpl->checkBox->setChecked(checked);
+    pimpl->checkBoxRow->setVisible(true);
+    updateMinimumHeight();
+}
+
+//--------------------------------------------------------------------------
+
+bool PasswordDialog::isOptionChecked() const
+{
+    // isHidden() rather than isVisible(): the answer must not depend on the dialog being on screen
+    return !pimpl->checkBoxRow->isHidden() && pimpl->checkBox->isChecked();
+}
+
+//--------------------------------------------------------------------------
+
+void PasswordDialog::clearOptionCheckBox()
+{
+    pimpl->checkBoxRow->setVisible(false);
+    pimpl->checkBox->setChecked(false);
 }
 
 //--------------------------------------------------------------------------

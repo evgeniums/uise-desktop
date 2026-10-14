@@ -39,4 +39,11 @@ uise--AbstractDialog #dialogButtonsFrame uise--PushButton#back QPushButton:disab
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#skip QPushButton:disabled,
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#ignore QPushButton:disabled{background-color: transparent; color: #999999; border: 1px solid #999999;}
 
+/* Destructive action: set ButtonConfig::name="danger". Filled red, the same colors as the Danger
+ * Zone buttons of the Data folders page (whitemdesktop datafolders.qss). Same selector shape as the
+ * #cancel group above (two ids) so it outranks the generic filled-accent rule. */
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton{background-color: #AA2222; color: #EEEEEE; border: 1px solid #AA2222;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton:hover{background-color: #AA2222; color: #FFFFFF; border: 1px solid #AA2222;}
+uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton:disabled{background-color: #DDDDDD; color: #999999; border: 1px solid #DDDDDD;}
+
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton {min-width:80px;padding: 3px 12px;}

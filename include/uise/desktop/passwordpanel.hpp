@@ -77,6 +77,13 @@ class UISE_DESKTOP_EXPORT AbstractPasswordPanel : public WidgetQFrame
             std::ignore=icon;
         }
 
+        /**
+         * @brief Put a widget right under the password input, above the error line.
+         *
+         * Panels that cannot do it ignore the call; the caller then owns the widget's placement.
+         */
+        virtual void insertBelowInput(QWidget* widget) {std::ignore=widget;}
+
     signals:
 
         void passwordEntered();
@@ -122,6 +129,8 @@ class UISE_DESKTOP_EXPORT PasswordPanel : public AbstractPasswordPanel
         virtual void setApplyButtonContent(const QString& text, std::shared_ptr<SvgIcon> icon={}) override;
 
         virtual void setDescriptionVisible(bool enable) override;
+
+        virtual void insertBelowInput(QWidget* widget) override;
 
     private:
 
