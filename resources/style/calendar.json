@@ -10,6 +10,12 @@
                 "apply" : "${uise-svg-icons-1}/check",
                 "cancel" : "${uise-svg-icons-1}/x"
             }
+        },
+        {
+            "name" : "CalendarDialogApply",
+            "aliases" : {
+                "apply" : "${uise-svg-icons-1}/check"
+            }
         }
     ]
 }

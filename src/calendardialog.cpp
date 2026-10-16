@@ -24,6 +24,8 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <QFrame>
+#include <QPointer>
+#include <QBoxLayout>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QShowEvent>
@@ -54,6 +56,8 @@ class CalendarDialog_p
     public:
 
         Calendar* calendar=nullptr;
+        QBoxLayout* contentLayout=nullptr;
+        QPointer<QWidget> headerWidget;
         QFrame* buttonsFrame=nullptr;
         PushButton* applyButton=nullptr;
         SingleShotTimer* autoCloseTimer=nullptr;
@@ -88,7 +92,8 @@ void CalendarDialog::constructCalendar(CalendarMode mode)
 {
     // Content mirrors CalendarDropdown::construct() (see calendarinput.cpp): the calendar with
     // a buttons row directly below it, holding a single icon-only Apply-styled button built the
-    // exact same way (same "Calendar::apply" checkmark icon, same PushButton(icon,parent) ctor)
+    // exact same way (same PushButton(icon,parent) ctor, the same checkmark as "Calendar::apply" but in
+    // its own icon context, "CalendarDialogApply", so its colours can differ from the calendar's other icons)
     // -- rather than routing through AbstractDialog's own generic button-row/ButtonConfig
     // system, which is never used here (setButtons({}) below, permanently). An X here would
     // duplicate the dialog's own title-bar close button; a checkmark reads as "done" instead,
@@ -97,6 +102,7 @@ void CalendarDialog::constructCalendar(CalendarMode mode)
     auto* content=new QFrame(this);
     content->setObjectName(QStringLiteral("calendarDialogContent"));
     auto* l=Layout::vertical(content);
+    pimpl->contentLayout=l;
 
     pimpl->calendar=new Calendar(mode,content);
     l->addWidget(pimpl->calendar);
@@ -106,11 +112,18 @@ void CalendarDialog::constructCalendar(CalendarMode mode)
     auto* bl=Layout::horizontal(pimpl->buttonsFrame);
     bl->addStretch(1);
 
-    pimpl->applyButton=new PushButton(Style::instance().svgIconLocator().icon(QStringLiteral("Calendar::apply"),this),pimpl->buttonsFrame);
+    pimpl->applyButton=new PushButton(Style::instance().svgIconLocator().icon(QStringLiteral("CalendarDialogApply::apply"),this),pimpl->buttonsFrame);
     pimpl->applyButton->setObjectName(QStringLiteral("applyButton"));
+    // A bare checkmark, never a platform push button: flat keeps the native style from drawing a
+    // bezel (a bordered grey box) in any state, whatever the style sheet does or does not match. No
+    // focus ring either: it is a click target, the dialog's own keys (Escape) do not go through it.
+    pimpl->applyButton->qPushButton()->setFlat(true);
+    pimpl->applyButton->qPushButton()->setFocusPolicy(Qt::NoFocus);
     bl->addWidget(pimpl->applyButton);
     connect(pimpl->applyButton,&PushButton::clicked,this,[this]()
     {
+        // Before closeDialog(): the only close path that means "the selection is confirmed"
+        emit applied();
         closeDialog();
     });
 
@@ -168,6 +181,57 @@ void CalendarDialog::applyCloseMode()
 Calendar* CalendarDialog::calendar() const
 {
     return pimpl->calendar;
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarDialog::setHeaderWidget(QWidget* widget)
+{
+    if (pimpl->headerWidget==widget)
+    {
+        return;
+    }
+    if (!pimpl->headerWidget.isNull())
+    {
+        pimpl->contentLayout->removeWidget(pimpl->headerWidget);
+        delete pimpl->headerWidget.data();
+    }
+    pimpl->headerWidget=widget;
+    if (widget!=nullptr)
+    {
+        widget->setParent(pimpl->contentLayout->parentWidget());
+        pimpl->contentLayout->insertWidget(0,widget);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+QWidget* CalendarDialog::headerWidget() const noexcept
+{
+    return pimpl->headerWidget.data();
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarDialog::setApplyRowRetainsSpace(bool enable)
+{
+    auto policy=pimpl->buttonsFrame->sizePolicy();
+    policy.setRetainSizeWhenHidden(enable);
+    pimpl->buttonsFrame->setSizePolicy(policy);
+}
+
+//--------------------------------------------------------------------------
+
+void CalendarDialog::setApplyEnabled(bool enable)
+{
+    pimpl->applyButton->setEnabled(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool CalendarDialog::isApplyEnabled() const noexcept
+{
+    return pimpl->applyButton->isEnabled();
 }
 
 //--------------------------------------------------------------------------

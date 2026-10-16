@@ -444,6 +444,18 @@ uise--AbstractChatSeparatorSection uise--AvatarButton #text {
 font-weight: bold;
 }
 
+/* The click ripple of the pill follows the pill's own shape: a rounded rectangle growing evenly into its
+   edges, clipped to the pill's border-radius (10px above -- keep the two equal). The AvatarButton default
+   (ripple.qss) is a flat horizontal ellipse clipped to 4px, which reads as a tapered blob inside a pill.
+   Three type names outrank that rule's two. */
+uise--AbstractChatSeparatorSection uise--AvatarButton uise--RippleOverlay {
+qproperty-rippleShape: "roundedrect";
+qproperty-rippleClip: "rounded";
+qproperty-rippleCornerRadius: 10;
+qproperty-rippleRadiusScaleX: 1.0;
+qproperty-rippleRadiusScaleY: 1.0;
+}
+
 /* An informational line ("Alice joined the chat") reads as a sentence, not a heading. Colours
    come from the generic section rules in light/chat.qss and dark/chat.qss. */
 uise--AbstractChatSeparatorSection[separator_type="info"] uise--AvatarButton #text {

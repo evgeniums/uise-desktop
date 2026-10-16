@@ -1335,19 +1335,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Yesterday</translation>
     </message>
     <message>
-        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+103"/>
+        <location filename="../include/uise/desktop/ipp/htreelistitemtemplate.ipp" line="+157"/>
         <source>Open</source>
         <comment>HTreeListItem</comment>
         <translation>Open</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+3"/>
         <source>Open in new tab</source>
         <comment>HTreeListItem</comment>
         <translation>Open in new tab</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+4"/>
         <source>Open in new window</source>
         <comment>HTreeListItem</comment>
         <translation>Open in new window</translation>
@@ -2919,7 +2919,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::CalendarDialog</name>
     <message>
-        <location filename="../src/calendardialog.cpp" line="+120"/>
+        <location filename="../src/calendardialog.cpp" line="+127"/>
         <source>Select date</source>
         <translation>Select date</translation>
     </message>

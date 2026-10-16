@@ -18,3 +18,13 @@ uise--CalendarDialog #calendarDialogContent {background-color: transparent;}
  * below the calendar is built the same way as CalendarDropdown's, so it gets the same margin
  * above it. */
 uise--CalendarDialog #buttonsFrame {margin-top: 4px;}
+
+/* The Apply button is a bare checkmark, in every state. Without these rules the inner QPushButton is
+ * left to the platform style in some states (a disabled one is drawn as a native bezel on macOS: a
+ * grey bordered box around a faint tick). The disabled look is the lighter tick alone. */
+uise--CalendarDialog #applyButton QPushButton,
+uise--CalendarDialog #applyButton QPushButton:hover,
+uise--CalendarDialog #applyButton QPushButton:disabled {
+border: none;
+background-color: transparent;
+}

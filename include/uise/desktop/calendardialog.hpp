@@ -106,10 +106,42 @@ class UISE_DESKTOP_EXPORT AbstractCalendarDialog : public AbstractDialog
          *  inactivity timeout, letting an embedder tell a timeout apart from a user close. */
         void autoClosed();
 
+        /** @brief Emitted when the user presses the Apply button, immediately BEFORE the dialog
+         *  closes itself. Apply is the only close path that means "I confirm the selection": the
+         *  title-bar X, Escape, an outside click and the inactivity timeout all close without it,
+         *  so an embedder that must act only on a confirmed selection listens to this, not to
+         *  closeRequested(). Not emitted in CalendarDialogCloseMode::AutoCloseOnSelection, where the
+         *  Apply button is hidden. */
+        void applied();
+
     public slots:
 
         /** @brief Restart the inactivity countdown. */
         virtual void notifyActivity()=0;
+
+    public:
+
+        // Declared after everything else on purpose: a new virtual appended last keeps the vtable
+        // slots of the existing ones where a stale build of a dependent target expects them.
+
+        /**
+         * @brief Enable or disable the Apply button (enabled by default).
+         *
+         * Lets an embedder with a mode that needs a selection first -- e.g. RangeSelection -- keep
+         * Apply inert until there is one.
+         */
+        virtual void setApplyEnabled(bool enable)=0;
+        virtual bool isApplyEnabled() const noexcept=0;
+
+        /**
+         * @brief Put a widget of the embedder's own (a tab bar, a hint) above the calendar.
+         *
+         * The dialog takes ownership; a previous header widget is deleted. nullptr removes it.
+         * Prefer this to Dialog<>::setTitleControl() when the widget should span the dialog's
+         * width: the title label keeps the stretch there and pushes a title control aside.
+         */
+        virtual void setHeaderWidget(QWidget* widget)=0;
+        virtual QWidget* headerWidget() const noexcept=0;
 };
 
 #ifdef _MSC_VER
@@ -177,6 +209,23 @@ class UISE_DESKTOP_EXPORT CalendarDialog : public Dialog<AbstractCalendarDialog>
         CalendarDialogCloseMode closeMode() const noexcept override;
 
         void notifyActivity() override;
+
+        void setApplyEnabled(bool enable) override;
+        bool isApplyEnabled() const noexcept override;
+
+        /**
+         * @brief Keep the Apply row's height while it is hidden (off by default).
+         *
+         * The row is hidden in CalendarDialogCloseMode::AutoCloseOnSelection, so the dialog is one row
+         * shorter than in ExplicitButton mode. An embedder that switches between the two modes while the
+         * dialog is on screen (tabs) reserves the space, otherwise the dialog changes height on every
+         * switch and the content is laid out twice, visibly. Not virtual: a plain look setting of this
+         * implementation.
+         */
+        void setApplyRowRetainsSpace(bool enable);
+
+        void setHeaderWidget(QWidget* widget) override;
+        QWidget* headerWidget() const noexcept override;
 
         void setDialogFocus() override;
 
