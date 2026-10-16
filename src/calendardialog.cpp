@@ -316,4 +316,13 @@ void CalendarDialog::hideEvent(QHideEvent* event)
 
 //--------------------------------------------------------------------------
 
+// Explicit, exported instantiation, like every other Dialog<AbstractXxx> in this library. Without it
+// the members of Dialog<AbstractCalendarDialog> are instantiated implicitly in this translation unit
+// only and are not exported from the shared library, so a class OUTSIDE uise that derives from
+// CalendarDialog (whitemdesktop's ChatCalendarDialog) cannot link: its vtable references every virtual
+// of the base (setButtons, setTitle, setWidget, titleBar, ...).
+template class UISE_DESKTOP_EXPORT Dialog<AbstractCalendarDialog>;
+
+//--------------------------------------------------------------------------
+
 }
