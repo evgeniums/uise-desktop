@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTimer>
 #include <QMouseEvent>
 #include <QPointer>
+#include <QSizePolicy>
 #include <QGuiApplication>
 #include <QScreen>
 
@@ -153,6 +154,20 @@ FileUploadListItem::FileUploadListItem(QWidget* parent)
         }
     );
     pimpl->nameLabel->setEditButtonAlwaysHidden(true);
+    // The name is a single line elided to the label's own width (updateNameLabel()), so none of the
+    // label's size constraints may follow the text it is given. EditableLabel's QLabel word-wraps,
+    // which ties its minimum width to the elided text's longest word and gives the whole list a
+    // height-for-width: every resize then re-elides the name, the new text changes the minimum size
+    // and heightForWidth that QScrollArea::updateScrollBars() reads right after the layout, so it
+    // resizes the list content again, which re-elides again... With many rows (the list needing a
+    // vertical scrollbar, e.g. after "Send as documents" turns big image tiles into name rows) this
+    // never settled and overflowed the stack. A horizontally Ignored policy, as ElidedLabel uses,
+    // takes the width from the layout alone.
+    {
+        auto* nameText=pimpl->nameLabel->label();
+        nameText->setWordWrap(false);
+        nameText->setSizePolicy(QSizePolicy::Ignored,nameText->sizePolicy().verticalPolicy());
+    }
     // The name opens an editable text file like its icon does, see eventFilter(). The filter sits
     // on the label's own QLabel, so it is out of the way while a rename shows the line edit.
     pimpl->nameLabel->label()->installEventFilter(this);
@@ -572,9 +587,11 @@ void FileUploadListItem::updateNameLabel()
 {
     auto full=pimpl->nameLabel->value();
     auto* lbl=pimpl->nameLabel->label();
-    if (lbl->width()>0)
+    // contentsRect(), not width(): the QSS margin/padding is not available to the text
+    const auto availableWidth=lbl->contentsRect().width();
+    if (availableWidth>0)
     {
-        lbl->setText(lbl->fontMetrics().elidedText(full,Qt::ElideMiddle,lbl->width()));
+        lbl->setText(lbl->fontMetrics().elidedText(full,Qt::ElideMiddle,availableWidth));
     }
     else
     {
