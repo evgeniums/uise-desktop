@@ -94,6 +94,12 @@ class UISE_DESKTOP_EXPORT SimpleImageEditor : public AbstractImageEditor
         //! mode is unchanged -- it still calls resetCropper(), exactly as before this feature.
         void resetCropperOrKeepFrame();
 
+        //! Common body of rotate()/rotateClockwise(). Rotates the image group and makes the crop
+        //! machinery follow the rotated bounds: in fixed-on-screen mode the frame is rotated (width/
+        //! height swapped) along with the image and the selection carried over; otherwise the image is
+        //! re-fitted (unless the user zoomed) and the cropper rebuilt from the rotated image.
+        void applyRotation(int delta);
+
         //! Repaints the crop rect (if any) in place after a view-level zoom/pan change -- see the
         //! definition's own doc for why this replaces resetCropper() on those paths.
         void refreshCropperForViewChange();

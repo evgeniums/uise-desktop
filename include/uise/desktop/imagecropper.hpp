@@ -198,6 +198,18 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QObject, public QGraphicsRectIte
         //! by the host on every scroll/zoom/resize (see FreeHandDrawView::scrollContentsBy()).
         void syncToView();
 
+        //! Re-derives this item's own rect (the bounds the crop rect may be dragged within) and the
+        //! locked aspect ratio from the image's CURRENT scene bounding rect. The host rotates the
+        //! image's item group, not this item, so after a 90-degree rotate the rect captured at
+        //! construction no longer matches the image (width/height swapped, origin shifted). Host
+        //! must call this after any rotate; also called internally by init() and adjustCropRect().
+        void syncImageBounds();
+
+        //! Fixed-on-screen mode only: replaces the pinned frame with the given viewport rectangle
+        //! (clamped to the viewport), re-derives the crop rect from it and emits frameChanged() if
+        //! the frame actually moved. Used by the host to hand the frame over to a rotated image.
+        void setViewportFrame(const QRectF& frame);
+
     protected:
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;        
@@ -241,9 +253,14 @@ class UISE_DESKTOP_EXPORT CropRectItem : public QObject, public QGraphicsRectIte
         //! after a viewport resize, which can leave a previously in-bounds frame hanging outside.
         QRectF clampToViewport(QRectF rect) const;
 
+        //! Stores the frame, re-derives m_cropperRect from it and emits frameChanged() on change --
+        //! common tail of adjustViewportFrame() and setViewportFrame().
+        void commitViewportFrame(const QRectF& frame);
         void updateAspectRatio()
         {
-            auto cropperRect=m_imageItem->boundingRect();
+            // Scene bounding rect, not boundingRect(): the former follows the host's rotation of
+            // the image's group (width/height swap at 90 degrees).
+            auto cropperRect=m_imageItem->sceneBoundingRect();
             if (m_square)
             {
                 m_xyAspectRatio=1.0;

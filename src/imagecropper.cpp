@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
+#include <QPainterPath>
 #include <QCursor>
 #include <QGraphicsView>
 
@@ -55,7 +56,7 @@ bool rectsNearlyEqual(const QRectF& a, const QRectF& b)
 
 CropRectItem::CropRectItem(QGraphicsView* view, QGraphicsPixmapItem* imageItem, QGraphicsItem *parent)
     : QObject(),
-      QGraphicsRectItem(imageItem->boundingRect(),parent),
+      QGraphicsRectItem(imageItem->sceneBoundingRect(),parent),
       m_activeHandle(NoHandle),
       m_imageItem(imageItem),
       m_square(false),
@@ -67,10 +68,23 @@ CropRectItem::CropRectItem(QGraphicsView* view, QGraphicsPixmapItem* imageItem, 
 
 //--------------------------------------------------------------------------
 
+void CropRectItem::syncImageBounds()
+{
+    if (m_imageItem==nullptr)
+    {
+        return;
+    }
+    // This item has no parent and no transform of its own, so its coordinates are scene coordinates.
+    setRect(mapRectFromScene(m_imageItem->sceneBoundingRect()));
+    updateAspectRatio();
+}
+
+//--------------------------------------------------------------------------
+
 void CropRectItem::init()
 {
-    m_cropperRect=m_imageItem->boundingRect();
-    updateAspectRatio();
+    syncImageBounds();
+    m_cropperRect=rect();
 
     // Force a fresh first-time seed in adjustViewportFrame() below, even though
     // SimpleImageEditor::resetCropper() may already have triggered one or more earlier seeds via
@@ -113,27 +127,28 @@ void CropRectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     }
 
     QColor backgroundColor(0, 0, 0, 128);
-    auto sz=boundingRect().size().toSize();
-    QPixmap px(sz);
-    QPainter p;
-    px.fill(Qt::transparent);
-    p.begin(&px);
-    p.setRenderHints(QPainter::Antialiasing);
-    p.fillRect(rect(), backgroundColor);
-    p.setCompositionMode(QPainter::CompositionMode_Source);
-    p.setPen(Qt::NoPen);
-    p.setBrush(Qt::transparent);
+    // Dim everything inside rect() except the crop area. A single even-odd path (rather than an
+    // origin-anchored pixmap) works for any rect() origin, which is no longer (0,0) once the image
+    // has been rotated.
+    QPainterPath dimPath;
+    dimPath.setFillRule(Qt::OddEvenFill);
+    dimPath.addRect(rect());
     if (m_ellipse)
     {
-        p.drawEllipse(m_cropperRect);
+        dimPath.addEllipse(m_cropperRect);
     }
     else
     {
-        p.drawRect(m_cropperRect);
+        dimPath.addRect(m_cropperRect);
     }
-    p.end();
-    painter->setRenderHints(QPainter::SmoothPixmapTransform);
-    painter->drawPixmap(0,0,sz.width(),sz.height(),px);
+    // Antialiasing only for the (possibly elliptical) cut-out edge; the border/handles below were
+    // always drawn without it.
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->fillPath(dimPath, backgroundColor);
+    painter->restore();
+
+    auto sz=boundingRect().size().toSize();
 
     const auto& r=m_cropperRect;
 
@@ -300,13 +315,13 @@ void CropRectItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     qreal h = currentRect.height();
 
     // Keep track of the original bounds of the image for clamping
-    QRectF imageBounds = boundingRect();
+    QRectF imageBounds = rect();
     auto updateRect = [&](qreal newX, qreal newY, qreal newW, qreal newH)
     {
         // Apply new position and size, ensuring non-negative width/height
         if (newW > m_minWidth && newH > m_minHeight
-            && newX>=0
-            && newY>=0
+            && newX>=imageBounds.left()
+            && newY>=imageBounds.top()
             && (newX+newW)<=imageBounds.right()
             && (newY+newH)<=imageBounds.bottom()
             )
@@ -438,13 +453,15 @@ void CropRectItem::adjustCropRect()
         return;
     }
 
+    syncImageBounds();
+
     if (m_fixedOnScreen)
     {
         adjustViewportFrame();
         return;
     }
 
-    QRectF imageBoundsScene = m_imageItem->mapToScene(m_imageItem->boundingRect()).boundingRect();
+    QRectF imageBoundsScene = m_imageItem->sceneBoundingRect();
     QRectF imageBounds=mapRectFromScene(imageBoundsScene);
 
     if (m_limitToVisibleArea)
@@ -594,8 +611,13 @@ void CropRectItem::adjustViewportFrame()
 
     QRectF frame{0,0,w,h};
     frame.moveCenter(center);
-    frame=clampToViewport(frame);
+    commitViewportFrame(clampToViewport(frame));
+}
 
+//--------------------------------------------------------------------------
+
+void CropRectItem::commitViewportFrame(const QRectF& frame)
+{
     auto changed=!rectsNearlyEqual(frame,m_viewportFrame);
     m_viewportFrame=frame;
 
@@ -604,6 +626,17 @@ void CropRectItem::adjustViewportFrame()
     {
         emit frameChanged();
     }
+}
+
+//--------------------------------------------------------------------------
+
+void CropRectItem::setViewportFrame(const QRectF& frame)
+{
+    if (!m_fixedOnScreen || m_view==nullptr || m_view->viewport()==nullptr || frame.isEmpty())
+    {
+        return;
+    }
+    commitViewportFrame(clampToViewport(frame));
 }
 
 //--------------------------------------------------------------------------

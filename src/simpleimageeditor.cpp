@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QFileDialog>
 #include <QTimer>
+#include <QScrollBar>
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
@@ -841,33 +842,113 @@ void SimpleImageEditor::resetCropperOrKeepFrame()
 
 //--------------------------------------------------------------------------
 
-void SimpleImageEditor::rotate()
+void SimpleImageEditor::applyRotation(int delta)
 {
-    if (m_widget->pimpl->imageItem==nullptr)
+    auto* p=m_widget->pimpl.get();
+    if (p->imageItem==nullptr)
     {
         return;
     }
 
-    auto r=m_widget->pimpl->itemGroup->boundingRect();
-    m_widget->pimpl->angle-=90;
-    m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
-    m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
-    resetCropperOrKeepFrame();
+    auto* view=p->view;
+    auto* cropper=p->cropperItem;
+    const bool keepFrame=cropper!=nullptr
+                         && cropFrameMode()==CropFrameMode::FixedOnScreen
+                         && !cropper->viewportFrame().isEmpty()
+                         && view->viewport()!=nullptr;
+
+    // The selection is remembered in the group's own (pre-rotation) coordinates so it can be
+    // carried through the rotation below.
+    QRectF frame;
+    QRectF selectionLocal;
+    if (keepFrame)
+    {
+        frame=cropper->viewportFrame();
+        selectionLocal=p->itemGroup->sceneTransform().inverted().mapRect(cropper->getCropAreaCoordinates());
+    }
+
+    auto r=p->itemGroup->boundingRect();
+    p->angle+=delta;
+    p->itemGroup->setTransformOriginPoint(r.center());
+    p->itemGroup->setRotation(p->angle);
+
+    // The scene rect was fixed to the unrotated image at load -- without this, the default view
+    // bounds (crop off / legacy mode) would no longer cover the rotated image.
+    p->scene->setSceneRect(p->imageItem->sceneBoundingRect());
+
+    if (!keepFrame)
+    {
+        if (!p->zoom->isUserZoomed())
+        {
+            p->zoom->fitToItem();
+        }
+        resetCropperOrKeepFrame();
+        return;
+    }
+
+    // Fixed-on-screen frame: rotate the frame together with the image (width/height swap, same
+    // centre), so a frame that matched the whole image still matches it. The frame must also follow
+    // every change of the view scale made here, so it keeps the same proportion to the image:
+    //  - a swapped frame that no longer fits the viewport is shrunk, and the view zoomed out by the
+    //    same factor (k);
+    //  - the zoom floor (image fit) may then pull the view back IN -- e.g. the second of two
+    //    successive rotations, when the image is landscape again and its fit scale is larger than
+    //    the shrunk scale left over from the first one. Measured below as the total scale ratio, so
+    //    the frame grows back with the image instead of staying small.
+    const QRectF viewportRect(view->viewport()->rect());
+    QSizeF newSize(frame.height(),frame.width());
+    qreal k=1.0;
+    if (newSize.width()>viewportRect.width() || newSize.height()>viewportRect.height())
+    {
+        k=std::min(viewportRect.width()/newSize.width(),viewportRect.height()/newSize.height());
+    }
+
+    // Cover floor of the OLD frame must not take part in the clamp below.
+    const auto scaleBefore=p->zoom->currentScale();
+    p->zoom->setCoverRect(QRectF{});
+    if (k<1.0)
+    {
+        view->scale(k,k);
+    }
+    p->zoom->reapplyLimits();
+    const auto scaleAfter=p->zoom->currentScale();
+    const auto totalFactor=qFuzzyIsNull(scaleBefore) ? 1.0 : scaleAfter/scaleBefore;
+
+    QRectF newFrame(QPointF{0,0},newSize*totalFactor);
+    newFrame.moveCenter(frame.center());
+
+    cropper->syncImageBounds();
+    cropper->setViewportFrame(newFrame);
+    // Explicit as well: frameChanged() is not emitted when the frame did not move (square crop).
+    updateZoomLimitsForCropper();
+
+    // Bring the rotated selection to where the frame now is.
+    auto selectionCentre=p->itemGroup->sceneTransform().mapRect(selectionLocal).center();
+    auto delta2=view->viewportTransform().map(selectionCentre)-cropper->viewportFrame().center();
+    if (view->horizontalScrollBar()!=nullptr)
+    {
+        view->horizontalScrollBar()->setValue(view->horizontalScrollBar()->value()+qRound(delta2.x()));
+    }
+    if (view->verticalScrollBar()!=nullptr)
+    {
+        view->verticalScrollBar()->setValue(view->verticalScrollBar()->value()+qRound(delta2.y()));
+    }
+    cropper->syncToView();
+    cropper->update();
+}
+
+//--------------------------------------------------------------------------
+
+void SimpleImageEditor::rotate()
+{
+    applyRotation(-90);
 }
 
 //--------------------------------------------------------------------------
 
 void SimpleImageEditor::rotateClockwise()
 {
-    if (m_widget->pimpl->imageItem==nullptr)
-    {
-        return;
-    }
-    auto r=m_widget->pimpl->itemGroup->boundingRect();
-    m_widget->pimpl->angle+=90;
-    m_widget->pimpl->itemGroup->setTransformOriginPoint(r.center());
-    m_widget->pimpl->itemGroup->setRotation(m_widget->pimpl->angle);
-    resetCropperOrKeepFrame();
+    applyRotation(90);
 }
 
 //--------------------------------------------------------------------------
