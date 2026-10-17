@@ -116,7 +116,8 @@ FlyweightListView_p<ItemT,OrderComparer,IdComparer>::FlyweightListView_p(
         m_pendingViewportChangedInform(false),
         m_lastInformedListPos(0),
         m_itemsAlignment(FlyweightListViewAlignment::Center),
-        m_firstShowDone(false)
+        m_firstShowDone(false),
+        m_applyingScrollBarsTransition(false)
 {
     m_currentBatchCountBefore=0;
     m_currentBatchCountAfter=0;
@@ -1130,6 +1131,8 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::viewportUpdated()
             checkItemCount();
         }
     );
+
+    applyScrollBarsTransitionNow();
 }
 
 //--------------------------------------------------------------------------
@@ -3293,6 +3296,54 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::updateScrollBars()
 
     m_vbar->blockSignals(false);
     m_hbar->blockSignals(false);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
+void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::applyScrollBarsTransitionNow()
+{
+    // A scrollbar that just became needed/unneeded changes the viewport's size (unless its
+    // holder holds place). Left to m_scrollBarsTimer's 10 ms debounce plus a posted
+    // LayoutRequest, the list is painted once at the old viewport size and then re-laid out --
+    // a visible horizontal jump of every row when the vertical bar appears. Apply such a
+    // transition right away and activate the affected layouts synchronously, so m_view's
+    // QResizeEvent (-> onViewportResized()) lands before the next paint.
+    if (m_applyingScrollBarsTransition || !m_obj->isVisible())
+    {
+        return;
+    }
+
+    bool vChange=m_vbarPolicy==Qt::ScrollBarAsNeeded
+                 && !m_vbarHolder->isHoldPlace()
+                 && (m_view->height()<m_llist->height())!=m_vbarHolder->isVisible();
+    bool hChange=m_hbarPolicy==Qt::ScrollBarAsNeeded
+                 && !m_hbarHolder->isHoldPlace()
+                 && (m_view->width()<m_llist->width())!=m_hbarHolder->isVisible();
+    if (!vChange && !hChange)
+    {
+        return;
+    }
+
+    m_applyingScrollBarsTransition=true;
+
+    updateScrollBars();
+
+    if (hChange && m_obj->layout()!=nullptr)
+    {
+        m_obj->layout()->invalidate();
+        m_obj->layout()->activate();
+    }
+    if (vChange)
+    {
+        auto* l=m_vbarHolder->parentWidget()->layout();
+        if (l!=nullptr)
+        {
+            l->invalidate();
+            l->activate();
+        }
+    }
+
+    m_applyingScrollBarsTransition=false;
 }
 
 //--------------------------------------------------------------------------

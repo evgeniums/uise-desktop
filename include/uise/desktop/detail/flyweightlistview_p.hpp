@@ -319,6 +319,7 @@ class FlyweightListView_p : public OrientationInvariant
         void removeExtraItemsFromEnd(size_t count);
 
         void updateScrollBars();
+        void applyScrollBarsTransitionNow();
 
         void setScrollBarsAutoHide(bool enable);
         bool isScrollBarsAutoHide() const;
@@ -608,6 +609,10 @@ class FlyweightListView_p : public OrientationInvariant
         // still fires normally, to catch resizes/reparents that happen before the first show)
         // is not duplicated by it.
         bool m_firstShowDone;
+
+        // Reentrancy guard for applyScrollBarsTransitionNow(): its synchronous layout activation
+        // resizes m_view, which re-enters viewportUpdated() via onViewportResized().
+        bool m_applyingScrollBarsTransition;
 };
 
 } // namespace detail
