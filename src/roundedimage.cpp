@@ -35,8 +35,6 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/utils/pixmapscale.hpp>
 #include <uise/desktop/roundedimage.hpp>
 
-#include <iostream> // AVATAR-DEBUG (temporary)
-
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
@@ -341,7 +339,6 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
             px=m_svgIcon->pixmap(m_size,currentSvgIconMode());
         }
     }
-    bool fromPrevConsumer=false; // AVATAR-DEBUG (temporary)
     if (px.isNull())
     {
         if (m_pixmapConsumer!=nullptr)
@@ -352,7 +349,6 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
         if (px.isNull() && m_prevPixmapConsumer!=nullptr)
         {
             px=m_prevPixmapConsumer->pixmapProducer()->pixmap();
-            fromPrevConsumer=!px.isNull();
         }
     }
 
@@ -367,19 +363,7 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
     else if (!px.isNull())
     {
         // Never hand the brush a pixmap whose logical size differs from the shape: it would tile.
-        bool adjusted=false;
-        auto brushPx=fitBrushPixmap(px,size(),&adjusted);
-        if (adjusted) // AVATAR-DEBUG (temporary)
-        {
-            std::cerr << "AVATAR-DEBUG obj=" << objectName().toStdString()
-                      << " widget=" << size().width() << "x" << size().height()
-                      << " px=" << px.width() << "x" << px.height()
-                      << " pxDpr=" << px.devicePixelRatio()
-                      << " screenDpr=" << qApp->primaryScreen()->devicePixelRatio()
-                      << " fromPrevConsumer=" << fromPrevConsumer
-                      << " path=" << toWithPath().toString()
-                      << std::endl;
-        }
+        auto brushPx=fitBrushPixmap(px,size());
         painter.setPen(Qt::NoPen);
         painter.setBrush(brushPx);
         painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
