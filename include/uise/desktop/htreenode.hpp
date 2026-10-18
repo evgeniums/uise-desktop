@@ -193,6 +193,8 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         bool hasTitleBadge() const;
         QString titleBadgeText() const;
         bool isTitleBadgeMuted() const;
+        //! Mentioned badge colour (QSS [mention="true"]); wins over muted.
+        bool isTitleBadgeMentioned() const;
 
         //! Widget embedded at the leading edge of this node's navigation bar item, ahead of
         //! titleIcon(). Stored on the node for the same reason titleIcon() is (see above): a
@@ -337,7 +339,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void setTitleIcon(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         //! Store the title badge and emit titleBadgeUpdated() -- see hasTitleBadge().
-        void setTitleBadge(const QString& text, bool muted=false);
+        void setTitleBadge(const QString& text, bool muted=false, bool mentioned=false);
 
         //! Store the leading widget and emit leadingWidgetUpdated() -- see leadingWidget()'s
         //! doc comment. Does not reparent the widget itself; NavigationBar does that once an
@@ -385,7 +387,7 @@ class UISE_DESKTOP_EXPORT HTreeNode : public FrameWithRefresh
         void iconUpdated(const QIcon&);
 
         void titleIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
-        void titleBadgeUpdated(const QString& text, bool muted);
+        void titleBadgeUpdated(const QString& text, bool muted, bool mentioned);
         void trailingIconUpdated(std::shared_ptr<UISE_DESKTOP_NAMESPACE::SvgIcon> icon);
 
         void leadingWidgetUpdated(QWidget* widget);

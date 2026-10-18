@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_HTREE_LIST_ITEM_TEMPLATE_HPP
 
 #include <functional>
+#include <utility>
 #include <memory>
 #include <vector>
 #include <QFrame>
@@ -141,6 +142,10 @@ class UISE_DESKTOP_EXPORT HTreeListItemTQ : public QObject
  * itself; a host appends its own through HTreeListItemT::setContextMenuExtender() or
  * HTreeListItemT::fillContextMenu(). Each entry carries the function to run when it is chosen,
  * so the host does not deal with menu ids.
+ *
+ * addSubmenu() returns a child builder for a nested menu. Children share the handler list with
+ * the root builder, so ids stay unique across the whole tree (DropdownMenu requires that) and
+ * handler() on the root resolves any of them. A builder is move-only because it owns its children.
  */
 class HTreeListItemMenu
 {
@@ -149,21 +154,49 @@ class HTreeListItemMenu
         /** Ids below this are reserved for the row's standard entries. */
         constexpr static const int FirstCustomId=3;
 
+        HTreeListItemMenu()
+            : m_handlers(std::make_shared<std::vector<std::function<void ()>>>())
+        {}
+
+        HTreeListItemMenu(HTreeListItemMenu&&)=default;
+        HTreeListItemMenu& operator=(HTreeListItemMenu&&)=default;
+        HTreeListItemMenu(const HTreeListItemMenu&)=delete;
+        HTreeListItemMenu& operator=(const HTreeListItemMenu&)=delete;
+
         /**
          * @brief Append an entry.
          * @param text Text of the entry.
          * @param icon Optional icon of the entry.
          * @param handler Called when the user chooses the entry.
+         * @param hint Optional secondary label at the right edge of the entry (see MenuItem::hint).
          */
-        void addItem(QString text, std::shared_ptr<SvgIcon> icon, std::function<void ()> handler)
+        void addItem(QString text, std::shared_ptr<SvgIcon> icon, std::function<void ()> handler, QString hint={})
         {
-            m_items.emplace_back(FirstCustomId+static_cast<int>(m_handlers.size()),std::move(text),std::move(icon));
-            m_handlers.emplace_back(std::move(handler));
+            MenuItem item(nextId(),std::move(text),std::move(icon));
+            item.hint=std::move(hint);
+            m_items.emplace_back(std::move(item));
+            m_handlers->emplace_back(std::move(handler));
         }
 
-        void addItem(QString text, std::function<void ()> handler)
+        void addItem(QString text, std::function<void ()> handler, QString hint={})
         {
-            addItem(std::move(text),std::shared_ptr<SvgIcon>{},std::move(handler));
+            addItem(std::move(text),std::shared_ptr<SvgIcon>{},std::move(handler),std::move(hint));
+        }
+
+        /**
+         * @brief Append an entry that opens a nested menu.
+         * @return The builder of the nested menu, valid until this builder is cleared or destroyed.
+         *
+         * A submenu left empty is shown disabled, since a submenu without children cannot open.
+         */
+        HTreeListItemMenu& addSubmenu(QString text, std::shared_ptr<SvgIcon> icon={})
+        {
+            // the submenu row takes an id of its own; it has no handler, so the slot stays empty
+            m_items.emplace_back(nextId(),std::move(text),std::move(icon));
+            m_handlers->emplace_back(std::function<void ()>{});
+
+            m_submenus.emplace_back(m_items.size()-1,std::unique_ptr<HTreeListItemMenu>(new HTreeListItemMenu(m_handlers)));
+            return *m_submenus.back().second;
         }
 
         void addSeparator()
@@ -171,14 +204,29 @@ class HTreeListItemMenu
             m_items.emplace_back(MenuItem::separator());
         }
 
+        /** @brief True if no entry was added at any level (separators do not count). */
         bool isEmpty() const noexcept
         {
-            return m_handlers.empty();
+            return m_handlers->empty();
         }
 
-        const std::vector<MenuItem>& items() const noexcept
+        /**
+         * @brief The entries as DropdownMenu items, submenus included.
+         * @return By value: the submenu children are assembled here.
+         */
+        std::vector<MenuItem> items() const
         {
-            return m_items;
+            auto result=m_items;
+            for (const auto& sub : m_submenus)
+            {
+                auto& item=result[sub.first];
+                item.children=sub.second->items();
+                if (item.children.empty())
+                {
+                    item.isEnabled=false;
+                }
+            }
+            return result;
         }
 
         /**
@@ -189,23 +237,41 @@ class HTreeListItemMenu
         std::function<void ()> handler(int id) const
         {
             const auto index=id-FirstCustomId;
-            if (index<0 || static_cast<size_t>(index)>=m_handlers.size())
+            if (index<0 || static_cast<size_t>(index)>=m_handlers->size())
             {
                 return std::function<void ()>{};
             }
-            return m_handlers[static_cast<size_t>(index)];
+            return (*m_handlers)[static_cast<size_t>(index)];
         }
 
         void clear()
         {
             m_items.clear();
-            m_handlers.clear();
+            m_submenus.clear();
+            // the handler list is shared with the root: only the root may reset it, or the ids it
+            // handed out would shift under it
+            if (!m_isChild)
+            {
+                m_handlers->clear();
+            }
         }
 
     private:
 
+        explicit HTreeListItemMenu(std::shared_ptr<std::vector<std::function<void ()>>> handlers)
+            : m_handlers(std::move(handlers)),
+              m_isChild(true)
+        {}
+
+        int nextId() const noexcept
+        {
+            return FirstCustomId+static_cast<int>(m_handlers->size());
+        }
+
         std::vector<MenuItem> m_items;
-        std::vector<std::function<void ()>> m_handlers;
+        std::shared_ptr<std::vector<std::function<void ()>>> m_handlers;
+        std::vector<std::pair<size_t,std::unique_ptr<HTreeListItemMenu>>> m_submenus;
+        bool m_isChild=false;
 };
 
 template <typename BaseT>

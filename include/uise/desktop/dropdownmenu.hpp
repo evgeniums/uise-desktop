@@ -189,6 +189,16 @@ class UISE_DESKTOP_EXPORT MenuItem
          * Prefer the submenu() factory over setting this directly.
          */
         std::vector<MenuItem> children;
+
+        /**
+         * @brief Secondary label shown at the right edge of the row, e.g. the remaining time of a mute.
+         *
+         * Empty for no label. It sits after the trailing-icon slot, so on a checkable row it comes
+         * to the right of the checkmark. Not meant for submenu rows (the chevron already ends them).
+         * Styled by `QLabel#hint` inside the row (dropdownmenu.qss); the row carries the dynamic
+         * property hint="true" while it has one. Change it on an open menu with DropdownMenu::setItemHint().
+         */
+        QString hint;
 };
 
 class DropdownMenu_p;
@@ -255,6 +265,14 @@ class UISE_DESKTOP_EXPORT DropdownMenu : public DropdownFrame
 
         void setItemText(int id, const QString& text);
         void setItemIcon(int id, std::shared_ptr<SvgIcon> icon);
+
+        /**
+         * @brief Set the right-aligned secondary label of an item (see MenuItem::hint).
+         *
+         * Updates the live row too if the menu is open; empty text hides the label. Searches the
+         * whole item tree; see setItemChecked().
+         */
+        void setItemHint(int id, const QString& hint);
 
         /**
          * @brief Get the live row widget for an item.

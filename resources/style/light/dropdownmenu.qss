@@ -34,3 +34,12 @@ color: #888888;
 /* checkable items are marked by their trailing check icon alone (see DropdownMenu::
    onItemToggled()) -- no extra "selected" background, it would be redundant next to the
    checkmark and makes hover state (above) harder to read on a checked row */
+
+/* MenuItem::hint -- same muted gray as disabled row text above, so the hint reads as secondary */
+uise--DropdownMenu uise--IconTextButton QLabel#hint {
+color: #888888;
+}
+
+uise--DropdownMenu uise--IconTextButton QLabel#hint:disabled {
+color: #888888;
+}

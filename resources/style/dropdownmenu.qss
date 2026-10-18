@@ -100,3 +100,9 @@ padding-left:24px;
 uise--DropdownMenu uise--IconTextButton[submenu="true"] #trailingIcon {
 margin-left:12px;
 }
+
+/* secondary label at the right edge of a row (MenuItem::hint, e.g. the remaining mute time); the
+   padding is the minimum gap from the row's text */
+uise--DropdownMenu uise--IconTextButton QLabel#hint {
+padding-left:16px;
+}

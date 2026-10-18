@@ -52,7 +52,8 @@ class CountBadge_p;
  * Colours, font and padding are picked up from an internal QSS style-carrier (a hidden child
  * QLabel with objectName "badge"), following the same pattern used by JumpEdge's own inline
  * badge painting -- see `uise--CountBadge > QLabel#badge` in the bundled style sheets. A "mute"
- * dynamic property on that carrier lets QSS switch to a muted colour, toggled via setMuted().
+ * dynamic property on that carrier lets QSS switch to a muted colour, toggled via setMuted(); a
+ * "mention" property does the same for a mentioned colour, toggled via setMentioned().
  *
  * A QSS `margin` set directly on CountBadge itself (as opposed to `padding` on the carrier
  * above) is folded into sizeHint(), and the badge shape is painted inset from it -- unlike a
@@ -99,6 +100,12 @@ class UISE_DESKTOP_EXPORT CountBadge : public QFrame
          * QSS via `uise--CountBadge > QLabel#badge` and its `[mute="true"]` variant. */
         void setMuted(bool enable);
         bool isMuted() const noexcept;
+
+        /** @brief Switch to the "mentioned" colour, defined in QSS via the `[mention="true"]` variant
+         * of `uise--CountBadge > QLabel#badge`. Independent of setMuted(), but the QSS makes mention win
+         * when both are set (a mention in a muted source must stay visible). */
+        void setMentioned(bool enable);
+        bool isMentioned() const noexcept;
 
         QSize sizeHint() const override;
         QSize minimumSizeHint() const override;

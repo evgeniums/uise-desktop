@@ -17,3 +17,11 @@ uise--CountBadge > QLabel#badge[mute="true"] {
      * the app's (light) default text colour, which would be low-contrast against it. */
     color: #333333;
 }
+
+/* A mention beats mute: a mention inside a muted source must stay visible. The combined rule
+   has more attributes than either alone, so it wins regardless of file order. */
+uise--CountBadge > QLabel#badge[mention="true"],
+uise--CountBadge > QLabel#badge[mute="true"][mention="true"] {
+    background-color: #B58AF0;
+    color: #1E1E1E;
+}

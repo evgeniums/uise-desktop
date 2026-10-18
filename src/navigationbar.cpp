@@ -671,13 +671,13 @@ void NavigationBar::setItemIcon(int index, std::shared_ptr<SvgIcon> icon)
 
 //--------------------------------------------------------------------------
 
-void NavigationBar::setItemIconBadge(int index, const QString& text, bool muted)
+void NavigationBar::setItemIconBadge(int index, const QString& text, bool muted, bool mentioned)
 {
     if (index<0 || index>=static_cast<int>(pimpl->items.size())) return;
     // No updateScrollArea(): the badge is outside every layout and changes no size. The only
     // size effect -- the QSS-reserved gap -- appears once, on the first call, and is picked up by
     // the item's own layout invalidation from the repolish.
-    pimpl->items[index]->setIconBadge(text,muted);
+    pimpl->items[index]->setIconBadge(text,muted,mentioned);
 }
 
 //--------------------------------------------------------------------------

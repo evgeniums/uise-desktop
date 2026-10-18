@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <memory>
+
 #include <QApplication>
 #include <QMainWindow>
 #include <QLabel>
@@ -38,6 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/htreelistitemtemplate.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
 
@@ -666,6 +669,113 @@ int main(int argc, char *argv[])
         [logMsg](int id)
         {
             logMsg(QString("Message menu: item %1 triggered").arg(id));
+        }
+    );
+
+    // --- 14. row hints and the HTreeListItemMenu builder (the shape of a notification-settings menu) ---
+    //
+    // Hint: a right-aligned secondary label per row (MenuItem::hint, setItemHint()). Builder: what a
+    // list row's context menu is filled through, with hints and nested submenus; handlers are
+    // shared across the levels, so the log shows which one ran for every leaf.
+
+    auto* hintRow=new QFrame(central);
+    auto* hintRowL=Layout::horizontal(hintRow);
+    rootLayout->addWidget(hintRow);
+
+    hintRowL->addWidget(new QLabel(QStringLiteral("Hints:")));
+
+    auto* hintButton=new IconTextButton(QStringLiteral("Notifications"),hintRow);
+    hintRowL->addWidget(hintButton);
+
+    enum HintId
+    {
+        HintUnmute=1,
+        HintSoundOff,
+        HintCheckable
+    };
+
+    auto* hintMenu=new DropdownMenu(hintRow);
+    MenuItem unmuteItem(HintUnmute,QStringLiteral("Unmute"),menuIcon(QStringLiteral("copy")));
+    unmuteItem.hint=QStringLiteral("25 min");
+    MenuItem soundOffItem(HintSoundOff,QStringLiteral("Disable sound"));
+    auto checkableHintItem=MenuItem::checkable(HintCheckable,QStringLiteral("Checkable row"),true);
+    checkableHintItem.hint=QStringLiteral("on");
+    hintMenu->setItems({unmuteItem,soundOffItem,MenuItem::separator(),checkableHintItem});
+    hintMenu->attachTo(hintButton);
+    QObject::connect(
+        hintMenu,
+        &DropdownMenu::itemTriggered,
+        log,
+        [logMsg](int id)
+        {
+            logMsg(QString("Hint menu: item %1 triggered").arg(id));
+        }
+    );
+
+    // changes hints while the menu is closed or open
+    auto hintStep=std::make_shared<int>(0);
+    auto* hintChange=new QPushButton(QStringLiteral("Change hints"),hintRow);
+    hintRowL->addWidget(hintChange);
+    QObject::connect(
+        hintChange,
+        &QPushButton::clicked,
+        hintMenu,
+        [hintMenu,hintStep]()
+        {
+            static const QStringList values{QStringLiteral("24 min"),QStringLiteral("1 h"),QStringLiteral("a much longer hint"),QString()};
+            const auto value=values.at((*hintStep)++ % values.size());
+            hintMenu->setItemHint(HintUnmute,value);
+            hintMenu->setItemHint(HintSoundOff,value);
+        }
+    );
+    hintRowL->addStretch(1);
+
+    auto* builderRow=new QFrame(central);
+    auto* builderRowL=Layout::horizontal(builderRow);
+    rootLayout->addWidget(builderRow);
+
+    builderRowL->addWidget(new QLabel(QStringLiteral("HTreeListItemMenu builder (submenu + hints):")));
+
+    auto* builderButton=new IconTextButton(QStringLiteral("Row menu"),builderRow);
+    builderRowL->addWidget(builderButton);
+    builderRowL->addStretch(1);
+
+    // rebuilt on every popup, like a list row does; the builder owns the handlers
+    auto builder=std::make_shared<HTreeListItemMenu>();
+    auto* builderMenu=new DropdownMenu(builderRow);
+    // the items are built on the trigger's click, so that connection must come BEFORE attachTo()
+    // (whose own clicked handler opens the menu)
+    QObject::connect(
+        builderButton,
+        &IconTextButton::clicked,
+        builderMenu,
+        [builder,builderMenu,logMsg]()
+        {
+            builder->clear();
+            builder->addItem(QStringLiteral("Unmute"),[logMsg]() { logMsg(QStringLiteral("builder: Unmute")); },QStringLiteral("25 min"));
+            builder->addItem(QStringLiteral("Disable sound"),[logMsg]() { logMsg(QStringLiteral("builder: Disable sound")); });
+            auto& mute=builder->addSubmenu(QStringLiteral("Mute"));
+            mute.addItem(QStringLiteral("For 15 minutes"),[logMsg]() { logMsg(QStringLiteral("builder: mute 15 min")); });
+            mute.addItem(QStringLiteral("For 1 hour"),[logMsg]() { logMsg(QStringLiteral("builder: mute 1 h")); });
+            auto& longer=mute.addSubmenu(QStringLiteral("Longer"));
+            longer.addItem(QStringLiteral("For 3 months"),[logMsg]() { logMsg(QStringLiteral("builder: mute 3 months")); });
+            longer.addItem(QStringLiteral("Forever"),[logMsg]() { logMsg(QStringLiteral("builder: mute forever")); });
+            builder->addSubmenu(QStringLiteral("Empty submenu (shown disabled)"));
+            builderMenu->setItems(builder->items());
+        }
+    );
+    builderMenu->attachTo(builderButton);
+    QObject::connect(
+        builderMenu,
+        &DropdownMenu::itemTriggered,
+        log,
+        [builder](int id)
+        {
+            auto handler=builder->handler(id);
+            if (handler)
+            {
+                handler();
+            }
         }
     );
 

@@ -127,8 +127,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
          *
          * @param text Pre-formatted badge text, e.g. "42" or "1.2K"; empty hides the badge.
          * @param muted Use the muted badge colour.
+         * @param mentioned Use the mentioned badge colour; wins over \p muted.
          */
-        void setIconBadge(const QString& text, bool muted=false);
+        void setIconBadge(const QString& text, bool muted=false, bool mentioned=false);
 
         IconBadge* iconBadge() const noexcept
         {

@@ -117,6 +117,21 @@ bool CountBadge::isMuted() const noexcept
 
 //--------------------------------------------------------------------------
 
+void CountBadge::setMentioned(bool enable)
+{
+    if (Style::setStyleProperty(pimpl->badge,"mention",enable))
+    {
+        updateGeometryAndRepaint();
+    }
+}
+
+bool CountBadge::isMentioned() const noexcept
+{
+    return pimpl->badge->property("mention").toBool();
+}
+
+//--------------------------------------------------------------------------
+
 void CountBadge::updateGeometryAndRepaint()
 {
     updateGeometry();

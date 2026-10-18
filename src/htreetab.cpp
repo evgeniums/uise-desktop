@@ -284,7 +284,7 @@ void HTreeTab_p::appendNode(HTreeNode* node)
     // hasTitleBadge()) gets its item's badge, and the QSS-reserved icon gap, from creation.
     if (node->hasTitleBadge())
     {
-        navbar->setItemIconBadge(index,node->titleBadgeText(),node->isTitleBadgeMuted());
+        navbar->setItemIconBadge(index,node->titleBadgeText(),node->isTitleBadgeMuted(),node->isTitleBadgeMentioned());
     }
     navbar->blockSignals(true);
     navbar->setItemChecked(index,node->isExpanded());
@@ -357,9 +357,9 @@ void HTreeTab_p::appendNode(HTreeNode* node)
         node,
         &HTreeNode::titleBadgeUpdated,
         self,
-        [this,index](const QString& text, bool muted)
+        [this,index](const QString& text, bool muted, bool mentioned)
         {
-            navbar->setItemIconBadge(index,text,muted);
+            navbar->setItemIconBadge(index,text,muted,mentioned);
         }
     );
     node->connect(
@@ -504,7 +504,7 @@ bool HTreeTab_p::reconstructLastNode(int index, HTreePath path)
     navbar->setItemTrailingWidget(index,cand->trailingWidget());
     if (cand->hasTitleBadge())
     {
-        navbar->setItemIconBadge(index,cand->titleBadgeText(),cand->isTitleBadgeMuted());
+        navbar->setItemIconBadge(index,cand->titleBadgeText(),cand->isTitleBadgeMuted(),cand->isTitleBadgeMentioned());
     }
     navbar->blockSignals(false);
 

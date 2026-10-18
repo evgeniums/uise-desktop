@@ -27,6 +27,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QEvent>
 #include <QFrame>
+#include <QLabel>
 #include <QBoxLayout>
 #include <QLayout>
 #include <QSignalBlocker>
@@ -122,6 +123,37 @@ class DropdownMenu_p
         {
             auto it=buttons.find(id);
             return (it!=buttons.end() && !it->second.isNull()) ? it->second.data() : nullptr;
+        }
+
+        // Shows/updates/hides the right-aligned hint label of a row (see MenuItem::hint). The label
+        // is the row's trailing widget, created on first use and kept for the row's lifetime.
+        static void applyHint(IconTextButton* row, const QString& hint)
+        {
+            auto* label=qobject_cast<QLabel*>(row->trailingWidget());
+            if (label==nullptr || label->objectName()!="hint")
+            {
+                if (hint.isEmpty())
+                {
+                    return;
+                }
+
+                // set before the label exists: setTrailingWidget() below may polish it on the spot
+                // (setVisible(true)), and the QSS padding rule is keyed on this property
+                Style::setStyleProperty(row,"hint",true);
+
+                label=new QLabel(row);
+                label->setObjectName("hint");
+                label->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+                // QLabel adds an implicit indent when QSS gives it padding/border
+                label->setIndent(0);
+                row->setTrailingWidget(label);
+                // setTrailingWidget() restores the visibility seen before the call, which is hidden
+                // for every fresh child -- the label would never show on its own
+                label->setVisible(true);
+            }
+
+            label->setText(hint);
+            label->setVisible(!hint.isEmpty());
         }
 
         void clearRows()
@@ -389,6 +421,31 @@ void DropdownMenu::setItemIcon(int id, std::shared_ptr<SvgIcon> icon)
         if (!kv.second.isNull())
         {
             kv.second->setItemIcon(id,icon);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownMenu::setItemHint(int id, const QString& hint)
+{
+    auto* item=DropdownMenu_p::findItemRecursive(pimpl->items,id);
+    if (item==nullptr)
+    {
+        return;
+    }
+    item->hint=hint;
+
+    if (auto* row=pimpl->ownRow(id))
+    {
+        DropdownMenu_p::applyHint(row,hint);
+    }
+
+    for (auto& kv : pimpl->submenus)
+    {
+        if (!kv.second.isNull())
+        {
+            kv.second->setItemHint(id,hint);
         }
     }
 }
@@ -722,6 +779,10 @@ void DropdownMenu::fillContent()
             btn->setProperty("submenu",true);
         }
         firstRow=false;
+        if (!item.hint.isEmpty())
+        {
+            DropdownMenu_p::applyHint(btn,item.hint);
+        }
 
         // btn's own polish pass (see the comment above) covers btn itself and its #text child,
         // but not its RippleOverlay: that child was already polished inside IconTextButton's

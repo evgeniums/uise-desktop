@@ -263,7 +263,7 @@ std::shared_ptr<SvgIcon> IconTextButton::trailingSvgIcon() const
 
 //--------------------------------------------------------------------------
 
-void IconTextButton::setIconBadge(const QString& text, bool muted)
+void IconTextButton::setIconBadge(const QString& text, bool muted, bool mentioned)
 {
     if (m_iconBadge==nullptr)
     {
@@ -275,6 +275,7 @@ void IconTextButton::setIconBadge(const QString& text, bool muted)
         Style::setStyleProperty(this,"iconBadge",true,m_icon->parentWidget());
     }
     m_iconBadge->setMuted(muted);
+    m_iconBadge->setMentioned(mentioned);
     m_iconBadge->setText(text);
 }
 

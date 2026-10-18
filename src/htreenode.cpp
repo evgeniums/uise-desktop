@@ -295,6 +295,8 @@ class HTreeNode_p
 
         QPointer<QWidget> nodeControllerUi;
 
+        bool titleBadgeMentioned=false;
+
         void setCollapsePlaceholderVisible(bool enable)
         {
             collapsiblePlaceholderVisible=enable;
@@ -608,12 +610,20 @@ bool HTreeNode::isTitleBadgeMuted() const
 
 //--------------------------------------------------------------------------
 
-void HTreeNode::setTitleBadge(const QString& text, bool muted)
+bool HTreeNode::isTitleBadgeMentioned() const
+{
+    return pimpl->titleBadgeMentioned;
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeNode::setTitleBadge(const QString& text, bool muted, bool mentioned)
 {
     pimpl->hasTitleBadge=true;
     pimpl->titleBadgeText=text;
     pimpl->titleBadgeMuted=muted;
-    emit titleBadgeUpdated(text,muted);
+    pimpl->titleBadgeMentioned=mentioned;
+    emit titleBadgeUpdated(text,muted,mentioned);
 }
 
 //--------------------------------------------------------------------------

@@ -14,3 +14,11 @@ uise--CountBadge > QLabel#badge[mute="true"] {
     background-color: #999999;
     color: #FFFFFF;
 }
+
+/* A mention beats mute: a mention inside a muted source must stay visible. The combined rule
+   has more attributes than either alone, so it wins regardless of file order. */
+uise--CountBadge > QLabel#badge[mention="true"],
+uise--CountBadge > QLabel#badge[mute="true"][mention="true"] {
+    background-color: #7A3FBF;
+    color: #FFFFFF;
+}

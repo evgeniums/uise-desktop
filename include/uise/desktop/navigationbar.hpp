@@ -290,8 +290,9 @@ class UISE_DESKTOP_EXPORT NavigationBar : public QFrame
          * @param index Item index.
          * @param text Pre-formatted badge text; empty hides the badge.
          * @param muted Use the muted badge colour.
+         * @param mentioned Use the mentioned badge colour; wins over \p muted.
          */
-        void setItemIconBadge(int index, const QString& text, bool muted=false);
+        void setItemIconBadge(int index, const QString& text, bool muted=false, bool mentioned=false);
 
         /**
          * @brief Set trailing (post-text) SVG icon for an existing item.

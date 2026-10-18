@@ -142,6 +142,34 @@ int main(int argc, char *argv[])
     }
     pfl->addWidget(oldRow, 0, Qt::AlignCenter);
 
+    // The four colour states side by side: mention must win over mute.
+    auto statesTitle = new QLabel("States: normal / muted / mentioned / mentioned + muted");
+    statesTitle->setAlignment(Qt::AlignCenter);
+    pfl->addWidget(statesTitle, 0, Qt::AlignCenter);
+
+    auto statesRow = new QFrame();
+    auto srl = Layout::horizontal(statesRow, false);
+    srl->setAlignment(Qt::AlignCenter);
+    srl->setSpacing(24);
+    struct BadgeState
+    {
+        const char* caption;
+        bool muted;
+        bool mentioned;
+    };
+    for (const auto& state : {BadgeState{"normal", false, false},
+                              BadgeState{"muted", true, false},
+                              BadgeState{"mentioned", false, true},
+                              BadgeState{"mentioned + muted", true, true}})
+    {
+        auto badge = new CountBadge(statesRow);
+        badge->setText("12");
+        badge->setMuted(state.muted);
+        badge->setMentioned(state.mentioned);
+        srl->addWidget(labeledSample(state.caption, badge), 0, Qt::AlignCenter);
+    }
+    pfl->addWidget(statesRow, 0, Qt::AlignCenter);
+
     // A single live badge driven by the controls below.
     auto liveTitle = new QLabel("Live");
     liveTitle->setAlignment(Qt::AlignCenter);
@@ -191,6 +219,9 @@ int main(int argc, char *argv[])
     auto muteCheck = new QCheckBox("Muted");
     mgl->addWidget(muteCheck);
     QObject::connect(muteCheck, &QCheckBox::toggled, liveBadge, &CountBadge::setMuted);
+    auto mentionCheck = new QCheckBox("Mentioned");
+    mgl->addWidget(mentionCheck);
+    QObject::connect(mentionCheck, &QCheckBox::toggled, liveBadge, &CountBadge::setMentioned);
     cl->addWidget(muteGroup);
 
     // -- theme toggle --
