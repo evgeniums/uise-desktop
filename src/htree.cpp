@@ -553,7 +553,8 @@ void HTree::loadPaths(const std::vector<HTreePath>& paths)
 HTreeTab* HTree::openPath(HTreePath path, int tabIndex)
 {
     auto t=tab(tabIndex);
-    if (t==nullptr)
+    const bool created=(t==nullptr);
+    if (created)
     {
         auto r=pimpl->addTab(path);
         t=r.first;
@@ -571,7 +572,23 @@ HTreeTab* HTree::openPath(HTreePath path, int tabIndex)
     // only self-corrects once the deferred layout timers fire on the next event loop turn.
     Layout::activateUpward(t);
 
+    if (!created)
+    {
+        t->openPath(std::move(path));
+        return t;
+    }
+
+    // A freshly created tab is already the current (visible) page, still empty. Building its
+    // nodes and navbar items into a VISIBLE widget only posts a LayoutRequest, and a paint can
+    // beat it to the screen (seen on Windows): one frame with the navbar row at zero height and
+    // the tab-bar item at a stale width. Build while hidden and show once complete --
+    // QWidgetPrivate::show_helper() activates the layout BEFORE the widget becomes visible, the
+    // same fix HTreeNode::fillContent() uses. The tab bar is flushed first so the page does not
+    // appear under a tab-bar item still measured for its pre-build content.
+    t->setVisible(false);
     t->openPath(std::move(path));
+    pimpl->bar->relayoutNow();
+    t->setVisible(true);
     return t;
 }
 

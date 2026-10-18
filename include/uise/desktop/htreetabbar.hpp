@@ -221,6 +221,11 @@ class UISE_DESKTOP_EXPORT HTreeTabBar : public QTabBar
         //! turn actually runs.
         void scheduleRelayout();
 
+        //! Runs the relayout immediately, cancelling any pending scheduleRelayout(). For callers
+        //! that are about to let the bar paint right after a size-changing update (e.g. a freshly
+        //! opened tab) and cannot afford a frame drawn with stale tab geometry.
+        void relayoutNow();
+
     protected:
 
         QSize tabSizeHint(int index) const override;

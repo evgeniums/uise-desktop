@@ -439,16 +439,25 @@ void HTreeTabBar::scheduleRelayout()
         0,
         [this]()
         {
-            // QTabBar exposes no public "my content changed size, please relayout" call.
-            // QEvent::FontChange is the narrowest event QTabBar::changeEvent() turns into a
-            // full QTabBarPrivate::refresh() (verified against qtabbar.cpp) -- refresh()
-            // re-runs layoutTabs(), which ends in tabLayoutChange() below. StyleChange also
-            // works but additionally re-evaluates elide-mode/scroll-button style hints this
-            // class has no reason to touch.
-            QEvent event(QEvent::FontChange);
-            QCoreApplication::sendEvent(this,&event);
+            relayoutNow();
         }
     );
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeTabBar::relayoutNow()
+{
+    pimpl->relayoutTimer->clear();
+
+    // QTabBar exposes no public "my content changed size, please relayout" call.
+    // QEvent::FontChange is the narrowest event QTabBar::changeEvent() turns into a
+    // full QTabBarPrivate::refresh() (verified against qtabbar.cpp) -- refresh()
+    // re-runs layoutTabs(), which ends in tabLayoutChange() below. StyleChange also
+    // works but additionally re-evaluates elide-mode/scroll-button style hints this
+    // class has no reason to touch.
+    QEvent event(QEvent::FontChange);
+    QCoreApplication::sendEvent(this,&event);
 }
 
 //--------------------------------------------------------------------------

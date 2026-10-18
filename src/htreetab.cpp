@@ -932,11 +932,17 @@ bool HTreeTab_p::doOpenPath(HTreePath path)
             {
                 return false;
             }
+            // Append BEFORE filling, same order as HTreeBranch::loadNextNode() (see the comment
+            // there for the reparent-cost reason). The root node is created PARENTLESS by the
+            // node builder, so filling it first made HTreeNode::fillContent()'s setVisible(true)
+            // show a native top-level window -- visible on Windows as a blank floating window
+            // until appendNode() reparented it into the splitter. fillContent() hides the node
+            // while it builds, so appending first is safe.
+            self->appendNode(nod);
             if (lastInPath || !tree->isExlusivelyExpandableNode())
             {
                 nod->fillContent();
             }
-            self->appendNode(nod);
         }
     }
 
