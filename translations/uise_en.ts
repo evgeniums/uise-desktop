@@ -1353,7 +1353,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Open in new window</translation>
     </message>
     <message>
-        <location filename="../src/htreenode.cpp" line="+319"/>
+        <location filename="../src/htreenode.cpp" line="+321"/>
         <source>Expand</source>
         <comment>HTreeNode</comment>
         <translation>Expand</translation>
@@ -2919,7 +2919,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::CalendarDialog</name>
     <message>
-        <location filename="../src/calendardialog.cpp" line="+127"/>
+        <location filename="../src/calendardialog.cpp" line="+133"/>
         <source>Select date</source>
         <translation>Select date</translation>
     </message>
@@ -3292,7 +3292,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+270"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+285"/>
         <location line="+175"/>
         <source>Edit text</source>
         <translation>Edit text</translation>
@@ -3467,7 +3467,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::HTreeNodeTitleBar</name>
     <message>
-        <location filename="../src/htreenode.cpp" line="-214"/>
+        <location filename="../src/htreenode.cpp" line="-216"/>
         <source>Close this section with all subsequent sections</source>
         <translation>Close this section with all subsequent sections</translation>
     </message>
@@ -4219,7 +4219,7 @@ These tips can help you create longer passwords that are easier to remember. Try
 <context>
     <name>uise::SimpleImageEditorWidget</name>
     <message>
-        <location filename="../src/simpleimageeditor.cpp" line="+180"/>
+        <location filename="../src/simpleimageeditor.cpp" line="+181"/>
         <source>Rotate</source>
         <translation>Rotate</translation>
     </message>
