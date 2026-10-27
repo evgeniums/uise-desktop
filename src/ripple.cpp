@@ -193,7 +193,21 @@ RippleOverlay* RippleOverlay::install(QWidget* host)
 
     overlay=new RippleOverlay(host);
 
-    // Push QSS-supplied property values (colour, timings, clip, ...) into effect now, same
+    // A host that has not been polished yet -- the usual case, install() is called from host
+    // constructors -- will polish this overlay itself: QWidget::ensurePolished() recurses into
+    // EVERY child, hidden ones included, the first time the host is polished (at the latest on
+    // its first show). Polishing it here as well was pure waste on that path: hosts then set
+    // further dynamic properties (IconTextButton::setText() -> iconOnly) and had to REPOLISH the
+    // already-polished overlay, a second full QSS match per button -- measured at ~8 ms of every
+    // new chat page on top of ~14 ms for these early polishes. Deferring also means properties set
+    // after install() but before that first polish are picked up for free.
+    if (!host->testAttribute(Qt::WA_WState_Polished))
+    {
+        return overlay;
+    }
+
+    // Host already polished (overlay installed on a live widget): Qt will not polish this new
+    // child on its own, so push QSS-supplied property values (colour, timings, clip, ...) into effect now, same
     // idiom as LoadControl's permanently-hidden #sample reference frame in loadcontrol.cpp:
     // Style::updateWidgetStyle() drives QStyle::polish(), ensurePolished() drives the separate
     // QEvent::Polish path that a hidden widget would otherwise never go through.

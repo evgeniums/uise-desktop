@@ -178,11 +178,14 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
          * constructor) so the overlay ends up last in the child list and therefore paints on
          * top; raise() is also called on every host QEvent::ChildAdded/Show to keep it there.
          *
-         * This also polishes the OVERLAY immediately (ensurePolished(), so its own QSS
-         * properties resolve even though it stays hidden/unshown until the first ripple).
+         * If the host is already polished, this also polishes the OVERLAY immediately
+         * (ensurePolished(), so its own QSS properties resolve even though it stays
+         * hidden/unshown until the first ripple). If the host is not polished yet (installed
+         * from a constructor), the overlay is left unpolished and the host's own first
+         * ensurePolished() polishes it, together with every other child.
          * Every dynamic property a ripple.qss rule keys on (e.g. [iconOnly="..."],
-         * [avatarOnly="..."]) must therefore already be set on the host BEFORE calling
-         * install() -- setting it afterwards leaves the overlay permanently polished against
+         * [avatarOnly="..."]) must therefore be set on the host before the overlay is
+         * polished -- setting it afterwards leaves the overlay permanently polished against
          * its absence, since Qt polishes a widget only once and a later
          * Style::updateWidgetStyle(host) call never cascades a repolish to this child overlay
          * on its own. Any later change to such a property must be followed by

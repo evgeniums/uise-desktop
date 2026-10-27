@@ -107,6 +107,19 @@ std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
     return Style::instance().svgIconLocator().icon(QString("DropdownMenu::%1").arg(alias),context);
 }
 
+//! Layout::activateUpward(), but only while the editor is on screen. Hosts configure the editor
+//! (button visibility, mentions, toolbar...) while building a page that is not shown yet, and
+//! there the walk invalidates and activates every layout up to the top-level window for nothing:
+//! profiled at ~40-50 ms of every new chat page. Nothing can paint a hidden editor, and
+//! QWidget::show() activates its layouts before it first becomes visible.
+void activateUpwardIfVisible(QWidget* editor)
+{
+    if (editor->isVisible())
+    {
+        Layout::activateUpward(editor);
+    }
+}
+
 //! U+00A0 NO-BREAK SPACE -- what a plain paragraph's indent is made of. See
 //! MessageEditor::applyIndentStep() for why it is not an ordinary space.
 constexpr const char16_t NoBreakSpace=0x00a0;
@@ -5987,7 +6000,7 @@ void MessageEditor::applyArrangement()
     pimpl->editorRow->setAlignment(pimpl->leadingFrame,alignment);
     pimpl->editorRow->setAlignment(pimpl->trailingFrame,alignment);
 
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -6240,7 +6253,7 @@ void MessageEditor::updateMessageEditingMode()
         }
     }
     // The emoji button may have just appeared in or vanished from the trailing group.
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 
     syncToolbarState();
 }
@@ -6379,7 +6392,7 @@ void MessageEditor::updateExpanded()
     // fires on every keystroke and races an ancestor QScrollArea's own posted-event tracking;
     // this fires once per deliberate user gesture (or explicit host call), so the posted
     // LayoutRequest settles before the next paint regardless.
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -6388,7 +6401,7 @@ void MessageEditor::updateExpandButtonVisible()
 {
     pimpl->expandButton->setVisible(isExpandButtonVisible());
     pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Close,isExpandButtonVisible());
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -6396,7 +6409,7 @@ void MessageEditor::updateExpandButtonVisible()
 void MessageEditor::updateMentionButtonVisible()
 {
     pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::Mention,isMentionButtonVisible());
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -6404,7 +6417,7 @@ void MessageEditor::updateMentionButtonVisible()
 void MessageEditor::updateSpellCheckButtonVisible()
 {
     pimpl->toolbar->setButtonVisible(MessageEditorToolbarButton::SpellCheck,isSpellCheckButtonVisible());
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -7483,7 +7496,7 @@ void MessageEditor::setToolbarPinned(bool pinned)
     }
 
     setupReturnPressed();
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -8190,7 +8203,7 @@ void MessageEditor::updateEmojiButtonVisible()
         // dismissal -- the pin is remembered, in case the button reappears later.
         closeEmojiGalleryInternal(false);
     }
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -8892,7 +8905,7 @@ void MessageEditor::updateMicButton()
         // guard says so rather than relying on that being true.
         closeVoiceRecorder();
     }
-    Layout::activateUpward(this);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
