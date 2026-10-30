@@ -1,0 +1,16 @@
+{
+    "theme" : "light",
+    "contexts" : [
+        {
+            "name" : "ChatObjectBrowser",
+            "modes" : {
+                "normal" : {
+                    "off" : { "currentColor" : "#555555" }
+                },
+                "hovered" : {
+                    "off" : { "currentColor" : "#222222" }
+                }
+            }
+        }
+    ]
+}

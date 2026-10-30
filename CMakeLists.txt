@@ -274,6 +274,11 @@ SET (HEADERS
     include/uise/desktop/reactioniconpack.hpp
     include/uise/desktop/chatmessagereactions.hpp
     include/uise/desktop/chatreactiongallery.hpp
+    include/uise/desktop/chatobjectitem.hpp
+    include/uise/desktop/chatobjectbrowser.hpp
+    include/uise/desktop/chatobjectlistbrowser.hpp
+    include/uise/desktop/chatobjectgallerybrowser.hpp
+    include/uise/desktop/chatobjectbrowserpanel.hpp
     include/uise/desktop/abstractemojigallerydialog.hpp
     include/uise/desktop/emojigallerydialog.hpp
 
@@ -512,6 +517,11 @@ SET (SOURCES
     src/reactioniconpack.cpp
     src/chatmessagereactions.cpp
     src/chatreactiongallery.cpp
+    src/chatobjectbrowser.cpp
+    src/chatobjectlistbrowser.cpp
+    src/chatobjectrows.cpp
+    src/chatobjectgallerybrowser.cpp
+    src/chatobjectbrowserpanel.cpp
     src/emojigallerydialog.cpp
 
     src/replypreviewdata.cpp

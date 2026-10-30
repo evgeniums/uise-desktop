@@ -1,0 +1,15 @@
+{
+    "contexts" : [
+        {
+            "name" : "ChatObjectBrowser",
+            "aliases" : {
+                "back" : "${uise-svg-icons-1}/arrow-left",
+                "image" : "${uise-svg-icons-1}/photo",
+                "file" : "${uise-svg-icons-1}/file",
+                "voice" : "${uise-svg-icons-1}/microphone",
+                "link" : "${uise-svg-icons-1}/link",
+                "mention" : "${uise-svg-icons-1}/at"
+            }
+        }
+    ]
+}

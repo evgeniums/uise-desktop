@@ -1,0 +1,33 @@
+uise--ChatObjectBrowserPanel #header {
+border-bottom:1px solid #EEEEEE;
+}
+
+uise--ChatObjectBrowserPanel #backButton[hovered="true"] QPushButton {
+background-color: rgba(0,0,0,10);
+}
+
+uise--AbstractChatObjectBrowser #emptyLabel,
+uise--ChatObjectBrowserPanel #unknownLabel {
+color: #888888;
+}
+
+/* same tint as the chat file row's hover */
+uise--ChatObjectListBrowser #linkRow:hover,
+uise--ChatObjectListBrowser #mentionRow:hover {
+background-color: rgba(0,0,0,6);
+}
+
+uise--ChatObjectListBrowser #url QLabel,
+uise--ChatObjectListBrowser #meta QLabel {
+color: #666666;
+}
+
+/* placeholder: the subtle tint the resting reaction chip uses, not a new hue */
+uise--ChatObjectGalleryBrowser #galleryCell {
+background-color: rgba(0,0,0,10);
+}
+
+uise--ChatObjectListBrowser #monthHeader,
+uise--ChatObjectGalleryBrowser #monthHeader {
+color: #666666;
+}

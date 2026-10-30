@@ -181,6 +181,12 @@
         <file>style/light/chatreactions.json</file>
         <file>style/dark/chatreactions.qss</file>
         <file>style/light/chatreactions.qss</file>
+        <file>style/chatobjectbrowser.json</file>
+        <file>style/chatobjectbrowser.qss</file>
+        <file>style/dark/chatobjectbrowser.json</file>
+        <file>style/light/chatobjectbrowser.json</file>
+        <file>style/dark/chatobjectbrowser.qss</file>
+        <file>style/light/chatobjectbrowser.qss</file>
         <file>style/messagetext.css</file>
         <file>style/dark/messagetext.css</file>
         <file>style/light/messagetext.css</file>

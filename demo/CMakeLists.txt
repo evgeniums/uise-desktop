@@ -48,6 +48,7 @@ ADD_SUBDIRECTORY(forwardpreview)
 ADD_SUBDIRECTORY(editbar)
 ADD_SUBDIRECTORY(messageformatting)
 ADD_SUBDIRECTORY(chatreactions)
+ADD_SUBDIRECTORY(chatobjectbrowser)
 ADD_SUBDIRECTORY(waveformbar)
 ADD_SUBDIRECTORY(voicerecorder)
 

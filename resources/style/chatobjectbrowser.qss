@@ -1,0 +1,105 @@
+/* Chat object browsers: the bar of ChatObjectBrowserPanel, the empty text, the rows of the list
+ * browsers (links, mentions; the file and voice rows are the chat's own file rows and keep their
+ * chatmessagefiles.qss look) and the cells of the thumbnail grid. Colours are in light/ and dark/. */
+
+/* --- panel bar --- */
+
+uise--ChatObjectBrowserPanel #header {
+padding:6px 8px;
+}
+
+/* PushButton's own styling contract (pushbutton.hpp): the INNER QPushButton owns padding/border/
+   border-radius/background; the icon is sized with icon-size. */
+uise--ChatObjectBrowserPanel #backButton QPushButton {
+icon-size:20px;
+padding:4px;
+border-radius:6px;
+border:1px solid transparent;
+}
+
+uise--ChatObjectBrowserPanel #title {
+margin-left:4px;
+}
+
+uise--ChatObjectBrowserPanel #title QLabel {
+font-weight:600;
+}
+
+/* --- search line --- */
+
+/* SearchLineEdit carries no padding of its own, so without this the box is as tall as the platform
+   style makes a bare QLineEdit; same numbers as the reaction gallery's search box. */
+uise--AbstractChatObjectBrowser #searchEdit {
+margin:8px 12px 4px 12px;
+padding-top:6px;
+padding-bottom:6px;
+}
+
+/* --- month headings: above the first object of a month --- */
+
+uise--ChatObjectListBrowser #monthHeader {
+font-weight:600;
+padding:14px 12px 6px 12px;
+}
+
+uise--ChatObjectGalleryBrowser #monthHeader {
+font-weight:600;
+padding:14px 4px 6px 4px;
+}
+
+/* --- empty text --- */
+
+uise--AbstractChatObjectBrowser #emptyLabel,
+uise--ChatObjectBrowserPanel #unknownLabel {
+padding:24px;
+}
+
+/* --- file and voice rows: a little room at the sides, the rest is chatmessagefiles.qss --- */
+
+uise--ChatObjectListBrowser uise--ChatMessageFileItem {
+padding:4px 8px;
+}
+
+/* --- link and mention rows --- */
+
+uise--ChatObjectListBrowser #linkRow,
+uise--ChatObjectListBrowser #mentionRow {
+padding:8px 12px;
+border-radius:8px;
+}
+
+/* RoundedImage and AvatarWidget have no intrinsic size and collapse to nothing without one. */
+uise--ChatObjectListBrowser #rowIcon,
+uise--ChatObjectListBrowser #rowAvatar {
+min-width:36px;
+max-width:36px;
+min-height:36px;
+max-height:36px;
+}
+
+uise--ChatObjectListBrowser #textColumn {
+margin-left:12px;
+}
+
+uise--ChatObjectListBrowser #title QLabel {
+font-weight:600;
+}
+
+uise--ChatObjectListBrowser #url QLabel,
+uise--ChatObjectListBrowser #meta QLabel {
+font-size:11px;
+}
+
+/* --- thumbnail grid --- */
+
+/* Gap and smallest cell, read by ChatObjectGalleryBrowser to compute the columns. */
+uise--ChatObjectGalleryBrowser {
+qproperty-minCellSize: 96;
+qproperty-cellSpacing: 2;
+}
+
+/* Radius in step with ChatObjectGalleryCell::CornerRadius (the image is clipped by code); the
+   cell's own background, in light/dark, is the placeholder shown until the thumbnail arrives. */
+uise--ChatObjectGalleryBrowser #galleryCell {
+border-radius:6px;
+}
