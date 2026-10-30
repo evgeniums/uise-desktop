@@ -533,7 +533,15 @@ void AbstractImageViewer::insertFetchedImages(std::vector<Image> images, Directi
     }
 
     auto imageCountReceived=images.size();
-    mergeImages(images,direction);
+    const auto added=mergeImages(images,direction);
+    if (direction==Direction::HOME && added>0)
+    {
+        // The window grew at its front: its first image now sits that many places earlier in the whole
+        // sequence, as windowFirstPosition()'s own documentation says (a prepend of k lowers it by k, a front
+        // eviction raises it by k). Without this the number shown for the current image jumped up by k
+        // every time older images were loaded.
+        pimpl->windowFirstPosition-=static_cast<qint64>(added);
+    }
     reindexCurrent();
 
     if (requestedCount>0 && imageCountReceived<requestedCount)
