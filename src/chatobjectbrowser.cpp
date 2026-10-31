@@ -30,8 +30,12 @@ You may select, at your option, one of the above-listed licenses.
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include <QCoreApplication>
+
 #include <uise/desktop/chatobjectbrowser.hpp>
 #include <uise/desktop/searchlineedit.hpp>
+#include <uise/desktop/style.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/utils/layout.hpp>
 
@@ -814,12 +818,24 @@ void AbstractChatObjectBrowser::showContextMenu(const ChatObjectItem& item, cons
 
     m_menuItem=item;
 
+    // the icons of the browsers' own context, as those of the rows' menus
+    auto icon=[this](const char* alias)
+    {
+        return Style::instance().svgIconLocator().icon(QString("ChatObjectBrowser::%1").arg(alias),this);
+    };
+
+    // Going to the message is named and drawn the same in every browser (as in the rows' own menus). Where opening an item
+    // IS going to its message (mentions) it is the only entry: "Open" would say the same twice.
     std::vector<MenuItem> items;
-    items.emplace_back(MenuOpen,tr("Open"));
     if (!m_activationGoesToMessage)
     {
-        items.emplace_back(MenuShowInChat,tr("Show in chat"));
+        items.emplace_back(MenuOpen,tr("Open"),icon("open"));
     }
+    items.emplace_back(
+        MenuShowInChat,
+        QCoreApplication::translate("ChatObjectBrowser","Go to message"),
+        icon("goToMessage")
+    );
     if (m_menuBuilder)
     {
         auto extra=m_menuBuilder(item);

@@ -44,6 +44,7 @@ class QLabel;
 // would silently stay in English. Do not revert to the macro form. See task-localization-framework.md.
 namespace uise {
 
+class ElidedLabel;
 class IconTextButton;
 class AbstractLoadControl;
 class LoadControlMenu;
@@ -322,6 +323,15 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
 
         //! The second line of the text column, rewritten by refresh() -- see setInfoText().
         QLabel* infoLabel() const;
+
+        /**
+         * @brief The first line of the text column, the (elided in the middle) file name.
+         *
+         * For a specialised row that lets the name give way to the row's width instead of the row widening to the
+         * name (ElidedLabel::setIgnoreSizeHint()): a row of a narrow list, not of a chat bubble, which is as wide as
+         * its content.
+         */
+        ElidedLabel* nameLabel() const;
 
         bool eventFilter(QObject* obj, QEvent* event) override;
 

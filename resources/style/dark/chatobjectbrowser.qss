@@ -12,9 +12,32 @@ color: #888888;
 }
 
 /* same tint as the chat file row's hover */
-uise--ChatObjectListBrowser #linkRow:hover,
 uise--ChatObjectListBrowser #mentionRow:hover {
 background-color: rgba(255,255,255,10);
+}
+
+uise--ChatObjectListBrowser #linkRow {
+border-bottom:1px solid rgba(255,255,255,18);
+}
+
+/* the links are links: the colour of the share-me nodes' username, underlined under the pointer */
+uise--ChatObjectListBrowser #linkItem QLabel {
+color: #0099b8;
+}
+
+uise--ChatObjectListBrowser #linkItem QLabel:hover {
+color: #00b4d8;
+text-decoration: underline;
+}
+
+uise--ChatObjectListBrowser #objectHeader #sender QLabel,
+uise--ChatObjectListBrowser #objectHeader #time {
+color: #999999;
+}
+
+/* the hue of the author in the chat list (chatlist.qss #lastAuthor) */
+uise--ChatObjectListBrowser #objectHeader #sender[self="true"] QLabel {
+color: #9CD5FF;
 }
 
 uise--ChatObjectListBrowser #url QLabel,

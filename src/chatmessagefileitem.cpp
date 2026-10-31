@@ -335,6 +335,13 @@ QLabel* ChatMessageFileItem::infoLabel() const
 
 //--------------------------------------------------------------------------
 
+ElidedLabel* ChatMessageFileItem::nameLabel() const
+{
+    return pimpl->nameLabel;
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessageFileItem::setPlaybackProgress(qreal fraction)
 {
     // Nothing to show on an ordinary row -- see the declaration.
@@ -399,7 +406,7 @@ void ChatMessageFileItem::limitWidth(int totalWidth)
     // nameLabel's own maximumWidth, so this is stable no matter how many times it is called.
     auto textColumnMargins=pimpl->textColumn->contentsMargins();
     auto overhead=pimpl->iconSlot->sizeHint().width()
-                 +pimpl->menuButton->sizeHint().width()
+                 +(pimpl->menuButton->isHidden() ? 0 : pimpl->menuButton->sizeHint().width())
                  +textColumnMargins.left()+textColumnMargins.right();
 
     auto nameWidth=totalWidth-overhead;

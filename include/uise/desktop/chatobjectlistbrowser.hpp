@@ -59,6 +59,12 @@ struct ChatObjectRowFactory
     //! Optional. Without it updateItem() replaces the row's widget by a new one, which can
     //! disturb the scroll position and is wasteful for something like a playback progress.
     ChatObjectRowUpdater update;
+
+    //! Optional. A title line of the row that spans the whole width of the list above it, e.g. the sender and the date: a row
+    //! that has things at its sides (the menu button of a file) cannot make it. buildTitle makes the widget, updateTitle fills
+    //! it with the item, on creation and on every update of the item.
+    std::function<QWidget* (QWidget* parent)> buildTitle;
+    std::function<void (QWidget* title, const ChatObjectItem& item)> updateTitle;
 };
 
 //! The widget behind the list; defined in the source file because it instantiates

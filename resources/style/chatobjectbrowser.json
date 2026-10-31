@@ -4,6 +4,10 @@
             "name" : "ChatObjectBrowser",
             "aliases" : {
                 "back" : "${uise-svg-icons-1}/arrow-left",
+                "open" : "${uise-svg-icons-1}/eye",
+                "goToMessage" : "${uise-svg-icons-1}/message-circle",
+                "copy" : "${uise-svg-icons-1}/copy",
+                "openInBrowser" : "${uise-svg-icons-1}/external-link",
                 "image" : "${uise-svg-icons-1}/photo",
                 "file" : "${uise-svg-icons-1}/file",
                 "voice" : "${uise-svg-icons-1}/microphone",

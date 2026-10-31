@@ -111,6 +111,19 @@ struct ChatObjectKey
 };
 
 /**
+ * @brief One link of a message: its address and, if the message names it, its title.
+ */
+struct ChatObjectItemLink
+{
+    QString url;
+    QString title;
+
+    //! What a row shows for the link, if not the url itself (e.g. the url without the scheme the composer added to
+    //! what the user typed).
+    QString text;
+};
+
+/**
  * @brief One chat object to show: a thumbnail, a file, a voice message, a link, a mention.
  *
  * A plain, cheaply copyable value type (everything heavy is implicitly shared or a shared_ptr),
@@ -150,9 +163,13 @@ struct ChatObjectItem
     WithPath thumbnailPath;
     std::shared_ptr<RoundedImageSource> thumbnailSource;
 
-    //! Link kind: the url and, if known, the title of the page.
+    //! Link kind: the url and, if known, the title of the page. With links, the first of them.
     QString url;
     QString title;
+
+    //! Link kind: ALL the links of the message, in its order, when the owner shows a message as one object (the
+    //! stock link row lists them). Empty: the object is the one link of url and title.
+    std::vector<ChatObjectItemLink> links;
 
     //! Link and mention kinds: snippet of the message text the object comes from.
     QString text;

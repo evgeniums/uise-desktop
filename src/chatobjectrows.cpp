@@ -24,23 +24,34 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <functional>
+#include <memory>
+
+#include <QBoxLayout>
+#include <QClipboard>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QFrame>
+#include <QGuiApplication>
+#include <QLabel>
 #include <QLocale>
 #include <QMouseEvent>
+#include <QPointer>
 #include <QResizeEvent>
 #include <QStringList>
 
 #include <uise/desktop/chatobjectlistbrowser.hpp>
 #include <uise/desktop/chatmessagefileitem.hpp>
 #include <uise/desktop/chataudiofileitems.hpp>
+#include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/elidedlabel.hpp>
+#include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
+#include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/datetime.hpp>
 #include <uise/desktop/utils/filesizeformat.hpp>
@@ -64,30 +75,30 @@ QString objectDateText(const QDateTime& dateTime)
     return QCoreApplication::translate("ChatObjectBrowser","%1, %2").arg(date,time);
 }
 
-//! Join up to three parts with a separator, leaving out the empty ones.
-QString joinMeta(const QString& first, const QString& second, const QString& third=QString{})
+//! Whether \a text has anything in it besides the links: what is left of it without them has a letter or a digit. The links are
+//! found as the address, as the row shows it and as the message names it.
+bool hasTextBesidesLinks(const QString& text, const std::vector<ChatObjectItemLink>& links)
 {
-    QStringList parts;
-    for (const auto* part : {&first,&second,&third})
+    QString rest=text;
+    for (const auto& link : links)
     {
-        if (!part->isEmpty())
+        // the address first: it contains what the row shows of it
+        for (const auto* part : {&link.url,&link.text,&link.title})
         {
-            parts.push_back(*part);
+            if (!part->isEmpty())
+            {
+                rest.remove(*part,Qt::CaseInsensitive);
+            }
         }
     }
-
-    switch (parts.size())
+    for (const auto ch : rest)
     {
-        case 0:
-            return QString{};
-        case 1:
-            return parts[0];
-        case 2:
-            return QCoreApplication::translate("ChatObjectBrowser","%1 · %2").arg(parts[0],parts[1]);
-        default:
-            break;
+        if (ch.isLetterOrNumber())
+        {
+            return true;
+        }
     }
-    return QCoreApplication::translate("ChatObjectBrowser","%1 · %2 · %3").arg(parts[0],parts[1],parts[2]);
+    return false;
 }
 
 //! Whitespace and line breaks of a snippet collapsed: the rows show one line of it.
@@ -95,6 +106,61 @@ QString oneLine(const QString& text)
 {
     return text.simplified();
 }
+
+/**
+ * @brief The title line of the row of an object: who and when. The sender is elided to the row, and "You" stands for our own
+ *  messages, in a style of its own; the date is at the right.
+ *
+ * Styled by object names (#objectHeader, #sender, #time) under uise--ChatObjectListBrowser. In a file or a voice row it is
+ * the title the list puts above the row (ChatObjectRowFactory::buildTitle), so that it spans the row's whole width, the menu
+ * button included; in a link row it is the first line of the card.
+ */
+class ChatObjectTitle : public QFrame
+{
+    public:
+
+        explicit ChatObjectTitle(QWidget* parent)
+            : QFrame(parent)
+        {
+            setObjectName("objectHeader");
+            auto* layout=Layout::horizontal(this);
+
+            m_sender=new ElidedLabel(this);
+            m_sender->setObjectName("sender");
+            m_sender->setElideMode(Qt::ElideRight);
+            // a long name must elide to the row, not widen the list
+            m_sender->setIgnoreSizeHint(true);
+            layout->addWidget(m_sender,1);
+
+            // the date is at the right end of the line, whatever the sender takes
+            m_time=new QLabel(this);
+            m_time->setObjectName("time");
+            m_time->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            layout->addWidget(m_time,0,Qt::AlignRight);
+        }
+
+        void set(const ChatObjectItem& object)
+        {
+            const bool self=!object.incoming;
+            const auto sender=self ? QCoreApplication::translate("ChatObjectBrowser","You") : object.senderName;
+            m_sender->setText(sender);
+            m_sender->setVisible(!sender.isEmpty());
+            if (m_self!=self)
+            {
+                m_self=self;
+                m_sender->setProperty("self",self);
+                // the style is keyed on the property and reaches the label inside the ElidedLabel
+                Style::repolishRecursive(m_sender);
+            }
+            m_time->setText(objectDateText(object.dateTime));
+        }
+
+    private:
+
+        ElidedLabel* m_sender=nullptr;
+        QLabel* m_time=nullptr;
+        bool m_self=false;
+};
 
 // The hooks are called with a COPY of the row's item: a handler may reload or update the
 // browser, and the item must not change under it.
@@ -136,6 +202,13 @@ class ChatObjectFileRow : public ChatMessageFileItem
         {
             setObjectName("fileRow");
             setDragEnabled(false);
+
+            // The row's own menu is not offered in a browser: what there is to do with the object is in the context menu
+            // of the browser (Open, Go to message).
+            menuButton()->setVisible(false);
+
+            // The name elides to the row (the base sizes the row to the name, as it does in a chat bubble).
+            nameLabel()->setIgnoreSizeHint(true);
 
             connect(this,&ChatMessageFileItem::clicked,this,
                 [this]()
@@ -186,13 +259,8 @@ class ChatObjectFileRow : public ChatMessageFileItem
             // on every tick; leave it alone then.
             if (m_object.file.state()!=ChatFileTransferState::Running)
             {
-                setInfoText(
-                    joinMeta(
-                        formatFileSize(m_object.file.size()),
-                        objectDateText(m_object.dateTime),
-                        m_object.senderName
-                    )
-                );
+                // the date is in the title line
+                setInfoText(formatFileSize(m_object.file.size()));
             }
         }
 
@@ -241,6 +309,17 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
         {
             setObjectName("voiceRow");
             setDragEnabled(false);
+
+            // as the file row
+            menuButton()->setVisible(false);
+
+            // In a browser the waveform is not a seek bar: a click on it is a click on the row. (Transparent for the mouse
+            // whatever refresh() says about seeking: the press goes on to mousePressEvent() below.)
+            waveformBar()->setAttribute(Qt::WA_TransparentForMouseEvents,true);
+            setCursor(Qt::PointingHandCursor);
+
+            // as the file row
+            nameLabel()->setIgnoreSizeHint(true);
 
             connect(this,&ChatMessageFileItem::clicked,this,
                 [this]()
@@ -301,18 +380,25 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
             setItem(object.file,object.incoming);
         }
 
-        void refresh() override
-        {
-            ChatVoiceFileItem::refresh();
-            applyTitle();
-        }
-
     protected:
 
         void resizeEvent(QResizeEvent* event) override
         {
             ChatVoiceFileItem::resizeEvent(event);
             limitWidth(width());
+        }
+
+        //! What the base takes for the background of the row, and what falls through the waveform: the row is opened (which
+        //! plays it). The icon and the title are clicked through the base's own filter, before this.
+        void mousePressEvent(QMouseEvent* event) override
+        {
+            if (event->button()==Qt::LeftButton)
+            {
+                callActivated(m_hooks,m_object);
+                event->accept();
+                return;
+            }
+            ChatVoiceFileItem::mousePressEvent(event);
         }
 
         void contextMenuEvent(QContextMenuEvent* event) override
@@ -327,26 +413,7 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
             ChatVoiceFileItem::contextMenuEvent(event);
         }
 
-        void changeEvent(QEvent* event) override
-        {
-            ChatVoiceFileItem::changeEvent(event);
-            if (event->type()==QEvent::LanguageChange)
-            {
-                // the base has just put its own "Voice message" title back
-                applyTitle();
-            }
-        }
-
     private:
-
-        void applyTitle()
-        {
-            const auto title=joinMeta(m_object.senderName,objectDateText(m_object.dateTime));
-            if (!title.isEmpty())
-            {
-                setNameText(title);
-            }
-        }
 
         ChatObjectItem m_object;
         ChatObjectRowHooks m_hooks;
@@ -355,46 +422,30 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
 //--------------------------------------------------------------------------
 
 /**
- * @brief Row of a link or of a mention: a glyph or an avatar on the left, up to four lines of
- *  elided text on the right.
+ * @brief Row of a mention: the avatar of the sender on the left, up to three lines of elided text on the right.
  *
- * Link:    title (or the url), the url if a title is shown, snippet of the message, "date · sender".
  * Mention: sender, snippet of the message, date.
  *
- * Styled by object names (#linkRow/#mentionRow, #rowIcon, #rowAvatar, #textColumn, #title, #url,
- * #snippet, #meta) under uise--ChatObjectListBrowser, see chatobjectbrowser.qss. Single-line
- * ElidedLabels on purpose: they shrink to the row and elide, which a word-wrapped label would not.
+ * Styled by object names (#mentionRow, #rowAvatar, #textColumn, #title, #snippet, #meta) under
+ * uise--ChatObjectListBrowser, see chatobjectbrowser.qss. Single-line ElidedLabels on purpose: they shrink to
+ * the row and elide, which a word-wrapped label would not.
  */
 class ChatObjectTextRow : public QFrame
 {
     public:
 
-        ChatObjectTextRow(bool mention, const ChatObjectItem& object, const ChatObjectRowHooks& hooks, QWidget* parent)
+        ChatObjectTextRow(const ChatObjectItem& object, const ChatObjectRowHooks& hooks, QWidget* parent)
             : QFrame(parent),
-              m_mention(mention),
               m_hooks(hooks)
         {
-            setObjectName(mention ? "mentionRow" : "linkRow");
+            setObjectName("mentionRow");
             setCursor(Qt::PointingHandCursor);
 
             auto* layout=Layout::horizontal(this);
 
-            if (mention)
-            {
-                m_avatar=new AvatarWidget(this);
-                m_avatar->setObjectName("rowAvatar");
-                layout->addWidget(m_avatar,0,Qt::AlignTop);
-            }
-            else
-            {
-                m_icon=new RoundedImage(this);
-                m_icon->setObjectName("rowIcon");
-                m_icon->setSvgIcon(
-                    Style::instance().svgIconLocator().icon(QStringLiteral("ChatObjectBrowser::link"),this)
-                );
-                m_icon->setSvgIconSize(QSize(20,20));
-                layout->addWidget(m_icon,0,Qt::AlignTop);
-            }
+            m_avatar=new AvatarWidget(this);
+            m_avatar->setObjectName("rowAvatar");
+            layout->addWidget(m_avatar,0,Qt::AlignTop);
 
             auto* column=new QFrame(this);
             column->setObjectName("textColumn");
@@ -403,8 +454,6 @@ class ChatObjectTextRow : public QFrame
 
             m_title=makeLabel("title",column);
             columnLayout->addWidget(m_title);
-            m_url=makeLabel("url",column);
-            columnLayout->addWidget(m_url);
             m_snippet=makeLabel("snippet",column);
             columnLayout->addWidget(m_snippet);
             m_meta=makeLabel("meta",column);
@@ -417,31 +466,19 @@ class ChatObjectTextRow : public QFrame
         {
             m_object=object;
 
-            if (m_mention)
+            m_avatar->setAvatarName(object.senderName.toStdString());
+            if (!object.senderAvatarPath.empty())
             {
-                m_avatar->setAvatarName(object.senderName.toStdString());
-                if (!object.senderAvatarPath.empty())
-                {
-                    m_avatar->setAvatarPath(object.senderAvatarPath);
-                }
-                if (object.avatarSource)
-                {
-                    m_avatar->setAvatarSource(object.avatarSource);
-                }
+                m_avatar->setAvatarPath(object.senderAvatarPath);
+            }
+            if (object.avatarSource)
+            {
+                m_avatar->setAvatarSource(object.avatarSource);
+            }
 
-                setText(m_title,object.senderName);
-                setText(m_url,QString{});
-                setText(m_snippet,oneLine(object.text));
-                setText(m_meta,objectDateText(object.dateTime));
-            }
-            else
-            {
-                const bool hasTitle=!object.title.isEmpty();
-                setText(m_title,hasTitle ? oneLine(object.title) : object.url);
-                setText(m_url,hasTitle ? object.url : QString{});
-                setText(m_snippet,oneLine(object.text));
-                setText(m_meta,joinMeta(objectDateText(object.dateTime),object.senderName));
-            }
+            setText(m_title,object.senderName);
+            setText(m_snippet,oneLine(object.text));
+            setText(m_meta,objectDateText(object.dateTime));
         }
 
     protected:
@@ -503,17 +540,340 @@ class ChatObjectTextRow : public QFrame
             label->setVisible(!text.isEmpty());
         }
 
-        bool m_mention;
         ChatObjectRowHooks m_hooks;
         ChatObjectItem m_object;
         bool m_pressed=false;
 
         AvatarWidget* m_avatar=nullptr;
-        RoundedImage* m_icon=nullptr;
         ElidedLabel* m_title=nullptr;
-        ElidedLabel* m_url=nullptr;
         ElidedLabel* m_snippet=nullptr;
         ElidedLabel* m_meta=nullptr;
+};
+
+//--------------------------------------------------------------------------
+
+/**
+ * @brief One line of an elided text that can be clicked and asks for a context menu of its own.
+ *
+ * The click lands on the QLabel inside the ElidedLabel, which does not take it, so it comes up to this widget.
+ */
+class ChatObjectClickableLabel : public ElidedLabel
+{
+    public:
+
+        using ElidedLabel::ElidedLabel;
+
+        std::function<void ()> clicked;
+
+        //! The global position of the menu.
+        std::function<void (const QPoint&)> menuRequested;
+
+    protected:
+
+        void mousePressEvent(QMouseEvent* event) override
+        {
+            if (clicked && event->button()==Qt::LeftButton)
+            {
+                m_pressed=true;
+                event->accept();
+                return;
+            }
+            ElidedLabel::mousePressEvent(event);
+        }
+
+        void mouseReleaseEvent(QMouseEvent* event) override
+        {
+            if (m_pressed && event->button()==Qt::LeftButton)
+            {
+                m_pressed=false;
+                event->accept();
+                if (rect().contains(event->position().toPoint()) && clicked)
+                {
+                    clicked();
+                }
+                return;
+            }
+            ElidedLabel::mouseReleaseEvent(event);
+        }
+
+        void contextMenuEvent(QContextMenuEvent* event) override
+        {
+            if (menuRequested)
+            {
+                menuRequested(event->globalPos());
+                event->accept();
+                return;
+            }
+            ElidedLabel::contextMenuEvent(event);
+        }
+
+    private:
+
+        bool m_pressed=false;
+};
+
+//--------------------------------------------------------------------------
+
+/**
+ * @brief Row of a message with links: what the message says, the links in it, when and from whom.
+ *
+ * From the top: the sender (elided; "You" for our own message, in a style of its own) and the date, up to three lines
+ * of the text of the message (elided, not clickable; its context menu has "Go to message" and "Copy text"), and a line
+ * for every link of the message (elided, clickable, with "Open in browser" and "Copy link" in the context menu).
+ *
+ * Styled by object names (#linkRow, #header, #sender, #time, #messageText, #linksColumn, #linkItem) under
+ * uise--ChatObjectListBrowser, see chatobjectbrowser.qss.
+ */
+class ChatObjectLinkRow : public QFrame
+{
+    public:
+
+        ChatObjectLinkRow(const ChatObjectItem& object, const ChatObjectRowHooks& hooks, QWidget* parent)
+            : QFrame(parent),
+              m_hooks(hooks)
+        {
+            setObjectName("linkRow");
+
+            auto* layout=Layout::vertical(this);
+
+            // The top line: who, and when.
+            m_title=new ChatObjectTitle(this);
+            layout->addWidget(m_title);
+
+            m_text=new ChatObjectClickableLabel(this);
+            m_text->setObjectName("messageText");
+            m_text->setElideMode(Qt::ElideRight);
+            m_text->setMaxLines(3);
+            // A long text must elide to the row, not widen the list, and must not make it taller than three lines: the
+            // list measures a row before the text is elided, and a text of many lines left a row with the room of them.
+            m_text->setIgnoreSizeHint(true);
+            m_text->setMaximumHeight(3*m_text->fontMetrics().lineSpacing()+2);
+            m_text->menuRequested=[this](const QPoint& globalPos)
+            {
+                showMessageMenu(globalPos);
+            };
+            layout->addWidget(m_text);
+
+            m_linksFrame=new QFrame(this);
+            m_linksFrame->setObjectName("linksColumn");
+            m_linksLayout=Layout::vertical(m_linksFrame);
+            layout->addWidget(m_linksFrame);
+
+            // Whatever room the list gives the row beyond its content goes below it, not between its lines.
+            layout->addStretch(1);
+
+            setObject(object);
+        }
+
+        ~ChatObjectLinkRow()
+        {
+            // a parentless popup of its own, as the other rows' menus
+            if (!m_menu.isNull())
+            {
+                m_menu->closeDropdown(true);
+                destroyWidget(m_menu);
+            }
+        }
+
+        void setObject(const ChatObjectItem& object)
+        {
+            m_object=object;
+
+            // The links of the message; a lone link given by url and title is the one entry.
+            std::vector<ChatObjectItemLink> links=object.links;
+            if (links.empty() && !object.url.isEmpty())
+            {
+                links.push_back(ChatObjectItemLink{object.url,object.title,QString{}});
+            }
+
+            // What the message says is shown when it says something besides the links; a message that is only its link
+            // (or links) would show them twice.
+            const auto text=oneLine(object.text);
+            const bool showText=hasTextBesidesLinks(text,links);
+            m_text->setText(showText ? text : QString{});
+            m_text->setVisible(showText);
+
+            // The labels are kept and reused: a row is updated with other items all the time.
+            while (m_linkLabels.size()<links.size())
+            {
+                m_linkLabels.push_back(makeLinkLabel());
+            }
+            for (size_t i=0;i<m_linkLabels.size();i++)
+            {
+                auto* label=m_linkLabels[i];
+                if (i<links.size())
+                {
+                    label->setText(links[i].text.isEmpty() ? links[i].url : links[i].text);
+                    label->setToolTip(links[i].title);
+                    label->setVisible(true);
+                }
+                else
+                {
+                    label->setVisible(false);
+                }
+            }
+            m_links=std::move(links);
+            m_linksFrame->setVisible(!m_links.empty());
+
+            m_title->set(object);
+        }
+
+    protected:
+
+        //! The background of the row and the empty places: the menu of the message.
+        void contextMenuEvent(QContextMenuEvent* event) override
+        {
+            showMessageMenu(event->globalPos());
+            event->accept();
+        }
+
+    private:
+
+        // ids of the entries of the menu
+        constexpr static const int MenuGoToMessage=1;
+        constexpr static const int MenuCopyText=2;
+        constexpr static const int MenuOpenLink=3;
+        constexpr static const int MenuCopyLink=4;
+
+        ChatObjectClickableLabel* makeLinkLabel()
+        {
+            auto* label=new ChatObjectClickableLabel(m_linksFrame);
+            label->setObjectName("linkItem");
+            label->setElideMode(Qt::ElideRight);
+            // a long address must elide to the row, not widen the list
+            label->setIgnoreSizeHint(true);
+            label->setCursor(Qt::PointingHandCursor);
+            const size_t index=m_linkLabels.size();
+            label->clicked=[this,index]()
+            {
+                if (index<m_links.size())
+                {
+                    callActivated(m_hooks,withLink(index));
+                }
+            };
+            label->menuRequested=[this,index](const QPoint& globalPos)
+            {
+                if (index<m_links.size())
+                {
+                    showLinkMenu(index,globalPos);
+                }
+            };
+            m_linksLayout->addWidget(label);
+            return label;
+        }
+
+        //! The object of the message as the object of the one link: what the owner opens is its url.
+        ChatObjectItem withLink(size_t index) const
+        {
+            ChatObjectItem copy=m_object;
+            copy.url=m_links[index].url;
+            copy.title=m_links[index].title;
+            return copy;
+        }
+
+        //! The icon of a menu entry, from the browsers' icon context.
+        std::shared_ptr<SvgIcon> menuIcon(const char* alias)
+        {
+            return Style::instance().svgIconLocator().icon(QString("ChatObjectBrowser::%1").arg(alias),this);
+        }
+
+        void showMessageMenu(const QPoint& globalPos)
+        {
+            std::vector<MenuItem> items;
+            items.emplace_back(MenuGoToMessage,QCoreApplication::translate("ChatObjectBrowser","Go to message"),menuIcon("goToMessage"));
+            if (!m_object.text.isEmpty())
+            {
+                items.emplace_back(MenuCopyText,QCoreApplication::translate("ChatObjectBrowser","Copy text"),menuIcon("copy"));
+            }
+            popup(std::move(items),globalPos);
+        }
+
+        void showLinkMenu(size_t index, const QPoint& globalPos)
+        {
+            m_menuLink=index;
+            std::vector<MenuItem> items;
+            items.emplace_back(MenuOpenLink,QCoreApplication::translate("ChatObjectBrowser","Open in browser"),menuIcon("openInBrowser"));
+            items.emplace_back(MenuCopyLink,QCoreApplication::translate("ChatObjectBrowser","Copy link"),menuIcon("copy"));
+            // a message of one link shows no text of its own to ask for the message from
+            items.emplace_back(MenuGoToMessage,QCoreApplication::translate("ChatObjectBrowser","Go to message"),menuIcon("goToMessage"));
+            popup(std::move(items),globalPos);
+        }
+
+        void popup(std::vector<MenuItem> items, const QPoint& globalPos)
+        {
+            if (m_menu.isNull())
+            {
+                m_menu=new DropdownMenu();
+                // a context menu is expected to pop up instantly
+                m_menu->setAnimationDurationMs(0);
+                connect(m_menu.data(),&DropdownMenu::itemTriggered,this,
+                    [this](int id)
+                    {
+                        onMenu(id);
+                    }
+                );
+            }
+            m_menu->setItems(std::move(items));
+            m_menu->popupAt(globalPos);
+        }
+
+        void onMenu(int id)
+        {
+            switch (id)
+            {
+                case MenuGoToMessage:
+                    if (m_hooks.goToMessage)
+                    {
+                        const ChatObjectItem copy=m_object;
+                        m_hooks.goToMessage(copy);
+                    }
+                    break;
+
+                case MenuCopyText:
+                    copyToClipboard(m_object.text);
+                    break;
+
+                case MenuOpenLink:
+                    if (m_menuLink<m_links.size())
+                    {
+                        callActivated(m_hooks,withLink(m_menuLink));
+                    }
+                    break;
+
+                case MenuCopyLink:
+                    if (m_menuLink<m_links.size())
+                    {
+                        copyToClipboard(m_links[m_menuLink].url);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        void copyToClipboard(const QString& text)
+        {
+            auto* clipboard=QGuiApplication::clipboard();
+            if (clipboard==nullptr || text.isEmpty())
+            {
+                return;
+            }
+            clipboard->setText(text);
+            callAction(m_hooks,m_object,ChatObjectAction::Copied,text);
+        }
+
+        ChatObjectRowHooks m_hooks;
+        ChatObjectItem m_object;
+        std::vector<ChatObjectItemLink> m_links;
+        size_t m_menuLink=0;
+
+        ChatObjectClickableLabel* m_text=nullptr;
+        QFrame* m_linksFrame=nullptr;
+        QBoxLayout* m_linksLayout=nullptr;
+        std::vector<ChatObjectClickableLabel*> m_linkLabels;
+        ChatObjectTitle* m_title=nullptr;
+        QPointer<DropdownMenu> m_menu;
 };
 
 } // anonymous namespace
@@ -531,6 +891,14 @@ ChatObjectRowFactory makeChatObjectFileRowFactory()
     {
         static_cast<ChatObjectFileRow*>(row)->setObject(item);
     };
+    factory.buildTitle=[](QWidget* parent) -> QWidget*
+    {
+        return new ChatObjectTitle(parent);
+    };
+    factory.updateTitle=[](QWidget* title, const ChatObjectItem& item)
+    {
+        static_cast<ChatObjectTitle*>(title)->set(item);
+    };
     return factory;
 }
 
@@ -547,6 +915,14 @@ ChatObjectRowFactory makeChatObjectVoiceRowFactory()
     {
         static_cast<ChatObjectVoiceRow*>(row)->setObject(item);
     };
+    factory.buildTitle=[](QWidget* parent) -> QWidget*
+    {
+        return new ChatObjectTitle(parent);
+    };
+    factory.updateTitle=[](QWidget* title, const ChatObjectItem& item)
+    {
+        static_cast<ChatObjectTitle*>(title)->set(item);
+    };
     return factory;
 }
 
@@ -557,11 +933,11 @@ ChatObjectRowFactory makeChatObjectLinkRowFactory()
     ChatObjectRowFactory factory;
     factory.build=[](const ChatObjectItem& item, QWidget* parent, const ChatObjectRowHooks& hooks) -> QFrame*
     {
-        return new ChatObjectTextRow(false,item,hooks,parent);
+        return new ChatObjectLinkRow(item,hooks,parent);
     };
     factory.update=[](QFrame* row, const ChatObjectItem& item)
     {
-        static_cast<ChatObjectTextRow*>(row)->setObject(item);
+        static_cast<ChatObjectLinkRow*>(row)->setObject(item);
     };
     return factory;
 }
@@ -573,7 +949,7 @@ ChatObjectRowFactory makeChatObjectMentionRowFactory()
     ChatObjectRowFactory factory;
     factory.build=[](const ChatObjectItem& item, QWidget* parent, const ChatObjectRowHooks& hooks) -> QFrame*
     {
-        return new ChatObjectTextRow(true,item,hooks,parent);
+        return new ChatObjectTextRow(item,hooks,parent);
     };
     factory.update=[](QFrame* row, const ChatObjectItem& item)
     {

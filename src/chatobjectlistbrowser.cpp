@@ -80,8 +80,24 @@ class ChatObjectListRow : public QFrame
             m_header->setObjectName("monthHeader");
             // plain text: month names are not markup
             m_header->setTextFormat(Qt::PlainText);
+            // A styled QLabel indents its text by half a character on its own; the rows below do not, and the heading
+            // must start where they do.
+            m_header->setIndent(0);
+            m_header->setMargin(0);
             m_header->setVisible(false);
             m_layout->addWidget(m_header);
+        }
+
+        //! A title line between the heading and the kind's row; before setInner().
+        void setTitle(QWidget* title)
+        {
+            m_title=title;
+            m_layout->addWidget(title);
+        }
+
+        QWidget* title() const noexcept
+        {
+            return m_title;
         }
 
         void setInner(QFrame* inner)
@@ -110,6 +126,7 @@ class ChatObjectListRow : public QFrame
 
         QBoxLayout* m_layout=nullptr;
         QLabel* m_header=nullptr;
+        QWidget* m_title=nullptr;
         QFrame* m_inner=nullptr;
 };
 
@@ -327,7 +344,12 @@ class ChatObjectListView : public QFrame
 
             if (m_factory.update)
             {
-                m_factory.update(static_cast<ChatObjectListRow*>(current->widget())->inner(),object);
+                auto* row=static_cast<ChatObjectListRow*>(current->widget());
+                m_factory.update(row->inner(),object);
+                if (m_factory.updateTitle && row->title()!=nullptr)
+                {
+                    m_factory.updateTitle(row->title(),object);
+                }
                 return;
             }
 
@@ -390,6 +412,17 @@ class ChatObjectListView : public QFrame
             handle.pos.key=object.key;
             handle.uid=object.uid();
             auto* row=new ChatObjectListRow(m_view->itemsParentWidget());
+            if (m_factory.buildTitle)
+            {
+                if (auto* title=m_factory.buildTitle(row))
+                {
+                    row->setTitle(title);
+                    if (m_factory.updateTitle)
+                    {
+                        m_factory.updateTitle(title,object);
+                    }
+                }
+            }
             QFrame* inner=nullptr;
             if (m_factory.build)
             {

@@ -87,6 +87,9 @@ namespace ChatObjectAction
     inline const QString Stop=QStringLiteral("stop");
     //! Seek a voice object; the argument is a qreal fraction in [0,1].
     inline const QString Seek=QStringLiteral("seek");
+    //! A row put a text (a link, the text of a message) to the clipboard; the argument is the text. The owner may
+    //! tell the user.
+    inline const QString Copied=QStringLiteral("copied");
 }
 
 /**
@@ -303,8 +306,8 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
          * @brief Make activation of an item mean "show the message".
          *
          * For kinds whose object IS the message (mentions): a click then emits
-         * goToMessageRequested() instead of itemActivated(), and the redundant "Show in chat"
-         * entry is left out of the context menu.
+         * goToMessageRequested() instead of itemActivated(), and the context menu has "Go to message"
+         * alone, without the redundant "Open".
          */
         void setActivationGoesToMessage(bool enable) noexcept;
 

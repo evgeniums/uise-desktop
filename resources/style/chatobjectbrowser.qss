@@ -62,10 +62,48 @@ padding:4px 8px;
 
 /* --- link and mention rows --- */
 
-uise--ChatObjectListBrowser #linkRow,
 uise--ChatObjectListBrowser #mentionRow {
 padding:8px 12px;
 border-radius:8px;
+}
+
+/* A link row is a card (the text of the message, its links, the sender and the date) and is told from the next by a line,
+   not by a hover tint: only its parts are clickable. */
+uise--ChatObjectListBrowser #linkRow {
+padding:8px 12px;
+}
+
+uise--ChatObjectListBrowser #linkRow #linksColumn {
+margin:4px 0 0 0;
+}
+
+uise--ChatObjectListBrowser #linkRow #messageText {
+margin:4px 0 0 0;
+}
+
+uise--ChatObjectListBrowser #linkRow #linkItem {
+margin:2px 0;
+}
+
+uise--ChatObjectListBrowser #objectHeader #sender QLabel,
+uise--ChatObjectListBrowser #objectHeader #time {
+font-size:11px;
+}
+
+/* the title line of a row of an object (the sender and the date) is a little apart from what follows it */
+uise--ChatObjectListBrowser #objectHeader {
+margin-bottom:2px;
+}
+
+/* the title of a file or a voice row is the list's (ChatObjectRowFactory::buildTitle), above the row and as wide as the list: it
+   starts where the icon of the row does (the 8px of the row's padding), and its date ends at the right edge of the list */
+uise--ChatObjectListBrowser #listRow > #objectHeader {
+margin:6px 8px 4px 8px;
+}
+
+/* the sender is the name of a person; our own messages ("You") are told by weight and, in light/ and dark/, by the colour */
+uise--ChatObjectListBrowser #objectHeader #sender QLabel {
+font-weight:600;
 }
 
 /* RoundedImage and AvatarWidget have no intrinsic size and collapse to nothing without one. */
