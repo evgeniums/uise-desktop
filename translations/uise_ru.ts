@@ -527,6 +527,100 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>ChatObjectBrowser</name>
+    <message>
+        <location filename="../src/chatobjectbrowserpanel.cpp" line="+127"/>
+        <source>Images</source>
+        <translation>Изображения</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No images in this chat</source>
+        <translation>В этом чате нет изображений</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Files</source>
+        <translation>Файлы</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No files in this chat</source>
+        <translation>В этом чате нет файлов</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Voice messages</source>
+        <translation>Голосовые сообщения</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No voice messages in this chat</source>
+        <translation>В этом чате нет голосовых сообщений</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Links</source>
+        <translation>Ссылки</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No links in this chat</source>
+        <translation>В этом чате нет ссылок</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Mentions</source>
+        <translation>Упоминания</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>You were not mentioned in this chat</source>
+        <translation>Вас не упоминали в этом чате</translation>
+    </message>
+    <message>
+        <location line="+128"/>
+        <source>These objects cannot be shown</source>
+        <translation>Эти объекты нельзя показать</translation>
+    </message>
+    <message>
+        <location filename="../src/chatobjectrows.cpp" line="+75"/>
+        <source>%1, %2</source>
+        <translation>%1, %2</translation>
+    </message>
+    <message>
+        <location line="+70"/>
+        <source>You</source>
+        <translation>Вы</translation>
+    </message>
+    <message>
+        <location line="+641"/>
+        <source>Copy text</source>
+        <translation>Копировать текст</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Open in browser</source>
+        <translation>Открыть в браузере</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Copy link</source>
+        <translation>Копировать ссылку</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation type="obsolete">%1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../src/chatobjectbrowser.cpp" line="+836"/>
+        <location filename="../src/chatobjectrows.cpp" line="-13"/>
+        <location line="+15"/>
+        <source>Go to message</source>
+        <translation>Перейти к сообщению</translation>
+    </message>
+</context>
+<context>
     <name>DirectoryImagesViewer</name>
     <message>
         <source>Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*.*)</source>
@@ -1480,7 +1574,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReactionIconPack</name>
     <message>
-        <location filename="../src/reactioniconpack.cpp" line="+76"/>
+        <location filename="../src/reactioniconpack.cpp" line="+75"/>
         <source>thumbs up</source>
         <translation>палец вверх</translation>
     </message>
@@ -2664,6 +2758,34 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>uise::AbstractChatObjectBrowser</name>
+    <message>
+        <location filename="../src/chatobjectbrowser.cpp" line="-524"/>
+        <source>Nothing here yet</source>
+        <translation>Здесь пока ничего нет</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+143"/>
+        <source>Search</source>
+        <translation>Поиск</translation>
+    </message>
+    <message>
+        <location line="+60"/>
+        <source>Nothing found</source>
+        <translation>Ничего не найдено</translation>
+    </message>
+    <message>
+        <location line="+311"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <source>Show in chat</source>
+        <translation type="obsolete">Показать в чате</translation>
+    </message>
+</context>
+<context>
     <name>uise::AbstractDialog</name>
     <message>
         <location filename="../src/abstractdialog.cpp" line="+66"/>
@@ -3077,20 +3199,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+846"/>
-        <location line="+417"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+827"/>
+        <location line="+412"/>
         <source>Recently used</source>
         <translation>Недавние</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+360"/>
+        <location line="-398"/>
+        <location line="+355"/>
         <source>Search reactions</source>
         <translation>Поиск реакций</translation>
     </message>
     <message>
-        <location line="-342"/>
-        <location line="+350"/>
+        <location line="-337"/>
+        <location line="+345"/>
         <source>No matching reactions</source>
         <translation>Ничего не найдено</translation>
     </message>
@@ -3573,7 +3695,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4948"/>
+        <location filename="../src/messageeditor.cpp" line="+4961"/>
         <source>Show formatting toolbar</source>
         <translation>Показать панель форматирования</translation>
     </message>

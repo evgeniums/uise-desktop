@@ -534,6 +534,100 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>ChatObjectBrowser</name>
+    <message>
+        <location filename="../src/chatobjectbrowserpanel.cpp" line="+127"/>
+        <source>Images</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No images in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No files in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Voice messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No voice messages in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Links</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No links in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Mentions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>You were not mentioned in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+128"/>
+        <source>These objects cannot be shown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/chatobjectrows.cpp" line="+75"/>
+        <source>%1, %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+70"/>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+641"/>
+        <source>Copy text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Open in browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Copy link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation type="obsolete">%1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../src/chatobjectbrowser.cpp" line="+836"/>
+        <location filename="../src/chatobjectrows.cpp" line="-13"/>
+        <location line="+15"/>
+        <source>Go to message</source>
+        <translation type="unfinished">Go to message</translation>
+    </message>
+</context>
+<context>
     <name>DirectoryImagesViewer</name>
     <message>
         <source>Browse...</source>
@@ -1497,7 +1591,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>ReactionIconPack</name>
     <message>
-        <location filename="../src/reactioniconpack.cpp" line="+76"/>
+        <location filename="../src/reactioniconpack.cpp" line="+75"/>
         <source>thumbs up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2685,6 +2779,34 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
 </context>
 <context>
+    <name>uise::AbstractChatObjectBrowser</name>
+    <message>
+        <location filename="../src/chatobjectbrowser.cpp" line="-524"/>
+        <source>Nothing here yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+143"/>
+        <source>Search</source>
+        <translation type="unfinished">Search</translation>
+    </message>
+    <message>
+        <location line="+60"/>
+        <source>Nothing found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+311"/>
+        <source>Open</source>
+        <translation type="unfinished">Open</translation>
+    </message>
+    <message>
+        <source>Show in chat</source>
+        <translation type="obsolete">Show in chat</translation>
+    </message>
+</context>
+<context>
     <name>uise::AbstractDialog</name>
     <message>
         <location filename="../src/abstractdialog.cpp" line="+66"/>
@@ -3097,20 +3219,20 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatReactionGallery</name>
     <message>
-        <location filename="../src/chatreactiongallery.cpp" line="+846"/>
-        <location line="+417"/>
+        <location filename="../src/chatreactiongallery.cpp" line="+827"/>
+        <location line="+412"/>
         <source>Recently used</source>
         <translation>Recently used</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+360"/>
+        <location line="-398"/>
+        <location line="+355"/>
         <source>Search reactions</source>
         <translation>Search reactions</translation>
     </message>
     <message>
-        <location line="-342"/>
-        <location line="+350"/>
+        <location line="-337"/>
+        <location line="+345"/>
         <source>No matching reactions</source>
         <translation>No matching reactions</translation>
     </message>
@@ -3595,7 +3717,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4948"/>
+        <location filename="../src/messageeditor.cpp" line="+4961"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
