@@ -63,7 +63,7 @@ padding:4px 8px;
 /* --- link and mention rows --- */
 
 uise--ChatObjectListBrowser #mentionRow {
-padding:8px 12px;
+padding:4px 8px;
 border-radius:8px;
 }
 

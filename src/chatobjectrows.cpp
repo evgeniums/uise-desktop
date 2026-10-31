@@ -422,13 +422,13 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
 //--------------------------------------------------------------------------
 
 /**
- * @brief Row of a mention: the avatar of the sender on the left, up to three lines of elided text on the right.
+ * @brief Row of a mention: the avatar of the sender on the left, up to three lines of the message on the right.
  *
- * Mention: sender, snippet of the message, date.
+ * The sender and the date are the title line of the row, which the list puts above it as for every other kind
+ * (ChatObjectRowFactory::buildTitle).
  *
- * Styled by object names (#mentionRow, #rowAvatar, #textColumn, #title, #snippet, #meta) under
- * uise--ChatObjectListBrowser, see chatobjectbrowser.qss. Single-line ElidedLabels on purpose: they shrink to
- * the row and elide, which a word-wrapped label would not.
+ * Styled by object names (#mentionRow, #rowAvatar, #textColumn, #snippet) under uise--ChatObjectListBrowser, see
+ * chatobjectbrowser.qss. An ElidedLabel on purpose: it shrinks to the row and elides, which a word-wrapped label would not.
  */
 class ChatObjectTextRow : public QFrame
 {
@@ -452,12 +452,15 @@ class ChatObjectTextRow : public QFrame
             auto* columnLayout=Layout::vertical(column);
             layout->addWidget(column,1);
 
-            m_title=makeLabel("title",column);
-            columnLayout->addWidget(m_title);
-            m_snippet=makeLabel("snippet",column);
+            m_snippet=new ElidedLabel(column);
+            m_snippet->setObjectName("snippet");
+            m_snippet->setElideMode(Qt::ElideRight);
+            m_snippet->setMaxLines(3);
+            // as the text of a link card: elided to the row, and not taller than three lines whatever the list measured
+            m_snippet->setIgnoreSizeHint(true);
+            m_snippet->setMaximumHeight(3*m_snippet->fontMetrics().lineSpacing()+2);
             columnLayout->addWidget(m_snippet);
-            m_meta=makeLabel("meta",column);
-            columnLayout->addWidget(m_meta);
+            columnLayout->addStretch(1);
 
             setObject(object);
         }
@@ -476,9 +479,9 @@ class ChatObjectTextRow : public QFrame
                 m_avatar->setAvatarSource(object.avatarSource);
             }
 
-            setText(m_title,object.senderName);
-            setText(m_snippet,oneLine(object.text));
-            setText(m_meta,objectDateText(object.dateTime));
+            const auto snippet=oneLine(object.text);
+            m_snippet->setText(snippet);
+            m_snippet->setVisible(!snippet.isEmpty());
         }
 
     protected:
@@ -523,31 +526,12 @@ class ChatObjectTextRow : public QFrame
 
     private:
 
-        static ElidedLabel* makeLabel(const char* name, QWidget* parent)
-        {
-            auto* label=new ElidedLabel(parent);
-            label->setObjectName(name);
-            label->setElideMode(Qt::ElideRight);
-            // a long text must elide to the row, not widen the list
-            label->setIgnoreSizeHint(true);
-            return label;
-        }
-
-        //! An empty line is hidden so that it takes no height.
-        static void setText(ElidedLabel* label, const QString& text)
-        {
-            label->setText(text);
-            label->setVisible(!text.isEmpty());
-        }
-
         ChatObjectRowHooks m_hooks;
         ChatObjectItem m_object;
         bool m_pressed=false;
 
         AvatarWidget* m_avatar=nullptr;
-        ElidedLabel* m_title=nullptr;
         ElidedLabel* m_snippet=nullptr;
-        ElidedLabel* m_meta=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -954,6 +938,14 @@ ChatObjectRowFactory makeChatObjectMentionRowFactory()
     factory.update=[](QFrame* row, const ChatObjectItem& item)
     {
         static_cast<ChatObjectTextRow*>(row)->setObject(item);
+    };
+    factory.buildTitle=[](QWidget* parent) -> QWidget*
+    {
+        return new ChatObjectTitle(parent);
+    };
+    factory.updateTitle=[](QWidget* title, const ChatObjectItem& item)
+    {
+        static_cast<ChatObjectTitle*>(title)->set(item);
     };
     return factory;
 }
