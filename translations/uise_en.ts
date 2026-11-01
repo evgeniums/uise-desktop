@@ -601,7 +601,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+641"/>
+        <location line="+625"/>
         <source>Copy text</source>
         <translation type="unfinished"></translation>
     </message>
