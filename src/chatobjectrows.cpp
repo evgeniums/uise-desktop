@@ -48,6 +48,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/avatar.hpp>
+#include <uise/desktop/colorpalette.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
@@ -111,6 +112,9 @@ QString oneLine(const QString& text)
  * @brief The title line of the row of an object: who and when. The sender is elided to the row, and "You" stands for our own
  *  messages, in a style of its own; the date is at the right.
  *
+ * The name of another sender is coloured from the ColorPaletteNames::ChatSenderTitle palette by ChatObjectItem::senderColorKey,
+ * as in the chat; without a key it has the colour of the style sheet.
+ *
  * Styled by object names (#objectHeader, #sender, #time) under uise--ChatObjectListBrowser. In a file or a voice row it is
  * the title the list puts above the row (ChatObjectRowFactory::buildTitle), so that it spans the row's whole width, the menu
  * button included; in a link row it is the first line of the card.
@@ -152,13 +156,39 @@ class ChatObjectTitle : public QFrame
                 // the style is keyed on the property and reaches the label inside the ElidedLabel
                 Style::repolishRecursive(m_sender);
             }
+            m_colorKey=self ? QString{} : object.senderColorKey;
+            updateSenderColor();
             m_time->setText(objectDateText(object.dateTime));
+        }
+
+    protected:
+
+        void changeEvent(QEvent* event) override
+        {
+            // the application style sheet is re-applied after the palettes of a new theme are loaded
+            if (event->type()==QEvent::StyleChange)
+            {
+                updateSenderColor();
+            }
+            QFrame::changeEvent(event);
         }
 
     private:
 
+        void updateSenderColor()
+        {
+            // no key or no such palette: nullopt, the colour of the style sheet applies
+            std::optional<QColor> color;
+            if (!m_colorKey.isEmpty())
+            {
+                color=Style::instance().paletteColor(ColorPaletteNames::ChatSenderTitle,m_colorKey.toUtf8());
+            }
+            m_sender->setTextColor(color);
+        }
+
         ElidedLabel* m_sender=nullptr;
         QLabel* m_time=nullptr;
+        QString m_colorKey;
         bool m_self=false;
 };
 

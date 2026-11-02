@@ -191,6 +191,7 @@ struct DemoOwner
         item.dateTime=base.addSecs(-static_cast<qint64>(count-1-n)*28800);
         item.incoming=(n%3)!=0;
         item.senderName=senders[n%senders.size()];
+        item.senderColorKey=item.senderName;
         item.file.setFileId(QString::number(n));
         item.file.setState(ChatFileTransferState::Ready);
 

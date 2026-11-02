@@ -51,6 +51,7 @@ struct ChatObjectItem
     QDateTime dateTime;
     bool incoming = true;
     QString senderName;
+    QString senderColorKey;     // key in the chat-sender-title palette (sender uid hash), colours the name
     WithPath senderAvatarPath;                    // mention rows
     std::shared_ptr<AvatarSource> avatarSource;   // mention rows
     ChatFileItem file;          // image/file/voice: name, size, mime, state, voice waveform+duration
@@ -328,7 +329,8 @@ Nothing in the widgets depends on the bridge. What an adapter has to do:
   match are the adapter's call; the sender's name and the date are not in the object rows.
 * **Items.** Build `ChatObjectItem` from the object row plus the message: thumbnails through a
   `RoundedImageSource` of the app, `ChatFileItem` from the message's file item (state, size, name,
-  voice data), `senderName` and the avatar from the message's sender, `text` as a snippet. Keep it
+  voice data), `senderName` and the avatar from the message's sender, `senderColorKey` = the sender uid hash (the key the chat bubble
+  uses for the same palette), `text` as a snippet. Keep it
   short (the rows show one line).
 * **Events -> browser.** On `chat_counters_updated`: `reload()` the open browser, or finer:
   `removeMessageObjects(messageId)` for a deleted message and `updateItem()` for a changed file

@@ -151,6 +151,11 @@ struct ChatObjectItem
 
     //! Display name of the sender and the avatar to show for it (mention rows).
     QString senderName;
+
+    //! Key of the sender's colour in the ColorPaletteNames::ChatSenderTitle palette (Style::paletteColor()), stable per
+    //! sender, e.g. the sender uid hash, NOT the name. The title line of the row colours the name with it, as the chat
+    //! does. Empty, or an outgoing object ("You"): the colour of the style sheet.
+    QString senderColorKey;
     WithPath senderAvatarPath;
     std::shared_ptr<AvatarSource> avatarSource;
 
