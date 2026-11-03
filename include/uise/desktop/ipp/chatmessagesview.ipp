@@ -489,6 +489,7 @@ void ChatMessagesView<BaseMessageT,Traits>::setSelectionMode(bool enable)
     if (!m_selectionMode)
     {
         m_chatUnderMouse=nullptr;
+        m_pressedMessage=nullptr;
         m_lastMousePos=QPoint{};
         m_selectedMessages.clear();
         m_mouseMoveUp.reset();
@@ -1369,6 +1370,22 @@ void ChatMessagesView<BaseMessageT,Traits>::mouseMoveEvent(QMouseEvent* event)
         auto chatMsg=childWidgetAt<AbstractChatMessage>(this,event->pos());
         if (chatMsg)
         {
+            // The gesture's first processed message is not where the press happened: the drag
+            // began inside the origin's text browser, which swallowed the moves until the
+            // pointer was already past it. Process the origin first, as if the drag had crossed
+            // it, so it gets selected (and its partial text selection cleared by
+            // setSelected()). The "entered a new message" branch below then gives chatMsg the
+            // origin's state.
+            if (m_pressedMessage)
+            {
+                if (!m_chatUnderMouse && chatMsg!=m_pressedMessage.get())
+                {
+                    m_pressedMessage->detectMouseSelection();
+                    m_chatUnderMouse=m_pressedMessage;
+                }
+                m_pressedMessage=nullptr;
+            }
+
             std::optional<bool> forceSelect;
             if (m_chatUnderMouse)
             {
@@ -1418,6 +1435,7 @@ template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::resetMouseSelectionState()
 {
     m_chatUnderMouse=nullptr;
+    m_pressedMessage=nullptr;
     m_lastMousePos=QPoint{};
     m_mouseMoveUp.reset();
 }
@@ -1457,6 +1475,17 @@ bool ChatMessagesView<BaseMessageT,Traits>::eventFilter(QObject* watched, QEvent
         // m_dragTrustSuspect's own doc comment on why that evidence has to come from a fresh
         // press rather than from resetting our own state).
         m_dragTrustSuspect=false;
+
+        // A press inside this view starts a new drag gesture. Reset here rather than relying on
+        // mouseReleaseEvent(): when the press lands in a bubble's text browser, that browser
+        // accepts the release too, so it never reaches this view.
+        auto* w=qobject_cast<QWidget*>(watched);
+        auto* mouseEvent=static_cast<QMouseEvent*>(event);
+        if (w!=nullptr && (w==this || isAncestorOf(w)) && mouseEvent->button()==Qt::LeftButton)
+        {
+            resetMouseSelectionState();
+            m_pressedMessage=childWidgetAt<AbstractChatMessage>(this,mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+        }
     }
     return QFrame::eventFilter(watched,event);
 }

@@ -668,6 +668,13 @@ class ChatMessagesView : public AbstractChatMessagesView
         MessageBuilder m_messageBuilder;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
+
+        //! Message under the left-button press that started the current drag gesture, until
+        //! mouseMoveEvent() has processed the gesture's first message (see there). Lets a drag
+        //! that starts inside a bubble's text, and only reaches this view once the pointer is
+        //! already over another bubble, still select its origin.
+        QPointer<AbstractChatMessage> m_pressedMessage;
+
         QPointer<AbstractChatMessage> m_highlightedMessage;
         QPoint m_lastMousePos;
         std::map<Id,Data> m_selectedMessages;
@@ -706,8 +713,11 @@ class ChatMessagesView : public AbstractChatMessagesView
     private:
 
         //! Clears the per-move drag-tracking state mouseMoveEvent() reads
-        //! (m_chatUnderMouse/m_lastMousePos/m_mouseMoveUp). Called from mouseReleaseEvent() for
-        //! a normal click-release, and from eventFilter()'s WindowDeactivate catch so a stale
+        //! (m_chatUnderMouse/m_lastMousePos/m_mouseMoveUp/m_pressedMessage). Called from
+        //! mouseReleaseEvent() for a normal click-release, from eventFilter() on a left press
+        //! inside this view (a press in a bubble's text browser has its release accepted by the
+        //! browser, so mouseReleaseEvent() may never run), and from eventFilter()'s
+        //! WindowDeactivate catch so a stale
         //! m_chatUnderMouse does not linger across the gap m_dragTrustSuspect actually closes
         //! (see that member's own doc comment) -- this alone does not stop mouseMoveEvent() from
         //! reacting to the *next* move, only tidies state left over from the move just before
