@@ -55,6 +55,58 @@ int rowsWidth(const std::vector<ChatMessageFileItem*>& rows)
     return width;
 }
 
+//! Vertical layout of the file rows and the caption under them, which, when squeezed, takes the
+//! shortfall from the caption and never from the rows.
+//!
+//! AbstractChatMessageContent::setMaximumBubbleWidth() deliberately makes the bubble shorter than
+//! this body's size hint by the dead space under the caption's last line (its "-slack" trim, so
+//! that the bottom row sits inline / at rowBottomPadding()). A plain QBoxLayout hands such a
+//! shortfall to its LARGEST item -- the rows, not the one-line caption -- and the squeezed row then
+//! cuts off the bottom of its file name. ChatMessageImages::layoutChildren() avoids this by placing
+//! its caption by hand below the grid; this does the same for the rows' frame.
+class FilesBodyLayout : public QVBoxLayout
+{
+    public:
+
+        explicit FilesBodyLayout(QWidget* parent) : QVBoxLayout(parent)
+        {}
+
+        void setWidgets(QWidget* rows, QWidget* caption)
+        {
+            m_rows=rows;
+            m_caption=caption;
+        }
+
+        void setGeometry(const QRect& rect) override
+        {
+            QVBoxLayout::setGeometry(rect);
+
+            if (m_rows==nullptr || m_caption==nullptr || m_caption->isHidden())
+            {
+                return;
+            }
+
+            auto rowsHeight=m_rows->sizeHint().height();
+            if (m_rows->height()>=rowsHeight)
+            {
+                // the ordinary case: the rows got all they ask for
+                return;
+            }
+
+            auto cr=contentsRect();
+            rowsHeight=std::min(rowsHeight,cr.height());
+            auto captionTop=cr.top()+rowsHeight;
+
+            m_rows->setGeometry(m_rows->x(),cr.top(),m_rows->width(),rowsHeight);
+            m_caption->setGeometry(m_caption->x(),captionTop,m_caption->width(),std::max(0,cr.bottom()+1-captionTop));
+        }
+
+    private:
+
+        QWidget* m_rows=nullptr;
+        QWidget* m_caption=nullptr;
+};
+
 } // anonymous namespace
 
 //--------------------------------------------------------------------------
@@ -87,7 +139,8 @@ ChatMessageFiles::ChatMessageFiles(QWidget* parent)
     : AbstractChatMessageFiles(parent),
       pimpl(std::make_unique<ChatMessageFiles_p>())
 {
-    pimpl->layout=Layout::vertical(this);
+    auto filesLayout=Layout::create<FilesBodyLayout>(this);
+    pimpl->layout=filesLayout;
 
     pimpl->contentsFrame=new QFrame(this);
     pimpl->contentsFrame->setObjectName("contents");
@@ -102,6 +155,7 @@ ChatMessageFiles::ChatMessageFiles(QWidget* parent)
     pimpl->comment=new ChatMessageText(this);
     pimpl->comment->setVisible(false);
     pimpl->layout->addWidget(pimpl->comment);
+    filesLayout->setWidgets(pimpl->contentsFrame,pimpl->comment);
 
     // Relayed here so a host (e.g. ReplyDialog's Save/"Quote selected" button swap) can react to
     // selection changes on this body's comment via AbstractChatMessageBody alone, without
@@ -615,7 +669,8 @@ QRect ChatMessageFiles::lastTextLineRect() const
         // not its possibly-stale geometry() (this can run mid-negotiation, before the layout has
         // necessarily run for real), plus this widget's own left/top contents margins -- matching
         // how bubbleWidthHint()/updateMaximumBubbleWidth() already treat pimpl->comment as this
-        // widget's own trailing row.
+        // widget's own trailing row. FilesBodyLayout guarantees that top even while the body is
+        // squeezed below its size hint.
         auto cm=contentsMargins();
         return rect.translated(cm.left(),cm.top()+pimpl->contentsFrame->sizeHint().height());
     }
