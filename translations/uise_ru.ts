@@ -584,17 +584,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Эти объекты нельзя показать</translation>
     </message>
     <message>
-        <location filename="../src/chatobjectrows.cpp" line="+75"/>
+        <location filename="../src/chatobjectrows.cpp" line="+76"/>
         <source>%1, %2</source>
         <translation>%1, %2</translation>
     </message>
     <message>
-        <location line="+70"/>
+        <location line="+73"/>
         <source>You</source>
         <translation>Вы</translation>
     </message>
     <message>
-        <location line="+625"/>
+        <location line="+661"/>
         <source>Copy text</source>
         <translation>Копировать текст</translation>
     </message>
