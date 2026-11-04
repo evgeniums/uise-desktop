@@ -68,8 +68,18 @@ qproperty-tailColor: #4A70A9; /* selected message */
 }
 
 uise--ChatMessageBottom QLabel {
-color: #888888;
+color: #767B85; /* received message: ~3.0:1 against the bubble, see [sent="false"] below */
 font-size: 11px;
+}
+
+/* Received message. Keyed on [sent="false"], not just on the bare rule above: Qt weighs a rule as
+ * rule.order + specificity*0x100, with order being the rule's index in the whole concatenated
+ * sheet, so a bare "uise--ChatMessageBottom QLabel" (specificity 2) loses to reset.qss's later
+ * "QLabel { color }" -- reset.qss sorts after chat.qss, far enough down for order to outweigh the
+ * one-step specificity gap. An attribute selector (+0x10) is what lets a rule win, which is why the [sent="true"] rule below
+ * always worked and this colour used to be silently ignored. */
+uise--ChatMessageBottom QLabel[sent="false"] {
+color: #767B85;
 }
 
 uise--ChatMessageBottom QLabel[sent="true"]{

@@ -1,0 +1,6 @@
+/* Windows only (see Style::reloadStyleSheet(), "platform/<os>" folders). The default UI font on
+ * Windows renders ~12px against 13px on macOS, so the 13px time label of chat.qss looks too big
+ * there. Same selector as the common rule, so this one wins by coming later. */
+uise--AbstractChatMessage uise--AbstractChatMessageContent uise--ChatMessageBottom QLabel {
+font-size: 11px;
+}

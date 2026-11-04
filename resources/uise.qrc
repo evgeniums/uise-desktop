@@ -171,6 +171,7 @@
         <file>style/light/reset.qss</file>
         <file>style/chat.json</file>
         <file>style/chat.qss</file>
+        <file>style/platform/windows/chat.qss</file>
         <file>style/dark/chat.json</file>
         <file>style/light/chat.json</file>
         <file>style/dark/chat.qss</file>

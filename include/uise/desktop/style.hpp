@@ -226,6 +226,10 @@ class UISE_DESKTOP_EXPORT Style : public WithModesMap
          * Path of the folder for dark theme is automatically constructed by adding "/dark" to the style sheet path.
          * Thus, the style sheet path points to folder with style sheet files for light theme and subfolder "/dark" with style sheet files for dark theme.
          * Style sheet files must have *.qss or *.css extensions.
+         *
+         * Additionally, "/platform/windows", "/platform/macos" or "/platform/linux" subfolder (according to the
+         * current OS) may contain *.qss files that are applied after all other style sheets, so they can
+         * override common rules for one platform only.
          */
         void setStyleSheetDirs(QStringList dirs)
         {

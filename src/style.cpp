@@ -53,6 +53,18 @@ QStringList filters()
     return QStringList{"*.qss","*.css","*.json"};
 }
 
+// Name of the folder under "<styleDir>/platform/" holding style sheets for the current OS.
+QString platformFolderName()
+{
+#if defined(Q_OS_WIN)
+    return QStringLiteral("windows");
+#elif defined(Q_OS_MACOS)
+    return QStringLiteral("macos");
+#else
+    return QStringLiteral("linux");
+#endif
+}
+
 // Diagnostic counter for Style::updateWidgetStyle() call volume -- unpolish()+polish() re-matches
 // the whole QSS rule set for the widget, so a hot path calling it unconditionally (e.g. per
 // message per batch recompute in the chat view) is expensive. Off by default; enable with
@@ -301,6 +313,23 @@ void Style::reloadStyleSheet()
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // Platform-specific style files: <styleDir>/platform/<os>/*.qss. Loaded last so that
+    // a rule here overrides an equally specific rule from the common or colour theme files.
+    for (auto&& folderPath:m_styleSheetDirs)
+    {
+        QDir platformDir(QString("%1/platform/%2").arg(folderPath,platformFolderName()));
+        platformDir.setNameFilters(QStringList{"*.qss"});
+        auto items=platformDir.entryInfoList(QDir::Files);
+        for (auto&& item:items)
+        {
+            QFile file(item.canonicalFilePath());
+            if (file.open(QFile::ReadOnly))
+            {
+                m_loadedQss+=QString("%1\n").arg(QString::fromUtf8(file.readAll()));
             }
         }
     }

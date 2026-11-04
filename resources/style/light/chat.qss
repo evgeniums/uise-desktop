@@ -86,16 +86,23 @@ qproperty-highlightOpacity: 0.05;
 }
 
 uise--ChatMessageBottom QLabel {
-color: #77778F;
+color: #8A8FA0; /* received message: soft grey, ~3.1:1 against the bubble, see [sent="false"] below */
 }
-/*
-separate style for bottom labels in sent bubble not used any more
-*/
-/*
+
+/* Received message. Keyed on [sent="false"], not just on the bare rule above: Qt weighs a rule as
+ * rule.order + specificity*0x100, with order being the rule's index in the whole concatenated
+ * sheet, so a bare "uise--ChatMessageBottom QLabel" (specificity 2) loses to reset.qss's later
+ * "QLabel { color }" -- reset.qss sorts after chat.qss, far enough down for order to outweigh the
+ * one-step specificity gap. An attribute selector (+0x10) is what lets a rule win, which is why the [sent="true"] rule below
+ * always worked and this colour used to be silently ignored. */
+uise--ChatMessageBottom QLabel[sent="false"] {
+color: #8A8FA0;
+}
+
+/* Sent bubble is bluish, so the time takes a matching blue-grey tint at the same ~3.1:1. */
 uise--ChatMessageBottom QLabel[sent="true"]{
-color: #3F6FA0;
+color: #7389A0;
 }
-*/
 
 uise--ChatMessageBottom QLabel[selected="true"],
 uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
