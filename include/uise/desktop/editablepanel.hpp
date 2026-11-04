@@ -329,7 +329,9 @@ class UISE_DESKTOP_EXPORT AbstractEditablePanel : public WidgetQFrame
         Qt::Alignment m_labelAlignment=Qt::AlignRight | Qt::AlignVCenter;
         bool m_bottomApplyVisible=true;
         bool m_bottomCancelVisible=false;
-        BottomButtonsMode m_bottomButtonsMode;
+        // Must be initialised: the constructors are inherited, and EditablePanel's constructor
+        // reads this in updateState() before any caller can set it.
+        BottomButtonsMode m_bottomButtonsMode=BottomButtonsMode::Invisible;
         Qt::Alignment m_titleAlignment=Qt::AlignHCenter;
         Qt::Alignment m_bottomButtonsAlignment=Qt::AlignHCenter;
         bool m_alignmentsUpdateScheduled=false;
