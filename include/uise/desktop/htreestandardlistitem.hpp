@@ -65,6 +65,16 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
         void setTextElideMode(Qt::TextElideMode mode);
         Qt::TextElideMode textElideMode() const;
 
+        /**
+         * @brief Make the icon its own button (with ripple and an action on release) instead of part of the row.
+         *
+         * Off by default: the icon ignores the mouse, so a press on it is a press on the row
+         * (immediate click, no ripple). setPropagateIconClick() and iconClicked() only matter when this is on.
+         */
+        void setIconClickable(bool enable);
+        bool isIconClickable() const;
+
+        /** Only used when the icon is clickable: true makes an icon click click the whole item, false emits iconClicked(). */
         void setPropagateIconClick(bool enable);
         bool isPropagateIconClick() const;
 
@@ -99,6 +109,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
         ElidedLabel* m_text=nullptr;
         PushButton* m_expand=nullptr;
         bool m_propagateIconClick=true;
+        bool m_iconClickable=false;
 };
 
 using HTreeStandardListItemTraits=HTreeFlyweightListItemTraits<HTreeStandardListItem>;

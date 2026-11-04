@@ -58,6 +58,9 @@ HTreeStandardListItem::HTreeStandardListItem(HTreePathElement el, const QString&
     m_icon->setObjectName("hTreeItemPixmap");
     m_icon->setSvgIcon(icon);
     m_icon->setCheckable(true);
+    // By default the icon is part of the row: mouse-transparent, so presses go to the row
+    // (immediate click, no ripple). See setIconClickable().
+    m_icon->setAttribute(Qt::WA_TransparentForMouseEvents,!m_iconClickable);
 
     m_text=new ElidedLabel(this);
     m_text->setObjectName("hTreeItemText");
@@ -138,6 +141,21 @@ void HTreeStandardListItem::setIcon(std::shared_ptr<SvgIcon> icon)
 std::shared_ptr<SvgIcon> HTreeStandardListItem::icon() const
 {
     return m_icon->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStandardListItem::setIconClickable(bool enable)
+{
+    m_iconClickable=enable;
+    m_icon->setAttribute(Qt::WA_TransparentForMouseEvents,!enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool HTreeStandardListItem::isIconClickable() const
+{
+    return m_iconClickable;
 }
 
 //--------------------------------------------------------------------------
