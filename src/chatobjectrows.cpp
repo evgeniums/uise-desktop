@@ -420,10 +420,20 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
 
         //! What the base takes for the background of the row, and what falls through the waveform: the row is opened (which
         //! plays it). The icon and the title are clicked through the base's own filter, before this.
+        //!
+        //! A press on the play tile (it lies over the icon slot and does not accept the press) falls through to here too, but the
+        //! tile acts on the RELEASE (playRequested/stopRequested). Activating on the press as well would be a second play request
+        //! for one click, which the host takes for a toggle: the message starts and is paused at once.
         void mousePressEvent(QMouseEvent* event) override
         {
             if (event->button()==Qt::LeftButton)
             {
+                const auto* slot=iconSlot();
+                if (slot!=nullptr && slot->isVisible() && slot->geometry().contains(event->position().toPoint()))
+                {
+                    event->accept();
+                    return;
+                }
                 callActivated(m_hooks,m_object);
                 event->accept();
                 return;
