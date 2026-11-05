@@ -17,13 +17,16 @@ padding:0;
 margin:0;
 }
 
-/* todo-album-layout-small-tile-packing.md: floor a small image's album tile is scaled up to,
- * aspect preserved, instead of being left genuinely tiny (Telegram-style) -- and the paint-time
- * upscale allowance that lets a tile actually reach that floor (2.5x covers a source down to
- * ~80px on a DPR-2 display). See ChatMessageImages::minTileSize()/tileMaxUpscale()'s own doc
- * comments. Both default to these same values in code; restated here as the QSS-overridable knob. */
+/* minTileSize: extent of a PLACEHOLDER tile (an image whose size is unknown / that failed to
+ * load). smallImageFloor: floor on the short side (logical px) a SMALL real image is scaled up
+ * to -- kept low so ordinary small images (screenshots) show at their real size, only genuinely
+ * tiny ones are enlarged. tileMaxUpscale: paint-time upscale allowance (2.5x covers a source down
+ * to ~80px on a DPR-2 display). See ChatMessageImages::minTileSize()/smallImageFloor()/
+ * tileMaxUpscale()'s own doc comments. All default to these same values in code; restated here as
+ * the QSS-overridable knobs. */
 uise--ChatMessageImages {
 qproperty-minTileSize: 100;
+qproperty-smallImageFloor: 60;
 qproperty-tileMaxUpscale: 2.5;
 }
 

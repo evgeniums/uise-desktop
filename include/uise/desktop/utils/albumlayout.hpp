@@ -218,6 +218,12 @@ UISE_DESKTOP_EXPORT std::vector<QRect> albumLayout(
  *  Like albumLayout(), an album in which every known image would be upscaled is laid out again
  *  at a proportionally smaller width budget, bounded by options.shrinkFloor, so a lone thumbnail
  *  is not blown up to the bubble width.
+ *
+ *  Exception to "one image fits its ratio into the box": a LONE image whose natural size
+ *  (pixel size / options.devicePixelRatio) fits within maxWidth x maxHeight is delegated to the
+ *  Wide algorithm, so it keeps its own exact aspect ratio (no [minRatio,maxRatio] clamp and no
+ *  crop) and is shown at natural size, never below shrinkFloor on its short side. Without this a
+ *  small image outside the ratio range is cropped and scaled up to fill the clamped cell.
  */
 UISE_DESKTOP_EXPORT std::vector<QRect> albumLayoutPresets(
     const std::vector<QSize>& pixelSizes,

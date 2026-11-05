@@ -751,6 +751,15 @@ bool ImageViewerWidget::event(QEvent* event)
             clearEdgeNavigationHover();
             break;
 
+        case QEvent::DevicePixelRatioChange:
+            // Window moved between screens of different scale: the pixmap item's 1/dpr scale
+            // is stale. fitImage() re-syncs it and re-fits unless the user has zoomed.
+            if (pimpl && pimpl->ctrl!=nullptr)
+            {
+                pimpl->ctrl->fitImage();
+            }
+            break;
+
         default:
             break;
     }
@@ -1461,7 +1470,26 @@ void ImageViewer::applyCurrentPixmap()
     {
         m_widget->pimpl->imageItem->setPixmap(px);
     }
+    syncItemScale();
     m_widget->pimpl->zoom->setFitItem(m_widget->pimpl->imageItem);
+}
+
+//--------------------------------------------------------------------------
+
+void ImageViewer::syncItemScale()
+{
+    if (m_widget==nullptr || m_widget->pimpl->imageItem==nullptr)
+    {
+        return;
+    }
+
+    const auto dpr=m_widget->devicePixelRatioF();
+    const qreal scale=(dpr>0.0) ? 1.0/dpr : 1.0;
+    auto* item=m_widget->pimpl->imageItem;
+    if (!qFuzzyCompare(item->scale(),scale))
+    {
+        item->setScale(scale);
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -1661,6 +1689,11 @@ void ImageViewer::fitImage()
     {
         auto* zoom=m_widget->pimpl->zoom;
 
+        // Before the scene rect below is computed: a devicePixelRatio change (window moved to
+        // another screen) reaches here via ImageViewerWidget::event(), and the item's scale must
+        // already be current for sceneBoundingRect() to describe it.
+        syncItemScale();
+
         // Keep whatever scene point the viewport is currently centred on pinned in place across
         // the scene rect change below -- otherwise a higher-resolution pixmap landing
         // asynchronously while zoomed in (a version-ladder upgrade, see PixmapSource) would jump
@@ -1668,7 +1701,9 @@ void ImageViewer::fitImage()
         zoom->keepViewportCenter(
             [this]()
             {
-                m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->boundingRect());
+                // sceneBoundingRect(), not boundingRect(): the latter is in item coordinates,
+                // i.e. ignores the 1/devicePixelRatio scale set by syncItemScale().
+                m_widget->pimpl->scene->setSceneRect(m_widget->pimpl->imageItem->sceneBoundingRect());
             }
         );
 

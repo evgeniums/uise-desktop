@@ -48,18 +48,22 @@ constexpr int DefaultMaxWidth=320;
 // comments (chatmessageimages.hpp) and resources/style/chatmessagefiles.qss's qproperty- block
 // for the shipped values.
 //
-// DefaultMinTileSize is the floor the uniform all-thumbnail shrink stops at
-// (AlbumLayoutOptions::shrinkFloor): an album made only of small images is scaled down as a
-// whole towards their natural size, but no tile's short side goes below this. It doubles as the
-// extent a PLACEHOLDER tile (an item whose real pixel size is not known -- never resolved, or a
-// failed/synthesized entry with no image behind it at all) is laid out at: rebuildGrid()'s
-// allPlaceholders branch derives its width/height budget from pimpl->minTileSize rather than
-// from a constant of its own, so a QSS override moves both together and a genuinely small image
-// and an unresolved placeholder always read at the same scale. That budget matters because such
-// an item reaches albumLayout() as QSize(1,1), i.e. aspect 1.0, and a lone square otherwise
-// fills the whole width budget -- a bubble-width blank tile, visibly wrong for something with no
-// image to show.
+// DefaultMinTileSize is the extent a PLACEHOLDER tile (an item whose real pixel size is not
+// known -- never resolved, or a failed/synthesized entry with no image behind it at all) is laid
+// out at: rebuildGrid()'s allPlaceholders branch derives its width/height budget from
+// pimpl->minTileSize rather than from a constant of its own, so a QSS override moves it in one
+// place. That budget matters because such an item reaches albumLayout() as QSize(1,1), i.e.
+// aspect 1.0, and a lone square otherwise fills the whole width budget -- a bubble-width blank
+// tile, visibly wrong for something with no image to show.
 constexpr int DefaultMinTileSize=100;
+//
+// DefaultSmallImageFloor is the floor the uniform all-thumbnail shrink stops at
+// (AlbumLayoutOptions::shrinkFloor): an album made only of small images is scaled down as a
+// whole towards their natural size, but no tile's short side goes below this. Deliberately the
+// same as AlbumLayoutOptions::minTile (60) and well under DefaultMinTileSize, so a real small
+// image (e.g. a screenshot) shows at its true size instead of being enlarged to the placeholder
+// extent.
+constexpr int DefaultSmallImageFloor=60;
 //
 // DefaultTileMaxUpscale is the paint-time allowance ChatMessageImageItem::setMaxUpscale() gets.
 // albumLayout() now hands every tile exactly its image's aspect ratio and the tile paints by
@@ -132,6 +136,7 @@ class ChatMessageImages_p
         // chatmessageimages.hpp's Q_PROPERTY declarations). Read into AlbumLayoutOptions::
         // shrinkFloor / ChatMessageImageItem::setMaxUpscale() by rebuildGrid().
         int minTileSize=DefaultMinTileSize;
+        int smallImageFloor=DefaultSmallImageFloor;
         qreal tileMaxUpscale=DefaultTileMaxUpscale;
         qreal maxWidthRatio=DefaultMaxWidthRatio;
         int maxBubbleWidth=DefaultMaxBubbleWidth;
@@ -322,10 +327,11 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         // albumLayout() tell a genuinely small image (steered into a small slot, or, when the
         // whole album is thumbnails, shrunk uniformly) from a photo delivered as a small rung.
         options.devicePixelRatio=dpr;
-        // QSS-settable floor the uniform all-thumbnail shrink stops at (see minTileSize()'s own
-        // doc comment) -- separate from AlbumLayoutOptions' own default minTile, which is the
-        // soft floor the layout's cost defends for every tile.
-        options.shrinkFloor=pimpl->minTileSize;
+        // QSS-settable floor the uniform all-thumbnail shrink stops at (see smallImageFloor()'s
+        // own doc comment) -- separate from AlbumLayoutOptions' own default minTile, which is the
+        // soft floor the layout's cost defends for every tile, and from minTileSize (the
+        // placeholder extent).
+        options.shrinkFloor=pimpl->smallImageFloor;
 
         if (allPlaceholders)
         {
@@ -759,6 +765,36 @@ void ChatMessageImages::setMinTileSize(int size)
 int ChatMessageImages::minTileSize() const noexcept
 {
     return pimpl->minTileSize;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setSmallImageFloor(int size)
+{
+    if (pimpl->smallImageFloor==size)
+    {
+        return;
+    }
+    pimpl->smallImageFloor=size;
+
+    // Same idiom as setMinTileSize(): a QSS qproperty- lands at polish time, possibly after the
+    // first setItems(), so invalidate the layout memo and redo the layout if there is an album.
+    pimpl->lastLayoutForMaxWidth=-1;
+    if (!pimpl->items.empty())
+    {
+        auto forMaxWidth=(chatContent()!=nullptr && chatContent()->maximumBubbleWidth()>0)
+            ? chatContent()->maximumBubbleWidth()
+            : DefaultMaxWidth;
+        rebuildGrid(forMaxWidth);
+        updateGeometry();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+int ChatMessageImages::smallImageFloor() const noexcept
+{
+    return pimpl->smallImageFloor;
 }
 
 //--------------------------------------------------------------------------

@@ -869,6 +869,51 @@ BOOST_AUTO_TEST_CASE(TestPresetsThumbnailShrink)
     checkPresets(rects,total,withPhoto,options);
 }
 
+BOOST_AUTO_TEST_CASE(TestPresetsSingleSmallImageKeepsAspect)
+{
+    // A lone image that fits the budget at natural size is laid out at its EXACT aspect and
+    // natural size, not clamped to [minRatio,maxRatio] and cropped/upscaled into the clamped
+    // cell (a 2.2:1 screenshot used to be shown ~1.3x too big with its sides cut off).
+    auto options=presetOptions();
+    options.devicePixelRatio=2.0;
+    options.shrinkFloor=60;
+    QSize total;
+
+    // 396x178 px at DPR 2 -> 198x89 logical, aspect 2.22 (outside the 1.7 clamp)
+    std::vector<QSize> screenshot{QSize(396,178)};
+    auto rects=albumLayout(screenshot,options,&total);
+    checkPresets(rects,total,screenshot,options,false);
+    checkAspects(rects,screenshot);
+    UISE_TEST_CHECK_LE(qAbs(rects[0].width()-198),1);
+    UISE_TEST_CHECK_LE(qAbs(rects[0].height()-89),1);
+
+    // same through the direct entry point
+    auto direct=albumLayoutPresets(screenshot,options,&total);
+    UISE_TEST_CHECK(direct==rects);
+
+    // a tiny image is raised to the floor, still at its own aspect and within budget
+    std::vector<QSize> tiny{QSize(40,20)};
+    rects=albumLayout(tiny,options,&total);
+    checkPresets(rects,total,tiny,options,false);
+    checkAspects(rects,tiny);
+    UISE_TEST_CHECK_GE(shortSide(rects[0]),options.shrinkFloor-1);
+    UISE_TEST_CHECK_LE(rects[0].width(),options.maxWidth);
+
+    // too large for the budget at natural size -> the presets' clamp/crop is unchanged:
+    // full width, height from the clamped 1.7 ratio
+    std::vector<QSize> panorama{QSize(4000,1000)};
+    rects=albumLayout(panorama,options,&total);
+    checkPresets(rects,total,panorama,options);
+    UISE_TEST_CHECK_EQUAL(rects[0].width(),options.maxWidth);
+    UISE_TEST_CHECK_EQUAL(rects[0].height(),options.maxWidth*1000/options.presets.maxRatio);
+
+    // an unknown size (a placeholder reaches the layout as a non-positive size) is not a "known
+    // small image" -- presets path, as before
+    std::vector<QSize> unknown{QSize()};
+    rects=albumLayout(unknown,options,&total);
+    checkPresets(rects,total,unknown,options,false);
+}
+
 BOOST_AUTO_TEST_CASE(TestPresetsFuzz)
 {
     std::mt19937 rng(20261003u);

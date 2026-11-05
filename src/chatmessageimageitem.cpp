@@ -714,9 +714,9 @@ void ChatMessageImageItem::repositionOverlays()
         // necessarily what an unmeasured sizeHint() would report), so it does not shrink with a
         // genuinely small tile on its own. albumLayout()'s cost function defends a 60px soft
         // floor on every tile's short side (AlbumLayoutOptions::minTile) and the all-thumbnail
-        // shrink stops at qproperty-minTileSize, so ordinary album tiles are comfortably larger
+        // shrink stops at qproperty-smallImageFloor (60), so ordinary album tiles are comfortably larger
         // than this control -- but neither is a hard guarantee (a budget too small for the image
-        // count, an extreme aspect ratio, or a theme setting minTileSize below 56 can all still
+        // count, an extreme aspect ratio, or a theme setting smallImageFloor below 56 can all still
         // produce one). boundedTo() is the unconditional backstop: a no-op on the common
         // comfortably-large tile, and never lets the control overhang its own tile's edge on a
         // tiny one.

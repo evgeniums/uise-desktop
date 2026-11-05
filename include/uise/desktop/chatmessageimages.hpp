@@ -70,6 +70,7 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
     // setters must invalidate THIS class's own layout memo (see rebuildGrid()'s layoutUnchanged
     // check).
     Q_PROPERTY(int minTileSize READ minTileSize WRITE setMinTileSize)
+    Q_PROPERTY(int smallImageFloor READ smallImageFloor WRITE setSmallImageFloor)
     Q_PROPERTY(qreal tileMaxUpscale READ tileMaxUpscale WRITE setTileMaxUpscale)
     Q_PROPERTY(qreal maxWidthRatio READ maxWidthRatio WRITE setMaxWidthRatio)
     Q_PROPERTY(int maxBubbleWidth READ maxBubbleWidth WRITE setMaxBubbleWidth)
@@ -140,17 +141,29 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
         QSize minimumSizeHint() const override;
 
         /**
-         * @brief Floor (logical px) on a tile's short side for the uniform all-thumbnail shrink:
-         *  an album made only of small images is scaled down as a whole towards their natural
-         *  size, but never so far that any tile's short side drops below this -- see
-         *  AlbumLayoutOptions::shrinkFloor's own doc comment (albumlayout.hpp). Doubles as the
-         *  extent an unresolved placeholder tile is laid out at (see rebuildGrid()), so a
-         *  genuinely small image and a placeholder read at the same scale. Settable from QSS via
-         *  qproperty-minTileSize (see chatmessagefiles.qss).
+         * @brief Extent (logical px) an unresolved PLACEHOLDER tile is laid out at -- an item
+         *  whose real pixel size is not known (never resolved, or a failed/synthesized entry with
+         *  no image behind it). rebuildGrid()'s allPlaceholders branch derives its width/height
+         *  budget from this. Settable from QSS via qproperty-minTileSize (see
+         *  chatmessagefiles.qss). The floor for SMALL REAL images is the separate
+         *  smallImageFloor().
          */
         void setMinTileSize(int size);
 
         int minTileSize() const noexcept;
+
+        /**
+         * @brief Floor (logical px) on a tile's short side for the uniform all-thumbnail shrink
+         *  and for a lone small image: an album made only of small images is scaled down as a
+         *  whole towards their natural size (pixel size / devicePixelRatio), but never so far
+         *  that any tile's short side drops below this -- see AlbumLayoutOptions::shrinkFloor's
+         *  own doc comment (albumlayout.hpp). Kept low (60, the layout's own minTile) so ordinary
+         *  small images, e.g. screenshots, are shown at their real size and only genuinely tiny
+         *  ones are enlarged. Settable from QSS via qproperty-smallImageFloor.
+         */
+        void setSmallImageFloor(int size);
+
+        int smallImageFloor() const noexcept;
 
         /**
          * @brief How far a tile may enlarge its content beyond the image's own natural

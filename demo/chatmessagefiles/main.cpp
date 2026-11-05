@@ -685,8 +685,8 @@ int main(int argc, char *argv[])
 
     // --- 11. all-thumbnail album: several genuinely small (sub-100px) originals in one album.
     // Every image is smaller than the tile the structure would give it, so albumLayout() scales
-    // the WHOLE album down uniformly (it stays gapless) until the floor -- qproperty-minTileSize,
-    // 100px -- stops it; the bubble hugs the small block. ---
+    // the WHOLE album down uniformly (it stays gapless) until the floor -- qproperty-smallImageFloor,
+    // 60px -- stops it; the bubble hugs the small block. ---
 
     ChatFileItems thumbItems;
     {
@@ -701,7 +701,7 @@ int main(int argc, char *argv[])
     }
     auto* imgBody9=new ChatMessageImages();
     imgBody9->setItems(thumbItems);
-    imgBody9->setComment(QStringLiteral("All-thumbnail album (five sub-100px originals) -- shrunk uniformly to the 100px floor, still gapless, no padding."));
+    imgBody9->setComment(QStringLiteral("All-thumbnail album (five sub-100px originals) -- shrunk uniformly to the 60px floor, still gapless, no padding."));
     rootLayout->addWidget(makeMessage(central,AbstractChatMessage::Direction::Received,imgBody9));
 
     // --- 12. one small thumbnail among two large photos -- the case a whole-album shrink would

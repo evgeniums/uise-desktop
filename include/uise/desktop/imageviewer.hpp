@@ -185,6 +185,15 @@ class UISE_DESKTOP_EXPORT ImageViewer : public AbstractImageViewer
         //! ImageViewerWidget (nested classes share their enclosing class's own access rights).
         class ViewerAnimator;
 
+        //! Scale the scene's pixmap item to 1/devicePixelRatio so one IMAGE pixel maps to one
+        //! PHYSICAL pixel (the "natural size" the chat bubble's album layout also uses), instead
+        //! of one image pixel per logical point, which doubles every small image on a 2x display.
+        //! Idempotent; called from applyCurrentPixmap() and fitImage() (the latter also runs on
+        //! viewport resize and on a devicePixelRatio change, e.g. a window moved between screens).
+        //! Uses QGraphicsItem::setScale() rather than QPixmap::setDevicePixelRatio() so the
+        //! source's shared pixmap is not detached/deep-copied.
+        void syncItemScale();
+
         std::unique_ptr<UISE_DESKTOP_NAMESPACE::ImageAnimator> m_animator;
 
         //! Key of the windowed image m_animator is currently loaded (or explicitly cleared) for --

@@ -645,6 +645,26 @@ std::vector<QRect> albumLayoutPresets(
         return rects;
     }
 
+    // A lone image that fits the budget at its natural size (pixels / devicePixelRatio) is laid
+    // out by the Wide algorithm instead: the presets size a single cell from the aspect ratio
+    // CLAMPED to [minRatio,maxRatio] and the tile then cover-crops into it, so a small image
+    // outside that range (e.g. a 2.2:1 screenshot) is both cropped and upscaled to fill the
+    // cell -- visibly bigger than the real image. Wide gives exactly the image's own aspect and
+    // the uniform shrink to natural size (bounded by shrinkFloor). Larger images keep the
+    // presets' clamp/crop below.
+    if (n==1 && options.devicePixelRatio>0)
+    {
+        const auto& sz=pixelSizes[0];
+        if (sz.width()>0 && sz.height()>0
+            && sz.width()/options.devicePixelRatio<=options.maxWidth
+            && sz.height()/options.devicePixelRatio<=options.maxHeight)
+        {
+            AlbumLayoutOptions wide=options;
+            wide.mode=AlbumLayoutMode::Wide;
+            return albumLayout(pixelSizes,wide,totalSize);
+        }
+    }
+
     const Int width=std::max(1,options.maxWidth);
     Block block=Presets(pixelSizes,options,width).run();
 
