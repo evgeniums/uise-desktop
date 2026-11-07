@@ -2014,6 +2014,35 @@ void ChatMessage::changeEvent(QEvent* event)
 
 //--------------------------------------------------------------------------
 
+void ChatMessage::paintEvent(QPaintEvent* event)
+{
+    AbstractChatMessage::paintEvent(event);
+
+    // Pre-fill the bubble/tail seam UNDER the children (a parent paints before its children).
+    // At a fractional device pixel ratio the pixel straddling the bubble|tail-column boundary
+    // belongs to whichever of the two is on the left: for a sent bubble that is the bubble, whose
+    // antialiased QSS edge covers it only partially, and the tail widget's own clip starts a
+    // pixel later -- so ChatMessageAvatar::tailPath()'s EdgeOvershoot cannot reach it and the
+    // wallpaper shows through as a hairline. Painting tail-coloured pixels beneath makes that
+    // partial coverage blend bubble colour over bubble colour instead of over the wallpaper.
+    // Cheap checks first: rows without a tail (the vast majority) never open a second painter.
+    auto* avatar=pimpl->avatarFrame;
+    if (avatar==nullptr || !avatar->isVisible())
+    {
+        return;
+    }
+    const auto strip=avatar->tailSeamUnderlay();
+    if (strip.isNull())
+    {
+        return;
+    }
+
+    QPainter painter(this);
+    painter.fillRect(strip.translated(avatar->mapTo(this,QPoint{})),avatar->tailColor());
+}
+
+//--------------------------------------------------------------------------
+
 void ChatMessage::updateFirstInBatch()
 {
     // Same reasoning as updateLastInBatch() above -- no repolish of `this`.
@@ -2805,7 +2834,7 @@ void ChatMessageAvatar::paintEvent(QPaintEvent* event)
     QPainter painter(this);
     style()->drawPrimitive(QStyle::PE_Widget,&opt,&painter,this);
 
-    if (!m_last || !m_tailColor.isValid() || m_bubbleTransparent)
+    if (!isTailPainted())
     {
         return;
     }
@@ -2818,6 +2847,48 @@ void ChatMessageAvatar::paintEvent(QPaintEvent* event)
 
     painter.setRenderHint(QPainter::Antialiasing,true);
     painter.fillPath(path,m_tailColor);
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageAvatar::isTailPainted() const noexcept
+{
+    return m_last && m_tailColor.isValid() && !m_bubbleTransparent;
+}
+
+//--------------------------------------------------------------------------
+
+QRectF ChatMessageAvatar::tailSeamUnderlay() const
+{
+    if (!isTailPainted())
+    {
+        return QRectF{};
+    }
+
+    // The tail's height, worked out from the same clamps as tailPath() but without building the
+    // path: this runs on every repaint of every row that has a tail.
+    const qreal w=width();
+    const qreal h=height();
+    qreal tailH=0.0;
+    if (m_tailShape==TailShapeRounded)
+    {
+        tailH=qMin(static_cast<qreal>(m_tailHeight),qMin(w,h));
+    }
+    else if (m_tailWidth>0)
+    {
+        tailH=qMin(static_cast<qreal>(m_tailHeight),h);
+    }
+    if (tailH<=0.0)
+    {
+        return QRectF{};
+    }
+
+    // 1px into the bubble, 0.5px into this column. The pixel straddling the boundary has its
+    // centre within 0.5 device px of it, so a non-antialiased fill reaching 0.5 logical px past
+    // the boundary always covers it; whatever lands inside the column is under the opaque tail,
+    // which is the same colour.
+    const qreal top=h-tailH;
+    return m_right ? QRectF(-1.0,top,1.5,tailH) : QRectF(w-0.5,top,1.5,tailH);
 }
 
 //--------------------------------------------------------------------------

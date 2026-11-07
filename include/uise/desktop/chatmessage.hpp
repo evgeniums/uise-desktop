@@ -478,6 +478,19 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
             return m_tailColor;
         }
 
+        /**
+         * @brief Strip, in this widget's own coordinates, that the owning row must pre-fill with
+         * tailColor() BEFORE its children paint; null when no tail is painted.
+         *
+         * Closes the hairline seam between the bubble and its tail at a fractional device pixel
+         * ratio: the pixel straddling the shared boundary goes to whichever widget is on the left,
+         * so for a SENT bubble (bubble left, tail column right) it goes to the bubble, whose
+         * antialiased QSS edge covers it only partially, and this widget's clip starts a pixel too
+         * late for tailPath()'s EdgeOvershoot to reach it. Neither widget can repair that alone.
+         * ChatMessage::paintEvent() fills this strip underneath both of them instead.
+         */
+        QRectF tailSeamUnderlay() const;
+
         void setTailColor(const QColor& color)
         {
             if (m_tailColor!=color)
@@ -622,6 +635,9 @@ class UISE_DESKTOP_EXPORT ChatMessageAvatar : public QFrame
         void setStyleProperty(const char* name, bool enable);
         QPainterPath tailPath() const;
 
+        //! Whether paintEvent() fills a tail at all (last in batch, colour set, bubble opaque).
+        bool isTailPainted() const noexcept;
+
         //! Applies avatarBottomOffset() as this frame's bottom inset.
         void updateAvatarOffset();
 
@@ -754,6 +770,10 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
         //! forcedAvatarGeometryChanged() covers every other path, but its setters no-op when a
         //! repolish re-applies an unchanged value).
         void changeEvent(QEvent* event) override;
+
+        //! Pre-fills the bubble/tail seam under the children -- see
+        //! ChatMessageAvatar::tailSeamUnderlay().
+        void paintEvent(QPaintEvent* event) override;
 
         void construct() override;
 
