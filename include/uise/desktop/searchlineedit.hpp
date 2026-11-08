@@ -65,6 +65,21 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
 
         bool isCancelShortcutEnabled() const;
 
+        /**
+         * @brief Show the cancel button also while the line is empty. Off by default.
+         *
+         * By default the button appears with the first typed character and goes with the text. For a host that uses the line
+         * as the head of a page it can close (a search panel), the button is the way out: with this on it is always there, and
+         * cancel() (a click on it, or Escape while the shortcut is enabled) emits cancelled() even when there is no text to
+         * clear, so that the host closes the page with a single click.
+         */
+        void setCancelAlwaysVisible(bool enable);
+
+        bool isCancelAlwaysVisible() const noexcept
+        {
+            return m_cancelAlwaysVisible;
+        }
+
     public slots:
 
         virtual void cancel() override;
@@ -89,6 +104,7 @@ class UISE_DESKTOP_EXPORT SearchLineEdit : public LineEdit
 
         bool m_editing;
         bool m_searchButtonVisible=true;
+        bool m_cancelAlwaysVisible=false;
 };
 
 }

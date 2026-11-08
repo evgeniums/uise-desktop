@@ -307,6 +307,7 @@ AbstractChatObjectBrowser::AbstractChatObjectBrowser(QString kind, QWidget* pare
       m_searchBar(nullptr),
       m_searchEdit(nullptr),
       m_searchTimer(nullptr),
+      m_noticeLabel(nullptr),
       m_emptyLabel(nullptr),
       m_view(nullptr)
 {
@@ -348,6 +349,14 @@ AbstractChatObjectBrowser::AbstractChatObjectBrowser(QString kind, QWidget* pare
             m_searchTimer->start();
         }
     );
+
+    // What the owner says about the answer (ChatObjectsPage::notice), under the search line and above the objects.
+    m_noticeLabel=new QLabel(this);
+    m_noticeLabel->setObjectName("noticeLabel");
+    m_noticeLabel->setTextFormat(Qt::PlainText);
+    m_noticeLabel->setWordWrap(true);
+    m_noticeLabel->setVisible(false);
+    m_layout->addWidget(m_noticeLabel);
 
     m_emptyLabel=new QLabel(m_emptyText,this);
     m_emptyLabel->setObjectName("emptyLabel");
@@ -482,6 +491,20 @@ void AbstractChatObjectBrowser::setSearchPlaceholderText(const QString& text)
 
 //--------------------------------------------------------------------------
 
+void AbstractChatObjectBrowser::setSearchCancelAlwaysVisible(bool enable)
+{
+    m_searchEdit->setCancelAlwaysVisible(enable);
+}
+
+//--------------------------------------------------------------------------
+
+bool AbstractChatObjectBrowser::isSearchCancelAlwaysVisible() const noexcept
+{
+    return m_searchEdit->isCancelAlwaysVisible();
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractChatObjectBrowser::focusSearch()
 {
     if (isSearchVisible())
@@ -551,8 +574,15 @@ void AbstractChatObjectBrowser::updateEmptyState()
                      && m_model.isEndOlder()
                      && m_model.isEndNewer()
                      && m_pendingReset.id==0;
-    // a search that finds nothing is not an empty chat
-    m_emptyLabel->setText(m_query.isEmpty() ? m_emptyText : tr("Nothing found"));
+    // a search that finds nothing is not an empty chat; the owner may say why it found nothing
+    if (!m_answerEmptyText.isEmpty())
+    {
+        m_emptyLabel->setText(m_answerEmptyText);
+    }
+    else
+    {
+        m_emptyLabel->setText(m_query.isEmpty() ? m_emptyText : tr("Nothing found"));
+    }
     m_emptyLabel->setVisible(empty);
     if (m_view!=nullptr)
     {
@@ -564,6 +594,7 @@ void AbstractChatObjectBrowser::updateEmptyState()
 
 void AbstractChatObjectBrowser::resetState()
 {
+    clearAnswerTexts();
     m_model.clear();
     m_pendingReset=Pending{};
     m_pendingOlder=Pending{};
@@ -650,6 +681,15 @@ void AbstractChatObjectBrowser::applyPage(const ChatObjectsPage& page)
         return;
     }
 
+    // unknown or superseded by reload()/openAt(): dropped, and so are its texts
+    if (page.requestId!=m_pendingReset.id && page.requestId!=m_pendingOlder.id && page.requestId!=m_pendingNewer.id)
+    {
+        return;
+    }
+
+    // before the handlers: they update the empty state, which reads the text
+    applyAnswerTexts(page);
+
     if (page.requestId==m_pendingReset.id)
     {
         handleResetPage(page);
@@ -658,11 +698,36 @@ void AbstractChatObjectBrowser::applyPage(const ChatObjectsPage& page)
     {
         handleEdgePage(page,true);
     }
-    else if (page.requestId==m_pendingNewer.id)
+    else
     {
         handleEdgePage(page,false);
     }
-    // else: unknown or superseded by reload()/openAt(), dropped
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatObjectBrowser::applyAnswerTexts(const ChatObjectsPage& page)
+{
+    m_answerEmptyText=page.emptyText;
+    m_noticeLabel->setText(page.notice);
+    m_noticeLabel->setVisible(!page.notice.isEmpty());
+    updateEmptyState();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatObjectBrowser::clearAnswerTexts()
+{
+    m_answerEmptyText.clear();
+    m_noticeLabel->clear();
+    m_noticeLabel->setVisible(false);
+}
+
+//--------------------------------------------------------------------------
+
+QString AbstractChatObjectBrowser::noticeText() const
+{
+    return m_noticeLabel->text();
 }
 
 //--------------------------------------------------------------------------

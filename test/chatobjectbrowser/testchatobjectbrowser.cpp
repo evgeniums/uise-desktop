@@ -35,6 +35,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/test/uise-testthread.hpp>
 #include <uise/desktop/chatobjectbrowser.hpp>
 #include <uise/desktop/chatobjectbrowserpanel.hpp>
+#include <uise/desktop/searchlineedit.hpp>
 #include <uise/desktop/style.hpp>
 
 using namespace UISE_DESKTOP_NAMESPACE;
@@ -764,6 +765,125 @@ BOOST_AUTO_TEST_CASE(TestQueryNotRequiredByDefault)
             // an ordinary browser asks with no text
             UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),1);
             UISE_TEST_CHECK(browser.requests[0].query.isEmpty());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestAnswerEmptyTextAndNotice)
+{
+    runInGui(
+        []()
+        {
+            TestBrowser browser;
+            browser.setEmptyText(QStringLiteral("Hint"));
+            browser.setQueryRequired(true);
+
+            auto* notice=browser.findChild<QLabel*>("noticeLabel");
+            UISE_TEST_REQUIRE(notice!=nullptr);
+            UISE_TEST_REQUIRE(browser.emptyLabel()!=nullptr);
+            UISE_TEST_CHECK(notice->isHidden());
+            UISE_TEST_CHECK(browser.noticeText().isEmpty());
+
+            // an answer that finds nothing and says why: its words in place of "Nothing found", and a line under the search line
+            browser.setSearchText(QStringLiteral("abc"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),1);
+            auto page=makePage(browser.requests[0],0,0,true,true);
+            page.emptyText=QStringLiteral("Not available");
+            page.notice=QStringLiteral("Searching...");
+            browser.applyPage(page);
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Not available"));
+            UISE_TEST_CHECK(!notice->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.noticeText(),QStringLiteral("Searching..."));
+
+            // the text changes: both are gone until the next answer
+            browser.setSearchText(QStringLiteral("abcd"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),2);
+            UISE_TEST_CHECK(notice->isHidden());
+            UISE_TEST_CHECK(browser.noticeText().isEmpty());
+
+            // an answer with objects keeps its line, and no empty text is shown
+            page=makePage(browser.requests[1],0,5,true,true);
+            page.notice=QStringLiteral("Recent messages only");
+            browser.applyPage(page);
+            UISE_TEST_CHECK(browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK(!notice->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.noticeText(),QStringLiteral("Recent messages only"));
+
+            // the next answer replaces the line; an answer without one hides it
+            browser.setSearchText(QStringLiteral("abcde"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),3);
+            browser.applyPage(makePage(browser.requests[2],0,0,true,true));
+            UISE_TEST_CHECK(notice->isHidden());
+            UISE_TEST_CHECK(browser.noticeText().isEmpty());
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            // the browser's own words again: neither the hint nor the owner's earlier ones
+            UISE_TEST_CHECK(browser.emptyLabel()->text()!=QStringLiteral("Hint"));
+            UISE_TEST_CHECK(browser.emptyLabel()->text()!=QStringLiteral("Not available"));
+
+            // an answer to a request that was superseded is dropped with its texts
+            browser.setSearchText(QStringLiteral("abcdef"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),4);
+            auto stale=makePage(browser.requests[2],0,0,true,true);
+            stale.emptyText=QStringLiteral("Stale");
+            stale.notice=QStringLiteral("Stale");
+            browser.applyPage(stale);
+            UISE_TEST_CHECK(notice->isHidden());
+            UISE_TEST_CHECK(browser.noticeText().isEmpty());
+
+            // clearing the text: the hint, no line
+            browser.setSearchText(QString{});
+            UISE_TEST_CHECK(notice->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestSearchCancelAlwaysVisible)
+{
+    runInGui(
+        []()
+        {
+            TestBrowser browser;
+            auto* edit=browser.findChild<SearchLineEdit*>("searchEdit");
+            UISE_TEST_REQUIRE(edit!=nullptr);
+            auto* cancelButton=browser.findChild<QWidget*>("cancelButton");
+            UISE_TEST_REQUIRE(cancelButton!=nullptr);
+
+            int cancelled=0;
+            QObject::connect(edit,&SearchLineEdit::cancelled,&browser,
+                [&cancelled]()
+                {
+                    ++cancelled;
+                }
+            );
+
+            // by default the button comes with the text, and a cancel of an empty line says nothing
+            UISE_TEST_CHECK(!browser.isSearchCancelAlwaysVisible());
+            UISE_TEST_CHECK(cancelButton->isHidden());
+            edit->cancel();
+            UISE_TEST_CHECK_EQUAL(cancelled,0);
+
+            // always visible: there without a text, and a cancel of the empty line is announced
+            browser.setSearchCancelAlwaysVisible(true);
+            UISE_TEST_CHECK(browser.isSearchCancelAlwaysVisible());
+            UISE_TEST_CHECK(!cancelButton->isHidden());
+            edit->cancel();
+            UISE_TEST_CHECK_EQUAL(cancelled,1);
+
+            // with a text: it clears the text, announces once, and the button stays
+            browser.setSearchText(QStringLiteral("abc"));
+            UISE_TEST_CHECK(!cancelButton->isHidden());
+            edit->cancel();
+            UISE_TEST_CHECK_EQUAL(cancelled,2);
+            UISE_TEST_CHECK(edit->text().isEmpty());
+            UISE_TEST_CHECK(!cancelButton->isHidden());
+
+            // off again: the button goes with the empty line
+            browser.setSearchCancelAlwaysVisible(false);
+            UISE_TEST_CHECK(cancelButton->isHidden());
+            edit->cancel();
+            UISE_TEST_CHECK_EQUAL(cancelled,2);
         }
     );
 }

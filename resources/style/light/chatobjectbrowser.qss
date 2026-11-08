@@ -7,6 +7,7 @@ background-color: rgba(0,0,0,10);
 }
 
 uise--AbstractChatObjectBrowser #emptyLabel,
+uise--AbstractChatObjectBrowser #noticeLabel,
 uise--ChatObjectBrowserPanel #unknownLabel {
 color: #888888;
 }

@@ -59,6 +59,11 @@ uise--ChatObjectBrowserPanel #unknownLabel {
 padding:24px;
 }
 
+/* the owner's line under the search line (ChatObjectsPage::notice): level with the text of the search line, a little room below */
+uise--AbstractChatObjectBrowser #noticeLabel {
+padding:0px 14px 8px 14px;
+}
+
 /* --- file and voice rows: a little room at the sides, the rest is chatmessagefiles.qss --- */
 
 uise--ChatObjectListBrowser uise--ChatMessageFileItem {

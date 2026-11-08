@@ -370,6 +370,16 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
 
         void setSearchPlaceholderText(const QString& text);
 
+        /**
+         * @brief Show the cancel button of the search line also while it is empty (SearchLineEdit::setCancelAlwaysVisible()).
+         *
+         * For a browser that is a page of its own (the search kind): the owner closes the page on the line's cancelled() signal,
+         * and the button is the single click that does it. Off by default.
+         */
+        void setSearchCancelAlwaysVisible(bool enable);
+
+        bool isSearchCancelAlwaysVisible() const noexcept;
+
         //! Put the cursor into the search line, if it is shown.
         void focusSearch();
 
@@ -411,6 +421,9 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
 
         //! Whether a request is in flight.
         bool isLoading() const noexcept;
+
+        //! The line under the search line that the last accepted answer asked for (ChatObjectsPage::notice); empty when hidden.
+        QString noticeText() const;
 
     signals:
 
@@ -509,6 +522,12 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         void onMenuTriggered(int id);
         void applySearch();
 
+        //! Takes ChatObjectsPage::emptyText and notice of an accepted answer.
+        void applyAnswerTexts(const ChatObjectsPage& page);
+
+        //! Forgets the texts of the last answer: the browser is reset.
+        void clearAnswerTexts();
+
         QString m_kind;
         ChatObjectBrowserModel m_model;
         RequestCb m_requestCb;
@@ -524,6 +543,8 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         bool m_queryRequired;
         QString m_query;
         QString m_emptyText;
+        //! ChatObjectsPage::emptyText of the last accepted answer, empty when it had none.
+        QString m_answerEmptyText;
 
         QVBoxLayout* m_layout;
         //! Holds the search line and the room around it. The line has no margin of its own: LineEdit puts its icons by the
@@ -531,6 +552,8 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         QFrame* m_searchBar;
         SearchLineEdit* m_searchEdit;
         QTimer* m_searchTimer;
+        //! ChatObjectsPage::notice: a line under the search bar, hidden while empty.
+        QLabel* m_noticeLabel;
         QLabel* m_emptyLabel;
         QWidget* m_view;
         QPointer<DropdownMenu> m_menu;

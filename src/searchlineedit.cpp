@@ -99,13 +99,22 @@ void SearchLineEdit::doCancel(bool keepFocus)
 {
     if (!m_editing)
     {
+        // Nothing to clear. A host that shows the button all the time still wants the click (to close its page).
+        if (m_cancelAlwaysVisible)
+        {
+            emit cancelled();
+            if (!keepFocus)
+            {
+                clearFocus();
+            }
+        }
         return;
     }
 
     m_editing=false;
     clear();
     m_searchButton->setVisible(m_searchButtonVisible);
-    m_cancelButton->setVisible(false);
+    m_cancelButton->setVisible(m_cancelAlwaysVisible);
     updateButtonPositions();
     emit editingModeChanged(m_editing);
     emit cancelled();
@@ -166,6 +175,19 @@ void SearchLineEdit::setSearchButtonVisible(bool enable)
 {
     m_searchButtonVisible=enable;
     m_searchButton->setVisible(m_searchButtonVisible);
+}
+
+//--------------------------------------------------------------------------
+
+void SearchLineEdit::setCancelAlwaysVisible(bool enable)
+{
+    if (m_cancelAlwaysVisible==enable)
+    {
+        return;
+    }
+    m_cancelAlwaysVisible=enable;
+    m_cancelButton->setVisible(m_cancelAlwaysVisible || m_editing);
+    updateButtonPositions();
 }
 
 //--------------------------------------------------------------------------

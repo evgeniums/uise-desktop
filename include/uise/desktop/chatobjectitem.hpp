@@ -256,6 +256,21 @@ struct ChatObjectsPage
 
     //! The owner has nothing newer than the newest of items. Implied for a null anchor.
     bool endAfter=false;
+
+    /**
+     * What the browser says in place of its objects when it shows none, for THIS answer: it replaces "Nothing found" (and the
+     * hint of the empty text). For a search that has a reason for finding nothing other than "nothing matches": the chat has no
+     * search, the text is too short, the index is not ready yet. Empty: the browser's own words. Taken with every accepted answer
+     * and dropped when the browser is reset (reload(), openAt(), a change of the search text), so it never outlives the answer.
+     */
+    QString emptyText;
+
+    /**
+     * One line under the search line, with or without objects: "Searching...", "Recent messages only (last 90 days)". Plain text,
+     * wrapped. Every accepted answer replaces it, an empty one hides the line; a reset of the browser (reload(), openAt(), a change
+     * of the search text) hides it until the next answer.
+     */
+    QString notice;
 };
 
 UISE_DESKTOP_NAMESPACE_END

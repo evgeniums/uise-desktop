@@ -67,6 +67,18 @@ You may select, at your option, one of the above-listed licenses.
 *   "xyzzy"          nothing is found: the text "Nothing found" (not the hint).
 *   "report,"        punctuation is ignored: the same as "report".
 *
+*  What the owner can tell about the answer (ChatObjectsPage::emptyText and notice). Every answer of the search kind carries
+*  the line "Recent messages only (last 90 days)" under the search line. Three texts start with "!" and are a script of the
+*  demo, not words of the messages:
+*
+*   "!unavailable"   no result, and instead of "Nothing found": "Search is not available in this chat".
+*   "!short"         no result, and instead of "Nothing found": "Type at least 3 characters to search".
+*   "!wait rep"      the result of "rep" and a first line "Searching..." over the period line (the owner's index is still
+*                    being built); "!wait" alone has no result and says "Searching..." where "Nothing found" would be.
+*
+*  Type another text after each: the line and the words of the previous answer are gone at once, and the next answer brings
+*  its own. Clearing the text hides the line and brings the hint back.
+*
 *  Then: clear the text (the cancel icon on the right, or select all and delete). The hint comes back at once, the log
 *  shows no new request, and answers that are still on their way are not shown. To see that, choose "Answer in 2000 ms",
 *  type "rep", and clear the text before the answer comes (within 2 seconds): the log shows the request and, later, its
@@ -579,6 +591,45 @@ struct DemoOwner
     }
 
     ChatObjectsPage answer(const ChatObjectsRequest& request) const
+    {
+        if (request.kind!=ChatObjectKind::Search)
+        {
+            return answerObjects(request);
+        }
+
+        // The states of the search that the owner tells beside the objects: why there are none, and a line over the list.
+        const QString text=request.query.trimmed();
+        if (text==QLatin1String("!unavailable") || text==QLatin1String("!short"))
+        {
+            ChatObjectsPage page;
+            page.requestId=request.requestId;
+            page.endBefore=true;
+            page.endAfter=true;
+            page.emptyText=(text==QLatin1String("!unavailable"))
+                               ? QStringLiteral("Search is not available in this chat")
+                               : QStringLiteral("Type at least 3 characters to search");
+            return page;
+        }
+
+        auto effective=request;
+        QStringList notice;
+        if (text.startsWith(QLatin1String("!wait")))
+        {
+            effective.query=text.mid(5).trimmed();
+            notice.push_back(QStringLiteral("Searching..."));
+        }
+        auto page=answerObjects(effective);
+        if (page.items.empty() && !notice.isEmpty())
+        {
+            page.emptyText=QStringLiteral("Searching...");
+        }
+        notice.push_back(QStringLiteral("Recent messages only (last 90 days)"));
+        page.notice=notice.join(QLatin1Char('\n'));
+        return page;
+    }
+
+    //! The objects of the request, by its search text.
+    ChatObjectsPage answerObjects(const ChatObjectsRequest& request) const
     {
         ChatObjectsPage page;
         page.requestId=request.requestId;

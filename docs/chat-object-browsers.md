@@ -83,6 +83,8 @@ struct ChatObjectsPage          // owner -> browser
     std::vector<ChatObjectItem> items;   // any order, duplicates tolerated
     bool endBefore;             // nothing older than the oldest of items
     bool endAfter;              // nothing newer than the newest of items
+    QString emptyText;          // why there is nothing to show, instead of "Nothing found"; empty: the browser's own
+    QString notice;             // one line under the search line; empty: none
 };
 ```
 
@@ -243,6 +245,24 @@ the owner gets it as `ChatObjectsRequest::query`. `setSearchVisible(false)` also
 text is cleared and the browser reloads without it). A search with no result shows "Nothing found"
 instead of the kind's empty text. The line is outside the view, so it stays when there is nothing to
 show. The panel forwards `searchTextChanged`.
+
+The cancel button of the line (the cross at its right end) appears with the first typed character and goes with the text.
+`setSearchCancelAlwaysVisible(true)` keeps it there with no text too: for a browser that is a page of its own (the search
+kind in a sidebar), where the owner closes the page when the line is cancelled. A cancel of an **empty** line then emits
+`SearchLineEdit::cancelled()` as well (a click on the button, or Escape while the line's own Escape shortcut is on), so a
+single click closes the page; with the default (off) a cancel of an empty line does nothing, as before.
+
+#### What the owner tells about an answer
+
+The two texts of `ChatObjectsPage` are for a search whose answer needs more than a list. Both belong to the answer, are taken
+only from an **accepted** one (an answer to a superseded request is dropped with its texts) and are forgotten when the
+browser is reset (`reload()`, `openAt()`, a change of the text), so they never outlive the answer.
+
+* `emptyText` replaces "Nothing found" (and the hint) **while the browser shows no object**: "Search is not available in this
+  chat", "Type at least 3 characters to search", "Searching...". With objects it is not shown.
+* `notice` is one line (`#noticeLabel`, plain text, wrapped) under the search line, with or without objects: "Searching..."
+  over the results found so far, "Recent messages only (last 90 days)". An empty one hides the line. `noticeText()` returns the
+  text shown. Every accepted answer replaces it, so an owner that has a notice sets it on **every** page, edge pages included.
 
 ### Query required (the search kind)
 
