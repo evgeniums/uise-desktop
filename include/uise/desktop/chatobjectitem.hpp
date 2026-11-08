@@ -59,7 +59,21 @@ namespace ChatObjectKind
     inline const QString Voice=QStringLiteral("voice");
     inline const QString Link=QStringLiteral("link");
     inline const QString Mention=QStringLiteral("mention");
+    //! Messages found by a text search: sender avatar, sender and date, a snippet with the found words highlighted.
+    inline const QString Search=QStringLiteral("search");
 }
+
+/**
+ * @brief A range of characters of a text, in UTF-16 code units, i.e. in indices of a QString.
+ *
+ * Used by ChatObjectItem::matches. The widgets take such ranges defensively: a range that is out of the text is
+ * ignored or clamped, overlapping ones are merged, an empty list means no highlight.
+ */
+struct ChatObjectTextRange
+{
+    int start=0;
+    int length=0;
+};
 
 /**
  * @brief Position of an object in the keyset order of its kind. Ascending means older to newer.
@@ -176,8 +190,13 @@ struct ChatObjectItem
     //! stock link row lists them). Empty: the object is the one link of url and title.
     std::vector<ChatObjectItemLink> links;
 
-    //! Link and mention kinds: snippet of the message text the object comes from.
+    //! Link, mention and search kinds: snippet of the message text the object comes from. For the search kind the HOST has
+    //! cut it: it begins a few characters before the first match and may start with an ellipsis; the widget cuts nothing.
     QString text;
+
+    //! Search kind: the found words in text, as ranges in UTF-16 code units (indices of the QString text). May be empty
+    //! (no highlight). Taken defensively by the row: out-of-range ranges are ignored or clamped, overlapping ones merged.
+    std::vector<ChatObjectTextRange> matches;
 
     //! Room for kinds added later, so that they need no change of this struct.
     QVariantMap extra;

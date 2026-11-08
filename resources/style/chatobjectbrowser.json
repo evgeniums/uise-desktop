@@ -12,7 +12,8 @@
                 "file" : "${uise-svg-icons-1}/file",
                 "voice" : "${uise-svg-icons-1}/microphone",
                 "link" : "${uise-svg-icons-1}/link",
-                "mention" : "${uise-svg-icons-1}/at"
+                "mention" : "${uise-svg-icons-1}/at",
+                "search" : "${uise-svg-icons-1}/search"
             }
         }
     ]

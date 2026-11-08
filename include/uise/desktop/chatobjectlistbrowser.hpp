@@ -123,6 +123,10 @@ UISE_DESKTOP_EXPORT ChatObjectRowFactory makeChatObjectLinkRowFactory();
 //! Rows of the "mention" kind: sender avatar and name, date, a snippet of the message.
 UISE_DESKTOP_EXPORT ChatObjectRowFactory makeChatObjectMentionRowFactory();
 
+//! Rows of the "search" kind: sender avatar, sender and date, a snippet of the message (at most three lines) with the found
+//! words highlighted, see ChatObjectItem::matches.
+UISE_DESKTOP_EXPORT ChatObjectRowFactory makeChatObjectSearchRowFactory();
+
 //! Browser of the "file" kind.
 UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectFileBrowser(QWidget* parent=nullptr);
 
@@ -134,6 +138,11 @@ UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectLinkBrowser(QWidget* pa
 
 //! Browser of the "mention" kind; activating a row asks to show the message.
 UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectMentionBrowser(QWidget* parent=nullptr);
+
+//! Browser of the "search" kind, the messages found by a text search: no month headings, a click shows the message, the search
+//! line is shown ("Search messages") and a text is required (AbstractChatObjectBrowser::setQueryRequired()), so the browser asks
+//! the owner for nothing, and shows "Type to search messages", until something is typed.
+UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectSearchBrowser(QWidget* parent=nullptr);
 
 } // namespace uise
 

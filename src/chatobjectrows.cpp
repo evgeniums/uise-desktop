@@ -42,6 +42,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QStringList>
 
 #include <uise/desktop/chatobjectlistbrowser.hpp>
+#include <uise/desktop/chatobjectsearchsnippet.hpp>
 #include <uise/desktop/chatmessagefileitem.hpp>
 #include <uise/desktop/chataudiofileitems.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
@@ -462,23 +463,26 @@ class ChatObjectVoiceRow : public ChatVoiceFileItem
 //--------------------------------------------------------------------------
 
 /**
- * @brief Row of a mention: the avatar of the sender on the left, up to three lines of the message on the right.
+ * @brief Row of a mention or of a search result: the avatar of the sender on the left, up to three lines of the message on the
+ *  right.
  *
  * The sender and the date are the title line of the row, which the list puts above it as for every other kind
  * (ChatObjectRowFactory::buildTitle).
  *
- * Styled by object names (#mentionRow, #rowAvatar, #textColumn, #snippet) under uise--ChatObjectListBrowser, see
- * chatobjectbrowser.qss. An ElidedLabel on purpose: it shrinks to the row and elides, which a word-wrapped label would not.
+ * Styled by object names (#mentionRow or #searchRow, #rowAvatar, #textColumn, #snippet) under uise--ChatObjectListBrowser, see
+ * chatobjectbrowser.qss. The snippet of a mention is an ElidedLabel on purpose: it shrinks to the row and elides, which a
+ * word-wrapped label would not. The snippet of a search result is a ChatObjectSearchSnippet: it wraps, shows the found words
+ * highlighted and is cut off after three lines, never elided, as the host has cut the text to the found words already.
  */
 class ChatObjectTextRow : public QFrame
 {
     public:
 
-        ChatObjectTextRow(const ChatObjectItem& object, const ChatObjectRowHooks& hooks, QWidget* parent)
+        ChatObjectTextRow(const ChatObjectItem& object, const ChatObjectRowHooks& hooks, bool search, QWidget* parent)
             : QFrame(parent),
               m_hooks(hooks)
         {
-            setObjectName("mentionRow");
+            setObjectName(search ? "searchRow" : "mentionRow");
             setCursor(Qt::PointingHandCursor);
 
             auto* layout=Layout::horizontal(this);
@@ -492,14 +496,24 @@ class ChatObjectTextRow : public QFrame
             auto* columnLayout=Layout::vertical(column);
             layout->addWidget(column,1);
 
-            m_snippet=new ElidedLabel(column);
-            m_snippet->setObjectName("snippet");
-            m_snippet->setElideMode(Qt::ElideRight);
-            m_snippet->setMaxLines(3);
-            // as the text of a link card: elided to the row, and not taller than three lines whatever the list measured
-            m_snippet->setIgnoreSizeHint(true);
-            m_snippet->setMaximumHeight(3*m_snippet->fontMetrics().lineSpacing()+2);
-            columnLayout->addWidget(m_snippet);
+            if (search)
+            {
+                // wraps, highlights, and is not taller than three lines by itself
+                m_searchSnippet=new ChatObjectSearchSnippet(column);
+                m_searchSnippet->setObjectName("snippet");
+                columnLayout->addWidget(m_searchSnippet);
+            }
+            else
+            {
+                m_snippet=new ElidedLabel(column);
+                m_snippet->setObjectName("snippet");
+                m_snippet->setElideMode(Qt::ElideRight);
+                m_snippet->setMaxLines(3);
+                // as the text of a link card: elided to the row, and not taller than three lines whatever the list measured
+                m_snippet->setIgnoreSizeHint(true);
+                m_snippet->setMaximumHeight(3*m_snippet->fontMetrics().lineSpacing()+2);
+                columnLayout->addWidget(m_snippet);
+            }
             columnLayout->addStretch(1);
 
             setObject(object);
@@ -517,6 +531,14 @@ class ChatObjectTextRow : public QFrame
             if (object.avatarSource)
             {
                 m_avatar->setAvatarSource(object.avatarSource);
+            }
+
+            if (m_searchSnippet!=nullptr)
+            {
+                // the raw text: the snippet replaces the line breaks one to one, the ranges of the matches count on it
+                m_searchSnippet->setSnippet(object.text,object.matches);
+                m_searchSnippet->setVisible(!object.text.isEmpty());
+                return;
             }
 
             const auto snippet=oneLine(object.text);
@@ -572,6 +594,7 @@ class ChatObjectTextRow : public QFrame
 
         AvatarWidget* m_avatar=nullptr;
         ElidedLabel* m_snippet=nullptr;
+        ChatObjectSearchSnippet* m_searchSnippet=nullptr;
 };
 
 //--------------------------------------------------------------------------
@@ -973,7 +996,31 @@ ChatObjectRowFactory makeChatObjectMentionRowFactory()
     ChatObjectRowFactory factory;
     factory.build=[](const ChatObjectItem& item, QWidget* parent, const ChatObjectRowHooks& hooks) -> QFrame*
     {
-        return new ChatObjectTextRow(item,hooks,parent);
+        return new ChatObjectTextRow(item,hooks,false,parent);
+    };
+    factory.update=[](QFrame* row, const ChatObjectItem& item)
+    {
+        static_cast<ChatObjectTextRow*>(row)->setObject(item);
+    };
+    factory.buildTitle=[](QWidget* parent) -> QWidget*
+    {
+        return new ChatObjectTitle(parent);
+    };
+    factory.updateTitle=[](QWidget* title, const ChatObjectItem& item)
+    {
+        static_cast<ChatObjectTitle*>(title)->set(item);
+    };
+    return factory;
+}
+
+//--------------------------------------------------------------------------
+
+ChatObjectRowFactory makeChatObjectSearchRowFactory()
+{
+    ChatObjectRowFactory factory;
+    factory.build=[](const ChatObjectItem& item, QWidget* parent, const ChatObjectRowHooks& hooks) -> QFrame*
+    {
+        return new ChatObjectTextRow(item,hooks,true,parent);
     };
     factory.update=[](QFrame* row, const ChatObjectItem& item)
     {
@@ -1017,6 +1064,22 @@ ChatObjectListBrowser* makeChatObjectMentionBrowser(QWidget* parent)
 {
     auto* browser=new ChatObjectListBrowser(ChatObjectKind::Mention,makeChatObjectMentionRowFactory(),parent);
     browser->setActivationGoesToMessage(true);
+    return browser;
+}
+
+//--------------------------------------------------------------------------
+
+ChatObjectListBrowser* makeChatObjectSearchBrowser(QWidget* parent)
+{
+    auto* browser=new ChatObjectListBrowser(ChatObjectKind::Search,makeChatObjectSearchRowFactory(),parent);
+    // the results are in the order of the keys, not of months
+    browser->setGroupByMonth(false);
+    browser->setActivationGoesToMessage(true);
+    browser->setSearchVisible(true);
+    browser->setSearchPlaceholderText(QCoreApplication::translate("ChatObjectBrowser","Search messages"));
+    // Nothing is asked for until a text is typed; what is shown till then is the empty text.
+    browser->setEmptyText(QCoreApplication::translate("ChatObjectBrowser","Type to search messages"));
+    browser->setQueryRequired(true);
     return browser;
 }
 

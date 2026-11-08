@@ -279,6 +279,7 @@ SET (HEADERS
     include/uise/desktop/chatobjectlistbrowser.hpp
     include/uise/desktop/chatobjectgallerybrowser.hpp
     include/uise/desktop/chatobjectbrowserpanel.hpp
+    include/uise/desktop/chatobjectsearchsnippet.hpp
     include/uise/desktop/abstractemojigallerydialog.hpp
     include/uise/desktop/emojigallerydialog.hpp
 
@@ -522,6 +523,7 @@ SET (SOURCES
     src/chatobjectrows.cpp
     src/chatobjectgallerybrowser.cpp
     src/chatobjectbrowserpanel.cpp
+    src/chatobjectsearchsnippet.cpp
     src/emojigallerydialog.cpp
 
     src/replypreviewdata.cpp

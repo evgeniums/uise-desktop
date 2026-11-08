@@ -41,6 +41,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/chatobjectitem.hpp>
 
+class QFrame;
 class QLabel;
 class QTimer;
 class QVBoxLayout;
@@ -352,6 +353,21 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
             return m_query;
         }
 
+        /**
+         * @brief Ask for objects only while there is a search text (the "search results" kind).
+         *
+         * When on and the text is empty, reload() sends NO request and the browser shows its empty text (the hint, e.g.
+         * "Type to search messages") instead of objects. Clearing the text returns to the hint at once and drops the requests
+         * in flight; their answers are ignored. A text that finds nothing still shows "Nothing found". Off by default.
+         * Changing it after the first load reloads.
+         */
+        void setQueryRequired(bool enable);
+
+        bool isQueryRequired() const noexcept
+        {
+            return m_queryRequired;
+        }
+
         void setSearchPlaceholderText(const QString& text);
 
         //! Put the cursor into the search line, if it is shown.
@@ -505,10 +521,14 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         bool m_started;
         bool m_activationGoesToMessage;
         bool m_groupByMonth;
+        bool m_queryRequired;
         QString m_query;
         QString m_emptyText;
 
         QVBoxLayout* m_layout;
+        //! Holds the search line and the room around it. The line has no margin of its own: LineEdit puts its icons by the
+        //! whole rect of the widget, so a margin on the line puts them on the edge of the box, not inside it.
+        QFrame* m_searchBar;
         SearchLineEdit* m_searchEdit;
         QTimer* m_searchTimer;
         QLabel* m_emptyLabel;

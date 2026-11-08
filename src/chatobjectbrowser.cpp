@@ -26,6 +26,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <algorithm>
 #include <iterator>
 
+#include <QFrame>
 #include <QLabel>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -301,7 +302,9 @@ AbstractChatObjectBrowser::AbstractChatObjectBrowser(QString kind, QWidget* pare
       m_started(false),
       m_activationGoesToMessage(false),
       m_groupByMonth(true),
+      m_queryRequired(false),
       m_layout(nullptr),
+      m_searchBar(nullptr),
       m_searchEdit(nullptr),
       m_searchTimer(nullptr),
       m_emptyLabel(nullptr),
@@ -313,13 +316,20 @@ AbstractChatObjectBrowser::AbstractChatObjectBrowser(QString kind, QWidget* pare
 
     m_layout=Layout::vertical(this);
 
-    m_searchEdit=new SearchLineEdit(this);
+    // The room around the line is the bar's padding, see m_searchBar.
+    m_searchBar=new QFrame(this);
+    m_searchBar->setObjectName("searchBar");
+    auto* searchBarLayout=Layout::vertical(m_searchBar);
+
+    m_searchEdit=new SearchLineEdit(m_searchBar);
     m_searchEdit->setObjectName("searchEdit");
     m_searchEdit->setPlaceholderText(tr("Search"));
     // The host (a dialog) owns Escape; the line has its own cancel button.
     m_searchEdit->setCancelShortcutEnabled(false);
     m_searchEdit->setVisible(false);
-    m_layout->addWidget(m_searchEdit);
+    searchBarLayout->addWidget(m_searchEdit);
+    m_searchBar->setVisible(false);
+    m_layout->addWidget(m_searchBar);
 
     m_searchTimer=new QTimer(this);
     m_searchTimer->setSingleShot(true);
@@ -328,6 +338,13 @@ AbstractChatObjectBrowser::AbstractChatObjectBrowser(QString kind, QWidget* pare
     connect(m_searchEdit,&QLineEdit::textChanged,m_searchTimer,
         [this]()
         {
+            // A browser that needs a text drops its results and requests the moment the text is gone, not after the pause.
+            if (m_queryRequired && m_searchEdit->text().trimmed().isEmpty())
+            {
+                m_searchTimer->stop();
+                applySearch();
+                return;
+            }
             m_searchTimer->start();
         }
     );
@@ -413,7 +430,9 @@ void AbstractChatObjectBrowser::setSearchVisible(bool enable)
         // a hidden search must not keep filtering
         setSearchText(QString{});
     }
+    // the line too, not the bar alone: isSearchVisible() asks the line
     m_searchEdit->setVisible(enable);
+    m_searchBar->setVisible(enable);
 }
 
 //--------------------------------------------------------------------------
@@ -468,6 +487,21 @@ void AbstractChatObjectBrowser::focusSearch()
     if (isSearchVisible())
     {
         m_searchEdit->setFocus(Qt::OtherFocusReason);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatObjectBrowser::setQueryRequired(bool enable)
+{
+    if (m_queryRequired==enable)
+    {
+        return;
+    }
+    m_queryRequired=enable;
+    if (m_started)
+    {
+        reload();
     }
 }
 
@@ -566,6 +600,16 @@ void AbstractChatObjectBrowser::reload()
     resetState();
     m_started=true;
 
+    if (m_queryRequired && m_query.isEmpty())
+    {
+        // Nothing to look for: no request, and nothing is waited for either (resetState() forgot the requests in flight, so
+        // their answers are dropped). Both ends are known, so the empty text, the hint, is shown.
+        m_model.setEndOlder(true);
+        m_model.setEndNewer(true);
+        updateEmptyState();
+        return;
+    }
+
     ChatObjectsRequest request;
     request.countBefore=m_pageCount*2;
 
@@ -577,7 +621,8 @@ void AbstractChatObjectBrowser::reload()
 
 void AbstractChatObjectBrowser::openAt(const ChatObjectKey& key)
 {
-    if (key.isNull())
+    // without a text to look for there is nothing to open at either
+    if (key.isNull() || (m_queryRequired && m_query.isEmpty()))
     {
         reload();
         return;

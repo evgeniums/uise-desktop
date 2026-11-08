@@ -31,8 +31,52 @@ You may select, at your option, one of the above-listed licenses.
 *     the grid), "Group by month" switches them off and on; after "Open at the middle" scroll up
 *     through the month you landed in -- the lines of the grid are cut anew, the place stays;
 *   - the search line (the owner filters by the text in the request; try "alice", "12");
+*   - the "search" kind (messages found by a text search), see "The search kind" below;
 *   - play a voice message (the fake player drives the row);
 *   - the "video" kind, registered here and not in the library.
+*
+*  The search kind
+*  ---------------
+*  Choose the kind "search" in "Kind of objects". The list stays empty and shows the hint "Type to search messages", and the
+*  log shows NO request: a search browser asks the owner for nothing until a text is typed. The objects are fake MESSAGES
+*  (the number in "Objects in the chat", 500 by default; the newest is on top). Each is a few English and Russian words
+*  from a small vocabulary, see messageText() below; the owner answers by the words you type, and every word you type must
+*  be the BEGINNING of some word of the message (all words must be found, upper or lower case does not matter).
+*  What to type and what you must see:
+*
+*   "rep"            many hits: report, reply, repository. Every word that BEGINS with "rep" is highlighted
+*                    (the prefix only, "rep" in "report"). Scroll down: more are loaded, the log shows one request at a time.
+*   "report"         the same words, the whole of "report" is highlighted.
+*   "REPORT"         the same result as "report": the case does not matter.
+*   "отч"            Russian: the words "отчёт" and "отчет" (with and without the dotted ё) are found.
+*   "отчёт"          only the words with the dotted ё; "отчет" finds only the ones without it. Different letters, different
+*                    words.
+*   "report tomorrow"  two words: only the messages that have BOTH (a word beginning with "report" and a word beginning
+*                    with "tomorrow"), both highlighted. A message with only one of them is not in the list.
+*   "and"            a very common word: some messages have it several times, ALL of them are highlighted. Good for scrolling.
+*   "the", "и"       the same in English and in Russian.
+*   "multiline"      the messages whose text has line breaks and a tab in it (every 7th message, "многострочное" in
+*                    every 14th: type "многостр"). They are shown as ONE flowing text, the breaks are spaces, and the
+*                    highlight sits exactly on the word, which proves the offsets were not shifted by the replacement.
+*   "needle"         a word at the END of a long message (every 13th message has 40 or more words). The snippet
+*                    then begins with "…" and some 20 characters before the word, not with the beginning of the message,
+*                    and is cut to about 120 characters; at most 3 lines of it are shown, the rest is clipped.
+*   "bold"           the messages that end in the literal text  <b>bold</b> & a < b && c > d  (every 11th). It must be
+*                    shown AS TYPED, not as bold text and not eaten as markup; "bold" is highlighted inside the tags.
+*   "b"              very short query: highlights "b" in words like "budget" and in "<b>" and "</b>".
+*   "xyzzy"          nothing is found: the text "Nothing found" (not the hint).
+*   "report,"        punctuation is ignored: the same as "report".
+*
+*  Then: clear the text (the cancel icon on the right, or select all and delete). The hint comes back at once, the log
+*  shows no new request, and answers that are still on their way are not shown. To see that, choose "Answer in 2000 ms",
+*  type "rep", and clear the text before the answer comes (within 2 seconds): the log shows the request and, later, its
+*  answer, but the list stays empty and the hint stays. Also with 2000 ms: type "rep", wait until the log shows the request
+*  for 'rep' (the search starts about half a second after the last key), then add "o" (the line is now "repo") before the
+*  answer to "rep" arrives: only the result of "repo" is shown (the stale answer is dropped).
+*  Click a row: the log shows "go to message" with the id of the message. Right click: the menu has "Go to message" and the
+*  demo's own entry.
+*  Switch "Dark theme" on and off to see the highlight colours of both themes. "Group by month" and "Show the search line"
+*  do not apply to this kind: it has no month headings and always has its own search line.
 *
 */
 
@@ -46,6 +90,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QApplication>
 #include <QCheckBox>
 #include <QColor>
+#include <QChar>
 #include <QComboBox>
 #include <QFont>
 #include <QFrame>
@@ -57,6 +102,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QPointer>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QStringList>
 #include <QTimer>
 
 #include <uise/desktop/utils/layout.hpp>
@@ -171,6 +217,251 @@ struct DemoAvatarBuilder
 
 //--------------------------------------------------------------------------
 
+//! Words of the fake messages of the "search" kind: English and Russian, some with a common beginning (rep...) to
+//! try the prefix match.
+const QStringList& wordPool()
+{
+    static const QStringList words{
+        QStringLiteral("report"), QStringLiteral("reply"), QStringLiteral("repository"), QStringLiteral("release"),
+        QStringLiteral("meeting"), QStringLiteral("tomorrow"), QStringLiteral("deploy"), QStringLiteral("server"),
+        QStringLiteral("please"), QStringLiteral("check"), QStringLiteral("review"), QStringLiteral("message"),
+        QStringLiteral("the"), QStringLiteral("and"), QStringLiteral("with"), QStringLiteral("about"),
+        QStringLiteral("Monday"), QStringLiteral("budget"), QStringLiteral("photo"), QStringLiteral("invoice"),
+        QStringLiteral("файл"), QStringLiteral("отчёт"), QStringLiteral("отчет"), QStringLiteral("встреча"),
+        QStringLiteral("завтра"), QStringLiteral("сервер"), QStringLiteral("релиз"), QStringLiteral("проверь"),
+        QStringLiteral("пожалуйста"), QStringLiteral("сообщение"), QStringLiteral("ответ"), QStringLiteral("репозиторий"),
+        QStringLiteral("и"), QStringLiteral("для"), QStringLiteral("понедельник"), QStringLiteral("договор")
+    };
+    return words;
+}
+
+//! A fake message of the "search" kind: from one word to about sixty (most are short), English and Russian words of wordPool()
+//! mixed. Deterministic, so that the same index is the same text. On top of the random words there are LANDMARKS, so that a
+//! person who tries the demo has something certain to type (the list is in the header of this file):
+//!  - every 7th message (index n, n%7==0) has at least 7 words, line breaks after its 2nd and 5th word, a tab after the 3rd
+//!    and the word "multiline" ("многострочное" if n%14==0) as its 2nd word: type "multiline";
+//!  - every 11th has the text " <b>bold</b> & a < b && c > d" at its end: type "bold";
+//!  - every 13th has at least 40 words and the word "needle" at its end (before the " <b>bold</b>..." tail if it has one):
+//!    type "needle".
+QString messageText(size_t n)
+{
+    quint32 state=static_cast<quint32>(n)*2654435761u+12345u;
+    auto next=[&state](quint32 modulo)
+    {
+        state=state*1664525u+1013904223u;
+        return (state>>8)%modulo;
+    };
+
+    const auto& pool=wordPool();
+    int count=1+static_cast<int>(next(4)==0 ? next(60) : next(14));
+    if (n%7==0)
+    {
+        count=std::max(count,7);
+    }
+    if (n%13==0)
+    {
+        count=std::max(count,40);
+    }
+
+    QString text;
+    for (int i=0; i<count; ++i)
+    {
+        if (i>0)
+        {
+            if (n%7==0 && (i==2 || i==5))
+            {
+                text+=(i==2) ? QStringLiteral("\r\n") : QStringLiteral("\n");
+            }
+            else if (n%7==0 && i==3)
+            {
+                text+=QLatin1Char('\t');
+            }
+            else
+            {
+                text+=QLatin1Char(' ');
+            }
+        }
+        const auto& word=pool[static_cast<int>(next(static_cast<quint32>(pool.size())))];
+        // the random draw above is made in any case, so that the other words of a message do not depend on the landmarks
+        if (n%7==0 && i==1)
+        {
+            text+=(n%14==0) ? QStringLiteral("многострочное") : QStringLiteral("multiline");
+        }
+        else
+        {
+            text+=word;
+        }
+        if (next(9)==0)
+        {
+            text+=QLatin1Char(',');
+        }
+    }
+    if (n%13==0)
+    {
+        text+=QStringLiteral(" needle");
+    }
+    if (n%11==0)
+    {
+        text+=QStringLiteral(" <b>bold</b> & a < b && c > d");
+    }
+    return text;
+}
+
+//! The words of a text, as the search takes them: runs of letters and digits.
+std::vector<std::pair<int,int>> wordSpans(const QString& text)
+{
+    std::vector<std::pair<int,int>> spans;
+    int i=0;
+    while (i<text.size())
+    {
+        if (!text.at(i).isLetterOrNumber())
+        {
+            ++i;
+            continue;
+        }
+        const int start=i;
+        while (i<text.size() && text.at(i).isLetterOrNumber())
+        {
+            ++i;
+        }
+        spans.emplace_back(start,i);
+    }
+    return spans;
+}
+
+//! The words of the query, lower case.
+QStringList queryWords(const QString& query)
+{
+    QStringList words;
+    for (const auto& span : wordSpans(query))
+    {
+        words.push_back(query.mid(span.first,span.second-span.first).toLower());
+    }
+    return words;
+}
+
+//! Whether the word of the text [start,end) begins with the (lower case) word, ignoring case. By character: case folding of
+//! the whole text could change its length and with it the offsets.
+bool hasPrefix(const QString& text, int start, int end, const QString& word)
+{
+    if (word.size()>end-start)
+    {
+        return false;
+    }
+    for (int i=0; i<word.size(); ++i)
+    {
+        if (text.at(start+i).toLower()!=word.at(i))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//! The found words of a message: every word of the query must be the beginning of some word of the text (AND). All words
+//! of the text that begin with a word of the query are returned as ranges of the beginning, in UTF-16 units. Empty if the
+//! message does not match.
+std::vector<ChatObjectTextRange> findMatches(const QString& text, const QStringList& words)
+{
+    std::vector<ChatObjectTextRange> hits;
+    if (words.isEmpty())
+    {
+        return hits;
+    }
+
+    std::vector<bool> found(static_cast<size_t>(words.size()),false);
+    for (const auto& span : wordSpans(text))
+    {
+        int longest=0;
+        for (int w=0; w<words.size(); ++w)
+        {
+            if (hasPrefix(text,span.first,span.second,words[w]))
+            {
+                found[static_cast<size_t>(w)]=true;
+                longest=std::max(longest,static_cast<int>(words[w].size()));
+            }
+        }
+        if (longest>0)
+        {
+            hits.push_back(ChatObjectTextRange{span.first,longest});
+        }
+    }
+
+    if (std::find(found.begin(),found.end(),false)!=found.end())
+    {
+        hits.clear();
+    }
+    return hits;
+}
+
+//! What a real owner has to do for a search result: a window of about 120 characters that begins about 20 characters before the
+//! first match, at a word; "..." in front of it when the text is cut there; the ranges of ALL the matches inside the window.
+void fillSnippet(ChatObjectItem& item, const QString& text, const std::vector<ChatObjectTextRange>& hits)
+{
+    constexpr int Before=20;
+    constexpr int Length=120;
+
+    if (hits.empty())
+    {
+        item.text=text.left(Length);
+        return;
+    }
+
+    auto isWordChar=[&text](int pos)
+    {
+        return pos>=0 && pos<text.size() && text.at(pos).isLetterOrNumber();
+    };
+
+    const int first=hits.front().start;
+    int firstWordEnd=first+hits.front().length;
+    while (isWordChar(firstWordEnd))
+    {
+        ++firstWordEnd;
+    }
+
+    // the beginning: not in the middle of a word, and not after the first match
+    int start=std::max(0,first-Before);
+    if (start>0)
+    {
+        while (start<first && isWordChar(start-1) && isWordChar(start))
+        {
+            ++start;
+        }
+        while (start<first && !isWordChar(start))
+        {
+            ++start;
+        }
+    }
+
+    // the end: not in the middle of a word, and not before the end of the first match's word
+    int end=std::min(static_cast<int>(text.size()),start+Length);
+    if (end<text.size())
+    {
+        while (end>firstWordEnd && isWordChar(end-1) && isWordChar(end))
+        {
+            --end;
+        }
+        while (end>firstWordEnd && !isWordChar(end-1))
+        {
+            --end;
+        }
+    }
+
+    const QString prefix=start>0 ? QString(QChar(0x2026)) : QString{};
+    item.text=prefix+text.mid(start,end-start);
+    for (const auto& hit : hits)
+    {
+        const int from=std::max(hit.start,start);
+        const int to=std::min(hit.start+hit.length,end);
+        if (from<to)
+        {
+            item.matches.push_back(ChatObjectTextRange{from-start+static_cast<int>(prefix.size()),to-from});
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
 //! The fake owner of the data: generates the objects of every kind from their index and answers
 //! the keyset requests the way a real owner has to.
 struct DemoOwner
@@ -180,7 +471,7 @@ struct DemoOwner
     std::shared_ptr<AvatarSource> avatars;
     std::vector<QString> senders{QStringLiteral("Alice"),QStringLiteral("Bob"),QStringLiteral("Carol"),QStringLiteral("Dan"),QStringLiteral("Erin")};
 
-    ChatObjectItem makeItem(const QString& kind, size_t n) const
+    ChatObjectItem makeItem(const QString& kind, size_t n, const QString& query=QString{}) const
     {
         static const QDateTime base=QDateTime::currentDateTime();
 
@@ -237,6 +528,12 @@ struct DemoOwner
             item.senderAvatarPath=WithPath(item.senderName.toStdString());
             item.text=QStringLiteral("@me please have a look at number %1, it is long enough to be elided at the end of the line").arg(n);
         }
+        else if (kind==ChatObjectKind::Search)
+        {
+            item.avatarSource=avatars;
+            item.senderAvatarPath=WithPath(item.senderName.toStdString());
+            fillSnippet(item,messageText(n),findMatches(messageText(n),queryWords(query)));
+        }
 
         return item;
     }
@@ -252,6 +549,25 @@ struct DemoOwner
     {
         std::vector<size_t> ids;
         ids.reserve(count);
+
+        if (request.kind==ChatObjectKind::Search)
+        {
+            // the words of the query, all of them, as the beginnings of words of the message text; no text, no result
+            const auto words=queryWords(request.query);
+            if (words.isEmpty())
+            {
+                return ids;
+            }
+            for (size_t n=0; n<count; ++n)
+            {
+                if (!findMatches(messageText(n),words).empty())
+                {
+                    ids.push_back(n);
+                }
+            }
+            return ids;
+        }
+
         for (size_t n=0; n<count; ++n)
         {
             if (request.query.isEmpty() || labelOf(n).contains(request.query,Qt::CaseInsensitive))
@@ -284,7 +600,7 @@ struct DemoOwner
             const size_t first=total>request.countBefore ? total-request.countBefore : 0;
             for (size_t i=first; i<total; ++i)
             {
-                page.items.push_back(makeItem(request.kind,ids[i]));
+                page.items.push_back(makeItem(request.kind,ids[i],request.query));
             }
             page.endBefore=(first==0);
             page.endAfter=true;
@@ -303,15 +619,15 @@ struct DemoOwner
 
         for (size_t i=lo; i<pos; ++i)
         {
-            page.items.push_back(makeItem(request.kind,ids[i]));
+            page.items.push_back(makeItem(request.kind,ids[i],request.query));
         }
         if (request.anchorInclusive && exact)
         {
-            page.items.push_back(makeItem(request.kind,ids[pos]));
+            page.items.push_back(makeItem(request.kind,ids[pos],request.query));
         }
         for (size_t i=afterStart; i<hi; ++i)
         {
-            page.items.push_back(makeItem(request.kind,ids[i]));
+            page.items.push_back(makeItem(request.kind,ids[i],request.query));
         }
 
         page.endBefore=(request.countBefore>0 && lo==0);
@@ -486,7 +802,7 @@ int main(int argc, char *argv[])
     auto* deleteButton=new QPushButton("Delete a message (patches the browser)",side);
     auto* groupBox=new QCheckBox("Group by month",side);
     groupBox->setChecked(true);
-    auto* searchBox=new QCheckBox("Show the search line (matches the sender and the number)",side);
+    auto* searchBox=new QCheckBox("Show the search line (matches the sender and the number; the search kind has its own)",side);
     auto* darkBox=new QCheckBox("Dark theme",side);
     sideLayout->addWidget(reloadButton);
     sideLayout->addWidget(middleButton);
@@ -675,8 +991,16 @@ int main(int argc, char *argv[])
         // the options are the demo's, a new browser starts with the defaults
         if (auto* browser=panel->currentBrowser())
         {
-            browser->setGroupByMonth(groupBox->isChecked());
-            browser->setSearchVisible(searchBox->isChecked());
+            if (browser->kind()==ChatObjectKind::Search)
+            {
+                // its search line and its (missing) month headings are the kind's own; the options are for the others
+                browser->focusSearch();
+            }
+            else
+            {
+                browser->setGroupByMonth(groupBox->isChecked());
+                browser->setSearchVisible(searchBox->isChecked());
+            }
         }
     };
 
@@ -726,7 +1050,8 @@ int main(int argc, char *argv[])
     QObject::connect(groupBox,&QCheckBox::toggled,&w,
         [panel](bool enable)
         {
-            if (auto* browser=panel->currentBrowser())
+            auto* browser=panel->currentBrowser();
+            if (browser!=nullptr && browser->kind()!=ChatObjectKind::Search)
             {
                 browser->setGroupByMonth(enable);
             }
@@ -735,7 +1060,8 @@ int main(int argc, char *argv[])
     QObject::connect(searchBox,&QCheckBox::toggled,&w,
         [panel](bool enable)
         {
-            if (auto* browser=panel->currentBrowser())
+            auto* browser=panel->currentBrowser();
+            if (browser!=nullptr && browser->kind()!=ChatObjectKind::Search)
             {
                 browser->setSearchVisible(enable);
                 if (enable)

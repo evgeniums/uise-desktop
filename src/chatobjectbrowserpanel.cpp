@@ -209,6 +209,25 @@ ChatObjectBrowserRegistry ChatObjectBrowserRegistry::defaults()
         }
     );
 
+    registry.registerKind(
+        ChatObjectKind::Search,
+        ChatObjectBrowserKindInfo{
+            []()
+            {
+                return QCoreApplication::translate("ChatObjectBrowser","Search");
+            },
+            []()
+            {
+                // the hint: shown while there is no text to search for
+                return QCoreApplication::translate("ChatObjectBrowser","Type to search messages");
+            },
+            [](QWidget* parent) -> AbstractChatObjectBrowser*
+            {
+                return makeChatObjectSearchBrowser(parent);
+            }
+        }
+    );
+
     return registry;
 }
 

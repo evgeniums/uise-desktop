@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <vector>
 
 #include <QLabel>
+#include <QLineEdit>
 
 #include <boost/test/unit_test.hpp>
 
@@ -670,6 +671,103 @@ BOOST_AUTO_TEST_CASE(TestGroupByMonthSwitch)
     );
 }
 
+BOOST_AUTO_TEST_CASE(TestQueryRequired)
+{
+    runInGui(
+        []()
+        {
+            TestBrowser browser;
+            browser.setEmptyText(QStringLiteral("Hint"));
+            UISE_TEST_CHECK(!browser.isQueryRequired());
+            browser.setQueryRequired(true);
+            UISE_TEST_CHECK(browser.isQueryRequired());
+
+            auto* edit=browser.findChild<QLineEdit*>("searchEdit");
+            UISE_TEST_REQUIRE(edit!=nullptr);
+            UISE_TEST_REQUIRE(browser.emptyLabel()!=nullptr);
+
+            // no text: nothing is asked for, nothing is waited for, the hint is shown
+            browser.reload();
+            UISE_TEST_CHECK(browser.requests.empty());
+            UISE_TEST_CHECK(!browser.isLoading());
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // there is nothing to open at without a text either
+            browser.openAt(makeKey(5));
+            UISE_TEST_CHECK(browser.requests.empty());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // a text: a request, and the hint gives way to the wait
+            browser.setSearchText(QStringLiteral("abc"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.requests[0].query,QStringLiteral("abc"));
+            UISE_TEST_CHECK(browser.requests[0].anchor.isNull());
+            UISE_TEST_CHECK(browser.isLoading());
+            UISE_TEST_CHECK(browser.emptyLabel()->isHidden());
+
+            // the text is deleted in the line: the request is dropped at once (no pause), the hint is back
+            edit->setText(QString{});
+            UISE_TEST_CHECK(browser.searchText().isEmpty());
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(browser.requests.size()),1);
+            UISE_TEST_CHECK(!browser.isLoading());
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // the late answer to the dropped request changes nothing
+            browser.applyPage(makePage(browser.requests[0],0,5,true,true));
+            UISE_TEST_CHECK(browser.model().empty());
+            UISE_TEST_CHECK_EQUAL(browser.loadCount,0);
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // a text that finds nothing is "Nothing found", not the hint
+            browser.setSearchText(QStringLiteral("zzz"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),2);
+            browser.applyPage(makePage(browser.requests[1],0,0,true,true));
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK(!browser.emptyLabel()->text().isEmpty());
+            UISE_TEST_CHECK(browser.emptyLabel()->text()!=QStringLiteral("Hint"));
+
+            // and clearing the text brings the hint back without a request
+            browser.setSearchText(QString{});
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(browser.requests.size()),2);
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // with results: they go when the text goes
+            browser.setSearchText(QStringLiteral("abc"));
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),3);
+            browser.applyPage(makePage(browser.requests[2],0,5,true,true));
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(browser.model().size()),5);
+            UISE_TEST_CHECK(browser.emptyLabel()->isHidden());
+            browser.setSearchText(QString{});
+            UISE_TEST_CHECK(browser.model().empty());
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(browser.requests.size()),3);
+            UISE_TEST_CHECK(!browser.emptyLabel()->isHidden());
+            UISE_TEST_CHECK_EQUAL_QSTR(browser.emptyLabel()->text(),QStringLiteral("Hint"));
+
+            // not required any more: an ordinary browser, it asks for the newest end
+            browser.setQueryRequired(false);
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),4);
+            UISE_TEST_CHECK(browser.requests[3].query.isEmpty());
+            UISE_TEST_CHECK(browser.isLoading());
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestQueryNotRequiredByDefault)
+{
+    runInGui(
+        []()
+        {
+            TestBrowser browser;
+            browser.reload();
+            // an ordinary browser asks with no text
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(browser.requests.size()),1);
+            UISE_TEST_CHECK(browser.requests[0].query.isEmpty());
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestRegistry)
 {
     runInGui(
@@ -678,12 +776,13 @@ BOOST_AUTO_TEST_CASE(TestRegistry)
             auto registry=ChatObjectBrowserRegistry::defaults();
 
             const auto kinds=registry.kinds();
-            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(kinds.size()),5);
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(kinds.size()),6);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[0],ChatObjectKind::Image);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[1],ChatObjectKind::File);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[2],ChatObjectKind::Voice);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[3],ChatObjectKind::Link);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[4],ChatObjectKind::Mention);
+            UISE_TEST_CHECK_EQUAL_QSTR(kinds[5],ChatObjectKind::Search);
 
             UISE_TEST_CHECK(registry.find(QStringLiteral("video"))==nullptr);
 
@@ -713,16 +812,16 @@ BOOST_AUTO_TEST_CASE(TestRegistry)
             };
             registry.registerKind(QStringLiteral("video"),video);
             UISE_TEST_CHECK(registry.find(QStringLiteral("video"))!=nullptr);
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),6);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),7);
 
             // registering again replaces
             registry.registerKind(QStringLiteral("video"),video);
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),6);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),7);
 
             UISE_TEST_CHECK(registry.unregisterKind(ChatObjectKind::Image));
             UISE_TEST_CHECK(registry.find(ChatObjectKind::Image)==nullptr);
             UISE_TEST_CHECK(!registry.unregisterKind(ChatObjectKind::Image));
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),5);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),6);
         }
     );
 }

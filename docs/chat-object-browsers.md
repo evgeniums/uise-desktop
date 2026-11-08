@@ -1,11 +1,12 @@
 # Chat object browsers
 
 Widgets that browse the objects of one chat, one browser per kind of object: a thumbnail grid for
-images, lists for files, voice messages, links and mentions. UI only and data driven: nothing here
+images, lists for files, voice messages, links, mentions and found messages (search results). UI only and data driven: nothing here
 reads a database, computes a count or knows the client library. The owner (in the desktop app, a thin
 adapter over the bridge) answers the browsers' requests.
 
-Status: **written, not compiled** (Stage 3 of the chat message counters task).
+Status: **written, not compiled** (Stage 3 of the chat message counters task; the search kind is Stage 4 of
+task-search-chat-messages, also written, not compiled).
 
 Contents: 1 Files, 2 Data types, 3 Keyset semantics, 4 Browser API, 5 Panel and registry,
 6 Styling and strings, 7 Behaviour worth knowing, 8 For the bridge and the adapter,
@@ -20,7 +21,8 @@ All under `include/uise/desktop`, `src`, `resources/style` of uise-desktop.
 | `chatobjectitem.hpp` | `ChatObjectKey`, `ChatObjectItem`, `ChatObjectsRequest`, `ChatObjectsPage`, `ChatObjectKind` (header only) |
 | `chatobjectbrowser.hpp/.cpp` | `ChatObjectBrowserModel`, `ChatObjectRowHooks`, `ChatObjectAction`, `AbstractChatObjectBrowser` |
 | `chatobjectlistbrowser.hpp/.cpp` | `ChatObjectListBrowser` (a row per object), `ChatObjectRowFactory` |
-| `chatobjectrows.cpp` | row factories and browser makers of the file, voice, link and mention kinds |
+| `chatobjectrows.cpp` | row factories and browser makers of the file, voice, link, mention and search kinds |
+| `chatobjectsearchsnippet.hpp/.cpp` | `ChatObjectSearchSnippet` (the highlighted snippet label of a search row) and `chatObjectHighlightHtml()` |
 | `chatobjectgallerybrowser.hpp/.cpp` | `ChatObjectGalleryBrowser`, the thumbnail grid |
 | `chatobjectbrowserpanel.hpp/.cpp` | `ChatObjectBrowserRegistry`, `ChatObjectBrowserPanel` (back and title bar) |
 | `style/chatobjectbrowser.{qss,json}` (+ `light/`, `dark/`) | styles and icon context `ChatObjectBrowser` |
@@ -31,7 +33,7 @@ Demo: `demo/chatobjectbrowser` (`chatobjectbrowser-demo`). Tests: `test/chatobje
 ## 2. Data types
 
 ```cpp
-namespace ChatObjectKind { Image="image", File="file", Voice="voice", Link="link", Mention="mention" }
+namespace ChatObjectKind { Image="image", File="file", Voice="voice", Link="link", Mention="mention", Search="search" }
 ```
 
 A kind is **any string**. The set is open; a new kind (video) is registered, see 5.
@@ -58,7 +60,8 @@ struct ChatObjectItem
     WithPath thumbnailPath;     // image cells
     std::shared_ptr<RoundedImageSource> thumbnailSource;   // may resolve later
     QString url, title;         // link
-    QString text;               // link and mention: snippet of the message
+    QString text;               // link, mention and search: snippet of the message
+    std::vector<ChatObjectTextRange> matches;   // search: the found words in text, UTF-16 units
     QVariantMap extra;          // kinds added later
     QString uid() const;        // == key.toString()
 };
@@ -82,6 +85,19 @@ struct ChatObjectsPage          // owner -> browser
     bool endAfter;              // nothing newer than the newest of items
 };
 ```
+
+```cpp
+struct ChatObjectTextRange { int start = 0; int length = 0; };   // UTF-16 code units = QString indices
+```
+
+**`matches`** (search kind). Ranges into `ChatObjectItem::text`, **in UTF-16 code units, i.e. indices of the
+`QString`** (not bytes, not code points: a character outside the BMP counts 2). `text` is the snippet and it is cut by
+the **host**: it begins a few characters before the first match, may start with an ellipsis ("…", one unit, which the
+ranges count) and is about 120 characters long; the widget cuts nothing. The ranges are taken defensively, so a
+slightly wrong list does no harm: an empty list is no highlight; a range with a length of 0 or less or one that begins
+after the end of the text is ignored; the rest is clamped to the text; a range never cuts a surrogate pair in two;
+overlapping and adjacent ranges are merged, and the order does not matter. Line breaks and tabs of `text` are shown as
+spaces **one to one** (never collapsed), so the offsets stay valid.
 
 The key is the identity. If the owner changes the sort position of a message (a resend restamps it),
 it removes the message's objects with `removeMessageObjects(messageId)` and delivers them again; the
@@ -154,6 +170,8 @@ void setSearchVisible(bool);                  // the search line, hidden by defa
 void setSearchText(const QString&);           // as if typed, applied at once
 void setSearchPlaceholderText(const QString&);
 void focusSearch();
+void setQueryRequired(bool);                  // no text, no request: the search kind, see "Query required"
+bool isQueryRequired() const;
 
 void reload();                                // from the newest
 void openAt(const ChatObjectKey&);            // around a key; the key is brought to the top
@@ -226,11 +244,38 @@ text is cleared and the browser reloads without it). A search with no result sho
 instead of the kind's empty text. The line is outside the view, so it stays when there is nothing to
 show. The panel forwards `searchTextChanged`.
 
+### Query required (the search kind)
+
+`setQueryRequired(true)` makes the browser a "search results" one: it has nothing to show without a text. With an empty
+text (trimmed) `reload()` and `openAt()` send **no request**; both ends count as known, so the browser shows its
+**empty text** as a hint ("Type to search messages" in the search kind) instead of "Nothing here yet". Typing a text
+reloads as usual (after the 300 ms pause). Removing the text, in the line or with `setSearchText("")`, brings the hint
+back **at once** (the pause is skipped), forgets the requests in flight (their answers are dropped like any stale
+answer) and clears the results. A text that finds nothing still shows "Nothing found", not the hint. Switching the flag
+after the first load reloads.
+
+### Search results
+
+`makeChatObjectSearchBrowser()` is a `ChatObjectListBrowser` of the kind "search": no month headings, a click means "go
+to message" (as mentions), the search line is shown with the placeholder "Search messages", the query is required.
+A row (`makeChatObjectSearchRowFactory()`) is the sender's avatar, a title line with the sender and the date (as the
+mention row) and the snippet: a `ChatObjectSearchSnippet`, a `QLabel` with rich text, word wrap and **at most three
+lines** (its maximum height; the rest is cut off, nothing is elided) with the ranges of `matches` highlighted.
+`chatObjectHighlightHtml(text, ranges, color, background)` builds its HTML and is a pure function (tested on its own):
+whitespace replaced one to one, every piece escaped with `toHtmlEscaped()`, a matched piece in a `<span>` with the two
+colours. The colours are the QSS properties `highlightColor` and `highlightBackground` of `ChatObjectSearchSnippet`
+(`qproperty-` in `light/` and `dark/`); changing either renders the snippet again. With no valid colour a match is
+bold.
+
+The owner of the kind answers like for any other: it filters by `request.query` and returns the messages in the keyset
+order with the item's `text` cut and `matches` filled. `demo/chatobjectbrowser` has such a fake owner.
+
 ## 5. Panel and registry
 
 `ChatObjectBrowserRegistry` maps a kind to `{ title(), emptyText(), factory(parent) }`. The texts are
 functions so that they are translated when asked. `ChatObjectBrowserRegistry::defaults()` has image
-(the grid), file, voice, link and mention (lists).
+(the grid), file, voice, link, mention and search (lists). The search kind is titled "Search" and its empty text is the
+hint "Type to search messages".
 
 `ChatObjectBrowserPanel` shows one browser at a time under a bar with a back button and a title:
 
@@ -272,15 +317,19 @@ panel->setRegistry(std::move(registry));
 ## 6. Styling and strings
 
 * Styles are in `style/chatobjectbrowser.qss` with colours in `light/` and `dark/`. Object names:
-  `searchEdit`, `monthHeader` (above a list row, and a heading row `monthRow` of the grid), `emptyLabel`, `linkRow`, `mentionRow`, `rowIcon`, `rowAvatar`, `textColumn`, `title`, `url`,
-  `snippet`, `meta`, `galleryRow`, `galleryCell` (its background is the **placeholder** shown until
+  `searchBar` (padding around the line: the line itself must have **no margin**, `LineEdit` puts its icons by the whole rect of the widget), `searchEdit`, `monthHeader` (above a list row, and a heading row `monthRow` of the grid), `emptyLabel`, `linkRow`, `mentionRow`, `searchRow`, `rowIcon`, `rowAvatar`, `textColumn`, `title`, `url`,
+  `snippet` (an `ElidedLabel` in a mention row, a `ChatObjectSearchSnippet` in a search row), `meta`, `galleryRow`, `galleryCell` (its background is the **placeholder** shown until
   a thumbnail resolves), `galleryImage`; panel: `header`, `backButton`, `title`, `body`,
   `unknownLabel`. Reused tints only: the chat file row's hover, the reaction chip's tint.
-* Icon context `ChatObjectBrowser` (back, image, file, voice, link, mention), all outline tabler
+* `uise--ChatObjectSearchSnippet` carries the QSS properties `highlightColor` and `highlightBackground` (`qproperty-`
+  in `light/` and `dark/`): the accent of the own-reaction chip and a low-alpha tint of it, no new hue. The search row
+  has the hover tint of the mention row.
+* Icon context `ChatObjectBrowser` (back, image, file, voice, link, mention, search), all outline tabler
   icons that were already in the curated qrc.
 * The file and voice rows are `ChatMessageFileItem` / `ChatVoiceFileItem` and keep their
   `chatmessagefiles.qss` look.
-* Strings: `tr()` in the `Q_OBJECT` classes (context `uise::AbstractChatObjectBrowser`);
+* Strings: `tr()` in the `Q_OBJECT` classes (context `uise::AbstractChatObjectBrowser`; new in the search kind, all in
+  `ChatObjectBrowser`: "Search", "Search messages", "Type to search messages");
   `QCoreApplication::translate("ChatObjectBrowser", ...)` for the rest (registry titles, date and
   separator formats, the rows). After building run `scripts/i18n-update.sh` and the per-language
   journal step of the `whitemdesktop-i18n` skill.
@@ -327,6 +376,11 @@ Nothing in the widgets depends on the bridge. What an adapter has to do:
   flags all refer to the matching objects. The anchor may be an object that does not match (the text
   changed between two requests); its position among the matching ones is what counts. Fields to
   match are the adapter's call; the sender's name and the date are not in the object rows.
+* **Search kind.** One object per found message, `key` from the message's sort position (ordinal 0). The owner cuts the
+  snippet (a window of about 120 characters that begins about 20 characters before the first match, at a word, with a
+  leading "…" when cut) and fills `matches` for **all** the matches inside the window. If the index works in UTF-8
+  byte offsets, convert them to UTF-16 units of the **cut** snippet (count the "…" too) before they are given to the
+  widget. No request for an empty text: the browser sends none (`setQueryRequired`), so the owner need not handle it.
 * **Items.** Build `ChatObjectItem` from the object row plus the message: thumbnails through a
   `RoundedImageSource` of the app, `ChatFileItem` from the message's file item (state, size, name,
   voice data), `senderName` and the avatar from the message's sender, `senderColorKey` = the sender uid hash (the key the chat bubble
@@ -364,5 +418,8 @@ For Stage 4 (the dialog and the adapter):
 4. Where do the link rows' "copy url" and the file rows' "forward" go -- the context menu builder?
 5. Which fields does a search match per kind (file name; url, title and text; message text and sender)?
    Is a search of the message texts local, or does it need the server?
+   *Answered for the search kind:* the message text, and locally (the on-device index of task-search-chat-messages:
+   prefix and stem match, all words must match); the server search comes later and is merged by the owner, the widgets
+   do not care. The other kinds keep this question open (their search is the adapter's call).
 6. Month headings use the local time zone and the locale's month name; is that what the chat's own
    date separators do?

@@ -27,10 +27,15 @@ font-weight:600;
 
 /* --- search line --- */
 
+/* The room around the line is the padding of its bar, NOT a margin of the line: LineEdit puts its search and cancel icons by the
+   whole rect of the widget, margin included, so a margin on the line put them on the edges of the drawn box. */
+uise--AbstractChatObjectBrowser #searchBar {
+padding:8px 12px 4px 12px;
+}
+
 /* SearchLineEdit carries no padding of its own, so without this the box is as tall as the platform
    style makes a bare QLineEdit; same numbers as the reaction gallery's search box. */
 uise--AbstractChatObjectBrowser #searchEdit {
-margin:8px 12px 4px 12px;
 padding-top:6px;
 padding-bottom:6px;
 }
@@ -62,7 +67,10 @@ padding:4px 8px;
 
 /* --- link and mention rows --- */
 
-uise--ChatObjectListBrowser #mentionRow {
+/* a search result is a mention row with a snippet that wraps (ChatObjectSearchSnippet: at most three lines, set by code from
+   the font) and has the found words highlighted (colours in light/ and dark/) */
+uise--ChatObjectListBrowser #mentionRow,
+uise--ChatObjectListBrowser #searchRow {
 padding:4px 8px;
 border-radius:8px;
 }

@@ -93,8 +93,8 @@ class UISE_DESKTOP_EXPORT ChatObjectBrowserRegistry
         std::vector<QString> kinds() const;
 
         /**
-         * @brief Registry with the stock kinds: image (the thumbnail grid), file, voice, link
-         *  and mention (lists).
+         * @brief Registry with the stock kinds: image (the thumbnail grid), file, voice, link,
+         *  mention and search (lists).
          */
         static ChatObjectBrowserRegistry defaults();
 

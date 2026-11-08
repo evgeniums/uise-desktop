@@ -12,8 +12,16 @@ color: #888888;
 }
 
 /* same tint as the chat file row's hover */
-uise--ChatObjectListBrowser #mentionRow:hover {
+uise--ChatObjectListBrowser #mentionRow:hover,
+uise--ChatObjectListBrowser #searchRow:hover {
 background-color: rgba(0,0,0,6);
+}
+
+/* the found words of a search result: the accent of the own-reaction chip (chatreactions.qss), not a new hue; the
+   background is a low-alpha tint of it. Properties of ChatObjectSearchSnippet, read again whenever the theme is applied. */
+uise--ChatObjectSearchSnippet {
+qproperty-highlightColor: #0A66C2;
+qproperty-highlightBackground: rgba(10,102,194,28);
 }
 
 uise--ChatObjectListBrowser #linkRow {
