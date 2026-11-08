@@ -1371,10 +1371,18 @@ void ChatMessageContent::updateBottomVisibility()
     {
         return;
     }
-    // Always visible for the ordinary opaque bubble; visible only on hover while transparent --
-    // see enterEvent()/leaveEvent(). Geometry is untouched either way, see this class' own
+    // Always visible for the ordinary opaque bubble; visible only on hover (or while pinned, e.g.
+    // a message still sending / failed) when transparent -- see enterEvent()/leaveEvent().
+    // Geometry is untouched either way, see this class' own
     // updateBottomPlacement()/AbstractChatMessageBottom::placedSize() doc comments.
-    b->setVisible(!isBubbleTransparent() || m_hovered);
+    b->setVisible(!isBubbleTransparent() || m_hovered || isBottomPinned());
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageContent::applyBottomPinned(bool /*enable*/)
+{
+    updateBottomVisibility();
 }
 
 //--------------------------------------------------------------------------

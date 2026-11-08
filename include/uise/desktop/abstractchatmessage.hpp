@@ -1288,6 +1288,26 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bubbleTransparent;
         }
 
+        //! Keeps bottom() (the time/status chip) visible on a TRANSPARENT bubble regardless of
+        //! hover -- for state the user must not miss, e.g. a message that is still being sent or
+        //! failed to send. No effect on an opaque bubble (its row is always visible). Geometry is
+        //! untouched: the chip's padding is reserved from bottom()->isChipMode() alone, never from
+        //! whether the row is currently shown. A no-op when the value does not change.
+        void setBottomPinned(bool enable)
+        {
+            if (m_bottomPinned==enable)
+            {
+                return;
+            }
+            m_bottomPinned=enable;
+            applyBottomPinned(enable);
+        }
+
+        bool isBottomPinned() const noexcept
+        {
+            return m_bottomPinned;
+        }
+
         void updateBubbleWidth(int forMaxWidthIn);
 
         //! Re-runs updateBubbleWidth() against the SAME forMaxWidthIn it was last called with --
@@ -1411,6 +1431,11 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! the caller reads this content's own sizeHint() (which reflects it) immediately after.
         virtual void applyAvatarSyncPad(int /*pad*/) {}
 
+        //! Apply a CHANGE in isBottomPinned() -- typically just re-deriving the bottom row's
+        //! visibility. A no-op default. Declared after every other virtual of this class on
+        //! purpose (a new virtual goes last).
+        virtual void applyBottomPinned(bool /*enable*/) {}
+
         //! Record the current selected/sent state -- see setSelected()'s doc comment for why an
         //! override must call these. isContentSelected()/isContentSent() below read it back.
         void rememberSelected(bool enable) noexcept
@@ -1518,6 +1543,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         bool m_sent=false;
         bool m_clearingSelection=false;
         bool m_bubbleTransparent=false;
+        bool m_bottomPinned=false;
 
         std::vector<ChatMessageContentSection*> m_sections;
         int m_maximumBubbleWidth=0;

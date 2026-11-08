@@ -174,6 +174,9 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         //! see updateBottomVisibility().
         void applyBubbleTransparency(bool enable) override;
 
+        //! Re-derives bottom()'s visibility -- see updateBottomVisibility().
+        void applyBottomPinned(bool enable) override;
+
         //! Moves bottom() in/out of m_layout when isBottomInline() actually flipped since the
         //! last call -- see AbstractChatMessageContent::updateBottomPlacement()'s own doc
         //! comment for when/why this runs.
@@ -211,7 +214,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
     private:
 
         //! Shows/hides bottom() -- a no-op (always visible) unless isBubbleTransparent(), in
-        //! which case it is visible only while m_hovered. Geometry is untouched either way:
+        //! which case it is visible only while m_hovered or isBottomPinned(). Geometry is untouched either way:
         //! bottom() is never a layout item (see updateBottomPlacement()), and
         //! AbstractChatMessageBottom::placedSize() already reserves chip padding purely from
         //! isChipMode() -- a per-message state applyBubbleTransparency() sets once, not from
