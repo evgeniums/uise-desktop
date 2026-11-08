@@ -579,12 +579,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Вас не упоминали в этом чате</translation>
     </message>
     <message>
+        <location line="+14"/>
+        <source>Search</source>
+        <translation>Поиск</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location filename="../src/chatobjectrows.cpp" line="+1081"/>
+        <source>Type to search messages</source>
+        <translation>Введите запрос для поиска</translation>
+    </message>
+    <message>
         <location line="+128"/>
         <source>These objects cannot be shown</source>
         <translation>Эти объекты нельзя показать</translation>
     </message>
     <message>
-        <location filename="../src/chatobjectrows.cpp" line="+76"/>
+        <location filename="../src/chatobjectrows.cpp" line="-1004"/>
         <source>%1, %2</source>
         <translation>%1, %2</translation>
     </message>
@@ -594,7 +605,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Вы</translation>
     </message>
     <message>
-        <location line="+661"/>
+        <location line="+683"/>
         <source>Copy text</source>
         <translation>Копировать текст</translation>
     </message>
@@ -609,12 +620,17 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Копировать ссылку</translation>
     </message>
     <message>
+        <location line="+236"/>
+        <source>Search messages</source>
+        <translation>Поиск сообщений</translation>
+    </message>
+    <message>
         <source>%1 · %2</source>
         <translation type="obsolete">%1 · %2</translation>
     </message>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="+836"/>
-        <location filename="../src/chatobjectrows.cpp" line="-13"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="+881"/>
+        <location filename="../src/chatobjectrows.cpp" line="-249"/>
         <location line="+15"/>
         <source>Go to message</source>
         <translation>Перейти к сообщению</translation>
@@ -2760,23 +2776,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatObjectBrowser</name>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="-524"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="-566"/>
         <source>Nothing here yet</source>
         <translation>Здесь пока ничего нет</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <location line="+143"/>
+        <location line="+11"/>
+        <location line="+154"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location line="+60"/>
+        <location line="+75"/>
         <source>Nothing found</source>
         <translation>Ничего не найдено</translation>
     </message>
     <message>
-        <location line="+311"/>
+        <location line="+322"/>
         <source>Open</source>
         <translation>Открыть</translation>
     </message>
@@ -3096,7 +3112,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2274"/>
+        <location filename="../src/chatmessage.cpp" line="+2311"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
