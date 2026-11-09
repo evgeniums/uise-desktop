@@ -636,7 +636,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="obsolete">%1 · %2</translation>
     </message>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="+881"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="+946"/>
         <location filename="../src/chatobjectrows.cpp" line="-249"/>
         <location line="+15"/>
         <source>Go to message</source>
@@ -2797,23 +2797,23 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatObjectBrowser</name>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="-566"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="-630"/>
         <source>Nothing here yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+11"/>
-        <location line="+154"/>
+        <location line="+162"/>
         <source>Search</source>
         <translation type="unfinished">Search</translation>
     </message>
     <message>
-        <location line="+75"/>
+        <location line="+95"/>
         <source>Nothing found</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+322"/>
+        <location line="+358"/>
         <source>Open</source>
         <translation type="unfinished">Open</translation>
     </message>
