@@ -446,9 +446,14 @@ font-weight: bold;
 
 /* The click ripple of the pill follows the pill's own shape: a rounded rectangle growing evenly into its
    edges, clipped to the pill's border-radius (10px above -- keep the two equal). The AvatarButton default
-   (ripple.qss) is a flat horizontal ellipse clipped to 4px, which reads as a tapered blob inside a pill.
-   Three type names outrank that rule's two. */
-uise--AbstractChatSeparatorSection uise--AvatarButton uise--RippleOverlay {
+   (ripple.qss) is a flat horizontal ellipse (radiusScaleY 0.35) clipped to 4px, which reads as a tapered blob
+   inside a pill.
+   Qt ranks rules by rule.order + specificity*0x100, where order is the rule's position in the whole
+   concatenated stylesheet -- so one extra type name (+256) does NOT outrank a rule that sits more than 256 rules
+   later, and ripple.qss loads long after this file. The [avatarOnly] attribute (+0x1000) makes the win
+   independent of file order. The constructor of AvatarButton always sets avatarOnly, and a separator pill never
+   goes avatar-only, so "false" always matches. */
+uise--AbstractChatSeparatorSection uise--AvatarButton[avatarOnly="false"] uise--RippleOverlay {
 qproperty-rippleShape: "roundedrect";
 qproperty-rippleClip: "rounded";
 qproperty-rippleCornerRadius: 10;

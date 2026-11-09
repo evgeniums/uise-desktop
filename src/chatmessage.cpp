@@ -46,6 +46,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/avatarbutton.hpp>
+#include <uise/desktop/ripple.hpp>
 #include <uise/desktop/avatar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
 #include <uise/desktop/checkbox.hpp>
@@ -719,7 +720,9 @@ class ChatSeparatorSection_p
         QFrame* leftLine=nullptr;
 
         AvatarButton* button;
-        bool clickable=true;
+        //! Off until a caller that wires clicked() opts in: most sections (informational lines,
+        //! the unread marker) have no action behind them and must not look pressable.
+        bool clickable=false;
 
         QFrame* rightLine=nullptr;
 
@@ -773,6 +776,9 @@ ChatSeparatorSection::ChatSeparatorSection(QWidget* parent)
     );
 
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+
+    // Applies the (non-clickable) default to the chip's ripple and cursor too.
+    setClickable(pimpl->clickable);
 }
 
 //--------------------------------------------------------------------------
@@ -793,6 +799,14 @@ void ChatSeparatorSection::setClickable(bool enable)
     // Qt propagates a widget's cursor to children that have none of their own, so the chip's
     // internal label/image inherit this without needing their own calls, and the section itself is
     // left with no cursor at all, i.e. inheriting the chat view's ordinary arrow.
+    //
+    // The chip's click ripple is the other click affordance, so it follows clickability: a chip with
+    // no action behind it (e.g. an informational "You joined the chat" line) must not ripple.
+    if (auto* ripple=pimpl->button->rippleOverlay())
+    {
+        ripple->setRippleEnabled(enable);
+    }
+
     if (enable)
     {
         pimpl->button->setCursor(Qt::PointingHandCursor);
