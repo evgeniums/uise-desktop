@@ -159,6 +159,26 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         QString text() const;
 
+        /**
+         * @brief Keep the button's width independent of which digits the text currently shows.
+         *
+         * Meant for text that ticks, e.g. a call duration or a timer. With proportional digits
+         * ("1" is narrower than "0") the label's width changes from tick to tick, and in a
+         * right-aligned container (a navigation bar's trailing group) the whole button then
+         * visibly jitters. When enabled, the text label reserves the width of the current text
+         * with every digit replaced by the widest digit of its font, re-measured on every
+         * setText() and font change (QSS polish, theme switch). Only a change of the text's
+         * format (e.g. "59:59" -> "1:00:00") changes the width.
+         *
+         * Off by default.
+         */
+        void setStableDigitWidth(bool enable);
+
+        bool isStableDigitWidth() const noexcept
+        {
+            return m_stableDigitWidth;
+        }
+
         void setIconPosition(IconPosition iconPosition);
 
         IconPosition iconPosition() const noexcept
@@ -231,6 +251,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
+        //! Watches m_text for FontChange to re-measure the stable digit width.
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
         /**
          * @brief Whether a left-button press is currently held down inside this button.
          *
@@ -245,6 +268,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
     private:
 
         void setHovered(bool enable);
+
+        //! Sets m_text's minimum width for setStableDigitWidth(); no-op reset when disabled.
+        void updateStableTextWidth();
 
         //! Shared by the constructor and setIconPosition(): (re)builds m_layout from scratch for
         //! the current m_iconPosition, then re-adds the leading/trailing widgets (if any) so they
@@ -268,6 +294,7 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_checked;
         bool m_checkable;
         bool m_clickOnPress=false;
+        bool m_stableDigitWidth=false;
 
         RippleOverlay* m_ripple;
 };

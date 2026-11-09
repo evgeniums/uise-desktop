@@ -23,6 +23,8 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QLabel>
 #include <QMouseEvent>
 
@@ -213,10 +215,81 @@ QString IconTextButton::text() const
 
 //--------------------------------------------------------------------------
 
+void IconTextButton::setStableDigitWidth(bool enable)
+{
+    if (m_stableDigitWidth==enable)
+    {
+        return;
+    }
+    m_stableDigitWidth=enable;
+    if (enable)
+    {
+        m_text->installEventFilter(this);
+    }
+    else
+    {
+        m_text->removeEventFilter(this);
+    }
+    updateStableTextWidth();
+}
+
+//--------------------------------------------------------------------------
+
+void IconTextButton::updateStableTextWidth()
+{
+    if (!m_stableDigitWidth)
+    {
+        m_text->setMinimumWidth(0);
+        return;
+    }
+
+    const QFontMetrics fm=m_text->fontMetrics();
+
+    QChar widest=QLatin1Char('0');
+    int widestWidth=0;
+    for (char16_t c=u'0'; c<=u'9'; ++c)
+    {
+        const int w=fm.horizontalAdvance(QChar(c));
+        if (w>widestWidth)
+        {
+            widestWidth=w;
+            widest=QChar(c);
+        }
+    }
+
+    QString sample=m_text->text();
+    for (auto& ch : sample)
+    {
+        if (ch.isDigit())
+        {
+            ch=widest;
+        }
+    }
+
+    // Everything in the label's sizeHint that is not the text itself (QSS padding/border,
+    // contents margins, indent) is the same for every digit, so carry it over as is.
+    const int chrome=m_text->sizeHint().width()-fm.size(Qt::TextSingleLine,m_text->text()).width();
+    m_text->setMinimumWidth(fm.size(Qt::TextSingleLine,sample).width()+std::max(0,chrome));
+}
+
+//--------------------------------------------------------------------------
+
+bool IconTextButton::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched==m_text && event->type()==QEvent::FontChange)
+    {
+        updateStableTextWidth();
+    }
+    return QFrame::eventFilter(watched,event);
+}
+
+//--------------------------------------------------------------------------
+
 void IconTextButton::setText(const QString& text)
 {
     m_text->setText(text);
     m_text->setVisible(!text.isEmpty());
+    updateStableTextWidth();
 
     // Drives ripple.qss's choice between a centred halo (icon-only) and a horizontal spread
     // (text visible) -- see uise--IconTextButton[iconOnly="..."] uise--RippleOverlay there.
