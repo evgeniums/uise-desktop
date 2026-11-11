@@ -587,12 +587,22 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+14"/>
+        <source>Bookmarks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No bookmarks in this chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
         <source>Search</source>
         <translation type="unfinished">Search</translation>
     </message>
     <message>
         <location line="+5"/>
-        <location filename="../src/chatobjectrows.cpp" line="+1081"/>
+        <location filename="../src/chatobjectrows.cpp" line="+1094"/>
         <source>Type to search messages</source>
         <translation type="unfinished"></translation>
     </message>
@@ -602,7 +612,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/chatobjectrows.cpp" line="-1004"/>
+        <location filename="../src/chatobjectrows.cpp" line="-1017"/>
         <source>%1, %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -628,6 +638,11 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+236"/>
+        <source>Search bookmarks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+13"/>
         <source>Search messages</source>
         <translation type="unfinished"></translation>
     </message>
@@ -637,7 +652,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location filename="../src/chatobjectbrowser.cpp" line="+946"/>
-        <location filename="../src/chatobjectrows.cpp" line="-249"/>
+        <location filename="../src/chatobjectrows.cpp" line="-262"/>
         <location line="+15"/>
         <source>Go to message</source>
         <translation type="unfinished">Go to message</translation>
