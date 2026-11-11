@@ -2514,7 +2514,7 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
     l->addWidget(pimpl->seen);
     pimpl->seen->setVisible(false);
 
-    // The bookmark mark (task-chat-message-bookmark.md): a filled glyph BEFORE the "edited" marker, hidden until the message is
+    // The bookmark mark (task-chat-message-bookmark.md): an outline glyph BEFORE the "edited" marker, hidden until the message is
     // bookmarked. Tinted like the "seen" icon, by the ChatMessageBottom context of the theme.
     pimpl->bookmark=new WithRoundedImage(this);
     pimpl->bookmark->setObjectName("bookmark");

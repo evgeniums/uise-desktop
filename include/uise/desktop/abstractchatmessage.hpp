@@ -744,7 +744,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         virtual void setEdited(const QString& /*text*/, const QString& /*tooltip*/={}) {}
         virtual void setTimeString(const QString& /*time*/, const QString& /*tooltip*/={}) {}
         virtual void setStatusIcon(std::shared_ptr<SvgIcon> /*icon*/ ={}, const QString& /*tooltip*/={}) {}
-        //! task-chat-message-bookmark.md: shows (or hides) the bookmark mark of the message -- a filled bookmark glyph placed BEFORE the
+        //! task-chat-message-bookmark.md: shows (or hides) the bookmark mark of the message -- an outline bookmark glyph placed BEFORE the
         //! "edited" marker. Visible only while `bookmarked`; the tooltip says whose bookmark it is ("for you", "for everyone by X"). The
         //! row's width changes with it, so the implementation renegotiates the bubble like the other setters. Declared AFTER every
         //! other virtual of this class on purpose: a virtual added in the middle shifts the vtable slots of every later one, and a

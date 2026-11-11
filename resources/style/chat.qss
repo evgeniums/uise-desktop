@@ -685,7 +685,7 @@ min-height: 16px;
 max-height: 16px;
 }
 
-/* The bookmark mark (task-chat-message-bookmark.md): a filled glyph before the "edited" marker, a little smaller than the status
+/* The bookmark mark (task-chat-message-bookmark.md): an outline glyph before the "edited" marker, a little smaller than the status
  * icon so that it sits with the 13px text of the row. The id selectors beat the generic 16px rule above. The colour is the
  * ChatMessageBottom icon context's (the same as the "seen" icon), set by the theme json. */
 uise--ChatMessageBottom #bookmark {
