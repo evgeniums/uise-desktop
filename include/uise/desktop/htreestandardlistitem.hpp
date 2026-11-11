@@ -88,7 +88,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
         bool isExpandVisible() const;
 
         /**
-         * @brief Show a right-aligned counter badge (e.g. an unread count) after the item's text.
+         * @brief Show a counter badge (e.g. an unread count) right after the item's text.
          *
          * Empty \p text hides the badge. The badge is created lazily on the first non-empty text, so
          * items that never use it keep their layout unchanged. \p muted and \p mentioned select the

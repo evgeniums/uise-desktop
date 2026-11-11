@@ -250,16 +250,9 @@ void HTreeStandardListItem::setBadge(const QString& text, bool muted, bool menti
         m_badge=new CountBadge(this);
         m_badge->setObjectName("hTreeItemBadge");
 
-        // After the stretch added by setItemWidgets() so the badge sits flush right, but before the
-        // expand button when there is one
-        if (m_expand!=nullptr)
-        {
-            itemLayout()->insertWidget(itemLayout()->indexOf(m_expand),m_badge);
-        }
-        else
-        {
-            itemLayout()->addWidget(m_badge);
-        }
+        // Right after the text, ahead of the stretch added by setItemWidgets() (and so ahead of the
+        // expand button, if any)
+        itemLayout()->insertWidget(itemLayout()->indexOf(m_text)+1,m_badge);
     }
 
     m_badge->setText(text);
