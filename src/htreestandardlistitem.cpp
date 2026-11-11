@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/countbadge.hpp>
 
 // #include <uise/desktop/ipp/flyweightlistview.ipp>
 #include <uise/desktop/ipp/htreeflyweightlistitem.ipp>
@@ -233,6 +234,44 @@ void HTreeStandardListItem::setExpandVisible(bool enable)
             }
         }
     );
+}
+
+//--------------------------------------------------------------------------
+
+void HTreeStandardListItem::setBadge(const QString& text, bool muted, bool mentioned)
+{
+    if (m_badge==nullptr)
+    {
+        if (text.isEmpty())
+        {
+            return;
+        }
+
+        m_badge=new CountBadge(this);
+        m_badge->setObjectName("hTreeItemBadge");
+
+        // After the stretch added by setItemWidgets() so the badge sits flush right, but before the
+        // expand button when there is one
+        if (m_expand!=nullptr)
+        {
+            itemLayout()->insertWidget(itemLayout()->indexOf(m_expand),m_badge);
+        }
+        else
+        {
+            itemLayout()->addWidget(m_badge);
+        }
+    }
+
+    m_badge->setText(text);
+    m_badge->setMuted(muted);
+    m_badge->setMentioned(mentioned);
+}
+
+//--------------------------------------------------------------------------
+
+QString HTreeStandardListItem::badgeText() const
+{
+    return m_badge!=nullptr ? m_badge->text() : QString{};
 }
 
 //--------------------------------------------------------------------------
