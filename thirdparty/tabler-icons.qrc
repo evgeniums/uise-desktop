@@ -138,6 +138,13 @@
         <file>tabler-icons/outline/bell.svg</file>
         <file>tabler-icons/outline/volume-2.svg</file>
         <file>tabler-icons/outline/video.svg</file>
+        <file>tabler-icons/outline/video-off.svg</file>
+        <file>tabler-icons/outline/arrows-maximize.svg</file>
+        <file>tabler-icons/outline/arrows-minimize.svg</file>
+        <file>tabler-icons/outline/screen-share.svg</file>
+        <file>tabler-icons/outline/screen-share-off.svg</file>
+        <file>tabler-icons/outline/live-view.svg</file>
+        <file>tabler-icons/outline/picture-in-picture.svg</file>
         <file>tabler-icons/outline/folder.svg</file>
         <file>tabler-icons/outline/palette.svg</file>
         <file>tabler-icons/outline/list-details.svg</file>
