@@ -72,21 +72,62 @@ IconTextButton::IconTextButton(std::shared_ptr<SvgIcon> icon, QWidget* parent, I
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
 
     // Default state before any setText() call is icon-only -- m_text is already empty and
-    // hidden above. Must be set BEFORE RippleOverlay::install() below: install() polishes the
-    // overlay immediately (see its own doc comment), resolving every qproperty-* the ripple QSS
-    // keys on -- including the [iconOnly="..."] rules in ripple.qss -- against whatever dynamic
-    // properties `this` carries at that exact moment. Setting it after install() would leave the
-    // overlay permanently polished against the property's absence, since Qt only polishes a
-    // widget once and nothing here ever repolishes the overlay child on its own.
+    // hidden above. The ripple overlay is NOT installed here: see ensureRippleOverlay(). It is
+    // created, and polished against the properties `this` carries at that moment (iconOnly,
+    // verticalLayout, ...), on the first hover/press, so every later setText()/setIconPosition()
+    // before that costs the overlay nothing.
     setProperty("iconOnly",true);
+}
 
-    // Covers the whole button, padding included -- not just the icon -- so it reads as a halo
-    // around the icon (icon-only buttons) or a horizontal spread across the whole button (once
-    // text is visible), see ripple.qss and the iconOnly property in setText() below. Installed
-    // last so it ends up on top of the icon/text children above -- see RippleOverlay::install().
-    // Auto-trigger stays on: the whole button is clickable, unlike CalendarDay which must gate
-    // the ripple on isSelectable().
-    m_ripple=RippleOverlay::install(this);
+//--------------------------------------------------------------------------
+
+RippleOverlay* IconTextButton::ensureRippleOverlay() const
+{
+    if (m_ripple==nullptr)
+    {
+        // Covers the whole button, padding included -- not just the icon -- so it reads as a halo
+        // around the icon (icon-only buttons) or a horizontal spread across the whole button (once
+        // text is visible), see ripple.qss and the iconOnly property in setText(). Installed after
+        // the icon/text children so it is on top of them -- see RippleOverlay::install().
+        // Auto-trigger stays on: the whole button is clickable, unlike CalendarDay which must gate
+        // the ripple on isSelectable().
+        m_ripple=RippleOverlay::install(const_cast<IconTextButton*>(this));
+    }
+    return m_ripple;
+}
+
+//--------------------------------------------------------------------------
+
+RippleOverlay* IconTextButton::rippleOverlay() const
+{
+    return ensureRippleOverlay();
+}
+
+//--------------------------------------------------------------------------
+
+bool IconTextButton::event(QEvent* event)
+{
+    if (m_ripple==nullptr)
+    {
+        if (event->type()==QEvent::Enter)
+        {
+            // Normally the overlay is in place, with its event filter, well before the press.
+            ensureRippleOverlay();
+        }
+        else if (event->type()==QEvent::MouseButtonPress)
+        {
+            auto* mouseEvent=static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button()==Qt::LeftButton && isEnabled())
+            {
+                // A press that was not preceded by an Enter (a button that appeared under a
+                // resting cursor, a touch, a synthesized click). The overlay's filter was installed
+                // after this press had passed the filters, so it is started by hand.
+                auto* ripple=ensureRippleOverlay();
+                ripple->start(mouseEvent->pos()-QPoint(ripple->rippleInsetLeft(),ripple->rippleInsetTop()));
+            }
+        }
+    }
+    return QFrame::event(event);
 }
 
 //--------------------------------------------------------------------------
@@ -296,9 +337,10 @@ void IconTextButton::setText(const QString& text)
     setProperty("iconOnly",text.isEmpty());
     Style::updateWidgetStyle(this);
     // A dynamic property set on `this` never cascades a repolish to the overlay CHILD on its
-    // own (see the constructor's comment on install() ordering) -- without this, a button that
-    // starts with text and later has it cleared (or vice versa) would keep whichever ripple
-    // shape matched its FIRST iconOnly value forever.
+    // own -- without this, a button that starts with text and later has it cleared (or vice
+    // versa) would keep whichever ripple shape matched its FIRST iconOnly value forever. No
+    // overlay yet (nobody hovered/pressed the button): it is polished against the current
+    // properties when it is installed, see ensureRippleOverlay().
     if (m_ripple)
     {
         Style::updateWidgetStyle(m_ripple);
@@ -548,10 +590,9 @@ void IconTextButton::rebuildLayout()
     // uise--RippleOverlay there.
     setProperty("verticalLayout",m_iconPosition==IconPosition::AboveText || m_iconPosition==IconPosition::BelowText);
     Style::updateWidgetStyle(this);
-    // m_ripple is still null on the constructor's own call to setIconPosition() (it runs before
-    // RippleOverlay::install() -- see the constructor) -- nothing to repolish yet there, the
-    // overlay picks this property up when install() polishes it for the first time. Only a
-    // later, runtime call to setIconPosition() needs this -- see setText()'s identical comment.
+    // m_ripple is null until the first hover/press (and on the constructor's own call to
+    // setIconPosition()) -- nothing to repolish then, the overlay picks this property up when it is
+    // installed. Only an overlay that already exists needs this -- see setText()'s identical comment.
     if (m_ripple)
     {
         Style::updateWidgetStyle(m_ripple);
@@ -569,8 +610,8 @@ void IconTextButton::setRectRipple(bool enable)
 
     setProperty("rectRipple",enable);
     Style::updateWidgetStyle(this);
-    // The overlay child was already polished by RippleOverlay::install() in the constructor and
-    // a property set on `this` never cascades to it -- see setText()'s identical comment.
+    // An overlay that already exists was polished when it was installed and a property set on
+    // `this` never cascades to it -- see setText()'s identical comment.
     if (m_ripple)
     {
         Style::updateWidgetStyle(m_ripple);

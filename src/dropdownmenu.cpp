@@ -785,12 +785,15 @@ void DropdownMenu::fillContent()
         }
 
         // btn's own polish pass (see the comment above) covers btn itself and its #text child,
-        // but not its RippleOverlay: that child was already polished inside IconTextButton's
-        // constructor, by RippleOverlay::install(), BEFORE section/firstItem/submenu were set
-        // above -- same ordering gap as iconOnly/avatarOnly (see icontextbutton.cpp's
-        // constructor comment). Without this, ripple.qss's [section="true"]/[firstItem="true"]
-        // rippleInsetTop rules never take effect and the row's ripple bleeds into its top margin.
-        Style::updateWidgetStyle(btn->rippleOverlay());
+        // but not a RippleOverlay that already exists: it was polished when it was installed,
+        // possibly BEFORE section/firstItem/submenu were set above. A fresh IconTextButton has none
+        // (its overlay is installed on the first hover/press, against the properties set by then --
+        // see IconTextButton::ensureRippleOverlay()), and it must not be created here: a menu of
+        // many rows would pay for every overlay up front. find(), not rippleOverlay(), for that
+        // reason. Without the repolish of an existing one, ripple.qss's [section="true"]/
+        // [firstItem="true"] rippleInsetTop rules would never take effect and the row's ripple
+        // would bleed into its top margin.
+        Style::updateWidgetStyle(RippleOverlay::find(btn));
 
         auto id=item.id;
 

@@ -37,6 +37,7 @@ namespace uise {
 
 class PushButton;
 class ElidedLabel;
+class CountBadge;
 
 class HTreeStandardListItem_p;
 
@@ -86,6 +87,17 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
         void setExpandVisible(bool enable);
         bool isExpandVisible() const;
 
+        /**
+         * @brief Show a counter badge (e.g. an unread count) right after the item's text.
+         *
+         * Empty \p text hides the badge. The badge is created lazily on the first non-empty text, so
+         * items that never use it keep their layout unchanged. \p muted and \p mentioned select the
+         * badge's QSS colour variants, see CountBadge::setMuted()/setMentioned(). Mirrors
+         * HTreeNode::setTitleBadge().
+         */
+        void setBadge(const QString& text, bool muted=false, bool mentioned=false);
+        QString badgeText() const;
+
     signals:
 
         void iconClicked();
@@ -108,6 +120,7 @@ class UISE_DESKTOP_EXPORT HTreeStandardListItem : public HTreeFlyweightListItem<
         PushButton* m_icon=nullptr;
         ElidedLabel* m_text=nullptr;
         PushButton* m_expand=nullptr;
+        CountBadge* m_badge=nullptr;
         bool m_propagateIconClick=true;
         bool m_iconClickable=false;
 };
