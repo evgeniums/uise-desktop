@@ -1069,6 +1069,19 @@ ChatObjectListBrowser* makeChatObjectMentionBrowser(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+ChatObjectListBrowser* makeChatObjectBookmarkBrowser(QWidget* parent)
+{
+    // The row of a found message: sender, date and a snippet, with the found words highlighted when there are matches and a plain
+    // wrapped snippet when there are none (no search text).
+    auto* browser=new ChatObjectListBrowser(ChatObjectKind::Bookmark,makeChatObjectSearchRowFactory(),parent);
+    browser->setActivationGoesToMessage(true);
+    browser->setSearchVisible(true);
+    browser->setSearchPlaceholderText(QCoreApplication::translate("ChatObjectBrowser","Search bookmarks"));
+    return browser;
+}
+
+//--------------------------------------------------------------------------
+
 ChatObjectListBrowser* makeChatObjectSearchBrowser(QWidget* parent)
 {
     auto* browser=new ChatObjectListBrowser(ChatObjectKind::Search,makeChatObjectSearchRowFactory(),parent);

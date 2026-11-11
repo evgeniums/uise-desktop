@@ -36,7 +36,8 @@
         {
             "name" : "ChatMessageBottom",
             "aliases" : {
-                "seen" : "${uise-svg-icons-1}/eye"
+                "seen" : "${uise-svg-icons-1}/eye",
+                "bookmark" : "${uise-svg-icons-2}/bookmark"
             }
         },
         {

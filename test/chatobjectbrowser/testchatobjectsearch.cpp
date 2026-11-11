@@ -382,4 +382,59 @@ BOOST_AUTO_TEST_CASE(TestSearchBrowserSettings)
     );
 }
 
+//! task-chat-message-bookmark.md: the bookmark kind shows the rows of the search kind, grouped by month, with a search line that is
+//! NOT required: with no text every bookmark is listed, and a text goes to the owner as the request's query.
+BOOST_AUTO_TEST_CASE(TestBookmarkBrowserSettings)
+{
+    runInGui(
+        []()
+        {
+            std::unique_ptr<uise::ChatObjectListBrowser> browser{uise::makeChatObjectBookmarkBrowser(nullptr)};
+            UISE_TEST_REQUIRE(browser!=nullptr);
+
+            UISE_TEST_CHECK_EQUAL_QSTR(browser->kind(),ChatObjectKind::Bookmark);
+            UISE_TEST_CHECK(browser->isGroupByMonth());
+            UISE_TEST_CHECK(browser->isSearchVisible());
+            UISE_TEST_CHECK(!browser->isQueryRequired());
+
+            auto* edit=browser->findChild<QLineEdit*>("searchEdit");
+            UISE_TEST_REQUIRE(edit!=nullptr);
+            UISE_TEST_CHECK(!edit->placeholderText().isEmpty());
+            UISE_TEST_CHECK(edit->placeholderText()!=QStringLiteral("Search"));
+
+            // with no text the owner IS asked, with no query
+            std::vector<QString> queries;
+            browser->setRequestCb(
+                [&queries](const ChatObjectsRequest& request)
+                {
+                    queries.push_back(request.query);
+                }
+            );
+            browser->reload();
+            UISE_TEST_CHECK(!queries.empty());
+            UISE_TEST_CHECK(queries.back().isEmpty());
+
+            // a text goes to the owner as the query
+            const auto before=queries.size();
+            browser->setSearchText(QStringLiteral("rep"));
+            UISE_TEST_CHECK(queries.size()>before);
+            UISE_TEST_CHECK_EQUAL_QSTR(queries.back(),QStringLiteral("rep"));
+
+            // a row without matches is the plain snippet of the message
+            const auto factory=uise::makeChatObjectSearchRowFactory();
+            ChatObjectItem item;
+            item.kind=ChatObjectKind::Bookmark;
+            item.key.sortId=QByteArray("000001");
+            item.senderName=QStringLiteral("Alice");
+            item.text=QStringLiteral("the report is ready");
+            ChatObjectRowHooks hooks;
+            std::unique_ptr<QFrame> row{factory.build(item,nullptr,hooks)};
+            UISE_TEST_REQUIRE(row!=nullptr);
+            auto* snippet=row->findChild<uise::ChatObjectSearchSnippet*>("snippet");
+            UISE_TEST_REQUIRE(snippet!=nullptr);
+            UISE_TEST_CHECK_EQUAL_QSTR(snippet->snippetText(),item.text);
+        }
+    );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

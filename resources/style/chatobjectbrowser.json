@@ -13,6 +13,7 @@
                 "voice" : "${uise-svg-icons-1}/microphone",
                 "link" : "${uise-svg-icons-1}/link",
                 "mention" : "${uise-svg-icons-1}/at",
+                "bookmark" : "${uise-svg-icons-1}/bookmark",
                 "search" : "${uise-svg-icons-1}/search"
             }
         }

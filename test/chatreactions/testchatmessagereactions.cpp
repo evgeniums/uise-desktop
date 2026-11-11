@@ -191,4 +191,47 @@ BOOST_AUTO_TEST_CASE(TestBubbleGrowsWhenReactionsAreSet)
     TestThread::instance()->execTest();
 }
 
+//! task-chat-message-bookmark.md: the bookmark mark of the bottom row is hidden until the message is bookmarked, carries the tooltip
+//! only while it is shown, and sits BEFORE the "edited" marker.
+BOOST_AUTO_TEST_CASE(TestBookmarkMarkOfTheBottomRow)
+{
+    auto handler=[]()
+    {
+        auto* reactions=new ChatMessageReactions();
+        auto* msg=makeMessage(nullptr,reactions);
+        auto* bottom=msg->content()->bottom();
+        UISE_TEST_REQUIRE(bottom!=nullptr);
+
+        auto* mark=bottom->findChild<QWidget*>("bookmark");
+        UISE_TEST_REQUIRE(mark!=nullptr);
+        UISE_TEST_CHECK(!mark->isVisibleTo(bottom));
+
+        bottom->setBookmarked(true,QStringLiteral("Bookmarked for you"));
+        UISE_TEST_CHECK(mark->isVisibleTo(bottom));
+        UISE_TEST_CHECK_EQUAL_QSTR(mark->toolTip(),QStringLiteral("Bookmarked for you"));
+
+        // before the "edited" marker, whatever else is shown
+        bottom->setEdited(QStringLiteral("edited"));
+        auto* edited=bottom->findChild<QWidget*>("edited");
+        UISE_TEST_REQUIRE(edited!=nullptr);
+        auto* rowLayout=bottom->layout();
+        UISE_TEST_REQUIRE(rowLayout!=nullptr);
+        const int markIndex=rowLayout->indexOf(mark);
+        const int editedIndex=rowLayout->indexOf(edited);
+        UISE_TEST_CHECK(markIndex>=0);
+        UISE_TEST_CHECK(markIndex<editedIndex);
+
+        // removed: hidden, and the tooltip goes with it
+        bottom->setBookmarked(false,QStringLiteral("stale tooltip"));
+        UISE_TEST_CHECK(!mark->isVisibleTo(bottom));
+        UISE_TEST_CHECK(mark->toolTip().isEmpty());
+
+        delete msg;
+        TestThread::instance()->continueTest();
+    };
+
+    TestThread::instance()->postGuiThread(handler);
+    TestThread::instance()->execTest();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

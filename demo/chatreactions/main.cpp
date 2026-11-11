@@ -230,7 +230,27 @@ int main(int argc, char *argv[])
 
     auto* clearButton=new QPushButton(QStringLiteral("Clear reactions"),avatarRow);
     avatarRowL->addWidget(clearButton);
+
+    // The bookmark mark of the bottom row (task-chat-message-bookmark.md): a filled glyph before the "edited" marker. "Edited" is set
+    // too, so the order shows; the toggle changes only the mark.
+    auto* bookmarkButton=new QPushButton(QStringLiteral("Toggle bookmark mark"),avatarRow);
+    bookmarkButton->setCheckable(true);
+    avatarRowL->addWidget(bookmarkButton);
     avatarRowL->addStretch(1);
+    if (auto* bottom=msg->content()->bottom())
+    {
+        bottom->setEdited(QStringLiteral("edited"));
+    }
+    QObject::connect(bookmarkButton,&QPushButton::toggled,log,
+        [&,logMsg](bool on)
+        {
+            logMsg(QStringLiteral("bookmark mark: %1").arg(on ? QStringLiteral("on") : QStringLiteral("off")));
+            if (auto* bottom=msg->content()->bottom())
+            {
+                bottom->setBookmarked(on,QStringLiteral("Bookmarked for you"));
+            }
+        }
+    );
 
     // AvatarWidget renders its initials-circle fallback whenever it has neither an avatar source
     // nor a path -- exactly ChatReactionAvatar's own default, so plain names are enough here

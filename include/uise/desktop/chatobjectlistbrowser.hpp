@@ -139,6 +139,12 @@ UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectLinkBrowser(QWidget* pa
 //! Browser of the "mention" kind; activating a row asks to show the message.
 UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectMentionBrowser(QWidget* parent=nullptr);
 
+//! Browser of the "bookmark" kind, the bookmarked messages of the chat: the rows of the search kind (sender, date, a snippet of the message
+//! with the found words highlighted), grouped by month like the other kinds, newest first, a click shows the message. The search line is
+//! shown ("Search bookmarks") but a text is NOT required: with none, every bookmark is listed, and the owner filters by the text it
+//! gets in ChatObjectsRequest::query.
+UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectBookmarkBrowser(QWidget* parent=nullptr);
+
 //! Browser of the "search" kind, the messages found by a text search: no month headings, a click shows the message, the search
 //! line is shown ("Search messages") and a text is required (AbstractChatObjectBrowser::setQueryRequired()), so the browser asks
 //! the owner for nothing, and shows "Type to search messages", until something is typed.

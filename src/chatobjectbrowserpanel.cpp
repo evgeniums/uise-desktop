@@ -210,6 +210,24 @@ ChatObjectBrowserRegistry ChatObjectBrowserRegistry::defaults()
     );
 
     registry.registerKind(
+        ChatObjectKind::Bookmark,
+        ChatObjectBrowserKindInfo{
+            []()
+            {
+                return QCoreApplication::translate("ChatObjectBrowser","Bookmarks");
+            },
+            []()
+            {
+                return QCoreApplication::translate("ChatObjectBrowser","No bookmarks in this chat");
+            },
+            [](QWidget* parent) -> AbstractChatObjectBrowser*
+            {
+                return makeChatObjectBookmarkBrowser(parent);
+            }
+        }
+    );
+
+    registry.registerKind(
         ChatObjectKind::Search,
         ChatObjectBrowserKindInfo{
             []()

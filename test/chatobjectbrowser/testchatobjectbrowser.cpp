@@ -777,6 +777,10 @@ BOOST_AUTO_TEST_CASE(TestAnswerEmptyTextAndNotice)
             TestBrowser browser;
             browser.setEmptyText(QStringLiteral("Hint"));
             browser.setQueryRequired(true);
+            // started, as an owner does it: a text typed into a browser that never loaded only goes with its first request. A required
+            // query with no text asks for nothing.
+            browser.reload();
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(browser.requests.size()),0);
 
             auto* notice=browser.findChild<QLabel*>("noticeLabel");
             UISE_TEST_REQUIRE(notice!=nullptr);
@@ -896,13 +900,14 @@ BOOST_AUTO_TEST_CASE(TestRegistry)
             auto registry=ChatObjectBrowserRegistry::defaults();
 
             const auto kinds=registry.kinds();
-            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(kinds.size()),6);
+            UISE_TEST_REQUIRE_EQUAL(static_cast<int>(kinds.size()),7);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[0],ChatObjectKind::Image);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[1],ChatObjectKind::File);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[2],ChatObjectKind::Voice);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[3],ChatObjectKind::Link);
             UISE_TEST_CHECK_EQUAL_QSTR(kinds[4],ChatObjectKind::Mention);
-            UISE_TEST_CHECK_EQUAL_QSTR(kinds[5],ChatObjectKind::Search);
+            UISE_TEST_CHECK_EQUAL_QSTR(kinds[5],ChatObjectKind::Bookmark);
+            UISE_TEST_CHECK_EQUAL_QSTR(kinds[6],ChatObjectKind::Search);
 
             UISE_TEST_CHECK(registry.find(QStringLiteral("video"))==nullptr);
 
@@ -932,16 +937,16 @@ BOOST_AUTO_TEST_CASE(TestRegistry)
             };
             registry.registerKind(QStringLiteral("video"),video);
             UISE_TEST_CHECK(registry.find(QStringLiteral("video"))!=nullptr);
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),7);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),8);
 
             // registering again replaces
             registry.registerKind(QStringLiteral("video"),video);
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),7);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),8);
 
             UISE_TEST_CHECK(registry.unregisterKind(ChatObjectKind::Image));
             UISE_TEST_CHECK(registry.find(ChatObjectKind::Image)==nullptr);
             UISE_TEST_CHECK(!registry.unregisterKind(ChatObjectKind::Image));
-            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),6);
+            UISE_TEST_CHECK_EQUAL(static_cast<int>(registry.kinds().size()),7);
         }
     );
 }

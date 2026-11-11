@@ -540,8 +540,9 @@ struct DemoOwner
             item.senderAvatarPath=WithPath(item.senderName.toStdString());
             item.text=QStringLiteral("@me please have a look at number %1, it is long enough to be elided at the end of the line").arg(n);
         }
-        else if (kind==ChatObjectKind::Search)
+        else if (kind==ChatObjectKind::Search || kind==ChatObjectKind::Bookmark)
         {
+            // a bookmark is a found message too: the snippet, with the found words highlighted when a text is searched
             item.avatarSource=avatars;
             item.senderAvatarPath=WithPath(item.senderName.toStdString());
             fillSnippet(item,messageText(n),findMatches(messageText(n),queryWords(query)));
@@ -573,6 +574,21 @@ struct DemoOwner
             for (size_t n=0; n<count; ++n)
             {
                 if (!findMatches(messageText(n),words).empty())
+                {
+                    ids.push_back(n);
+                }
+            }
+            return ids;
+        }
+
+        if (request.kind==ChatObjectKind::Bookmark)
+        {
+            // every bookmark with no text; with one, the messages that have every word of it as the beginning of a word (what the
+            // library does for the bookmark kind)
+            const auto words=queryWords(request.query);
+            for (size_t n=0; n<count; ++n)
+            {
+                if (words.isEmpty() || !findMatches(messageText(n),words).empty())
                 {
                     ids.push_back(n);
                 }
