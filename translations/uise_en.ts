@@ -3132,7 +3132,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2311"/>
+        <location filename="../src/chatmessage.cpp" line="+2325"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>

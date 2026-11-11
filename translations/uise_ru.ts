@@ -109,7 +109,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <source>Copy username</source>
-        <translation type="obsolete">Скопировать никнейм</translation>
+        <translation type="obsolete">Скопировать юзернейм</translation>
     </message>
     <message>
         <source>Copy temporary code</source>
@@ -2722,7 +2722,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+9"/>
         <source>Copy username</source>
-        <translation>Скопировать никнейм</translation>
+        <translation>Скопировать юзернейм</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -3112,7 +3112,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2311"/>
+        <location filename="../src/chatmessage.cpp" line="+2325"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
