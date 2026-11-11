@@ -223,11 +223,15 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
 
         bool isRectRipple() const;
 
-        /** @brief The click-ripple overlay installed on this button, see RippleOverlay. */
-        RippleOverlay* rippleOverlay() const noexcept
-        {
-            return m_ripple;
-        }
+        /**
+         * @brief The click-ripple overlay of this button, see RippleOverlay.
+         *
+         * Created on demand: the constructor does not install it (a screen with dozens of buttons
+         * would pay a full QSS match and an event filter for each, for ripples nobody asked for), the
+         * first hover or press does, and so does the first call of this accessor. A caller that
+         * tunes the ripple (setRippleEnabled(), insets) simply gets it created at that moment.
+         */
+        RippleOverlay* rippleOverlay() const;
 
     signals:
 
@@ -244,6 +248,14 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         void setChecked(bool enable);
 
     protected:
+
+        /**
+         * @brief Installs the ripple overlay on the first Enter or left-button press.
+         *
+         * Done in event(), not in enterEvent()/mousePressEvent(): subclasses (NavigationBarItem)
+         * override those without calling the base, event() runs before them all.
+         */
+        bool event(QEvent* event) override;
 
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
@@ -268,6 +280,9 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
     private:
 
         void setHovered(bool enable);
+
+        //! Installs the ripple overlay if it is not there yet and returns it.
+        RippleOverlay* ensureRippleOverlay() const;
 
         //! Sets m_text's minimum width for setStableDigitWidth(); no-op reset when disabled.
         void updateStableTextWidth();
@@ -296,7 +311,8 @@ class UISE_DESKTOP_EXPORT IconTextButton : public QFrame
         bool m_clickOnPress=false;
         bool m_stableDigitWidth=false;
 
-        RippleOverlay* m_ripple;
+        //! Null until the first hover/press/rippleOverlay() call, see ensureRippleOverlay().
+        mutable RippleOverlay* m_ripple;
 };
 
 }

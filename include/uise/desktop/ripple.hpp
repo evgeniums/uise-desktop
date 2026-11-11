@@ -174,9 +174,14 @@ class UISE_DESKTOP_EXPORT RippleOverlay : public QWidget
          * @brief Install a RippleOverlay as a child of host, or return the one already installed.
          * @param host Widget to paint the ripple on top of. Keeps ownership of the overlay.
          *
-         * Call this after the host has created its own children (see IconTextButton's
-         * constructor) so the overlay ends up last in the child list and therefore paints on
-         * top; raise() is also called on every host QEvent::ChildAdded/Show to keep it there.
+         * Call this after the host has created its own children (see IconTextButton::
+         * ensureRippleOverlay()) so the overlay ends up last in the child list and therefore paints
+         * on top; raise() is also called on every host QEvent::ChildAdded/Show to keep it there.
+         *
+         * A host with many instances on screen at once (IconTextButton) need not install in its
+         * constructor: every overlay costs a QSS match, two animations and an event filter. It
+         * can install on the first Enter/press instead -- a host that is already polished then
+         * gets the overlay polished at once, see below.
          *
          * If the host is already polished, this also polishes the OVERLAY immediately
          * (ensurePolished(), so its own QSS properties resolve even though it stays
