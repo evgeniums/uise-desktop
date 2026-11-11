@@ -125,6 +125,7 @@ class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
         void setEdited(const QString& text, const QString& tooltip={}) override;
         void setTimeString(const QString& time, const QString& tooltip={}) override;
         void setStatusIcon(std::shared_ptr<SvgIcon> icon ={}, const QString& tooltip={}) override;
+        void setBookmarked(bool bookmarked, const QString& tooltip={}) override;
 
         int bubbleWidthHint(int forMaxWidth) override;
 
@@ -137,7 +138,7 @@ class UISE_DESKTOP_EXPORT ChatMessageBottom : public AbstractChatMessageBottom
 
         //! Re-runs the owning bubble's negotiation after a content change here altered this
         //! row's own naturalSize() -- see its definition for why re-positioning alone is not
-        //! enough. Shared by all four content setters.
+        //! enough. Shared by all five content setters.
         void refreshPlacement();
 
         std::unique_ptr<ChatMessageBottom_p> pimpl;

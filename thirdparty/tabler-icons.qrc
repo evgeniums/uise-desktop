@@ -237,5 +237,9 @@
         <file>tabler-icons/outline/underline.svg</file>
         <file>tabler-icons/outline/player-record.svg</file>
         <file>tabler-icons/outline/volume-off.svg</file>
+        <file>tabler-icons/outline/bookmark.svg</file>
+        <file>tabler-icons/outline/bookmarks.svg</file>
+        <file>tabler-icons/outline/bookmark-off.svg</file>
+        <file>tabler-icons/filled/bookmark.svg</file>
     </qresource>
 </RCC>

@@ -2496,6 +2496,7 @@ class ChatMessageBottom_p
         QLabel* time;
         WithRoundedImage* status;
         IconTextButton* seen;
+        WithRoundedImage* bookmark;
         QLabel* edited;
 };
 
@@ -2512,6 +2513,14 @@ ChatMessageBottom::ChatMessageBottom(QWidget* parent)
     pimpl->seen->setObjectName("seen");
     l->addWidget(pimpl->seen);
     pimpl->seen->setVisible(false);
+
+    // The bookmark mark (task-chat-message-bookmark.md): a filled glyph BEFORE the "edited" marker, hidden until the message is
+    // bookmarked. Tinted like the "seen" icon, by the ChatMessageBottom context of the theme.
+    pimpl->bookmark=new WithRoundedImage(this);
+    pimpl->bookmark->setObjectName("bookmark");
+    pimpl->bookmark->image()->setSvgIcon(Style::instance().svgIconLocator().icon("ChatMessageBottom::bookmark",this));
+    l->addWidget(pimpl->bookmark);
+    pimpl->bookmark->setVisible(false);
 
     pimpl->edited=new QLabel(this);
     pimpl->edited->setObjectName("edited");
@@ -2581,6 +2590,15 @@ void ChatMessageBottom::setEdited(const QString& text, const QString& tooltip)
     pimpl->edited->setText(text);
     pimpl->edited->setToolTip(tooltip);
     pimpl->edited->setVisible(!text.isEmpty());
+    refreshPlacement();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageBottom::setBookmarked(bool bookmarked, const QString& tooltip)
+{
+    pimpl->bookmark->setVisible(bookmarked);
+    pimpl->bookmark->setToolTip(bookmarked ? tooltip : QString{});
     refreshPlacement();
 }
 

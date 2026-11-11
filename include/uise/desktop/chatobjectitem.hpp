@@ -59,6 +59,9 @@ namespace ChatObjectKind
     inline const QString Voice=QStringLiteral("voice");
     inline const QString Link=QStringLiteral("link");
     inline const QString Mention=QStringLiteral("mention");
+    //! Bookmarked messages (private or shared): sender avatar, sender and date, a snippet of the message (at most three lines). With a
+    //! search text the snippet has the found words highlighted, see ChatObjectItem::matches.
+    inline const QString Bookmark=QStringLiteral("bookmark");
     //! Messages found by a text search: sender avatar, sender and date, a snippet with the found words highlighted.
     inline const QString Search=QStringLiteral("search");
 }

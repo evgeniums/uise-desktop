@@ -21,7 +21,7 @@ All under `include/uise/desktop`, `src`, `resources/style` of uise-desktop.
 | `chatobjectitem.hpp` | `ChatObjectKey`, `ChatObjectItem`, `ChatObjectsRequest`, `ChatObjectsPage`, `ChatObjectKind` (header only) |
 | `chatobjectbrowser.hpp/.cpp` | `ChatObjectBrowserModel`, `ChatObjectRowHooks`, `ChatObjectAction`, `AbstractChatObjectBrowser` |
 | `chatobjectlistbrowser.hpp/.cpp` | `ChatObjectListBrowser` (a row per object), `ChatObjectRowFactory` |
-| `chatobjectrows.cpp` | row factories and browser makers of the file, voice, link, mention and search kinds |
+| `chatobjectrows.cpp` | row factories and browser makers of the file, voice, link, mention, bookmark and search kinds |
 | `chatobjectsearchsnippet.hpp/.cpp` | `ChatObjectSearchSnippet` (the highlighted snippet label of a search row) and `chatObjectHighlightHtml()` |
 | `chatobjectgallerybrowser.hpp/.cpp` | `ChatObjectGalleryBrowser`, the thumbnail grid |
 | `chatobjectbrowserpanel.hpp/.cpp` | `ChatObjectBrowserRegistry`, `ChatObjectBrowserPanel` (back and title bar) |
@@ -33,7 +33,7 @@ Demo: `demo/chatobjectbrowser` (`chatobjectbrowser-demo`). Tests: `test/chatobje
 ## 2. Data types
 
 ```cpp
-namespace ChatObjectKind { Image="image", File="file", Voice="voice", Link="link", Mention="mention", Search="search" }
+namespace ChatObjectKind { Image="image", File="file", Voice="voice", Link="link", Mention="mention", Bookmark="bookmark", Search="search" }
 ```
 
 A kind is **any string**. The set is open; a new kind (video) is registered, see 5.
@@ -274,6 +274,15 @@ back **at once** (the pause is skipped), forgets the requests in flight (their a
 answer) and clears the results. A text that finds nothing still shows "Nothing found", not the hint. Switching the flag
 after the first load reloads.
 
+### Bookmarks
+
+The `bookmark` kind (task-chat-message-bookmark.md) lists the bookmarked messages of the chat, private or shared. It uses the **rows of
+the search kind** (sender avatar and name, date, a snippet of the message, at most three lines, the found words highlighted when
+`matches` is not empty) with the month grouping of the other list kinds, newest first by message time, a click asks to show the message.
+Its search line is shown ("Search bookmarks") but a text is **not required**: with no text the owner lists every bookmark (the snippet is
+the start of the text, no matches), and a text goes to it in `ChatObjectsRequest::query`. The owner filters; the browser does not.
+`makeChatObjectBookmarkBrowser()`. Registered title "Bookmarks", empty text "No bookmarks in this chat".
+
 ### Search results
 
 `makeChatObjectSearchBrowser()` is a `ChatObjectListBrowser` of the kind "search": no month headings, a click means "go
@@ -344,7 +353,7 @@ panel->setRegistry(std::move(registry));
 * `uise--ChatObjectSearchSnippet` carries the QSS properties `highlightColor` and `highlightBackground` (`qproperty-`
   in `light/` and `dark/`): the accent of the own-reaction chip and a low-alpha tint of it, no new hue. The search row
   has the hover tint of the mention row.
-* Icon context `ChatObjectBrowser` (back, image, file, voice, link, mention, search), all outline tabler
+* Icon context `ChatObjectBrowser` (back, image, file, voice, link, mention, bookmark, search), all outline tabler
   icons that were already in the curated qrc.
 * The file and voice rows are `ChatMessageFileItem` / `ChatVoiceFileItem` and keep their
   `chatmessagefiles.qss` look.
