@@ -3381,7 +3381,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileDropOverlay</name>
     <message>
-        <location filename="../src/filedropoverlay.cpp" line="+156"/>
+        <location filename="../src/filedropoverlay.cpp" line="+167"/>
         <source>Drop files here to send as documents</source>
         <translation>Перетащите файлы сюда, чтобы отправить как документы</translation>
     </message>
@@ -3417,6 +3417,26 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Send as photos</source>
         <translation>Отправить как фото</translation>
     </message>
+    <message>
+        <location line="+2"/>
+        <source>Send as files</source>
+        <translation>Отправить как файлы</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The files of the folder, one by one</source>
+        <translation>Файлы папки по одному</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Send as archive</source>
+        <translation>Отправить как архив</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The folder compressed into a .zip file</source>
+        <translation>Папка, сжатая в файл .zip</translation>
+    </message>
 </context>
 <context>
     <name>uise::FileUploadListItem</name>
@@ -3445,19 +3465,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+273"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+285"/>
         <source>Full quality</source>
         <translation>Полное качество</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+53"/>
+        <location line="+92"/>
         <source>Send as documents</source>
         <translation>Отправить как документы</translation>
     </message>
     <message>
-        <location line="-52"/>
-        <location line="+46"/>
+        <location line="-91"/>
+        <location line="+85"/>
         <source>Group items</source>
         <translation>Группировать элементы</translation>
     </message>
@@ -3492,7 +3512,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отправить</translation>
     </message>
     <message>
-        <location line="+339"/>
+        <location line="+338"/>
+        <source>Preparing...</source>
+        <translation>Подготовка…</translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
@@ -3517,7 +3542,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Выбрано файлов: %1</translation>
     </message>
     <message>
-        <location line="+792"/>
+        <location line="+875"/>
         <source>Add files</source>
         <translation>Добавить файлы</translation>
     </message>

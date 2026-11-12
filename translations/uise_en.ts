@@ -3405,7 +3405,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileDropOverlay</name>
     <message>
-        <location filename="../src/filedropoverlay.cpp" line="+156"/>
+        <location filename="../src/filedropoverlay.cpp" line="+167"/>
         <source>Drop files here to send as documents</source>
         <translation>Drop files here to send as documents</translation>
     </message>
@@ -3441,6 +3441,26 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <source>Send as photos</source>
         <translation>Send as photos</translation>
     </message>
+    <message>
+        <location line="+2"/>
+        <source>Send as files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The files of the folder, one by one</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Send as archive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The folder compressed into a .zip file</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>uise::FileUploadListItem</name>
@@ -3469,19 +3489,19 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadWidget</name>
     <message>
-        <location filename="../src/fileuploadwidget.cpp" line="+273"/>
+        <location filename="../src/fileuploadwidget.cpp" line="+285"/>
         <source>Full quality</source>
         <translation>Full quality</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+53"/>
+        <location line="+92"/>
         <source>Send as documents</source>
         <translation>Send as documents</translation>
     </message>
     <message>
-        <location line="-52"/>
-        <location line="+46"/>
+        <location line="-91"/>
+        <location line="+85"/>
         <source>Group items</source>
         <translation>Group items</translation>
     </message>
@@ -3516,7 +3536,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Send</translation>
     </message>
     <message>
-        <location line="+339"/>
+        <location line="+338"/>
+        <source>Preparing...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Send files</source>
         <translation>Send files</translation>
     </message>
@@ -3541,7 +3566,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>%1 files selected</translation>
     </message>
     <message>
-        <location line="+792"/>
+        <location line="+875"/>
         <source>Add files</source>
         <translation>Add files</translation>
     </message>
