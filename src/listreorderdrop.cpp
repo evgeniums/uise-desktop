@@ -59,6 +59,113 @@ QString listReorderTagFor(const QWidget* widget)
 
 //--------------------------------------------------------------------------
 
+QWidget* listReorderTargetFor(const QWidget* widget)
+{
+    for (QWidget* w=const_cast<QWidget*>(widget);w!=nullptr;w=w->parentWidget())
+    {
+        if (w->property(ListReorderTagProperty).isValid())
+        {
+            return w;
+        }
+    }
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+//! The ListReorderDrop of a target: it is a direct child of it. dynamic_cast, not findChild(): the class has no Q_OBJECT.
+static ListReorderDrop* listReorderDropOf(QWidget* target)
+{
+    for (auto* child : target->children())
+    {
+        if (auto* drop=dynamic_cast<ListReorderDrop*>(child))
+        {
+            return drop;
+        }
+    }
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------
+
+bool forwardListReorderDrag(QWidget* row, QEvent* event)
+{
+    auto* target=listReorderTargetFor(row);
+    if (target==nullptr || target==row || event==nullptr)
+    {
+        return false;
+    }
+    auto* drop=listReorderDropOf(target);
+    if (drop==nullptr)
+    {
+        return false;
+    }
+
+    switch (event->type())
+    {
+        case QEvent::DragEnter:
+        case QEvent::DragMove:
+        case QEvent::Drop:
+        {
+            auto* dropEvent=static_cast<QDropEvent*>(event);
+
+            // only the drag of a row of the same list, started by startListReorderDrag()
+            QString tag;
+            QString id;
+            if (!mimeDataListReorder(dropEvent->mimeData(),tag,id) || tag!=drop->tag())
+            {
+                return false;
+            }
+
+            // the drop handler reads the position in the target's coordinates
+            const QPointF pos=row->mapTo(target,dropEvent->position().toPoint());
+
+            // NOT QCoreApplication::sendEvent(target,...): QApplication::notify() sends a DragMove and a Drop to the widget that
+            // accepted the DragEnter instead of the receiver, and that is this row, which would forward it again, for ever.
+            bool accepted=false;
+            Qt::DropAction action=Qt::IgnoreAction;
+            if (event->type()==QEvent::DragEnter)
+            {
+                QDragEnterEvent translated(pos.toPoint(),dropEvent->possibleActions(),dropEvent->mimeData(),dropEvent->buttons(),dropEvent->modifiers());
+                drop->handleDragEvent(&translated);
+                accepted=translated.isAccepted();
+                action=translated.dropAction();
+            }
+            else if (event->type()==QEvent::DragMove)
+            {
+                QDragMoveEvent translated(pos.toPoint(),dropEvent->possibleActions(),dropEvent->mimeData(),dropEvent->buttons(),dropEvent->modifiers());
+                drop->handleDragEvent(&translated);
+                accepted=translated.isAccepted();
+                action=translated.dropAction();
+            }
+            else
+            {
+                QDropEvent translated(pos,dropEvent->possibleActions(),dropEvent->mimeData(),dropEvent->buttons(),dropEvent->modifiers());
+                drop->handleDragEvent(&translated);
+                accepted=translated.isAccepted();
+                action=translated.dropAction();
+            }
+
+            dropEvent->setDropAction(action);
+            dropEvent->setAccepted(accepted);
+            return true;
+        }
+        case QEvent::DragLeave:
+        {
+            // The handler hides its indicator line and forgets the dragged row; harmless for a drag that is not a reorder.
+            // The row goes on with its own handling of the leave.
+            QDragLeaveEvent leave;
+            drop->handleDragEvent(&leave);
+            return false;
+        }
+        default:
+            break;
+    }
+    return false;
+}
+
+//--------------------------------------------------------------------------
+
 ListReorderDrop::ListReorderDrop(QWidget* target, RowsFn rowsFn, DroppedFn droppedFn)
     : QObject(target),
       m_target(target),
@@ -74,6 +181,13 @@ ListReorderDrop::ListReorderDrop(QWidget* target, RowsFn rowsFn, DroppedFn dropp
     m_line->setObjectName(QStringLiteral("listReorderIndicator"));
     m_line->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_line->hide();
+}
+
+//--------------------------------------------------------------------------
+
+bool ListReorderDrop::handleDragEvent(QEvent* event)
+{
+    return eventFilter(m_target,event);
 }
 
 //--------------------------------------------------------------------------

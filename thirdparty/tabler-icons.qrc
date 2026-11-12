@@ -241,5 +241,8 @@
         <file>tabler-icons/outline/bookmarks.svg</file>
         <file>tabler-icons/outline/bookmark-off.svg</file>
         <file>tabler-icons/filled/bookmark.svg</file>
+        <file>tabler-icons/outline/archive.svg</file>
+        <file>tabler-icons/outline/archive-off.svg</file>
+        <file>tabler-icons/outline/pinned-off.svg</file>
     </qresource>
 </RCC>

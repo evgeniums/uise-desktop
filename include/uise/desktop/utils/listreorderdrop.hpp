@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <uise/desktop/uisedesktop.hpp>
 
+class QEvent;
 class QFrame;
 class QWidget;
 
@@ -52,6 +53,44 @@ constexpr const char* ListReorderTagProperty="uiseListReorderTag";
  *  empty if there is none, meaning a row dragged from here has nowhere to be dropped.
  */
 UISE_DESKTOP_EXPORT QString listReorderTagFor(const QWidget* widget);
+
+/**
+ * @brief Get the widget that is the target of a ListReorderDrop and holds the given widget.
+ * @param widget Row widget, or any widget inside a list.
+ * @return The nearest ancestor (or the widget itself) that is a ListReorderDrop target, null if there is none.
+ */
+UISE_DESKTOP_EXPORT QWidget* listReorderTargetFor(const QWidget* widget);
+
+/**
+ * @brief Hand a drag event that a row received to the list the row belongs to.
+ *
+ * A ListReorderDrop sees only the drag events that are sent to its target widget. Qt sends a drag event to the first widget
+ * under the cursor that accepts drops and does not pass it on when that widget ignores it. A row that accepts drops for its own
+ * reasons (a chat row takes files) therefore keeps every reorder drag away from the list. Such a row calls this first in its
+ * dragEnterEvent(), dragMoveEvent(), dragLeaveEvent() and dropEvent(), and goes on with its own handling when it returns false:
+ *
+ * @code
+ * void MyRow::dragEnterEvent(QDragEnterEvent* event)
+ * {
+ *     if (forwardListReorderDrag(this,event))
+ *     {
+ *         return;
+ *     }
+ *     // the row's own drags
+ * }
+ * @endcode
+ *
+ * Enter, move and drop events of a reorder drag started in the row's own list are handed to the list's ListReorderDrop with the
+ * position translated to the list's coordinates (ListReorderDrop::handleDragEvent(), not a sent event: see there), and the
+ * answer (accepted or ignored, the drop action) is copied back to the event.
+ * A leave event is passed on whatever the drag is, which only hides the indicator line, and false is returned for it.
+ *
+ * @param row The widget that received the event.
+ * @param event Event of type DragEnter, DragMove, DragLeave or Drop.
+ * @return true if the event was a reorder drag of the row's list and is handled; false for any other event, drag, or a row that
+ *  is in no list with a ListReorderDrop.
+ */
+UISE_DESKTOP_EXPORT bool forwardListReorderDrag(QWidget* row, QEvent* event);
 
 /**
  * @brief Drop side of moving a row to a new place in a list by dragging it.
@@ -100,6 +139,17 @@ class UISE_DESKTOP_EXPORT ListReorderDrop : public QObject
         {
             m_droppedFn=std::move(droppedFn);
         }
+
+        /**
+         * @brief Handle a drag event of the target directly, the way the event filter does.
+         * @param event Event of type DragEnter, DragMove, DragLeave or Drop, with the position in the target's coordinates.
+         * @return true if the event was a reorder drag of this list and is handled.
+         *
+         * For forwardListReorderDrag(): a drag event cannot be sent to the target with QCoreApplication::sendEvent(), because
+         * QApplication::notify() redirects DragMove and Drop to the widget that accepted the DragEnter, and that is the row
+         * that forwards them.
+         */
+        bool handleDragEvent(QEvent* event);
 
     protected:
 
