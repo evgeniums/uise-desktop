@@ -36,6 +36,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/mimedatautils.hpp>
+#include <uise/desktop/utils/folderupload.hpp>
 #include <uise/desktop/roundedimage.hpp>
 #include <uise/desktop/label.hpp>
 #include <uise/desktop/filedropoverlay.hpp>
@@ -73,6 +74,10 @@ class FileDropOverlay_p
         FileDropOverlay::ImagesMode imagesMode=FileDropOverlay::DefaultImagesMode;
         QString blockedDragSourceTag;
 
+        bool folderPanelsAllowed=false;
+        int folderFilesMaxCount=0;
+        FileDropOverlay::FolderMode folderMode=FileDropOverlay::FolderMode::None;
+
         QFrame* documentsPanel=nullptr;
         RoundedImage* documentsIcon=nullptr;
         Label* documentsCaptionLabel=nullptr;
@@ -98,7 +103,13 @@ class FileDropOverlay_p
         QString normalImagesSubtitle;
         QString photosCaption;
         QString photosSubtitle;
+        QString folderFilesCaption;
+        QString folderFilesSubtitle;
+        QString folderArchiveCaption;
+        QString folderArchiveSubtitle;
 
+        std::shared_ptr<SvgIcon> svgFolderFilesIcon;
+        std::shared_ptr<SvgIcon> svgArchiveIcon;
         std::shared_ptr<SvgIcon> svgUploadIcon;
         std::shared_ptr<SvgIcon> svgDocumentsIcon;
         std::shared_ptr<SvgIcon> svgImagesIcon;
@@ -162,6 +173,10 @@ FileDropOverlay::FileDropOverlay(QWidget* host)
     pimpl->normalImagesSubtitle=tr("Adaptive quality, faster delivery");
     pimpl->photosCaption=tr("Send as photos");
     pimpl->photosSubtitle=tr("Adaptive quality, faster delivery");
+    pimpl->folderFilesCaption=tr("Send as files");
+    pimpl->folderFilesSubtitle=tr("The files of the folder, one by one");
+    pimpl->folderArchiveCaption=tr("Send as archive");
+    pimpl->folderArchiveSubtitle=tr("The folder compressed into a .zip file");
 
     // Panel widgets are built here as plain children of `this`, deliberately NOT added to any
     // layout yet -- rebuildPanelsLayout() (called just below, and again from
@@ -335,6 +350,33 @@ bool FileDropOverlay::isBlockedSource(const QMimeData* mimeData) const
 {
     return !pimpl->blockedDragSourceTag.isEmpty()
         && mimeDataDragSourceTag(mimeData)==pimpl->blockedDragSourceTag;
+}
+
+//--------------------------------------------------------------------------
+
+void FileDropOverlay::setFolderPanelsAllowed(bool enable) noexcept
+{
+    pimpl->folderPanelsAllowed=enable;
+}
+
+bool FileDropOverlay::isFolderPanelsAllowed() const noexcept
+{
+    return pimpl->folderPanelsAllowed;
+}
+
+void FileDropOverlay::setFolderFilesMaxCount(int count) noexcept
+{
+    pimpl->folderFilesMaxCount=count;
+}
+
+int FileDropOverlay::folderFilesMaxCount() const noexcept
+{
+    return pimpl->folderFilesMaxCount;
+}
+
+FileDropOverlay::FolderMode FileDropOverlay::folderMode() const noexcept
+{
+    return pimpl->active ? pimpl->folderMode : FolderMode::None;
 }
 
 //--------------------------------------------------------------------------
@@ -593,6 +635,64 @@ QString FileDropOverlay::photosSubtitle() const
 
 //--------------------------------------------------------------------------
 
+void FileDropOverlay::setFolderFilesCaption(const QString& text)
+{
+    pimpl->folderFilesCaption=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::folderFilesCaption() const
+{
+    return pimpl->folderFilesCaption;
+}
+
+void FileDropOverlay::setFolderFilesSubtitle(const QString& text)
+{
+    pimpl->folderFilesSubtitle=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::folderFilesSubtitle() const
+{
+    return pimpl->folderFilesSubtitle;
+}
+
+void FileDropOverlay::setFolderArchiveCaption(const QString& text)
+{
+    pimpl->folderArchiveCaption=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::folderArchiveCaption() const
+{
+    return pimpl->folderArchiveCaption;
+}
+
+void FileDropOverlay::setFolderArchiveSubtitle(const QString& text)
+{
+    pimpl->folderArchiveSubtitle=text;
+    if (pimpl->active)
+    {
+        updatePanels();
+    }
+}
+
+QString FileDropOverlay::folderArchiveSubtitle() const
+{
+    return pimpl->folderArchiveSubtitle;
+}
+
+//--------------------------------------------------------------------------
+
 void FileDropOverlay::setLeaveWatchdogIntervalMs(int ms)
 {
     pimpl->leaveWatchdogIntervalMs=ms;
@@ -646,7 +746,24 @@ void FileDropOverlay::showForMimeData(const QMimeData* mimeData)
         return;
     }
 
-    pimpl->hasImages=pimpl->imagesPanelAllowed && mimeDataHasImages(mimeData);
+    // A single folder is its own case and wins over the image panels. The scan is bounded (it
+    // stops at the first subfolder or the first file past the limit) so it is fine to run here,
+    // on drag-enter.
+    pimpl->folderMode=FolderMode::None;
+    if (pimpl->folderPanelsAllowed)
+    {
+        auto folder=mimeDataSingleLocalFolder(mimeData);
+        if (!folder.isEmpty())
+        {
+            pimpl->folderMode=scanFolderForUpload(folder,pimpl->folderFilesMaxCount).filesEligible()
+                ? FolderMode::FilesAndArchive
+                : FolderMode::ArchiveOnly;
+        }
+    }
+
+    pimpl->hasImages=pimpl->folderMode==FolderMode::None
+        && pimpl->imagesPanelAllowed
+        && mimeDataHasImages(mimeData);
     setHoveredPanel(Panel::None);
     updatePanels();
 
@@ -729,6 +846,12 @@ void FileDropOverlay::rebuildPanelsLayout()
 
 void FileDropOverlay::updatePanels()
 {
+    if (pimpl->folderMode!=FolderMode::None)
+    {
+        updateFolderPanels();
+        return;
+    }
+
     auto fullAndNormal=pimpl->imagesMode==ImagesMode::FullAndNormal;
 
     pimpl->imagesPanel->setVisible(pimpl->hasImages && fullAndNormal);
@@ -773,12 +896,90 @@ void FileDropOverlay::updatePanels()
 
 //--------------------------------------------------------------------------
 
+// A folder payload reuses the three existing panel frames, as ImagesMode already does for the
+// image pair -- so the layout, QSS and hover handling need nothing of their own. The pair's
+// first frame (imagesPanel in FullAndNormal, documentsPanel otherwise, the same choice
+// rebuildPanelsLayout() makes) shows "files" and photosPanel, always second, shows "archive".
+// "Archive only" is the single full-area panel, documentsPanel, exactly like the single panel
+// of a payload without images.
+void FileDropOverlay::updateFolderPanels()
+{
+    auto fill=[](
+            RoundedImage* icon,
+            Label* captionLabel,
+            Label* subtitleLabel,
+            const std::shared_ptr<SvgIcon>& svgIcon,
+            const QString& caption,
+            const QString& subtitle
+        )
+    {
+        icon->setSvgIcon(svgIcon);
+        captionLabel->setText(caption);
+        subtitleLabel->setText(subtitle);
+        subtitleLabel->setVisible(!subtitle.isEmpty());
+    };
+
+    if (pimpl->folderMode==FolderMode::FilesAndArchive)
+    {
+        auto fullAndNormal=pimpl->imagesMode==ImagesMode::FullAndNormal;
+
+        pimpl->imagesPanel->setVisible(fullAndNormal);
+        pimpl->documentsPanel->setVisible(!fullAndNormal);
+        pimpl->photosPanel->setVisible(true);
+
+        if (fullAndNormal)
+        {
+            fill(pimpl->imagesIcon,pimpl->imagesCaptionLabel,pimpl->imagesSubtitleLabel,
+                 pimpl->svgFolderFilesIcon,pimpl->folderFilesCaption,pimpl->folderFilesSubtitle);
+        }
+        else
+        {
+            fill(pimpl->documentsIcon,pimpl->documentsCaptionLabel,pimpl->documentsSubtitleLabel,
+                 pimpl->svgFolderFilesIcon,pimpl->folderFilesCaption,pimpl->folderFilesSubtitle);
+        }
+        fill(pimpl->photosIcon,pimpl->photosCaptionLabel,pimpl->photosSubtitleLabel,
+             pimpl->svgArchiveIcon,pimpl->folderArchiveCaption,pimpl->folderArchiveSubtitle);
+        return;
+    }
+
+    pimpl->imagesPanel->setVisible(false);
+    pimpl->photosPanel->setVisible(false);
+    pimpl->documentsPanel->setVisible(true);
+    fill(pimpl->documentsIcon,pimpl->documentsCaptionLabel,pimpl->documentsSubtitleLabel,
+         pimpl->svgArchiveIcon,pimpl->folderArchiveCaption,pimpl->folderArchiveSubtitle);
+}
+
+//--------------------------------------------------------------------------
+
+// `slot` is the frame's fixed identity (documentsPanel=Documents, imagesPanel=Images,
+// photosPanel=Photos); what that frame means to the consumer depends on the payload.
+FileDropOverlay::Panel FileDropOverlay::reportedPanel(Panel slot) const noexcept
+{
+    switch (pimpl->folderMode)
+    {
+        case (FolderMode::FilesAndArchive):
+            // The pair's first frame (documents or images, whichever is visible) is "files".
+            return slot==Panel::Photos ? Panel::FolderArchive : Panel::FolderFiles;
+
+        case (FolderMode::ArchiveOnly):
+            return Panel::FolderArchive;
+
+        case (FolderMode::None):
+            break;
+    }
+    return slot;
+}
+
+//--------------------------------------------------------------------------
+
 void FileDropOverlay::updateIcons()
 {
     pimpl->svgUploadIcon=fileDropOverlayIcon(QStringLiteral("upload"),this);
     pimpl->svgDocumentsIcon=fileDropOverlayIcon(QStringLiteral("documents"),this);
     pimpl->svgImagesIcon=fileDropOverlayIcon(QStringLiteral("images"),this);
     pimpl->svgPhotosIcon=fileDropOverlayIcon(QStringLiteral("photos"),this);
+    pimpl->svgFolderFilesIcon=fileDropOverlayIcon(QStringLiteral("folderFiles"),this);
+    pimpl->svgArchiveIcon=fileDropOverlayIcon(QStringLiteral("archive"),this);
 }
 
 //--------------------------------------------------------------------------
@@ -790,9 +991,13 @@ void FileDropOverlay::setHoveredPanel(Panel panel)
         return;
     }
 
-    applyPanelHovered(pimpl->documentsPanel,pimpl->documentsIcon,pimpl->documentsCaptionLabel,pimpl->documentsSubtitleLabel,panel==Panel::Documents);
-    applyPanelHovered(pimpl->imagesPanel,pimpl->imagesIcon,pimpl->imagesCaptionLabel,pimpl->imagesSubtitleLabel,panel==Panel::Images);
-    applyPanelHovered(pimpl->photosPanel,pimpl->photosIcon,pimpl->photosCaptionLabel,pimpl->photosSubtitleLabel,panel==Panel::Photos);
+    // Compared against what each frame is reported as for the current payload, not against its
+    // fixed identity -- in folder mode the same three frames carry FolderFiles/FolderArchive.
+    // A frame that is hidden in the current layout can be flagged too; that is harmless, and
+    // dismiss() clears every frame again.
+    applyPanelHovered(pimpl->documentsPanel,pimpl->documentsIcon,pimpl->documentsCaptionLabel,pimpl->documentsSubtitleLabel,panel==reportedPanel(Panel::Documents));
+    applyPanelHovered(pimpl->imagesPanel,pimpl->imagesIcon,pimpl->imagesCaptionLabel,pimpl->imagesSubtitleLabel,panel==reportedPanel(Panel::Images));
+    applyPanelHovered(pimpl->photosPanel,pimpl->photosIcon,pimpl->photosCaptionLabel,pimpl->photosSubtitleLabel,panel==reportedPanel(Panel::Photos));
 
     pimpl->hoveredPanel=panel;
 
@@ -806,16 +1011,24 @@ void FileDropOverlay::setHoveredPanel(Panel panel)
 
 FileDropOverlay::Panel FileDropOverlay::panelAt(const QPoint& pos) const
 {
-    if (!pimpl->hasImages)
+    if (pimpl->folderMode==FolderMode::ArchiveOnly)
+    {
+        return Panel::FolderArchive;
+    }
+
+    if (!pimpl->hasImages && pimpl->folderMode==FolderMode::None)
     {
         return Panel::Documents;
     }
 
     // First panel of the pair depends on imagesMode() -- see rebuildPanelsLayout(); photosPanel
-    // is always second and always added right after it.
+    // is always second and always added right after it. For a folder payload the pair is the
+    // same two frames, reported as FolderFiles and FolderArchive (updateFolderPanels()).
     auto fullAndNormal=pimpl->imagesMode==ImagesMode::FullAndNormal;
     auto* firstPanel=fullAndNormal ? pimpl->imagesPanel : pimpl->documentsPanel;
-    auto firstPanelResult=fullAndNormal ? Panel::Images : Panel::Documents;
+    const auto folderPair=pimpl->folderMode==FolderMode::FilesAndArchive;
+    auto firstPanelResult=folderPair ? Panel::FolderFiles : (fullAndNormal ? Panel::Images : Panel::Documents);
+    const auto secondPanelResult=folderPair ? Panel::FolderArchive : Panel::Photos;
 
     // Midpoint split, not strict rect containment, so the padding band and inter-panel gap have
     // no dead zone -- panelAt() always resolves to one panel or the other. Split on the axis the
@@ -823,11 +1036,11 @@ FileDropOverlay::Panel FileDropOverlay::panelAt(const QPoint& pos) const
     if (pimpl->panelOrientation==Qt::Vertical)
     {
         auto split=(firstPanel->geometry().bottom()+pimpl->photosPanel->geometry().top())/2;
-        return pos.y()<split ? firstPanelResult : Panel::Photos;
+        return pos.y()<split ? firstPanelResult : secondPanelResult;
     }
 
     auto split=(firstPanel->geometry().right()+pimpl->photosPanel->geometry().left())/2;
-    return pos.x()<split ? firstPanelResult : Panel::Photos;
+    return pos.x()<split ? firstPanelResult : secondPanelResult;
 }
 
 //--------------------------------------------------------------------------

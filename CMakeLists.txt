@@ -70,6 +70,7 @@ SET (HEADERS
     include/uise/desktop/utils/albumlayout.hpp
     include/uise/desktop/utils/flowpack.hpp
     include/uise/desktop/utils/mimedatautils.hpp
+    include/uise/desktop/utils/folderupload.hpp
     include/uise/desktop/utils/dragsource.hpp
     include/uise/desktop/utils/listreorderdrop.hpp
 
@@ -343,6 +344,7 @@ SET (SOURCES
     src/frameticker.cpp
     src/directchildwidget.cpp
     src/mimedatautils.cpp
+    src/folderupload.cpp
     src/filenamevalidator.cpp
     src/dragsource.cpp
     src/listreorderdrop.cpp

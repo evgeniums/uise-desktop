@@ -39,6 +39,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <QLocale>
 #include <QTemporaryDir>
 #include <QCryptographicHash>
+#include <QTimer>
 
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/style.hpp>
@@ -584,6 +585,67 @@ int main(int argc, char *argv[])
         {
             QByteArray data("Sample raw byte payload, not an image, not on disk.");
             standaloneWidget->addItems({FileUploadItem::fromData(data,QStringLiteral("sample.bin"),QStringLiteral("application/octet-stream"))});
+        }
+    );
+
+    // Exercises AbstractFileUploadWidget::beginPreparing(): about a second of indeterminate
+    // progress, then a determinate one, then the prepared item is added as a regular row. Expect
+    // Send and Add disabled and the caption "Preparing..." meanwhile; the row's X control and the
+    // Cancel button both emit cancelled(), which ends the simulation without adding anything.
+    auto simulatePreparing=new QPushButton(QStringLiteral("Simulate preparing"));
+    applyButtonStyle(simulatePreparing);
+    demoButtons.push_back(simulatePreparing);
+    cl->addWidget(simulatePreparing);
+    QObject::connect(
+        simulatePreparing,
+        &QPushButton::clicked,
+        standaloneWidget,
+        [standaloneWidget]()
+        {
+            if (standaloneWidget->isPreparing())
+            {
+                return;
+            }
+
+            auto* timer=new QTimer(standaloneWidget);
+            auto step=std::make_shared<int>(-20); // below 0: still the indeterminate phase
+            standaloneWidget->beginPreparing(QStringLiteral("Sample folder.zip"),QStringLiteral("Scanning..."));
+
+            // Connected with the timer as context, so the connection goes with it.
+            QObject::connect(
+                standaloneWidget,
+                &AbstractFileUploadWidget::cancelled,
+                timer,
+                [standaloneWidget,timer]()
+                {
+                    timer->stop();
+                    standaloneWidget->endPreparing();
+                    timer->deleteLater();
+                }
+            );
+            QObject::connect(
+                timer,
+                &QTimer::timeout,
+                standaloneWidget,
+                [standaloneWidget,timer,step]()
+                {
+                    ++(*step);
+                    if (*step<0)
+                    {
+                        return;
+                    }
+                    if (*step>=100)
+                    {
+                        timer->stop();
+                        standaloneWidget->endPreparing();
+                        standaloneWidget->addFiles({QString::fromUtf8(__FILE__)});
+                        timer->deleteLater();
+                        return;
+                    }
+                    standaloneWidget->setPreparingProgress(*step,QStringLiteral("Compressing... %1%").arg(*step));
+                }
+            );
+            timer->start(50);
         }
     );
 

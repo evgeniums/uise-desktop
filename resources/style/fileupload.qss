@@ -116,6 +116,33 @@ uise--FileUploadWidget #listArea {
 border:none;
 }
 
+/* The "preparing" row (see AbstractFileUploadWidget::beginPreparing()): same padding and corner
+   as a file row, transparent like it, so it reads as an item that is not ready yet. */
+uise--FileUploadWidget #preparingRow {
+padding:6px;
+border-radius:8px;
+border:1px solid transparent;
+background-color: transparent;
+}
+
+uise--FileUploadWidget #preparingTextColumn {
+padding:0;
+margin-left:8px;
+}
+
+uise--FileUploadWidget #preparingStatus {
+font-size:11px;
+margin-left: 4px;
+}
+
+/* loadcontrol.qss pins every LoadControl to 56px, far too big for a list row. The row's own
+   selector (1 id + 2 types) outranks that lone type selector, so this needs no ordering. The pin
+   and circleWidthRatio go together -- see chatmessagefiles.qss for the same pairing. */
+uise--FileUploadWidget #preparingRow uise--LoadControl {
+min-width:40px;min-height:40px;max-width:40px;max-height:40px;
+qproperty-circleWidthRatio: 0.8;
+}
+
 uise--FileUploadWidget #commentsTitle {
 font-weight:bold;
 margin-top:12px;

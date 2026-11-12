@@ -55,6 +55,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/scrollarea.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
+#include <uise/desktop/loadcontrol.hpp>
+#include <uise/desktop/elidedlabel.hpp>
 #include <uise/desktop/messageeditor.hpp>
 #include <uise/desktop/fileuploadlistitem.hpp>
 #include <uise/desktop/fileuploadwidget.hpp>
@@ -180,6 +182,16 @@ class FileUploadWidget_p
         QBoxLayout* listLayout=nullptr;
         std::vector<FileUploadListItem*> listItems;
 
+        // The "preparing" row, see beginPreparing(). Lives permanently at index 0 of listLayout
+        // (rows are inserted before the trailing stretch, so they always come after it) and is
+        // only shown while `preparing` is set -- same build-once, show/hide idiom as the header
+        // menu button, rather than creating and destroying a row per use.
+        QFrame* preparingRow=nullptr;
+        LoadControl* preparingControl=nullptr;
+        ElidedLabel* preparingName=nullptr;
+        QLabel* preparingStatus=nullptr;
+        bool preparing=false;
+
         QLabel* commentsTitle=nullptr;
         AbstractMessageEditor* messageEditor=nullptr;
 
@@ -301,6 +313,45 @@ FileUploadWidget::FileUploadWidget(QWidget* parent)
     pimpl->listContent=new QFrame(pimpl->listArea);
     pimpl->listLayout=Layout::vertical(pimpl->listContent);
     pimpl->listLayout->addStretch(1);
+
+    // --- "preparing" row, see beginPreparing() ---
+    //
+    // Inserted at 0 after the stretch above: addRowFor() inserts at count()-1, i.e. just before
+    // that stretch, so every item row lands below this one.
+    pimpl->preparingRow=new QFrame(pimpl->listContent);
+    pimpl->preparingRow->setObjectName("preparingRow");
+    auto* preparingLayout=Layout::horizontal(pimpl->preparingRow);
+
+    pimpl->preparingControl=new LoadControl(pimpl->preparingRow);
+    pimpl->preparingControl->setObjectName("preparingControl");
+    // Progress mode stays at its Static default until beginPreparing(): an indeterminate control
+    // animates, and this one is hidden until then.
+    pimpl->preparingControl->setState(AbstractLoadControl::State::Cancel);
+    preparingLayout->addWidget(pimpl->preparingControl,0,Qt::AlignVCenter);
+
+    auto* preparingColumn=new QFrame(pimpl->preparingRow);
+    preparingColumn->setObjectName("preparingTextColumn");
+    auto* preparingColumnLayout=Layout::vertical(preparingColumn);
+    preparingLayout->addWidget(preparingColumn,1,Qt::AlignVCenter);
+
+    // ElidedLabel, not a wrapping QLabel: the name is a folder's, of any length, and a wrapping
+    // label in this list gives it a height-for-width that re-triggers its own layout (the same
+    // loop FileUploadListItem's name label avoids, see there).
+    pimpl->preparingName=new ElidedLabel(preparingColumn);
+    pimpl->preparingName->setObjectName("preparingName");
+    pimpl->preparingName->setElideMode(Qt::ElideMiddle);
+    preparingColumnLayout->addWidget(pimpl->preparingName);
+
+    pimpl->preparingStatus=new QLabel(preparingColumn);
+    pimpl->preparingStatus->setObjectName("preparingStatus");
+    preparingColumnLayout->addWidget(pimpl->preparingStatus);
+
+    // The control's only action is to cancel, the same as the Cancel button.
+    connect(pimpl->preparingControl,&AbstractLoadControl::clicked,this,&AbstractFileUploadWidget::cancelled);
+
+    pimpl->preparingRow->setVisible(false);
+    pimpl->listLayout->insertWidget(0,pimpl->preparingRow);
+
     pimpl->listArea->setWidget(pimpl->listContent);
 
     connect(
@@ -747,6 +798,12 @@ void FileUploadWidget::updateItemsState(bool wasEmpty, bool notifyEmptied)
 
 void FileUploadWidget::updateCaption()
 {
+    if (pimpl->preparing)
+    {
+        setCaption(tr("Preparing..."));
+        return;
+    }
+
     auto n=static_cast<int>(pimpl->items.size());
     if (n==0)
     {
@@ -783,7 +840,10 @@ void FileUploadWidget::updateCaption()
 
 void FileUploadWidget::updateSendEnabled()
 {
-    pimpl->sendButton->setEnabled(!pimpl->items.empty());
+    // Not while something is still being prepared: the list is not complete, and a send now
+    // would go without it. Return in the comment editor follows the button (see the
+    // editingFinished connection), so it is covered too.
+    pimpl->sendButton->setEnabled(!pimpl->items.empty() && !pimpl->preparing);
 }
 
 //--------------------------------------------------------------------------
@@ -797,7 +857,7 @@ bool FileUploadWidget::isAtMaxFileCount() const
 
 void FileUploadWidget::updateAddEnabled()
 {
-    pimpl->addButton->setEnabled(!isAtMaxFileCount());
+    pimpl->addButton->setEnabled(!isAtMaxFileCount() && !pimpl->preparing);
 }
 
 //--------------------------------------------------------------------------
@@ -1432,8 +1492,88 @@ void FileUploadWidget::settleLayout()
 
 //--------------------------------------------------------------------------
 
+void FileUploadWidget::beginPreparing(const QString& name, const QString& status)
+{
+    pimpl->preparingName->setText(name);
+    pimpl->preparingStatus->setText(status);
+
+    // Indeterminate until the host reports a real percentage: the first thing a long preparation
+    // does (scanning a folder) has no known total.
+    pimpl->preparingControl->setProgress(0);
+    pimpl->preparingControl->setProgressMode(AbstractLoadControl::ProgressMode::Indeterminate);
+
+    pimpl->preparing=true;
+    pimpl->preparingRow->setVisible(true);
+
+    updateCaption();
+    updateSendEnabled();
+    updateAddEnabled();
+    updateListAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadWidget::setPreparingProgress(qreal percent, const QString& status)
+{
+    if (!pimpl->preparing)
+    {
+        return;
+    }
+
+    // setProgressMode() re-runs the mode's update even when the mode is unchanged, which would
+    // restart an animation on every report -- change it only when it actually differs.
+    const auto mode=percent<0
+        ? AbstractLoadControl::ProgressMode::Indeterminate
+        : AbstractLoadControl::ProgressMode::Static;
+    if (pimpl->preparingControl->progressMode()!=mode)
+    {
+        pimpl->preparingControl->setProgressMode(mode);
+    }
+    if (percent>=0)
+    {
+        pimpl->preparingControl->setProgress(qMin<qreal>(percent,100.0));
+    }
+
+    pimpl->preparingStatus->setText(status);
+}
+
+//--------------------------------------------------------------------------
+
+void FileUploadWidget::endPreparing()
+{
+    if (!pimpl->preparing)
+    {
+        return;
+    }
+
+    pimpl->preparing=false;
+    pimpl->preparingRow->setVisible(false);
+
+    // Back to Static so a hidden control does not keep animating.
+    pimpl->preparingControl->setProgressMode(AbstractLoadControl::ProgressMode::Static);
+    pimpl->preparingControl->setProgress(0);
+
+    updateCaption();
+    updateSendEnabled();
+    updateAddEnabled();
+    updateListAreaHeight();
+}
+
+//--------------------------------------------------------------------------
+
+bool FileUploadWidget::isPreparing() const
+{
+    return pimpl->preparing;
+}
+
+//--------------------------------------------------------------------------
+
 void FileUploadWidget::reset()
 {
+    // First: reset() is how a closing dialog returns the widget to its construction state, and
+    // that includes a preparation that was still running (the host cancels the work itself).
+    endPreparing();
+
     clearItemsInternal(false);
 
     pimpl->messageEditor->clear();

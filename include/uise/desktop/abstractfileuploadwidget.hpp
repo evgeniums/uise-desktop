@@ -291,6 +291,51 @@ class UISE_DESKTOP_EXPORT AbstractFileUploadWidget : public WidgetQFrame
          */
         virtual void requestAddFiles()=0;
 
+    public:
+
+        // Declared after every other virtual on purpose: a virtual added in the middle of a class
+        // shifts the vtable slot of everything after it, and an incremental build that does not
+        // recompile every consumer then calls the wrong function.
+
+        /**
+         * @brief Show a "preparing" row at the top of the list: something is being made for the
+         *  user to send (e.g. a folder being compressed) and will be added as a regular item when
+         *  it is ready.
+         * @param name What is being prepared, shown as the row's title (a file name).
+         * @param status Short text under the title ("Compressing...").
+         *
+         * While preparing, the caption reads "Preparing..." and Send and Add are disabled -- the
+         * list is not complete yet. The row's cancel control emits cancelled(), exactly like the
+         * Cancel button. The row starts out indeterminate; setPreparingProgress() makes it a
+         * determinate one. Calling it again while already preparing replaces name and status.
+         *
+         * Defaulted, not pure, so out-of-tree implementations keep compiling; the default shows
+         * nothing.
+         */
+        virtual void beginPreparing(const QString& /*name*/, const QString& /*status*/)
+        {}
+
+        /**
+         * @brief Update the preparing row. A no-op unless isPreparing().
+         * @param percent 0..100, or negative when the total is not known (indeterminate).
+         * @param status Replaces the text under the title -- pass the current one every time.
+         */
+        virtual void setPreparingProgress(qreal /*percent*/, const QString& /*status*/)
+        {}
+
+        /**
+         * @brief Remove the preparing row and re-enable Send and Add. A no-op unless
+         *  isPreparing(). The caller adds the prepared item itself, with addFiles()/addItems().
+         *  reset() ends it too.
+         */
+        virtual void endPreparing()
+        {}
+
+        virtual bool isPreparing() const
+        {
+            return false;
+        }
+
     signals:
 
         void captionChanged(const QString& caption);

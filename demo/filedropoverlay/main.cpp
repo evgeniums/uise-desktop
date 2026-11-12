@@ -55,6 +55,8 @@ QString panelName(FileDropOverlay::Panel panel)
         case (FileDropOverlay::Panel::Documents): return QStringLiteral("Documents");
         case (FileDropOverlay::Panel::Images): return QStringLiteral("Images");
         case (FileDropOverlay::Panel::Photos): return QStringLiteral("Photos");
+        case (FileDropOverlay::Panel::FolderFiles): return QStringLiteral("FolderFiles");
+        case (FileDropOverlay::Panel::FolderArchive): return QStringLiteral("FolderArchive");
         case (FileDropOverlay::Panel::None): break;
     }
     return QStringLiteral("None");

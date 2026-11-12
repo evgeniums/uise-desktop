@@ -146,6 +146,11 @@ class UISE_DESKTOP_EXPORT FileUploadWidget : public AbstractFileUploadWidget
 
         void settleLayout() override;
 
+        void beginPreparing(const QString& name, const QString& status) override;
+        void setPreparingProgress(qreal percent, const QString& status) override;
+        void endPreparing() override;
+        bool isPreparing() const override;
+
         /**
          * @brief Set the tallest the preview list is allowed to grow to before it starts
          *  scrolling instead of growing further.

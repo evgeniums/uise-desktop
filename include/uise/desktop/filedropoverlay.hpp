@@ -72,6 +72,13 @@ class FileDropOverlay_p;
  * uses to preset FileUploadWidget::setSendAsDocuments()/setHighQuality() before opening the
  * upload dialog.
  *
+ * Folders (opt-in, see setFolderPanelsAllowed()): when the payload is exactly one folder the
+ * image panels are not offered at all. Instead the overlay shows "Send as files" next to "Send as
+ * archive" (Panel::FolderFiles / Panel::FolderArchive), or "Send as archive" alone when the folder
+ * cannot be sent file by file -- it holds a subfolder, no files, or more files than
+ * setFolderFilesMaxCount() allows. What the consumer does with the two is up to it; this widget
+ * only offers the choice and reports it.
+ *
  * Unlike RippleOverlay this widget must NOT be transparent for mouse events: Qt resolves a drag
  * target with QWidget::childAt(), which skips both hidden children and children with
  * Qt::WA_TransparentForMouseEvents, so a transparent overlay would never receive a single drag
@@ -119,9 +126,23 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
             None,       //!< the overlay is not active; never emitted by dropped()
             Documents,  //!< single full-area panel (no images), or first panel in DocumentsAndNormal mode
             Images,     //!< two-panel layout, first panel in FullAndNormal mode -- `full` rung, never downscaled
-            Photos      //!< two-panel layout, second panel in either mode -- `normal` rung, adaptively scaled
+            Photos,     //!< two-panel layout, second panel in either mode -- `normal` rung, adaptively scaled
+            FolderFiles,   //!< folder payload, first panel -- send the files of the folder one by one
+            FolderArchive  //!< folder payload, second panel, or the only one -- send the folder as an archive
         };
         Q_ENUM(Panel)
+
+        /**
+         * @brief What the overlay shows for the current payload when it is a single folder, see
+         *  setFolderPanelsAllowed().
+         */
+        enum class FolderMode
+        {
+            None,           //!< not a folder payload (or folder panels are not allowed): the ordinary panels
+            ArchiveOnly,    //!< one panel, Panel::FolderArchive
+            FilesAndArchive //!< two panels, Panel::FolderFiles then Panel::FolderArchive
+        };
+        Q_ENUM(FolderMode)
 
         /** @brief Which pair of panels the two-panel (has-images) layout offers. */
         enum class ImagesMode
@@ -185,6 +206,31 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         bool isImagesPanelAllowed() const noexcept;
 
         /**
+         * @brief Whether a payload that is exactly one folder gets its own panels, see the class
+         *  docs. False by default, so a host that does not handle Panel::FolderFiles /
+         *  Panel::FolderArchive never sees them.
+         *
+         * Takes effect from the next drag: the payload is not kept, so one that is already over
+         * the overlay is not re-examined.
+         */
+        void setFolderPanelsAllowed(bool enable) noexcept;
+        bool isFolderPanelsAllowed() const noexcept;
+
+        /**
+         * @brief Largest number of files a folder may hold for "Send as files" to be offered;
+         *  <=0 (the default) means no limit.
+         *
+         * Only the top level of the folder is looked at, and a folder with a subfolder never
+         * qualifies -- see scanFolderForUpload(). The scan runs when the drag enters, and stops as
+         * soon as the answer is known.
+         */
+        void setFolderFilesMaxCount(int count) noexcept;
+        int folderFilesMaxCount() const noexcept;
+
+        /** @brief Folder layout of the current payload; FolderMode::None unless isActive(). */
+        FolderMode folderMode() const noexcept;
+
+        /**
          * @brief Set the drag-source tag (see dragSourceMimeFormat()) this overlay refuses.
          * @param tag Typically the host's own chat id. Empty (the default) means no restriction.
          *
@@ -234,7 +280,8 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         /** @brief Whether the overlay is currently shown for a drag. */
         bool isActive() const noexcept;
 
-        /** @brief Whether the payload passed to the last showForMimeData() contained images. */
+        /** @brief Whether the payload passed to the last showForMimeData() contained images --
+         *  always false for a folder payload shown in folder mode, see folderMode(). */
         bool hasImages() const noexcept;
 
         /** @brief Panel currently under the pointer, or Panel::None when !isActive(). */
@@ -280,6 +327,20 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void setPhotosSubtitle(const QString& text);
         QString photosSubtitle() const;
 
+        //! Caption of the "files" panel of a folder payload (first/left/top), shown when the
+        //! folder can be sent file by file -- see setFolderPanelsAllowed().
+        void setFolderFilesCaption(const QString& text);
+        QString folderFilesCaption() const;
+        void setFolderFilesSubtitle(const QString& text);
+        QString folderFilesSubtitle() const;
+
+        //! Caption of the "archive" panel of a folder payload: second/right/bottom next to the
+        //! files panel, or the only panel when the folder cannot be sent file by file.
+        void setFolderArchiveCaption(const QString& text);
+        QString folderArchiveCaption() const;
+        void setFolderArchiveSubtitle(const QString& text);
+        QString folderArchiveSubtitle() const;
+
         /**
          * @brief Interval, in ms, at which an active overlay re-checks the real pointer position
          *  against its own global geometry and dismisses itself when the pointer is no longer
@@ -323,7 +384,9 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
 
         /**
          * @brief A drop landed on one of the panels.
-         * @param panel Panel::Documents, Panel::Images, or Panel::Photos, never Panel::None.
+         * @param panel Panel::Documents, Panel::Images, or Panel::Photos -- or, for a folder
+         *  payload in folder mode, Panel::FolderFiles or Panel::FolderArchive -- never
+         *  Panel::None.
          * @param mimeData Dropped payload.
          *
          * Emitted synchronously from inside dropEvent(), so mimeData is only valid for the
@@ -354,7 +417,9 @@ class UISE_DESKTOP_EXPORT FileDropOverlay : public QFrame
         void updateGeometryFromHost();
         void rebuildPanelsLayout();
         void updatePanels();
+        void updateFolderPanels();
         void updateIcons();
+        Panel reportedPanel(Panel slot) const noexcept;
         void setHoveredPanel(Panel panel);
         Panel panelAt(const QPoint& pos) const;
         void handleDrop(const QMimeData* mimeData, const QPoint& pos);
