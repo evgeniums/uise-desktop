@@ -307,6 +307,14 @@ void IconTextButton::updateStableTextWidth()
         }
     }
 
+    // QLabel::sizeHint() is expanded to the label's minimum size, so the minimum set on a previous
+    // call would leak into `chrome` below and the reserved width would grow on every tick. Drop it
+    // first. setIndent() with the unchanged value is used only because it always invalidates the
+    // label's cached size hints (updateLabel()) -- needed because this also runs from the FontChange
+    // event filter, i.e. before QLabel's own changeEvent has done so.
+    m_text->setMinimumWidth(0);
+    m_text->setIndent(m_text->indent());
+
     // Everything in the label's sizeHint that is not the text itself (QSS padding/border,
     // contents margins, indent) is the same for every digit, so carry it over as is.
     const int chrome=m_text->sizeHint().width()-fm.size(Qt::TextSingleLine,m_text->text()).width();
