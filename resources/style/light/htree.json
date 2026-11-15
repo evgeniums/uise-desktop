@@ -106,12 +106,12 @@
             "name" : "Update",
             "modes" : {
                 "normal" : {
-                    "off" : { "currentColor" : "#B06000" },
-                    "on" :  { "currentColor" : "#E07800" }
+                    "off" : { "currentColor" : "#0099b8" },
+                    "on" :  { "currentColor" : "#00b4d8" }
                 },
                 "hovered" : {
-                    "off" : { "currentColor" : "#E07800" },
-                    "on" :  { "currentColor" : "#E07800" }
+                    "off" : { "currentColor" : "#00b4d8" },
+                    "on" :  { "currentColor" : "#00b4d8" }
                 }
             }
         },
