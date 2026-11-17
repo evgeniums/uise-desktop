@@ -96,6 +96,15 @@ uise--ChatMessageImageItem {
 border-radius:8px;
 }
 
+/* Width (logical px) of the thin outline stroked over a BARE tile -- a single uncaptioned image
+   shown with no bubble behind it (ChatMessageImageItem::setBare()), so an image whose own edge
+   resembles the chat background does not melt into the message history. Colour is per theme in
+   dark/light chatmessagefiles.qss. Painted by the preview, not by a QSS border, so it lies over
+   the image edge and has no translucent-corner artifact. */
+uise--ChatMessageImageItem {
+qproperty-bareOutlineWidth: 1;
+}
+
 /* Placeholder tile: an image item with no content to show at all -- a preview that never
    resolved, or a failed/synthesized entry with no image behind it. Rendered as an empty
    rounded outline rather than a filled fallback glyph: the tile already carries a centered

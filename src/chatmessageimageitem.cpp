@@ -196,6 +196,12 @@ class ChatMessageImageItem_p
         //! See ChatMessageImageItem::setCoverContent().
         bool coverContent=false;
 
+        //! See ChatMessageImageItem::setBare().
+        bool bare=false;
+        bool placeholder=false;
+        QColor bareOutlineColor;
+        qreal bareOutlineWidth=1.0;
+
         bool dragEnabled=true;
 };
 
@@ -393,6 +399,69 @@ void ChatMessageImageItem::setCoverContent(bool enable)
     }
     pimpl->coverContent=enable;
     updatePreview();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::setBare(bool enable)
+{
+    if (pimpl->bare==enable)
+    {
+        return;
+    }
+    pimpl->bare=enable;
+    updateOutline();
+}
+
+//--------------------------------------------------------------------------
+
+bool ChatMessageImageItem::isBare() const noexcept
+{
+    return pimpl->bare;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::setBareOutlineColor(const QColor& color)
+{
+    pimpl->bareOutlineColor=color;
+    updateOutline();
+}
+
+//--------------------------------------------------------------------------
+
+QColor ChatMessageImageItem::bareOutlineColor() const
+{
+    return pimpl->bareOutlineColor;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::setBareOutlineWidth(qreal width)
+{
+    pimpl->bareOutlineWidth=width;
+    updateOutline();
+}
+
+//--------------------------------------------------------------------------
+
+qreal ChatMessageImageItem::bareOutlineWidth() const noexcept
+{
+    return pimpl->bareOutlineWidth;
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImageItem::updateOutline()
+{
+    if (pimpl->bare && !pimpl->placeholder)
+    {
+        pimpl->preview->setOutline(pimpl->bareOutlineColor,pimpl->bareOutlineWidth);
+    }
+    else
+    {
+        pimpl->preview->clearOutline();
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -679,6 +748,9 @@ void ChatMessageImageItem::updatePreview()
 
 void ChatMessageImageItem::setPlaceholderMode(bool enable)
 {
+    pimpl->placeholder=enable;
+    updateOutline();
+
     // Dynamic properties drive QSS selectors only after an explicit repolish -- Qt does not
     // re-evaluate stylesheets on a bare setProperty(). Style::setStyleProperty() guards on "value
     // actually changed" to avoid a repaint storm when this is called repeatedly with the same mode.

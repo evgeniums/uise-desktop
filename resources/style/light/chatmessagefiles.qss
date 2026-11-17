@@ -22,6 +22,12 @@ uise--ChatMessageImageItem #menuButton {
 background-color: rgba(255,255,255,190);
 }
 
+/* Outline of a bare (bubble-less) image tile, see chatmessagefiles.qss. A dark translucent
+   stroke so it reads on any wallpaper and any image edge. */
+uise--ChatMessageImageItem {
+qproperty-bareOutlineColor: rgba(0,0,0,32);
+}
+
 /* Deliberately opaque, not an rgba() blend of the bubble behind it: Qt's stylesheet engine
    paints a rounded border as separate edge and corner-arc paths, and a translucent color
    double-blends where those overlap, leaving visible darker dots at the four corners. This

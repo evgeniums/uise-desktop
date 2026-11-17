@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <QFrame>
 #include <QPixmap>
+#include <QColor>
 
 #include <uise/desktop/uisedesktop.hpp>
 #include <uise/desktop/pixmapproducer.hpp>
@@ -199,6 +200,27 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QFrame,
             m_yRadius.reset();
         }
 
+        /**
+         * @brief Thin rounded outline stroked just INSIDE the widget's rect, on top of the image.
+         *  Used where the image is shown with nothing behind it (e.g. a bubble-less chat image)
+         *  and its own edge could otherwise melt into the background. Only painted over a real
+         *  pixmap -- not over the centred SVG glyph or the fillIfNoPixmap() fallback. An invalid
+         *  colour or a non-positive width disables it (the default).
+         */
+        void setOutline(const QColor& color, qreal width)
+        {
+            m_outlineColor=color;
+            m_outlineWidth=width;
+            update();
+        }
+
+        void clearOutline()
+        {
+            m_outlineColor=QColor{};
+            m_outlineWidth=0;
+            update();
+        }
+
         // note that when SVG icon is used then the corners would not be rounded, it must be done in SVG source
         void setSvgIcon(std::shared_ptr<SvgIcon> svgIcon)
         {
@@ -306,6 +328,10 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QFrame,
             std::ignore=painter;
         }
 
+        //! Strokes the outline set by setOutline(), if any. For derived classes that paint the
+        //! image themselves instead of going through RoundedImage::paintEvent().
+        void paintOutline(QPainter* painter);
+
     private slots:
 
         void onPixmapUpdated();
@@ -334,6 +360,9 @@ class UISE_DESKTOP_EXPORT RoundedImage : public QFrame,
         bool m_autoFitEllipse;
 
         bool m_disableHover;
+
+        QColor m_outlineColor;
+        qreal m_outlineWidth=0;
 };
 
 class UISE_DESKTOP_EXPORT WithRoundedImage : public QFrame

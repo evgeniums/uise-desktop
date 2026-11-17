@@ -406,6 +406,7 @@ void ImageLabel::paintEvent(QPaintEvent* event)
     painter.setOpacity(m_contentOpacity);
     painter.setBrush(px);
     painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
+    paintOutline(&painter);
     doPaint(&painter);
     painter.end();
 }

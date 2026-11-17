@@ -126,6 +126,10 @@ class ChatMessageImages_p
 
         ImageLabel::AnimationMode animationMode=ImageLabel::DefaultAnimationMode;
 
+        // Whether the bubble is actually transparent right now -- see
+        // ChatMessageImages::setBubbleTransparent(). Pushed to every tile as its bare flag.
+        bool bubbleTransparent=false;
+
         // Which albumLayout() algorithm runs -- see AbstractChatMessageImages::setLayoutMode().
         // Part of rebuildGrid()'s layout memo signature, and pushed to every tile as its paint
         // policy (ChatMessageImageItem::setCoverContent()): the PresetTemplates mode sizes cells
@@ -384,6 +388,7 @@ void ChatMessageImages::rebuildGrid(int forMaxWidth)
         {
             auto tile=new ChatMessageImageItem(this);
             tile->setAnimationMode(pimpl->animationMode);
+            tile->setBare(pimpl->bubbleTransparent);
 
             // the item id is read from the tile at emit time (not captured by value) so that a
             // later reuse of this same tile for a different item still reports the right id
@@ -680,6 +685,24 @@ bool ChatMessageImages::isBubbleTransparentHint() const
     // ensureComment()), so testing IT would read "no comment" for a bubble that has never yet
     // been asked to render one even though commentText says otherwise.
     return pimpl->items.size()==1 && pimpl->commentText.isEmpty();
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageImages::setBubbleTransparent(bool enable)
+{
+    if (pimpl->bubbleTransparent==enable)
+    {
+        return;
+    }
+    pimpl->bubbleTransparent=enable;
+
+    // A bubble-less tile has nothing behind it, so each tile outlines itself -- see
+    // ChatMessageImageItem::setBare().
+    for (auto* tile : pimpl->tiles)
+    {
+        tile->setBare(enable);
+    }
 }
 
 //--------------------------------------------------------------------------

@@ -130,6 +130,8 @@ class UISE_DESKTOP_EXPORT ChatMessageImages : public AbstractChatMessageImages
 
         bool isBubbleTransparentHint() const override;
 
+        void setBubbleTransparent(bool enable) override;
+
         int bubbleWidthHint(int forMaxWidth) override;
 
         void updateMaximumBubbleWidth() override;

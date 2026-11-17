@@ -618,6 +618,15 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBody : public ChatMessageContentSec
          */
         virtual bool isBubbleTransparentHint() const {return false;}
 
+        /**
+         * @brief Tells this body whether its bubble is ACTUALLY transparent right now, i.e. the
+         *  hint above survived the message-level suppression in AbstractChatMessageContent::
+         *  updateBubbleTransparency(). Called on every such pass, including ones where nothing
+         *  changed, so an implementation must tolerate repeated calls with the same value.
+         *  A no-op by default; ChatMessageImages uses it to outline its bare tile.
+         */
+        virtual void setBubbleTransparent(bool /*enable*/) {}
+
     signals:
 
         //! Never emitted by the base class -- a body with genuine text selection (e.g.

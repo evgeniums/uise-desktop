@@ -23,7 +23,10 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QPainter>
+#include <QPen>
 #include <QStyle>
 #include <QGuiApplication>
 #include <QScreen>
@@ -367,6 +370,7 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
         painter.setPen(Qt::NoPen);
         painter.setBrush(brushPx);
         painter.drawRoundedRect(0,0,size().width(),size().height(),xRadius(),yRadius());
+        paintOutline(&painter);
     }
     else
     {
@@ -379,6 +383,30 @@ void RoundedImage::paintEvent(QPaintEvent* /*event*/)
 
     // done
     painter.end();
+}
+
+//--------------------------------------------------------------------------
+
+void RoundedImage::paintOutline(QPainter* painter)
+{
+    if (!m_outlineColor.isValid() || m_outlineWidth<=0)
+    {
+        return;
+    }
+
+    // Inset by half the pen width so the whole stroke stays inside the widget rect: the outline
+    // then never changes geometry and is not clipped at the edges.
+    const auto half=m_outlineWidth/2;
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing,true);
+    painter->setBrush(Qt::NoBrush);
+    painter->setPen(QPen(m_outlineColor,m_outlineWidth));
+    painter->drawRoundedRect(
+        QRectF(rect()).adjusted(half,half,-half,-half),
+        std::max<qreal>(0,xRadius()-half),
+        std::max<qreal>(0,yRadius()-half)
+    );
+    painter->restore();
 }
 
 //--------------------------------------------------------------------------

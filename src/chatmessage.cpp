@@ -484,6 +484,14 @@ void AbstractChatMessageContent::updateBubbleTransparency()
                      || isContentSelected();
 
     auto transparent=hint && !suppressed;
+
+    // Before the early return on purpose: a body built (or swapped in) after the cached state
+    // was last updated must still learn it. Receivers filter no-op repeats themselves.
+    if (body()!=nullptr)
+    {
+        body()->setBubbleTransparent(transparent);
+    }
+
     if (transparent==m_bubbleTransparent)
     {
         return;

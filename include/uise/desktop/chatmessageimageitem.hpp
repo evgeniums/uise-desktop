@@ -28,6 +28,7 @@ You may select, at your option, one of the above-listed licenses.
 
 #include <memory>
 
+#include <QColor>
 #include <QFrame>
 #include <QList>
 #include <QUrl>
@@ -65,6 +66,12 @@ class ChatMessageImageItem_p;
 class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
 {
     Q_OBJECT
+
+    // QSS-settable (qproperty-bareOutlineColor / qproperty-bareOutlineWidth, see
+    // chatmessagefiles.qss and the per-theme chatmessagefiles.qss) -- the outline of a BARE tile,
+    // see setBare().
+    Q_PROPERTY(QColor bareOutlineColor READ bareOutlineColor WRITE setBareOutlineColor)
+    Q_PROPERTY(qreal bareOutlineWidth READ bareOutlineWidth WRITE setBareOutlineWidth)
 
     public:
 
@@ -146,6 +153,26 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         void setCoverContent(bool enable);
 
         bool coverContent() const noexcept;
+
+        /**
+         * @brief Mark this tile as shown BARE, i.e. with no bubble behind it (set by the owning
+         *  ChatMessageImages while its bubble is transparent). A bare tile strokes a thin
+         *  outline (bareOutlineColor()/bareOutlineWidth()) over its edge, so an image whose own
+         *  border resembles the chat background does not melt into the message history. Never
+         *  drawn on a placeholder tile, which has its own outline. A plain C++ flag rather than
+         *  a QSS dynamic property: the outline is painted by the preview, not by the stylesheet.
+         */
+        void setBare(bool enable);
+
+        bool isBare() const noexcept;
+
+        void setBareOutlineColor(const QColor& color);
+
+        QColor bareOutlineColor() const;
+
+        void setBareOutlineWidth(qreal width);
+
+        qreal bareOutlineWidth() const noexcept;
 
         /**
          * @brief Close the per-item drop-down menu if open, without animation.
@@ -246,6 +273,9 @@ class UISE_DESKTOP_EXPORT ChatMessageImageItem : public QFrame
         //! image content to show at all -- see chatmessagefiles.qss's [placeholder="true"] rule
         //! and updatePreview()'s own else branch.
         void setPlaceholderMode(bool enable);
+
+        //! Push (or clear) the bare-tile outline on the preview -- see setBare().
+        void updateOutline();
 
     private slots:
 
