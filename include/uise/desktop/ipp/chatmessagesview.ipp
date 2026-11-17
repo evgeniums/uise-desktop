@@ -2135,9 +2135,20 @@ void ChatMessagesView<BaseMessageT,Traits>::auditGeometry()
                 if (row!=nullptr && !row->visibleRegion().isEmpty())
                 {
                     auto description=row->checkGeometry();
-                    if (!description.isEmpty())
+                    if (description.isEmpty())
                     {
-                        problems.push_back(Problem{QPointer<AbstractChatMessage>{row},std::move(description)});
+                        m_geometryReported.erase(row);
+                    }
+                    else
+                    {
+                        // Already repaired and reported with this very finding, and it is still
+                        // there: repairGeometry() cannot fix it, so repeating it on every audit
+                        // would only add churn and noise.
+                        auto it=m_geometryReported.find(row);
+                        if (it==m_geometryReported.end() || it->second!=description)
+                        {
+                            problems.push_back(Problem{QPointer<AbstractChatMessage>{row},std::move(description)});
+                        }
                     }
                 }
             }
@@ -2160,6 +2171,11 @@ void ChatMessagesView<BaseMessageT,Traits>::auditGeometry()
             continue;
         }
         problem.row->repairGeometry();
+        if (m_geometryReported.size()>64)
+        {
+            m_geometryReported.clear();
+        }
+        m_geometryReported[problem.row.data()]=problem.description;
 
         // Report at most 5 per minute per view: one stubborn row re-found by every pass must not
         // flood the log, and the first few lines already name the layer that drifted.

@@ -30,6 +30,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <functional>
 #include <chrono>
 #include <deque>
+#include <unordered_map>
 
 #include <QBoxLayout>
 #include <QShortcut>
@@ -687,6 +688,12 @@ class ChatMessagesView : public AbstractChatMessagesView
         int m_geometryAuditStreak=0;
         //! Times of the most recent reports, for the rate limit in auditGeometry().
         std::deque<std::chrono::steady_clock::time_point> m_geometryReportTimes;
+        //! The finding last reported for a row (checkGeometry()'s description), keyed by the row's
+        //! address, so a finding that repairGeometry() did not fix is not repaired and reported
+        //! again on every later audit. An entry is dropped when its row passes a check; the map is
+        //! cleared if it ever grows large (rows are destroyed by the flyweight list, so keys can go
+        //! stale -- harmless, a reused address only has to differ in its description to be reported).
+        std::unordered_map<const QWidget*,QString> m_geometryReported;
 
         //! The message whose own anchored avatar is currently force-hidden because the floating
         //! copy is sitting over it (AbstractChatMessage::setAvatarObscured()). QPointer because

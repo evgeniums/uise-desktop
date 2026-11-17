@@ -2396,6 +2396,17 @@ QString ChatMessage::checkGeometry() const
         return QString{};
     }
 
+    // An info row (a "joined" / e2e "can read" line, see whitemdesktop's buildInfoRow()) hides
+    // #mainMessageFrame through setContentVisible(false): the main frame, the wrapper and the bubble
+    // are all hidden and only the separator pill is shown. A hidden widget is never laid out, so the
+    // main frame and wrapper keep Qt's default 100x30 child geometry while the bubble was still sized
+    // by the negotiation pass -- comparing them reports a shortfall on every such row, and nothing
+    // can repair it. There is nothing on screen to clip, so there is nothing to check.
+    if (pimpl->main->isHidden() || pimpl->contentFrame->isHidden() || c->isHidden())
+    {
+        return QString{};
+    }
+
     // 1 px of tolerance: hints and geometry are both integers derived from different roundings
     // (QSS padding, font metrics), and a single pixel cannot visibly clip anything.
     constexpr int Tolerance=1;
@@ -2457,7 +2468,13 @@ QString ChatMessage::checkGeometry() const
 void ChatMessage::repairGeometry()
 {
     auto* c=content();
-    if (c==nullptr || pimpl->contentFrame==nullptr)
+    if (c==nullptr || pimpl->main==nullptr || pimpl->contentFrame==nullptr)
+    {
+        return;
+    }
+
+    // Same reason as in checkGeometry(): nothing to repair on a row whose bubble frames are hidden.
+    if (pimpl->main->isHidden() || pimpl->contentFrame->isHidden() || c->isHidden())
     {
         return;
     }
