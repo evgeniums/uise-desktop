@@ -865,9 +865,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::onViewportResized(QRes
     updatePageStep();
 
     // resize only that dimension of the list that doesn't match the orientation
-    auto otherSize=oprop(event->size(),OProp::size,true);
-    auto otherHintSize=oprop(m_llist->sizeHint(),OProp::size,true);
-    otherSize=std::max(otherHintSize,otherSize);
+    auto otherSize=listOtherSize(oprop(event->size(),OProp::size,true),oprop(m_llist->sizeHint(),OProp::size,true));
     QSize newListSize;
     setOProp(newListSize,OProp::size,oprop(m_llist,OProp::size));
     setOProp(newListSize,OProp::size,otherSize,true);
@@ -1633,13 +1631,23 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::insertContinuousItems(
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+int FlyweightListView_p<ItemT,OrderComparer,IdComparer>::listOtherSize(int viewportOther, int hintOther) const noexcept
+{
+    const auto otherPolicy=isHorizontal() ? m_vbarPolicy : m_hbarPolicy;
+    if (otherPolicy==Qt::ScrollBarAlwaysOff)
+    {
+        return viewportOther;
+    }
+    return std::max(hintOther,viewportOther);
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::resizeList(const char* caller)
 {
     auto newSize=oprop(m_llist->sizeHint(),OProp::size);
     QSize listSize;
-    auto otherSize=oprop(m_view,OProp::size,true);
-    auto otherHintSize=oprop(m_llist->sizeHint(),OProp::size,true);
-    otherSize=std::max(otherHintSize,otherSize);
+    auto otherSize=listOtherSize(oprop(m_view,OProp::size,true),oprop(m_llist->sizeHint(),OProp::size,true));
     setOProp(listSize,OProp::size,otherSize,true);
     setOProp(listSize,OProp::size,newSize);
     if (m_llist->size()!=listSize)

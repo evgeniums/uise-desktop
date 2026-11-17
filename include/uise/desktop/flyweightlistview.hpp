@@ -711,6 +711,11 @@ class FlyweightListView : public QFrame
         /**
          * @brief Set policy for horizontal scrollbar.
          * @param policy Value to set.
+         *
+         * Qt::ScrollBarAlwaysOff also stops the list from growing wider than the viewport in a
+         * vertical list (taller, for a horizontal one and setVerticalScrollBarPolicy()): items are
+         * laid out at the viewport's width and must fit it, instead of the list widening to the
+         * widest item's size hint and leaving the far edge of every row outside the viewport.
          */
         void setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy policy);
 
@@ -723,6 +728,8 @@ class FlyweightListView : public QFrame
         /**
          * @brief Set policy for vertical scrollbar.
          * @param policy Value to set.
+         *
+         * See setHorizontalScrollBarPolicy() for what Qt::ScrollBarAlwaysOff implies for sizing.
          */
         void setVerticalScrollBarPolicy(Qt::ScrollBarPolicy policy);
 

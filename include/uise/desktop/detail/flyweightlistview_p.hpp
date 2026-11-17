@@ -298,6 +298,20 @@ class FlyweightListView_p : public OrientationInvariant
         //! todo-chat-messages-missing-after-insert.md's sibling scroll-drift bug.
         void resizeList(const char* caller);
 
+        /**
+         * @brief Size of m_llist along the axis that does not match the orientation.
+         *
+         * Normally max(widest item's hint, viewport), so a wider item can be scrolled to. When the
+         * scrollbar policy of that axis is Qt::ScrollBarAlwaysOff nothing can scroll there, so the
+         * list is held to the viewport instead: otherwise one item with a wide hint (e.g. a
+         * typing line asking for its full text width) widens every row past the viewport, and
+         * whatever sits at a row's far edge ends up outside the visible area, unreachable.
+         *
+         * @param viewportOther Other-axis size of the viewport.
+         * @param hintOther Other-axis size hint of m_llist.
+         */
+        int listOtherSize(int viewportOther, int hintOther) const noexcept;
+
         void clearWidget(typename ItemT::WidgetType* widget);
         void removeItem(ItemT* item);
         void removeItem(const typename ItemT::IdType& id);

@@ -716,6 +716,8 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setVerticalScrollBarPoli
 {
     pimpl->m_vbarPolicy=policy;
     pimpl->updateScrollBars();
+    // the policy decides how wide/tall the list may grow beyond the viewport, see listOtherSize()
+    pimpl->resizeList("setVerticalScrollBarPolicy");
 }
 
 //--------------------------------------------------------------------------
@@ -738,6 +740,8 @@ void FlyweightListView<ItemT,OrderComparer,IdComparer>::setHorizontalScrollBarPo
 {
     pimpl->m_hbarPolicy=policy;
     pimpl->updateScrollBars();
+    // the policy decides how wide/tall the list may grow beyond the viewport, see listOtherSize()
+    pimpl->resizeList("setHorizontalScrollBarPolicy");
 }
 
 //--------------------------------------------------------------------------
