@@ -266,8 +266,75 @@ void AbstractChatMessage::paintEvent(QPaintEvent* event)
 
 //--------------------------------------------------------------------------
 
+bool AbstractChatMessageContent::event(QEvent* event)
+{
+    // Base first: by the time a LayoutRequest reaches here Qt has already run QLayout::
+    // widgetEvent() on it, i.e. this bubble's inner layout is already re-activated and every
+    // section's geometry is current -- only the bubble's OWN height is still whatever the last
+    // negotiation resized it to.
+    auto result=AbstractChatMessageChild::event(event);
+
+    if (event->type()!=QEvent::LayoutRequest || !m_everNegotiated || m_inNegotiation)
+    {
+        return result;
+    }
+
+    // Hidden bubbles (a background tab, a page that is not current) are repaired on show --
+    // ChatMessageContentWrapper::showEvent()/ChatMessage::showEvent(). Qt does not even deliver
+    // the event to a hidden widget's layout, so a size compared here would be meaningless.
+    if (!isVisible())
+    {
+        return result;
+    }
+
+    // Both are what setMaximumBubbleWidth() resized this bubble to; they only differ when some
+    // section changed height afterwards without anybody re-measuring (see the declaration's doc
+    // comment). In every healthy case this is the only cost: one comparison.
+    if (sizeHint().height()==height())
+    {
+        m_autoRemeasureCount=0;
+        return result;
+    }
+
+    // Bounded: if min/max constraints keep the two apart for good, every pass below posts yet
+    // another LayoutRequest -- give up after a few attempts instead of chasing it forever.
+    constexpr int MaxAutoRemeasures=3;
+    if (m_autoRemeasureCount>=MaxAutoRemeasures)
+    {
+        return result;
+    }
+    ++m_autoRemeasureCount;
+
+    if (chatBubbleDebugEnabled())
+    {
+        std::cerr << "CHAT-BUBBLE-DEBUG: LayoutRequest found bubble height " << height()
+                   << " != sizeHint " << sizeHint().height() << ", re-negotiating (attempt "
+                   << m_autoRemeasureCount << ")" << std::endl;
+    }
+    renegotiateBubbleWidth();
+
+    return result;
+}
+
+//--------------------------------------------------------------------------
+
 void AbstractChatMessageContent::updateBubbleWidth(int forMaxWidthIn)
 {
+    // Not a QScopeGuard: <QScopeGuard> would be one more include for a two-line job, and nothing
+    // between here and the end of this function can return early or throw.
+    struct NegotiationScope
+    {
+        bool& flag;
+        explicit NegotiationScope(bool& f) : flag(f)
+        {
+            flag=true;
+        }
+        ~NegotiationScope()
+        {
+            flag=false;
+        }
+    } negotiationScope{m_inNegotiation};
+
     m_lastForMaxWidth=forMaxWidthIn;
     m_everNegotiated=true;
 
@@ -1633,8 +1700,8 @@ class ChatMessage_p
         QFrame* separatorFrame;
         QBoxLayout* separatorLayout;
 
-        QFrame* main;
-        QBoxLayout* mainLayout;
+        QFrame* main=nullptr;
+        QBoxLayout* mainLayout=nullptr;
 
         ChatMessageAvatar* avatarFrame;
         QFrame* avatarFramePlaceholder;
@@ -1656,6 +1723,21 @@ class ChatMessage_p
         //! unchanged widget (e.g. switching back to a page that never changed while hidden) stays
         //! a no-op via the mismatch check instead of via this flag.
         bool firstShowSettled=false;
+
+        //! Forces #mainMessageFrame's and this row's own layouts to actually apply their (already
+        //! correct) size hints, bottom-up. invalidate() before activate() is required:
+        //! QLayout::activate() returns immediately once already activated. Bottom-up because
+        //! QLayout::activate() ends by calling its OWN parent widget's updateGeometry() --
+        //! activating mainLayout clears #mainMessageFrame's cached QWidgetItemV2 hint inside
+        //! `layout`, and activating `layout` in turn clears the row's own cached hint in the
+        //! enclosing list view. Shared by ChatMessage::showEvent() and repairGeometry().
+        void activateLayouts()
+        {
+            mainLayout->invalidate();
+            mainLayout->activate();
+            layout->invalidate();
+            layout->activate();
+        }
 };
 
 //--------------------------------------------------------------------------
@@ -2299,10 +2381,112 @@ void ChatMessage::showEvent(QShowEvent* event)
         return;
     }
 
-    pimpl->mainLayout->invalidate();
-    pimpl->mainLayout->activate();
-    pimpl->layout->invalidate();
-    pimpl->layout->activate();
+    pimpl->activateLayouts();
+}
+
+//--------------------------------------------------------------------------
+
+QString ChatMessage::checkGeometry() const
+{
+    // Qt lays out visible widgets only -- a hidden row legitimately sits on stale sizes until
+    // showEvent() settles it.
+    auto* c=content();
+    if (!isVisible() || c==nullptr || pimpl->main==nullptr || pimpl->contentFrame==nullptr)
+    {
+        return QString{};
+    }
+
+    // 1 px of tolerance: hints and geometry are both integers derived from different roundings
+    // (QSS padding, font metrics), and a single pixel cannot visibly clip anything.
+    constexpr int Tolerance=1;
+
+    auto describe=[this,c](const char* what)
+    {
+        return QStringLiteral("%1: bubble %2/%3 wrapper %4 main %5/%6 row %7/%8 body %9 inline=%10 bottomY=%11")
+            .arg(QLatin1String(what))
+            .arg(c->height())
+            .arg(c->sizeHint().height())
+            .arg(pimpl->contentFrame->height())
+            .arg(pimpl->main->height())
+            .arg(pimpl->main->sizeHint().height())
+            .arg(height())
+            .arg(sizeHint().height())
+            .arg(c->body()!=nullptr ? QString::fromLatin1(c->body()->metaObject()->className()) : QStringLiteral("-"))
+            .arg(static_cast<int>(c->isBottomInline()))
+            .arg(c->bottomY());
+    };
+
+    // Bottom-up, so the first failure names the lowest layer that is wrong.
+    if (c->height()+Tolerance<c->sizeHint().height())
+    {
+        return describe("bubble-short");
+    }
+
+    // A row-mode/inline bottom that sticks out below the bubble is clipped. Transparent bubbles
+    // are skipped: their hover chip is deliberately overlaid on the content and may overhang.
+    auto* b=c->bottom();
+    if (b!=nullptr && !b->isHidden() && !c->isBubbleTransparent()
+        && b->geometry().bottom()>c->rect().bottom()+Tolerance)
+    {
+        return describe("bottom-row-out");
+    }
+
+    // The bubble is bottom-aligned in its wrapper (ChatMessageContentWrapper::applyContentPosition()),
+    // so a too-short wrapper cuts the bubble off at the bottom.
+    auto cm=pimpl->contentFrame->contentsMargins();
+    if (pimpl->contentFrame->height()-cm.top()-cm.bottom()+Tolerance<c->height())
+    {
+        return describe("wrapper-short");
+    }
+
+    if (pimpl->main->height()+Tolerance<pimpl->main->sizeHint().height())
+    {
+        return describe("frame-short");
+    }
+
+    if (height()+Tolerance<sizeHint().height())
+    {
+        return describe("row-short");
+    }
+
+    return QString{};
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessage::repairGeometry()
+{
+    auto* c=content();
+    if (c==nullptr || pimpl->contentFrame==nullptr)
+    {
+        return;
+    }
+
+    // Drop every cached layout/size hint under the bubble, not just the sections' own: a body with
+    // a layout of its own (ChatMessageFiles' file rows + caption) keeps a further per-child hint
+    // cache that relayoutSections() alone does not reach, which is exactly how a stale height
+    // survived a content update before (see the 2026-09-24 note in
+    // todos/testing/bug-chat-file-bubble-collapses-after-hidden-page-update.md). Rare path --
+    // only reached after checkGeometry() found a real problem -- so the cost is irrelevant.
+    for (auto* l : c->findChildren<QLayout*>())
+    {
+        l->invalidate();
+    }
+    for (auto* w : c->findChildren<QWidget*>())
+    {
+        w->updateGeometry();
+    }
+
+    // Refreshes the hints, re-activates the bubble's layout and re-negotiates (which resizes the
+    // bubble to its now-correct sizeHint()).
+    c->relayoutSections();
+    pimpl->contentFrame->updatePosition();
+
+    pimpl->activateLayouts();
+
+    // Tell the enclosing list view this row's hint changed: its content-resize handler then
+    // resizes the list and compensates the scroll position in this same turn.
+    updateGeometry();
 }
 
 //--------------------------------------------------------------------------

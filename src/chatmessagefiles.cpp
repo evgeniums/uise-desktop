@@ -38,21 +38,30 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 
 namespace {
 
-//! Widest sizeHint() among the given rows -- the same quantity bubbleWidthHint() itself takes
-//! the max of. Used before/after a row (or the whole row list) is refreshed to detect whether
-//! that refresh actually changed this section's own natural width (a progress tick growing
-//! "9 mb / 246 mb" to "21 mb / 246 mb", a state change dropping the reserved "total / total"
-//! width back to just "total", ...) so the bubble is renegotiated only then, not on every plain
-//! refresh -- same gate ChatMessageImages::setItems()/updateItem() apply to the album grid's own
-//! footprint (chatmessageimages.cpp).
-int rowsWidth(const std::vector<ChatMessageFileItem*>& rows)
+//! Footprint of the given rows: widest sizeHint() (the same quantity bubbleWidthHint() itself takes
+//! the max of) and the sum of their sizeHint() heights (how tall they stack). Used before/after a
+//! row (or the whole row list) is refreshed to detect whether that refresh actually changed this
+//! section's own natural size (a progress tick growing "9 mb / 246 mb" to "21 mb / 246 mb", a state
+//! change dropping the reserved "total / total" width back to just "total", a generic row replaced
+//! by a taller/shorter specialized one, ...) so the bubble is renegotiated only then, not on every
+//! plain refresh -- same gate ChatMessageImages::setItems()/updateItem() apply to the album grid's
+//! own footprint (chatmessageimages.cpp).
+//!
+//! The HEIGHT matters as much as the width: the bubble is not sized by a layout, only by
+//! AbstractChatMessageContent::setMaximumBubbleWidth(), so a row that changes height at an
+//! unchanged width used to leave the bubble at its old height -- clipping the bottom of the
+//! content or the bottom row (the sporadic "file bubble cut off at the bottom" report).
+QSize rowsSize(const std::vector<ChatMessageFileItem*>& rows)
 {
     int width=0;
+    int height=0;
     for (auto* row : rows)
     {
-        width=std::max(width,row->sizeHint().width());
+        auto hint=row->sizeHint();
+        width=std::max(width,hint.width());
+        height+=hint.height();
     }
-    return width;
+    return QSize{width,height};
 }
 
 //! Vertical layout of the file rows and the caption under them, which, when squeezed, takes the
@@ -220,12 +229,12 @@ void ChatMessageFiles::updateItem(const QUuid& id, const ChatFileItem& item)
                 return;
             }
 
-            // See rowsWidth()'s doc comment -- most calls here are a plain progress tick, which
+            // See rowsSize()'s doc comment -- most calls here are a plain progress tick, which
             // must stay cheap, so the bubble is only re-measured on the calls that actually need
             // it.
-            auto widthBefore=rowsWidth(pimpl->rows);
+            auto sizeBefore=rowsSize(pimpl->rows);
             pimpl->rows[i]->setItem(item,incoming);
-            if (chatContent()!=nullptr && rowsWidth(pimpl->rows)!=widthBefore)
+            if (chatContent()!=nullptr && rowsSize(pimpl->rows)!=sizeBefore)
             {
                 chatContent()->renegotiateBubbleWidth();
             }
@@ -275,11 +284,11 @@ void ChatMessageFiles::setPlaybackPosition(const QUuid& id, qint64 positionMs, q
 
 void ChatMessageFiles::rebuildList()
 {
-    // See rowsWidth()'s doc comment. Taken before the old rows are torn down -- setItems() (this
+    // See rowsSize()'s doc comment. Taken before the old rows are torn down -- setItems() (this
     // function's caller) is also whitemdesktop's ChatMessage::refreshAllItems() path, reached on
     // a message already on screen (e.g. once an async resolve re-pushes the item list), so
     // "before" here means whatever this section showed a moment ago, not zero.
-    auto widthBefore=rowsWidth(pimpl->rows);
+    auto sizeBefore=rowsSize(pimpl->rows);
 
     for (auto* row : pimpl->rows)
     {
@@ -422,11 +431,11 @@ void ChatMessageFiles::rebuildList()
 
     updateGeometry();
 
-    // See rowsWidth()'s doc comment and widthBefore's own above. renegotiateBubbleWidth() itself
+    // See rowsSize()'s doc comment and sizeBefore's own above. renegotiateBubbleWidth() itself
     // no-ops before the very first negotiation (see its own doc comment), so the initial build of
-    // a fresh message (widthBefore==0, essentially always different from the real width) is safe
+    // a fresh message (sizeBefore empty, essentially always different from the real size) is safe
     // either way.
-    if (chatContent()!=nullptr && rowsWidth(pimpl->rows)!=widthBefore)
+    if (chatContent()!=nullptr && rowsSize(pimpl->rows)!=sizeBefore)
     {
         chatContent()->renegotiateBubbleWidth();
     }
@@ -436,6 +445,11 @@ void ChatMessageFiles::rebuildList()
 
 void ChatMessageFiles::setComment(const QString& text, TextFormat format)
 {
+    // Whether the caption actually changes -- its line count (and so the bubble's height) can only
+    // change then, and a plain re-push of the same caption (every reseedFilesBody()) must stay
+    // cheap.
+    const bool changed=(pimpl->commentText!=text) || (pimpl->commentFormat!=format);
+
     pimpl->commentText=text;
     pimpl->commentFormat=format;
 
@@ -448,6 +462,20 @@ void ChatMessageFiles::setComment(const QString& text, TextFormat format)
     {
         pimpl->comment->loadText(text,format);
         pimpl->comment->setVisible(true);
+    }
+
+    // ChatMessageText::loadText() only resets its own cached width hint; nothing re-measured the
+    // bubble, so a caption set on a message already on screen (an edit, a content fill-in that
+    // arrives after the first layout) was wrapped for the OLD text's bubble width and the bubble
+    // kept the old height. A no-op before the very first negotiation (renegotiateBubbleWidth()'s
+    // own contract), so the initial build is unaffected.
+    if (changed)
+    {
+        updateGeometry();
+        if (chatContent()!=nullptr)
+        {
+            chatContent()->renegotiateBubbleWidth();
+        }
     }
 }
 

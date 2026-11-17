@@ -27,6 +27,9 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGESVIEW_HPP
 
 #include <optional>
+#include <functional>
+#include <chrono>
+#include <deque>
 
 #include <QBoxLayout>
 #include <QShortcut>
@@ -620,6 +623,21 @@ class ChatMessagesView : public AbstractChatMessagesView
             return m_floatingAvatarEnabled;
         }
 
+        /**
+         * @brief Receiver of the geometry audit's reports -- see scheduleGeometryAudit().
+         *
+         * Invoked, at most a handful of times per minute, when the delayed audit found a message
+         * row whose own geometry was inconsistent (a widget shorter than its size hint, i.e.
+         * something visibly clipped) and repaired it. The argument is
+         * AbstractChatMessage::checkGeometry()'s description (which check failed plus the measured
+         * numbers). Never invoked while everything is healthy, so it is safe to leave on in soak
+         * builds. Defaults to one qWarning() line.
+         */
+        void setGeometryRepairCb(std::function<void (const QString&)> cb)
+        {
+            m_geometryRepairCb=std::move(cb);
+        }
+
     protected:
 
         void mouseMoveEvent(QMouseEvent *event) override;
@@ -657,6 +675,18 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! switch -- see blockFloatingAvatar().
         bool m_floatingAvatarBlocked=false;
         SingleShotTimer* m_floatingAvatarBlockTimer=nullptr;
+
+        //! Delayed geometry audit, see scheduleGeometryAudit().
+        SingleShotTimer* m_geometryAuditTimer=nullptr;
+        std::function<void (const QString&)> m_geometryRepairCb;
+        //! True while auditGeometry() runs: its own repairs re-negotiate bubbles synchronously and
+        //! must not re-schedule the audit that is already running.
+        bool m_inGeometryAudit=false;
+        //! Consecutive audits that still found something to repair -- bounds the audit/repair
+        //! cycle when a problem is not fixable by repairGeometry() (reset by a clean audit).
+        int m_geometryAuditStreak=0;
+        //! Times of the most recent reports, for the rate limit in auditGeometry().
+        std::deque<std::chrono::steady_clock::time_point> m_geometryReportTimes;
 
         //! The message whose own anchored avatar is currently force-hidden because the floating
         //! copy is sitting over it (AbstractChatMessage::setAvatarObscured()). QPointer because
@@ -779,6 +809,21 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! alone is not enough to drive this.
         void scheduleFloatingAvatarUpdate();
         void updateFloatingAvatar();
+
+        /**
+         * @brief Re-check the geometry of every visible message row after things have settled.
+         *
+         * A message bubble is not sized by a layout, so a change of its content's height that
+         * nobody re-measured (a file row swapped for another kind, an info line toggled, a caption
+         * re-wrapped, a page shown after updates arrived while it was hidden, ...) leaves the
+         * bubble clipped at the bottom, and nothing repairs it later. This is the safety net behind
+         * the targeted fixes: coalesced onto a quiet moment 300 ms after the last trigger (scroll,
+         * viewport change, a message inserted/updated, a bubble re-negotiated, the view shown), it
+         * asks each visible row for AbstractChatMessage::checkGeometry() and repairs the ones that
+         * fail with repairGeometry(), reporting each through setGeometryRepairCb().
+         */
+        void scheduleGeometryAudit();
+        void auditGeometry();
 
         //! Park the floating copy and hand every row its own avatar back, then suppress the
         //! whole mechanism for ChatFloatingAvatar::modeChangeBlockMs(). Called when

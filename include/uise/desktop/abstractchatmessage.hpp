@@ -1473,6 +1473,20 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_sent;
         }
 
+        //! Safety net for a section changing HEIGHT without anybody re-measuring the bubble.
+        //!
+        //! This bubble is not sized by a layout: only setMaximumBubbleWidth() ever resizes it (to
+        //! sizeHint()). A section that grows or shrinks on its own (a file row swapped for a voice
+        //! row, an info line toggled, a caption re-wrapped, ...) only invalidates this bubble's
+        //! INNER layout, which then re-activates inside the unchanged bubble rect -- so the bottom
+        //! of the content, or the manually placed bottom row, ends up clipped, and nothing repairs
+        //! it later. On a LayoutRequest that finds height() != sizeHint().height() on a visible,
+        //! already negotiated bubble, this re-runs the negotiation. A no-op (one comparison) in
+        //! every healthy case, including the LayoutRequest that setMaximumBubbleWidth() itself
+        //! posts. Hidden bubbles are left to ChatMessageContentWrapper::showEvent()/
+        //! ChatMessage::showEvent(), which already repair those.
+        bool event(QEvent* event) override;
+
     private:
 
         //! Rebuilds m_sections from whichever of m_header/m_reply/m_body/m_comment/m_bottom are
@@ -1564,6 +1578,14 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         int m_maximumBubbleWidth=0;
         int m_lastForMaxWidth=0;
         bool m_everNegotiated=false;
+
+        //! True while updateBubbleWidth() runs -- event() must not start a nested negotiation.
+        bool m_inNegotiation=false;
+        //! Consecutive automatic re-negotiations event() started without the bubble's height
+        //! catching up with its sizeHint() -- bounds the retries (min/max constraints could keep
+        //! the two apart for good, and every pass posts another LayoutRequest). Reset the moment
+        //! they agree again.
+        int m_autoRemeasureCount=0;
 
         int m_bodyWidthHint=0;
         int m_bodyWidthHintForMaxWidth=0;
@@ -2250,6 +2272,28 @@ class UISE_DESKTOP_EXPORT AbstractChatMessage : public WidgetQFrame
         {
             return rect();
         }
+
+    public:
+
+        //! Self-check used by ChatMessagesView's delayed geometry audit: returns an empty string
+        //! when this row's own geometry is consistent, otherwise a short description of the first
+        //! inconsistency found (which check failed plus the measured numbers). Looks only for
+        //! SHORTFALLS -- a widget smaller than what its own size hint asks for, or content reaching
+        //! outside its frame -- because only those clip anything. A no-op default: a row type with
+        //! nothing to verify reports no problem. Declared after every other virtual of this class
+        //! on purpose (a new virtual goes last).
+        virtual QString checkGeometry() const
+        {
+            return QString{};
+        }
+
+        //! Re-derives every cached size of this row from the current content and re-applies it,
+        //! bottom-up. Called by the audit right after checkGeometry() reported a problem. A no-op
+        //! default. Also declared last, see checkGeometry().
+        virtual void repairGeometry()
+        {}
+
+    protected:
 
         void paintEvent(QPaintEvent* event) override;
 

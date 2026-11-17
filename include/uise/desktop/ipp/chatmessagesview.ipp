@@ -27,6 +27,9 @@ You may select, at your option, one of the above-listed licenses.
 #define UISE_DESKTOP_CHATMESSAGESVIEW_IPP
 
 #include <algorithm>
+#include <vector>
+
+#include <QDebug>
 
 #include <QClipboard>
 #include <QApplication>
@@ -224,6 +227,7 @@ ChatMessagesView<BaseMessageT,Traits>::ChatMessagesView(QWidget* parent)
 
     m_floatingAvatarTimer=new SingleShotTimer(this);
     m_floatingAvatarBlockTimer=new SingleShotTimer(this);
+    m_geometryAuditTimer=new SingleShotTimer(this);
 
     m_floatingAvatar=new ChatFloatingAvatar(m_listView->viewportFrame());
 
@@ -1200,6 +1204,7 @@ void ChatMessagesView<BaseMessageT,Traits>::doInsertMessage(const Data& dbItem)
 {
     auto message=makeMessage(dbItem);
     adjustMesssageSize(message);
+    scheduleGeometryAudit();
     if (m_listView->maxSortValue() < message->msg()->sortValue())
     {
         m_listView->setMaxSortValue(message->msg()->sortValue());
@@ -1309,6 +1314,10 @@ void ChatMessagesView<BaseMessageT,Traits>::updateMessage(const Data& dbItem, Fi
         doReorderMessage(Traits::id(dbItem));
     }
     adjustMesssageSize(msg);
+
+    // The update may have changed the bubble's content (a re-seeded file list, a new caption);
+    // check the result once it has settled, see scheduleGeometryAudit().
+    scheduleGeometryAudit();
 
     adjustCurrentMessagesList();
 
@@ -1555,6 +1564,23 @@ ChatMessagesViewItem<BaseMessageT,Traits>* ChatMessagesView<BaseMessageT,Traits>
         // explicit bubble cap here a message would grow to fill an arbitrarily wide window.
         // Falls back to sampling the first message's own QSS maximumWidth(), same as before.
         m_messageMaxWidth=maxMessageWidth()>0 ? maxMessageWidth() : message->ui()->maximumWidth();
+    }
+
+    // Every re-negotiation of this bubble -- including the ones a body requests by itself when
+    // its content changes asynchronously (a file row resolved, a caption edited) and so never pass
+    // through this view -- is a reason to re-check the geometry once things have settled, see
+    // scheduleGeometryAudit(). Null-guarded: not every message type has built its content yet.
+    if (auto* content=message->ui()->content())
+    {
+        connect(
+            content,
+            &AbstractChatMessageContent::bubbleWidthUpdated,
+            this,
+            [this]()
+            {
+                scheduleGeometryAudit();
+            }
+        );
     }
 
     // done
@@ -2022,6 +2048,13 @@ void ChatMessagesView<BaseMessageT,Traits>::showEvent(QShowEvent* event)
 template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::scheduleFloatingAvatarUpdate()
 {
+    // Every trigger of the floating avatar (scroll, viewport change, the view being shown, list
+    // adjustments) is also a moment after which the rows on screen may have changed -- see
+    // scheduleGeometryAudit(). Before the floating-avatar early returns below: those depend on
+    // avatar settings, which have nothing to do with whether a bubble is clipped. Null-safe for
+    // the same construction-order reason as m_floatingAvatarTimer's own guard.
+    scheduleGeometryAudit();
+
     // m_floatingAvatarTimer==nullptr guard is load-bearing: this can be reached (via the
     // application-wide event filter installed in the ctor, or via a synchronous
     // setUserScrolledCb()/setViewportChangedCb() callback the flyweight list view's own setup
@@ -2039,6 +2072,126 @@ void ChatMessagesView<BaseMessageT,Traits>::scheduleFloatingAvatarUpdate()
     // after beginUpdate()/endUpdate() has settled geometry when triggered from
     // adjustMessageList().
     m_floatingAvatarTimer->shot(0,[this](){updateFloatingAvatar();});
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::scheduleGeometryAudit()
+{
+    // m_inGeometryAudit: the audit's own repairs re-negotiate bubbles synchronously (each emits
+    // bubbleWidthUpdated), which must not keep re-arming the very audit that is running -- the
+    // follow-up verification pass is scheduled explicitly at the end of auditGeometry() instead.
+    if (m_geometryAuditTimer==nullptr || m_inGeometryAudit)
+    {
+        return;
+    }
+
+    // restart=true: wait for a QUIET 300 ms, so the check never runs in the middle of a burst of
+    // inserts/scrolls whose half-applied state would only produce false alarms.
+    m_geometryAuditTimer->shot(300,[this](){auditGeometry();},true);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::auditGeometry()
+{
+    // A hidden page is not laid out by Qt, so there is nothing meaningful to compare; its rows are
+    // settled by their own showEvent() and this view's showEvent() schedules a fresh audit.
+    if (!isVisible() || window()==nullptr || !window()->isVisible())
+    {
+        return;
+    }
+
+    auto* first=m_listView->firstViewportItem();
+    auto* last=m_listView->lastViewportItem();
+    if (first==nullptr || last==nullptr)
+    {
+        m_geometryAuditStreak=0;
+        return;
+    }
+
+    // Rows currently on screen, collected first and repaired afterwards: a repair re-activates
+    // layouts and must not run inside the container's own iteration.
+    struct Problem
+    {
+        QPointer<AbstractChatMessage> row;
+        QString description;
+    };
+    std::vector<Problem> problems;
+
+    bool inRange=false;
+    m_listView->eachItem(
+        [&](const auto* item) -> bool
+        {
+            if (item==first)
+            {
+                inRange=true;
+            }
+            if (inRange)
+            {
+                auto* row=item->widget();
+                if (row!=nullptr && !row->visibleRegion().isEmpty())
+                {
+                    auto description=row->checkGeometry();
+                    if (!description.isEmpty())
+                    {
+                        problems.push_back(Problem{QPointer<AbstractChatMessage>{row},std::move(description)});
+                    }
+                }
+            }
+            // stop after the last row on screen
+            return item!=last;
+        }
+    );
+
+    if (problems.empty())
+    {
+        m_geometryAuditStreak=0;
+        return;
+    }
+
+    m_inGeometryAudit=true;
+    for (auto& problem : problems)
+    {
+        if (problem.row.isNull())
+        {
+            continue;
+        }
+        problem.row->repairGeometry();
+
+        // Report at most 5 per minute per view: one stubborn row re-found by every pass must not
+        // flood the log, and the first few lines already name the layer that drifted.
+        const auto now=std::chrono::steady_clock::now();
+        while (!m_geometryReportTimes.empty() && now-m_geometryReportTimes.front()>std::chrono::minutes(1))
+        {
+            m_geometryReportTimes.pop_front();
+        }
+        if (m_geometryReportTimes.size()<5)
+        {
+            m_geometryReportTimes.push_back(now);
+            auto text=QStringLiteral("chat message geometry repaired by the delayed audit: ")+problem.description;
+            if (m_geometryRepairCb)
+            {
+                m_geometryRepairCb(text);
+            }
+            else
+            {
+                qWarning().noquote() << text;
+            }
+        }
+    }
+    m_inGeometryAudit=false;
+
+    // One verification pass after a repair, because a repair can itself leave something for a later
+    // event-loop turn (a posted LayoutRequest). Bounded: a problem repairGeometry() cannot fix
+    // would otherwise be re-found and re-repaired forever.
+    constexpr int MaxAuditStreak=3;
+    if (++m_geometryAuditStreak<=MaxAuditStreak)
+    {
+        scheduleGeometryAudit();
+    }
 }
 
 //--------------------------------------------------------------------------

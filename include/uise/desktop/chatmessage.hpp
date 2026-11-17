@@ -731,6 +731,18 @@ class UISE_DESKTOP_EXPORT ChatMessage : public AbstractChatMessage
 
         QString selectedText() const override;
 
+        //! Shortfall-only consistency check of this row's chain of frames, bottom-up: the bubble
+        //! against its own sizeHint() and its bottom row, the bubble's wrapper, #mainMessageFrame
+        //! and this row itself against their size hints. Empty string when everything is fine --
+        //! see AbstractChatMessage::checkGeometry(). Skipped (always empty) while the row is
+        //! hidden: Qt does not lay out hidden widgets, so a mismatch there is expected and is
+        //! repaired by showEvent() instead.
+        QString checkGeometry() const override;
+
+        //! Re-measures the bubble and re-activates the wrapper/main frame/row layouts -- see
+        //! AbstractChatMessage::repairGeometry().
+        void repairGeometry() override;
+
     protected:
 
         //! Excludes #separatorFrame's band (the date/unread separator pill) -- covers
