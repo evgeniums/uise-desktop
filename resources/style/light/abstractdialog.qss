@@ -46,4 +46,9 @@ uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton{bac
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton:hover{background-color: #AA2222; color: #FFFFFF; border: 1px solid #AA2222;}
 uise--AbstractDialog #dialogButtonsFrame uise--PushButton#danger QPushButton:disabled{background-color: #DDDDDD; color: #999999; border: 1px solid #DDDDDD;}
 
-uise--AbstractDialog #dialogButtonsFrame uise--PushButton QPushButton {min-width:80px;padding: 3px 12px;}
+/* NOTE: there used to be a last rule here, "#dialogButtonsFrame uise--PushButton QPushButton {min-width:80px;padding: 3px 12px;}"
+ * (added by the "Refactor styles" commit, a day after the filled-button rule at the top of this file set padding: 6px 12px;
+ * min-width: 100px). It has the same specificity and comes later, so it silently won: every dialog button of the light theme
+ * had 3px of vertical padding while the FileUpload dialog, which carries its own copy of the 6px rule, looked roomier.
+ * Removed 2026-11-18, so the light theme now has the 6px 12px / min-width 100px of the filled-button rule above. The dark theme
+ * has its own, separate "padding: 4px 12px" in dark/abstractdialog.qss and is not touched. */
